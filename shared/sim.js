@@ -115,6 +115,8 @@ export function validateMap(m) {
 }
 
 export const MAX_PLAYERS = 6;
+// team VP needed to win: scaled by average team size, so a 3v3 lasts about as long as a 1v1
+export const winVp = (teams) => CFG.vpToWin * teams.length / new Set(teams).size;
 
 // Spawns are listed in order around the map. Teammates get neighbouring spawns, and fewer players than
 // spawns spread out evenly (2 on a 6-spawn map sit opposite). shuffle rotates/mirrors it per match.
@@ -131,7 +133,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   const spawnIdx = spawnSlots(map.spawns.length, teams, shuffle);
   const g = {
     w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
-    tick: 0, nextId: 1, units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], winner: null,
+    tick: 0, nextId: 1, winVp: winVp(teams), units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], winner: null,
     // terrain changed mid-match: full log for (re)joining clients, plus what's new since the last snapshot
     cellLog: [], newCells: [],
     players: names.map((name, slot) => {
@@ -767,7 +769,7 @@ export function step(g) {
     }
   }
 
-  // victory points count per team: whichever team's players together reach vpToWin wins
+  // victory points count per team: whichever team's players together reach g.winVp wins
   const teamVp = (t) => g.players.reduce((a, q) => a + (q.team === t ? q.vp : 0), 0);
   const lead = Math.max(...g.players.map(q => teamVp(q.team)));
   for (const pl of g.players) {
@@ -777,7 +779,7 @@ export function step(g) {
     pl.inc = pl.away ? 0 : CFG.mpBase + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
     pl.mp += pl.inc * dt;
   }
-  for (const pl of g.players) if (teamVp(pl.team) >= CFG.vpToWin && g.winner === null) g.winner = pl.team; // winner = team id
+  for (const pl of g.players) if (teamVp(pl.team) >= g.winVp && g.winner === null) g.winner = pl.team; // winner = team id
 }
 
 // What one player is allowed to know: own units + enemies they can see. Fog is enforced here.

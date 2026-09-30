@@ -1,12 +1,17 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, canBuild } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, canBuild, winVp } from '/shared/sim.js';
 
-// Factions are cosmetic: same stats, different names and colors. Slot index = faction.
+// Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', color: 0x3d7bd9, uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad' } },
-  { name: 'Germany', color: 0xe0b23a, uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I' } },
-  { name: 'USSR', color: 0xd94a3d, uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts' } },
 ];
+const COLORS = [0x3d7bd9, 0xe0b23a, 0xd94a3d, 0x4cae4c, 0xa35ad8, 0xe07a2a];
+let teams = [], factions = [];
+const facOf = (slot) => factions[slot] ?? slot % 3;
+const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
+const foe = (slot) => (teams[slot] ?? slot) !== (teams[me] ?? me);
 const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons',
   ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint' };
 const isVeh = (type) => !UNITS[type].infantry;
@@ -67,23 +72,30 @@ function renderLobby(m) {
   $('link').value = local && m.publicUrl ? `${m.publicUrl}/#${room}` : location.href;
   $('overlay').classList.toggle('hidden', m.state === 'play');
   const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
-  $('roster').innerHTML = FACTIONS.map((f, i) => {
-    const p = m.players[i];
-    const kick = p?.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
-    return `<div class="slot"><span class="swatch" style="background:${css(f.color)}"></span>
-      <span>${p ? esc(p.name) + (i === m.you ? ' (you)' : '') : '<span class="muted">open slot</span>'}</span>
-      <span class="muted" style="margin-left:auto">${f.name}${p && !p.connected ? ' · offline' : ''}${i === m.host ? ' · host' : ''}</span>${kick}</div>`;
-  }).join('');
+  // host sets teams (and the AIs' factions), everyone picks their own faction
+  const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  $('roster').innerHTML = m.players.map((p, i) => {
+    const kick = p.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
+    return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
+      <span>${esc(p.name)}${i === m.you ? ' (you)' : ''}<span class="muted">${!p.connected ? ' · offline' : ''}${i === m.host ? ' · host' : ''}</span></span>
+      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
+  }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
+  $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
   $('mapSel').innerHTML = (m.maps || []).map(n => `<option ${n === m.mapName ? 'selected' : ''}>${esc(n)}</option>`).join('');
   $('mapSel').disabled = !host || !lobby;
-  $('addAi').classList.toggle('hidden', !host || !lobby || n >= 3);
-  $('start').textContent = m.state === 'over' ? 'Rematch' : n === 1 ? 'Start solo test' : n === 2 ? 'Start 1v1' : 'Start 3-way FFA';
-  $('lobbyMsg').textContent = host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
+  $('addAi').classList.toggle('hidden', !host || !lobby || n >= COLORS.length);
+  // "3v3", "2v2v2", "1v1", or FFA when nobody shares a team
+  const sizes = [...new Set(m.players.map(p => p.team))].map(t => m.players.filter(p => p.team === t).length);
+  const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
+  $('start').textContent = m.state === 'over' ? 'Rematch' : `Start ${mode}`;
+  const tooMany = n > (m.spawns ?? 3);
+  $('start').disabled = tooMany;
+  $('lobbyMsg').textContent = tooMany ? `This map has ${m.spawns} spawns: pick a bigger map or remove players.` : host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
   const w = lastSnap?.winner;
   $('result').classList.toggle('hidden', m.state !== 'over' || w == null);
-  if (m.state === 'over' && w != null) $('result').textContent = w === me ? 'Victory' : `${names[w] ?? 'Enemy'} wins`;
+  if (m.state === 'over' && w != null) $('result').textContent = w === (teams[me] ?? me) ? 'Victory' : `${names.filter((_, i) => (teams[i] ?? i) === w).join(' & ') || 'Enemy'} win${teams.filter(t => t === w).length > 1 ? '' : 's'}`;
 }
 
 // ---------- renderer / scene ----------
@@ -150,7 +162,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m) {
-  me = m.you; names = m.names; lastStart = m; mmImage = null;
+  me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
@@ -347,7 +359,7 @@ function applyCells(cells) {
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
 function buildHQ(sp, slot) {
-  const f = FACTIONS[slot], R = CFG.reinforceRadius, g = new THREE.Group();
+  const f = look(slot), R = CFG.reinforceRadius, g = new THREE.Group();
   g.position.set(sp.x, hAt(sp.x, sp.z), sp.z);
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
   g.add(flat(new THREE.CircleGeometry(R, 48), 0.18, 0.05), flat(new THREE.RingGeometry(R - 0.5, R, 64), 0.85, 0.06));
@@ -409,7 +421,7 @@ function buildTank(v, root, spec, f) {
 }
 
 function makeUnit(id, type, owner) {
-  const def = UNITS[type], f = FACTIONS[owner], root = new THREE.Group();
+  const def = UNITS[type], f = look(owner), root = new THREE.Group();
   const v = { id, type, owner, root, models: [], alive: def.models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
   const base = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity: 0.9, depthWrite: false }));
   base.rotation.x = -Math.PI / 2; base.position.y = 0.15; base.scale.setScalar(def.radius + 0.4); base.renderOrder = 2;
@@ -417,7 +429,7 @@ function makeUnit(id, type, owner) {
   v.sel.rotation.x = -Math.PI / 2; v.sel.position.y = 0.16; v.sel.scale.setScalar(def.radius + 1); v.sel.visible = false; v.sel.renderOrder = 2;
   root.add(base, v.sel); v.base = base;
   if (TANKS[type]) {
-    buildTank(v, root, TANKS[type][owner] ?? TANKS[type].find(Boolean), f);
+    buildTank(v, root, TANKS[type][facOf(owner)] ?? TANKS[type].find(Boolean), f);
     v.models.push(root);
   } else if (type === 'rocket') {
     const body = mat(f.vehicle), dark = mat(0x2a2a24);
@@ -566,14 +578,14 @@ function applySnapshot(s) {
     Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32) });
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     // inside a building: the squad disappears into it; its bars float above the roof
-    v.base.material.color.set(flags & 1 ? 0xffffff : FACTIONS[owner].color);
+    v.base.material.color.set(flags & 1 ? 0xffffff : look(owner).color);
     const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
     if (!isVeh(type)) while (v.alive > alive) corpse(v, v.models[--v.alive]);
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
     v.base.visible = !v.garr;
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
-    v.hpBar.material.color.set(frac > 0.5 ? FACTIONS[owner].color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
+    v.hpBar.material.color.set(frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
     v.suppBar.visible = supp > 0;
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
@@ -608,9 +620,9 @@ function applySnapshot(s) {
 
   s.points.forEach(([owner, capper, progress], i) => {
     const p = points[i]; if (!p) return;
-    const oc = owner >= 0 ? FACTIONS[owner].color : 0xdddddd;
+    const oc = owner >= 0 ? look(owner).color : 0xdddddd;
     p.ringMat.color.set(oc); p.flagMat.color.set(oc);
-    p.progMat.color.set(owner >= 0 ? oc : capper >= 0 ? FACTIONS[capper].color : 0xffffff);
+    p.progMat.color.set(owner >= 0 ? oc : capper >= 0 ? look(capper).color : 0xffffff);
     p.prog.geometry.setDrawRange(0, Math.round(progress * 64) * 6);
   });
   syncSmoke(s.smokes);
@@ -646,7 +658,7 @@ function syncStrikes(list) {
     const key = `${kind},${x},${z}`; keep.add(key);
     let m = strikeMarks.get(key);
     if (!m) {
-      m = aimShape(kind, owner === me ? FACTIONS[owner].color : 0xff3020);
+      m = aimShape(kind, !foe(owner) ? look(owner).color : 0xff3020);
       m.position.set(x, hAt(x, z), z); m.rotation.y = -dir;
       world.add(m); strikeMarks.set(key, m);
     }
@@ -721,15 +733,19 @@ function aimSupport(k) {
 }
 
 function buildBuyBar() {
-  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, me)).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${FACTIONS[me].names[t]}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
+  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me))).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${look(me).names[t]}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
   $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
 }
 
 function updateHud(s) {
   const held = (slot) => s.points.filter(p => p[0] === slot).length;
-  $('scores').innerHTML = names.map((n, i) => `<div class="score"><div class="row"><span class="swatch" style="background:${css(FACTIONS[i].color)}"></span><span>${esc(n)}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>
-    <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE · clock paused</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>
-    <div class="bar"><div style="width:${Math.min(100, s.vp[i] / CFG.vpToWin * 100)}%;background:${css(FACTIONS[i].color)}"></div></div><div class="muted">${s.vp[i]} / ${CFG.vpToWin} VP</div></div>`).join('');
+  // one card per team: its players, then the team's combined VP (that's what wins)
+  $('scores').innerHTML = [...new Set(teams)].map(t => {
+    const mem = names.map((_, i) => i).filter(i => teams[i] === t), vp = mem.reduce((a, i) => a + s.vp[i], 0);
+    return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>
+    <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE · clock paused</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
+    <div class="bar"><div style="width:${Math.min(100, vp / winVp(teams) * 100)}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${vp} / ${winVp(teams)} VP</div></div>`;
+  }).join('');
   const pop = [...units.values()].filter(v => v.owner === me).length;
   $('mp').textContent = `${s.mp} MP`;
   $('support').querySelectorAll('button').forEach(b => {
@@ -741,7 +757,7 @@ function updateHud(s) {
   $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= CFG.popCap));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
     const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
-    return `<div class="sel"><span>${FACTIONS[v.owner].names[v.type]}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
+    return `<div class="sel"><span>${look(v.owner).names[v.type] ?? UNITS[v.type].name}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
   }).join('');
   // ability bar for the current selection
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
@@ -769,7 +785,7 @@ let muted = tryStore(() => localStorage.getItem('ww2-muted')) === '1', lastBark 
 function bark(kind) {
   if (muted || !window.speechSynthesis || performance.now() - lastBark < 2500 || me < 0) return;
   lastBark = performance.now();
-  const v = VOICES[me], lines = v[kind], u = new SpeechSynthesisUtterance(lines[Math.floor(Math.random() * lines.length)]);
+  const v = VOICES[facOf(me)], lines = v[kind], u = new SpeechSynthesisUtterance(lines[Math.floor(Math.random() * lines.length)]);
   u.lang = v.lang; u.rate = 1.15; u.volume = 0.7;
   const voice = speechSynthesis.getVoices().find(x => x.lang.replace('_', '-').startsWith(v.lang.slice(0, 2)));
   if (voice) u.voice = voice;
@@ -907,7 +923,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
-  const enemy = pick(e.clientX, e.clientY, v => v.owner !== me);
+  const enemy = pick(e.clientX, e.clientY, v => foe(v.owner));
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); bark('attack'); return; }
   // a house: squads go inside, tanks and rocket trucks shell it, anything else walks up to it
@@ -993,12 +1009,12 @@ function drawMinimap() {
     fc.putImageData(img, 0, 0);
     c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
   }
-  const col = (slot) => css(FACTIONS[slot].color);
+  const col = (slot) => css(look(slot).color);
   lastSnap.points.forEach(([owner], i) => { const p = points[i]?.g.position; if (!p) return; c.beginPath(); c.arc(p.x, p.z, CFG.pointRadius, 0, Math.PI * 2); c.fillStyle = owner >= 0 ? col(owner) + '99' : '#dddddd66'; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1 / S; c.stroke(); });
   (lastStart?.spawns || []).forEach((sp, i) => { c.fillStyle = col(i); c.fillRect(sp.x - 5, sp.z - 5, 10, 10); c.strokeStyle = '#000'; c.strokeRect(sp.x - 5, sp.z - 5, 10, 10); });
   for (const [kind, x, z, dir, , owner] of lastSnap.strikes || []) {
     const sp = SUPPORT[kind]; if (!sp) continue;
-    c.save(); c.translate(x, z); c.rotate(dir); c.strokeStyle = owner === me ? col(me) : '#ff3020'; c.lineWidth = 2 / S; c.strokeRect(-sp.len / 2, -sp.width / 2, sp.len, sp.width); c.restore();
+    c.save(); c.translate(x, z); c.rotate(dir); c.strokeStyle = !foe(owner) ? col(owner) : '#ff3020'; c.lineWidth = 2 / S; c.strokeRect(-sp.len / 2, -sp.width / 2, sp.len, sp.width); c.restore();
   }
   for (const v of units.values()) {
     c.beginPath(); c.arc(v.x, v.z, isVeh(v.type) ? 3.5 : 2.6, 0, Math.PI * 2); c.fillStyle = col(v.owner); c.fill();
@@ -1030,7 +1046,7 @@ function updateFog() {
   if (!fogTex) return;
   const { w, h } = fogGrid, d = fogTex.image.data, vis = fogVis = new Uint8Array(w * h);
   for (const v of units.values()) {
-    if (v.owner !== me) continue;
+    if (foe(v.owner)) continue; // allies share vision
     const r = UNITS[v.type].vision / CELL, cx = v.x / CELL, cy = v.z / CELL;
     for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(h - 1, cy + r); y++)
       for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w - 1, cx + r); x++)
@@ -1084,7 +1100,7 @@ renderer.setAnimationLoop(() => {
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
-  renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => v.owner !== me) ? 'crosshair' : 'default';
+  renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
   renderer.render(scene, camera);
 });
 

@@ -19,6 +19,10 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   smoke wall 36x14, recon corridor 80x30, trench line 4 cells. Without a direction the server falls back to 'out from your HQ'.
 - Each spawn is a visible HQ: tinted reinforce zone, sandbags, tent, tall flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
+- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawns are listed in order around the map; teammates
+  get neighbouring spawns and fewer players spread out (spawnSlots). The host sets teams, each player picks a faction.
+  Teams share vision, can't target each other, hold each other's points, and win on combined VP; the goal scales
+  with average team size (3v3 plays to 3600) so team games last about as long as a 1v1.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
   rifle squad, MG team, AT gun, light tank. Squads are one sim entity with N models.
 - Combat: cover cells halve incoming accuracy and suppression. The suppression meter slows and then pins infantry.

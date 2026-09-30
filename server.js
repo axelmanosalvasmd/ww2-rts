@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, validateMap, TICK } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, validateMap, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
@@ -72,23 +72,26 @@ const server = http.createServer(async (req, res) => {
   } catch { res.writeHead(404); res.end('not found'); }
 });
 
-// room: { code, players: [{ token, name, ws, ai }], state: 'lobby'|'play'|'over', game, map, mapName, emptySince }
+// room: { code, players: [{ token, name, ws, ai, team, faction }], state: 'lobby'|'play'|'over', game, map, mapName, spawns, emptySince }
 // A player's slot in the game is their index in players; the host is the first human.
 const rooms = new Map();
 const cleanName = (n) => String(n || '').replace(/[<>&"']/g, '').trim().slice(0, 16) || 'Soldier';
 const send = (ws, msg) => ws?.readyState === 1 && ws.send(JSON.stringify(msg));
 const hostOf = (room) => room.players.findIndex(p => !p.ai);
+// new players default to their own team (free-for-all) and the next faction in the cycle
+const newPlayer = (room, p) => ({ ...p, team: room.players.length, faction: room.players.length % 3 });
+const setMap = async (room, name) => { room.mapName = name; room.spawns = (await loadMap(name)).spawns.length; };
 
 async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
-    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, publicUrl: PUBLIC_URL,
-    players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai })),
+    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: room.spawns, publicUrl: PUBLIC_URL,
+    players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
 }
 
 function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: room.game.cellLog, names: room.players.map(p => p.name) });
+  send(room.players[i].ws, { t: 'start', map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: room.game.cellLog, names: room.players.map(p => p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction) });
 }
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
@@ -103,11 +106,12 @@ wss.on('connection', (ws, req) => {
     if (!msg || typeof msg !== 'object') return;
     if (!me) {
       if (msg.t !== 'hello') return;
-      room = rooms.get(code) || rooms.set(code, { code, players: [], state: 'lobby', game: null, mapName: 'default' }).get(code);
+      room = rooms.get(code);
+      if (!room) { rooms.set(code, room = { code, players: [], state: 'lobby', game: null }); await setMap(room, 'default'); }
       const token = String(msg.token || '').slice(0, 40), name = cleanName(msg.name);
       me = room.players.find(p => p.token === token && token);
       if (me) { me.ws?.close(); me.ws = ws; me.name = name; }
-      else if (room.state === 'lobby' && room.players.length < 3) room.players.push(me = { token, name, ws });
+      else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS) room.players.push(me = newPlayer(room, { token, name, ws }));
       else { send(ws, { t: 'full' }); return ws.close(); }
       room.emptySince = 0;
       lobby(room);
@@ -120,18 +124,22 @@ wss.on('connection', (ws, req) => {
       return send(ws, { t: 'pong', c: msg.c });
     }
     if (msg.t === 'name') { me.name = cleanName(msg.name); lobby(room); }
-    else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < 3) {
-      room.players.push({ token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true });
+    else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
+      room.players.push(newPlayer(room, { token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true }));
       lobby(room);
     } else if (msg.t === 'kick' && slot === hostOf(room) && room.state === 'lobby' && room.players[msg.slot]?.ai) {
       room.players.splice(msg.slot, 1);
       lobby(room);
     } else if (msg.t === 'map' && slot === hostOf(room) && room.state !== 'play' && typeof msg.name === 'string' && (await listMaps()).includes(msg.name)) {
-      room.mapName = msg.name; lobby(room);
-    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play') {
+      await setMap(room, msg.name); lobby(room);
+    } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : 3)) {
+      // you pick your own faction; the host sets teams, and the AIs' factions
+      const p = room.players[msg.slot];
+      if (p && (slot === hostOf(room) ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
+    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= room.spawns) {
       room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
       room.map = await loadMap(room.mapName);
-      room.game = createGame(room.map, room.players.map(p => p.name));
+      room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction));
       lobby(room);
       room.players.forEach((_, i) => sendStart(room, i));
     } else if (room.state === 'play' && room.game) command(room.game, slot, msg);

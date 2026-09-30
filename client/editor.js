@@ -1,11 +1,13 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
 import * as THREE from 'three';
-import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar } from '/shared/sim.js';
+import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS } from '/shared/sim.js';
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
   ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'],
-  ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'], ['s0', 'Spawn 1'], ['s1', 'Spawn 2'], ['s2', 'Spawn 3'],
+  ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'],
+  // spawns go in order around the map: the game seats teammates on neighbouring numbers
+  ...Array.from({ length: MAX_PLAYERS }, (_, i) => ['s' + i, 'Spawn ' + (i + 1)]),
 ];
 const HEIGHT_TOOLS = { up: 1, down: -1 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -23,7 +25,7 @@ export async function start(api) {
   ui.innerHTML = `
     <h2 class="stencil">Map editor</h2>
     <div class="row"><select id="edLoad"></select><button id="edOpen">Open</button></div>
-    <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option></select><button id="edNew">New blank</button></div>
+    <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option><option>150</option><option>200</option></select><button id="edNew">New blank</button></div>
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
     <div id="edSel" class="muted"></div>
@@ -58,7 +60,7 @@ export async function start(api) {
   const toWorld = (p) => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL });
   function rebuild(first = false) {
     const cam = { ...api.cam }, m = snapshot();
-    api.startGame({ map: m, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: ['Spawn 1', 'Spawn 2', 'Spawn 3'] });
+    api.startGame({ map: m, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => 'Spawn ' + (i + 1)) });
     if (!first) Object.assign(api.cam, cam);
     else { api.cam.x = m.w; api.cam.z = m.h; api.cam.dist = 120; api.cam.yaw = 0; }
     check(m);
@@ -135,7 +137,7 @@ export async function start(api) {
   const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
   function highlight() {
     hl.clear();
-    $('edSel').textContent = '';
+    $('edSel').textContent = picked?.marker === 'spawn' ? `Spawn ${picked.i + 1} · drag to move · Delete removes it (later spawns renumber)` : '';
     if (!picked?.cells) return;
     const m = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.45, depthTest: false });
     for (const [x, y] of picked.cells) {
@@ -152,12 +154,13 @@ export async function start(api) {
     for (const [x, y] of picked.cells) grid[y][x] = picked.ch;
   }
   function deletePicked() {
+    if (picked?.marker === 'spawn' && map.spawns.length > 2) { map.spawns.splice(picked.i, 1); picked = null; rebuild(); return true; }
     if (!picked?.cells) return false;
     for (const [x, y] of picked.cells) grid[y][x] = '.';
     picked = null; rebuild(); return true;
   }
   function click(c) {
-    if (tool[0] === 's') { map.spawns[+tool[1]] = { x: c.x, y: c.y }; rebuild(); return; }
+    if (tool[0] === 's') { map.spawns[Math.min(+tool[1], map.spawns.length)] = { x: c.x, y: c.y }; rebuild(); return; } // no gaps
     if (tool === 'pt') {
       const hit = map.points.findIndex(p => Math.hypot(p.x - c.x, p.y - c.y) <= 3);
       if (hit >= 0) sel = hit;
@@ -245,7 +248,7 @@ export async function start(api) {
       const verdict = d.done < d.n ? ''
         : d.timeouts > d.n * 0.2 ? warn('Matches too long: most hit the 30 min cap. Add capture points or raise their VP.')
         : played < 60 ? warn('Too few finished matches to judge fairness.')
-        : pct.some(p => p < 20 || p > 47) ? warn('Unfair: a spawn wins far more or less than a third.')
+        : pct.some(p => p < 60 / pct.length || p > 140 / pct.length) ? warn('Unfair: a spawn wins far more or less than its share.')
         : '<br>✓ Looks fair';
       $('edMsg').innerHTML = `${d.done}/${d.n} matches · spawn wins ${pct.map((p, i) => `<b>${i + 1}</b>: ${p}%`).join(' ')}<br>
         avg ${d.avgMin.toFixed(1)} min · 2nd place at ${Math.round(d.second * 100)}% of winner${d.timeouts ? ` · ${d.timeouts} timeouts` : ''}${verdict}`;

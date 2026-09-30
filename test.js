@@ -511,7 +511,8 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   foe.x = -500; a.x = b.x = 40; a.z = b.z = 40; // both on the point
   run(g, CFG.captureTime + 1);
   assert.ok(g.points[0].owner === 0 || g.points[0].owner === 2, 'allies capture together');
-  g.players[0].vp = CFG.vpToWin * 0.6; g.players[2].vp = CFG.vpToWin * 0.5; run(g, 0.1);
+  g.players[0].vp = CFG.vpToWin * 1.2; g.players[2].vp = CFG.vpToWin; run(g, 0.1);
+  assert.equal(g.winVp, CFG.vpToWin * 2, '2v2 plays to twice the VP');
   assert.equal(g.winner, 0, 'team 0 wins on combined VP');
 }
 {
