@@ -15,6 +15,8 @@ const tryStore = (fn) => { try { return fn(); } catch { return null; } };
 
 // ---------- networking ----------
 
+const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens the map editor instead of a match
+
 let room = location.hash.slice(1).toLowerCase();
 if (!/^[a-z0-9]{3,12}$/.test(room)) { room = Math.random().toString(36).slice(2, 7); history.replaceState(null, '', '#' + room); }
 // per-tab token so a refresh reclaims your slot, while two tabs can still play each other
@@ -37,11 +39,12 @@ function connect() {
   };
   ws.onclose = () => { if (refused) return; $('status').textContent = 'Connection lost, reconnecting...'; setTimeout(connect, 2000); };
 }
-connect();
+if (!EDIT) connect();
 
 $('name').addEventListener('change', () => { tryStore(() => localStorage.setItem('ww2-name', $('name').value)); sendCmd({ t: 'name', name: $('name').value }); });
 $('copy').onclick = () => { navigator.clipboard?.writeText(location.href); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
 $('start').onclick = () => sendCmd({ t: 'start' });
+$('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 
 function renderLobby(m) {
@@ -57,6 +60,8 @@ function renderLobby(m) {
   }).join('');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
+  $('mapSel').innerHTML = (m.maps || []).map(n => `<option ${n === m.mapName ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('mapSel').disabled = !host || !lobby;
   $('addAi').classList.toggle('hidden', !host || !lobby || n >= 3);
   $('start').textContent = m.state === 'over' ? 'Rematch' : n === 1 ? 'Start solo test' : n === 2 ? 'Start 1v1' : 'Start 3-way FFA';
   $('lobbyMsg').textContent = host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
@@ -195,7 +200,7 @@ function startGame(m) {
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
   const fog = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH), new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false }));
-  fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1;
+  fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
@@ -209,7 +214,7 @@ function startGame(m) {
 
   buildBuyBar();
   buildSupportBar();
-  $('hud').classList.remove('hidden');
+  $('hud').classList.toggle('hidden', EDIT);
   $('overlay').classList.add('hidden');
 }
 
@@ -617,8 +622,9 @@ const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
 
 addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   keys.add(e.code);
+  if (EDIT) return;
   const n = /^Digit([1-9])$/.exec(e.code)?.[1];
   if (n && e.shiftKey) groups[n] = [...selected];
   else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
@@ -664,6 +670,7 @@ const groundAt = (mx, my) => {
 };
 
 renderer.domElement.addEventListener('mousedown', (e) => {
+  if (EDIT) return;
   if (targeting) {
     const kind = targeting, g = e.button === 0 && groundAt(e.clientX, e.clientY);
     if (!g) { cancelAim(); return; }
@@ -693,7 +700,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   sendCmd({ t: 'move', orders }); marker(g.x, g.z, 0x9dff7a); blip(660);
 });
 addEventListener('mouseup', (e) => {
-  if (e.button !== 0 || !drag) return;
+  if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
   if (!e.shiftKey) selected.clear();
   if (drag.moved) {
@@ -771,6 +778,8 @@ renderer.setAnimationLoop(() => {
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => v.owner !== me) ? 'crosshair' : 'default';
   renderer.render(scene, camera);
 });
+
+if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer })); }
 
 // debug handle for poking at the game from devtools
 window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, get me() { return me; } };

@@ -19,6 +19,13 @@
   button { font: inherit; color: var(--ink); background: #3b3a2c; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 12px; cursor: pointer; }
   button:hover:not(:disabled) { background: #4d4b37; border-color: var(--accent); }
   button:disabled { opacity: 0.4; cursor: default; }
+  select { font: inherit; color: var(--ink); background: #11110d; border: 1px solid var(--edge); border-radius: 3px; padding: 5px 6px; flex: 1; min-width: 0; }
+  a { color: var(--accent); }
+  #editor { position: fixed; top: 10px; left: 10px; width: 290px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; display: grid; gap: 8px; z-index: 5; }
+  #editor h2 { margin: 0; color: var(--accent); font-size: 20px; }
+  #editor label { display: grid; gap: 3px; }
+  .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .ed-tools button.on { border-color: var(--accent); background: #4d4b37; }
   input { font: inherit; color: var(--ink); background: #11110d; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 8px; }
   .hidden { display: none !important; }
 
@@ -80,8 +87,10 @@
       <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
     </div>
     <div id="roster"></div>
+    <div class="row"><label for="mapSel">Map</label><select id="mapSel"></select></div>
     <div class="row"><button id="addAi" style="flex:1">+ Add AI opponent</button><button id="start" class="stencil" style="flex:1">Start</button></div>
     <div id="lobbyMsg" class="muted"></div>
+    <a href="/?edit" target="_blank" class="muted">Map editor</a>
   </div>
 </div>
 

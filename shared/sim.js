@@ -59,6 +59,23 @@ const angle = (v) => (Number.isFinite(v) ? v : null);
 export const alive = u => Math.ceil(u.hp / UNITS[u.type].hpPer);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
+// Returns an error string, or null if the map is playable. Used by the server (trust boundary) and the editor.
+export function validateMap(m) {
+  const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+  const numIn = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
+  if (!m || typeof m !== 'object') return 'not a map';
+  if (typeof m.name !== 'string' || m.name.length > 40) return 'name must be a string up to 40 chars';
+  if (!int(m.w, 20, 128) || !int(m.h, 20, 128)) return 'size must be 20-128 cells';
+  if (!Array.isArray(m.rows) || m.rows.length !== m.h) return 'row count must equal height';
+  for (const r of m.rows) if (typeof r !== 'string' || r.length !== m.w || [...r].some(ch => !Object.hasOwn(TERRAIN, ch))) return 'rows must be ' + m.w + ' valid terrain chars';
+  const at = (p) => m.rows[p.y][p.x];
+  if (!Array.isArray(m.spawns) || m.spawns.length !== 3) return 'needs exactly 3 spawns';
+  for (const sp of m.spawns) if (!sp || !int(sp.x, 0, m.w - 1) || !int(sp.y, 0, m.h - 1) || TERRAIN[at(sp)] & MOVE) return 'spawns must be on open ground inside the map';
+  if (!Array.isArray(m.points) || m.points.length < 1 || m.points.length > 9) return 'needs 1-9 capture points';
+  for (const p of m.points) if (!p || !int(p.x, 0, m.w - 1) || !int(p.y, 0, m.h - 1) || TERRAIN[at(p)] & MOVE || !numIn(p.vp ?? 1, 0, 5) || !numIn(p.mp ?? 1, 0, 5)) return 'points must be on open ground, vp and mp 0-5';
+  return null;
+}
+
 export function createGame(map, names, shuffle = true) {
   // random spawn per match: no 3-way map is perfectly fair on a square grid
   const spawnOrder = [...map.spawns];

@@ -45,7 +45,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
 ## Roadmap
 1. ~~Tracer bullet~~ 2. ~~Combat~~ 3. ~~LOS + fog~~ 4. ~~Points, VP, manpower, call-ins~~ (MVP)
-5. In-game map editor (`?edit`, maps saved server-side, password on save)
+5. ~~In-game map editor~~ (`/?edit`): paint terrain, place spawns and points, per-point VP/MP, save with the `.edit-password`,
+   fairness test (90 AI matches in a worker, per-spawn win rate). The host picks the map in the lobby.
 6. Destructible terrain (flip cell flags, send changes in snapshots)
 7. Elevation (height per cell, LOS samples heights, cliffs block pathing)
 8. Faction flavor: GLTF models behind `makeUnit()`, one asymmetric unit per faction

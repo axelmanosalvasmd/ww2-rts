@@ -1,0 +1,25 @@
+// Web worker: plays N AI-vs-AI-vs-AI matches on a map and reports how often each spawn wins.
+import { createGame, step, CELL } from '/shared/sim.js';
+import { think } from '/shared/ai.js';
+
+onmessage = ({ data: { map, n } }) => {
+  const wins = [0, 0, 0];
+  let timeouts = 0, secs = 0, second = 0;
+  for (let i = 0; i < n; i++) {
+    const g = createGame(map, ['a', 'b', 'c']);
+    while (g.winner === null && g.tick < 20 * 60 * 30) {
+      for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
+      step(g);
+      g.shots = []; g.newCells = [];
+    }
+    if (g.winner === null) timeouts++;
+    else {
+      // spawns are shuffled per match: credit the spawn the winner actually had
+      const sp = g.players[g.winner].spawn;
+      wins[map.spawns.findIndex(q => (q.x + 0.5) * CELL === sp.x && (q.y + 0.5) * CELL === sp.z)]++;
+    }
+    const vp = g.players.map(p => p.vp).sort((a, b) => b - a);
+    secs += g.tick / 20; second += vp[1] / Math.max(1, vp[0]);
+    postMessage({ done: i + 1, n, wins, timeouts, avgMin: secs / (i + 1) / 60, second: second / (i + 1) });
+  }
+};
