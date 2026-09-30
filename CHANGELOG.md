@@ -20,8 +20,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed: clicking or box-selecting units on high ground missed them. Selection projected every unit at ground
   level 0, so on a level-4 plateau the click spot was about 90 px below the soldiers (the pick radius is 32 px).
   It was barely noticeable on the older maps' low hills.
-- Planned Classic mode (base building, resources, Munitions, Annihilation); design only for now, see DESIGN.md
-  and the new CONTEXT.md glossary. Nothing changed in the game yet.
+- New mode, Classic (first slice): build a base. The host picks it in the lobby. Each player starts with an HQ,
+  an Engineer squad, a rifle squad and 200 MP. Select Engineers and press J (or the Supply Depot button), then click a
+  glowing resource node: the depot costs 60 MP, goes up in about 20s, and adds 1.5 MP/s to your 2 MP/s trickle.
+  Holding points earns Munitions, which pay for off-map support in this mode. Destroy every enemy HQ to win.
+  Barracks, Motor Pool, build times, Sudden Death and the rest come in later slices (see DESIGN.md).
+- Classic balance: 90 AI matches over the three maps all ended by Annihilation, median 12-15 min, faction wins 30/32/28.
+- Fixed (Classic AI): every AI aimed its artillery and bombs at the same player's HQ (the first one created), so that
+  player always died first. Found while measuring Classic.
 
 ## 2026-09-30
 

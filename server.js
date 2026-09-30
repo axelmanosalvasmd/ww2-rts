@@ -139,7 +139,7 @@ wss.on('connection', (ws, req) => {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
       if (p && (slot === hostOf(room) ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
-    } else if (msg.t === 'mode' && slot === hostOf(room) && room.state !== 'play' && ['conquest', 'assault'].includes(msg.v)) {
+    } else if (msg.t === 'mode' && slot === hostOf(room) && room.state !== 'play' && ['conquest', 'assault', 'classic'].includes(msg.v)) {
       room.mode = msg.v; lobby(room);
     } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
       room.defenderTeam = msg.v; lobby(room);

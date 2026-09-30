@@ -593,6 +593,50 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(validateMap({ ...map, defend: [0, 1, 2, 3] }), 'defend must list some (not all) spawn numbers');
 }
 
+// Classic mode: HQ on the spawn, resource nodes, Engineers build depots, Munitions pay for support, Annihilation.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const mk = () => createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const g = mk(), p = g.players[0], hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  assert.ok(hq && hq.cells.length === 9 && hq.cells.every(c => g.chars[c] === 'K'), 'HQ stamped as a 3x3 building');
+  assert.equal(p.mp, CFG.classic.mpStart); assert.equal(p.mun, 0);
+  assert.ok(g.nodes.length >= 4, `resource nodes generated (${g.nodes.length})`);
+  const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  assert.ok(eng, 'starts with an Engineer');
+  // Engineers exist only in Classic
+  const cq = createGame(map, ['a', 'b'], false); cq.players[0].mp = 1000;
+  const n0 = cq.units.size; command(cq, 0, { t: 'buy', unit: 'engineer' });
+  assert.equal(cq.units.size, n0, 'no Engineers outside Classic');
+  // build a depot on the nearest node: pays up front, stamps a site, and income rises once it's finished
+  const node = g.nodes.slice().sort((a, b) => Math.hypot(a.x - eng.x, a.z - eng.z) - Math.hypot(b.x - eng.x, b.z - eng.z))[0];
+  eng.x = node.x + 4; eng.z = node.z; run(g, 0.3);
+  const mpBefore = p.mp;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'depot', x: node.x, z: node.z });
+  const site = g.units.get(node.depot);
+  assert.ok(site && site.type === 'depot' && site.built === 0, 'construction site placed');
+  assert.equal(p.mp, mpBefore - 60, 'depot paid up front');
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'depot', x: node.x, z: node.z });
+  assert.equal(p.mp, mpBefore - 60, 'no second depot on a taken node');
+  run(g, 25);
+  assert.equal(site.built, 1, 'finished by one Engineer in about 20s');
+  run(g, 0.2);
+  assert.equal(p.inc, CFG.classic.trickle + CFG.classic.depotInc, 'finished depot adds income');
+  // supports cost Munitions, not MP
+  const mp = p.mp; p.mun = 100;
+  command(g, 0, { t: 'support', kind: 'recon', x: 50, z: 50 });
+  assert.equal(p.mun, 100 - SUPPORT.recon.mun, 'recon paid in Munitions'); assert.ok(p.mp >= mp, 'no MP spent');
+  // holding a point earns Munitions
+  const mun0 = p.mun; g.points[0].owner = 0; run(g, 2);
+  assert.ok(p.mun > mun0, 'held point earns Munitions');
+  // destroying the HQ eliminates the player: their stuff goes too and the other side wins
+  const foeHq = [...g.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  foeHq.hp = 0; run(g, 0.1);
+  assert.ok(g.players[1].out, 'player without a Production Building is out');
+  assert.ok(![...g.units.values()].some(u => u.owner === 1), 'their units and buildings are gone');
+  assert.ok(foeHq.cells.every(c => g.chars[c] === 'R'), 'HQ collapses into rubble');
+  assert.equal(g.winner, 0, 'last side standing wins');
+}
+
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);

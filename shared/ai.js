@@ -1,6 +1,6 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, SUPPORT, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees } from './sim.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -37,10 +37,15 @@ function spotNear(g, p) {
 
 export function think(g, slot) {
   const me = g.players[slot];
-  const mine = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure);
-  const assault = g.mode?.kind === 'assault', defending = assault && me.team === g.mode.defenderTeam;
-  const bunkers = assault ? [...g.units.values()].filter(u => UNITS[u.type].structure && g.players[u.owner].team !== me.team) : [];
-  const count = (t) => mine.filter(u => u.type === t).length;
+  if (me.out) return;
+  const all = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure);
+  const assault = g.mode?.kind === 'assault', defending = assault && me.team === g.mode.defenderTeam, classic = g.mode?.kind === 'classic';
+  // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings
+  const bunkers = [...g.units.values()].filter(u => (assault ? UNITS[u.type].structure : classic && UNITS[u.type].produces) && g.players[u.owner].team !== me.team)
+    .sort((a, b) => d(a, me.spawn) - d(b, me.spawn)); // nearest first, so nobody gangs up on whoever was created first
+  const count = (t) => all.filter(u => u.type === t).length;
+  if (classic) buildEconomy(g, slot, all.filter(u => u.type === 'engineer'));
+  const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
   const seenTanks = [...me.visible].filter(id => g.units.get(id)?.type === 'tank').length;
 
   // shopping: counter tanks it has seen, get one tank once the infantry is out, else 2 rifles per MG
@@ -52,6 +57,8 @@ export function think(g, slot) {
   if (want === 'rifle' && canBuild('ranger', me.faction) && count('ranger') < 2 && count('rifle') >= 1) buy = 'ranger';
   // Tiger only when it's affordable right now: saving up for it starved the German army
   if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && me.mp >= UNITS.tiger.cost && (want === 'tank' || want === 'rifle')) buy = 'tiger';
+  // Classic: keep an Engineer while there are nodes to build on
+  if (classic && count('engineer') < (g.nodes.some(n => !n.depot) ? 2 : 1)) buy = 'engineer';
   if (me.mp >= UNITS[buy].cost) command(g, slot, { t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
@@ -66,7 +73,7 @@ export function think(g, slot) {
   const enemies = [...me.visible].map(id => g.units.get(id)).filter(Boolean);
 
   // off-map support, keeping 100 MP back so reinforcing never stalls
-  const can = (k) => me.sup[k] <= 0 && me.mp >= SUPPORT[k].cost + 100;
+  const can = (k) => { const { cur, cost } = supCost(g, k); return me.sup[k] <= 0 && me[cur] >= cost + (cur === 'mp' ? 100 : 0); };
   const cluster = (min, r, test = () => true) => {
     for (const e of enemies) {
       const near = enemies.filter(o => test(o) && d(o, e) <= r);
@@ -81,7 +88,7 @@ export function think(g, slot) {
   else if (bombTarget && can('bombing')) call('bombing', bombTarget);
   else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
   else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
-  if (can('recon') && !enemies.length && me.mp > 250) call('recon', g.points.find(p => p.owner >= 0 && !allied(g, p.owner, slot)));
+  if (can('recon') && !enemies.length && (classic || me.mp > 250)) call('recon', g.points.find(p => p.owner >= 0 && !allied(g, p.owner, slot)));
   for (const u of mine) {
     const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = d(u, me.spawn) <= CFG.reinforceRadius;
     if (u.retreating) continue;
@@ -166,4 +173,18 @@ export function think(g, slot) {
   if (retreat.length) command(g, slot, { t: 'retreat', ids: retreat });
   if (orders.length) command(g, slot, { t: 'move', orders });
   if (assault_.length) command(g, slot, { t: 'amove', orders: assault_ });
+}
+
+// Classic: idle Engineers put a depot on the nearest free node (walking there first, since the team must see it)
+function buildEconomy(g, slot, engineers) {
+  const me = g.players[slot], taken = new Set(engineers.map(u => u.aiNode).filter(n => n !== undefined));
+  for (const u of engineers) {
+    if (u.retreating || u.build) continue;
+    const free = g.nodes.map((n, i) => ({ n, i })).filter(({ n, i }) => !n.depot && (!taken.has(i) || u.aiNode === i));
+    if (!free.length) continue;
+    const { n, i } = free.sort((a, b) => d(u, a.n) - d(u, b.n))[0];
+    u.aiNode = i; taken.add(i);
+    if (me.mp >= UNITS.depot.cost && teamSees(g, me.team, n)) command(g, slot, { t: 'build', ids: [u.id], kind: 'depot', x: n.x, z: n.z });
+    else if (!u.path.length) command(g, slot, { t: 'move', orders: [[u.id, n.x, n.z]] });
+  }
 }

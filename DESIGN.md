@@ -75,7 +75,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   inescapable pits).
 - Balance: garrisons alone dropped 2nd place to 55%; with rockets it's back to 63% (default) / 61% (River Towns).
 
-## Classic mode (planned, decided 2026-09-30)
+## Classic mode (decided 2026-09-30; slice 1 built)
 Base building as a third lobby mode next to Conquest and Assault. Terms are defined in CONTEXT.md.
 - Win: Annihilation. A player with no Production Buildings (HQ, Barracks, Motor Pool; a Construction Site of one counts)
   is eliminated, and the last team standing wins. No VP.
@@ -109,6 +109,17 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   adaptive rules, one balance row each: composition counter with 60s memory, rush defense before 4:00, attack only at
   1.3x the recently seen enemy army value, raid unguarded depots, scout when no enemy building is known.
 - Balance target (AI vs AI): 70%+ of matches end by Annihilation before Sudden Death, median length 12-18 min, fair spawns.
+- Slice 1 as built: lobby option; HQ (4000 hp) stamped on the spawn; generated nodes (9 on the 3-spawn maps, 12 on
+  Six Fronts); Engineers build depots (J, click a node); supports cost Munitions (recon 25, smoke 20, artillery 60,
+  strafe 80, bombing 100); Annihilation. Everything is still bought at the HQ with no build time. The AI keeps 1-2
+  Engineers building on the nearest free node and marches on the nearest enemy HQ once its army is 6+.
+  Buildings stay always visible until Ghosts (slice 3).
+- Slice 1 balance (3-player FFA, 30 AI matches per map): Annihilation 30/30 on every map, median 13.7 min (default),
+  14.6 (River Towns), 12.0 (Six Fronts). Faction wins USA/GER/USSR 30/32/28 of 90. HQ at 2000 hp ended games in ~7 min
+  (HQs die mostly to bombing and artillery), so it went to 4000.
+- Bug found while testing: the AI aimed its support at the first enemy building in creation order, which is always
+  slot 0's HQ, so both AIs ganged up on slot 0 (slot 2 won 11/12 with equal factions). It now aims at the enemy
+  building nearest its own HQ; wins by slot went to 4/4/4.
 - Slices: 1 tracer (lobby option, HQ, Engineers, depots on generated nodes, Munitions for supports, Annihilation,
   everything bought at the HQ) · 2 production (Barracks, Motor Pool, build times, queues, rally, build bar)
   · 3 Sudden Death, elimination, Ghosts, ally support · 4 abilities cost Munitions · 5 adaptive AI.

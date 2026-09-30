@@ -24,12 +24,15 @@ export const CFG = {
   // elevation: height level per cell. 1 level of difference is a slope, more is a cliff.
   levelHeight: 2.5, minLevel: -2, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
+  // Classic mode: build a base. MP from an HQ trickle plus Supply Depots on resource nodes, Munitions from points.
+  classic: { time: 1500, mpStart: 200, trickle: 2, depotInc: 1.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72 },
 };
 
 export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16;
 // T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
 // = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
-export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER };
+// K = footprint of a Classic building (never in map files): solid until the building falls, then rubble
+export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER, K: MOVE | SIGHT };
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
 // perModel: damage scales with living squad members. moveFire: accuracy multiplier while moving (absent = can't).
@@ -73,6 +76,15 @@ UNITS.rifle.garrisons = UNITS.mg.garrisons = true;
 UNITS.bunker = { name: 'Command Bunker', faction: -1, cost: 0, models: 1, hpPer: 3000, speed: 0, radius: 3, vision: 40, infantry: false, structure: true,
   w: { range: 36, interval: 0.4, inf: 3, veh: 0.5, accInf: 0.5, accVeh: 0.4, supp: 8 },
   ab: { id: 'none', name: '', cd: 1e9 } };
+// ---------- Classic mode ----------
+// Engineers build the base. A weak rifle squad; only the HQ trains them, only in Classic.
+UNITS.engineer = { name: 'Engineer Squad', classic: true, cost: 60, models: 3, hpPer: 20, speed: 4.5, radius: 1.4, vision: 34, infantry: true, garrisons: true,
+  w: { range: 24, interval: 1.8, inf: 2.4, veh: 0.3, accInf: 0.6, accVeh: 0.6, supp: 3, perModel: true, moveFire: 0.5 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+// Buildings: stamped size x size cells, hp on the entity. produces = counts for Annihilation.
+const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, structure: true, building: true, w: null, ab: { id: 'none', name: '', cd: 1e9 }, ...o });
+UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 4000, radius: 3, vision: 30, size: 3, produces: true });
+UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
 export const UNIT_TYPES = Object.keys(UNITS);
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
 // same team (a player is always allied with itself); -1 = nobody
@@ -88,6 +100,10 @@ export const SUPPORT = {
   bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, dig: 1, inf: 60, veh: 150, supp: 90, terrain: 400 },
 };
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
+// Classic prices support in Munitions (mun) instead of manpower
+Object.assign(SUPPORT.recon, { mun: 25 }); Object.assign(SUPPORT.artillery, { mun: 60 }); Object.assign(SUPPORT.strafe, { mun: 80 });
+Object.assign(SUPPORT.smoke, { mun: 20 }); Object.assign(SUPPORT.bombing, { mun: 100 });
+export const supCost = (g, k) => (g.mode?.kind === 'classic' ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
 // point in a len x width rectangle centered on s, long side along s.dir
 export function inStrip(s, t, len, width) {
@@ -109,7 +125,7 @@ export function validateMap(m) {
   if (typeof m.name !== 'string' || m.name.length > 40) return 'name must be a string up to 40 chars';
   if (!int(m.w, 20, 256) || !int(m.h, 20, 256)) return 'size must be 20-256 cells';
   if (!Array.isArray(m.rows) || m.rows.length !== m.h) return 'row count must equal height';
-  for (const r of m.rows) if (typeof r !== 'string' || r.length !== m.w || [...r].some(ch => !Object.hasOwn(TERRAIN, ch))) return 'rows must be ' + m.w + ' valid terrain chars';
+  for (const r of m.rows) if (typeof r !== 'string' || r.length !== m.w || [...r].some(ch => !Object.hasOwn(TERRAIN, ch) || ch === 'K')) return 'rows must be ' + m.w + ' valid terrain chars';
   if (m.heights !== undefined && (!Array.isArray(m.heights) || m.heights.length !== m.h
     || m.heights.some(r => typeof r !== 'string' || r.length !== m.w || !/^[0-4ab]*$/.test(r)))) return 'heights must be ' + m.h + ' rows of 0-4 (a/b for depths -1/-2)';
   const at = (p) => m.rows[p.y][p.x];
@@ -137,7 +153,8 @@ export function spawnSlots(nSpawns, teams, shuffle = true) {
 }
 
 // teams[i] / factions[i] per player; default is free-for-all with factions cycling USA, Germany, USSR
-// opts.mode: 'conquest' (default, VP race) or 'assault' (opts.defenderTeam defends; everyone else attacks as one team)
+// opts.mode: 'conquest' (default, VP race), 'assault' (opts.defenderTeam defends; everyone else attacks as one team)
+// or 'classic' (base building, won by Annihilation)
 export function createGame(map, names, shuffle = true, teams = names.map((_, i) => i), factions = names.map((_, i) => i % 3), opts = {}) {
   const assault = opts.mode === 'assault';
   if (assault) {
@@ -168,7 +185,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.cellHp = Float32Array.from(g.chars, ch => CFG.terrainHp[ch] ?? 0);
   g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
-  for (const p of g.players) CFG.startForce.forEach((t, i) => spawnUnit(g, p.slot, t, i));
+  if (opts.mode === 'classic') setupClassic(g);
+  for (const p of g.players) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, i));
   if (assault) setupAssault(g, opts.defenderTeam);
   return g;
 }
@@ -195,6 +213,74 @@ function setupAssault(g, defenderTeam) {
   }
 }
 
+// ---------- Classic: buildings and resource nodes ----------
+const footprint = (g, c, size) => {
+  const x0 = c % g.w, y0 = Math.floor(c / g.w), out = [];
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) out.push((y0 + y) * g.w + x0 + x);
+  return x0 + size <= g.w && y0 + size <= g.h ? out : null;
+};
+// open, flat ground with nothing built on it (craters and trenches get filled in)
+const canStamp = (g, cells) => !!cells && cells.every(c => !(g.flags[c] & MOVE) && !'WF=K'.includes(g.chars[c]) && level(g, c) === level(g, cells[0]));
+const footCenter = (g, c, size) => ({ x: (c % g.w + size / 2) * CELL, z: (Math.floor(c / g.w) + size / 2) * CELL });
+
+// place a building (finished, or a Construction Site at 25% hp) with its top-left cell at c
+function placeBuilding(g, owner, type, c, finished) {
+  const def = UNITS[type], cells = footprint(g, c, def.size), max = def.hpPer;
+  for (const k of cells) setCell(g, k, 'K');
+  const u = spawnUnit(g, owner, type);
+  Object.assign(u, footCenter(g, c, def.size), { cells, built: finished ? 1 : 0, hp: finished ? max : max * 0.25 });
+  return u;
+}
+function wreckBuilding(g, u) {
+  for (const c of u.cells) setCell(g, c, 'R');
+  g.shots.push({ k: 'collapse', x: u.x, z: u.z, pub: true });
+  for (const n of g.nodes ?? []) if (n.depot === u.id) n.depot = 0;
+}
+// the first spot at or around (x, z) where a size x size building fits, clear of spawns, points and other nodes
+function findSite(g, x, z, size, avoid = []) {
+  const start = cellOf(g, Math.min(g.w * CELL - 1, Math.max(0, x)), Math.min(g.h * CELL - 1, Math.max(0, z)));
+  const seen = new Set([start]), q = [start];
+  for (let i = 0; i < q.length && i < 4000; i++) {
+    const c = q[i], at = footCenter(g, c, size);
+    if (canStamp(g, footprint(g, c, size)) && avoid.every(([p, r]) => dist(p, at) >= r)) return c;
+    const cx = c % g.w, cy = Math.floor(c / g.w);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy, n = ny * g.w + nx;
+      if (nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && !seen.has(n)) { seen.add(n); q.push(n); }
+    }
+  }
+  return -1;
+}
+function setupClassic(g) {
+  const C = CFG.classic, cx = g.w * CELL / 2, cz = g.h * CELL / 2;
+  g.mode = { kind: 'classic', timeLeft: C.time, teams: new Set(g.players.map(p => p.team)).size };
+  // the HQ sits on the spawn, on ground cleared for it
+  for (const p of g.players) {
+    p.mp = C.mpStart; p.mun = 0;
+    const c = cellOf(g, p.spawn.x, p.spawn.z) - g.w - 1, cells = footprint(g, c, 3);
+    if (!cells) continue;
+    for (const k of cells) setCell(g, k, '.');
+    placeBuilding(g, p.slot, 'hq', c, true);
+  }
+  // resource nodes (2x2): two safe ones per HQ toward its flanks, one beside every point that pays manpower
+  const avoid = [...g.players.map(p => [p.spawn, 10]), ...g.points.map(p => [p, CFG.pointRadius + 3])];
+  const want = [];
+  for (const p of g.players) {
+    const a = Math.atan2(cz - p.spawn.z, cx - p.spawn.x);
+    for (const side of [-1, 1]) want.push({ x: p.spawn.x + Math.cos(a + side * 1.2) * 24, z: p.spawn.z + Math.sin(a + side * 1.2) * 24 });
+  }
+  for (const p of g.points) if (p.mp > 0) { const a = Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2; want.push({ x: p.x + Math.cos(a) * 14, z: p.z + Math.sin(a) * 14 }); }
+  g.nodes = [];
+  for (const w of want) {
+    const c = findSite(g, w.x, w.z, 2, [...avoid, ...g.nodes.map(n => [n, 10])]);
+    if (c >= 0) g.nodes.push({ c, ...footCenter(g, c, 2), depot: 0 });
+  }
+}
+// can this team see the spot right now? (any of its units within vision and line of sight)
+export function teamSees(g, team, at) {
+  return [...g.units.values()].some(u => g.players[u.owner].team === team && !UNITS[u.type].building && dist(u, at) <= UNITS[u.type].vision && los(g, u, at));
+}
+
 function spawnUnit(g, owner, type, n = g.units.size) {
   const s = g.players[owner].spawn, a = n * 2.4;
   const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4);
@@ -219,7 +305,7 @@ export const inTrench = (g, u) => UNITS[u.type].infantry && (flagsAt(g, u.x, u.z
 const coverMul = (g, t) => (t.garrison >= 0 ? CFG.garrisonMul : inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? CFG.coverMul : 1);
 // Cover from something solid between you and the shooter, within ~2 m on their side:
 // a house, wall, rubble, hedge, or a vehicle. Protects from the front, not the flank.
-const SOLID = new Set(['B', '#', 'R', 'H']);
+const SOLID = new Set(['B', '#', 'R', 'H', 'K']);
 function behindCover(g, t, from) {
   const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
   for (const d of [1.2, 2.2]) { const c = cellOf(g, t.x + ca * d, t.z + sa * d); if (c >= 0 && SOLID.has(g.chars[c])) return true; }
@@ -428,7 +514,7 @@ export function command(g, slot, cmd) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
       exitBuilding(g, u);
-      Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, amove: cmd.t === 'amove' ? { x, z } : null });
+      Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null });
       u.path = findPath(g, u, { x, z });
     }
   } else if (cmd.t === 'fireat') {
@@ -453,12 +539,12 @@ export function command(g, slot, cmd) {
     if (!t || allied(g, t.owner, slot) || !g.players[slot].visible.has(t.id)) return;
     for (const id of ids) { const u = mine(id); if (u) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
   } else if (cmd.t === 'stop') {
-    for (const id of ids) { const u = mine(id); if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); }
+    for (const id of ids) { const u = mine(id); if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
   } else if (cmd.t === 'retreat') {
     for (const id of ids) {
       const u = mine(id); if (!u) continue;
       exitBuilding(g, u);
-      Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1 });
+      Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1, build: 0 });
       u.path = findPath(g, u, g.players[slot].spawn);
     }
   } else if (cmd.t === 'ability') {
@@ -485,13 +571,27 @@ export function command(g, slot, cmd) {
     p.mp -= CFG.digCost;
     Object.assign(u, { dig: { x, z, cells, t: 0 }, attackId: 0, nade: null, repath: 0 });
   } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
-    const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
-    if (x === null || z === null || p.sup[cmd.kind] > 0 || p.mp < sp.cost) return;
-    p.mp -= sp.cost; p.sup[cmd.kind] = sp.cd;
+    const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
+    if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return;
+    p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
+  } else if (cmd.t === 'build' && g.mode?.kind === 'classic' && cmd.kind === 'depot') {
+    // Engineers put a Supply Depot on the free resource node nearest the clicked spot; the team must see it
+    const p = g.players[slot], def = UNITS.depot, x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
+    const crew = ids.map(mine).filter(u => u?.type === 'engineer' && !u.retreating);
+    if (!crew.length || x === null || z === null || p.mp < def.cost) return;
+    const node = g.nodes.filter(n => !n.depot && dist(n, { x, z }) <= 8).sort((a, b) => dist(a, { x, z }) - dist(b, { x, z }))[0];
+    if (!node || !canStamp(g, footprint(g, node.c, 2)) || !teamSees(g, p.team, node)) return;
+    p.mp -= def.cost;
+    const site = placeBuilding(g, slot, 'depot', node.c, false);
+    node.depot = site.id;
+    for (const u of crew) { exitBuilding(g, u); Object.assign(u, { build: site.id, attackId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, site) }); }
   } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit) && canBuild(cmd.unit, g.players[slot].faction)) {
-    const p = g.players[slot], def = UNITS[cmd.unit];
+    const p = g.players[slot], def = UNITS[cmd.unit], classic = g.mode?.kind === 'classic';
+    // Classic: everything comes out of the HQ (for now); Engineers exist only in Classic
+    if (def.classic && !classic) return;
+    if (classic && ![...g.units.values()].some(u => u.owner === slot && u.type === 'hq')) return;
     const pop = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).length;
     const have = [...g.units.values()].filter(u => u.owner === slot && u.type === cmd.unit).length;
     if (p.mp >= def.cost && pop < CFG.popCap && have < (def.max ?? Infinity)) { p.mp -= def.cost; spawnUnit(g, slot, cmd.unit); }
@@ -505,7 +605,14 @@ const suppMul = (u) => (u.supp >= 90 ? { speed: 0.3, rate: 3, acc: 0.5 } : u.sup
 function canShoot(g, u, t) {
   const w = UNITS[u.type].w;
   if (!t || t.hp <= 0 || allied(g, t.owner, u.owner) || dist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
-  return w.salvo ? dist(u, t) >= w.minRange : los(g, u, t); // salvos arc over: spotting is enough
+  return w.salvo ? dist(u, t) >= w.minRange : los(g, u, aimPoint(g, u, t)); // salvos arc over: spotting is enough
+}
+// a building is aimed at by its nearest footprint cell (its own walls would block a line to the middle)
+function aimPoint(g, u, t) {
+  if (!t.cells) return t;
+  let best = t, bd = Infinity;
+  for (const c of t.cells) { const p = cellCenter(g, c), d = dist(u, p); if (d < bd) { bd = d; best = p; } }
+  return best;
 }
 
 function pickTarget(g, u) {
@@ -572,7 +679,7 @@ function updateVision(g) {
     for (const t of g.units.values()) {
       if (g.players[t.owner].team === p.team) continue;
       if (UNITS[t.type].structure) { vis.add(t.id); continue; }
-      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, t)); })
+      if (own.some(u => { const d = dist(u, t); return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, t)); })
         || g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
     byTeam.set(p.team, p.visible = vis);
@@ -627,10 +734,20 @@ export function step(g) {
   g.tick++;
   if (g.tick % 4 === 1) updateVision(g);
 
+  const crews = new Map(); // construction site id -> engineers working on it this tick
   for (const u of g.units.values()) {
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
+    if (def.building) continue;
     if (def.infantry) u.supp = Math.max(0, u.supp - 8 * dt);
     u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt;
+
+    // Engineers: walk up to the site, then build
+    if (u.build) {
+      const s = g.units.get(u.build);
+      if (!s || s.built >= 1) u.build = 0;
+      else if (dist(u, s) <= UNITS[s.type].radius + CFG.classic.buildReach) { u.path = []; crews.set(s.id, (crews.get(s.id) ?? 0) + 1); }
+      else if (!u.path.length && u.repath <= 0) { u.path = findPath(g, u, s); u.repath = 1; }
+    }
 
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
@@ -727,6 +844,13 @@ export function step(g) {
     } else { u.targetId = 0; u.aim = u.rot; }
   }
 
+  // more engineers build faster, with diminishing returns (2 = ~1.65x, 3 = ~2.2x)
+  for (const [id, n] of crews) {
+    const s = g.units.get(id), def = UNITS[s.type], rate = n ** CFG.classic.crew / def.buildTime * dt;
+    s.built = Math.min(1, s.built + rate);
+    s.hp = Math.min(def.hpPer, s.hp + def.hpPer * 0.75 * rate);
+  }
+
   // soft separation; never push a unit into a blocked cell
   const list = [...g.units.values()];
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
@@ -817,7 +941,7 @@ export function step(g) {
     }
   }
 
-  for (const u of list) if (u.hp <= 0) g.units.delete(u.id);
+  for (const u of list) if (u.hp <= 0) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); }
 
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
   // teammates standing on it keep it theirs.
@@ -841,9 +965,29 @@ export function step(g) {
     const held = g.points.filter(p => p.owner === pl.slot);
     // away = disconnected (set by the server): their clock stops so a dropout doesn't decide the match
     if (!g.mode) pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1);
+    if (g.mode?.kind === 'classic') {
+      // no catch-up: MP from the HQ trickle and finished depots, Munitions from every point the team holds
+      const C = CFG.classic, depots = list.filter(u => u.owner === pl.slot && u.type === 'depot' && u.built >= 1 && u.hp > 0).length;
+      pl.inc = pl.away || pl.out ? 0 : C.trickle + depots * C.depotInc;
+      pl.mp += pl.inc * dt;
+      if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * dt;
+      continue;
+    }
     const base = !g.mode ? CFG.mpBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
     pl.inc = pl.away ? 0 : base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
     pl.mp += pl.inc * dt;
+  }
+  if (g.mode?.kind === 'classic') {
+    // Annihilation: no Production Building (a site of one counts) = out, and everything you own goes with you
+    g.mode.timeLeft -= dt;
+    for (const pl of g.players) {
+      if (pl.out || [...g.units.values()].some(u => u.owner === pl.slot && UNITS[u.type].produces)) continue;
+      pl.out = true;
+      for (const u of [...g.units.values()]) if (u.owner === pl.slot) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); }
+    }
+    const left = new Set(g.players.filter(p => !p.out).map(p => p.team));
+    if (g.mode.teams > 1 && left.size <= 1) g.winner = left.size ? [...left][0] : -1; // -1 = draw
+    return;
   }
   if (g.mode) {
     // assault: the attackers win when the last bunker falls, the defenders when the clock runs out
@@ -860,13 +1004,14 @@ export function snapshotFor(g, slot, shots, cells = []) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
   const seen = (id) => allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
   return {
-    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc),
+    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun),
+    nodes: g.nodes?.map(n => [r(n.x), r(n.z)]), out: g.players.map(q => !!q.out),
     mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)) },
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
-    // Last field: veterancy stars. Cooldowns only for your own units.
+    // 128 building a site. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0), vet(u)]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0), vet(u), u.built ?? 1]),
     smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
