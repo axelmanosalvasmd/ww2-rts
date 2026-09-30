@@ -41,6 +41,9 @@
   .score .bar > div { height: 100%; }
   #econ { position: absolute; top: 10px; right: 10px; padding: 8px 12px; text-align: right; }
   #econ .mp { font-size: 22px; color: var(--accent); }
+  #support { display: grid; gap: 4px; margin-top: 8px; }
+  #support button { display: flex; gap: 6px; justify-content: space-between; align-items: center; padding: 5px 8px; text-align: left; }
+  #support button span { color: var(--accent); font-size: 12px; margin-left: auto; }
   #buy { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; }
   #buy button { display: grid; gap: 2px; min-width: 104px; text-align: left; }
   #buy button b { font-weight: 600; }
@@ -82,13 +85,14 @@
 
 <div id="hud" class="hidden">
   <div id="scores" class="panel"></div>
-  <div id="econ" class="panel"><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div></div>
+  <div id="econ" class="panel"><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div></div>
   <div id="buy" class="panel"></div>
   <div id="lowerleft"><div id="abil"></div><div id="selection" class="panel"></div></div>
   <div id="help" class="panel">
     Drag: select · Right-click: move / attack<br>
     WASD / edges: pan · Q/E: rotate · Wheel: zoom<br>
-    R: retreat (heals at base) · F: ability · X: stop<br>
+    R: retreat (heals at base) · F: ability · X: stop · H: home<br>
+    Z: recon · C: artillery · V: strafe (click to aim)<br>
     Shift+1-9: set group · 1-9: recall · Space: focus
   </div>
   <div id="status" class="panel"></div>

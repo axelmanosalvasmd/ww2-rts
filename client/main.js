@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES } from '/shared/sim.js';
 
 // Factions are cosmetic: same stats, different names and colors. Slot index = faction.
 const FACTIONS = [
@@ -106,7 +106,7 @@ function startGame(m) {
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null;
+  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -194,12 +194,17 @@ function startGame(m) {
   fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1;
   world.add(fog);
 
+  m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
+  aimMesh = null;
+
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
+  home = m.spawn;
   cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
   cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
 
   buildBuyBar();
+  buildSupportBar();
   $('hud').classList.remove('hidden');
   $('overlay').classList.add('hidden');
 }
@@ -214,6 +219,30 @@ function label(text) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
   sp.scale.set(8, 2, 1); sp.position.y = 10; sp.renderOrder = 5;
   return sp;
+}
+
+// Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
+function buildHQ(sp, slot) {
+  const f = FACTIONS[slot], R = CFG.reinforceRadius, g = new THREE.Group();
+  g.position.set(sp.x, 0, sp.z);
+  const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
+  g.add(flat(new THREE.CircleGeometry(R, 48), 0.18, 0.05), flat(new THREE.RingGeometry(R - 0.5, R, 64), 0.85, 0.06));
+  // sandbags with gaps for the exits
+  for (let i = 0; i < 36; i++) {
+    if (i % 9 < 2) continue;
+    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, mat(0x9c8a60), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
+    bag.rotation.y = -a + Math.PI / 2; g.add(bag);
+  }
+  // command tent + crates
+  const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
+  const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
+  g.add(mesh(tg, mat(tent), 1, 1, 1, -4, 0, -3));
+  g.add(mesh(GEO.box, mat(0x6e5836), 1.4, 1.2, 1.4, 3, 0.6, -5), mesh(GEO.box, mat(0x6e5836), 1.4, 1.2, 1.4, 4.6, 0.6, -4.4), mesh(GEO.box, mat(0x5f4c2f), 1.2, 1, 1.2, 3.8, 1.7, -4.7));
+  // tall flag you can spot from across the map
+  const flag = mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 4.5, 2.8, 1, 2.3, 13, 0);
+  g.add(mesh(GEO.cyl, mat(0x4a3f30), 0.12, 15, 0.12, 0, 7.5, 0), flag);
+  const tag = label(`${names[slot] ?? f.name} HQ`); tag.position.y = 17; g.add(tag);
+  return g;
 }
 
 // ---------- units ----------
@@ -365,6 +394,8 @@ function applySnapshot(s) {
   for (const sh of s.shots) {
     if (sh.k === 'throw') { const from = units.get(sh.f); if (from) lob(from, sh.x, sh.z); continue; }
     if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
+    if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
+    if (sh.k === 'strafe' || sh.k === 'recon') { plane(sh); continue; }
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
     const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
@@ -391,6 +422,7 @@ function applySnapshot(s) {
     p.prog.geometry.setDrawRange(0, Math.round(progress * 64) * 6);
   });
   syncSmoke(s.smokes);
+  syncStrikes(s.strikes);
   lastSnap = s;
   updateHud(s);
 }
@@ -412,6 +444,52 @@ function syncSmoke(list) {
   for (const [key, cloud] of smokes) if (!keep.has(key)) { world.remove(cloud); smokes.delete(key); }
 }
 
+// public warnings for incoming support: everyone sees where it will land
+const strikeMarks = new Map();
+function syncStrikes(list) {
+  const keep = new Set();
+  for (const [kind, x, z, dir, t, owner] of list) {
+    const key = `${kind},${x},${z}`; keep.add(key);
+    let m = strikeMarks.get(key);
+    if (!m) {
+      m = aimShape(kind, owner === me ? FACTIONS[owner].color : 0xff3020);
+      m.position.set(x, 0, z); m.rotation.y = -dir;
+      world.add(m); strikeMarks.set(key, m);
+    }
+    m.userData.t = t;
+  }
+  for (const [key, m] of strikeMarks) if (!keep.has(key)) { world.remove(m); strikeMarks.delete(key); }
+}
+// ring for area strikes, a long strip for a strafing run
+function aimShape(kind, color) {
+  const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
+  const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
+  if (kind === 'strafe') g.add(flat(new THREE.PlaneGeometry(SUPPORT.strafe.len, SUPPORT.strafe.width * 2)));
+  else {
+    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : SUPPORT[kind].radius;
+    g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)), flat(new THREE.CircleGeometry(r, 48)));
+    g.children[1].material = matl.clone(); g.children[1].material.opacity = 0.1;
+  }
+  g.userData.mat = matl;
+  return g;
+}
+// a plane crossing the map along the run, coming in from the caller's side
+function plane(sh) {
+  const p = new THREE.Group(), c = mat(0x55594a), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir);
+  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
+  p.rotation.y = -sh.dir; world.add(p);
+  const low = sh.k === 'strafe' ? 9 : 26, span = 140, life = 3;
+  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
+  if (sh.k === 'strafe') {
+    // guns rake the strip as it passes over
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 9 - 0.5) * SUPPORT.strafe.len;
+      setTimeout(() => { boom(sh.x + dx * a + (Math.random() - 0.5) * 3, sh.z + dz * a + (Math.random() - 0.5) * 3, 0.8); sound('mg', sh.x + dx * a, sh.z + dz * a); }, 1300 + i * 40);
+    }
+  }
+  sound('tank', sh.x, sh.z);
+}
+
 // grenade in flight: a small arc from the thrower to the target
 function lob(from, x, z) {
   const start = from.root.position.clone(), end = new THREE.Vector3(x, 0, z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
@@ -420,6 +498,17 @@ function lob(from, x, z) {
 }
 
 // ---------- HUD ----------
+
+const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V' };
+const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward' };
+function buildSupportBar() {
+  $('support').innerHTML = SUPPORT_TYPES.map(k => `<button data-k="${k}" title="${SUPPORT_TIP[k]}">${SUPPORT[k].name} <kbd>${SUPPORT_KEYS[k]}</kbd><span></span></button>`).join('');
+  $('support').querySelectorAll('button').forEach(b => (b.onclick = () => aimSupport(b.dataset.k)));
+}
+function aimSupport(k) {
+  if (!lastSnap || lastSnap.sup[k] > 0 || lastSnap.mp < SUPPORT[k].cost) return;
+  targeting = k; blip(700);
+}
 
 function buildBuyBar() {
   $('buy').innerHTML = UNIT_TYPES.map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${FACTIONS[me].names[t]}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
@@ -432,6 +521,11 @@ function updateHud(s) {
     <div class="bar"><div style="width:${Math.min(100, s.vp[i] / CFG.vpToWin * 100)}%;background:${css(FACTIONS[i].color)}"></div></div><div class="muted">${s.vp[i]} / ${CFG.vpToWin} VP</div></div>`).join('');
   const pop = [...units.values()].filter(v => v.owner === me).length;
   $('mp').textContent = `${s.mp} MP`;
+  $('support').querySelectorAll('button').forEach(b => {
+    const k = b.dataset.k, cd = s.sup[k];
+    b.disabled = cd > 0 || s.mp < SUPPORT[k].cost;
+    b.querySelector('span').textContent = cd > 0 ? `${cd}s` : `${SUPPORT[k].cost} MP`;
+  });
   $('income').textContent = `+${s.inc}/s · ${pop}/${CFG.popCap} units`;
   $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= CFG.popCap));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
@@ -450,12 +544,12 @@ function updateHud(s) {
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); } }
 // F: instant abilities fire now; grenades arm a targeting click
-let targeting = false;
+let targeting = null, aimMesh = null, home = null; // targeting: null | 'grenade' | support kind
 function useAbility(only) {
   const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && (!only || v.type === only));
   const instant = ready.filter(v => UNITS[v.type].ab.id !== 'grenade');
   if (instant.length) { sendCmd({ t: 'ability', ids: instant.map(v => v.id) }); blip(880); }
-  if (ready.some(v => v.type === 'rifle')) targeting = true;
+  if (ready.some(v => v.type === 'rifle')) targeting = 'grenade';
 }
 function throwAt(g) {
   const rifles = [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !v.cd);
@@ -479,7 +573,11 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyR') retreat();
   else if (e.code === 'KeyF') useAbility();
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
-  else if (e.code === 'Escape') { if (targeting) targeting = false; else selected.clear(); }
+  else if (e.code === 'Escape') { if (targeting) targeting = null; else selected.clear(); }
+  else if (e.code === 'KeyH' && home) { cam.x = home.x; cam.z = home.z; }
+  else if (e.code === 'KeyZ') aimSupport('recon');
+  else if (e.code === 'KeyC') aimSupport('artillery');
+  else if (e.code === 'KeyV') aimSupport('strafe');
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
@@ -512,8 +610,10 @@ const groundAt = (mx, my) => {
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (targeting) {
-    targeting = false;
-    if (e.button === 0) { const g = groundAt(e.clientX, e.clientY); if (g) throwAt(g); }
+    const kind = targeting; targeting = null;
+    const g = e.button === 0 && groundAt(e.clientX, e.clientY);
+    if (g && kind === 'grenade') throwAt(g);
+    else if (g) { sendCmd({ t: 'support', kind, x: g.x, z: g.z }); blip(520); }
     return;
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
@@ -597,6 +697,14 @@ renderer.setAnimationLoop(() => {
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
+  // aim preview follows the mouse while targeting
+  if (targeting && world) {
+    if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
+    const g = groundAt(mouse.x, mouse.y);
+    if (g) { aimMesh.position.set(g.x, 0, g.z); if (home) aimMesh.rotation.y = -Math.atan2(g.z - home.z, g.x - home.x); }
+  } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
+  const pulse = 0.25 + 0.2 * Math.sin(now / 120);
+  for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => v.owner !== me) ? 'crosshair' : 'default';
   renderer.render(scene, camera);
 });

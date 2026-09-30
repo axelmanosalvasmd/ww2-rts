@@ -8,6 +8,9 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Economy is mostly flat (4 MP/s base). Trailing players get up to +4 MP/s catch-up (1 per 80 VP behind the leader).
 - Retreat (R): sprint home at 1.5x speed, take 25% damage, don't fire. Near spawn, squads refill a soldier every 2s for half its cost; tanks repair for MP.
 - One ability per unit (F): rifle grenade (thrown at a clicked spot, friendly fire, ignores cover), MG suppressive fire, AT gun AP round, tank smoke (blocks LOS).
+- Off-map support for manpower, announced to everyone before it lands: recon flight (60 MP, reveals 40 m for 15s),
+  artillery barrage (150 MP, 10 shells, 5s warning), strafing run (200 MP, plane flies out from your HQ along the line).
+- Each spawn is a visible HQ: tinted reinforce zone, sandbags, tent, tall flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
   rifle squad, MG team, AT gun, light tank. Squads are one sim entity with N models.
@@ -20,6 +23,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | MVP (VP 500) | 10% | 0.0 | 6.8 min |
 | + retreat, abilities, flat economy, unequal points | 43% | 0.6 | 9.2 min |
 | + catch-up max 4 per 80 VP behind, spawn shuffle, AI group attacks | 63% | 1.2 | 9.7 min |
+| + off-map support (AI calls ~8 per match) | 65% | 1.25 | 9.9 min |
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

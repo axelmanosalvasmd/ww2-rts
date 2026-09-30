@@ -44,7 +44,7 @@ function lobby(room) {
 }
 
 function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', map: MAP, you: i, spawn: room.game.players[i].spawn, names: room.players.map(p => p.name) });
+  send(room.players[i].ws, { t: 'start', map: MAP, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), names: room.players.map(p => p.name) });
 }
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });

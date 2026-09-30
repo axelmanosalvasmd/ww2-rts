@@ -1,6 +1,6 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, CELL, CFG, COVER, MOVE, command, inCover } from './sim.js';
+import { UNITS, SUPPORT, CELL, CFG, COVER, MOVE, command, inCover } from './sim.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -36,6 +36,19 @@ export function think(g, slot) {
 
   const orders = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
   const enemies = [...me.visible].map(id => g.units.get(id)).filter(Boolean);
+
+  // off-map support, keeping 100 MP back so reinforcing never stalls
+  const can = (k) => me.sup[k] <= 0 && me.mp >= SUPPORT[k].cost + 100;
+  const cluster = (min, r, test = () => true) => {
+    for (const e of enemies) {
+      const near = enemies.filter(o => test(o) && d(o, e) <= r);
+      if (near.length >= min) return { x: near.reduce((a, o) => a + o.x, 0) / near.length, z: near.reduce((a, o) => a + o.z, 0) / near.length };
+    }
+  };
+  const call = (kind, at) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z });
+  if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
+  else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
+  if (can('recon') && !enemies.length && me.mp > 250) call('recon', g.points.find(p => p.owner >= 0 && p.owner !== slot));
   for (const u of mine) {
     const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = d(u, me.spawn) <= CFG.reinforceRadius;
     if (u.retreating) continue;

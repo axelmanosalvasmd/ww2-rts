@@ -1,7 +1,7 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, los, findPath, snapshotFor, CFG, CELL } from './shared/sim.js';
+import { createGame, step, command, los, findPath, snapshotFor, CFG, CELL, SUPPORT } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
@@ -137,6 +137,53 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const g = fresh(); g.players[0].vp = 400;
   run(g, 0.1);
   assert.ok(g.players[1].inc > g.players[0].inc + 3, 'trailing player gets catch-up income');
+}
+
+// Support: costs MP, goes on cooldown, rejects junk, and is announced before it lands.
+{
+  const g = fresh(); g.players[0].mp = 1000; g.players[0].spawn = { x: 0, z: 20 };
+  command(g, 0, { t: 'support', kind: 'artillery', x: 30, z: 30 });
+  command(g, 0, { t: 'support', kind: 'artillery', x: 30, z: 30 }); // on cooldown
+  command(g, 0, { t: 'support', kind: 'nuke', x: 30, z: 30 });
+  command(g, 0, { t: 'support', kind: 'recon', x: 'a', z: 30 });
+  assert.equal(g.players[0].mp, 1000 - SUPPORT.artillery.cost);
+  assert.equal(g.strikes.length, 1);
+  assert.equal(snapshotFor(g, 1, []).strikes.length, 1, 'enemy sees the incoming barrage');
+}
+
+// Artillery: nothing before the delay, then shells wreck the area.
+{
+  const g = fresh(); g.players[0].mp = 1000; g.players[1].mp = 1000;
+  const r = put(g, 1, 'rifle', 20, 20);
+  command(g, 0, { t: 'support', kind: 'artillery', x: 20, z: 20 });
+  run(g, SUPPORT.artillery.delay - 0.5);
+  assert.equal(r.hp, 100, 'no damage during the warning');
+  run(g, 6);
+  assert.ok(r.hp < 100 || !g.units.has(r.id), 'barrage hits the squad');
+  assert.equal(g.strikes.length, 0, 'barrage finished');
+}
+
+// Strafe: hits along the line, misses off it.
+{
+  const g = fresh(); g.players[0].mp = 1000; g.players[1].mp = 1000; g.players[0].spawn = { x: 0, z: 20 };
+  const on = put(g, 1, 'rifle', 30, 20), off = put(g, 1, 'rifle', 30, 38);
+  command(g, 0, { t: 'support', kind: 'strafe', x: 30, z: 20 }); // flies along +x from the spawn
+  run(g, SUPPORT.strafe.delay + 0.2);
+  assert.ok(on.hp < 100, 'unit on the line is hit'); assert.equal(off.hp, 100, 'unit off the line is fine');
+}
+
+// Recon: reveals an enemy hidden behind a building.
+{
+  const rows = [...empty]; for (let y = 0; y < 20; y++) rows[y] = '.'.repeat(10) + 'B' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+  put(g, 0, 'rifle', 5, 5); const hidden = put(g, 1, 'rifle', 30, 5);
+  run(g, 1);
+  assert.ok(!g.players[0].visible.has(hidden.id));
+  command(g, 0, { t: 'support', kind: 'recon', x: 30, z: 5 });
+  run(g, SUPPORT.recon.delay + 0.5);
+  assert.ok(g.players[0].visible.has(hidden.id), 'recon reveals it');
+  run(g, SUPPORT.recon.dur + 1);
+  assert.ok(!g.players[0].visible.has(hidden.id), 'and it hides again after');
 }
 
 // Real map loads for 3 players, all spawns start with their force.

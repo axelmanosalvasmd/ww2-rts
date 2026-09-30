@@ -34,6 +34,14 @@ export const UNITS = {
 };
 export const UNIT_TYPES = Object.keys(UNITS);
 
+// Off-map support bought with manpower. Every strike is announced to all players `delay` seconds ahead.
+export const SUPPORT = {
+  recon: { name: 'Recon Flight', cost: 60, cd: 45, delay: 3, dur: 15, radius: 40 },
+  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, radius: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60 },
+  strafe: { name: 'Strafing Run', cost: 200, cd: 90, delay: 5, len: 36, width: 4, inf: 25, veh: 10, supp: 80 },
+};
+export const SUPPORT_TYPES = Object.keys(SUPPORT);
+
 export const alive = u => Math.ceil(u.hp / UNITS[u.type].hpPer);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -43,10 +51,10 @@ export function createGame(map, names, shuffle = true) {
   if (shuffle) for (let i = spawnOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [spawnOrder[i], spawnOrder[j]] = [spawnOrder[j], spawnOrder[i]]; }
   const g = {
     w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
-    tick: 0, nextId: 1, units: new Map(), shots: [], nades: [], smokes: [], winner: null,
+    tick: 0, nextId: 1, units: new Map(), shots: [], nades: [], smokes: [], strikes: [], winner: null,
     players: names.map((name, slot) => {
       const s = spawnOrder[slot];
-      return { slot, name, vp: 0, mp: CFG.mpStart, inc: CFG.mpBase, spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
+      return { slot, name, vp: 0, mp: CFG.mpStart, inc: CFG.mpBase, sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, 0])), spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
     }),
     // vp/mp per second while held; the map can make some points worth more
     points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
@@ -214,6 +222,13 @@ export function command(g, slot, cmd) {
       else if (ab.id === 'ap') { u.ap = true; u.cd = ab.cd; }
       else if (ab.id === 'smoke') { g.smokes.push({ x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
     }
+  } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
+    const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
+    if (x === null || z === null || p.sup[cmd.kind] > 0 || p.mp < sp.cost) return;
+    p.mp -= sp.cost; p.sup[cmd.kind] = sp.cd;
+    // planes come in from your own HQ
+    const dir = Math.atan2(z - p.spawn.z, x - p.spawn.x);
+    g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
   } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit)) {
     const p = g.players[slot], def = UNITS[cmd.unit];
     const pop = [...g.units.values()].filter(u => u.owner === slot).length;
@@ -270,8 +285,22 @@ function updateVision(g) {
     const own = [...g.units.values()].filter(u => u.owner === p.slot);
     for (const t of g.units.values()) {
       if (t.owner === p.slot) continue;
-      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision && los(g, u, t)); })) p.visible.add(t.id);
+      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision && los(g, u, t)); })
+        || g.strikes.some(s => s.live && s.kind === 'recon' && s.owner === p.slot && dist(s, t) <= SUPPORT.recon.radius)) p.visible.add(t.id);
     }
+  }
+}
+
+function hurt(g, t, src, fall, owner) {
+  const inf = UNITS[t.type].infantry;
+  t.hp -= (inf ? src.inf : src.veh) * fall * (t.retreating ? CFG.retreatDamage : 1);
+  if (inf) t.supp = Math.min(100, t.supp + src.supp);
+  g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
+}
+function blast(g, list, at, radius, src, owner) {
+  for (const t of list) {
+    const d = dist(t, at);
+    if (d <= radius && t.hp > 0) hurt(g, t, src, 1 - d / radius * 0.5, owner);
   }
 }
 
@@ -347,16 +376,33 @@ export function step(g) {
   for (const n of g.nades) {
     if ((n.t -= dt) > 0) continue;
     g.shots.push({ x: n.x, z: n.z, k: 'boom', pub: true });
-    for (const t of list) {
-      const d = dist(t, n);
-      if (d > n.ab.radius || t.hp <= 0) continue;
-      const inf = UNITS[t.type].infantry, fall = 1 - d / n.ab.radius * 0.5;
-      t.hp -= (inf ? n.ab.inf : n.ab.veh) * fall;
-      if (inf) t.supp = Math.min(100, t.supp + n.ab.supp);
-      g.shots.push({ t: t.id, fo: n.owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
-    }
+    blast(g, list, n, n.ab.radius, n.ab, n.owner);
   }
   g.nades = g.nades.filter(n => n.t > 0);
+
+  // off-map support
+  for (const s of g.strikes) {
+    const sp = SUPPORT[s.kind];
+    if ((s.t -= dt) > 0) continue;
+    if (!s.live) { s.live = true; if (s.kind !== 'artillery') g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true }); }
+    if (s.kind === 'recon') s.left -= dt;
+    else if (s.kind === 'artillery' && (s.next -= dt) <= 0) {
+      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * sp.radius, at = { x: s.x + Math.cos(a) * r, z: s.z + Math.sin(a) * r };
+      g.shots.push({ x: at.x, z: at.z, k: 'shell', pub: true });
+      blast(g, list, at, sp.blast, sp, s.owner);
+      s.left--; s.next = sp.every;
+    } else if (s.kind === 'strafe') {
+      // everything within `width` of the run's line gets raked
+      const cx = Math.cos(s.dir), cz = Math.sin(s.dir);
+      for (const t of list) {
+        const along = (t.x - s.x) * cx + (t.z - s.z) * cz, side = Math.abs(-(t.x - s.x) * cz + (t.z - s.z) * cx);
+        if (Math.abs(along) <= sp.len / 2 && side <= sp.width && t.hp > 0) hurt(g, t, sp, 1, s.owner);
+      }
+      s.left = 0;
+    }
+  }
+  g.strikes = g.strikes.filter(s => !s.live || s.left > 0);
+  for (const p of g.players) for (const k of SUPPORT_TYPES) p.sup[k] -= dt;
   for (const s of g.smokes) s.t -= dt;
   g.smokes = g.smokes.filter(s => s.t > 0);
 
@@ -410,6 +456,9 @@ export function snapshotFor(g, slot, shots) {
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inCover(g, u) ? 1 : 0,
         u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0)]),
     smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]),
+    // incoming and active strikes are public: that's the counterplay
+    strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
+    sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, Math.max(0, Math.ceil(p.sup[k]))])),
     points: g.points.map(q => [q.owner, q.capper, r(q.progress)]),
     vp: g.players.map(q => Math.floor(q.vp)),
     shots: shots.filter(s => s.pub || s.fo === slot || s.to === slot || p.visible.has(s.f) || p.visible.has(s.t)),
