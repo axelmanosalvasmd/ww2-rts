@@ -812,8 +812,11 @@ function aimSupport(k) {
 }
 
 function buildBuyBar() {
+  cardKey = '';
+  if (classicMode()) { $('buy').innerHTML = ''; $('buy').classList.add('hidden'); return; } // Classic: command card instead
+  $('buy').classList.remove('hidden');
   $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
-  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit, from: trainerFor(b.dataset.unit)?.id }); blip(520); }));
+  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
 }
 
 function updateHud(s) {
@@ -859,11 +862,8 @@ function updateHud(s) {
     b.querySelector('span').textContent = cd > 0 ? `${cd}s` : `${cost} ${cur === 'mun' ? 'Mun' : 'MP'}`;
   });
   $('income').textContent = `+${s.inc}/s · ${pop}/${popCap(s)} units`;
-  $('buy').querySelectorAll('button').forEach(b => {
-    const t = b.dataset.unit, where = s.mode?.kind === 'classic' && !trainerFor(t);
-    b.disabled = s.mp < UNITS[t].cost || pop >= popCap(s) || where;
-    b.title = where ? `Needs a ${UNITS[UNIT_TYPES.find(k => UNITS[k].makes?.includes(t))].name}` : ROLE[t];
-  });
+  if (s.mode?.kind === 'classic') drawCard(s, pop);
+  else $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= popCap(s)));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
     const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
     if (def.building) return `<div class="sel"><span>${def.name}</span><span>${v.built < 1 ? `<span class="tag">BUILDING ${Math.round(v.built * 100)}%</span> ` : ''}${Math.ceil(v.hp)}hp</span></div>` +
@@ -875,21 +875,48 @@ function updateHud(s) {
   const types = PRIORITY.filter(t => sel.some(v => v.type === t)), fType = fKeyType();
   const amove = sel.length ? `<button data-a="amove">Attack-move <kbd>G</kbd></button>` : '';
   const dig = types.includes('rifle') ? `<button data-a="dig" ${lastSnap?.mp >= CFG.digCost ? '' : 'disabled'}>Dig trench <kbd>T</kbd> ${CFG.digCost}</button>` : '';
-  const build = builders().length ? BUILDABLE.map(k => `<button data-a="${k}" ${canPlace(k) ? '' : 'disabled'} title="${UNITS[k].needs && !owns(UNITS[k].needs) ? 'Needs a ' + UNITS[UNITS[k].needs].name : ''}">${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd> ${UNITS[k].cost}</button>`).join('') : '';
-  const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === me ? sel[0] : null;
-  if (bld) {
-    $('abil').innerHTML = (bld.built < 1 ? `<button data-cancel="1">Cancel (75% back)</button>` : '') + (bld.built >= 1 ? (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" ${lastSnap?.mp >= UNITS[t].cost ? '' : 'disabled'}>${look(me).names[t] ?? UNITS[t].name} ${UNITS[t].cost}</button>`).join('') : '')
-      + (UNITS[bld.type].makes ? '<span class="muted" style="align-self:center">Right-click: rally point</span>' : '');
-    $('abil').querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: bld.id }); blip(520); }));
-    $('abil').querySelectorAll('[data-cancel]').forEach(b => (b.onclick = () => { sendCmd({ t: 'cancel', id: bld.id }); selected.clear(); blip(300); }));
-    return;
-  }
-  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + amove + dig + build + types.map(t => {
+  if (sel.some(v => UNITS[v.type].building)) { $('abil').innerHTML = ''; return; } // buildings use the command card
+  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + amove + dig + types.map(t => {
     const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
     const mun = lastSnap ? abCost(lastSnap, UNITS[t].ab) : 0, broke = mun && !(lastSnap.mun >= mun);
     return `<button data-a="${t}" ${ready && !broke ? '' : 'disabled'}>${UNITS[t].ab.name}${t === fType ? ' <kbd>F</kbd>' : ''}${ready ? '' : ` ${cd}s`}${mun ? ` ${mun} Mun` : ''}</button>`;
   }).join('') : '';
   $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a === 'dig' ? startDig() : BUILDABLE.includes(b.dataset.a) ? startBuild(b.dataset.a) : b.dataset.a === 'amove' ? setAim('amove') : useAbility(b.dataset.a))));
+}
+
+// Classic command card (bottom center): what the selection can make. A building shows the units it trains and its
+// queue; Engineers show the buildings they can put up. Rebuilt only when the selection changes (rebuilding it every
+// snapshot would eat clicks), otherwise just refreshed.
+let cardKey = '';
+const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets' };
+function drawCard(s, pop) {
+  const card = $('buy'), sel = [...selected].map(id => units.get(id)).filter(Boolean);
+  const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === me ? sel[0] : null, eng = !bld && builders().length > 0;
+  const name = (t) => look(me).names[t] ?? UNITS[t].name, key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : '';
+  if (key !== cardKey) {
+    cardKey = key;
+    card.classList.toggle('hidden', !key);
+    if (bld && bld.built < 1) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted">Under construction <span data-built></span></span><small class="muted">Right-click it with Engineers to help</small></div><button data-cancel><b>Cancel</b><span>75% back</span></button>`;
+    else if (bld) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted" data-queue></span><small class="muted">Right-click the ground: rally point</small></div>`
+      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${ROLE[t]}"><b>${name(t)}</b><span>${UNITS[t].cost} MP · ${UNITS[t].train}s</span><small class="muted">${ROLE[t]}</small></button>`).join('');
+    else if (eng) card.innerHTML = BUILDABLE.map(k => `<button data-build="${k}"><b>${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd></b><span>${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span><small class="muted" data-note>${BUILD_ROLE[k]}</small></button>`).join('');
+    else card.innerHTML = '';
+    const id = bld?.id;
+    card.querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: id }); blip(520); }));
+    card.querySelectorAll('[data-cancel]').forEach(b => (b.onclick = () => { sendCmd({ t: 'cancel', id }); selected.clear(); blip(300); }));
+    card.querySelectorAll('[data-build]').forEach(b => (b.onclick = () => startBuild(b.dataset.build)));
+  }
+  if (bld && bld.built < 1) card.querySelector('[data-built]').textContent = Math.round(bld.built * 100) + '%';
+  if (bld && bld.built >= 1) {
+    const q = bld.queue ?? [];
+    card.querySelector('[data-queue]').textContent = q.length ? `Training ${name(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(name).join(', ')}` : '') : 'Idle';
+    card.querySelectorAll('[data-train]').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.train].cost || pop >= popCap(s) || q.length >= 5));
+  }
+  if (eng) card.querySelectorAll('[data-build]').forEach(b => {
+    const k = b.dataset.build, need = UNITS[k].needs && !owns(UNITS[k].needs);
+    b.disabled = !canPlace(k);
+    b.querySelector('[data-note]').textContent = need ? `Needs a ${UNITS[UNITS[k].needs].name}` : BUILD_ROLE[k];
+  });
 }
 
 // the squad nearest the clicked spot digs a line across its approach
@@ -943,12 +970,6 @@ const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L' };
 const owns = (type, done = true) => [...units.values()].some(v => v.owner === me && v.type === type && (!done || v.built >= 1));
 const canPlace = (k) => lastSnap?.mp >= UNITS[k].cost && (!UNITS[k].needs || owns(UNITS[k].needs));
 function startBuild(k) { if (builders().length && canPlace(k)) { setAim(k); blip(600); } }
-// the finished building that trains a unit: the selected one if it can, else the one nearest the camera
-function trainerFor(t) {
-  const ok = (v) => v && v.owner === me && v.built >= 1 && UNITS[v.type].makes?.includes(t);
-  const sel = [...selected].map(id => units.get(id)).find(ok);
-  return sel ?? [...units.values()].filter(ok).sort((a, b) => Math.hypot(a.x - cam.x, a.z - cam.z) - Math.hypot(b.x - cam.x, b.z - cam.z))[0];
-}
 // where a building would go for a cursor spot: grid-snapped center, and whether the ground looks clear
 // (the server has the final say, including whether your side can see the spot)
 function footAt(k, g) {
@@ -1088,7 +1109,11 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyM') setMuted(!muted);
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
-  else if (e.code === 'KeyH' && home) { cam.x = home.x; cam.z = home.z; }
+  else if (e.code === 'KeyH' && home) {
+    cam.x = home.x; cam.z = home.z;
+    const hq = classicMode() && [...units.values()].find(v => v.owner === me && v.type === 'hq');
+    if (hq) { selected.clear(); selected.add(hq.id); if (lastSnap) updateHud(lastSnap); }
+  }
   else if (e.code === 'KeyZ') aimSupport('recon');
   else if (e.code === 'KeyC') aimSupport('artillery');
   else if (e.code === 'KeyV') aimSupport('strafe');

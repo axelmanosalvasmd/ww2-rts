@@ -5,6 +5,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Classic now works like a classic RTS: the bottom panel shows only what your selection can do. Select a building to
+  see the units it trains (cost and training time) and its queue; select Engineers to see the buildings they can put up
+  (and what each still needs). Nothing selected, nothing shown. Soldiers keep their abilities in the lower-left bar.
+  H jumps home and selects your HQ. Conquest and Assault keep the always-on unit bar.
 - Classic mode is complete (the rest of the planned slices):
   - Engineers also build a Barracks (K, 150 MP: MGs, Rangers, Conscripts) and a Motor Pool (L, 200 MP, needs a
     Barracks: AT guns, tanks, rockets, Tiger). The placement preview snaps to the grid, green or red.

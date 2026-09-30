@@ -113,8 +113,9 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Elimination in teams: the eliminated player's units pass to the nearest surviving teammate (or are removed), and their
   depots are destroyed. They keep spectating with team vision. No resource transfers.
 - UI: Engineers selected means the build bar (J depot, K Barracks, L Motor Pool) with a grid-snapped green/red footprint;
-  Shift-click keeps placing, Esc cancels. The buy bar stays global, greyed until you own the building, and trains at the
-  selected building or the one nearest the camera. Click a building to select it: its queue, what it trains, Cancel for a
+  Shift-click keeps placing, Esc cancels. No global buy bar in Classic (the user found the always-on unit list confusing):
+  the bottom panel is the selection's command card, a building's units and queue or the Engineers' buildings. H selects
+  the HQ. Click a building to select it: its queue, what it trains, Cancel for a
   site; right-click sets its rally point. Building footprints aren't painted on the ground, because terrain changes reach
   every client and would show enemy bases through the fog (the data still reaches the client: fine among friends).
 - AI build order: 2 depots, Barracks, Motor Pool, then the remaining nodes; Engineers help unfinished sites and repair
