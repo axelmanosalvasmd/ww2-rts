@@ -1,7 +1,7 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT } from './shared/sim.js';
+import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT, UNITS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
@@ -635,6 +635,113 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(![...g.units.values()].some(u => u.owner === 1), 'their units and buildings are gone');
   assert.ok(foeHq.cells.every(c => g.chars[c] === 'R'), 'HQ collapses into rubble');
   assert.equal(g.winner, 0, 'last side standing wins');
+}
+
+// Classic production: Barracks and Motor Pool, training queues, rally, cancel, repair, retreat to the nearest building.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), p = g.players[0];
+  const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer'), hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  p.mp = 5000;
+  // HQ trains rifles, but only after the training time; MGs need a Barracks
+  command(g, 0, { t: 'buy', unit: 'mg' });
+  assert.equal(hq.queue.length, 0, 'no MG without a Barracks');
+  const n0 = g.units.size;
+  command(g, 0, { t: 'buy', unit: 'rifle' });
+  assert.deepEqual(hq.queue, ['rifle'], 'rifle queued at the HQ');
+  run(g, 5); assert.equal(g.units.size, n0, 'still training');
+  run(g, 11); assert.equal(g.units.size, n0 + 1, 'rifle out after ~15s');
+  // Motor Pool needs a finished Barracks
+  const spot = (k, dx) => ({ x: hq.x + dx, z: hq.z + 16 });
+  eng.x = hq.x; eng.z = hq.z + 10;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'motorpool', ...spot('motorpool', 12) });
+  assert.ok(![...g.units.values()].some(u => u.type === 'motorpool'), 'no Motor Pool before a Barracks');
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', ...spot('barracks', -8) });
+  const bar = [...g.units.values()].find(u => u.type === 'barracks');
+  assert.ok(bar && bar.built === 0 && bar.cells.length === 9, 'Barracks site placed');
+  // cancel another site: 75% back and the ground is clear again
+  const mp0 = p.mp;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'depot', x: g.nodes[0].x, z: g.nodes[0].z });
+  const dep = [...g.units.values()].find(u => u.type === 'depot' && u.owner === 0);
+  if (dep) {
+    command(g, 0, { t: 'cancel', id: dep.id });
+    assert.equal(g.units.has(dep.id), false, 'site gone'); assert.equal(p.mp, mp0 - 60 + 45, '75% refunded');
+    assert.ok(dep.cells.every(c => g.chars[c] === '.'), 'ground cleared'); assert.equal(g.nodes[0].depot, 0, 'node free again');
+  }
+  command(g, 0, { t: 'assist', ids: [eng.id], id: bar.id });
+  run(g, 35);
+  assert.equal(bar.built, 1, 'Barracks finished');
+  command(g, 0, { t: 'rally', id: bar.id, x: bar.x + 30, z: bar.z });
+  command(g, 0, { t: 'buy', unit: 'mg', from: bar.id });
+  assert.deepEqual(bar.queue, ['mg'], 'MG queued at the Barracks');
+  run(g, 19);
+  const mg = [...g.units.values()].find(u => u.owner === 0 && u.type === 'mg');
+  assert.ok(mg && Math.hypot(mg.x - bar.x, mg.z - bar.z) < 12, 'MG steps out at the Barracks');
+  assert.ok(mg.path.length > 0, 'and heads for the rally point');
+  // queue is capped at 5, and queued units count toward the pop cap
+  for (let i = 0; i < 7; i++) command(g, 0, { t: 'buy', unit: 'mg', from: bar.id });
+  assert.equal(bar.queue.length, 5, 'queue holds 5');
+  // Engineers repair a damaged building
+  bar.queue = []; bar.hp -= 500; const hp0 = bar.hp;
+  command(g, 0, { t: 'assist', ids: [eng.id], id: bar.id });
+  run(g, 8);
+  assert.ok(bar.hp > hp0, 'repaired');
+  // retreat goes to the nearest finished Production Building
+  mg.x = bar.x - 30; mg.z = bar.z; command(g, 0, { t: 'retreat', ids: [mg.id] });
+  const end = mg.path.at(-1);
+  assert.ok(Math.hypot(end.x - bar.x, end.z - bar.z) < Math.hypot(end.x - hq.x, end.z - hq.z), 'retreats to the Barracks, not the HQ');
+}
+
+// Classic endgame: Ghosts under fog, the army handed to a teammate, Sudden Death.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  // Ghosts: the enemy HQ is hidden until seen, then remembered where it was
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const foeHq = [...g.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  run(g, 0.3);
+  const sees = () => snapshotFor(g, 0, []).units.some(u => u[0] === foeHq.id), ghost = () => snapshotFor(g, 0, []).ghosts.some(q => q[0] === foeHq.id);
+  assert.equal(sees(), false, 'enemy HQ hidden under fog'); assert.equal(ghost(), false, 'and not known yet');
+  const scout = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  scout.x = foeHq.x + 12; scout.z = foeHq.z + 12; run(g, 0.3);
+  assert.equal(sees(), true, 'seen up close');
+  scout.x = 5; scout.z = 5; run(g, 0.3);
+  assert.equal(sees(), false, 'out of sight again'); assert.equal(ghost(), true, 'but remembered as a ghost');
+
+  // teams: an eliminated player's army goes to the surviving teammate
+  const t = createGame(map, ['a', 'b', 'c'], false, [0, 0, 1], [0, 1, 2], { mode: 'classic' });
+  const army = [...t.units.values()].filter(u => u.owner === 1 && !u.cells).map(u => u.id);
+  [...t.units.values()].find(u => u.owner === 1 && u.type === 'hq').hp = 0;
+  run(t, 0.1);
+  assert.ok(t.players[1].out, 'player 1 out'); assert.equal(t.winner, null, 'team still alive');
+  assert.ok(army.every(id => t.units.get(id)?.owner === 0), 'their squads now answer to the teammate');
+
+  // Sudden Death: no training or building, Production Buildings crumble, last one standing wins
+  const sd = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const hq0 = [...sd.units.values()].find(u => u.owner === 0 && u.type === 'hq'), hq1 = [...sd.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  sd.players[0].mp = 1000; sd.mode.timeLeft = 0.05; run(sd, 0.2);
+  assert.ok(sd.mode.suddenDeath, 'sudden death started');
+  command(sd, 0, { t: 'buy', unit: 'rifle' }); assert.equal(hq0.queue.length, 0, 'no training');
+  const h = hq0.hp; run(sd, 10);
+  assert.ok(Math.abs(h - hq0.hp - UNITS.hq.hpPer * CFG.classic.decay * 10) < 5, `decays 1%/s (${h - hq0.hp})`);
+  hq1.hp = hq0.hp - 50; run(sd, 100);
+  assert.equal(sd.winner, 0, 'the sturdier base outlasts the other');
+}
+
+// Classic: unit abilities cost Munitions (and still have cooldowns); other modes stay free.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), p = g.players[0];
+  const rifle = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  p.mun = 0;
+  command(g, 0, { t: 'ability', ids: [rifle.id], x: rifle.x + 5, z: rifle.z });
+  assert.equal(rifle.nade, null, 'no grenade without Munitions');
+  p.mun = 20;
+  command(g, 0, { t: 'ability', ids: [rifle.id], x: rifle.x + 5, z: rifle.z });
+  run(g, 0.2);
+  assert.equal(p.mun < 20 - 14, true, `grenade paid when thrown (${p.mun})`); assert.ok(rifle.cd > 0, 'and on cooldown');
+  const c = createGame(map, ['a', 'b'], false), r2 = [...c.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  command(c, 0, { t: 'ability', ids: [r2.id], x: r2.x + 5, z: r2.z }); run(c, 0.2);
+  assert.ok(r2.cd > 0, 'free in Conquest');
 }
 
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.

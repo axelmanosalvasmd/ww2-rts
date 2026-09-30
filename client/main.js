@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, levelChar, canBuild, winVp, supCost } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost } from '/shared/sim.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -16,7 +16,7 @@ const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: '
   ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint', engineer: 'Builds depots, weak rifles' };
 const classicMode = () => lobbyState?.mode === 'classic';
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (type === 'bunker' || type === 'hq' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -243,7 +243,7 @@ function startGame(m) {
   world.add(fog);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
-  aimMesh = null; nodeMarks = null; planGroup = null;
+  aimMesh = null; nodeMarks = null; planGroup = null; ghosts.clear();
 
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
@@ -283,7 +283,6 @@ function paintCell(x, y) {
     gr.addColorStop(0, '#3b3526'); gr.addColorStop(0.8, '#5a4f36'); gr.addColorStop(1, 'rgba(90,79,54,0)');
     c.fillStyle = gr; c.fillRect(X, Y, px, px);
   } else if (ch === 'B') { c.fillStyle = '#6e6048'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'K') { c.fillStyle = '#7a6a4e'; c.fillRect(X, Y, px, px); }
   else if (ch === 'R') { c.fillStyle = '#6f665a'; c.fillRect(X, Y, px, px); c.fillStyle = '#4f483f'; c.fillRect(X + 1, Y + 2, 3, 2); c.fillRect(X + 5, Y + 5, 2, 2); }
   else if (ch === 'W' || ch === '=') {
     c.fillStyle = '#3c5d70'; c.fillRect(X, Y, px, px);
@@ -466,6 +465,21 @@ function makeUnit(id, type, owner) {
     v.body = new THREE.Group();
     v.body.add(mesh(GEO.box, wood, 5.4, 3, 5.4, 0, 1.5, 0), mesh(GEO.box, roof, 6, 0.4, 6, 0, 3.2, 0), mesh(GEO.box, mat(f.vehicle), 5.6, 0.5, 1.2, 0, 1.2, 2.5),
       mesh(GEO.cyl, mat(0x2a2a24), 0.06, 5, 0.06, 2, 5.6, 2), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, 0.9, 7.4, 2));
+    root.add(v.body); v.models.push(root);
+  } else if (type === 'barracks') {
+    // long timber hut with a pitched roof
+    const wood = mat(0x8a7050), roofM = mat(f.vehicle);
+    v.body = new THREE.Group();
+    const shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 1.8)]), rg = new THREE.ExtrudeGeometry(shape, { depth: 5.6, bevelEnabled: false }); rg.translate(0, 0, -2.8);
+    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, mat(0x3a2e20), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
+    root.add(v.body); v.models.push(root);
+  } else if (type === 'motorpool') {
+    // open vehicle shed: posts, a flat roof, oil drums
+    const post = mat(0x5a4a34);
+    v.body = new THREE.Group();
+    for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) v.body.add(mesh(GEO.box, post, 0.35, 3.2, 0.35, x, 1.6, z));
+    v.body.add(mesh(GEO.box, mat(f.vehicle), 6, 0.3, 6, 0, 3.3, 0), mesh(GEO.box, mat(0x4a4a44), 5.6, 0.1, 5.6, 0, 0.05, 0), mesh(GEO.box, post, 5.6, 1.4, 0.3, 0, 0.7, -2.7));
+    for (let i = 0; i < 3; i++) v.body.add(mesh(GEO.cyl, mat(0x3a4a30), 0.4, 1.1, 0.4, 2.2, 0.55, -1.6 + i * 0.85));
     root.add(v.body); v.models.push(root);
   } else if (type === 'depot') {
     // supply dump: stacked crates and fuel drums
@@ -677,6 +691,8 @@ function applySnapshot(s) {
   }
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
+  for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
+  applyGhosts(s.ghosts);
   if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z]) => { const m = nodeMark(x, z); world.add(m); return m; });
 
   s.points.forEach(([owner, capper, progress], i) => {
@@ -731,7 +747,7 @@ function syncStrikes(list) {
 function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (kind === 'depot') g.add(flat(new THREE.PlaneGeometry(UNITS.depot.size * CELL, UNITS.depot.size * CELL)));
+  if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
   else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove') {
     const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
@@ -797,7 +813,7 @@ function aimSupport(k) {
 
 function buildBuyBar() {
   $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
-  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
+  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit, from: trainerFor(b.dataset.unit)?.id }); blip(520); }));
 }
 
 function updateHud(s) {
@@ -817,13 +833,14 @@ function updateHud(s) {
       }).join('');
   } else if (s.mode?.kind === 'classic') {
     const hqs = [...units.values()].filter(v => v.type === 'hq');
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">Classic</div><div class="muted">Destroy every enemy HQ</div></div>` +
+    const t = s.mode.timeLeft, clock = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">${s.mode.suddenDeath ? 'Sudden death' : 'Classic · ' + clock}</div><div class="muted">${s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : `Destroy every enemy HQ, Barracks and Motor Pool. Sudden death in ${clock}`}</div></div>` +
       [...new Set(teams)].map(t => {
         const mem = names.map((_, i) => i).filter(i => teams[i] === t), mine = hqs.filter(b => teams[b.owner] === t);
-        const hp = mine.reduce((a, b) => a + b.hp, 0), max = mem.length * UNITS.hq.hpPer;
+        const hp = mine.reduce((a, b) => a + b.hp, 0), max = mine.length * UNITS.hq.hpPer, hidden = !mine.length && mem.some(i => !s.out?.[i]);
         return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span>${s.out?.[i] ? '<span class="tag pin" style="margin-left:auto">OUT</span>' : `<span class="muted" style="margin-left:auto">${held(i)}⚑</span>`}</div>
           <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-          <div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">HQ ${Math.ceil(hp)} / ${max}</div></div>`;
+          ${hidden ? '<div class="muted">HQ out of sight</div>' : `<div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">HQ ${Math.ceil(hp)} / ${max || UNITS.hq.hpPer}</div>`}</div>`;
       }).join('');
   } else
   // one card per team: its players, then the team's combined VP (that's what wins)
@@ -834,17 +851,23 @@ function updateHud(s) {
     <div class="bar"><div style="width:${Math.min(100, vp / winVp(teams) * 100)}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${vp} / ${winVp(teams)} VP</div></div>`;
   }).join('');
   drawPlans();
-  const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length;
+  const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length + [...units.values()].reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
   $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun` : `${s.mp} MP`;
   $('support').querySelectorAll('button').forEach(b => {
     const k = b.dataset.k, cd = s.sup[k], { cur, cost } = supCost(s, k);
     b.disabled = cd > 0 || !(s[cur] >= cost);
     b.querySelector('span').textContent = cd > 0 ? `${cd}s` : `${cost} ${cur === 'mun' ? 'Mun' : 'MP'}`;
   });
-  $('income').textContent = `+${s.inc}/s · ${pop}/${CFG.popCap} units`;
-  $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= CFG.popCap));
+  $('income').textContent = `+${s.inc}/s · ${pop}/${popCap(s)} units`;
+  $('buy').querySelectorAll('button').forEach(b => {
+    const t = b.dataset.unit, where = s.mode?.kind === 'classic' && !trainerFor(t);
+    b.disabled = s.mp < UNITS[t].cost || pop >= popCap(s) || where;
+    b.title = where ? `Needs a ${UNITS[UNIT_TYPES.find(k => UNITS[k].makes?.includes(t))].name}` : ROLE[t];
+  });
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
     const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
+    if (def.building) return `<div class="sel"><span>${def.name}</span><span>${v.built < 1 ? `<span class="tag">BUILDING ${Math.round(v.built * 100)}%</span> ` : ''}${Math.ceil(v.hp)}hp</span></div>` +
+      (v.queue?.length ? `<div class="sel muted"><span>Training ${look(v.owner).names[v.queue[0]] ?? UNITS[v.queue[0]].name} ${Math.round(v.prog * 100)}%</span><span>${v.queue.length}/5</span></div>` : '');
     return `<div class="sel"><span>${look(v.owner).names[v.type] ?? UNITS[v.type].name}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
   }).join('');
   // ability bar for the current selection
@@ -852,12 +875,21 @@ function updateHud(s) {
   const types = PRIORITY.filter(t => sel.some(v => v.type === t)), fType = fKeyType();
   const amove = sel.length ? `<button data-a="amove">Attack-move <kbd>G</kbd></button>` : '';
   const dig = types.includes('rifle') ? `<button data-a="dig" ${lastSnap?.mp >= CFG.digCost ? '' : 'disabled'}>Dig trench <kbd>T</kbd> ${CFG.digCost}</button>` : '';
-  const build = builders().length ? `<button data-a="depot" ${lastSnap?.mp >= UNITS.depot.cost ? '' : 'disabled'}>Supply Depot <kbd>J</kbd> ${UNITS.depot.cost}</button>` : '';
+  const build = builders().length ? BUILDABLE.map(k => `<button data-a="${k}" ${canPlace(k) ? '' : 'disabled'} title="${UNITS[k].needs && !owns(UNITS[k].needs) ? 'Needs a ' + UNITS[UNITS[k].needs].name : ''}">${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd> ${UNITS[k].cost}</button>`).join('') : '';
+  const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === me ? sel[0] : null;
+  if (bld) {
+    $('abil').innerHTML = (bld.built < 1 ? `<button data-cancel="1">Cancel (75% back)</button>` : '') + (bld.built >= 1 ? (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" ${lastSnap?.mp >= UNITS[t].cost ? '' : 'disabled'}>${look(me).names[t] ?? UNITS[t].name} ${UNITS[t].cost}</button>`).join('') : '')
+      + (UNITS[bld.type].makes ? '<span class="muted" style="align-self:center">Right-click: rally point</span>' : '');
+    $('abil').querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: bld.id }); blip(520); }));
+    $('abil').querySelectorAll('[data-cancel]').forEach(b => (b.onclick = () => { sendCmd({ t: 'cancel', id: bld.id }); selected.clear(); blip(300); }));
+    return;
+  }
   $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + amove + dig + build + types.map(t => {
     const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
-    return `<button data-a="${t}" ${ready ? '' : 'disabled'}>${UNITS[t].ab.name}${t === fType ? ' <kbd>F</kbd>' : ''}${ready ? '' : ` ${cd}s`}</button>`;
+    const mun = lastSnap ? abCost(lastSnap, UNITS[t].ab) : 0, broke = mun && !(lastSnap.mun >= mun);
+    return `<button data-a="${t}" ${ready && !broke ? '' : 'disabled'}>${UNITS[t].ab.name}${t === fType ? ' <kbd>F</kbd>' : ''}${ready ? '' : ` ${cd}s`}${mun ? ` ${mun} Mun` : ''}</button>`;
   }).join('') : '';
-  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a === 'dig' ? startDig() : b.dataset.a === 'depot' ? startBuild() : b.dataset.a === 'amove' ? setAim('amove') : useAbility(b.dataset.a))));
+  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a === 'dig' ? startDig() : BUILDABLE.includes(b.dataset.a) ? startBuild(b.dataset.a) : b.dataset.a === 'amove' ? setAim('amove') : useAbility(b.dataset.a))));
 }
 
 // the squad nearest the clicked spot digs a line across its approach
@@ -890,6 +922,7 @@ function drawPlans() {
     const v = units.get(id);
     if (!v) continue;
     const p = v.plan, me3 = at(v.x, v.z);
+    if (v.rally) { ribbon([me3, at(v.rally.x, v.rally.z)], 0.4, 0x9dd0ff, 0.5); ring(at(v.rally.x, v.rally.z), 1.1, 0x9dd0ff); }
     if (p?.kind) {
       const color = PLAN_LOOK[p.kind], pts = [me3];
       for (let i = 0; i < p.path.length; i += 2) pts.push(at(p.path[i], p.path[i + 1]));
@@ -906,7 +939,28 @@ function drawPlans() {
 
 // Engineers put Supply Depots on resource nodes: J, then click near a node
 const builders = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'engineer' && !(v.flags & 1));
-function startBuild() { if (builders().length && lastSnap?.mp >= UNITS.depot.cost) { setAim('depot'); blip(600); } }
+const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L' };
+const owns = (type, done = true) => [...units.values()].some(v => v.owner === me && v.type === type && (!done || v.built >= 1));
+const canPlace = (k) => lastSnap?.mp >= UNITS[k].cost && (!UNITS[k].needs || owns(UNITS[k].needs));
+function startBuild(k) { if (builders().length && canPlace(k)) { setAim(k); blip(600); } }
+// the finished building that trains a unit: the selected one if it can, else the one nearest the camera
+function trainerFor(t) {
+  const ok = (v) => v && v.owner === me && v.built >= 1 && UNITS[v.type].makes?.includes(t);
+  const sel = [...selected].map(id => units.get(id)).find(ok);
+  return sel ?? [...units.values()].filter(ok).sort((a, b) => Math.hypot(a.x - cam.x, a.z - cam.z) - Math.hypot(b.x - cam.x, b.z - cam.z))[0];
+}
+// where a building would go for a cursor spot: grid-snapped center, and whether the ground looks clear
+// (the server has the final say, including whether your side can see the spot)
+function footAt(k, g) {
+  const n = UNITS[k].size, cx = Math.round(g.x / CELL - n / 2), cy = Math.round(g.z / CELL - n / 2);
+  const nodes = (lastSnap?.nodes ?? []).map(([x, z]) => [Math.floor(x / CELL) - 1, Math.floor(z / CELL) - 1]);
+  let ok = !!terrain;
+  for (let y = cy; y < cy + n && ok; y++) for (let x = cx; x < cx + n && ok; x++) {
+    const ch = terrain.grid[y]?.[x];
+    ok = ch !== undefined && !(TERRAIN[ch] & MOVE) && !'WF=K'.includes(ch) && !nodes.some(([nx, ny]) => x >= nx && x <= nx + 1 && y >= ny && y <= ny + 1);
+  }
+  return { x: (cx + n / 2) * CELL, z: (cy + n / 2) * CELL, ok };
+}
 // the free node nearest a spot (within 8 m), or null. A node is taken when a depot stands on it.
 function nodeNear(g) {
   const free = (lastSnap?.nodes ?? []).filter(([x, z]) => ![...units.values()].some(v => v.type === 'depot' && Math.hypot(v.x - x, v.z - z) < 1));
@@ -914,6 +968,24 @@ function nodeNear(g) {
   return n && Math.hypot(n[0] - g.x, n[1] - g.z) <= 8 ? { x: n[0], z: n[1] } : null;
 }
 let nodeMarks = null;
+// Ghosts: enemy buildings you've seen, drawn faded where they were last seen until you look again
+const ghosts = new Map();
+function applyGhosts(list) {
+  const keep = new Set();
+  for (const [id, type, owner, x, z, built] of list ?? []) {
+    if (units.has(id)) continue;
+    keep.add(id);
+    let gv = ghosts.get(id);
+    if (!gv) {
+      gv = makeUnit(id, type, owner); gv.bars.visible = false;
+      gv.root.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); Object.assign(o.material, { transparent: true, opacity: 0.35, depthWrite: false }); } });
+      ghosts.set(id, gv);
+    }
+    gv.root.position.set(x, hAt(x, z), z);
+    if (gv.body) gv.body.scale.y = 0.15 + 0.85 * built;
+  }
+  for (const [id, gv] of ghosts) if (!keep.has(id)) { world.remove(gv.root, gv.bars); ghosts.delete(id); }
+}
 function nodeMark(x, z) {
   const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.8, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: 0xe8c860, transparent: true, opacity: 0.6, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.position.y = 0.25; m.renderOrder = 2; m.material.depthTest = false;
@@ -949,7 +1021,7 @@ let targeting = null, aimCenter = null, aimMesh = null, home = null;
 function cancelAim() { targeting = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind) {
   targeting = kind; aimCenter = null;
-  $('hint').textContent = { depot: 'Click a resource node', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
+  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
   $('hint').textContent += ' · right-click cancels';
 }
 // direction before the second click: planes fly out from home, trenches run across the squad's approach
@@ -1022,7 +1094,9 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyV') aimSupport('strafe');
   else if (e.code === 'KeyB') aimSupport('smoke');
   else if (e.code === 'KeyT') startDig();
-  else if (e.code === 'KeyJ') startBuild();
+  else if (e.code === 'KeyJ') startBuild('depot');
+  else if (e.code === 'KeyK') startBuild('barracks');
+  else if (e.code === 'KeyL') startBuild('motorpool');
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
@@ -1039,12 +1113,12 @@ renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 renderer.domElement.addEventListener('wheel', (e) => { cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: true });
 
 const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1, v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
-function pick(mx, my, test) {
+function pick(mx, my, test, r) {
   let best = null, bd = Infinity;
   for (const v of units.values()) {
     if (!test(v)) continue;
     const s = screenOf(v), d = Math.hypot(s.x - mx, s.y - my);
-    if (s.front && d < (isVeh(v.type) ? 45 : 32) && d < bd) { bd = d; best = v; }
+    if (s.front && d < (r ?? (isVeh(v.type) ? 45 : 32)) && d < bd) { bd = d; best = v; }
   }
   return best;
 }
@@ -1064,6 +1138,12 @@ renderer.domElement.addEventListener('mousedown', (e) => {
       if (n) { sendCmd({ t: 'build', ids: builders().map(v => v.id), kind: 'depot', x: n.x, z: n.z }); marker(n.x, n.z, 0xe8c860); blip(600); }
       return;
     }
+    if (UNITS[kind]?.building) {
+      const f = footAt(kind, g);
+      if (!e.shiftKey) cancelAim(); // Shift-click keeps placing
+      if (f.ok) { sendCmd({ t: 'build', ids: builders().map(v => v.id), kind, x: f.x, z: f.z }); marker(f.x, f.z, 0xe8c860); blip(600); }
+      return;
+    }
     if (AIMED[kind]) { cancelAim(); throwAt(g, kind); return; }
     if (kind === 'amove') { cancelAim(); moveTo(g, true); return; }
     // first click: pin the center, then the mouse rotates it
@@ -1078,6 +1158,13 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   if (e.button !== 2 || !selected.size || !lastSnap) return;
   const enemy = pick(e.clientX, e.clientY, v => foe(v.owner));
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
+  if (sel.length && sel.every(v => UNITS[v.type].building)) {
+    const g = groundAt(e.clientX, e.clientY);
+    if (g) { for (const v of sel) sendCmd({ t: 'rally', id: v.id, x: g.x, z: g.z }); marker(g.x, g.z, 0x9dd0ff); blip(620); }
+    return;
+  }
+  const ownB = pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), eng = sel.filter(v => v.type === 'engineer');
+  if (ownB && eng.length && (ownB.built < 1 || ownB.hp < UNITS[ownB.type].hpPer)) { sendCmd({ t: 'assist', ids: eng.map(v => v.id), id: ownB.id }); marker(ownB.x, ownB.z, 0xe8c860); blip(600); return; }
   if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); bark('attack'); return; }
   // a house: squads go inside, tanks and rocket trucks shell it, anything else walks up to it
   const house = houseAt(e.clientX, e.clientY);
@@ -1111,7 +1198,7 @@ addEventListener('mouseup', (e) => {
     const x0 = Math.min(drag.x, e.clientX), x1 = Math.max(drag.x, e.clientX), y0 = Math.min(drag.y, e.clientY), y1 = Math.max(drag.y, e.clientY);
     for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && !UNITS[v.type].structure && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
   } else {
-    const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure);
+    const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
     if (v) selected.add(v.id);
   }
   drag = null;
@@ -1123,7 +1210,7 @@ addEventListener('mouseup', (e) => {
 let lastT = performance.now();
 
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
-const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], K: [122, 106, 78] };
+const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102] };
 let mmImage = null, mmFog = null, mmTimer = 0;
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -1253,6 +1340,9 @@ renderer.setAnimationLoop(() => {
     } else if (g && targeting === 'depot') {
       const n = nodeNear(g), at = n ?? g;
       aimMesh.position.set(at.x, hAt(at.x, at.z), at.z); aimMesh.userData.mat.color.set(n ? 0x60e070 : 0xe04030);
+    } else if (g && UNITS[targeting]?.building) {
+      const f = footAt(targeting, g);
+      aimMesh.position.set(f.x, hAt(f.x, f.z), f.z); aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
     } else if (g) { aimMesh.position.set(g.x, hAt(g.x, g.z), g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);

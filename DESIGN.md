@@ -79,27 +79,33 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   inescapable pits).
 - Balance: garrisons alone dropped 2nd place to 55%; with rockets it's back to 63% (default) / 61% (River Towns).
 
-## Classic mode (decided 2026-09-30; slice 1 built)
+## Classic mode (decided and built 2026-09-30, all 5 slices)
 Base building as a third lobby mode next to Conquest and Assault. Terms are defined in CONTEXT.md.
 - Win: Annihilation. A player with no Production Buildings (HQ, Barracks, Motor Pool; a Construction Site of one counts)
   is eliminated, and the last team standing wins. No VP.
 - Sudden Death at 25:00: production and construction stop, and Production Buildings lose ~1% max hp/s (depots exempt).
   Repair is slower than decay. Last building standing wins; if the last ones fall in the same tick, it's a draw.
 - Economy: MP comes from an HQ trickle of 2/s plus 1.5/s per Supply Depot. Depots only go on Resource Nodes (one each).
-  No catch-up. Start: HQ, 1 Engineer, 1 rifle squad, 200 MP. Pop cap stays 12 (buildings excluded).
-- Resource Nodes: the map's `nodes` if present, else generated: 2 home nodes per spawn (~12 cells out, toward the flanks)
-  and 1 beside each point with mp > 0. None at the center.
+  No catch-up. Start: HQ, 1 Engineer, 1 rifle squad, 200 MP. Pop cap 20 in Classic (buildings excluded, queued units
+  count): at 12 the leader sat at the cap banking thousands of MP and games stalled.
+- Resource Nodes: generated per match: 2 home nodes per spawn (~12 cells out, toward the flanks) and 1 beside each point
+  with mp > 0. None at the center. (Hand-placed nodes in the map file wait for the editor Node tool.)
 - Munitions: a second currency, Classic only, earned from held points at 1.5 x the point's vp (center 3/s, village 1.5/s),
   full rate for every teammate. It pays for off-map support and unit abilities (abilities keep their cooldowns).
-- Buildings: HQ (Engineers, rifles; unique, can't be rebuilt), Supply Depot, Barracks (MG, faction infantry),
-  Motor Pool (tanks, AT, rockets, Tiger; needs a Barracks). One tier; no upgrades or research.
+- Buildings: HQ (4000 hp; Engineers, rifles; unique, can't be rebuilt), Supply Depot (60 MP, 600 hp), Barracks
+  (150 MP, 2000 hp; MG, faction infantry), Motor Pool (200 MP, 2500 hp; tanks, AT, rockets, Tiger; needs a Barracks).
+  One tier; no upgrades or research. Barracks and Motor Pool can't cover a resource node.
+- Buildings are timber, not bunker concrete: guns with 20+ anti-tank damage hit them fully, small arms do 25% of their
+  anti-infantry damage. With the bunker rule (25% of anti-tank damage) a rifle hit did 0.1 and armies shot at bases forever.
+- Training times: Engineer 12s, rifle 15, conscript 12, MG 18, Ranger 20, AT 22, rocket 30, tank 35, Tiger 50.
 - Buildings are stamped grid cells (3x3, depot 2x2): they block movement and sight, give cover and wreck to rubble.
   Hp lives on the building. Placement: any clear flat cells your side can see.
   Enemy buildings show as last-seen Ghosts under fog.
 - Construction: placing a building pays the full cost and stamps a Construction Site at 25% hp. Adjacent Engineers build it
   (more Engineers build faster with diminishing returns, ~1.7x for 2, ~2.2x for 3). Cancelling refunds 75%, a destroyed
   site refunds nothing. Build times with 1 Engineer: depot 20s, Barracks 30s, Motor Pool 45s. Engineers repair for free,
-  slowly.
+  slowly (0.5% max hp/s per Engineer, capped at 0.6% in Sudden Death so decay still wins). Right-click your own site or
+  damaged building with Engineers to help or repair.
 - Engineers: a 3-man armed squad (~60 MP), a weak rifle squad. Only the HQ trains them.
 - Production takes time, with a queue of up to 5 per building. Units appear at their building and walk to its rally point.
   Retreat goes to the nearest own Production Building. Reinforce and repair work near any own or allied
@@ -107,11 +113,22 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Elimination in teams: the eliminated player's units pass to the nearest surviving teammate (or are removed), and their
   depots are destroyed. They keep spectating with team vision. No resource transfers.
 - UI: Engineers selected means the build bar (J depot, K Barracks, L Motor Pool) with a grid-snapped green/red footprint;
-  Shift-click keeps placing, Esc cancels. The buy bar stays global, greyed until you own the building, and produces from the
-  nearest building of that type. Select a building to see its queue and right-click to set its rally point.
-- AI: a scripted build order first, plus a rule to attack the nearest Production Building Ghost when idle. Then 5 fog-fair
-  adaptive rules, one balance row each: composition counter with 60s memory, rush defense before 4:00, attack only at
-  1.3x the recently seen enemy army value, raid unguarded depots, scout when no enemy building is known.
+  Shift-click keeps placing, Esc cancels. The buy bar stays global, greyed until you own the building, and trains at the
+  selected building or the one nearest the camera. Click a building to select it: its queue, what it trains, Cancel for a
+  site; right-click sets its rally point. Building footprints aren't painted on the ground, because terrain changes reach
+  every client and would show enemy bases through the fog (the data still reaches the client: fine among friends).
+- AI build order: 2 depots, Barracks, Motor Pool, then the remaining nodes; Engineers help unfinished sites and repair
+  anything under 70%; it saves MP for its next building unless its army is nearly gone, and only buys what its buildings
+  train. It knows enemy buildings only through its team's Ghosts; with none known it marches on the enemy spawns.
+- Adaptive AI (fog-fair: it remembers what its team saw in the last 60s): 1 counters (tanks seen = AT guns and the Motor
+  Pool first; 6+ infantry seen = more MGs), 2 rush defense (enemies at its buildings before 4:00 = whole army home, stop
+  saving, artillery on them), 3 attack a base only with an army worth 1.1x what that team showed in the last 30s,
+  4 raid a known depot nobody was seen guarding for 30s with 2 squads, 5 recon flight over the likeliest spawn while no
+  enemy base is known. `think(g, slot, { adaptive: false })` plays the scripted AI, `rules: [..]` a subset.
+- Adaptive vs scripted, 1v1, rule by rule (20 matches each, adaptive wins): counters 12, rush defense 14, raids 10,
+  attack timing 7 at first (1.3x over a 60s memory that still counted enemies since killed: it never attacked) then 11
+  at 1.1x over 30s, scouting 5 at first (a lone squad walked to the enemy spawn and died) then 14 as recon-only.
+  All five: 26/40 (default), 28/40 (River Towns). Rules 1+2+5 alone only 18/40 and 21/40: they work together.
 - Balance target (AI vs AI): 70%+ of matches end by Annihilation before Sudden Death, median length 12-18 min, fair spawns.
 - Slice 1 as built: lobby option; HQ (4000 hp) stamped on the spawn; generated nodes (9 on the 3-spawn maps, 12 on
   Six Fronts); Engineers build depots (J, click a node); supports cost Munitions (recon 25, smoke 20, artillery 60,
@@ -124,10 +141,16 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Bug found while testing: the AI aimed its support at the first enemy building in creation order, which is always
   slot 0's HQ, so both AIs ganged up on slot 0 (slot 2 won 11/12 with equal factions). It now aims at the enemy
   building nearest its own HQ; wins by slot went to 4/4/4.
-- Slices: 1 tracer (lobby option, HQ, Engineers, depots on generated nodes, Munitions for supports, Annihilation,
-  everything bought at the HQ) · 2 production (Barracks, Motor Pool, build times, queues, rally, build bar)
-  · 3 Sudden Death, elimination, Ghosts, ally support · 4 abilities cost Munitions · 5 adaptive AI.
-  Deferred: editor Node tool, hand-made Classic maps, AI difficulty levels.
+- Ability costs (Munitions, Classic only, on top of cooldowns): grenade 15, satchel 30, rocket barrage 25, AP round 15,
+  suppressive fire 10, tank smoke 10, Ura! 10. Aimed ones are paid when thrown.
+- Balance with production (slices 2+3, scripted AI, 30 per map): Annihilation 90/90, 77 before Sudden Death, median 16.1
+  (default), 17.6 (River Towns), 23.8 (Six Fronts). Before the timber rule and pop cap 20 only 6/60 ended in 30 minutes.
+- Balance, full MVP (all slices, adaptive AIs, 3-player FFA, 30 per map): Annihilation 90/90, 81 before Sudden Death
+  (target 70%+), median 16.5 min (default), 17.4 (River Towns), 19.6 (Six Fronts, a bit over the 18 target on the biggest
+  map). Faction wins USA/GER/USSR 32/33/25: USSR slightly weak (Conscripts now need a Barracks).
+- Slices: 1 tracer · 2 production · 3 Sudden Death, elimination, Ghosts, ally support · 4 abilities cost Munitions
+  · 5 adaptive AI: all built. Deferred: editor Node tool, hand-made Classic maps, AI difficulty levels (the lever would be
+  aiAttackRatio plus a reaction delay).
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

@@ -5,6 +5,28 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Classic mode is complete (the rest of the planned slices):
+  - Engineers also build a Barracks (K, 150 MP: MGs, Rangers, Conscripts) and a Motor Pool (L, 200 MP, needs a
+    Barracks: AT guns, tanks, rockets, Tiger). The placement preview snaps to the grid, green or red.
+  - Units take time to train (rifle 15s, tank 35s...) in a queue of up to 5 per building, and step out at their building.
+    Click a building to see its queue and train from it; right-click sets its rally point. The buy bar is greyed until
+    you own the right building.
+  - Cancel an unfinished building for 75% back. Right-click your own site or damaged building with Engineers to help
+    build or repair it.
+  - Retreat goes to your nearest Barracks, Motor Pool or HQ, and units reinforce near any of them (or an ally's).
+  - Enemy buildings are hidden by the fog until you see them, then stay on your map as faded ghosts where you saw them.
+  - Sudden death at 25:00: no more building or training, and every HQ, Barracks and Motor Pool loses 1% of its health
+    per second. Last base standing wins.
+  - In team games an eliminated player's army goes to their teammate.
+  - Unit abilities cost Munitions in Classic (grenade 15, satchel 30...), on top of their cooldowns.
+  - Pop cap is 20 in Classic.
+  - Buildings are timber: guns hit them fully and rifles chip at them. Before, rifles and MGs did almost nothing to a
+    building and AI armies shot at bases for 20 minutes.
+  - The AI builds the full base, repairs, saves up for buildings, and adapts: it counters tanks and infantry it has seen,
+    defends against early rushes, attacks when its army outweighs what it has seen, raids unguarded depots and flies
+    recon when it hasn't found your base. It beats the old scripted AI 68% of the time.
+  - Balance (3-player FFA, 90 AI matches): every match ended by destroying bases, 90% before sudden death, median
+    16.5-19.6 min. Faction wins 32/33/25 (USSR slightly weak).
 - Selected units now show their weapon range as a ring (rocket launchers also show their minimum range), the route
   they're walking, and what they're locked onto: a red line and ring to an attack target, markers for a grenade spot,
   a trench being dug, a building site or a house they're entering. Only your own units' orders are sent.
