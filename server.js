@@ -44,7 +44,7 @@ function lobby(room) {
 }
 
 function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', map: MAP, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), names: room.players.map(p => p.name) });
+  send(room.players[i].ws, { t: 'start', map: MAP, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: room.game.cellLog, names: room.players.map(p => p.name) });
 }
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
@@ -109,8 +109,8 @@ setInterval(() => {
     // AIs think every 2s, staggered so they don't all act on the same tick
     room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
     if (g.tick % 2 === 0 || g.winner !== null) {
-      const shots = g.shots; g.shots = [];
-      room.players.forEach((p, i) => send(p.ws, snapshotFor(g, i, shots)));
+      const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
+      room.players.forEach((p, i) => send(p.ws, snapshotFor(g, i, shots, cells)));
     }
     if (g.winner !== null) { room.state = 'over'; lobby(room); }
   }

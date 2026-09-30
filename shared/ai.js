@@ -1,8 +1,16 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, SUPPORT, CELL, CFG, COVER, MOVE, command, inCover } from './sim.js';
+import { UNITS, SUPPORT, CELL, CFG, COVER, MOVE, TRENCH, command, inCover } from './sim.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+
+function trenchesNear(g, p, r) {
+  let n = 0;
+  for (let y = Math.floor((p.z - r) / CELL); y <= (p.z + r) / CELL; y++)
+    for (let x = Math.floor((p.x - r) / CELL); x <= (p.x + r) / CELL; x++)
+      if (x >= 0 && y >= 0 && x < g.w && y < g.h && g.flags[y * g.w + x] & TRENCH) n++;
+  return n;
+}
 
 // a random cover cell near the point, so squads dig in instead of standing in the open
 function spotNear(g, p) {
@@ -67,11 +75,22 @@ export function think(g, slot) {
     // save hurt units instead of letting them die: retreat, get reinforced, come back
     if (!home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
     if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
-    if (u.path.length || u.attackId || u.nade) continue;
+    if (u.path.length || u.attackId || u.nade || u.dig) continue;
     if (u.targetId) continue; // in a fight: hold
     const here = pointOf(u);
-    // infantry stays to capture, and one squad stays behind to hold each captured point
-    if (here >= 0 && def.infantry && (g.points[here].owner !== slot || holding[here]++ === 0)) continue;
+    // infantry stays to capture, and one squad stays behind to hold each captured point (and digs in)
+    if (here >= 0 && def.infantry) {
+      const p = g.points[here];
+      if (p.owner !== slot) continue;
+      if (holding[here]++ === 0) {
+        if (u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
+          // dig a line between the point and the closest enemy HQ
+          const foe = g.players.filter(q => q.slot !== slot).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0].spawn, l = d(foe, p) || 1;
+          command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5 });
+        }
+        continue;
+      }
+    }
     // otherwise go for the closest point we don't hold, spreading out across targets
     let best = -1, bestScore = Infinity;
     g.points.forEach((p, i) => {
@@ -89,6 +108,11 @@ export function think(g, slot) {
   pending.forEach((group, i) => {
     const p = g.points[i];
     if (p.owner >= 0 && p.owner !== slot && group.length + heading[i] < need) return;
+    // screen the assault on a held point with smoke, 60% of the way in
+    if (p.owner >= 0 && p.owner !== slot && group.length && can('smoke')) {
+      const cx = group.reduce((a, u) => a + u.x, 0) / group.length, cz = group.reduce((a, u) => a + u.z, 0) / group.length;
+      call('smoke', { x: cx + (p.x - cx) * 0.6, z: cz + (p.z - cz) * 0.6 });
+    }
     for (const u of group) { const s = spotNear(g, p); orders.push([u.id, s.x, s.z]); }
   });
   if (retreat.length) command(g, slot, { t: 'retreat', ids: retreat });

@@ -127,6 +127,10 @@ function startGame(m) {
     } else if (ch === 'B') { c.fillStyle = '#6e6048'; c.fillRect((x - 0.3) * px, (y - 0.3) * px, px * 1.6, px * 1.6); }
   }));
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: c, tex, px, group: new THREE.Group() };
+  world.add(terrain.group);
+  for (const [cell, ch] of m.cells || []) terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch;
+  drawTrenches();
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH), new THREE.MeshLambertMaterial({ map: tex }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
   world.add(ground);
@@ -219,6 +223,30 @@ function label(text) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
   sp.scale.set(8, 2, 1); sp.position.y = 10; sp.renderOrder = 5;
   return sp;
+}
+
+// Trench cells: dark dug earth on the ground texture, and a dirt parapet on every side that isn't more trench.
+let terrain = null;
+function drawTrenches() {
+  const { grid, ctx: c, px, group } = terrain;
+  group.clear();
+  const dirt = mat(0x6b5a3e);
+  grid.forEach((row, y) => row.forEach((ch, x) => {
+    if (ch !== 'T') return;
+    c.fillStyle = '#3e3222'; c.fillRect(x * px, y * px, px, px);
+    c.fillStyle = '#2c2418'; c.fillRect(x * px + 2, y * px + 2, px - 4, px - 4);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (grid[y + dy]?.[x + dx] === 'T') continue;
+      const cx = (x + 0.5 + dx * 0.55) * CELL, cz = (y + 0.5 + dy * 0.55) * CELL;
+      group.add(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17, cz));
+    }
+  }));
+  terrain.tex.needsUpdate = true;
+}
+function applyCells(cells) {
+  if (!cells?.length || !terrain) return;
+  for (const [cell, ch] of cells) terrain.grid[Math.floor(cell / terrain.w)][cell % terrain.w] = ch;
+  drawTrenches();
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
@@ -384,6 +412,7 @@ function applySnapshot(s) {
     v.base.material.color.set(flags & 1 ? 0xffffff : FACTIONS[owner].color);
     const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
     if (type !== 'tank') while (v.alive > alive) corpse(v, v.models[--v.alive]);
+    if (type !== 'tank') v.models.forEach(man => (man.position.y = cover === 2 ? -0.6 : 0));
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
     v.hpBar.material.color.set(frac > 0.5 ? FACTIONS[owner].color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
@@ -396,6 +425,7 @@ function applySnapshot(s) {
     if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
     if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'strafe' || sh.k === 'recon') { plane(sh); continue; }
+    if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
     const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
@@ -423,6 +453,7 @@ function applySnapshot(s) {
   });
   syncSmoke(s.smokes);
   syncStrikes(s.strikes);
+  applyCells(s.cells);
   lastSnap = s;
   updateHud(s);
 }
@@ -465,6 +496,7 @@ function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
   if (kind === 'strafe') g.add(flat(new THREE.PlaneGeometry(SUPPORT.strafe.len, SUPPORT.strafe.width * 2)));
+  else if (kind === 'dig') g.add(flat(new THREE.PlaneGeometry(CELL, CFG.digCells * CELL)));
   else {
     const r = kind === 'grenade' ? UNITS.rifle.ab.radius : SUPPORT[kind].radius;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)), flat(new THREE.CircleGeometry(r, 48)));
@@ -499,8 +531,8 @@ function lob(from, x, z) {
 
 // ---------- HUD ----------
 
-const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V' };
-const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward' };
+const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B' };
+const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways' };
 function buildSupportBar() {
   $('support').innerHTML = SUPPORT_TYPES.map(k => `<button data-k="${k}" title="${SUPPORT_TIP[k]}">${SUPPORT[k].name} <kbd>${SUPPORT_KEYS[k]}</kbd><span></span></button>`).join('');
   $('support').querySelectorAll('button').forEach(b => (b.onclick = () => aimSupport(b.dataset.k)));
@@ -529,18 +561,24 @@ function updateHud(s) {
   $('income').textContent = `+${s.inc}/s · ${pop}/${CFG.popCap} units`;
   $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= CFG.popCap));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
-    const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.cover ? '<span class="tag cov">COVER</span>' : ''].join(' ');
+    const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : ''].join(' ');
     return `<div class="sel"><span>${FACTIONS[v.owner].names[v.type]}</span><span>${tags} ${v.type === 'tank' ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
   }).join('');
   // ability bar for the current selection
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   const types = [...new Set(sel.map(v => v.type))];
-  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + types.map(t => {
+  const dig = types.includes('rifle') ? `<button data-a="dig" ${lastSnap?.mp >= CFG.digCost ? '' : 'disabled'}>Dig trench <kbd>T</kbd> ${CFG.digCost}</button>` : '';
+  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + dig + types.map(t => {
     const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
     return `<button data-a="${t}" ${ready ? '' : 'disabled'}>${UNITS[t].ab.name} <kbd>F</kbd>${ready ? '' : ` ${cd}s`}</button>`;
   }).join('') : '';
-  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : useAbility(b.dataset.a))));
+  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a === 'dig' ? startDig() : useAbility(b.dataset.a))));
 }
+
+// the squad nearest the clicked spot digs a line across its approach
+const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !(v.flags & 1));
+function startDig() { if (diggers().length && lastSnap?.mp >= CFG.digCost) { targeting = 'dig'; blip(600); } }
+function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0]; }
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); } }
 // F: instant abilities fire now; grenades arm a targeting click
@@ -578,6 +616,8 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyZ') aimSupport('recon');
   else if (e.code === 'KeyC') aimSupport('artillery');
   else if (e.code === 'KeyV') aimSupport('strafe');
+  else if (e.code === 'KeyB') aimSupport('smoke');
+  else if (e.code === 'KeyT') startDig();
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
@@ -613,6 +653,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     const kind = targeting; targeting = null;
     const g = e.button === 0 && groundAt(e.clientX, e.clientY);
     if (g && kind === 'grenade') throwAt(g);
+    else if (g && kind === 'dig') { const v = nearestDigger(g); if (v) { sendCmd({ t: 'dig', ids: [v.id], x: g.x, z: g.z }); marker(g.x, g.z, 0xc8a060); blip(600); } }
     else if (g) { sendCmd({ t: 'support', kind, x: g.x, z: g.z }); blip(520); }
     return;
   }
@@ -701,7 +742,9 @@ renderer.setAnimationLoop(() => {
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
-    if (g) { aimMesh.position.set(g.x, 0, g.z); if (home) aimMesh.rotation.y = -Math.atan2(g.z - home.z, g.x - home.x); }
+    // strafes fly out from home; a dug line runs across the digging squad's approach
+    const from = targeting === 'dig' ? nearestDigger(g || cam) : home;
+    if (g) { aimMesh.position.set(g.x, 0, g.z); if (from) aimMesh.rotation.y = -Math.atan2(g.z - from.z, g.x - from.x); }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;

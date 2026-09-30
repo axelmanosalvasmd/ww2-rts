@@ -22,8 +22,10 @@ for (let k = 0; k < 3; k++) {
   const [px, py] = polar(m, 20); points.push({ x: Math.round(px), y: Math.round(py), vp: 1, mp: 1.5 });
   box(...polar(m - 14, 22), 4, 3, 'B'); box(...polar(m + 14, 22), 3, 4, 'B'); box(...polar(m, 27), 4, 4, 'B');
   arc(15, m - 10, m + 10, '#');
+  arc(16.5, m - 7, m + 7, 'T'); // trench in front of the village, facing the center
   box(...polar(a + 60, 7), 3, 3, 'B');
   arc(11, a - 15, a + 15, '#');
+  arc(5, a + 45, a + 75, 'T'); // trenches ringing the center point
   for (const [da, r] of craters) set(...polar(a + da, r), '+');
   const [sx, sy] = polar(a, 33); spawns.push({ x: Math.round(sx), y: Math.round(sy) });
 }

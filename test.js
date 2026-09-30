@@ -1,7 +1,7 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, los, findPath, snapshotFor, CFG, CELL, SUPPORT } from './shared/sim.js';
+import { createGame, step, command, los, findPath, snapshotFor, inTrench, CFG, CELL, SUPPORT } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
@@ -158,7 +158,9 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   command(g, 0, { t: 'support', kind: 'artillery', x: 20, z: 20 });
   run(g, SUPPORT.artillery.delay - 0.5);
   assert.equal(r.hp, 100, 'no damage during the warning');
+  const orig = Math.random; Math.random = () => 0.01; // shells land near the center (real barrages scatter)
   run(g, 6);
+  Math.random = orig;
   assert.ok(r.hp < 100 || !g.units.has(r.id), 'barrage hits the squad');
   assert.equal(g.strikes.length, 0, 'barrage finished');
 }
@@ -184,6 +186,53 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.ok(g.players[0].visible.has(hidden.id), 'recon reveals it');
   run(g, SUPPORT.recon.dur + 1);
   assert.ok(!g.players[0].visible.has(hidden.id), 'and it hides again after');
+}
+
+// Trench: heavier cover than a crater, and it halves blast damage.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(5) + 'T' + '.'.repeat(4) + '+' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+  const inT = put(g, 1, 'rifle', 11, 21), inC = put(g, 1, 'rifle', 21, 21);
+  assert.ok(inTrench(g, inT) && !inTrench(g, inC));
+  const mg = put(g, 0, 'mg', 16, 38); mg.still = 5;
+  let tHits = 0, cHits = 0;
+  for (let i = 0; i < 4000; i++) {
+    const orig = Math.random; let roll = (i % 100) / 100; Math.random = () => roll;
+    inT.hp = inC.hp = 100; mg.cooldown = 0; mg.targetId = inT.id;
+    step(g); if (inT.hp < 100) tHits++;
+    mg.cooldown = 0; mg.targetId = inC.id; mg.retarget = 1;
+    step(g); if (inC.hp < 100) cHits++;
+    Math.random = orig;
+  }
+  assert.ok(tHits < cHits * 0.8, `trench is harder to hit than a crater (${tHits} vs ${cHits})`);
+}
+
+// Digging: costs MP, the squad walks over, trench cells appear one by one and are broadcast.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const r = put(g, 0, 'rifle', 5, 20); g.players[0].mp = 100;
+  command(g, 0, { t: 'dig', ids: [r.id], x: 25, z: 20 });
+  assert.ok(Math.abs(g.players[0].mp - (100 - CFG.digCost)) < 1e-9);
+  assert.ok(r.dig && r.dig.cells.length === CFG.digCells, 'plans a 4-cell line');
+  run(g, 5 + CFG.digTime * CFG.digCells + 1);
+  assert.equal(r.dig, null, 'done digging');
+  assert.equal(g.cellLog.length, CFG.digCells, 'four trench cells logged');
+  assert.ok(snapshotFor(g, 1, [], g.newCells).cells.length === CFG.digCells, 'changes go out in snapshots');
+  g.players[0].mp = 1000;
+  const mg = put(g, 0, 'mg', 5, 5);
+  assert.equal(mg.type, 'mg');
+  command(g, 0, { t: 'dig', ids: [mg.id], x: 25, z: 30 });
+  assert.equal(mg.dig, null, 'only rifle squads dig');
+}
+
+// Smoke barrage: clouds appear after the warning and block sight.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  command(g, 0, { t: 'support', kind: 'smoke', x: 20, z: 20 });
+  assert.equal(g.smokes.length, 0);
+  run(g, SUPPORT.smoke.delay + 0.2);
+  assert.equal(g.smokes.length, SUPPORT.smoke.clouds);
+  assert.equal(los(g, { x: 0, z: 20 }, { x: 40, z: 20 }), false, 'smoke screen blocks LOS through its center');
 }
 
 // Real map loads for 3 players, all spawns start with their force.
