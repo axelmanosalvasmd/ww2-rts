@@ -42,20 +42,24 @@ connect();
 $('name').addEventListener('change', () => { tryStore(() => localStorage.setItem('ww2-name', $('name').value)); sendCmd({ t: 'name', name: $('name').value }); });
 $('copy').onclick = () => { navigator.clipboard?.writeText(location.href); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
 $('start').onclick = () => sendCmd({ t: 'start' });
+$('addAi').onclick = () => sendCmd({ t: 'addAi' });
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
   $('overlay').classList.toggle('hidden', m.state === 'play');
+  const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
   $('roster').innerHTML = FACTIONS.map((f, i) => {
     const p = m.players[i];
+    const kick = p?.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(f.color)}"></span>
       <span>${p ? esc(p.name) + (i === m.you ? ' (you)' : '') : '<span class="muted">open slot</span>'}</span>
-      <span class="muted" style="margin-left:auto">${f.name}${p && !p.connected ? ' · offline' : ''}${i === 0 && p ? ' · host' : ''}</span></div>`;
+      <span class="muted" style="margin-left:auto">${f.name}${p && !p.connected ? ' · offline' : ''}${i === m.host ? ' · host' : ''}</span>${kick}</div>`;
   }).join('');
-  const n = m.players.length, host = m.you === 0;
+  $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
+  $('addAi').classList.toggle('hidden', !host || !lobby || n >= 3);
   $('start').textContent = m.state === 'over' ? 'Rematch' : n === 1 ? 'Start solo test' : n === 2 ? 'Start 1v1' : 'Start 3-way FFA';
-  $('lobbyMsg').textContent = host ? (n === 1 ? 'Send the invite link. You can also start alone to test.' : '') : 'Waiting for the host to start...';
+  $('lobbyMsg').textContent = host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
   const w = lastSnap?.winner;
   $('result').classList.toggle('hidden', m.state !== 'over' || w == null);
   if (m.state === 'over' && w != null) $('result').textContent = w === me ? 'Victory' : `${names[w] ?? 'Enemy'} wins`;

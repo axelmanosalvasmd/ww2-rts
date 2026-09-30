@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, TICK } from './shared/sim.js';
+import { think } from './shared/ai.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 const ROOT = import.meta.dirname;
@@ -28,16 +29,17 @@ const server = http.createServer(async (req, res) => {
   } catch { res.writeHead(404); res.end('not found'); }
 });
 
-// room: { code, players: [{ token, name, ws }], state: 'lobby'|'play'|'over', game, emptySince }
-// A player's slot in the game is their index in players; the host is players[0].
+// room: { code, players: [{ token, name, ws, ai }], state: 'lobby'|'play'|'over', game, emptySince }
+// A player's slot in the game is their index in players; the host is the first human.
 const rooms = new Map();
 const cleanName = (n) => String(n || '').replace(/[<>&"']/g, '').trim().slice(0, 16) || 'Soldier';
 const send = (ws, msg) => ws?.readyState === 1 && ws.send(JSON.stringify(msg));
+const hostOf = (room) => room.players.findIndex(p => !p.ai);
 
 function lobby(room) {
   room.players.forEach((p, i) => send(p.ws, {
-    t: 'lobby', code: room.code, state: room.state, you: i,
-    players: room.players.map(q => ({ name: q.name, connected: !!q.ws })),
+    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room),
+    players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai })),
   }));
 }
 
@@ -70,7 +72,13 @@ wss.on('connection', (ws, req) => {
     }
     const slot = room.players.indexOf(me);
     if (msg.t === 'name') { me.name = cleanName(msg.name); lobby(room); }
-    else if (msg.t === 'start' && slot === 0 && room.state !== 'play') {
+    else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < 3) {
+      room.players.push({ token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true });
+      lobby(room);
+    } else if (msg.t === 'kick' && slot === hostOf(room) && room.state === 'lobby' && room.players[msg.slot]?.ai) {
+      room.players.splice(msg.slot, 1);
+      lobby(room);
+    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play') {
       room.game = createGame(MAP, room.players.map(p => p.name));
       room.state = 'play';
       lobby(room);
@@ -98,6 +106,8 @@ setInterval(() => {
     if (room.state !== 'play') continue;
     const g = room.game;
     step(g);
+    // AIs think every 2s, staggered so they don't all act on the same tick
+    room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
     if (g.tick % 2 === 0 || g.winner !== null) {
       const shots = g.shots; g.shots = [];
       room.players.forEach((p, i) => send(p.ws, snapshotFor(g, i, shots)));

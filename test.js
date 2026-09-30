@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createGame, step, command, los, findPath, snapshotFor, CFG, CELL } from './shared/sim.js';
+import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
 const empty = Array(20).fill('.'.repeat(20));
@@ -88,5 +89,20 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
   assert.equal(g.units.size, 9);
   run(g, 5);
+}
+// Three AIs play a full match on the real map: they must capture, fight, and finish.
+{
+  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
+  let spawned = g.nextId, t0 = performance.now(), capturedAt = 0;
+  for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
+    for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
+    step(g);
+    if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
+  }
+  const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
+  console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
+  assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
+  assert.ok(dead >= 5, 'AIs actually fight');
+  assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
 console.log('all sim checks passed');

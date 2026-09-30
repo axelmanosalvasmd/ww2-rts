@@ -4,7 +4,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
 ## Game
 - Tactics skirmish, no base building. PvP: 1v1 or 3-player FFA, joined by room link (`/#code`).
-- Win: first to 500 VP. Each held capture point gives +1 VP/s and +2 MP/s (plus a base of 1 MP/s).
+- Win: first to 1200 VP (was 500; AI-vs-AI matches ended in ~3.5 min, now 7-9 min). Each held capture point gives +1 VP/s and +2 MP/s (plus a base of 1 MP/s).
 - Manpower buys reinforcements that spawn at your map edge. Pop cap is 12 units.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
   rifle squad, MG team, AT gun, light tank. Squads are one sim entity with N models.

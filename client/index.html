@@ -31,6 +31,7 @@
   .slot { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #11110d; border-radius: 3px; }
   .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
   .muted { color: var(--dim); }
+  .kick { padding: 0 6px; margin-left: 4px; }
 
   #hud { position: fixed; inset: 0; pointer-events: none; }
   #hud > * { pointer-events: auto; }
@@ -63,14 +64,14 @@
   <div class="card panel">
     <h1 class="stencil">Three Crossroads</h1>
     <h2 id="result" class="stencil hidden" style="margin:0;font-size:26px"></h2>
-    <div class="muted">WW2 skirmish. Hold the points, bleed their VP, first to 500 wins.</div>
+    <div class="muted">WW2 skirmish. Hold the points, first to 1200 victory points wins.</div>
     <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
     <div>
       <div class="muted">Invite link (send to your friends)</div>
       <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
     </div>
     <div id="roster"></div>
-    <button id="start" class="stencil">Start</button>
+    <div class="row"><button id="addAi" style="flex:1">+ Add AI opponent</button><button id="start" class="stencil" style="flex:1">Start</button></div>
     <div id="lobbyMsg" class="muted"></div>
   </div>
 </div>

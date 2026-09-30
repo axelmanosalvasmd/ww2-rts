@@ -4,12 +4,12 @@
 export const CELL = 2;
 export const TICK = 1 / 20;
 export const CFG = {
-  vpToWin: 500, mpStart: 150, mpBase: 1, mpPerPoint: 2,
+  vpToWin: 1200, mpStart: 150, mpBase: 1, mpPerPoint: 2,
   captureTime: 8, pointRadius: 8, popCap: 12,
   startForce: ['rifle', 'rifle', 'mg'],
 };
 
-const MOVE = 1, SIGHT = 2, COVER = 4;
+export const MOVE = 1, SIGHT = 2, COVER = 4;
 export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER };
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
