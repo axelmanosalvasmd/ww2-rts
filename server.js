@@ -3,12 +3,18 @@ import http from 'node:http';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, validateMap, TICK } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
+// the address friends use: PUBLIC_URL, else this machine's Tailscale HTTPS name (served by `tailscale serve`)
+let PUBLIC_URL = process.env.PUBLIC_URL || '';
+if (!PUBLIC_URL) execFile('tailscale', ['status', '--json'], (err, out) => {
+  try { const name = JSON.parse(out).Self.DNSName.replace(/\.$/, ''); if (name) PUBLIC_URL = 'https://' + name; } catch {}
+});
 const ROOT = import.meta.dirname;
 const MAP = JSON.parse(readFileSync(join(ROOT, 'maps/default.json'), 'utf8'));
 const MAPS = join(ROOT, 'maps'), MAP_NAME = /^[a-z0-9-]{1,32}$/;
@@ -76,7 +82,7 @@ const hostOf = (room) => room.players.findIndex(p => !p.ai);
 async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
-    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName,
+    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, publicUrl: PUBLIC_URL,
     players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai })),
   }));
 }
@@ -109,6 +115,10 @@ wss.on('connection', (ws, req) => {
       return;
     }
     const slot = room.players.indexOf(me);
+    if (msg.t === 'ping') {
+      if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
+      return send(ws, { t: 'pong', c: msg.c });
+    }
     if (msg.t === 'name') { me.name = cleanName(msg.name); lobby(room); }
     else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < 3) {
       room.players.push({ token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true });
@@ -146,12 +156,14 @@ setInterval(() => {
     if (room.emptySince && Date.now() - room.emptySince > 60_000) { rooms.delete(room.code); continue; }
     if (room.state !== 'play' || !room.game) continue; // game may still be loading its map
     const g = room.game;
+    room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
     step(g);
     // AIs think every 2s, staggered so they don't all act on the same tick
     room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
     if (g.tick % 2 === 0 || g.winner !== null) {
       const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
-      room.players.forEach((p, i) => send(p.ws, snapshotFor(g, i, shots, cells)));
+      const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
+      room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
     }
     if (g.winner !== null) { room.state = 'over'; lobby(room); }
   }

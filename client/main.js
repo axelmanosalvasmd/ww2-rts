@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf } from '/shared/sim.js';
 
 // Factions are cosmetic: same stats, different names and colors. Slot index = faction.
 const FACTIONS = [
@@ -25,7 +25,8 @@ if (!token) { token = Math.random().toString(36).slice(2) + Date.now().toString(
 $('name').value = tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
 $('link').value = location.href;
 
-let ws, me = -1, names = [], lobbyState = null, lastSnap = null, refused = false;
+let ws, me = -1, names = [], lobbyState = null, lastSnap = null, refused = false, rtt = null;
+setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
 const sendCmd = (m) => ws?.readyState === 1 && ws.send(JSON.stringify(m));
 function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`);
@@ -35,6 +36,7 @@ function connect() {
     if (m.t === 'lobby') renderLobby(m);
     else if (m.t === 'start') startGame(m);
     else if (m.t === 's') applySnapshot(m);
+    else if (m.t === 'pong' && Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c);
     else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'This room is full or already playing. Make a new one by removing the #code from the link.'; }
   };
   ws.onclose = () => { if (refused) return; $('status').textContent = 'Connection lost, reconnecting...'; setTimeout(connect, 2000); };
@@ -42,13 +44,16 @@ function connect() {
 if (!EDIT) connect();
 
 $('name').addEventListener('change', () => { tryStore(() => localStorage.setItem('ww2-name', $('name').value)); sendCmd({ t: 'name', name: $('name').value }); });
-$('copy').onclick = () => { navigator.clipboard?.writeText(location.href); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
+$('copy').onclick = () => { navigator.clipboard?.writeText($('link').value); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
 $('start').onclick = () => sendCmd({ t: 'start' });
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
+  // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
+  const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
+  $('link').value = local && m.publicUrl ? `${m.publicUrl}/#${room}` : location.href;
   $('overlay').classList.toggle('hidden', m.state === 'play');
   const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
   $('roster').innerHTML = FACTIONS.map((f, i) => {
@@ -108,7 +113,7 @@ let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null;
 // Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
 let field = null;
 function buildField(map) {
-  const w = map.w, h = map.h, lv = (x, y) => +(map.heights?.[y]?.[x] ?? 0) * CFG.levelHeight;
+  const w = map.w, h = map.h, lv = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0') * CFG.levelHeight;
   const vert = new Float32Array((w + 1) * (h + 1));
   for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) {
     let sum = 0, n = 0;
@@ -151,11 +156,12 @@ function startGame(m) {
   }
   c.globalAlpha = 1;
   // high ground reads at a glance: drier grass per level, contour lines where the level drops
-  const lvl = (x, y) => +(map.heights?.[y]?.[x] ?? 0);
+  const lvl = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0');
   for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
     const L = lvl(x, y);
-    if (!L) continue;
-    c.fillStyle = `rgba(190, 180, 110, ${0.16 * L})`; c.fillRect(x * px, y * px, px, px);
+    // hills dry out, hollows get dark and muddy; a contour on every edge where the ground drops
+    if (L > 0) { c.fillStyle = `rgba(190, 180, 110, ${0.16 * L})`; c.fillRect(x * px, y * px, px, px); }
+    if (L < 0) { c.fillStyle = `rgba(55, 50, 30, ${0.22 * -L})`; c.fillRect(x * px, y * px, px, px); }
     c.fillStyle = 'rgba(45, 40, 20, 0.45)';
     if (x > 0 && lvl(x - 1, y) < L) c.fillRect(x * px, y * px, 1.5, px);
     if (x < map.w - 1 && lvl(x + 1, y) < L) c.fillRect((x + 1) * px - 1.5, y * px, 1.5, px);
@@ -603,6 +609,7 @@ function buildBuyBar() {
 function updateHud(s) {
   const held = (slot) => s.points.filter(p => p[0] === slot).length;
   $('scores').innerHTML = names.map((n, i) => `<div class="score"><div class="row"><span class="swatch" style="background:${css(FACTIONS[i].color)}"></span><span>${esc(n)}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>
+    <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE · clock paused</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>
     <div class="bar"><div style="width:${Math.min(100, s.vp[i] / CFG.vpToWin * 100)}%;background:${css(FACTIONS[i].color)}"></div></div><div class="muted">${s.vp[i]} / ${CFG.vpToWin} VP</div></div>`).join('');
   const pop = [...units.values()].filter(v => v.owner === me).length;
   $('mp').textContent = `${s.mp} MP`;

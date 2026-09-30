@@ -13,7 +13,7 @@ export const CFG = {
   coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
   digCost: 30, digCells: 4, digTime: 3,
   // elevation: height level per cell. 1 level of difference is a slope, more is a cliff.
-  levelHeight: 2.5, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
+  levelHeight: 2.5, minLevel: -2, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
 };
 
@@ -71,7 +71,7 @@ export function validateMap(m) {
   if (!Array.isArray(m.rows) || m.rows.length !== m.h) return 'row count must equal height';
   for (const r of m.rows) if (typeof r !== 'string' || r.length !== m.w || [...r].some(ch => !Object.hasOwn(TERRAIN, ch))) return 'rows must be ' + m.w + ' valid terrain chars';
   if (m.heights !== undefined && (!Array.isArray(m.heights) || m.heights.length !== m.h
-    || m.heights.some(r => typeof r !== 'string' || r.length !== m.w || !/^[0-4]*$/.test(r)))) return 'heights must be ' + m.h + ' rows of digits 0-4';
+    || m.heights.some(r => typeof r !== 'string' || r.length !== m.w || !/^[0-4ab]*$/.test(r)))) return 'heights must be ' + m.h + ' rows of 0-4 (a/b for depths -1/-2)';
   const at = (p) => m.rows[p.y][p.x];
   if (!Array.isArray(m.spawns) || m.spawns.length !== 3) return 'needs exactly 3 spawns';
   for (const sp of m.spawns) if (!sp || !int(sp.x, 0, m.w - 1) || !int(sp.y, 0, m.h - 1) || TERRAIN[at(sp)] & MOVE) return 'spawns must be on open ground inside the map';
@@ -97,7 +97,7 @@ export function createGame(map, names, shuffle = true) {
     points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
-  g.height = Uint8Array.from((map.heights || []).join(''), Number);
+  g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   for (const p of g.players) CFG.startForce.forEach((t, i) => spawnUnit(g, p.slot, t, i));
   return g;
@@ -153,6 +153,9 @@ function segHits(a, b, c, r) {
   return Math.hypot(a.x + dx * t - c.x, a.z + dz * t - c.z) < r;
 }
 // ---------- elevation ----------
+// map files store a level per cell as one char: '0'-'4' up, 'a' = -1 and 'b' = -2 for depressions
+export const levelOf = (ch) => (ch >= 'a' ? 96 - ch.charCodeAt(0) : +ch);
+export const levelChar = (n) => (n < 0 ? String.fromCharCode(96 - n) : String(n));
 const level = (g, c) => (g.height && c >= 0 ? g.height[c] : 0);
 export const levelAt = (g, x, z) => level(g, cellOf(g, x, z));
 // hills block sight: sample the line between two eyes and compare with the ground under it
@@ -545,8 +548,9 @@ export function step(g) {
   const lead = Math.max(...g.players.map(q => q.vp));
   for (const pl of g.players) {
     const held = g.points.filter(p => p.owner === pl.slot);
-    pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt;
-    pl.inc = CFG.mpBase + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - pl.vp) / CFG.catchupPer);
+    // away = disconnected (set by the server): their clock stops so a dropout doesn't decide the match
+    pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1);
+    pl.inc = pl.away ? 0 : CFG.mpBase + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - pl.vp) / CFG.catchupPer);
     pl.mp += pl.inc * dt;
     if (pl.vp >= CFG.vpToWin && g.winner === null) g.winner = pl.slot;
   }

@@ -53,6 +53,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 7. ~~Elevation~~: height level 0-4 per cell (2.5 m each). Hills block sight (the line between eyes is sampled against the ground),
    +10% vision per level, up to +45% accuracy shooting downhill (down to -30% uphill), 1-level steps are slopes, bigger are cliffs.
    Default map: one identical overwatch hill per player between HQ and center.
+   Depressions down to -2 (stored as a/b): gullies hide troops; a 2-level drop is a cliff.
 8. Faction flavor: GLTF models behind `makeUnit()`, one asymmetric unit per faction
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.

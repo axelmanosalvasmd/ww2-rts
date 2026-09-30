@@ -1,10 +1,10 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
 import * as THREE from 'three';
-import { CELL, CFG, validateMap, findPath, TERRAIN } from '/shared/sim.js';
+import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar } from '/shared/sim.js';
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
-  ['up', 'Raise ground'], ['down', 'Lower ground'], ['pt', 'Capture point'], ['s0', 'Spawn 1'], ['s1', 'Spawn 2'], ['s2', 'Spawn 3'],
+  ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'], ['s0', 'Spawn 1'], ['s1', 'Spawn 2'], ['s2', 'Spawn 3'],
 ];
 const HEIGHT_TOOLS = { up: 1, down: -1 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -39,10 +39,10 @@ export async function start(api) {
   $('edPw').value = store.get('ww2-edit-pw') || '';
 
   // ---------- model ----------
-  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), heights: heights.map(r => r.join('')), spawns: map.spawns, points: map.points });
+  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), heights: heights.map(r => r.map(levelChar).join('')), spawns: map.spawns, points: map.points });
   function load(m, n) {
     map = m; name = n; grid = m.rows.map(r => [...r]); sel = -1; picked = null;
-    heights = (m.heights || m.rows.map(r => '0'.repeat(r.length))).map(r => [...r].map(Number));
+    heights = (m.heights || m.rows.map(r => '0'.repeat(r.length))).map(r => [...r].map(levelOf));
     map.points.forEach(p => { p.vp ??= 1; p.mp ??= 1; });
     $('edName').value = n; $('edTitle').value = m.name || n;
     rebuild(true);
@@ -70,7 +70,7 @@ export async function start(api) {
   function check(m) {
     let err = validateMap(m);
     if (!err) {
-      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Uint8Array.from(m.heights.join(''), Number) };
+      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
       const bad = [];
       m.spawns.forEach((s, i) => m.points.forEach((p, j) => {
         const a = toWorld(s), b = toWorld(p);
@@ -111,7 +111,7 @@ export async function start(api) {
       if (typeof ch === 'number') { // height step, once per cell per stroke
         if (stroke.has(y * map.w + x)) continue;
         stroke.add(y * map.w + x);
-        heights[y][x] = Math.max(0, Math.min(CFG.maxLevel, heights[y][x] + ch));
+        heights[y][x] = Math.max(CFG.minLevel, Math.min(CFG.maxLevel, heights[y][x] + ch));
       } else grid[y][x] = ch;
     }
     later();

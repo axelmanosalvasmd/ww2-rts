@@ -289,6 +289,28 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(hits(2) > hits(0) * 1.1, 'high ground hits more often');
 }
 
+// Depressions: a 2-deep gully hides whoever is in it from the flat ground beside it.
+{
+  const heights = Array.from({ length: 20 }, () => '0'.repeat(8) + 'bbbb' + '0'.repeat(8));
+  const g = hilly(heights);
+  assert.equal(los(g, { x: 5, z: 20 }, { x: 21, z: 20 }), false, 'gully floor is out of sight from beside it');
+  assert.ok(los(g, { x: 18, z: 20 }, { x: 22, z: 20 }), 'but visible from inside');
+  assert.ok(!findPath(g, { x: 5, z: 5 }, { x: 21, z: 5 }).length, 'a 2-deep drop is a cliff');
+}
+
+// Disconnected players: no VP and no manpower while away, then it resumes.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  put(g, 0, 'rifle', 21, 21);
+  run(g, CFG.captureTime + 1);
+  g.players[0].away = true;
+  const vp = g.players[0].vp, mp = g.players[0].mp;
+  run(g, 10);
+  assert.equal(g.players[0].vp, vp, 'no VP while away'); assert.equal(g.players[0].mp, mp, 'no manpower while away');
+  g.players[0].away = false; run(g, 2);
+  assert.ok(g.players[0].vp > vp, 'clock resumes on reconnect');
+}
+
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
