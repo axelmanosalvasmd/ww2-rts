@@ -626,11 +626,11 @@ function marker(x, z, color) {
 function applySnapshot(s) {
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const seen = new Set();
-  for (const [id, type, owner, x, z, rot, aim, hp, supp, , cover, cd, flags, stars, built] of s.units) {
+  for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built] of s.units) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1 });
+    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1 });
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
@@ -869,24 +869,38 @@ let planGroup = null;
 function drawPlans() {
   if (!world) return;
   if (!planGroup) { planGroup = new THREE.Group(); world.add(planGroup); }
-  planGroup.children.forEach(o => o.geometry.dispose());
+  planGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); });
   planGroup.clear();
-  const at = (x, z) => new THREE.Vector3(x, hAt(x, z) + 0.4, z);
+  const at = (x, z) => ({ x, z, y: hAt(x, z) + 0.3 });
+  const flat = (geo, color, opacity) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false, side: THREE.DoubleSide })); m.renderOrder = 3; planGroup.add(m); return m; };
+  // a flat band on the ground through the points (WebGL lines are 1px, too thin to read)
+  const ribbon = (pts, width, color, opacity) => {
+    const pos = [], idx = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], l = Math.hypot(b.x - a.x, b.z - a.z) || 1, ox = -(b.z - a.z) / l * width / 2, oz = (b.x - a.x) / l * width / 2, k = pos.length / 3;
+      pos.push(a.x + ox, a.y, a.z + oz, a.x - ox, a.y, a.z - oz, b.x + ox, b.y, b.z + oz, b.x - ox, b.y, b.z - oz);
+      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+    }
+    if (!idx.length) return;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx);
+    flat(geo, color, opacity);
+  };
+  const ring = (p, r, color) => { const m = flat(new THREE.RingGeometry(r - 0.4, r, 32), color, 0.85); m.rotation.x = -Math.PI / 2; m.position.set(p.x, p.y, p.z); };
   for (const id of selected) {
-    const v = units.get(id), p = v?.plan;
-    if (!p || !p.kind) continue;
-    const color = PLAN_LOOK[p.kind], line = (pts, opacity) => {
-      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthTest: false }));
-      l.renderOrder = 3; planGroup.add(l);
-    };
-    // the route: from the unit through its remaining waypoints
-    const pts = [at(v.x, v.z)];
-    for (let i = 0; i < p.path.length; i += 2) pts.push(at(p.path[i], p.path[i + 1]));
-    if (pts.length > 1) line(pts, 0.7);
-    // the objective: a straight line to it and a marker on it (plain moves just end at their last waypoint)
-    if (p.kind >= 4) line([pts.at(-1), at(p.tx, p.tz)], 0.45);
-    const mk = new THREE.Mesh(new THREE.RingGeometry(p.kind === 4 ? 1.6 : 0.8, p.kind === 4 ? 2 : 1.1, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthTest: false }));
-    mk.rotation.x = -Math.PI / 2; mk.position.copy(at(p.tx, p.tz)); mk.renderOrder = 3; planGroup.add(mk);
+    const v = units.get(id);
+    if (!v) continue;
+    const p = v.plan, me3 = at(v.x, v.z);
+    if (p?.kind) {
+      const color = PLAN_LOOK[p.kind], pts = [me3];
+      for (let i = 0; i < p.path.length; i += 2) pts.push(at(p.path[i], p.path[i + 1]));
+      // the route, then a straight leg to whatever it's set on (plain moves end at their last waypoint)
+      ribbon(pts, 0.5, color, 0.55);
+      if (p.kind > 4) ribbon([pts.at(-1), at(p.tx, p.tz)], 0.3, color, 0.4);
+      if (p.kind !== 4) ring(at(p.tx, p.tz), 1.1, color);
+    }
+    // what it's shooting at right now (ordered or picked by itself), or the enemy it was told to attack
+    const t = units.get(v.tgt) ?? (p?.kind === 4 ? { x: p.tx, z: p.tz, type: 'rifle' } : null);
+    if (t) { ribbon([me3, at(t.x, t.z)], 0.25, 0xff4030, 0.6); ring(at(t.x, t.z), UNITS[t.type].radius + 1.2, 0xff4030); }
   }
 }
 
