@@ -47,6 +47,14 @@ if (!EDIT) connect();
 $('name').addEventListener('change', () => { tryStore(() => localStorage.setItem('ww2-name', $('name').value)); sendCmd({ t: 'name', name: $('name').value }); });
 $('copy').onclick = () => { navigator.clipboard?.writeText($('link').value); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
 $('start').onclick = () => sendCmd({ t: 'start' });
+// Fullscreen + Keyboard Lock: the browser hands Ctrl+number to the game instead of switching tabs
+$('fullscreen').onclick = async () => {
+  try {
+    if (document.fullscreenElement) return document.exitFullscreen();
+    await document.documentElement.requestFullscreen();
+    await navigator.keyboard?.lock?.(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9']);
+  } catch {}
+};
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 
@@ -765,7 +773,8 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (EDIT) return;
   const n = /^Digit([1-9])$/.exec(e.code)?.[1];
-  if (n && e.shiftKey) groups[n] = [...selected];
+  // Ctrl+number sets a group (Shift+number too: in a plain browser tab Ctrl+1-8 switches tabs and pages can't stop it)
+  if (n && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); groups[n] = [...selected]; blip(990); }
   else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
   else if (e.code === 'KeyX') { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }
   else if (e.code === 'KeyR') retreat();
