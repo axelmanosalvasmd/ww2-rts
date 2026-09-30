@@ -1,14 +1,14 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, los, findPath, snapshotFor, inTrench, vet, CFG, CELL, SUPPORT } from './shared/sim.js';
+import { createGame, step, command, los, findPath, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
 const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
 const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
-const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250 })[t];
+const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 185, tiger: 620, conscript: 80 })[t];
 const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; return u; };
 
 // LOS: a building between two points blocks sight; a wall does not.
@@ -451,6 +451,75 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(g2, 0, { t: 'ability', ids: [rk2.id], x: 35, z: 35 });
   run(g2, 4);
   assert.ok(rk2.cd > 0 && g2.chars.length, 'barrage fired');
+}
+
+// Faction units: only your faction can build them; the Tiger is one at a time.
+{
+  const g = createGame({ ...blank(empty) }, ['a', 'b', 'c'], false); g.units.clear();
+  g.players.forEach(p => (p.mp = 5000));
+  command(g, 0, { t: 'buy', unit: 'tiger' }); command(g, 0, { t: 'buy', unit: 'conscript' }); command(g, 0, { t: 'buy', unit: 'ranger' });
+  command(g, 1, { t: 'buy', unit: 'tiger' }); command(g, 1, { t: 'buy', unit: 'tiger' });
+  command(g, 2, { t: 'buy', unit: 'conscript' });
+  const types = (s) => [...g.units.values()].filter(u => u.owner === s).map(u => u.type).sort().join();
+  assert.equal(types(0), 'ranger', 'USA: rangers only');
+  assert.equal(types(1), 'tiger', 'Germany: one Tiger');
+  assert.equal(types(2), 'conscript', 'USSR: conscripts');
+}
+{
+  // Tiger: the front takes 60%, the rear 200%
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 5000;
+  g.players[1].slot = 1;
+  command(g, 1, { t: 'buy', unit: 'tiger' });
+  const tg = [...g.units.values()].at(-1); tg.x = 20; tg.z = 20; tg.rot = 0; // facing +x
+  const at = put(g, 0, 'at', 40, 20); at.still = 5;
+  const orig = Math.random; Math.random = () => 0;
+  run(g, 0.2); const front = 900 - tg.hp;
+  tg.hp = 900; at.x = 1; at.cooldown = 0; run(g, 0.2); const rear = 900 - tg.hp;
+  Math.random = orig;
+  assert.equal(front, 120 * 0.7, 'front armor'); assert.equal(rear, 120 * 2, 'rear armor');
+}
+{
+  // Rangers' satchel charge demolishes a house; Ura! shrugs off suppression and sprints
+  const rows = [...empty]; rows[10] = '.'.repeat(9) + 'BB' + '.'.repeat(9);
+  const g = createGame(blank(rows), ['a', 'b', 'c'], false); g.units.clear(); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  command(g, 0, { t: 'buy', unit: 'ranger' }); const rg = [...g.units.values()].at(-1); rg.x = 19; rg.z = 30;
+  command(g, 0, { t: 'ability', ids: [rg.id], x: 19, z: 21 });
+  run(g, 8);
+  assert.ok(g.chars.slice(10 * 20 + 9, 10 * 20 + 11).every(c => c === 'R'), 'satchel demolished the house');
+  command(g, 2, { t: 'buy', unit: 'conscript' }); const cs = [...g.units.values()].at(-1); cs.x = 5; cs.z = 35; cs.supp = 95;
+  command(g, 2, { t: 'ability', ids: [cs.id] });
+  command(g, 2, { t: 'move', orders: [[cs.id, 35, 35]] });
+  run(g, 3);
+  assert.equal(cs.supp < 50, true, 'suppression cleared');
+  assert.ok(cs.x > 5 + 4.6 * 1.5 * 3 * 0.9, `sprinting (${cs.x.toFixed(1)})`);
+}
+
+// Teams: 2v2. Allies share vision, never shoot each other, hold each other's points, and win together.
+{
+  const six = { ...blank(Array(40).fill('.'.repeat(40))), spawns: [0, 1, 2, 3, 4, 5].map(k => ({ x: 20 + Math.round(Math.cos(k) * 15), y: 20 + Math.round(Math.sin(k) * 15) })), points: [{ x: 20, y: 20 }] };
+  const g = createGame(six, ['a', 'b', 'c', 'd'], false, [0, 1, 0, 1], [0, 1, 1, 2]); g.units.clear();
+  g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  assert.equal(g.players[2].faction, 1, 'factions per player');
+  command(g, 2, { t: 'buy', unit: 'tiger' }); assert.equal([...g.units.values()].at(-1)?.type, 'tiger', 'faction comes from the player, not the slot');
+  g.units.clear();
+  const a = put(g, 0, 'rifle', 40, 40), b = put(g, 2, 'rifle', 44, 40), foe = put(g, 1, 'rifle', 40, 70);
+  run(g, 0.2);
+  assert.ok(g.players[2].visible.has(foe.id), 'ally sees what I see');
+  assert.equal(g.players[0].visible.has(b.id), false, 'allies are not "visible enemies"');
+  assert.ok(snapshotFor(g, 0, []).units.some(u => u[0] === b.id), 'but allies are in the snapshot');
+  command(g, 0, { t: 'attack', ids: [a.id], target: b.id }); assert.equal(a.attackId, 0, "can't attack an ally");
+  foe.x = -500; a.x = b.x = 40; a.z = b.z = 40; // both on the point
+  run(g, CFG.captureTime + 1);
+  assert.ok(g.points[0].owner === 0 || g.points[0].owner === 2, 'allies capture together');
+  g.players[0].vp = CFG.vpToWin * 0.6; g.players[2].vp = CFG.vpToWin * 0.5; run(g, 0.1);
+  assert.equal(g.winner, 0, 'team 0 wins on combined VP');
+}
+{
+  // spawn assignment: teammates neighbour, fewer players spread out
+  assert.deepEqual(spawnSlots(6, [0, 1], false), [0, 3], '1v1 on a 6-spawn map sits opposite');
+  assert.deepEqual(spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [0, 3, 1, 4, 2, 5], '3v3 sides');
+  assert.deepEqual(spawnSlots(6, [0, 1, 2], false), [0, 2, 4], '3-way FFA spread');
+  for (let i = 0; i < 20; i++) { const s = spawnSlots(6, [0, 0, 1, 1, 2, 2]); assert.equal(new Set(s).size, 6, 'no shared spawns'); }
 }
 
 // Disconnected players: no VP and no manpower while away, then it resumes.

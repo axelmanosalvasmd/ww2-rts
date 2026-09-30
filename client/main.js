@@ -1,14 +1,16 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, canBuild } from '/shared/sim.js';
 
 // Factions are cosmetic: same stats, different names and colors. Slot index = faction.
 const FACTIONS = [
-  { name: 'USA', color: 0x3d7bd9, uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope' } },
-  { name: 'Germany', color: 0xe0b23a, uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer' } },
-  { name: 'USSR', color: 0xd94a3d, uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha' } },
+  { name: 'USA', color: 0x3d7bd9, uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad' } },
+  { name: 'Germany', color: 0xe0b23a, uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I' } },
+  { name: 'USSR', color: 0xd94a3d, uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts' } },
 ];
-const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons' };
+const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons',
+  ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint' };
 const isVeh = (type) => !UNITS[type].infantry;
+const barY = (type) => (type === 'tiger' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -374,7 +376,37 @@ const SLOTS = {
   rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
   mg: [[0.2, 0], [-0.5, 0.7], [-0.5, -0.7]],
   at: [[-0.5, 0.7], [-0.5, -0.7], [-1.2, 0.4], [-1.2, -0.4]],
+  ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
+  conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
 };
+
+// headgear per faction: round M1 (USA), flared Stahlhelm (Germany), tall SSh-40 (USSR); conscripts wear a pilotka cap
+function headgear(man, owner, type, m) {
+  if (type === 'conscript') { man.add(mesh(GEO.box, m, 0.38, 0.13, 0.22, 0, 1.2, 0)); return; }
+  if (owner === 1) man.add(mesh(GEO.helmet, m, 1.05, 1, 1.05, 0, 1.28, 0), mesh(GEO.cyl, m, 0.33, 0.07, 0.33, 0, 1.25, 0));
+  else if (owner === 2) man.add(mesh(GEO.helmet, m, 1, 1.3, 1, 0, 1.26, 0));
+  else man.add(mesh(GEO.helmet, m, 1.12, 0.95, 1.12, 0, 1.28, 0));
+}
+
+// tank silhouettes: [hull l,h,w], [turret l,h,w, x, z], barrel [length, thickness], sloped glacis
+const TANKS = {
+  tank: [
+    { hull: [3.8, 1.3, 2.3], turret: [1.6, 0.9, 1.5, -0.1, 0], gun: [2.0, 0.09] },               // M5 Stuart: tall and boxy
+    { hull: [4.0, 1.0, 2.2], turret: [1.3, 0.75, 1.2, 0.2, 0.3], gun: [1.6, 0.07] },             // Panzer II: small offset turret
+    { hull: [4.2, 1.0, 2.3], turret: [1.6, 0.8, 1.5, -0.3, 0.2], gun: [2.2, 0.09], slope: 1 },   // T-70: sloped front
+  ],
+  tiger: [null, { hull: [5.4, 1.4, 3.2], turret: [2.6, 1.1, 2.2, -0.2, 0], gun: [3.8, 0.14], brake: 1 }, null],
+};
+function buildTank(v, root, spec, f) {
+  const hull = mat(f.vehicle), dark = mat(0x2a2a24), [hl, hh, hw] = spec.hull, y = hh / 2 + 0.5;
+  root.add(mesh(GEO.box, hull, hl, hh, hw, 0, y, 0), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, hw / 2), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, -hw / 2));
+  if (spec.slope) root.add(mesh(GEO.box, hull, 1.2, 0.2, hw, hl / 2 - 0.2, y + 0.25, 0).rotateZ(-0.5));
+  const [tl, th, tw, tx, tz] = spec.turret, [gl, gt] = spec.gun;
+  v.turret = new THREE.Group(); v.turret.position.set(tx, y + hh / 2 + th / 2, tz);
+  v.turret.add(mesh(GEO.box, hull, tl, th, tw), mesh(GEO.cyl, dark, gt, gl, gt, tl / 2 + gl / 2, 0.05, 0).rotateZ(Math.PI / 2), mesh(GEO.box, mat(f.color), 0.4, th + 0.02, tw + 0.02, -tl / 2 + 0.3, 0, 0));
+  if (spec.brake) v.turret.add(mesh(GEO.box, dark, 0.35, 0.3, 0.35, tl / 2 + gl, 0.05, 0));
+  root.add(v.turret);
+}
 
 function makeUnit(id, type, owner) {
   const def = UNITS[type], f = FACTIONS[owner], root = new THREE.Group();
@@ -384,31 +416,47 @@ function makeUnit(id, type, owner) {
   v.sel = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: 0xfff6c8, depthWrite: false, transparent: true }));
   v.sel.rotation.x = -Math.PI / 2; v.sel.position.y = 0.16; v.sel.scale.setScalar(def.radius + 1); v.sel.visible = false; v.sel.renderOrder = 2;
   root.add(base, v.sel); v.base = base;
-  if (type === 'tank') {
-    const hull = mat(f.vehicle), dark = mat(0x2a2a24);
-    root.add(mesh(GEO.box, hull, 4.2, 1.1, 2.4, 0, 1, 0), mesh(GEO.box, dark, 4.4, 0.8, 0.6, 0, 0.45, 1.1), mesh(GEO.box, dark, 4.4, 0.8, 0.6, 0, 0.45, -1.1));
-    v.turret = new THREE.Group(); v.turret.position.set(-0.2, 1.55, 0);
-    v.turret.add(mesh(GEO.box, hull, 1.8, 0.8, 1.6), mesh(GEO.cyl, dark, 0.1, 2.4, 0.1, 1.9, 0.05, 0).rotateZ(Math.PI / 2), mesh(GEO.box, mat(f.color), 0.5, 0.82, 1.62, -0.5, 0, 0));
-    root.add(v.turret);
+  if (TANKS[type]) {
+    buildTank(v, root, TANKS[type][owner] ?? TANKS[type].find(Boolean), f);
     v.models.push(root);
   } else if (type === 'rocket') {
-    // truck with a rack of launch tubes on the back; the rack turns toward the target
     const body = mat(f.vehicle), dark = mat(0x2a2a24);
-    root.add(mesh(GEO.box, body, 4.4, 0.7, 2.1, 0, 1.0, 0), mesh(GEO.box, body, 1.3, 1.2, 2.0, 1.6, 1.8, 0), mesh(GEO.box, mat(f.color), 0.5, 0.3, 2.02, 1.6, 2.45, 0));
-    for (const wx of [-1.4, 0, 1.4]) for (const wz of [-1.05, 1.05]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, wx, 0.45, wz).rotateX(Math.PI / 2));
-    v.turret = new THREE.Group(); v.turret.position.set(-0.8, 1.7, 0);
-    const rack = new THREE.Group(); rack.rotation.z = 0.5;
-    for (let i = 0; i < 8; i++) rack.add(mesh(GEO.cyl, dark, 0.12, 2.6, 0.12, 0, (i % 2) * 0.28, (Math.floor(i / 2) - 1.5) * 0.3).rotateZ(Math.PI / 2));
-    v.turret.add(rack); root.add(v.turret);
+    v.turret = new THREE.Group();
+    const tube = (x, y, z, len = 2.6) => mesh(GEO.cyl, dark, 0.12, len, 0.12, x, y, z).rotateZ(Math.PI / 2);
+    if (owner === 0) {
+      // T34 Calliope: a Sherman with a box of tubes above the turret
+      buildTank(v, root, { hull: [4.4, 1.3, 2.5], turret: [1.8, 0.9, 1.6, -0.2, 0], gun: [2.0, 0.1] }, f);
+      const rack = new THREE.Group(); rack.position.set(0, 1.1, 0); rack.rotation.z = 0.25;
+      for (let i = 0; i < 12; i++) rack.add(tube(0.3, (i % 3) * 0.26, (Math.floor(i / 3) - 1.5) * 0.3, 2.8));
+      v.turret.add(rack);
+    } else if (owner === 1) {
+      // Panzerwerfer: half-track, wheels up front, tracks behind, ten tubes in two rows
+      root.add(mesh(GEO.box, body, 4.4, 1.0, 2.1, 0, 1.2, 0), mesh(GEO.box, body, 1.4, 0.9, 2.0, 1.6, 1.9, 0));
+      for (const wz of [-1.0, 1.0]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, 1.6, 0.45, wz).rotateX(Math.PI / 2), mesh(GEO.box, dark, 2.8, 0.8, 0.5, -0.8, 0.45, wz));
+      v.turret.position.set(-0.8, 1.9, 0);
+      const rack = new THREE.Group(); rack.rotation.z = 0.45;
+      for (let i = 0; i < 10; i++) rack.add(tube(0, (i % 2) * 0.3, (Math.floor(i / 2) - 2) * 0.28, 1.8));
+      v.turret.add(rack);
+    } else {
+      // Katyusha: truck with long launch rails
+      root.add(mesh(GEO.box, body, 4.4, 0.7, 2.1, 0, 1.0, 0), mesh(GEO.box, body, 1.3, 1.2, 2.0, 1.6, 1.8, 0), mesh(GEO.box, mat(f.color), 0.5, 0.3, 2.02, 1.6, 2.45, 0));
+      for (const wx of [-1.4, 0, 1.4]) for (const wz of [-1.05, 1.05]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, wx, 0.45, wz).rotateX(Math.PI / 2));
+      v.turret.position.set(-0.8, 1.7, 0);
+      const rack = new THREE.Group(); rack.rotation.z = 0.5;
+      for (let i = 0; i < 8; i++) rack.add(mesh(GEO.box, dark, 3.4, 0.08, 0.14, 0, (i % 2) * 0.24, (Math.floor(i / 2) - 1.5) * 0.3));
+      v.turret.add(rack);
+    }
+    root.add(v.turret);
     v.models.push(root);
   } else {
-    const helmet = mat(new THREE.Color(f.uniform).lerp(new THREE.Color(f.color), 0.55).getHex());
-    for (const [x, z] of SLOTS[type]) {
-      const man = new THREE.Group(); man.position.set(x * 1.3, 0, z * 1.3); man.scale.setScalar(1.35);
-      man.add(mesh(GEO.body, mat(f.uniform), 1, 1, 1, 0, 0.72, 0), mesh(GEO.helmet, helmet, 1, 1, 1, 0, 1.28, 0));
+    const helmet = mat(new THREE.Color(f.uniform).lerp(new THREE.Color(f.color), 0.55).getHex()), dark = mat(0x2c2b26);
+    SLOTS[type].forEach(([x, z], i) => {
+      const man = new THREE.Group(); man.position.set(x * 1.3, 0, z * 1.3); man.scale.setScalar(type === 'conscript' ? 1.25 : 1.35);
+      man.add(mesh(GEO.body, mat(f.uniform), 1, 1, 1, 0, 0.72, 0));
+      headgear(man, owner, type, helmet);
+      if (type === 'ranger' && i % 3 === 1) man.add(mesh(GEO.cyl, dark, 0.07, 1.3, 0.07, 0, 1.1, 0.25).rotateZ(1.3)); // bazooka on the shoulder
       root.add(man); v.models.push(man);
-    }
-    const dark = mat(0x2c2b26);
+    });
     if (type === 'mg') root.add(mesh(GEO.cyl, dark, 0.07, 1.4, 0.07, 1.0, 0.45, 0).rotateZ(Math.PI / 2), mesh(GEO.box, dark, 0.4, 0.4, 0.5, 0.5, 0.3, 0));
     if (type === 'at') {
       v.turret = new THREE.Group(); v.turret.position.set(0.6, 0, 0);
@@ -418,7 +466,7 @@ function makeUnit(id, type, owner) {
     }
   }
   // billboarded health + suppression bars
-  v.bars = new THREE.Group(); v.bars.position.y = isVeh(type) ? 3.4 : 2.4;
+  v.bars = new THREE.Group(); v.bars.position.y = barY(type);
   const bg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
   v.hpBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: f.color, depthTest: false })); v.hpBar.scale.set(2.3, 0.2, 1); v.hpBar.position.set(0, 0.07, 0.01);
   v.suppBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd23a, depthTest: false })); v.suppBar.scale.set(2.3, 0.1, 1); v.suppBar.position.set(0, -0.11, 0.01);
@@ -509,6 +557,7 @@ function marker(x, z, color) {
 // ---------- snapshots ----------
 
 function applySnapshot(s) {
+  if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const seen = new Set();
   for (const [id, type, owner, x, z, rot, aim, hp, supp, , cover, cd, flags, stars] of s.units) {
     seen.add(id);
@@ -609,8 +658,8 @@ function syncStrikes(list) {
 function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (kind === 'grenade' || kind === 'barrage' || kind === 'amove') {
-    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : 2;
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove') {
+    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
   } else {
     const [len, width] = kind === 'dig' ? [CFG.digCells * CELL, CELL] : [SUPPORT[kind].len, SUPPORT[kind].width];
@@ -672,7 +721,7 @@ function aimSupport(k) {
 }
 
 function buildBuyBar() {
-  $('buy').innerHTML = UNIT_TYPES.map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${FACTIONS[me].names[t]}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
+  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, me)).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${FACTIONS[me].names[t]}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
   $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
 }
 
@@ -711,14 +760,33 @@ const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && v.
 function startDig() { if (diggers().length && lastSnap?.mp >= CFG.digCost) { setAim('dig'); blip(600); } }
 function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0]; }
 
-function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); } }
+const VOICES = [
+  { lang: 'en-US', move: ['Yes sir!', 'Moving out!', 'On our way!', 'Roger that!'], attack: ['Engaging!', 'Give em hell!', 'Open fire!'], retreat: ['Fall back!', 'Pull back!'] },
+  { lang: 'de-DE', move: ['Jawohl!', 'Vorwärts!', 'Verstanden!'], attack: ['Feuer frei!', 'Angriff!'], retreat: ['Zurück!', 'Rückzug!'] },
+  { lang: 'ru-RU', move: ['Есть!', 'Вперёд!', 'Так точно!'], attack: ['Огонь!', 'В атаку!'], retreat: ['Отходим!', 'Назад!'] },
+];
+let muted = tryStore(() => localStorage.getItem('ww2-muted')) === '1', lastBark = 0;
+function bark(kind) {
+  if (muted || !window.speechSynthesis || performance.now() - lastBark < 2500 || me < 0) return;
+  lastBark = performance.now();
+  const v = VOICES[me], lines = v[kind], u = new SpeechSynthesisUtterance(lines[Math.floor(Math.random() * lines.length)]);
+  u.lang = v.lang; u.rate = 1.15; u.volume = 0.7;
+  const voice = speechSynthesis.getVoices().find(x => x.lang.replace('_', '-').startsWith(v.lang.slice(0, 2)));
+  if (voice) u.voice = voice;
+  speechSynthesis.speak(u);
+}
+function setMuted(m) { muted = m; tryStore(() => localStorage.setItem('ww2-muted', m ? '1' : '0')); $('mute').textContent = m ? '🔇' : '🔊'; }
+$('mute').onclick = () => setMuted(!muted);
+setMuted(muted);
+
+function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
 let targeting = null, aimCenter = null, aimMesh = null, home = null;
 function cancelAim() { targeting = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind) {
   targeting = kind; aimCenter = null;
-  $('hint').textContent = { grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
+  $('hint').textContent = { grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
   $('hint').textContent += ' · right-click cancels';
 }
 // direction before the second click: planes fly out from home, trenches run across the squad's approach
@@ -727,12 +795,12 @@ function defaultDir(kind, at) {
   return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
 }
 // F fires exactly one ability: the first type in this order that has one ready (the others are click-only)
-const PRIORITY = ['rifle', 'mg', 'at', 'tank', 'rocket'];
+const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'at', 'tank', 'tiger', 'rocket'];
 function fKeyType() {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   return PRIORITY.find(t => sel.some(v => v.type === t && !v.cd)) ?? null;
 }
-const AIMED = { grenade: 'rifle', barrage: 'rocket' }; // abilities that need a spot clicked
+const AIMED = { grenade: 'rifle', barrage: 'rocket', satchel: 'ranger' }; // abilities that need a spot clicked
 function useAbility(type) {
   if (!type) return;
   const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && v.type === type);
@@ -761,6 +829,7 @@ function moveTo(g, attack) {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   if (!sel.length) return;
   sendCmd({ t: attack ? 'amove' : 'move', orders: formation(sel, g) }); marker(g.x, g.z, attack ? 0xff9a40 : 0x9dff7a); blip(attack ? 500 : 660);
+  bark(attack ? 'attack' : 'move');
 }
 
 // ---------- camera + input ----------
@@ -781,6 +850,7 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyF') useAbility(fKeyType());
   else if (e.code === 'KeyG' && selected.size) setAim('amove');
   else if (e.code === 'KeyN') aimSupport('bombing');
+  else if (e.code === 'KeyM') setMuted(!muted);
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) { cam.x = home.x; cam.z = home.z; }
@@ -839,11 +909,11 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   if (e.button !== 2 || !selected.size || !lastSnap) return;
   const enemy = pick(e.clientX, e.clientY, v => v.owner !== me);
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); return; }
+  if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); bark('attack'); return; }
   // a house: squads go inside, tanks and rocket trucks shell it, anything else walks up to it
   const house = houseAt(e.clientX, e.clientY);
   if (house) {
-    const inf = sel.filter(v => v.type === 'rifle' || v.type === 'mg').map(v => v.id), guns = sel.filter(v => v.type === 'tank' || v.type === 'rocket').map(v => v.id);
+    const inf = sel.filter(v => UNITS[v.type].garrisons).map(v => v.id), guns = sel.filter(v => UNITS[v.type].w.shellTerrain || UNITS[v.type].w.salvo).map(v => v.id);
     if (inf.length) sendCmd({ t: 'garrison', ids: inf, x: house.x, z: house.z });
     if (guns.length) sendCmd({ t: 'fireat', ids: guns, x: house.x, z: house.z });
     const rest = sel.filter(v => !inf.includes(v.id) && !guns.includes(v.id));
@@ -994,7 +1064,7 @@ renderer.setAnimationLoop(() => {
     const gy = hAt(v.x, v.z);
     v.root.position.set(v.x, gy, v.z); v.root.rotation.y = -v.rot;
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
-    v.bars.position.set(v.x, gy + (v.garr ? 7.5 : isVeh(v.type) ? 3.4 : 2.4), v.z); v.bars.quaternion.copy(camera.quaternion);
+    v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
   }
   for (let i = fx.length - 1; i >= 0; i--) {
@@ -1021,4 +1091,4 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; } };

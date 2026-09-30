@@ -74,6 +74,13 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
    +10% vision per level, up to +45% accuracy shooting downhill (down to -30% uphill), 1-level steps are slopes, bigger are cliffs.
    Default map: one identical overwatch hill per player between HQ and center.
    Depressions down to -2 (stored as a/b): gullies hide troops; a 2-level drop is a cliff.
-8. Faction flavor: GLTF models behind `makeUnit()`, one asymmetric unit per faction
+8. ~~Faction flavor~~ (procedural models, no asset files): per-faction helmets, tanks (Stuart / Panzer II / T-70) and rocket
+   carriers (Calliope on a Sherman / Panzerwerfer half-track / Katyusha truck). Units answer orders in their language via
+   the browser's speech synthesis (mute: M). One unique unit each:
+   - USA Ranger Squad (185): 6 elite men with bazookas; Satchel Charge demolishes a house, wall or bridge.
+   - Germany Tiger (620, max 1): 900 hp, big gun, front armor takes 70%.
+   - USSR Conscripts (80): 7 cheap men; Ura! = 6s sprint that ignores suppression.
+   300 AI matches per map, wins by faction USA/GER/USSR: 37/33/30% (default), 36/35/30% (River Towns).
+   Before tuning: USSR won 74% (conscripts at 60 MP were too efficient) and the German AI stalled saving for the Tiger.
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
