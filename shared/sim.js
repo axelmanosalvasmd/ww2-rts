@@ -12,6 +12,8 @@ export const CFG = {
   // incoming accuracy/suppression multipliers; blasts only care about trenches
   coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
   digCost: 30, digCells: 4, digTime: 3,
+  // elevation: height level per cell. 1 level of difference is a slope, more is a cliff.
+  levelHeight: 2.5, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
 };
 
@@ -68,6 +70,8 @@ export function validateMap(m) {
   if (!int(m.w, 20, 128) || !int(m.h, 20, 128)) return 'size must be 20-128 cells';
   if (!Array.isArray(m.rows) || m.rows.length !== m.h) return 'row count must equal height';
   for (const r of m.rows) if (typeof r !== 'string' || r.length !== m.w || [...r].some(ch => !Object.hasOwn(TERRAIN, ch))) return 'rows must be ' + m.w + ' valid terrain chars';
+  if (m.heights !== undefined && (!Array.isArray(m.heights) || m.heights.length !== m.h
+    || m.heights.some(r => typeof r !== 'string' || r.length !== m.w || !/^[0-4]*$/.test(r)))) return 'heights must be ' + m.h + ' rows of digits 0-4';
   const at = (p) => m.rows[p.y][p.x];
   if (!Array.isArray(m.spawns) || m.spawns.length !== 3) return 'needs exactly 3 spawns';
   for (const sp of m.spawns) if (!sp || !int(sp.x, 0, m.w - 1) || !int(sp.y, 0, m.h - 1) || TERRAIN[at(sp)] & MOVE) return 'spawns must be on open ground inside the map';
@@ -93,6 +97,8 @@ export function createGame(map, names, shuffle = true) {
     points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
+  g.height = Uint8Array.from((map.heights || []).join(''), Number);
+  if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   for (const p of g.players) CFG.startForce.forEach((t, i) => spawnUnit(g, p.slot, t, i));
   return g;
 }
@@ -146,12 +152,39 @@ function segHits(a, b, c, r) {
   const t = Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.z - a.z) * dz) / l2));
   return Math.hypot(a.x + dx * t - c.x, a.z + dz * t - c.z) < r;
 }
-export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !g.smokes.some(s => segHits(a, b, s, s.r));
+// ---------- elevation ----------
+const level = (g, c) => (g.height && c >= 0 ? g.height[c] : 0);
+export const levelAt = (g, x, z) => level(g, cellOf(g, x, z));
+// hills block sight: sample the line between two eyes and compare with the ground under it
+function overHills(g, a, b) {
+  if (!g.height) return true;
+  const L = CFG.levelHeight, ya = levelAt(g, a.x, a.z) * L + CFG.eye, yb = levelAt(g, b.x, b.z) * L + CFG.eye;
+  const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / (CELL / 2));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (levelAt(g, a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t) * L > ya + (yb - ya) * t) return false;
+  }
+  return true;
+}
+// no step of more than one level along a straight segment
+function noCliffs(g, a, b) {
+  if (!g.height) return true;
+  const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / (CELL / 2));
+  let prev = levelAt(g, a.x, a.z);
+  for (let i = 1; i <= n; i++) {
+    const h = levelAt(g, a.x + (b.x - a.x) * i / n, a.z + (b.z - a.z) * i / n);
+    if (Math.abs(h - prev) > 1) return false;
+    prev = h;
+  }
+  return true;
+}
+
+export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !g.smokes.some(s => segHits(a, b, s, s.r)) && overHills(g, a, b);
 
 function walkable(g, a, b) {
   // three parallel rays so wide units don't clip building corners
   const d = Math.hypot(b.x - a.x, b.z - a.z) || 1, ox = -(b.z - a.z) / d * 0.9, oz = (b.x - a.x) / d * 0.9;
-  return [-1, 0, 1].every(k => clear(g, a.x + ox * k, a.z + oz * k, b.x + ox * k, b.z + oz * k, MOVE, true));
+  return [-1, 0, 1].every(k => clear(g, a.x + ox * k, a.z + oz * k, b.x + ox * k, b.z + oz * k, MOVE, true)) && noCliffs(g, a, b);
 }
 
 function nearestFree(g, x, z) {
@@ -206,7 +239,10 @@ export function findPath(g, from, to) {
       const n = ny * W + nx;
       if (g.flags[n] & MOVE || closed[n]) continue;
       if (dx && dy && (g.flags[y * W + nx] & MOVE || g.flags[ny * W + x] & MOVE)) continue;
-      const cost = gs[c] + (dx && dy ? 1.414 : 1);
+      const climb = level(g, n) - level(g, c);
+      if (Math.abs(climb) > 1) continue; // cliff
+      if (dx && dy && (Math.abs(level(g, y * W + nx) - level(g, c)) > 1 || Math.abs(level(g, ny * W + x) - level(g, c)) > 1)) continue;
+      const cost = gs[c] + (dx && dy ? 1.414 : 1) + Math.max(0, climb) * 0.5; // uphill costs a bit more
       if (cost < gs[n]) { gs[n] = cost; came[n] = c; push([cost + hq(n), n]); }
     }
   }
@@ -311,7 +347,9 @@ function pickTarget(g, u) {
 function fire(g, u, t, moving) {
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
   const cover = coverMul(g, t);
-  let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover;
+  // shooting downhill is easier, uphill harder
+  const hg = Math.min(1.45, Math.max(0.7, 1 + CFG.highGroundAcc * (levelAt(g, u.x, u.z) - levelAt(g, t.x, t.z))));
+  let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg;
   let dmg = inf ? w.inf : w.veh, supp = w.supp, rate = sm.rate;
   if (u.buff > 0) { dmg *= 0.5; supp *= 2.5; rate *= 0.5; } // suppressive fire: faster, pins harder, kills less
   if (u.ap && !inf) { acc = 1; dmg *= 1.5; u.ap = false; }
@@ -336,7 +374,7 @@ function updateVision(g) {
     const own = [...g.units.values()].filter(u => u.owner === p.slot);
     for (const t of g.units.values()) {
       if (t.owner === p.slot) continue;
-      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision && los(g, u, t)); })
+      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) && los(g, u, t)); })
         || g.strikes.some(s => s.live && s.kind === 'recon' && s.owner === p.slot && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) p.visible.add(t.id);
     }
   }
@@ -430,8 +468,8 @@ export function step(g) {
     const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
     if (d >= min || d === 0) continue;
     const push = (min - d) / 2 * 0.5, px = dx / d * push, pz = dz / d * push;
-    if (!(flagsAt(g, a.x - px, a.z - pz) & MOVE)) { a.x -= px; a.z -= pz; }
-    if (!(flagsAt(g, b.x + px, b.z + pz) & MOVE)) { b.x += px; b.z += pz; }
+    if (!(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
 
   // grenades: hurt everyone in the blast (friendly fire included), cover doesn't help

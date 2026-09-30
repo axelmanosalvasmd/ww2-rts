@@ -34,6 +34,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | same, re-measured over 150 matches (the 40-match runs above are noisy, about ±0.1) | 63% | 0.97 | 9.5 min |
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
+| + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
@@ -47,8 +48,11 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 1. ~~Tracer bullet~~ 2. ~~Combat~~ 3. ~~LOS + fog~~ 4. ~~Points, VP, manpower, call-ins~~ (MVP)
 5. ~~In-game map editor~~ (`/?edit`): paint terrain, place spawns and points, per-point VP/MP, save with the `.edit-password`,
    fairness test (90 AI matches in a worker, per-spawn win rate). The host picks the map in the lobby.
+   Select / move tool grabs a whole structure (drag to move, Delete removes) and drags spawns and points; Raise/Lower brushes.
 6. Destructible terrain (flip cell flags, send changes in snapshots)
-7. Elevation (height per cell, LOS samples heights, cliffs block pathing)
+7. ~~Elevation~~: height level 0-4 per cell (2.5 m each). Hills block sight (the line between eyes is sampled against the ground),
+   +10% vision per level, up to +45% accuracy shooting downhill (down to -30% uphill), 1-level steps are slopes, bigger are cliffs.
+   Default map: one identical overwatch hill per player between HQ and center.
 8. Faction flavor: GLTF models behind `makeUnit()`, one asymmetric unit per faction
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.

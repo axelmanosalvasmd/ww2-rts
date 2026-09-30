@@ -254,6 +254,41 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.equal(los(g, { x: 0, z: 20 }, { x: 40, z: 20 }), false, 'smoke screen blocks LOS through its center');
 }
 
+// Elevation: a 2-level ridge (5 m) across the middle of an empty map.
+const ridge = (lvl, x0 = 9, x1 = 10) => Array.from({ length: 20 }, () => Array.from({ length: 20 }, (_, x) => (x >= x0 && x <= x1 ? lvl : 0)).join(''));
+const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, ['a', 'b'], false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
+{
+  const g = hilly(ridge(2));
+  assert.equal(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), false, 'a ridge blocks sight between the valleys');
+  // ridge close to the observer: the sight line clears it (right behind a ridge is dead ground, even from a hill)
+  const g2 = hilly(Array.from({ length: 20 }, () => '3333' + '0' + '22' + '0'.repeat(13)));
+  assert.ok(los(g2, { x: 3, z: 20 }, { x: 35, z: 20 }), 'from higher ground you see over the ridge');
+  assert.equal(los(g2, { x: 9, z: 20 }, { x: 35, z: 20 }), false, 'but not from the valley floor');
+}
+{
+  // a 2-level jump is a cliff: the path detours to the gap at the bottom
+  // a raised wall (cols 9-10) across rows 0-14, open ground below it
+  const heights = Array.from({ length: 20 }, (_, y) => (y < 15 ? '0'.repeat(9) + '22' + '0'.repeat(9) : '0'.repeat(20)));
+  const g = hilly(heights);
+  const path = findPath(g, { x: 5, z: 5 }, { x: 35, z: 5 });
+  assert.ok(path.length && path.some(p => p.z > 15 * CELL), 'cliff: path goes around it');
+  // a 1-level step is a slope: straight across
+  const g2 = hilly(heights.map(r => r.replace(/2/g, '1')));
+  assert.ok(findPath(g2, { x: 5, z: 5 }, { x: 35, z: 5 }).every(p => p.z < 15 * CELL), 'slope: walks straight over');
+}
+{
+  // high ground: same shot, better odds from above
+  const hits = (shooterLvl) => {
+    const heights = Array.from({ length: 20 }, () => String(shooterLvl).repeat(3) + '0'.repeat(17));
+    const g = hilly(heights); g.players[0].mp = g.players[1].mp = 1000;
+    const r = put(g, 0, 'rifle', 3, 20), t = put(g, 1, 'rifle', 25, 20);
+    let n = 0;
+    for (let i = 0; i < 3000; i++) { t.hp = 100; t.supp = 0; r.cooldown = 0; r.targetId = t.id; r.retarget = 1; step(g); if (t.hp < 100) n++; }
+    return n;
+  };
+  assert.ok(hits(2) > hits(0) * 1.1, 'high ground hits more often');
+}
+
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);

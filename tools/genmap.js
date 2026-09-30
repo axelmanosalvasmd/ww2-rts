@@ -3,6 +3,9 @@
 import { writeFileSync } from 'node:fs';
 const W = 80, H = 80, C = 40;
 const g = Array.from({ length: H }, () => Array(W).fill('.'));
+const hgt = Array.from({ length: H }, () => Array(W).fill(0));
+// hill: level 1 out to r1 cells, level 2 inside r2
+const hill = (cx, cy, r1, r2) => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x - cx, y - cy); if (d <= r1) hgt[y][x] = Math.max(hgt[y][x], d <= r2 ? 2 : 1); } };
 const set = (x, y, ch) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; };
 const polar = (deg, r) => [C + r * Math.cos(deg * Math.PI / 180), C + r * Math.sin(deg * Math.PI / 180)];
 const box = (cx, cy, w, h, ch) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(cx - w / 2 + x, cy - h / 2 + y, ch); };
@@ -25,6 +28,7 @@ for (let k = 0; k < 3; k++) {
   arc(16.5, m - 7, m + 7, 'T'); // trench in front of the village, facing the center
   box(...polar(a + 60, 7), 3, 3, 'B');
   arc(11, a - 15, a + 15, '#');
+  hill(...polar(a, 14), 4, 2); // each player's overwatch hill between HQ and the center
   arc(5, a + 45, a + 75, 'T'); // trenches ringing the center point
   for (const [da, r] of craters) set(...polar(a + da, r), '+');
   const [sx, sy] = polar(a, 33); spawns.push({ x: Math.round(sx), y: Math.round(sy) });
@@ -33,5 +37,5 @@ for (let k = 0; k < 3; k++) {
 // every spawn is the same walk from its villages (measured with findPath; 2m was enough to bias AI matches 22-4-4)
 spawns[0].y -= 1;
 for (const p of [...spawns, ...points]) for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) set(p.x + x, p.y + y, '.');
-writeFileSync(new URL('../maps/default.json', import.meta.url), JSON.stringify({ name: 'Three Crossroads', w: W, h: H, rows: g.map(r => r.join('')), spawns, points }, null, 1));
+writeFileSync(new URL('../maps/default.json', import.meta.url), JSON.stringify({ name: 'Three Crossroads', w: W, h: H, rows: g.map(r => r.join('')), heights: hgt.map(r => r.join('')), spawns, points }, null, 1));
 console.log(g.map(r => r.join('')).join('\n'));

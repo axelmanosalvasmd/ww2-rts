@@ -1,15 +1,21 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
-import { CELL, validateMap, findPath, TERRAIN } from '/shared/sim.js';
+import * as THREE from 'three';
+import { CELL, CFG, validateMap, findPath, TERRAIN } from '/shared/sim.js';
 
 const TOOLS = [
-  ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
-  ['s0', 'Spawn 1'], ['s1', 'Spawn 2'], ['s2', 'Spawn 3'], ['pt', 'Capture point'],
+  ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
+  ['up', 'Raise ground'], ['down', 'Lower ground'], ['pt', 'Capture point'], ['s0', 'Spawn 1'], ['s1', 'Spawn 2'], ['s2', 'Spawn 3'],
 ];
+const HEIGHT_TOOLS = { up: 1, down: -1 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const store = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} } };
 
 export async function start(api) {
-  let map, grid, name = 'default', tool = 'B', brush = 1, sel = -1, painting = 0, timer = 0;
+  let map, grid, heights, name = 'default', tool = 'sel', brush = 1, sel = -1, painting = 0, timer = 0;
+  let stroke = new Set();   // cells a height stroke already changed (one step per cell per drag)
+  let picked = null;        // select tool: { cells: [[x,y]], ch } structure, or { marker: 'spawn'|'point', i }
+  let dragFrom = null, dragOffset = [0, 0];
+  const hl = new THREE.Group(); api.scene.add(hl);
 
   const ui = document.createElement('div');
   ui.id = 'editor'; ui.className = 'panel';
@@ -17,8 +23,9 @@ export async function start(api) {
     <h2 class="stencil">Map editor</h2>
     <div class="row"><select id="edLoad"></select><button id="edOpen">Open</button></div>
     <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option></select><button id="edNew">New blank</button></div>
-    <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="key ${i < 9 ? i + 1 : 0}">${label}</button>`).join('')}</div>
-    <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases</span></div>
+    <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
+    <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
+    <div id="edSel" class="muted"></div>
     <div id="edPoint"></div>
     <div id="edCheck" class="muted"></div>
     <label>Name <input id="edName" maxlength="32"></label>
@@ -32,9 +39,10 @@ export async function start(api) {
   $('edPw').value = store.get('ww2-edit-pw') || '';
 
   // ---------- model ----------
-  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), spawns: map.spawns, points: map.points });
+  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), heights: heights.map(r => r.join('')), spawns: map.spawns, points: map.points });
   function load(m, n) {
-    map = m; name = n; grid = m.rows.map(r => [...r]); sel = -1;
+    map = m; name = n; grid = m.rows.map(r => [...r]); sel = -1; picked = null;
+    heights = (m.heights || m.rows.map(r => '0'.repeat(r.length))).map(r => [...r].map(Number));
     map.points.forEach(p => { p.vp ??= 1; p.mp ??= 1; });
     $('edName').value = n; $('edTitle').value = m.name || n;
     rebuild(true);
@@ -42,7 +50,7 @@ export async function start(api) {
   function blank(size) {
     const c = Math.floor(size / 2), r = Math.floor(size * 0.4);
     const spawns = [0, 1, 2].map(k => ({ x: Math.round(c + Math.cos(-Math.PI / 2 + k * 2.094) * r), y: Math.round(c + Math.sin(-Math.PI / 2 + k * 2.094) * r) }));
-    load({ name: 'New map', w: size, h: size, rows: Array(size).fill('.'.repeat(size)), spawns, points: [{ x: c, y: c, vp: 1, mp: 1 }] }, 'new-map');
+    load({ name: 'New map', w: size, h: size, rows: Array(size).fill('.'.repeat(size)), heights: Array(size).fill('0'.repeat(size)), spawns, points: [{ x: c, y: c, vp: 1, mp: 1 }] }, 'new-map');
   }
 
   // ---------- rendering ----------
@@ -54,6 +62,7 @@ export async function start(api) {
     else { api.cam.x = m.w; api.cam.z = m.h; api.cam.dist = 120; api.cam.yaw = 0; }
     check(m);
     pointPanel();
+    highlight();
   }
   const later = () => { clearTimeout(timer); timer = setTimeout(() => rebuild(), 60); };
 
@@ -61,7 +70,7 @@ export async function start(api) {
   function check(m) {
     let err = validateMap(m);
     if (!err) {
-      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]) };
+      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Uint8Array.from(m.heights.join(''), Number) };
       const bad = [];
       m.spawns.forEach((s, i) => m.points.forEach((p, j) => {
         const a = toWorld(s), b = toWorld(p);
@@ -97,8 +106,54 @@ export async function start(api) {
   };
   function paint(c, ch) {
     const r = brush - 1;
-    for (let y = c.y - r; y <= c.y + r; y++) for (let x = c.x - r; x <= c.x + r; x++) if (grid[y]?.[x] !== undefined) grid[y][x] = ch;
+    for (let y = c.y - r; y <= c.y + r; y++) for (let x = c.x - r; x <= c.x + r; x++) {
+      if (grid[y]?.[x] === undefined) continue;
+      if (typeof ch === 'number') { // height step, once per cell per stroke
+        if (stroke.has(y * map.w + x)) continue;
+        stroke.add(y * map.w + x);
+        heights[y][x] = Math.max(0, Math.min(CFG.maxLevel, heights[y][x] + ch));
+      } else grid[y][x] = ch;
+    }
     later();
+  }
+
+  // ---------- select / move / delete ----------
+  function structureAt(c) {
+    const ch = grid[c.y][c.x];
+    if (ch === '.') return null;
+    const cells = [], seen = new Set([c.y * map.w + c.x]), q = [[c.x, c.y]];
+    while (q.length) {
+      const [x, y] = q.pop(); cells.push([x, y]);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, k = ny * map.w + nx;
+        if (grid[ny]?.[nx] === ch && !seen.has(k)) { seen.add(k); q.push([nx, ny]); }
+      }
+    }
+    return { cells, ch };
+  }
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench' };
+  function highlight() {
+    hl.clear();
+    $('edSel').textContent = '';
+    if (!picked?.cells) return;
+    const m = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.45, depthTest: false });
+    for (const [x, y] of picked.cells) {
+      const cx = (x + 0.5 + dragOffset[0]) * CELL, cz = (y + 0.5 + dragOffset[1]) * CELL, box = new THREE.Mesh(new THREE.BoxGeometry(CELL, 0.4, CELL), m);
+      box.position.set(cx, api.hAt(cx, cz) + 0.3, cz); box.renderOrder = 6; hl.add(box);
+    }
+    $('edSel').textContent = `Selected ${NAMES[picked.ch] || 'structure'} (${picked.cells.length} cells) · drag to move · Delete removes · Esc deselects`;
+  }
+  function commitMove() {
+    const [ox, oy] = dragOffset;
+    if (!picked?.cells || (!ox && !oy)) return;
+    for (const [x, y] of picked.cells) grid[y][x] = '.';
+    picked.cells = picked.cells.map(([x, y]) => [x + ox, y + oy]).filter(([x, y]) => grid[y]?.[x] !== undefined);
+    for (const [x, y] of picked.cells) grid[y][x] = picked.ch;
+  }
+  function deletePicked() {
+    if (!picked?.cells) return false;
+    for (const [x, y] of picked.cells) grid[y][x] = '.';
+    picked = null; rebuild(); return true;
   }
   function click(c) {
     if (tool[0] === 's') { map.spawns[+tool[1]] = { x: c.x, y: c.y }; rebuild(); return; }
@@ -112,21 +167,48 @@ export async function start(api) {
   const canvas = api.renderer.domElement;
   canvas.addEventListener('mousedown', (e) => {
     const c = cellAt(e); if (!c) return;
+    stroke = new Set();
+    if (HEIGHT_TOOLS[tool]) { painting = e.button === 2 ? 4 : 3; paint(c, e.button === 2 ? -HEIGHT_TOOLS[tool] : HEIGHT_TOOLS[tool]); return; }
     if (e.button === 2) { painting = 2; paint(c, '.'); return; }
     if (e.button !== 0) return;
+    if (tool === 'sel') {
+      // markers first (they sit on top of terrain), then whole structures
+      const si = map.spawns.findIndex(p => Math.hypot(p.x - c.x, p.y - c.y) <= 2), pi = map.points.findIndex(p => Math.hypot(p.x - c.x, p.y - c.y) <= 3);
+      picked = si >= 0 ? { marker: 'spawn', i: si } : pi >= 0 ? { marker: 'point', i: pi } : structureAt(c);
+      if (picked?.marker === 'point') { sel = picked.i; pointPanel(); }
+      dragFrom = picked ? c : null; dragOffset = [0, 0];
+      highlight();
+      return;
+    }
     if (TERRAIN[tool] !== undefined) { painting = 1; paint(c, tool); } else click(c);
   });
   addEventListener('mousemove', (e) => {
+    if (dragFrom && picked) {
+      if (!(e.buttons & 1)) { dragFrom = null; return; }
+      const c = cellAt(e); if (!c) return;
+      if (picked.marker) { const list = picked.marker === 'spawn' ? map.spawns : map.points; Object.assign(list[picked.i], { x: c.x, y: c.y }); later(); }
+      else { dragOffset = [c.x - dragFrom.x, c.y - dragFrom.y]; highlight(); }
+      return;
+    }
     if (!painting) return;
     if (!(e.buttons & 3)) { painting = 0; return; } // button released outside the window
-    const c = cellAt(e); if (c) paint(c, painting === 2 ? '.' : tool);
+    const c = cellAt(e); if (!c) return;
+    paint(c, painting === 2 ? '.' : painting === 3 ? HEIGHT_TOOLS[tool] : painting === 4 ? -HEIGHT_TOOLS[tool] : tool);
   });
-  addEventListener('mouseup', () => (painting = 0));
+  addEventListener('mouseup', () => {
+    painting = 0;
+    if (dragFrom && picked?.cells) { commitMove(); dragOffset = [0, 0]; rebuild(); }
+    dragFrom = null;
+  });
   addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     const n = /^Digit(\d)$/.exec(e.code)?.[1];
     if (n) pickTool(TOOLS[(+n + 9) % 10][0]);
-    if ((e.code === 'Delete' || e.code === 'Backspace') && sel >= 0) { map.points.splice(sel, 1); sel = -1; rebuild(); }
+    if (e.code === 'Delete' || e.code === 'Backspace') {
+      if (deletePicked()) return;
+      if (sel >= 0) { map.points.splice(sel, 1); sel = -1; picked = null; rebuild(); }
+    }
+    if (e.code === 'Escape') { picked = null; sel = -1; highlight(); pointPanel(); }
   });
 
   // ---------- files ----------
@@ -172,4 +254,5 @@ export async function start(api) {
 
   await refreshList();
   load(await (await fetch('/maps/default.json')).json(), 'default');
+  window.__editor = { snapshot }; // debug handle, like window.__game
 }

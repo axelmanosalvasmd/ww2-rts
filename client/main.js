@@ -103,7 +103,33 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [];
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null;
+
+// Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
+let field = null;
+function buildField(map) {
+  const w = map.w, h = map.h, lv = (x, y) => +(map.heights?.[y]?.[x] ?? 0) * CFG.levelHeight;
+  const vert = new Float32Array((w + 1) * (h + 1));
+  for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) {
+    let sum = 0, n = 0;
+    for (const [cx, cy] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]]) if (cx >= 0 && cy >= 0 && cx < w && cy < h) { sum += lv(cx, cy); n++; }
+    vert[y * (w + 1) + x] = sum / n;
+  }
+  field = { w, h, vert };
+}
+function hAt(x, z) {
+  if (!field) return 0;
+  const fx = Math.min(field.w, Math.max(0, x / CELL)), fz = Math.min(field.h, Math.max(0, z / CELL));
+  const x0 = Math.min(field.w - 1, Math.floor(fx)), z0 = Math.min(field.h - 1, Math.floor(fz)), tx = fx - x0, tz = fz - z0, W = field.w + 1, v = field.vert;
+  return (v[z0 * W + x0] * (1 - tx) + v[z0 * W + x0 + 1] * tx) * (1 - tz) + (v[(z0 + 1) * W + x0] * (1 - tx) + v[(z0 + 1) * W + x0 + 1] * tx) * tz;
+}
+// a flat plane bent over the height field (row 0 of vertices = map row 0)
+function terrainGeometry() {
+  const geo = new THREE.PlaneGeometry(MW, MH, field.w, field.h), pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setZ(i, field.vert[i]);
+  geo.computeVertexNormals();
+  return geo;
+}
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 function startGame(m) {
@@ -124,6 +150,18 @@ function startGame(m) {
     const s = 4 + Math.random() * 18; c.fillRect(Math.random() * cv.width, Math.random() * cv.height, s, s * 0.6);
   }
   c.globalAlpha = 1;
+  // high ground reads at a glance: drier grass per level, contour lines where the level drops
+  const lvl = (x, y) => +(map.heights?.[y]?.[x] ?? 0);
+  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
+    const L = lvl(x, y);
+    if (!L) continue;
+    c.fillStyle = `rgba(190, 180, 110, ${0.16 * L})`; c.fillRect(x * px, y * px, px, px);
+    c.fillStyle = 'rgba(45, 40, 20, 0.45)';
+    if (x > 0 && lvl(x - 1, y) < L) c.fillRect(x * px, y * px, 1.5, px);
+    if (x < map.w - 1 && lvl(x + 1, y) < L) c.fillRect((x + 1) * px - 1.5, y * px, 1.5, px);
+    if (y > 0 && lvl(x, y - 1) < L) c.fillRect(x * px, y * px, px, 1.5);
+    if (y < map.h - 1 && lvl(x, y + 1) < L) c.fillRect(x * px, (y + 1) * px - 1.5, px, 1.5);
+  }
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => {
     if (ch === '+') {
       const gr = c.createRadialGradient((x + 0.5) * px, (y + 0.5) * px, 1, (x + 0.5) * px, (y + 0.5) * px, px * 1.1);
@@ -136,9 +174,10 @@ function startGame(m) {
   world.add(terrain.group);
   for (const [cell, ch] of m.cells || []) terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch;
   drawTrenches();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH), new THREE.MeshLambertMaterial({ map: tex }));
+  buildField(map);
+  const ground = new THREE.Mesh(terrainGeometry(), new THREE.MeshLambertMaterial({ map: tex }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
-  world.add(ground);
+  world.add(ground); groundMesh = ground;
 
   // terrain pieces as instanced boxes
   const cells = { B: [], H: [], '#': [] };
@@ -146,7 +185,7 @@ function startGame(m) {
   const inst = (list, color, fn) => {
     const im = new THREE.InstancedMesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xffffff }), list.length);
     const m4 = new THREE.Matrix4(), col = new THREE.Color();
-    list.forEach((cell, i) => { const [sx, sy, sz, y, tint] = fn(cell); m4.makeScale(sx, sy, sz).setPosition((cell[0] + 0.5) * CELL, y, (cell[1] + 0.5) * CELL); im.setMatrixAt(i, m4); im.setColorAt(i, col.set(color).multiplyScalar(tint)); });
+    list.forEach((cell, i) => { const [sx, sy, sz, y, tint, base] = fn(cell), cx = (cell[0] + 0.5) * CELL, cz = (cell[1] + 0.5) * CELL; m4.makeScale(sx, sy, sz).setPosition(cx, y + (base ?? hAt(cx, cz) - 0.2), cz); im.setMatrixAt(i, m4); im.setColorAt(i, col.set(color).multiplyScalar(tint)); });
     im.castShadow = im.receiveShadow = true; world.add(im);
   };
   // buildings: flood-fill into components so each house has one height/color and a roof
@@ -163,9 +202,12 @@ function startGame(m) {
         if (grid[ny]?.[nx] === 'B' && !comp.has(ny * map.w + nx)) { comp.set(ny * map.w + nx, h); q.push([nx, ny]); }
       }
     }
+    // one floor level per house: its lowest corner, so nothing floats on a slope
+    h.base = Math.min(...h.cells.map(([cx, cy]) => Math.min(hAt(cx * CELL, cy * CELL), hAt((cx + 1) * CELL, cy * CELL), hAt(cx * CELL, (cy + 1) * CELL), hAt((cx + 1) * CELL, (cy + 1) * CELL))));
     houses.push(h);
   }
-  inst(cells.B, 0xb8a888, ([x, y]) => { const h = comp.get(y * map.w + x); return [CELL, h.height, CELL, h.height / 2, h.tint]; });
+  // walls run from 1 m under the house's lowest corner up to its roof line
+  inst(cells.B, 0xb8a888, ([x, y]) => { const h = comp.get(y * map.w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
   for (const h of houses) {
     const xs = h.cells.map(c => c[0]), ys = h.cells.map(c => c[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
@@ -173,7 +215,7 @@ function startGame(m) {
     const along = x1 - x0 >= y1 - y0, span = (along ? y1 - y0 : x1 - x0) * CELL + 0.6, len = (along ? x1 - x0 : y1 - y0) * CELL + 0.6;
     const shape = new THREE.Shape([new THREE.Vector2(-span / 2, 0), new THREE.Vector2(span / 2, 0), new THREE.Vector2(0, span * 0.4)]);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false }); geo.translate(0, 0, -len / 2);
-    const roof = mesh(geo, mat(0x7a3f2c), 1, 1, 1, (x0 + x1) / 2 * CELL, h.height, (y0 + y1) / 2 * CELL);
+    const roof = mesh(geo, mat(0x7a3f2c), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
     if (along) roof.rotation.y = Math.PI / 2;
     world.add(roof);
   }
@@ -182,12 +224,13 @@ function startGame(m) {
 
   // capture points
   points = map.points.map((p) => {
-    const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, 0, (p.y + 0.5) * CELL);
+    const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, hAt((p.x + 0.5) * CELL, (p.y + 0.5) * CELL), (p.y + 0.5) * CELL);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.7, depthWrite: false });
     const ring = new THREE.Mesh(new THREE.RingGeometry(CFG.pointRadius - 0.35, CFG.pointRadius, 64), ringMat);
     const progMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
     const prog = new THREE.Mesh(new THREE.RingGeometry(CFG.pointRadius - 1.6, CFG.pointRadius - 0.6, 64), progMat);
-    ring.rotation.x = prog.rotation.x = -Math.PI / 2; ring.position.y = 0.06; prog.position.y = 0.07;
+    ring.rotation.x = prog.rotation.x = -Math.PI / 2; ring.position.y = 0.3; prog.position.y = 0.32;
+    ring.material.depthTest = prog.material.depthTest = false; ring.renderOrder = prog.renderOrder = 2; // stay visible on slopes
     const flagMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
     const flag = mesh(GEO.plane, flagMat, 2.2, 1.4, 1, 1.1, 7.2, 0);
     g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(p.vp > 1 ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`));
@@ -199,7 +242,7 @@ function startGame(m) {
   fogGrid = { w: map.w, h: map.h };
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
-  const fog = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH), new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false }));
+  const fog = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
 
@@ -243,7 +286,7 @@ function drawTrenches() {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       if (grid[y + dy]?.[x + dx] === 'T') continue;
       const cx = (x + 0.5 + dx * 0.55) * CELL, cz = (y + 0.5 + dy * 0.55) * CELL;
-      group.add(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17, cz));
+      group.add(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17 + hAt(cx, cz), cz));
     }
   }));
   terrain.tex.needsUpdate = true;
@@ -257,7 +300,7 @@ function applyCells(cells) {
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
 function buildHQ(sp, slot) {
   const f = FACTIONS[slot], R = CFG.reinforceRadius, g = new THREE.Group();
-  g.position.set(sp.x, 0, sp.z);
+  g.position.set(sp.x, hAt(sp.x, sp.z), sp.z);
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
   g.add(flat(new THREE.CircleGeometry(R, 48), 0.18, 0.05), flat(new THREE.RingGeometry(R - 0.5, R, 64), 0.85, 0.06));
   // sandbags with gaps for the exits
@@ -331,7 +374,7 @@ function makeUnit(id, type, owner) {
 
 function corpse(v, man) {
   const p = man.getWorldPosition(new THREE.Vector3());
-  const body = mesh(GEO.body, mat(0x3a372c), 1, 1, 1, p.x, 0.3, p.z);
+  const body = mesh(GEO.body, mat(0x3a372c), 1, 1, 1, p.x, hAt(p.x, p.z) + 0.3, p.z);
   body.rotation.set(0, Math.random() * 6, Math.PI / 2);
   world.add(body);
   fx.push({ obj: body, life: 25, update: () => {} });
@@ -365,7 +408,7 @@ function tracer(a, b, color, life) {
 function boom(x, z, size) {
   for (const [color, grow, life] of [[0xffb040, 1, 0.35], [0x6d655a, 1.8, 1.4]]) {
     const m = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false }));
-    m.position.set(x, 0.5, z);
+    m.position.set(x, hAt(x, z) + 0.5, z);
     world.add(m);
     fx.push({ obj: m, life, max: life, update: (f) => { m.scale.setScalar(size * grow * (1.2 - f)); m.material.opacity = f * 0.8; }, dispose: () => m.material.dispose() });
   }
@@ -400,7 +443,7 @@ function blip(freq) {
 
 function marker(x, z, color) {
   const m = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.2, z);
+  m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.3, z); m.material.depthTest = false;
   world.add(m);
   fx.push({ obj: m, life: 0.6, max: 0.6, update: (f) => { m.scale.setScalar(0.5 + (1 - f) * 2); m.material.opacity = f; }, dispose: () => m.material.dispose() });
 }
@@ -434,7 +477,7 @@ function applySnapshot(s) {
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
     const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
-    const end = new THREE.Vector3(tx, to?.type === 'tank' ? 1.2 : 0.8, tz);
+    const end = new THREE.Vector3(tx, hAt(tx, tz) + (to?.type === 'tank' ? 1.2 : 0.8), tz);
     if (from) {
       const n = sh.k === 'rifle' ? Math.min(3, from.alive) : 1;
       for (let i = 0; i < n; i++) {
@@ -472,7 +515,8 @@ function syncSmoke(list) {
     const cloud = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0xd8d8d0, transparent: true, opacity: 0.5, depthWrite: false });
     for (let i = 0; i < 9; i++) {
       const a = i * 0.7, d = i ? r * 0.55 : 0, sz = r * (0.45 + Math.random() * 0.2);
-      cloud.add(mesh(GEO.ball, m, sz, sz * 0.7, sz, x + Math.cos(a) * d, sz * 0.5, z + Math.sin(a) * d));
+      const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
+      cloud.add(mesh(GEO.ball, m, sz, sz * 0.7, sz, cx, sz * 0.5 + hAt(cx, cz), cz));
     }
     cloud.traverse(o => (o.castShadow = false));
     world.add(cloud); smokes.set(key, cloud);
@@ -489,7 +533,7 @@ function syncStrikes(list) {
     let m = strikeMarks.get(key);
     if (!m) {
       m = aimShape(kind, owner === me ? FACTIONS[owner].color : 0xff3020);
-      m.position.set(x, 0, z); m.rotation.y = -dir;
+      m.position.set(x, hAt(x, z), z); m.rotation.y = -dir;
       world.add(m); strikeMarks.set(key, m);
     }
     m.userData.t = t;
@@ -498,7 +542,7 @@ function syncStrikes(list) {
 }
 // ring for area strikes, a long strip for a strafing run
 function aimShape(kind, color) {
-  const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
+  const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
   if (kind === 'grenade') {
     const r = UNITS.rifle.ab.radius;
@@ -520,7 +564,7 @@ function plane(sh) {
   p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
   p.rotation.y = -sh.dir; world.add(p);
   const low = sh.k === 'strafe' ? 9 : 26, span = 140, life = 3;
-  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
+  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, hAt(sh.x, sh.z) + low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
   if (sh.k === 'strafe') {
     // guns rake the strip as it passes over
     for (let i = 0; i < 10; i++) {
@@ -533,9 +577,9 @@ function plane(sh) {
 
 // grenade in flight: a small arc from the thrower to the target
 function lob(from, x, z) {
-  const start = from.root.position.clone(), end = new THREE.Vector3(x, 0, z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
+  const start = from.root.position.clone(), end = new THREE.Vector3(x, hAt(x, z), z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
   n.scale.setScalar(0.25); world.add(n);
-  fx.push({ obj: n, life: 1.1, max: 1.1, update: (f) => { const t = 1 - f; n.position.lerpVectors(start, end, t); n.position.y = 1 + Math.sin(t * Math.PI) * 5; } });
+  fx.push({ obj: n, life: 1.1, max: 1.1, update: (f) => { const t = 1 - f; n.position.lerpVectors(start, end, t); n.position.y += 1 + Math.sin(t * Math.PI) * 5; } });
 }
 
 // ---------- HUD ----------
@@ -666,7 +710,8 @@ function pick(mx, my, test) {
 }
 const groundAt = (mx, my) => {
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
-  return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+  const hit = groundMesh && ray.intersectObject(groundMesh)[0];
+  return hit ? hit.point : ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
 };
 
 renderer.domElement.addEventListener('mousedown', (e) => {
@@ -746,17 +791,19 @@ renderer.setAnimationLoop(() => {
   cam.z = Math.min(MH || 160, Math.max(0, cam.z + (f.z * fw + r.z * rt) * pan));
   cam.yaw += ((keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0)) * 1.6 * dt;
   const hd = cam.dist * Math.cos(PITCH);
-  camera.position.set(cam.x + Math.sin(cam.yaw) * hd, cam.dist * Math.sin(PITCH), cam.z + Math.cos(cam.yaw) * hd);
-  camera.lookAt(cam.x, 0, cam.z);
+  cam.y = (cam.y ?? 0) + (hAt(cam.x, cam.z) - (cam.y ?? 0)) * Math.min(1, dt * 4); // glide over hills
+  camera.position.set(cam.x + Math.sin(cam.yaw) * hd, cam.y + cam.dist * Math.sin(PITCH), cam.z + Math.cos(cam.yaw) * hd);
+  camera.lookAt(cam.x, cam.y, cam.z);
 
   // units: smooth toward the latest server state
   const k = 1 - Math.exp(-dt * 10);
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
-    v.root.position.set(v.x, 0, v.z); v.root.rotation.y = -v.rot;
+    const gy = hAt(v.x, v.z);
+    v.root.position.set(v.x, gy, v.z); v.root.rotation.y = -v.rot;
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
-    v.bars.position.set(v.x, v.bars.position.y, v.z); v.bars.quaternion.copy(camera.quaternion);
+    v.bars.position.set(v.x, gy + (v.type === 'tank' ? 3.4 : 2.4), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
   }
   for (let i = fx.length - 1; i >= 0; i--) {
@@ -769,9 +816,9 @@ renderer.setAnimationLoop(() => {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
     if (aimCenter) {
-      aimMesh.position.set(aimCenter.x, 0, aimCenter.z);
+      aimMesh.position.set(aimCenter.x, hAt(aimCenter.x, aimCenter.z), aimCenter.z);
       if (g && Math.hypot(g.x - aimCenter.x, g.z - aimCenter.z) > 1.5) aimMesh.rotation.y = -Math.atan2(g.z - aimCenter.z, g.x - aimCenter.x);
-    } else if (g) { aimMesh.position.set(g.x, 0, g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
+    } else if (g) { aimMesh.position.set(g.x, hAt(g.x, g.z), g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
@@ -779,7 +826,7 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 
-if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer })); }
+if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
 window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, get me() { return me; } };
