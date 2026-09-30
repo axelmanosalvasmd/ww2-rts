@@ -79,6 +79,8 @@ const cleanName = (n) => String(n || '').replace(/[<>&"']/g, '').trim().slice(0,
 const send = (ws, msg) => ws?.readyState === 1 && ws.send(JSON.stringify(msg));
 const hostOf = (room) => room.players.findIndex(p => !p.ai);
 // new players default to their own team (free-for-all) and the next faction in the cycle
+// assault needs someone on the defending team and someone attacking it
+const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
 const newPlayer = (room, p) => ({ ...p, team: room.players.length, faction: room.players.length % 3 });
 const setMap = async (room, name) => { room.mapName = name; room.spawns = (await loadMap(name)).spawns.length; };
 
@@ -86,6 +88,7 @@ async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: room.spawns, publicUrl: PUBLIC_URL,
+    mode: room.mode, defenderTeam: room.defenderTeam,
     players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
 }
@@ -107,7 +110,7 @@ wss.on('connection', (ws, req) => {
     if (!me) {
       if (msg.t !== 'hello') return;
       room = rooms.get(code);
-      if (!room) { rooms.set(code, room = { code, players: [], state: 'lobby', game: null }); await setMap(room, 'default'); }
+      if (!room) { rooms.set(code, room = { code, players: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0 }); await setMap(room, 'default'); }
       const token = String(msg.token || '').slice(0, 40), name = cleanName(msg.name);
       me = room.players.find(p => p.token === token && token);
       if (me) { me.ws?.close(); me.ws = ws; me.name = name; }
@@ -136,10 +139,14 @@ wss.on('connection', (ws, req) => {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
       if (p && (slot === hostOf(room) ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
-    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= room.spawns) {
+    } else if (msg.t === 'mode' && slot === hostOf(room) && room.state !== 'play' && ['conquest', 'assault'].includes(msg.v)) {
+      room.mode = msg.v; lobby(room);
+    } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
+      room.defenderTeam = msg.v; lobby(room);
+    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= room.spawns && assaultReady(room)) {
       room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
       room.map = await loadMap(room.mapName);
-      room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction));
+      room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam });
       lobby(room);
       room.players.forEach((_, i) => sendStart(room, i));
     } else if (room.state === 'play' && room.game) command(room.game, slot, msg);

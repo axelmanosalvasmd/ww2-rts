@@ -284,10 +284,12 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
     const g = hilly(heights); g.players[0].mp = g.players[1].mp = 1000;
     const r = put(g, 0, 'rifle', 3, 20), t = put(g, 1, 'rifle', 25, 20);
     let n = 0;
-    for (let i = 0; i < 3000; i++) { t.hp = 100; t.supp = 0; r.cooldown = 0; r.targetId = t.id; r.retarget = 1; step(g); if (t.hp < 100) n++; }
+    // total damage, not "was it hit": a 5-man volley almost always lands something, which hides the difference
+    for (let i = 0; i < 3000; i++) { t.hp = 100; t.supp = 0; t.cooldown = 99; r.hp = 100; r.supp = 0; r.xp = 0; r.cooldown = 0; r.targetId = t.id; r.retarget = 1; step(g); n += 100 - t.hp; }
     return n;
   };
-  assert.ok(hits(2) > hits(0) * 1.1, 'high ground hits more often');
+  const up = hits(2), flat = hits(0);
+  assert.ok(up > flat * 1.15, `high ground does more damage (${up} vs ${flat})`);
 }
 
 // Depressions: a 2-deep gully hides whoever is in it from the flat ground beside it.
@@ -521,6 +523,42 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.deepEqual(spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [0, 3, 1, 4, 2, 5], '3v3 sides');
   assert.deepEqual(spawnSlots(6, [0, 1, 2], false), [0, 2, 4], '3-way FFA spread');
   for (let i = 0; i < 20; i++) { const s = spawnSlots(6, [0, 0, 1, 1, 2, 2]); assert.equal(new Set(s).size, 6, 'no shared spawns'); }
+}
+
+// Assault mode: the defender gets a bunker and fortifications; attackers must destroy it before time runs out.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const mk = () => createGame(map, ['att', 'def'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 1 });
+  const g = mk();
+  const bunkers = [...g.units.values()].filter(u => u.type === 'bunker');
+  assert.equal(bunkers.length, 1, 'one bunker'); assert.equal(bunkers[0].owner, 1, 'owned by the defender');
+  assert.equal(vet(bunkers[0]), 0, 'a free unit is not a born veteran');
+  assert.ok(g.cellLog.filter(([, ch]) => ch === 'T').length >= 8 && g.cellLog.some(([, ch]) => ch === '#'), 'trenches and walls around the base');
+  assert.ok(g.players[0].mp > g.players[1].mp, 'attacker starts richer');
+  // can't be ordered, doesn't count as pop
+  const b = bunkers[0], bx = b.x;
+  command(g, 1, { t: 'move', orders: [[b.id, 5, 5]] }); command(g, 1, { t: 'retreat', ids: [b.id] });
+  run(g, 1);
+  assert.equal(b.x, bx, 'bunker stays put');
+  assert.ok(snapshotFor(g, 0, []).units.some(u => u[0] === b.id), 'attacker always sees the bunker');
+  // direct fire barely scratches it; explosives do the work
+  const t = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  g.players[0].mp = 5000; command(g, 0, { t: 'buy', unit: 'tank' });
+  const tank = [...g.units.values()].at(-1); tank.x = b.x + 20; tank.z = b.z; tank.targetId = b.id; tank.retarget = 99; tank.cooldown = 0;
+  const orig = Math.random; Math.random = () => 0;
+  const h0 = b.hp; step(g); const shell = h0 - b.hp;
+  Math.random = orig;
+  assert.ok(shell > 0 && shell <= 45 * 0.25 + 0.01, `tank shell does 25% (${shell})`);
+  // clock runs out: defender wins
+  g.mode.timeLeft = 0.01; run(g, 0.1);
+  assert.equal(g.winner, 1, 'defender holds');
+  // bunker destroyed: attacker wins
+  const g2 = mk(), b2 = [...g2.units.values()].find(u => u.type === 'bunker');
+  g2.players[0].mp = 5000; const o2 = Math.random; Math.random = () => 0.5;
+  command(g2, 0, { t: 'support', kind: 'bombing', x: b2.x, z: b2.z, dir: 0 });
+  for (let i = 0; i < 8 && g2.winner === null; i++) { g2.players[0].sup.bombing = 0; g2.players[0].mp = 5000; command(g2, 0, { t: 'support', kind: 'bombing', x: b2.x, z: b2.z, dir: 0 }); run(g2, 9); }
+  Math.random = o2;
+  assert.equal(g2.winner, 0, 'attacker wins when the bunker falls');
 }
 
 // Disconnected players: no VP and no manpower while away, then it resumes.

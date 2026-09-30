@@ -3,9 +3,9 @@ import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, canBuild
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker' } },
 ];
 const COLORS = [0x3d7bd9, 0xe0b23a, 0xd94a3d, 0x4cae4c, 0xa35ad8, 0xe07a2a];
 let teams = [], factions = [];
@@ -15,7 +15,7 @@ const foe = (slot) => (teams[slot] ?? slot) !== (teams[me] ?? me);
 const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons',
   ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint' };
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (type === 'tiger' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (type === 'bunker' ? 7.5 : type === 'tiger' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -63,6 +63,8 @@ $('fullscreen').onclick = async () => {
   } catch {}
 };
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
+$('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
+$('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 
 function renderLobby(m) {
@@ -85,14 +87,21 @@ function renderLobby(m) {
   $('start').classList.toggle('hidden', !host || m.state === 'play');
   $('mapSel').innerHTML = (m.maps || []).map(n => `<option ${n === m.mapName ? 'selected' : ''}>${esc(n)}</option>`).join('');
   $('mapSel').disabled = !host || !lobby;
+  // Assault: the host picks which team defends; everyone else attacks
+  const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
+  $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
+  $('defSel').classList.toggle('hidden', !assault);
+  $('defSel').innerHTML = teamIds.map(t => `<option value="${t}" ${t === m.defenderTeam ? 'selected' : ''}>Team ${t + 1} defends (${m.players.filter(p => p.team === t).map(p => esc(p.name)).join(', ')})</option>`).join('');
+  $('defSel').disabled = !host || !lobby;
+  const assaultOk = !assault || (m.players.some(p => p.team === m.defenderTeam) && m.players.some(p => p.team !== m.defenderTeam));
   $('addAi').classList.toggle('hidden', !host || !lobby || n >= COLORS.length);
   // "3v3", "2v2v2", "1v1", or FFA when nobody shares a team
   const sizes = [...new Set(m.players.map(p => p.team))].map(t => m.players.filter(p => p.team === t).length);
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
-  $('start').textContent = m.state === 'over' ? 'Rematch' : `Start ${mode}`;
+  $('start').textContent = m.state === 'over' ? 'Rematch' : `Start ${assault ? 'assault' : mode}`;
   const tooMany = n > (m.spawns ?? 3);
-  $('start').disabled = tooMany;
-  $('lobbyMsg').textContent = tooMany ? `This map has ${m.spawns} spawns: pick a bigger map or remove players.` : host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
+  $('start').disabled = tooMany || !assaultOk;
+  $('lobbyMsg').textContent = tooMany ? `This map has ${m.spawns} spawns: pick a bigger map or remove players.` : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
   const w = lastSnap?.winner;
   $('result').classList.toggle('hidden', m.state !== 'over' || w == null);
   if (m.state === 'over' && w != null) $('result').textContent = w === (teams[me] ?? me) ? 'Victory' : `${names.filter((_, i) => (teams[i] ?? i) === w).join(' & ') || 'Enemy'} win${teams.filter(t => t === w).length > 1 ? '' : 's'}`;
@@ -428,7 +437,13 @@ function makeUnit(id, type, owner) {
   v.sel = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: 0xfff6c8, depthWrite: false, transparent: true }));
   v.sel.rotation.x = -Math.PI / 2; v.sel.position.y = 0.16; v.sel.scale.setScalar(def.radius + 1); v.sel.visible = false; v.sel.renderOrder = 2;
   root.add(base, v.sel); v.base = base;
-  if (TANKS[type]) {
+  if (type === 'bunker') {
+    const conc = mat(0x8a8a82), dark = mat(0x1e1e1a);
+    root.add(mesh(GEO.box, conc, 5.2, 2.4, 5.2, 0, 1.2, 0), mesh(GEO.box, mat(0x74746c), 6, 0.5, 6, 0, 2.6, 0), mesh(GEO.box, dark, 0.3, 0.4, 3, 2.62, 1.6, 0));
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, mat(0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
+    root.add(mesh(GEO.cyl, mat(0x4a3f30), 0.08, 4, 0.08, -1.8, 4.6, -1.8), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, -0.9, 6, -1.8));
+    v.models.push(root);
+  } else if (TANKS[type]) {
     buildTank(v, root, TANKS[type][facOf(owner)] ?? TANKS[type].find(Boolean), f);
     v.models.push(root);
   } else if (type === 'rocket') {
@@ -739,6 +754,20 @@ function buildBuyBar() {
 
 function updateHud(s) {
   const held = (slot) => s.points.filter(p => p[0] === slot).length;
+  if (s.mode?.kind === 'assault') {
+    const clock = `${Math.floor(s.mode.timeLeft / 60)}:${String(s.mode.timeLeft % 60).padStart(2, '0')}`, mine = teams[me] ?? me;
+    const bunkers = [...units.values()].filter(v => v.type === 'bunker');
+    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">Assault · ${clock}</div>
+      <div class="muted">${mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker'}</div></div>` +
+      [...new Set(teams)].map(t => {
+        const mem = names.map((_, i) => i).filter(i => teams[i] === t), def = t === s.mode.defenderTeam;
+        const hp = bunkers.filter(b => teams[b.owner] === t).reduce((a, b) => a + b.hp, 0), max = bunkers.filter(b => teams[b.owner] === t).length * UNITS.bunker.hpPer;
+        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span></div>
+          <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
+          <div class="muted">${def ? 'Defending' : 'Attacking'}</div>
+          ${def ? `<div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">Bunker ${Math.ceil(hp)} / ${max}</div>` : ''}</div>`;
+      }).join('');
+  } else
   // one card per team: its players, then the team's combined VP (that's what wins)
   $('scores').innerHTML = [...new Set(teams)].map(t => {
     const mem = names.map((_, i) => i).filter(i => teams[i] === t), vp = mem.reduce((a, i) => a + s.vp[i], 0);
@@ -956,9 +985,9 @@ addEventListener('mouseup', (e) => {
   if (!e.shiftKey) selected.clear();
   if (drag.moved) {
     const x0 = Math.min(drag.x, e.clientX), x1 = Math.max(drag.x, e.clientX), y0 = Math.min(drag.y, e.clientY), y1 = Math.max(drag.y, e.clientY);
-    for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
+    for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && !UNITS[v.type].structure && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
   } else {
-    const v = pick(e.clientX, e.clientY, v => v.owner === me);
+    const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure);
     if (v) selected.add(v.id);
   }
   drag = null;

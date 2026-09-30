@@ -37,7 +37,9 @@ function spotNear(g, p) {
 
 export function think(g, slot) {
   const me = g.players[slot];
-  const mine = [...g.units.values()].filter(u => u.owner === slot);
+  const mine = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure);
+  const assault = g.mode?.kind === 'assault', defending = assault && me.team === g.mode.defenderTeam;
+  const bunkers = assault ? [...g.units.values()].filter(u => UNITS[u.type].structure && g.players[u.owner].team !== me.team) : [];
   const count = (t) => mine.filter(u => u.type === t).length;
   const seenTanks = [...me.visible].filter(id => g.units.get(id)?.type === 'tank').length;
 
@@ -60,7 +62,7 @@ export function think(g, slot) {
     if (i >= 0) load[i]++;
   }
 
-  const orders = [], assault = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
+  const orders = [], assault_ = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
   const enemies = [...me.visible].map(id => g.units.get(id)).filter(Boolean);
 
   // off-map support, keeping 100 MP back so reinforcing never stalls
@@ -74,7 +76,9 @@ export function think(g, slot) {
   const call = (kind, at, dir) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z, dir });
   // bombs for tanks and for squads holed up in houses
   const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
-  if (bombTarget && can('bombing')) call('bombing', bombTarget);
+  if (bunkers.length && can('bombing')) call('bombing', bunkers[0]);
+  else if (bunkers.length && can('artillery')) call('artillery', bunkers[0]);
+  else if (bombTarget && can('bombing')) call('bombing', bombTarget);
   else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
   else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && me.mp > 250) call('recon', g.points.find(p => p.owner >= 0 && !allied(g, p.owner, slot)));
@@ -128,8 +132,15 @@ export function think(g, slot) {
     }
     // otherwise go for the closest point we don't hold, spreading out across targets
     let best = -1, bestScore = Infinity;
+    // attackers with a big enough army go for the bunkers
+    if (bunkers.length && mine.length >= 6) {
+      const b = bunkers.sort((a, c) => d(u, a) - d(u, c))[0];
+      assault_.push([u.id, b.x, b.z]);
+      continue;
+    }
     g.points.forEach((p, i) => {
       if (allied(g, p.owner, slot)) return;
+      if (defending && d(p, me.spawn) > 70) return; // defenders stay near home
       // the center is worth double VP, villages feed manpower
       const score = d(u, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10;
       if (score < bestScore) { bestScore = score; best = i; }
@@ -150,9 +161,9 @@ export function think(g, slot) {
     }
     // assaults on held points attack-move, so they fight their way in instead of walking past defenders
     const held = p.owner >= 0 && !allied(g, p.owner, slot);
-    for (const u of group) { const s = spotNear(g, p); (held ? assault : orders).push([u.id, s.x, s.z]); }
+    for (const u of group) { const s = spotNear(g, p); (held ? assault_ : orders).push([u.id, s.x, s.z]); }
   });
   if (retreat.length) command(g, slot, { t: 'retreat', ids: retreat });
   if (orders.length) command(g, slot, { t: 'move', orders });
-  if (assault.length) command(g, slot, { t: 'amove', orders: assault });
+  if (assault_.length) command(g, slot, { t: 'amove', orders: assault_ });
 }

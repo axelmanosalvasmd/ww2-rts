@@ -40,6 +40,17 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
 
+## Assault mode (attack & defend)
+- Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
+- Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of
+  trenches and sandbag walls facing the map center. Direct fire does 25% to it; explosives use their demolition value
+  (bomb 400, satchel 600, rocket 120, shell 90), so every destruction tool is a way in.
+- Attackers win when every bunker is down; defenders win when the 15:00 clock runs out. No VP; points give manpower.
+- Attackers start with 320 MP and +5/s, defenders 250 and +3.5/s. 90 AI 1v1 assaults per map, attacker wins:
+  50% (default), 61% (River Towns). 3v3 on Six Fronts runs (3 bunkers).
+- Bug found while testing: veterancy thresholds are multiples of unit cost, so the free bunker counted as a 3-star
+  veteran. Free units never rank up now.
+
 ## Command & readability (slice after destruction)
 - Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
   Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).

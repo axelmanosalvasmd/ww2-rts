@@ -5,6 +5,8 @@ export const CELL = 2;
 export const TICK = 1 / 20;
 export const CFG = {
   vpToWin: 1200, mpStart: 150,
+  // Assault mode: attackers must destroy every defender's command bunker before the clock runs out.
+  assault: { time: 900, directMul: 0.25, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11 },
   // flat income does most of the work; points add a little and trailing players catch up
   mpBase: 4, catchupMax: 4, catchupPer: 80,
   captureTime: 8, pointRadius: 8, popCap: 12,
@@ -67,6 +69,10 @@ UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, models: 7, hpPer: 
   w: { range: 24, interval: 1.8, inf: 2.2, veh: 0.3, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
   ab: { id: 'ura', name: 'Ura!', cd: 35, dur: 6, speed: 1.6 } };
 UNITS.rifle.garrisons = UNITS.mg.garrisons = true;
+// Assault mode's objective: an immobile concrete bunker with an MG slit. Direct fire does 25%, explosives full damage.
+UNITS.bunker = { name: 'Command Bunker', faction: -1, cost: 0, models: 1, hpPer: 3000, speed: 0, radius: 3, vision: 40, infantry: false, structure: true,
+  w: { range: 36, interval: 0.4, inf: 3, veh: 0.5, accInf: 0.5, accVeh: 0.4, supp: 8 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
 export const UNIT_TYPES = Object.keys(UNITS);
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
 // same team (a player is always allied with itself); -1 = nobody
@@ -129,7 +135,13 @@ export function spawnSlots(nSpawns, teams, shuffle = true) {
 }
 
 // teams[i] / factions[i] per player; default is free-for-all with factions cycling USA, Germany, USSR
-export function createGame(map, names, shuffle = true, teams = names.map((_, i) => i), factions = names.map((_, i) => i % 3)) {
+// opts.mode: 'conquest' (default, VP race) or 'assault' (opts.defenderTeam defends; everyone else attacks as one team)
+export function createGame(map, names, shuffle = true, teams = names.map((_, i) => i), factions = names.map((_, i) => i % 3), opts = {}) {
+  const assault = opts.mode === 'assault';
+  if (assault) {
+    const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
+    teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
+  }
   const spawnIdx = spawnSlots(map.spawns.length, teams, shuffle);
   const g = {
     w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
@@ -149,7 +161,30 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   for (const p of g.players) CFG.startForce.forEach((t, i) => spawnUnit(g, p.slot, t, i));
+  if (assault) setupAssault(g, opts.defenderTeam);
   return g;
+}
+
+function setupAssault(g, defenderTeam) {
+  const A = CFG.assault;
+  g.mode = { kind: 'assault', defenderTeam, attackerTeam: g.players.find(p => p.team !== defenderTeam)?.team ?? -1, timeLeft: A.time };
+  const cx = g.w * CELL / 2, cz = g.h * CELL / 2;
+  for (const p of g.players) {
+    const defending = p.team === defenderTeam;
+    p.mp = defending ? A.defenderMp : A.attackerMp;
+    if (!defending) continue;
+    // fortify the side of the base that faces the map center: a trench line, then sandbag walls, with gaps to move through
+    const toward = Math.atan2(cz - p.spawn.z, cx - p.spawn.x), r = A.fortRadius;
+    for (let a = -0.9; a <= 0.9; a += 0.04) for (const [rr, ch, gap] of [[r, 'T', 0.35], [r + 2, '#', 0.25]]) {
+      if (Math.abs((a / gap) % 2) > 1.6) continue; // leave gaps
+      const c = cellOf(g, p.spawn.x + Math.cos(toward + a) * rr * CELL, p.spawn.z + Math.sin(toward + a) * rr * CELL);
+      if (c >= 0 && g.chars[c] === '.') setCell(g, c, ch);
+    }
+    // the bunker sits between the HQ and the fortifications
+    const b = spawnUnit(g, p.slot, 'bunker');
+    const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 5 * CELL / 2, p.spawn.z + Math.sin(toward) * 5 * CELL / 2);
+    Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
+  }
 }
 
 function spawnUnit(g, owner, type, n = g.units.size) {
@@ -193,7 +228,7 @@ function nearCover(g, u) {
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (SOLID.has(g.chars[(y + dy) * g.w + x + dx])) return true;
   return [...g.units.values()].some(v => v !== u && !UNITS[v.type].infantry && dist(u, v) < 3.5);
 }
-export const vet = (u) => CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length;
+export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
 
 // leave a building onto the nearest open cell
@@ -364,7 +399,7 @@ const num = (v, max) => (Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : nu
 
 export function command(g, slot, cmd) {
   if (g.winner !== null || !cmd || typeof cmd !== 'object') return;
-  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot ? u : null; };
+  const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
   const ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, 50) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     for (const o of cmd.orders.slice(0, 50)) {
@@ -435,7 +470,7 @@ export function command(g, slot, cmd) {
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
   } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit) && canBuild(cmd.unit, g.players[slot].faction)) {
     const p = g.players[slot], def = UNITS[cmd.unit];
-    const pop = [...g.units.values()].filter(u => u.owner === slot).length;
+    const pop = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).length;
     const have = [...g.units.values()].filter(u => u.owner === slot && u.type === cmd.unit).length;
     if (p.mp >= def.cost && pop < CFG.popCap && have < (def.max ?? Infinity)) { p.mp -= def.cost; spawnUnit(g, slot, cmd.unit); }
   }
@@ -459,7 +494,7 @@ function pickTarget(g, u) {
     const inf = UNITS[t.type].infantry;
     // salvos go for garrisons first, then for whatever has the most enemies around it
     const value = w.salvo ? (t.garrison >= 0 ? 3 : 1) * (1 + [...g.units.values()].filter(o => o.owner === t.owner && dist(o, t) < 6).length) : inf ? w.inf * w.accInf : w.veh * w.accVeh;
-    const score = dist(u, t) / value;
+    const score = dist(u, t) / value * (UNITS[t.type].structure ? 5 : 1); // soldiers first, concrete later
     if (score < bestScore) { bestScore = score; best = t.id; }
   }
   return best;
@@ -483,7 +518,8 @@ function fire(g, u, t, moving) {
   if (u.ap && !inf) { acc = 1; dmg *= 1.5; u.ap = false; }
   if (t.retreating) dmg *= CFG.retreatDamage;
   dmg *= 1 - CFG.vetArmor * vet(t); supp *= 1 - CFG.vetSupp * vet(t);
-  if (!inf) {
+  if (def.structure) dmg *= CFG.assault.directMul; // bullets and shells barely scratch concrete
+  else if (!inf) {
     // rear armor: shot coming from behind the hull does double damage
     const a = Math.atan2(u.z - t.z, u.x - t.x) - t.rot;
     if (Math.cos(a) < -0.5) dmg *= 2;
@@ -513,6 +549,7 @@ function updateVision(g) {
     const vis = new Set(), own = [...g.units.values()].filter(u => g.players[u.owner].team === p.team);
     for (const t of g.units.values()) {
       if (g.players[t.owner].team === p.team) continue;
+      if (UNITS[t.type].structure) { vis.add(t.id); continue; }
       if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, t)); })
         || g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
@@ -522,7 +559,9 @@ function updateVision(g) {
 
 function hurt(g, t, src, fall, owner) {
   const inf = UNITS[t.type].infantry;
-  t.hp -= (inf ? src.inf : src.veh) * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
+  // concrete takes an explosive's demolition value (the same number that wrecks houses)
+  const base = UNITS[t.type].structure ? src.terrain ?? src.veh : inf ? src.inf : src.veh;
+  t.hp -= base * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
   if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
 }
@@ -673,9 +712,11 @@ export function step(g) {
     if (a.garrison >= 0 || b.garrison >= 0) continue;
     const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
     if (d >= min || d === 0) continue;
-    const push = (min - d) / 2 * 0.5, px = dx / d * push, pz = dz / d * push;
-    if (!(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
+    if (sa && sb) continue;
+    const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
+    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
 
   // grenades: hurt everyone in the blast (friendly fire included), cover doesn't help
@@ -742,7 +783,7 @@ export function step(g) {
   // reinforce / repair near your own spawn, paid in manpower
   for (const u of list) {
     const def = UNITS[u.type], p = g.players[u.owner], full = def.models * def.hpPer;
-    if (u.hp <= 0 || u.hp >= full || dist(u, p.spawn) > CFG.reinforceRadius) { u.reinf = 0; continue; }
+    if (def.structure || u.hp <= 0 || u.hp >= full || dist(u, p.spawn) > CFG.reinforceRadius) { u.reinf = 0; continue; }
     if (def.infantry) {
       const cost = def.cost / def.models * 0.5;
       if ((u.reinf += dt) >= CFG.reinforceEvery && p.mp >= cost) { u.reinf = 0; p.mp -= cost; u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
@@ -775,9 +816,17 @@ export function step(g) {
   for (const pl of g.players) {
     const held = g.points.filter(p => p.owner === pl.slot);
     // away = disconnected (set by the server): their clock stops so a dropout doesn't decide the match
-    pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1);
-    pl.inc = pl.away ? 0 : CFG.mpBase + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
+    if (!g.mode) pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1);
+    const base = !g.mode ? CFG.mpBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
+    pl.inc = pl.away ? 0 : base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
     pl.mp += pl.inc * dt;
+  }
+  if (g.mode) {
+    // assault: the attackers win when the last bunker falls, the defenders when the clock runs out
+    g.mode.timeLeft -= dt;
+    if (![...g.units.values()].some(u => UNITS[u.type].structure && u.hp > 0)) g.winner = g.mode.attackerTeam;
+    else if (g.mode.timeLeft <= 0) g.winner = g.mode.defenderTeam;
+    return;
   }
   for (const pl of g.players) if (teamVp(pl.team) >= g.winVp && g.winner === null) g.winner = pl.team; // winner = team id
 }
@@ -788,6 +837,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
   const seen = (id) => allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
   return {
     t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc),
+    mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)) },
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
     // Last field: veterancy stars. Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
