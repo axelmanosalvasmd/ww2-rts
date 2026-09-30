@@ -20,6 +20,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed: clicking or box-selecting units on high ground missed them. Selection projected every unit at ground
   level 0, so on a level-4 plateau the click spot was about 90 px below the soldiers (the pick radius is 32 px).
   It was barely noticeable on the older maps' low hills.
+- Planned Classic mode (base building, resources, Munitions, Annihilation); design only for now, see DESIGN.md
+  and the new CONTEXT.md glossary. Nothing changed in the game yet.
 
 ## 2026-09-30
 
