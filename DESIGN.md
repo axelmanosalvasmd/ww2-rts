@@ -62,6 +62,10 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
   Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).
 - Attack-move: G then click, or Ctrl+right-click. Units halt to fight what's in range, then carry on.
+- Selected units show their weapon range (a ring; rocket launchers also show their minimum range), their route, and
+  what they're set on: a line and marker to the locked target, grenade spot, trench, site or house. Colors: blue move,
+  orange attack-move, white retreat, red attack, yellow dig/build. The server sends these plans for your own units
+  only, so nothing leaks through the fog.
 - F fires one ability: the first ready type in rifle > MG > AT > tank > rocket order; others are click-only in the bar.
 - Garrison: right-click a house with rifles/MGs. One squad per house cell (edge cells, so they can shoot out).
   Inside: 35% incoming accuracy, +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.

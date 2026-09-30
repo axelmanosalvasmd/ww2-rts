@@ -637,6 +637,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(g.winner, 0, 'last side standing wins');
 }
 
+// Plans: snapshots carry your own units' routes and locked targets, never anyone else's.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+  const a = put(g, 0, 'rifle', 5, 5), b = put(g, 1, 'rifle', 20, 5);
+  run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[a.id, 30, 30]] });
+  let plans = snapshotFor(g, 0, []).plans;
+  assert.deepEqual(plans.map(q => q[0]), [a.id], 'only my units');
+  assert.equal(plans[0][1], 1, 'moving'); assert.ok(plans[0].length > 4, 'with waypoints');
+  command(g, 0, { t: 'attack', ids: [a.id], target: b.id });
+  plans = snapshotFor(g, 0, []).plans;
+  assert.deepEqual(plans[0].slice(1, 4), [4, b.x, b.z], 'locked onto the target it was ordered to attack');
+}
+
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);

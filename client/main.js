@@ -243,7 +243,7 @@ function startGame(m) {
   world.add(fog);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
-  aimMesh = null; nodeMarks = null;
+  aimMesh = null; nodeMarks = null; planGroup = null;
 
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
@@ -453,6 +453,13 @@ function makeUnit(id, type, owner) {
   v.sel = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: 0xfff6c8, depthWrite: false, transparent: true }));
   v.sel.rotation.x = -Math.PI / 2; v.sel.position.y = 0.16; v.sel.scale.setScalar(def.radius + 1); v.sel.visible = false; v.sel.renderOrder = 2;
   root.add(base, v.sel); v.base = base;
+  if (def.w) {
+    // weapon range (and the minimum range of rocket salvos), shown while selected
+    const rm = new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false });
+    v.range = new THREE.Group(); v.range.visible = false;
+    for (const r of [def.w.range, def.w.minRange].filter(Boolean)) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.25, r, 96), rm); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; v.range.add(m); }
+    root.add(v.range);
+  }
   if (type === 'hq') {
     // command post: sandbagged timber block with a radio mast
     const wood = mat(0x7a6446), roof = mat(0x5a4a34);
@@ -669,6 +676,7 @@ function applySnapshot(s) {
     if (sh.kill && to) to.killed = true;
   }
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
+  for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z]) => { const m = nodeMark(x, z); world.add(m); return m; });
 
   s.points.forEach(([owner, capper, progress], i) => {
@@ -825,6 +833,7 @@ function updateHud(s) {
     <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE · clock paused</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
     <div class="bar"><div style="width:${Math.min(100, vp / winVp(teams) * 100)}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${vp} / ${winVp(teams)} VP</div></div>`;
   }).join('');
+  drawPlans();
   const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length;
   $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun` : `${s.mp} MP`;
   $('support').querySelectorAll('button').forEach(b => {
@@ -854,6 +863,33 @@ function updateHud(s) {
 // the squad nearest the clicked spot digs a line across its approach
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !(v.flags & 1));
 function startDig() { if (diggers().length && lastSnap?.mp >= CFG.digCost) { setAim('dig'); blip(600); } }
+// Selected units show where they're going and what they're locked onto (sent by the server for your own units)
+const PLAN_LOOK = { 1: 0x9dd0ff, 2: 0xffa030, 3: 0xffffff, 4: 0xff4030, 5: 0xff4030, 6: 0xff4030, 7: 0xe8c860, 8: 0xe8c860, 9: 0x9dd0ff };
+let planGroup = null;
+function drawPlans() {
+  if (!world) return;
+  if (!planGroup) { planGroup = new THREE.Group(); world.add(planGroup); }
+  planGroup.children.forEach(o => o.geometry.dispose());
+  planGroup.clear();
+  const at = (x, z) => new THREE.Vector3(x, hAt(x, z) + 0.4, z);
+  for (const id of selected) {
+    const v = units.get(id), p = v?.plan;
+    if (!p || !p.kind) continue;
+    const color = PLAN_LOOK[p.kind], line = (pts, opacity) => {
+      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthTest: false }));
+      l.renderOrder = 3; planGroup.add(l);
+    };
+    // the route: from the unit through its remaining waypoints
+    const pts = [at(v.x, v.z)];
+    for (let i = 0; i < p.path.length; i += 2) pts.push(at(p.path[i], p.path[i + 1]));
+    if (pts.length > 1) line(pts, 0.7);
+    // the objective: a straight line to it and a marker on it (plain moves just end at their last waypoint)
+    if (p.kind >= 4) line([pts.at(-1), at(p.tx, p.tz)], 0.45);
+    const mk = new THREE.Mesh(new THREE.RingGeometry(p.kind === 4 ? 1.6 : 0.8, p.kind === 4 ? 2 : 1.1, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthTest: false }));
+    mk.rotation.x = -Math.PI / 2; mk.position.copy(at(p.tx, p.tz)); mk.renderOrder = 3; planGroup.add(mk);
+  }
+}
+
 // Engineers put Supply Depots on resource nodes: J, then click near a node
 const builders = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'engineer' && !(v.flags & 1));
 function startBuild() { if (builders().length && lastSnap?.mp >= UNITS.depot.cost) { setAim('depot'); blip(600); } }
@@ -1185,6 +1221,7 @@ renderer.setAnimationLoop(() => {
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
+    if (v.range) v.range.visible = v.sel.visible;
   }
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= dt;

@@ -999,6 +999,22 @@ export function step(g) {
   for (const pl of g.players) if (teamVp(pl.team) >= g.winVp && g.winner === null) g.winner = pl.team; // winner = team id
 }
 
+// what a unit is set on, as [kind, x, z]. kind: 0 none, 1 move, 2 attack-move, 3 retreat, 4 attack a unit,
+// 5 fire at a structure, 6 throw / plant at a spot, 7 dig, 8 build, 9 go into a house
+function planOf(g, u) {
+  const t = u.attackId && g.units.get(u.attackId), site = u.build && g.units.get(u.build);
+  if (u.retreating) return [3, g.players[u.owner].spawn.x, g.players[u.owner].spawn.z];
+  if (t) return [4, t.x, t.z];
+  if (u.fireAt >= 0) { const c = cellCenter(g, u.fireAt); return [5, c.x, c.z]; }
+  if (u.nade) return [6, u.nade.x, u.nade.z];
+  if (u.dig) return [7, u.dig.x, u.dig.z];
+  if (site) return [8, site.x, site.z];
+  if (u.enter >= 0) { const c = cellCenter(g, u.enter); return [9, c.x, c.z]; }
+  if (u.amove) return [2, u.amove.x, u.amove.z];
+  const end = u.path.at(-1);
+  return end ? [1, end.x, end.z] : [0, 0, 0];
+}
+
 // What one player is allowed to know: own units + enemies they can see. Fog is enforced here.
 export function snapshotFor(g, slot, shots, cells = []) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
@@ -1006,6 +1022,8 @@ export function snapshotFor(g, slot, shots, cells = []) {
   return {
     t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun),
     nodes: g.nodes?.map(n => [r(n.x), r(n.z)]), out: g.players.map(q => !!q.out),
+    // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]
+    plans: [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).map(u => [u.id, ...planOf(g, u).map(r), ...u.path.flatMap(q => [r(q.x), r(q.z)])]),
     mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)) },
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
     // 128 building a site. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.

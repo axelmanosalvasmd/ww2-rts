@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Selected units now show their weapon range as a ring (rocket launchers also show their minimum range), the route
+  they're walking, and what they're locked onto: a red line and ring to an attack target, markers for a grenade spot,
+  a trench being dug, a building site or a house they're entering. Only your own units' orders are sent.
 - Added this changelog and AGENTS.md (the rule to keep it up to date).
 - Bombs and artillery now dig the ground. Each blast lowers the ground one level (a real dip that changes
   sight lines and gives low ground): a bomb digs a 3x3 patch, an artillery shell a single cell. Repeated hits on
