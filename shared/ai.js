@@ -4,6 +4,17 @@ import { UNITS, SUPPORT, CELL, CFG, COVER, MOVE, TRENCH, command, inCover } from
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
+function houseNear(g, p, r) {
+  let best = null, bd = Infinity;
+  for (let y = Math.floor((p.z - r) / CELL); y <= (p.z + r) / CELL; y++)
+    for (let x = Math.floor((p.x - r) / CELL); x <= (p.x + r) / CELL; x++) {
+      if (x < 0 || y < 0 || x >= g.w || y >= g.h || g.chars[y * g.w + x] !== 'B') continue;
+      const c = { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL }, dd = d(c, p);
+      if (dd < bd) { bd = dd; best = c; }
+    }
+  return best;
+}
+
 function trenchesNear(g, p, r) {
   let n = 0;
   for (let y = Math.floor((p.z - r) / CELL); y <= (p.z + r) / CELL; y++)
@@ -31,7 +42,8 @@ export function think(g, slot) {
   const seenTanks = [...me.visible].filter(id => g.units.get(id)?.type === 'tank').length;
 
   // shopping: counter tanks it has seen, get one tank once the infantry is out, else 2 rifles per MG
-  const want = seenTanks > count('at') ? 'at' : count('tank') < 1 && mine.length >= 4 ? 'tank' : count('mg') * 2 < count('rifle') ? 'mg' : 'rifle';
+  const seenGarrison = [...me.visible].some(id => g.units.get(id)?.garrison >= 0);
+  const want = seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : count('tank') < 1 && mine.length >= 4 ? 'tank' : count('mg') * 2 < count('rifle') ? 'mg' : 'rifle';
   if (me.mp >= UNITS[want].cost) command(g, slot, { t: 'buy', unit: want });
 
   // how many of my units are at or heading to each point
@@ -42,7 +54,7 @@ export function think(g, slot) {
     if (i >= 0) load[i]++;
   }
 
-  const orders = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
+  const orders = [], assault = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
   const enemies = [...me.visible].map(id => g.units.get(id)).filter(Boolean);
 
   // off-map support, keeping 100 MP back so reinforcing never stalls
@@ -54,7 +66,10 @@ export function think(g, slot) {
     }
   };
   const call = (kind, at, dir) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z, dir });
-  if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
+  // bombs for tanks and for squads holed up in houses
+  const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
+  if (bombTarget && can('bombing')) call('bombing', bombTarget);
+  else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
   else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && me.mp > 250) call('recon', g.points.find(p => p.owner >= 0 && p.owner !== slot));
   for (const u of mine) {
@@ -71,11 +86,17 @@ export function think(g, slot) {
       } else if (def.ab.id === 'suppress' && target) command(g, slot, { t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'ap' && target?.type === 'tank') command(g, slot, { t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'smoke' && frac < 0.5 && !home) command(g, slot, { t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'barrage') { const t = enemies.find(e => e.garrison >= 0 && d(u, e) <= def.ab.range); if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
     }
     // save hurt units instead of letting them die: retreat, get reinforced, come back
     if (!home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
     if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
-    if (u.path.length || u.attackId || u.nade || u.dig) continue;
+    // tanks knock down houses that enemy squads are hiding in
+    if (u.type === 'tank' && !u.targetId && u.fireAt < 0) {
+      const house = enemies.find(e => e.garrison >= 0 && d(u, e) < 60);
+      if (house) { command(g, slot, { t: 'fireat', ids: [u.id], x: house.x, z: house.z }); continue; }
+    }
+    if (u.path.length || u.attackId || u.nade || u.dig || u.enter >= 0 || u.fireAt >= 0) continue;
     if (u.targetId) continue; // in a fight: hold
     const here = pointOf(u);
     // infantry stays to capture, and one squad stays behind to hold each captured point (and digs in)
@@ -83,7 +104,10 @@ export function think(g, slot) {
       const p = g.points[here];
       if (p.owner !== slot) continue;
       if (holding[here]++ === 0) {
-        if (u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
+        // hold it from a house if there is one close by, otherwise dig in
+        const house = u.garrison < 0 && ['rifle', 'mg'].includes(u.type) && houseNear(g, p, CFG.pointRadius + 3);
+        if (house) { command(g, slot, { t: 'garrison', ids: [u.id], x: house.x, z: house.z }); if (u.enter >= 0) continue; }
+        if (u.garrison < 0 && u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
           // dig a line between the point and the closest enemy HQ
           const foe = g.players.filter(q => q.slot !== slot).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0].spawn, l = d(foe, p) || 1;
           command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 });
@@ -113,8 +137,11 @@ export function think(g, slot) {
       const cx = group.reduce((a, u) => a + u.x, 0) / group.length, cz = group.reduce((a, u) => a + u.z, 0) / group.length;
       call('smoke', { x: cx + (p.x - cx) * 0.6, z: cz + (p.z - cz) * 0.6 }, Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2); // wall across the approach
     }
-    for (const u of group) { const s = spotNear(g, p); orders.push([u.id, s.x, s.z]); }
+    // assaults on held points attack-move, so they fight their way in instead of walking past defenders
+    const held = p.owner >= 0 && p.owner !== slot;
+    for (const u of group) { const s = spotNear(g, p); (held ? assault : orders).push([u.id, s.x, s.z]); }
   });
   if (retreat.length) command(g, slot, { t: 'retreat', ids: retreat });
   if (orders.length) command(g, slot, { t: 'move', orders });
+  if (assault.length) command(g, slot, { t: 'amove', orders: assault });
 }

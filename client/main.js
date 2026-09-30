@@ -3,11 +3,12 @@ import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf } from '/
 
 // Factions are cosmetic: same stats, different names and colors. Slot index = faction.
 const FACTIONS = [
-  { name: 'USA', color: 0x3d7bd9, uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart' } },
-  { name: 'Germany', color: 0xe0b23a, uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II' } },
-  { name: 'USSR', color: 0xd94a3d, uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70' } },
+  { name: 'USA', color: 0x3d7bd9, uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope' } },
+  { name: 'Germany', color: 0xe0b23a, uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer' } },
+  { name: 'USSR', color: 0xd94a3d, uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha' } },
 ];
-const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear' };
+const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons' };
+const isVeh = (type) => !UNITS[type].infantry;
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -137,8 +138,9 @@ function terrainGeometry() {
 }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
+let lastStart = null;
 function startGame(m) {
-  me = m.you; names = m.names;
+  me = m.you; names = m.names; lastStart = m; mmImage = null;
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
@@ -330,6 +332,7 @@ function applyCells(cells) {
   }
   terrain.tex.needsUpdate = true;
   buildStructures();
+  mmImage = null;
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
@@ -380,6 +383,16 @@ function makeUnit(id, type, owner) {
     v.turret.add(mesh(GEO.box, hull, 1.8, 0.8, 1.6), mesh(GEO.cyl, dark, 0.1, 2.4, 0.1, 1.9, 0.05, 0).rotateZ(Math.PI / 2), mesh(GEO.box, mat(f.color), 0.5, 0.82, 1.62, -0.5, 0, 0));
     root.add(v.turret);
     v.models.push(root);
+  } else if (type === 'rocket') {
+    // truck with a rack of launch tubes on the back; the rack turns toward the target
+    const body = mat(f.vehicle), dark = mat(0x2a2a24);
+    root.add(mesh(GEO.box, body, 4.4, 0.7, 2.1, 0, 1.0, 0), mesh(GEO.box, body, 1.3, 1.2, 2.0, 1.6, 1.8, 0), mesh(GEO.box, mat(f.color), 0.5, 0.3, 2.02, 1.6, 2.45, 0));
+    for (const wx of [-1.4, 0, 1.4]) for (const wz of [-1.05, 1.05]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, wx, 0.45, wz).rotateX(Math.PI / 2));
+    v.turret = new THREE.Group(); v.turret.position.set(-0.8, 1.7, 0);
+    const rack = new THREE.Group(); rack.rotation.z = 0.5;
+    for (let i = 0; i < 8; i++) rack.add(mesh(GEO.cyl, dark, 0.12, 2.6, 0.12, 0, (i % 2) * 0.28, (Math.floor(i / 2) - 1.5) * 0.3).rotateZ(Math.PI / 2));
+    v.turret.add(rack); root.add(v.turret);
+    v.models.push(root);
   } else {
     const helmet = mat(new THREE.Color(f.uniform).lerp(new THREE.Color(f.color), 0.55).getHex());
     for (const [x, z] of SLOTS[type]) {
@@ -397,12 +410,14 @@ function makeUnit(id, type, owner) {
     }
   }
   // billboarded health + suppression bars
-  v.bars = new THREE.Group(); v.bars.position.y = type === 'tank' ? 3.4 : 2.4;
+  v.bars = new THREE.Group(); v.bars.position.y = isVeh(type) ? 3.4 : 2.4;
   const bg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
   v.hpBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: f.color, depthTest: false })); v.hpBar.scale.set(2.3, 0.2, 1); v.hpBar.position.set(0, 0.07, 0.01);
   v.suppBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd23a, depthTest: false })); v.suppBar.scale.set(2.3, 0.1, 1); v.suppBar.position.set(0, -0.11, 0.01);
   bg.renderOrder = 3; v.hpBar.renderOrder = v.suppBar.renderOrder = 4;
   v.bars.add(bg, v.hpBar, v.suppBar);
+  // veterancy: up to three gold stars above the bar
+  v.stars = [-0.5, 0, 0.5].map(x => { const st = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); st.scale.set(0.32, 0.32, 1); st.position.set(x, 0.42, 0.01); st.rotation.z = Math.PI / 4; st.renderOrder = 4; st.visible = false; v.bars.add(st); return st; });
   world.add(root, v.bars);
   return v;
 }
@@ -418,7 +433,7 @@ function corpse(v, man) {
 
 function removeUnit(v) {
   world.remove(v.bars);
-  if (v.killed && v.type === 'tank') {
+  if (v.killed && isVeh(v.type)) {
     // leave a burnt-out wreck for a while
     v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
     v.root.children.slice(0, 2).forEach(o => (o.visible = false));
@@ -458,7 +473,7 @@ addEventListener('pointerdown', () => {
 }, { once: true });
 function sound(kind, x, z) {
   if (!audio || voices > 20) return;
-  const vol = Math.max(0, 1 - Math.hypot(x - cam.x, z - cam.z) / 160) * (kind === 'tank' || kind === 'at' ? 0.9 : 0.25);
+  const vol = Math.max(0, 1 - Math.hypot(x - cam.x, z - cam.z) / 160) * (kind === 'tank' || kind === 'at' || kind === 'rocket' ? 0.9 : 0.25);
   if (vol <= 0.01) return;
   const src = audio.createBufferSource(), filt = audio.createBiquadFilter(), gain = audio.createGain(), t = audio.currentTime;
   const heavy = kind === 'tank' || kind === 'at', len = heavy ? 0.7 : kind === 'mg' ? 0.06 : 0.12;
@@ -487,15 +502,18 @@ function marker(x, z, color) {
 
 function applySnapshot(s) {
   const seen = new Set();
-  for (const [id, type, owner, x, z, rot, aim, hp, supp, , cover, cd, flags] of s.units) {
+  for (const [id, type, owner, x, z, rot, aim, hp, supp, , cover, cd, flags, stars] of s.units) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover, cd, flags });
+    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32) });
+    v.stars.forEach((st, i) => (st.visible = i < v.vet));
+    // inside a building: the squad disappears into it; its bars float above the roof
     v.base.material.color.set(flags & 1 ? 0xffffff : FACTIONS[owner].color);
     const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
-    if (type !== 'tank') while (v.alive > alive) corpse(v, v.models[--v.alive]);
-    if (type !== 'tank') v.models.forEach(man => (man.position.y = cover === 2 ? -0.6 : 0));
+    if (!isVeh(type)) while (v.alive > alive) corpse(v, v.models[--v.alive]);
+    if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
+    v.base.visible = !v.garr;
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
     v.hpBar.material.color.set(frac > 0.5 ? FACTIONS[owner].color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
@@ -507,13 +525,16 @@ function applySnapshot(s) {
     if (sh.k === 'throw') { const from = units.get(sh.f); if (from) lob(from, sh.x, sh.z); continue; }
     if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
     if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'strafe' || sh.k === 'recon') { plane(sh); continue; }
+    if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
+    if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
+    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
+    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing') { plane(sh); continue; }
     if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
     const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
-    const end = new THREE.Vector3(tx, hAt(tx, tz) + (to?.type === 'tank' ? 1.2 : 0.8), tz);
+    const end = new THREE.Vector3(tx, hAt(tx, tz) + (to && isVeh(to.type) ? 1.2 : 0.8), tz);
     if (from) {
       const n = sh.k === 'rifle' ? Math.min(3, from.alive) : 1;
       for (let i = 0; i < n; i++) {
@@ -580,8 +601,8 @@ function syncStrikes(list) {
 function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (kind === 'grenade') {
-    const r = UNITS.rifle.ab.radius;
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'amove') {
+    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : 2;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
   } else {
     const [len, width] = kind === 'dig' ? [CFG.digCells * CELL, CELL] : [SUPPORT[kind].len, SUPPORT[kind].width];
@@ -599,7 +620,7 @@ function plane(sh) {
   const p = new THREE.Group(), c = mat(0x55594a), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir);
   p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
   p.rotation.y = -sh.dir; world.add(p);
-  const low = sh.k === 'strafe' ? 9 : 26, span = 140, life = 3;
+  const low = sh.k === 'strafe' ? 9 : sh.k === 'bombing' ? 18 : 26, span = 140, life = 3;
   fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, hAt(sh.x, sh.z) + low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
   if (sh.k === 'strafe') {
     // guns rake the strip as it passes over
@@ -611,6 +632,17 @@ function plane(sh) {
   sound('tank', sh.x, sh.z);
 }
 
+// rocket salvo: eight streaks arcing from the launcher onto the target area
+function salvo(from, x, z) {
+  const start = from.root.position.clone(); start.y += 2.5;
+  for (let i = 0; i < 8; i++) {
+    const end = new THREE.Vector3(x + (Math.random() - 0.5) * 8, hAt(x, z), z + (Math.random() - 0.5) * 8), r = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0xffc070 }));
+    r.scale.setScalar(0.3); r.visible = false; world.add(r);
+    const life = 1.2 + i * 0.15;
+    fx.push({ obj: r, life, max: life, update: (f) => { const t = Math.min(1, (1 - f) * life / 1.2 - i * 0.15 / 1.2); r.visible = t > 0; if (t > 0) { r.position.lerpVectors(start, end, t); r.position.y += Math.sin(t * Math.PI) * 18; } }, dispose: () => r.material.dispose() });
+  }
+}
+
 // grenade in flight: a small arc from the thrower to the target
 function lob(from, x, z) {
   const start = from.root.position.clone(), end = new THREE.Vector3(x, hAt(x, z), z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
@@ -620,8 +652,8 @@ function lob(from, x, z) {
 
 // ---------- HUD ----------
 
-const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B' };
-const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways' };
+const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N' };
+const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks' };
 function buildSupportBar() {
   $('support').innerHTML = SUPPORT_TYPES.map(k => `<button data-k="${k}" title="${SUPPORT_TIP[k]}">${SUPPORT[k].name} <kbd>${SUPPORT_KEYS[k]}</kbd><span></span></button>`).join('');
   $('support').querySelectorAll('button').forEach(b => (b.onclick = () => aimSupport(b.dataset.k)));
@@ -651,18 +683,19 @@ function updateHud(s) {
   $('income').textContent = `+${s.inc}/s · ${pop}/${CFG.popCap} units`;
   $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= CFG.popCap));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
-    const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : ''].join(' ');
-    return `<div class="sel"><span>${FACTIONS[v.owner].names[v.type]}</span><span>${tags} ${v.type === 'tank' ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
+    const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
+    return `<div class="sel"><span>${FACTIONS[v.owner].names[v.type]}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
   }).join('');
   // ability bar for the current selection
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  const types = [...new Set(sel.map(v => v.type))];
+  const types = PRIORITY.filter(t => sel.some(v => v.type === t)), fType = fKeyType();
+  const amove = sel.length ? `<button data-a="amove">Attack-move <kbd>G</kbd></button>` : '';
   const dig = types.includes('rifle') ? `<button data-a="dig" ${lastSnap?.mp >= CFG.digCost ? '' : 'disabled'}>Dig trench <kbd>T</kbd> ${CFG.digCost}</button>` : '';
-  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + dig + types.map(t => {
+  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + amove + dig + types.map(t => {
     const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
-    return `<button data-a="${t}" ${ready ? '' : 'disabled'}>${UNITS[t].ab.name} <kbd>F</kbd>${ready ? '' : ` ${cd}s`}</button>`;
+    return `<button data-a="${t}" ${ready ? '' : 'disabled'}>${UNITS[t].ab.name}${t === fType ? ' <kbd>F</kbd>' : ''}${ready ? '' : ` ${cd}s`}</button>`;
   }).join('') : '';
-  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a === 'dig' ? startDig() : useAbility(b.dataset.a))));
+  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a === 'dig' ? startDig() : b.dataset.a === 'amove' ? setAim('amove') : useAbility(b.dataset.a))));
 }
 
 // the squad nearest the clicked spot digs a line across its approach
@@ -677,24 +710,49 @@ let targeting = null, aimCenter = null, aimMesh = null, home = null;
 function cancelAim() { targeting = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind) {
   targeting = kind; aimCenter = null;
-  $('hint').textContent = kind === 'grenade' ? 'Click where to throw · right-click cancels' : 'Click to set the center · right-click cancels';
+  $('hint').textContent = { grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
+  $('hint').textContent += ' · right-click cancels';
 }
 // direction before the second click: planes fly out from home, trenches run across the squad's approach
 function defaultDir(kind, at) {
   if (kind === 'dig') { const v = nearestDigger(at); return v ? Math.atan2(at.z - v.z, at.x - v.x) + Math.PI / 2 : 0; }
   return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
 }
-function useAbility(only) {
-  const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && (!only || v.type === only));
-  const instant = ready.filter(v => UNITS[v.type].ab.id !== 'grenade');
-  if (instant.length) { sendCmd({ t: 'ability', ids: instant.map(v => v.id) }); blip(880); }
-  if (ready.some(v => v.type === 'rifle')) setAim('grenade');
+// F fires exactly one ability: the first type in this order that has one ready (the others are click-only)
+const PRIORITY = ['rifle', 'mg', 'at', 'tank', 'rocket'];
+function fKeyType() {
+  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
+  return PRIORITY.find(t => sel.some(v => v.type === t && !v.cd)) ?? null;
 }
-function throwAt(g) {
-  const rifles = [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !v.cd);
-  if (!rifles.length) return;
-  rifles.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
-  sendCmd({ t: 'ability', ids: [rifles[0].id], x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(760);
+const AIMED = { grenade: 'rifle', barrage: 'rocket' }; // abilities that need a spot clicked
+function useAbility(type) {
+  if (!type) return;
+  const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && v.type === type);
+  if (!ready.length) return;
+  const id = UNITS[type].ab.id;
+  if (AIMED[id]) setAim(id);
+  else { sendCmd({ t: 'ability', ids: ready.map(v => v.id) }); blip(880); }
+}
+function throwAt(g, kind) {
+  const who = [...selected].map(id => units.get(id)).filter(v => v && v.type === AIMED[kind] && !v.cd);
+  if (!who.length) return;
+  who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
+  sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(760);
+}
+// rows perpendicular to the direction of travel
+function formation(sel, g) {
+  const cx = sel.reduce((a, v) => a + v.x, 0) / sel.length, cz = sel.reduce((a, v) => a + v.z, 0) / sel.length;
+  const len = Math.hypot(g.x - cx, g.z - cz) || 1, dx = (g.x - cx) / len, dz = (g.z - cz) / len, cols = Math.ceil(Math.sqrt(sel.length)), gap = 5;
+  sel.sort((a, b) => (a.x - cx) * -dz + (a.z - cz) * dx - ((b.x - cx) * -dz + (b.z - cz) * dx));
+  return sel.map((v, i) => {
+    const col = i % cols - (Math.min(cols, sel.length) - 1) / 2, row = Math.floor(i / cols);
+    return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
+  });
+}
+function moveTo(g, attack) {
+  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
+  if (!sel.length) return;
+  sendCmd({ t: attack ? 'amove' : 'move', orders: formation(sel, g) }); marker(g.x, g.z, attack ? 0xff9a40 : 0x9dff7a); blip(attack ? 500 : 660);
 }
 
 // ---------- camera + input ----------
@@ -711,7 +769,9 @@ addEventListener('keydown', (e) => {
   else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
   else if (e.code === 'KeyX') { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }
   else if (e.code === 'KeyR') retreat();
-  else if (e.code === 'KeyF') useAbility();
+  else if (e.code === 'KeyF') useAbility(fKeyType());
+  else if (e.code === 'KeyG' && selected.size) setAim('amove');
+  else if (e.code === 'KeyN') aimSupport('bombing');
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) { cam.x = home.x; cam.z = home.z; }
@@ -741,7 +801,7 @@ function pick(mx, my, test) {
   for (const v of units.values()) {
     if (!test(v)) continue;
     const s = screenOf(v), d = Math.hypot(s.x - mx, s.y - my);
-    if (s.front && d < (v.type === 'tank' ? 45 : 32) && d < bd) { bd = d; best = v; }
+    if (s.front && d < (isVeh(v.type) ? 45 : 32) && d < bd) { bd = d; best = v; }
   }
   return best;
 }
@@ -756,7 +816,8 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   if (targeting) {
     const kind = targeting, g = e.button === 0 && groundAt(e.clientX, e.clientY);
     if (!g) { cancelAim(); return; }
-    if (kind === 'grenade') { cancelAim(); throwAt(g); return; }
+    if (AIMED[kind]) { cancelAim(); throwAt(g, kind); return; }
+    if (kind === 'amove') { cancelAim(); moveTo(g, true); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; $('hint').textContent = 'Move the mouse to rotate · click to launch'; blip(560); return; }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
@@ -770,17 +831,30 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   const enemy = pick(e.clientX, e.clientY, v => v.owner !== me);
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); return; }
+  // a house: squads go inside, tanks and rocket trucks shell it, anything else walks up to it
+  const house = houseAt(e.clientX, e.clientY);
+  if (house) {
+    const inf = sel.filter(v => v.type === 'rifle' || v.type === 'mg').map(v => v.id), guns = sel.filter(v => v.type === 'tank' || v.type === 'rocket').map(v => v.id);
+    if (inf.length) sendCmd({ t: 'garrison', ids: inf, x: house.x, z: house.z });
+    if (guns.length) sendCmd({ t: 'fireat', ids: guns, x: house.x, z: house.z });
+    const rest = sel.filter(v => !inf.includes(v.id) && !guns.includes(v.id));
+    if (rest.length) sendCmd({ t: 'move', orders: formation(rest, house) });
+    marker(house.x, house.z, guns.length && !inf.length ? 0xff4030 : 0x9dd0ff); blip(560);
+    return;
+  }
   const g = groundAt(e.clientX, e.clientY); if (!g) return;
-  // simple formation: rows perpendicular to the direction of travel
-  const cx = sel.reduce((a, v) => a + v.x, 0) / sel.length, cz = sel.reduce((a, v) => a + v.z, 0) / sel.length;
-  const len = Math.hypot(g.x - cx, g.z - cz) || 1, dx = (g.x - cx) / len, dz = (g.z - cz) / len, cols = Math.ceil(Math.sqrt(sel.length)), gap = 5;
-  sel.sort((a, b) => (a.x - cx) * -dz + (a.z - cz) * dx - ((b.x - cx) * -dz + (b.z - cz) * dx));
-  const orders = sel.map((v, i) => {
-    const col = i % cols - (Math.min(cols, sel.length) - 1) / 2, row = Math.floor(i / cols);
-    return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
-  });
-  sendCmd({ t: 'move', orders }); marker(g.x, g.z, 0x9dff7a); blip(660);
+  moveTo(g, e.ctrlKey); // Ctrl + right-click = attack-move
 });
+
+// the house under the cursor (walls and roofs count), as the center of its cell
+function houseAt(mx, my) {
+  if (!terrain) return null;
+  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
+  const hit = ray.intersectObjects([...terrain.group.children, groundMesh])[0];
+  if (!hit || hit.object === groundMesh) return null;
+  const p = hit.point.clone().addScaledVector(ray.ray.direction, 0.4), x = Math.floor(p.x / CELL), y = Math.floor(p.z / CELL);
+  return terrain.grid[y]?.[x] === 'B' ? { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL } : null;
+}
 addEventListener('mouseup', (e) => {
   if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
@@ -799,12 +873,83 @@ addEventListener('mouseup', (e) => {
 // ---------- frame loop ----------
 
 let lastT = performance.now();
+
+// ---------- minimap: rotated with the camera so "up" matches the screen ----------
+const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102] };
+let mmImage = null, mmFog = null, mmTimer = 0;
+function mmTerrain() {
+  const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
+  terrain.grid.forEach((row, y) => row.forEach((ch, x) => {
+    const lv = field ? field.vert[y * (w + 1) + x] / CFG.levelHeight : 0, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
+    img.data[i] = r * k; img.data[i + 1] = g * k; img.data[i + 2] = b * k; img.data[i + 3] = 255;
+  }));
+  x2.putImageData(img, 0, 0);
+  mmImage = c;
+}
+function mmBasis() {
+  const W = $('minimap').width, S = W / Math.hypot(MW, MH), r = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) }, f = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) };
+  return { W, S, r, f };
+}
+function mmToWorld(px, py) {
+  const { W, S, r, f } = mmBasis(), a = (px - W / 2) / S, b = -(py - W / 2) / S;
+  return { x: MW / 2 + r.x * a + f.x * b, z: MH / 2 + r.z * a + f.z * b };
+}
+function drawMinimap() {
+  const cv = $('minimap'), c = cv.getContext('2d');
+  if (!terrain || !lastSnap) return;
+  if (!mmImage) mmTerrain();
+  const { W, S, r, f } = mmBasis();
+  c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#15160f'; c.fillRect(0, 0, W, W);
+  // world (x, z) -> minimap, as one canvas transform
+  const a = r.x * S, b = -f.x * S, cc = r.z * S, d = -f.z * S;
+  c.setTransform(a, b, cc, d, W / 2 - (a * MW / 2 + cc * MH / 2), W / 2 - (b * MW / 2 + d * MH / 2));
+  c.imageSmoothingEnabled = true; // nearest-neighbor shimmers once the map is rotated
+  c.drawImage(mmImage, 0, 0, MW, MH);
+  if (fogVis) {
+    // one smooth image, not thousands of tiny squares (those leave a screen-door pattern)
+    if (!mmFog || mmFog.width !== fogGrid.w) { mmFog = document.createElement('canvas'); mmFog.width = fogGrid.w; mmFog.height = fogGrid.h; }
+    const fc = mmFog.getContext('2d'), img = fc.createImageData(fogGrid.w, fogGrid.h);
+    for (let i = 0; i < fogVis.length; i++) { img.data[i * 4] = img.data[i * 4 + 1] = 10; img.data[i * 4 + 3] = fogVis[i] ? 0 : 130; }
+    fc.putImageData(img, 0, 0);
+    c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
+  }
+  const col = (slot) => css(FACTIONS[slot].color);
+  lastSnap.points.forEach(([owner], i) => { const p = points[i]?.g.position; if (!p) return; c.beginPath(); c.arc(p.x, p.z, CFG.pointRadius, 0, Math.PI * 2); c.fillStyle = owner >= 0 ? col(owner) + '99' : '#dddddd66'; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1 / S; c.stroke(); });
+  (lastStart?.spawns || []).forEach((sp, i) => { c.fillStyle = col(i); c.fillRect(sp.x - 5, sp.z - 5, 10, 10); c.strokeStyle = '#000'; c.strokeRect(sp.x - 5, sp.z - 5, 10, 10); });
+  for (const [kind, x, z, dir, , owner] of lastSnap.strikes || []) {
+    const sp = SUPPORT[kind]; if (!sp) continue;
+    c.save(); c.translate(x, z); c.rotate(dir); c.strokeStyle = owner === me ? col(me) : '#ff3020'; c.lineWidth = 2 / S; c.strokeRect(-sp.len / 2, -sp.width / 2, sp.len, sp.width); c.restore();
+  }
+  for (const v of units.values()) {
+    c.beginPath(); c.arc(v.x, v.z, isVeh(v.type) ? 3.5 : 2.6, 0, Math.PI * 2); c.fillStyle = col(v.owner); c.fill();
+    if (selected.has(v.id)) { c.strokeStyle = '#fff'; c.lineWidth = 1.5 / S; c.stroke(); }
+  }
+  // what the camera sees
+  const corners = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => groundAt(x, y)).filter(Boolean);
+  if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
+}
+{
+  const cv = $('minimap');
+  let mmDrag = false;
+  const at = (e) => { const b = cv.getBoundingClientRect(); return mmToWorld((e.clientX - b.left) * cv.width / b.width, (e.clientY - b.top) * cv.height / b.height); };
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  cv.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    const p = at(e);
+    if (e.button === 0) { mmDrag = true; cam.x = p.x; cam.z = p.z; }
+    else if (e.button === 2 && selected.size) moveTo(p, e.ctrlKey);
+  });
+  addEventListener('mousemove', (e) => { if (mmDrag) { const p = at(e); cam.x = p.x; cam.z = p.z; } });
+  addEventListener('mouseup', () => (mmDrag = false));
+}
 let fogTimer = 0;
 const lerpAngle = (a, b, k) => a + (Math.atan2(Math.sin(b - a), Math.cos(b - a))) * k;
 
+let fogVis = null;
 function updateFog() {
   if (!fogTex) return;
-  const { w, h } = fogGrid, d = fogTex.image.data, vis = new Uint8Array(w * h);
+  const { w, h } = fogGrid, d = fogTex.image.data, vis = fogVis = new Uint8Array(w * h);
   for (const v of units.values()) {
     if (v.owner !== me) continue;
     const r = UNITS[v.type].vision / CELL, cx = v.x / CELL, cy = v.z / CELL;
@@ -840,7 +985,7 @@ renderer.setAnimationLoop(() => {
     const gy = hAt(v.x, v.z);
     v.root.position.set(v.x, gy, v.z); v.root.rotation.y = -v.rot;
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
-    v.bars.position.set(v.x, gy + (v.type === 'tank' ? 3.4 : 2.4), v.z); v.bars.quaternion.copy(camera.quaternion);
+    v.bars.position.set(v.x, gy + (v.garr ? 7.5 : isVeh(v.type) ? 3.4 : 2.4), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
   }
   for (let i = fx.length - 1; i >= 0; i--) {
@@ -848,6 +993,7 @@ renderer.setAnimationLoop(() => {
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
+  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }

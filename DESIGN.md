@@ -36,6 +36,21 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
 
+## Command & readability (slice after destruction)
+- Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
+  Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).
+- Attack-move: G then click, or Ctrl+right-click. Units halt to fight what's in range, then carry on.
+- F fires one ability: the first ready type in rifle > MG > AT > tank > rocket order; others are click-only in the bar.
+- Garrison: right-click a house with rifles/MGs. One squad per house cell (edge cells, so they can shoot out).
+  Inside: 35% incoming accuracy, +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.
+- Tanks shell a house on right-click (fire-at), and every tank round damages the structure it lands on.
+- Directional cover: a house, wall, rubble, hedge or vehicle within ~2 m on the shooter's side = 50% cover from that shooter.
+- Veterancy: damage dealt of 1/2.5/5x the unit's cost = 1-3 stars (+10% accuracy, -8% damage, -15% suppression each).
+- Rocket launcher (250 MP; T34 Calliope / Panzerwerfer / Katyusha): 8-rocket salvo up to 70 m on anything its side can
+  see, no line of sight needed, +50% vs garrisons, 20s reload. F = Rocket Barrage on any clicked spot.
+- Bombing run (250 MP, N): 6 heavy bombs in a line, 7 m blasts, big craters, 400 structure damage per bomb.
+- Balance: garrisons alone dropped 2nd place to 55%; with rockets it's back to 63% (default) / 61% (River Towns).
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz.

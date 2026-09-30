@@ -1,13 +1,14 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, los, findPath, snapshotFor, inTrench, CFG, CELL, SUPPORT } from './shared/sim.js';
+import { createGame, step, command, los, findPath, snapshotFor, inTrench, vet, CFG, CELL, SUPPORT } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
 const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
 const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
+const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250 })[t];
 const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; return u; };
 
 // LOS: a building between two points blocks sight; a wall does not.
@@ -332,6 +333,124 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(g, 0, { t: 'move', orders: [[t.id, 31, 36]] });
   run(g, 12);
   assert.ok(g.chars.slice(10 * 20 + 14, 10 * 20 + 16).includes('.'), 'tank flattened the hedge');
+}
+
+// Attack-move: stops to fight what it meets, then carries on to the destination.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 5000;
+  const r = put(g, 0, 'rifle', 3, 20), foe = put(g, 1, 'rifle', 22, 30); foe.hp = 15;
+  command(g, 0, { t: 'amove', orders: [[r.id, 37, 20]] });
+  run(g, 2.5);
+  assert.ok(r.x < 20, `halted to fight (${r.x.toFixed(1)})`);
+  run(g, 20);
+  assert.ok(!g.units.has(foe.id), 'enemy killed');
+  assert.ok(Math.hypot(r.x - 37, r.z - 20) < 3, 'then reached the destination');
+  // a plain move walks straight past
+  const g2 = fresh(); g2.players[0].mp = g2.players[1].mp = 5000;
+  const r2 = put(g2, 0, 'rifle', 3, 20); put(g2, 1, 'rifle', 22, 30);
+  command(g2, 0, { t: 'move', orders: [[r2.id, 37, 20]] });
+  run(g2, 9);
+  assert.ok(r2.x > 30, 'move ignores enemies');
+}
+
+// Garrison: squads enter a house (one per cell), get heavy cover, and are thrown out when it's wrecked.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(9) + 'BB' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 5000;
+  const a = put(g, 0, 'rifle', 5, 21), b = put(g, 0, 'mg', 5, 17), c = put(g, 0, 'rifle', 5, 25), t = put(g, 0, 'tank', 5, 30);
+  command(g, 0, { t: 'garrison', ids: [a.id, b.id, c.id, t.id], x: 19, z: 21 });
+  run(g, 8);
+  assert.ok(a.garrison >= 0 && b.garrison >= 0 && a.garrison !== b.garrison, 'two squads inside, one per cell');
+  assert.equal(c.garrison, -1, 'third squad: house is full');
+  assert.equal(t.garrison, -1, 'tanks cannot garrison');
+  assert.ok(snapshotFor(g, 0, []).units.find(u => u[0] === a.id)[12] & 32, 'snapshot flags it');
+  // heavy cover: the same shots hit less often than in the open
+  const foe = put(g, 1, 'mg', 19, 38); foe.still = 5; // the MG inside shoots back: foe's health is reset every step
+  let inside = 0, open = 0;
+  for (let i = 0; i < 1500; i++) { a.hp = 100; foe.hp = 75; foe.supp = 0; foe.cooldown = 0; foe.targetId = a.id; foe.retarget = 1; step(g); if (a.hp < 100) inside++; }
+  command(g, 0, { t: 'move', orders: [[a.id, 19, 30]] });
+  assert.equal(a.garrison, -1, 'a move order leaves the building');
+  run(g, 3);
+  for (let i = 0; i < 1500; i++) { a.hp = 100; a.x = 19; a.z = 30; foe.hp = 75; foe.supp = 0; foe.cooldown = 0; foe.targetId = a.id; foe.retarget = 1; step(g); if (a.hp < 100) open++; }
+  assert.ok(inside < open * 0.8, `garrison is harder to hit (${inside} vs ${open})`);
+  // wreck the house with the MG inside
+  const orig = Math.random; Math.random = () => 0.5;
+  command(g, 0, { t: 'support', kind: 'artillery', x: 19, z: 21, dir: 0 });
+  run(g, SUPPORT.artillery.delay + 5);
+  Math.random = orig;
+  assert.ok(!g.units.has(b.id) || (b.garrison === -1 && b.hp < 75), 'squad thrown out and hurt when the house falls');
+}
+
+// Veterancy: damage dealt earns stars; stars make a squad better.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  const r = put(g, 0, 'rifle', 5, 5);
+  assert.equal(vet(r), 0);
+  r.xp = UNITS_COST('rifle') * CFG.vetXp[1];
+  assert.equal(vet(r), 2, 'two stars');
+  assert.equal(snapshotFor(g, 0, []).units[0][13], 2, 'stars in the snapshot');
+}
+
+// Bombing: a stick of bombs flattens the houses along the line and craters the ground.
+{
+  const rows = [...empty]; rows[10] = '..' + 'BB..'.repeat(4) + '..';
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 5000;
+  const houses = () => g.chars.filter(c => c === 'B').length, before = houses();
+  const t = put(g, 1, 'tank', 20, 21);
+  command(g, 0, { t: 'support', kind: 'bombing', x: 20, z: 21, dir: 0 });
+  run(g, SUPPORT.bombing.delay + 3);
+  assert.ok(houses() <= before / 4, `most of the row is gone (${before} -> ${houses()})`);
+  assert.ok(g.chars.filter(c => c === '+').length >= 10, 'big craters');
+  assert.ok(!g.units.has(t.id) || t.hp < 360 * 0.5, 'tank under the bombs is wrecked or badly hurt');
+}
+
+// Tank shells: ordered to fire at a house, the tank knocks it down.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(9) + 'B' + '.'.repeat(10);
+  const g = fresh(rows); g.players[0].mp = 5000;
+  const t = put(g, 0, 'tank', 20, 40);
+  command(g, 0, { t: 'fireat', ids: [t.id], x: 19, z: 21 });
+  run(g, 20);
+  assert.equal(g.chars[10 * 20 + 9], 'R', 'house shelled into rubble');
+  assert.equal(t.fireAt, -1, 'tank stops once it is down');
+  const r = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'fireat', ids: [r.id], x: 19, z: 21 });
+  assert.equal(r.fireAt, -1, 'only tanks take fire-at orders');
+}
+
+// Directional cover: a wall on the shooter's side protects, the same wall does nothing against a flank shot.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(10) + '#' + '.'.repeat(9); // wall cell at x 20-22, z 20-22
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 5000;
+  const r = put(g, 0, 'rifle', 23.5, 21), front = put(g, 1, 'mg', 3, 21), flank = put(g, 1, 'mg', 23.5, 40);
+  front.still = flank.still = 5;
+  const hits = (shooter, other) => { let n = 0; for (let i = 0; i < 1500; i++) { r.hp = 100; r.supp = 0; r.x = 23.5; r.z = 21; other.cooldown = 99; shooter.hp = 75; other.hp = 75; shooter.cooldown = 0; shooter.targetId = r.id; shooter.retarget = 1; r.cooldown = 99; step(g); if (r.hp < 100) n++; } return n; };
+  const fromFront = hits(front, flank), fromFlank = hits(flank, front);
+  assert.ok(fromFront < fromFlank * 0.8, `wall protects from the front (${fromFront}) but not the flank (${fromFlank})`);
+  assert.equal(snapshotFor(g, 0, []).units.find(u => u[0] === r.id)[10], 3, 'snapshot marks "next to cover"');
+}
+
+// Rocket launcher: salvoes a garrisoned squad it can't see directly, and it hurts more than it would in the open.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(9) + 'BB' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 5000;
+  const sq = put(g, 1, 'rifle', 19, 25);
+  command(g, 1, { t: 'garrison', ids: [sq.id], x: 19, z: 21 });
+  run(g, 5);
+  assert.ok(sq.garrison >= 0, 'squad garrisoned');
+  const spotter = put(g, 0, 'rifle', 19, 36), rk = put(g, 0, 'rocket', 19, 3);
+  rk.still = 5; spotter.cooldown = 99;
+  const orig = Math.random; Math.random = () => 0.01; // rockets land near the aim point (real salvos scatter up to 6 m)
+  run(g, 5);
+  Math.random = orig;
+  assert.ok(sq.hp < 100 || !g.units.has(sq.id), 'salvo hit the garrison');
+  assert.ok(g.cellHp[10 * 20 + 9] < 400 || g.chars[10 * 20 + 9] === 'R', 'and damaged the house');
+  // manual barrage lands where you click, even unseen, and goes on cooldown
+  const g2 = fresh(); g2.players[0].mp = 5000;
+  const rk2 = put(g2, 0, 'rocket', 5, 5);
+  command(g2, 0, { t: 'ability', ids: [rk2.id], x: 35, z: 35 });
+  run(g2, 4);
+  assert.ok(rk2.cd > 0 && g2.chars.length, 'barrage fired');
 }
 
 // Disconnected players: no VP and no manpower while away, then it resumes.

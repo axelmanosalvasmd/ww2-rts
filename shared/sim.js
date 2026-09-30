@@ -15,6 +15,11 @@ export const CFG = {
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
   terrainHp: { B: 400, H: 60, '#': 150, '=': 200 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W' }, crush: { H: '.', '#': 'R' },
   fordSpeed: 0.5,
+  tankShellTerrain: 90, // structure damage per tank round where it lands (hit or miss)
+  // garrisoned squads: heavy cover, upper-floor vision, thrown out (and hurt) when the house comes down
+  garrisonMul: 0.35, garrisonVision: 1.25, garrisonEvictDamage: 0.3,
+  // veterancy: damage dealt (as multiples of the unit's cost) for 1/2/3 stars, and what each star is worth
+  vetXp: [1, 2.5, 5], vetAcc: 0.1, vetArmor: 0.08, vetSupp: 0.15,
   // elevation: height level per cell. 1 level of difference is a slope, more is a cliff.
   levelHeight: 2.5, minLevel: -2, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
@@ -42,6 +47,12 @@ export const UNITS = {
     w: { range: 35, interval: 3, inf: 30, veh: 45, accInf: 0.6, accVeh: 0.7, supp: 25, moveFire: 1 },
     ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } },
 };
+// Rocket launcher: no direct fire. Arcs an 8-rocket salvo onto anything its side can see (no line of sight needed),
+// hits garrisons hard and wrecks buildings. Fragile, needs to stop to set up, slow to reload.
+UNITS.rocket = { name: 'Rocket Launcher', cost: 250, models: 1, hpPer: 160, speed: 5, radius: 2.2, vision: 30, infantry: false,
+  w: { range: 70, minRange: 18, interval: 20, setup: 2, inf: 25, veh: 30, accInf: 1, accVeh: 1, supp: 50,
+    salvo: true, rockets: 8, spread: 6, blast: 3.5, terrain: 120, antiGarrison: 1.5, flight: 1.2, every: 0.15 },
+  ab: { id: 'barrage', name: 'Rocket Barrage', cd: 45, range: 70 } };
 export const UNIT_TYPES = Object.keys(UNITS);
 
 // Off-map support bought with manpower. Every strike is announced to all players `delay` seconds ahead.
@@ -50,6 +61,8 @@ export const SUPPORT = {
   artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, len: 24, width: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60, terrain: 90 },
   strafe: { name: 'Strafing Run', cost: 200, cd: 90, delay: 5, len: 36, width: 8, inf: 25, veh: 10, supp: 80 },
   smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, len: 36, width: 14, clouds: 5, cloud: 7, dur: 20 },
+  // a stick of heavy bombs along the line: flattens houses, big craters, deadly to tanks
+  bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, inf: 60, veh: 150, supp: 90, terrain: 400 },
 };
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
 
@@ -90,7 +103,7 @@ export function createGame(map, names, shuffle = true) {
   if (shuffle) for (let i = spawnOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [spawnOrder[i], spawnOrder[j]] = [spawnOrder[j], spawnOrder[i]]; }
   const g = {
     w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
-    tick: 0, nextId: 1, units: new Map(), shots: [], nades: [], smokes: [], strikes: [], winner: null,
+    tick: 0, nextId: 1, units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], winner: null,
     // terrain changed mid-match: full log for (re)joining clients, plus what's new since the last snapshot
     cellLog: [], newCells: [],
     players: names.map((name, slot) => {
@@ -115,7 +128,8 @@ function spawnUnit(g, owner, type, n = g.units.size) {
   const u = { id: g.nextId++, type, owner, x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL,
     rot: 0, aim: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
     path: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
-    cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null };
+    cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null,
+    garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1 };
   g.units.set(u.id, u);
   return u;
 }
@@ -129,7 +143,51 @@ const cellOf = (g, x, z) => {
 const flagsAt = (g, x, z) => { const c = cellOf(g, x, z); return c < 0 ? MOVE | SIGHT : g.flags[c]; };
 export const inCover = (g, u) => UNITS[u.type].infantry && (flagsAt(g, u.x, u.z) & COVER) > 0;
 export const inTrench = (g, u) => UNITS[u.type].infantry && (flagsAt(g, u.x, u.z) & TRENCH) > 0;
-const coverMul = (g, t) => (inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? CFG.coverMul : 1);
+const coverMul = (g, t) => (t.garrison >= 0 ? CFG.garrisonMul : inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? CFG.coverMul : 1);
+// Cover from something solid between you and the shooter, within ~2 m on their side:
+// a house, wall, rubble, hedge, or a vehicle. Protects from the front, not the flank.
+const SOLID = new Set(['B', '#', 'R', 'H']);
+function behindCover(g, t, from) {
+  const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
+  for (const d of [1.2, 2.2]) { const c = cellOf(g, t.x + ca * d, t.z + sa * d); if (c >= 0 && SOLID.has(g.chars[c])) return true; }
+  for (const v of g.units.values()) {
+    if (v === t || UNITS[v.type].infantry || v.hp <= 0) continue;
+    const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
+    if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) return true;
+  }
+  return false;
+}
+// for the HUD: is there anything solid right next to this squad?
+function nearCover(g, u) {
+  const x = Math.floor(u.x / CELL), y = Math.floor(u.z / CELL);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (SOLID.has(g.chars[(y + dy) * g.w + x + dx])) return true;
+  return [...g.units.values()].some(v => v !== u && !UNITS[v.type].infantry && dist(u, v) < 3.5);
+}
+export const vet = (u) => CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length;
+const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+
+// leave a building onto the nearest open cell
+function exitBuilding(g, u) {
+  if (u.garrison < 0) return;
+  const c = nearestFree(g, u.x, u.z), p = cellCenter(g, c);
+  u.x = p.x; u.z = p.z; u.garrison = -1;
+}
+// a free house cell with open ground next to it (so the squad can see and shoot out), nearest to `from`
+function entryCell(g, c0, from, taken) {
+  const seen = new Set([c0]), q = [c0], edge = [];
+  for (let i = 0; i < q.length; i++) {
+    const c = q[i], x = c % g.w, y = Math.floor(c / g.w);
+    let open = false;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, n = ny * g.w + nx;
+      if (nx < 0 || ny < 0 || nx >= g.w || ny >= g.h) continue;
+      if (g.chars[n] === 'B') { if (!seen.has(n)) { seen.add(n); q.push(n); } } else if (!(g.flags[n] & MOVE)) open = true;
+    }
+    if (open && !taken.has(c)) edge.push(c);
+  }
+  edge.sort((a, b) => dist(cellCenter(g, a), from) - dist(cellCenter(g, b), from));
+  return edge[0] ?? -1;
+}
 
 function setCell(g, c, ch) {
   g.flags[c] = TERRAIN[ch]; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
@@ -278,23 +336,42 @@ export function command(g, slot, cmd) {
   if (g.winner !== null || !cmd || typeof cmd !== 'object') return;
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot ? u : null; };
   const ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, 50) : [];
-  if (cmd.t === 'move' && Array.isArray(cmd.orders)) {
+  if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     for (const o of cmd.orders.slice(0, 50)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
-      u.attackId = 0; u.targetId = 0; u.stuck = 0; u.retreating = false; u.nade = null; u.dig = null;
+      exitBuilding(g, u);
+      Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, amove: cmd.t === 'amove' ? { x, z } : null });
       u.path = findPath(g, u, { x, z });
+    }
+  } else if (cmd.t === 'fireat') {
+    const c = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
+    if (c < 0 || !(g.cellHp[c] > 0)) return;
+    for (const id of ids) { const u = mine(id); if (u?.type === 'tank' || (u && UNITS[u.type].w.salvo)) Object.assign(u, { fireAt: c, attackId: 0, amove: null, retreating: false, repath: 0, path: [] }); }
+  } else if (cmd.t === 'garrison') {
+    const c0 = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
+    if (c0 < 0 || g.chars[c0] !== 'B') return;
+    const taken = new Set([...g.units.values()].flatMap(u => [u.garrison, u.enter]).filter(c => c >= 0));
+    for (const id of ids) {
+      const u = mine(id);
+      if (!u || !['rifle', 'mg'].includes(u.type) || u.retreating) continue;
+      const c = entryCell(g, c0, u, taken);
+      if (c < 0) break; // house is full
+      exitBuilding(g, u);
+      taken.add(c);
+      Object.assign(u, { enter: c, attackId: 0, nade: null, dig: null, amove: null, repath: 0, path: findPath(g, u, cellCenter(g, c)) });
     }
   } else if (cmd.t === 'attack') {
     const t = g.units.get(cmd.target);
     if (!t || t.owner === slot || !g.players[slot].visible.has(t.id)) return;
-    for (const id of ids) { const u = mine(id); if (u) { u.attackId = t.id; u.repath = 0; u.retreating = false; u.nade = null; u.dig = null; } }
+    for (const id of ids) { const u = mine(id); if (u) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
   } else if (cmd.t === 'stop') {
-    for (const id of ids) { const u = mine(id); if (u) { u.path = []; u.attackId = 0; u.retreating = false; u.nade = null; u.dig = null; } }
+    for (const id of ids) { const u = mine(id); if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); }
   } else if (cmd.t === 'retreat') {
     for (const id of ids) {
       const u = mine(id); if (!u) continue;
-      Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0 });
+      exitBuilding(g, u);
+      Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1 });
       u.path = findPath(g, u, g.players[slot].spawn);
     }
   } else if (cmd.t === 'ability') {
@@ -302,7 +379,7 @@ export function command(g, slot, cmd) {
     for (const id of ids) {
       const u = mine(id), ab = u && UNITS[u.type].ab;
       if (!u || u.cd > 0 || u.retreating) continue;
-      if (ab.id === 'grenade') { if (x === null || z === null) continue; u.nade = { x, z }; u.attackId = 0; u.repath = 0; }
+      if (ab.id === 'grenade' || ab.id === 'barrage') { if (x === null || z === null) continue; exitBuilding(g, u); Object.assign(u, { nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
       else if (ab.id === 'suppress') { u.buff = ab.dur; u.cd = ab.cd; }
       else if (ab.id === 'ap') { u.ap = true; u.cd = ab.cd; }
       else if (ab.id === 'smoke') { g.smokes.push({ x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
@@ -338,7 +415,8 @@ const suppMul = (u) => (u.supp >= 90 ? { speed: 0.3, rate: 3, acc: 0.5 } : u.sup
 
 function canShoot(g, u, t) {
   const w = UNITS[u.type].w;
-  return t && t.hp > 0 && t.owner !== u.owner && dist(u, t) <= w.range && g.players[u.owner].visible.has(t.id) && los(g, u, t);
+  if (!t || t.hp <= 0 || t.owner === u.owner || dist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
+  return w.salvo ? dist(u, t) >= w.minRange : los(g, u, t); // salvos arc over: spotting is enough
 }
 
 function pickTarget(g, u) {
@@ -346,23 +424,33 @@ function pickTarget(g, u) {
   let best = 0, bestScore = Infinity;
   for (const t of g.units.values()) {
     if (!canShoot(g, u, t)) continue;
-    const inf = UNITS[t.type].infantry, value = inf ? w.inf * w.accInf : w.veh * w.accVeh;
+    const inf = UNITS[t.type].infantry;
+    // salvos go for garrisons first, then for whatever has the most enemies around it
+    const value = w.salvo ? (t.garrison >= 0 ? 3 : 1) * (1 + [...g.units.values()].filter(o => o.owner === t.owner && dist(o, t) < 6).length) : inf ? w.inf * w.accInf : w.veh * w.accVeh;
     const score = dist(u, t) / value;
     if (score < bestScore) { bestScore = score; best = t.id; }
   }
   return best;
 }
 
+function launchSalvo(g, u, at) {
+  const w = UNITS[u.type].w;
+  g.salvos.push({ x: at.x, z: at.z, owner: u.owner, left: w.rockets, next: w.flight, w });
+  g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'salvo', pub: true });
+}
+
 function fire(g, u, t, moving) {
+  if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval; return; }
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
-  const cover = coverMul(g, t);
+  const cover = Math.min(coverMul(g, t), inf && behindCover(g, t, u) ? CFG.coverMul : 1);
   // shooting downhill is easier, uphill harder
   const hg = Math.min(1.45, Math.max(0.7, 1 + CFG.highGroundAcc * (levelAt(g, u.x, u.z) - levelAt(g, t.x, t.z))));
-  let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg;
+  let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg * (1 + CFG.vetAcc * vet(u));
   let dmg = inf ? w.inf : w.veh, supp = w.supp, rate = sm.rate;
   if (u.buff > 0) { dmg *= 0.5; supp *= 2.5; rate *= 0.5; } // suppressive fire: faster, pins harder, kills less
   if (u.ap && !inf) { acc = 1; dmg *= 1.5; u.ap = false; }
   if (t.retreating) dmg *= CFG.retreatDamage;
+  dmg *= 1 - CFG.vetArmor * vet(t); supp *= 1 - CFG.vetSupp * vet(t);
   if (!inf) {
     // rear armor: shot coming from behind the hull does double damage
     const a = Math.atan2(u.z - t.z, u.x - t.x) - t.rot;
@@ -371,10 +459,17 @@ function fire(g, u, t, moving) {
   const shots = w.perModel ? alive(u) : 1;
   let hits = 0;
   for (let i = 0; i < shots; i++) if (Math.random() < acc) hits++;
+  const before = t.hp;
   t.hp -= dmg * hits;
+  u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
   u.cooldown = w.interval * rate;
   g.shots.push({ f: u.id, t: t.id, fo: u.owner, to: t.owner, x: t.x, z: t.z, hit: hits > 0, kill: t.hp <= 0, k: u.type });
+  if (u.type === 'tank') {
+    // a miss still lands somewhere near the target; either way it hits whatever structure is there
+    const a = Math.random() * Math.PI * 2, off = hits ? 0 : 1 + Math.random() * 3;
+    damageCells(g, [...g.units.values()], { x: t.x + Math.cos(a) * off, z: t.z + Math.sin(a) * off }, 1.5, CFG.tankShellTerrain);
+  }
 }
 
 function updateVision(g) {
@@ -383,7 +478,7 @@ function updateVision(g) {
     const own = [...g.units.values()].filter(u => u.owner === p.slot);
     for (const t of g.units.values()) {
       if (t.owner === p.slot) continue;
-      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) && los(g, u, t)); })
+      if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, t)); })
         || g.strikes.some(s => s.live && s.kind === 'recon' && s.owner === p.slot && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) p.visible.add(t.id);
     }
   }
@@ -391,8 +486,8 @@ function updateVision(g) {
 
 function hurt(g, t, src, fall, owner) {
   const inf = UNITS[t.type].infantry;
-  t.hp -= (inf ? src.inf : src.veh) * fall * (t.retreating ? CFG.retreatDamage : 1) * (inTrench(g, t) ? CFG.trenchBlastMul : 1);
-  if (inf) t.supp = Math.min(100, t.supp + src.supp);
+  t.hp -= (inf ? src.inf : src.veh) * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
+  if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
 }
 function blast(g, list, at, radius, src, owner) {
@@ -421,6 +516,10 @@ function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
     if (nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && g.chars[ny * g.w + nx] === '=') wreckCell(g, list, ny * g.w + nx, into);
   }
   g.shots.push({ k: 'collapse', x, z, pub: true });
+  for (const u of g.units.values()) if (u.garrison === c) {
+    u.garrison = -1; u.hp -= UNITS[u.type].models * UNITS[u.type].hpPer * CFG.garrisonEvictDamage;
+    g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: u.hp <= 0 });
+  }
   // anyone on a bridge that drops into the river goes with it
   if (TERRAIN[into] & MOVE) for (const u of list) if (u.hp > 0 && cellOf(g, u.x, u.z) === c) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); }
 }
@@ -450,11 +549,37 @@ export function step(g) {
     // grenade order: walk into range, then throw
     if (u.nade) {
       const ab = def.ab;
-      if (dist(u, u.nade) <= ab.range) {
+      if (ab.id === 'barrage' && dist(u, u.nade) <= ab.range) {
+        launchSalvo(g, u, u.nade); u.cooldown = w.interval; u.cd = ab.cd; u.nade = null; u.path = [];
+      } else if (ab.id === 'grenade' && dist(u, u.nade) <= ab.range) {
         g.nades.push({ x: u.nade.x, z: u.nade.z, t: ab.fuse, owner: u.owner, ab });
         g.shots.push({ f: u.id, fo: u.owner, x: u.nade.x, z: u.nade.z, k: 'throw', pub: true });
         u.nade = null; u.path = []; u.cd = ab.cd;
       } else if (u.repath <= 0) { u.path = findPath(g, u, u.nade); u.repath = 1; }
+    }
+
+    // heading into a building: walk up to it, then step inside
+    if (u.enter >= 0) {
+      const at = cellCenter(g, u.enter);
+      if (g.chars[u.enter] !== 'B') u.enter = -1;
+      else if (dist(u, at) <= CELL * 1.6) { Object.assign(u, { garrison: u.enter, enter: -1, x: at.x, z: at.z, path: [] }); }
+      else if (!u.path.length && u.repath <= 0) { u.path = findPath(g, u, at); u.repath = 1; }
+    }
+
+    // attack-move: halt while something is in range, carry on when it's clear
+    if (u.amove) {
+      const t = g.units.get(u.targetId);
+      if (dist(u, u.amove) < 2.5) u.amove = null;
+      else if (t && canShoot(g, u, t)) u.path = [];
+      else if (!u.path.length && u.repath <= 0) { u.path = findPath(g, u, u.amove); u.repath = 1; }
+    }
+
+    // shelling a structure: close to range with a clear line, then fire at it
+    if (u.fireAt >= 0) {
+      const at = cellCenter(g, u.fireAt);
+      if (!(g.cellHp[u.fireAt] > 0)) u.fireAt = -1;
+      else if (dist(u, at) <= w.range && (w.salvo || los(g, u, at))) u.path = [];
+      else if (!u.path.length && u.repath <= 0) { u.path = findPath(g, u, at); u.repath = 1; }
     }
 
     // explicit attack order: chase until we can shoot
@@ -480,10 +605,21 @@ export function step(g) {
     u.still = moving ? 0 : u.still + dt;
     // give up if blocked by friends crowding the destination
     if (u.retreating && !u.path.length) u.retreating = false;
-    if (u.path.length && moved < speed * dt * 0.3) { u.stuck += dt; if (u.stuck > 1) { u.path = []; u.stuck = 0; } } else u.stuck = 0;
+    if (u.path.length && moved < speed * dt * 0.3) { u.stuck += dt; if (u.stuck > 1) { u.path = []; u.stuck = 0; if (u.amove) u.amove = null; } } else u.stuck = 0;
 
     // targeting + firing
     if (u.retreating) { u.targetId = 0; u.aim = u.rot; continue; }
+    if (u.fireAt >= 0) {
+      const at = cellCenter(g, u.fireAt);
+      u.aim = Math.atan2(at.z - u.z, at.x - u.x); u.targetId = 0;
+      if (!u.path.length && dist(u, at) <= w.range && u.cooldown <= 0 && w.salvo && u.still >= w.setup) { launchSalvo(g, u, at); u.cooldown = w.interval; }
+      else if (!u.path.length && dist(u, at) <= w.range && u.cooldown <= 0 && !w.salvo && los(g, u, at)) {
+        u.cooldown = w.interval * sm.rate;
+        g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, hit: true, k: u.type, pub: true });
+        damageCells(g, [...g.units.values()], at, 1.5, CFG.tankShellTerrain);
+      }
+      continue;
+    }
     if (!u.attackId && (u.retarget <= 0 || !canShoot(g, u, g.units.get(u.targetId)))) { u.targetId = pickTarget(g, u); u.retarget = 0.5; }
     const t = g.units.get(u.targetId);
     if (t && canShoot(g, u, t)) {
@@ -498,6 +634,7 @@ export function step(g) {
   const list = [...g.units.values()];
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
+    if (a.garrison >= 0 || b.garrison >= 0) continue;
     const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
     if (d >= min || d === 0) continue;
     const push = (min - d) / 2 * 0.5, px = dx / d * push, pz = dz / d * push;
@@ -512,12 +649,20 @@ export function step(g) {
     blast(g, list, n, n.ab.radius, n.ab, n.owner);
   }
   g.nades = g.nades.filter(n => n.t > 0);
+  for (const s of g.salvos) {
+    if ((s.next -= dt) > 0) continue;
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * s.w.spread, at = { x: s.x + Math.cos(a) * r, z: s.z + Math.sin(a) * r };
+    g.shots.push({ x: at.x, z: at.z, k: 'rocket', pub: true });
+    blast(g, list, at, s.w.blast, s.w, s.owner);
+    s.left--; s.next = s.w.every;
+  }
+  g.salvos = g.salvos.filter(s => s.left > 0);
 
   // off-map support
   for (const s of g.strikes) {
     const sp = SUPPORT[s.kind];
     if ((s.t -= dt) > 0) continue;
-    if (!s.live) { s.live = true; if (s.kind === 'strafe' || s.kind === 'recon') g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true }); }
+    if (!s.live) { s.live = true; if (s.kind === 'strafe' || s.kind === 'recon' || s.kind === 'bombing') g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true }); }
     if (s.kind === 'recon') s.left -= dt;
     else if (s.kind === 'smoke') {
       for (let i = 0; i < sp.clouds; i++) {
@@ -527,6 +672,16 @@ export function step(g) {
       }
       g.shots.push({ k: 'smokeshells', x: s.x, z: s.z, pub: true });
       s.left = 0;
+    }
+    else if (s.kind === 'bombing' && (s.next -= dt) <= 0) {
+      const i = sp.shells - s.left, at = stripAt(s, (i / (sp.shells - 1) - 0.5) * sp.len, (Math.random() - 0.5) * 3);
+      g.shots.push({ x: at.x, z: at.z, k: 'bomb', pub: true });
+      blast(g, list, at, sp.blast, sp, s.owner);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const c = cellOf(g, at.x + dx * CELL, at.z + dy * CELL);
+        if (c >= 0 && g.chars[c] === '.') setCell(g, c, '+');
+      }
+      s.left--; s.next = sp.every;
     }
     else if (s.kind === 'artillery' && (s.next -= dt) <= 0) {
       const at = stripAt(s, (Math.random() - 0.5) * sp.len, (Math.random() - 0.5) * sp.width);
@@ -594,10 +749,11 @@ export function snapshotFor(g, slot, shots, cells = []) {
   const seen = (id) => g.units.get(id)?.owner === slot || p.visible.has(id);
   return {
     t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc),
-    // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing. Cooldowns only for your own units.
+    // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
+    // Last field: veterancy stars. Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
-      .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0)]),
+      .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0), vet(u)]),
     smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
