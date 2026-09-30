@@ -298,6 +298,42 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(!findPath(g, { x: 5, z: 5 }, { x: 21, z: 5 }).length, 'a 2-deep drop is a cliff');
 }
 
+// Rivers, bridges, fords, destruction.
+{
+  // river down column 10 with a bridge at row 5 and a ford at row 15
+  const rows = Array.from({ length: 20 }, (_, y) => '.'.repeat(10) + (y === 5 ? '=' : y === 15 ? 'F' : 'W') + '.'.repeat(9));
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 5000;
+  const path = findPath(g, { x: 5, z: 3 }, { x: 35, z: 3 });
+  assert.ok(path.length && path.every(p => Math.abs(p.z - 11) < 6 || p.x < 20 || p.x > 22), 'crosses at the bridge');
+  assert.ok(los(g, { x: 5, z: 25 }, { x: 35, z: 25 }), 'you can see across water');
+  // blow the bridge with artillery: it becomes river, and whoever stood on it is lost
+  const onBridge = put(g, 1, 'rifle', 21, 11);
+  const orig = Math.random; Math.random = () => 0.5;
+  command(g, 0, { t: 'support', kind: 'artillery', x: 21, z: 11, dir: 0 });
+  run(g, SUPPORT.artillery.delay + 5);
+  Math.random = orig;
+  assert.equal(g.chars[5 * 20 + 10], 'W', 'bridge destroyed');
+  assert.ok(!g.units.has(onBridge.id), 'squad on the bridge went down with it');
+  const detour = findPath(g, { x: 5, z: 3 }, { x: 35, z: 3 });
+  assert.ok(detour.some(p => p.z > 25), 'now the only way over is the ford');
+  assert.ok(g.cellLog.some(([c, ch]) => c === 5 * 20 + 10 && ch === 'W'), 'change is broadcast');
+}
+{
+  // houses collapse into rubble; tanks crush hedges
+  const rows = [...empty]; rows[10] = '.'.repeat(8) + 'BB' + '.'.repeat(4) + 'HH' + '.'.repeat(4);
+  const g = fresh(rows); g.players[0].mp = 5000;
+  const orig = Math.random; Math.random = () => 0.5;
+  command(g, 0, { t: 'support', kind: 'artillery', x: 18, z: 21, dir: 0 });
+  run(g, SUPPORT.artillery.delay + 5);
+  Math.random = orig;
+  assert.ok(g.chars.slice(10 * 20 + 8, 10 * 20 + 10).every(ch => ch === 'R'), 'house is rubble');
+  assert.ok(findPath(g, { x: 17, z: 5 }, { x: 17, z: 35 }).every(p => p.x > 0), 'rubble is walkable');
+  const t = put(g, 0, 'tank', 25, 5);
+  command(g, 0, { t: 'move', orders: [[t.id, 31, 36]] });
+  run(g, 12);
+  assert.ok(g.chars.slice(10 * 20 + 14, 10 * 20 + 16).includes('.'), 'tank flattened the hedge');
+}
+
 // Disconnected players: no VP and no manpower while away, then it resumes.
 {
   const g = fresh(); g.players[0].mp = 1000;

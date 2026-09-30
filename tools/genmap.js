@@ -38,4 +38,18 @@ for (let k = 0; k < 3; k++) {
 spawns[0].y -= 1;
 for (const p of [...spawns, ...points]) for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) set(p.x + x, p.y + y, '.');
 writeFileSync(new URL('../maps/default.json', import.meta.url), JSON.stringify({ name: 'Three Crossroads', w: W, h: H, rows: g.map(r => r.join('')), heights: hgt.map(r => r.join('')), spawns, points }, null, 1));
+
+// River Towns: the same map with three rivers along the sector boundaries (through the villages).
+// Each river gets a bridge through its village (the capture point sits on it) and a ford further out.
+// Rasterized by distance from each river's center line, so width is the same at any angle
+// (sampling along the line made the diagonal rivers and bridges fatter and biased the AI matches).
+for (let k = 0; k < 3; k++) {
+  const m = (-90 + 120 * k + 180) * Math.PI / 180, ux = Math.cos(m), uy = Math.sin(m);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = x + 0.5 - C, dy = y + 0.5 - C, along = dx * ux + dy * uy, side = Math.abs(-dx * uy + dy * ux);
+    if (along < 8 || side > 1.3) continue;
+    g[y][x] = along >= 18 && along <= 22 ? '=' : along >= 31 && along <= 33 ? 'F' : 'W';
+  }
+}
+writeFileSync(new URL('../maps/river-towns.json', import.meta.url), JSON.stringify({ name: 'River Towns', w: W, h: H, rows: g.map(r => r.join('')), heights: hgt.map(r => r.join('')), spawns, points }, null, 1));
 console.log(g.map(r => r.join('')).join('\n'));

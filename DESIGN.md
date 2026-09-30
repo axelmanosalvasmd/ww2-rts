@@ -49,7 +49,12 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 5. ~~In-game map editor~~ (`/?edit`): paint terrain, place spawns and points, per-point VP/MP, save with the `.edit-password`,
    fairness test (90 AI matches in a worker, per-spawn win rate). The host picks the map in the lobby.
    Select / move tool grabs a whole structure (drag to move, Delete removes) and drags spawns and points; Raise/Lower brushes.
-6. Destructible terrain (flip cell flags, send changes in snapshots)
+6. ~~Destructible terrain, rivers, bridges~~: W river (impassable, see across), F ford (half speed), = bridge, R rubble.
+   Artillery/grenades damage structure cells (house -> rubble, wall -> crater, hedge -> gone); a wrecked bridge cell drops the
+   whole span into the river, taking anyone on it. Shells crater open ground. Tanks crush hedges and walls. One barrage aimed
+   along a bridge drops it ~91% of the time. Map "River Towns": three rivers between the sectors, a bridge through each
+   village (point on the bridge) and a ford upstream; rasterized by distance so every river is equally wide (300 AI matches:
+   34/37/30% per spawn). Default map's top spawn is mildly favored (39/28/32% over 300), spawns are shuffled per match.
 7. ~~Elevation~~: height level 0-4 per cell (2.5 m each). Hills block sight (the line between eyes is sampled against the ground),
    +10% vision per level, up to +45% accuracy shooting downhill (down to -30% uphill), 1-level steps are slopes, bigger are cliffs.
    Default map: one identical overwatch hill per player between HQ and center.

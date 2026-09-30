@@ -12,14 +12,18 @@ export const CFG = {
   // incoming accuracy/suppression multipliers; blasts only care about trenches
   coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
   digCost: 30, digCells: 4, digTime: 3,
+  // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
+  terrainHp: { B: 400, H: 60, '#': 150, '=': 200 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W' }, crush: { H: '.', '#': 'R' },
+  fordSpeed: 0.5,
   // elevation: height level per cell. 1 level of difference is a slope, more is a cliff.
   levelHeight: 2.5, minLevel: -2, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
 };
 
-export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8;
-// T = trench: heavy cover for infantry, can be dug during the match
-export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH };
+export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16;
+// T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
+// = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
+export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER };
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
 // perModel: damage scales with living squad members. moveFire: accuracy multiplier while moving (absent = can't).
@@ -27,7 +31,7 @@ export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, 
 export const UNITS = {
   rifle: { name: 'Rifle Squad', cost: 100, models: 5, hpPer: 20, speed: 4.5, radius: 1.5, vision: 36, infantry: true,
     w: { range: 28, interval: 1.6, inf: 3, veh: 0.4, accInf: 0.7, accVeh: 0.7, supp: 4, perModel: true, moveFire: 0.5 },
-    ab: { id: 'grenade', name: 'Grenade', cd: 30, range: 18, fuse: 1.2, radius: 4.5, inf: 40, veh: 15, supp: 50 } },
+    ab: { id: 'grenade', name: 'Grenade', cd: 30, range: 18, fuse: 1.2, radius: 4.5, inf: 40, veh: 15, supp: 50, terrain: 30 } },
   mg: { name: 'MG Team', cost: 150, models: 3, hpPer: 25, speed: 3.5, radius: 1.3, vision: 36, infantry: true,
     w: { range: 36, interval: 0.3, inf: 2.4, veh: 0.2, accInf: 0.5, accVeh: 0.5, supp: 8, setup: 2 },
     ab: { id: 'suppress', name: 'Suppressive Fire', cd: 40, dur: 10 } },
@@ -43,7 +47,7 @@ export const UNIT_TYPES = Object.keys(UNITS);
 // Off-map support bought with manpower. Every strike is announced to all players `delay` seconds ahead.
 export const SUPPORT = {
   recon: { name: 'Recon Flight', cost: 60, cd: 45, delay: 3, dur: 15, len: 80, width: 30 },
-  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, len: 24, width: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60 },
+  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, len: 24, width: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60, terrain: 90 },
   strafe: { name: 'Strafing Run', cost: 200, cd: 90, delay: 5, len: 36, width: 8, inf: 25, veh: 10, supp: 80 },
   smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, len: 36, width: 14, clouds: 5, cloud: 7, dur: 20 },
 };
@@ -97,6 +101,8 @@ export function createGame(map, names, shuffle = true) {
     points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
+  g.chars = [...map.rows.join('')];
+  g.cellHp = Float32Array.from(g.chars, ch => CFG.terrainHp[ch] ?? 0);
   g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   for (const p of g.players) CFG.startForce.forEach((t, i) => spawnUnit(g, p.slot, t, i));
@@ -126,7 +132,7 @@ export const inTrench = (g, u) => UNITS[u.type].infantry && (flagsAt(g, u.x, u.z
 const coverMul = (g, t) => (inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? CFG.coverMul : 1);
 
 function setCell(g, c, ch) {
-  g.flags[c] = TERRAIN[ch];
+  g.flags[c] = TERRAIN[ch]; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
   g.cellLog.push([c, ch]); g.newCells.push([c, ch]);
 }
 
@@ -394,6 +400,29 @@ function blast(g, list, at, radius, src, owner) {
     const d = dist(t, at);
     if (d <= radius && t.hp > 0) hurt(g, t, src, 1 - d / radius * 0.5, owner);
   }
+  if (src.terrain) damageCells(g, list, at, radius, src.terrain);
+}
+// explosions chew through structures; a wrecked cell changes type (house -> rubble, bridge -> river)
+function damageCells(g, list, at, radius, dmg) {
+  const r = Math.ceil(radius / CELL);
+  for (let y = Math.floor(at.z / CELL) - r; y <= Math.floor(at.z / CELL) + r; y++) for (let x = Math.floor(at.x / CELL) - r; x <= Math.floor(at.x / CELL) + r; x++) {
+    if (x < 0 || y < 0 || x >= g.w || y >= g.h) continue;
+    const c = y * g.w + x, d = Math.hypot((x + 0.5) * CELL - at.x, (y + 0.5) * CELL - at.z);
+    if (d > radius + CELL / 2 || !(g.cellHp[c] > 0)) continue;
+    if ((g.cellHp[c] -= dmg * (1 - Math.min(1, d / (radius + CELL)) * 0.5)) <= 0) wreckCell(g, list, c);
+  }
+}
+function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
+  const x = (c % g.w + 0.5) * CELL, z = (Math.floor(c / g.w) + 0.5) * CELL, was = g.chars[c];
+  setCell(g, c, into);
+  // a bridge fails as a structure: the whole connected span goes into the river
+  if (was === '=') for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const nx = c % g.w + dx, ny = Math.floor(c / g.w) + dy;
+    if (nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && g.chars[ny * g.w + nx] === '=') wreckCell(g, list, ny * g.w + nx, into);
+  }
+  g.shots.push({ k: 'collapse', x, z, pub: true });
+  // anyone on a bridge that drops into the river goes with it
+  if (TERRAIN[into] & MOVE) for (const u of list) if (u.hp > 0 && cellOf(g, u.x, u.z) === c) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); }
 }
 
 export function step(g) {
@@ -438,7 +467,7 @@ export function step(g) {
 
     // movement
     const before = { x: u.x, z: u.z };
-    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : sm.speed);
+    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : sm.speed) * (flagsAt(g, u.x, u.z) & FORD ? CFG.fordSpeed : 1);
     let budget = speed * dt;
     while (budget > 0 && u.path.length) {
       const wp = u.path[0], d = dist(u, wp);
@@ -447,6 +476,7 @@ export function step(g) {
       else { u.x += (wp.x - u.x) / d * budget; u.z += (wp.z - u.z) / d * budget; budget = 0; }
     }
     const moved = dist(u, before), moving = u.path.length > 0 || moved > 0.001;
+    if (u.type === 'tank' && moved > 0) { const c = cellOf(g, u.x, u.z); if (c >= 0 && CFG.crush[g.chars[c]]) wreckCell(g, [], c, CFG.crush[g.chars[c]]); }
     u.still = moving ? 0 : u.still + dt;
     // give up if blocked by friends crowding the destination
     if (u.retreating && !u.path.length) u.retreating = false;
@@ -502,6 +532,8 @@ export function step(g) {
       const at = stripAt(s, (Math.random() - 0.5) * sp.len, (Math.random() - 0.5) * sp.width);
       g.shots.push({ x: at.x, z: at.z, k: 'shell', pub: true });
       blast(g, list, at, sp.blast, sp, s.owner);
+      const hole = cellOf(g, at.x, at.z);
+      if (hole >= 0 && g.chars[hole] === '.') setCell(g, hole, '+'); // shell holes are cover from now on
       s.left--; s.next = sp.every;
     } else if (s.kind === 'strafe') {
       // everything within `width` of the run's line gets raked

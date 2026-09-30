@@ -4,6 +4,7 @@ import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar } from '/
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
+  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'],
   ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'], ['s0', 'Spawn 1'], ['s1', 'Spawn 2'], ['s2', 'Spawn 3'],
 ];
 const HEIGHT_TOOLS = { up: 1, down: -1 };
@@ -131,7 +132,7 @@ export async function start(api) {
     }
     return { cells, ch };
   }
-  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench' };
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
   function highlight() {
     hl.clear();
     $('edSel').textContent = '';
