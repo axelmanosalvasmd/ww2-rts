@@ -495,12 +495,16 @@ function syncStrikes(list) {
 function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (kind === 'strafe') g.add(flat(new THREE.PlaneGeometry(SUPPORT.strafe.len, SUPPORT.strafe.width * 2)));
-  else if (kind === 'dig') g.add(flat(new THREE.PlaneGeometry(CELL, CFG.digCells * CELL)));
-  else {
-    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : SUPPORT[kind].radius;
-    g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)), flat(new THREE.CircleGeometry(r, 48)));
-    g.children[1].material = matl.clone(); g.children[1].material.opacity = 0.1;
+  if (kind === 'grenade') {
+    const r = UNITS.rifle.ab.radius;
+    g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
+  } else {
+    const [len, width] = kind === 'dig' ? [CFG.digCells * CELL, CELL] : [SUPPORT[kind].len, SUPPORT[kind].width];
+    g.add(flat(new THREE.PlaneGeometry(len, width)));
+    // arrow past the far end shows which way it runs
+    const tip = new THREE.Shape([new THREE.Vector2(len / 2 + 0.5, -2), new THREE.Vector2(len / 2 + 4, 0), new THREE.Vector2(len / 2 + 0.5, 2)]);
+    const arrow = flat(new THREE.ShapeGeometry(tip)); arrow.material = matl.clone(); arrow.material.opacity = 0.8;
+    g.add(arrow);
   }
   g.userData.mat = matl;
   return g;
@@ -539,7 +543,7 @@ function buildSupportBar() {
 }
 function aimSupport(k) {
   if (!lastSnap || lastSnap.sup[k] > 0 || lastSnap.mp < SUPPORT[k].cost) return;
-  targeting = k; blip(700);
+  setAim(k); blip(700);
 }
 
 function buildBuyBar() {
@@ -577,17 +581,28 @@ function updateHud(s) {
 
 // the squad nearest the clicked spot digs a line across its approach
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !(v.flags & 1));
-function startDig() { if (diggers().length && lastSnap?.mp >= CFG.digCost) { targeting = 'dig'; blip(600); } }
+function startDig() { if (diggers().length && lastSnap?.mp >= CFG.digCost) { setAim('dig'); blip(600); } }
 function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0]; }
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); } }
 // F: instant abilities fire now; grenades arm a targeting click
-let targeting = null, aimMesh = null, home = null; // targeting: null | 'grenade' | support kind
+// targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
+let targeting = null, aimCenter = null, aimMesh = null, home = null;
+function cancelAim() { targeting = null; aimCenter = null; $('hint').textContent = ''; }
+function setAim(kind) {
+  targeting = kind; aimCenter = null;
+  $('hint').textContent = kind === 'grenade' ? 'Click where to throw · right-click cancels' : 'Click to set the center · right-click cancels';
+}
+// direction before the second click: planes fly out from home, trenches run across the squad's approach
+function defaultDir(kind, at) {
+  if (kind === 'dig') { const v = nearestDigger(at); return v ? Math.atan2(at.z - v.z, at.x - v.x) + Math.PI / 2 : 0; }
+  return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
+}
 function useAbility(only) {
   const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && (!only || v.type === only));
   const instant = ready.filter(v => UNITS[v.type].ab.id !== 'grenade');
   if (instant.length) { sendCmd({ t: 'ability', ids: instant.map(v => v.id) }); blip(880); }
-  if (ready.some(v => v.type === 'rifle')) targeting = 'grenade';
+  if (ready.some(v => v.type === 'rifle')) setAim('grenade');
 }
 function throwAt(g) {
   const rifles = [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !v.cd);
@@ -611,7 +626,7 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyR') retreat();
   else if (e.code === 'KeyF') useAbility();
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
-  else if (e.code === 'Escape') { if (targeting) targeting = null; else selected.clear(); }
+  else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) { cam.x = home.x; cam.z = home.z; }
   else if (e.code === 'KeyZ') aimSupport('recon');
   else if (e.code === 'KeyC') aimSupport('artillery');
@@ -650,11 +665,15 @@ const groundAt = (mx, my) => {
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (targeting) {
-    const kind = targeting; targeting = null;
-    const g = e.button === 0 && groundAt(e.clientX, e.clientY);
-    if (g && kind === 'grenade') throwAt(g);
-    else if (g && kind === 'dig') { const v = nearestDigger(g); if (v) { sendCmd({ t: 'dig', ids: [v.id], x: g.x, z: g.z }); marker(g.x, g.z, 0xc8a060); blip(600); } }
-    else if (g) { sendCmd({ t: 'support', kind, x: g.x, z: g.z }); blip(520); }
+    const kind = targeting, g = e.button === 0 && groundAt(e.clientX, e.clientY);
+    if (!g) { cancelAim(); return; }
+    if (kind === 'grenade') { cancelAim(); throwAt(g); return; }
+    // first click: pin the center, then the mouse rotates it
+    if (!aimCenter) { aimCenter = g; $('hint').textContent = 'Move the mouse to rotate · click to launch'; blip(560); return; }
+    const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
+    cancelAim();
+    if (kind === 'dig') { const v = nearestDigger(c); if (v) { sendCmd({ t: 'dig', ids: [v.id], x: c.x, z: c.z, dir }); marker(c.x, c.z, 0xc8a060); blip(600); } }
+    else { sendCmd({ t: 'support', kind, x: c.x, z: c.z, dir }); blip(520); }
     return;
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
@@ -742,9 +761,10 @@ renderer.setAnimationLoop(() => {
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
-    // strafes fly out from home; a dug line runs across the digging squad's approach
-    const from = targeting === 'dig' ? nearestDigger(g || cam) : home;
-    if (g) { aimMesh.position.set(g.x, 0, g.z); if (from) aimMesh.rotation.y = -Math.atan2(g.z - from.z, g.x - from.x); }
+    if (aimCenter) {
+      aimMesh.position.set(aimCenter.x, 0, aimCenter.z);
+      if (g && Math.hypot(g.x - aimCenter.x, g.z - aimCenter.z) > 1.5) aimMesh.rotation.y = -Math.atan2(g.z - aimCenter.z, g.x - aimCenter.x);
+    } else if (g) { aimMesh.position.set(g.x, 0, g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;

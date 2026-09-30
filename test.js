@@ -158,7 +158,7 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   command(g, 0, { t: 'support', kind: 'artillery', x: 20, z: 20 });
   run(g, SUPPORT.artillery.delay - 0.5);
   assert.equal(r.hp, 100, 'no damage during the warning');
-  const orig = Math.random; Math.random = () => 0.01; // shells land near the center (real barrages scatter)
+  const orig = Math.random; Math.random = () => 0.5; // shells land dead center (real barrages scatter)
   run(g, 6);
   Math.random = orig;
   assert.ok(r.hp < 100 || !g.units.has(r.id), 'barrage hits the squad');
@@ -172,6 +172,25 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   command(g, 0, { t: 'support', kind: 'strafe', x: 30, z: 20 }); // flies along +x from the spawn
   run(g, SUPPORT.strafe.delay + 0.2);
   assert.ok(on.hp < 100, 'unit on the line is hit'); assert.equal(off.hp, 100, 'unit off the line is fine');
+}
+
+// Direction: the player picks it. A strafe along z hits units on that line, not the default one.
+{
+  const g = fresh(); g.players[0].mp = 1000; g.players[1].mp = 1000; g.players[0].spawn = { x: 0, z: 20 };
+  const alongX = put(g, 1, 'rifle', 36, 20), alongZ = put(g, 1, 'rifle', 20, 36);
+  command(g, 0, { t: 'support', kind: 'strafe', x: 20, z: 20, dir: Math.PI / 2 });
+  run(g, SUPPORT.strafe.delay + 0.2);
+  assert.ok(alongZ.hp < 100, 'unit on the chosen line is hit');
+  assert.equal(alongX.hp, 100, 'unit on the default (from-HQ) line is not');
+}
+
+// Dig direction: dir sets the trench line.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const r = put(g, 0, 'rifle', 20, 20);
+  command(g, 0, { t: 'dig', ids: [r.id], x: 20, z: 20, dir: 0 });
+  const ys = new Set(r.dig.cells.map(c => Math.floor(c / g.w)));
+  assert.equal(ys.size, 1, 'dir 0 digs along one grid row');
 }
 
 // Recon: reveals an enemy hidden behind a building.

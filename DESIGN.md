@@ -14,6 +14,9 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Trenches (`T` cells): heavy cover (35% incoming accuracy/suppression vs 50% for normal cover), half blast damage.
   Pre-dug at the center and in front of each village. Rifle squads dig more (T, 30 MP): a 4-cell line across their approach,
   one cell per 3s. Terrain changes go out in snapshots; (re)joining clients get the full change log.
+- Directional aiming for every targeted ability except the grenade: click the center, move the mouse to rotate, click to launch.
+  Each is a rectangle along the chosen line: strafe 36x8 (the plane flies that way), artillery 24x10 (creeping barrage),
+  smoke wall 36x14, recon corridor 80x30, trench line 4 cells. Without a direction the server falls back to 'out from your HQ'.
 - Each spawn is a visible HQ: tinted reinforce zone, sandbags, tent, tall flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
@@ -30,6 +33,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + off-map support (AI calls ~8 per match) | 65% | 1.25 | 9.9 min |
 | same, re-measured over 150 matches (the 40-match runs above are noisy, about ±0.1) | 63% | 0.97 | 9.5 min |
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
+| + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

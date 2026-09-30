@@ -40,12 +40,21 @@ export const UNIT_TYPES = Object.keys(UNITS);
 
 // Off-map support bought with manpower. Every strike is announced to all players `delay` seconds ahead.
 export const SUPPORT = {
-  recon: { name: 'Recon Flight', cost: 60, cd: 45, delay: 3, dur: 15, radius: 40 },
-  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, radius: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60 },
-  strafe: { name: 'Strafing Run', cost: 200, cd: 90, delay: 5, len: 36, width: 4, inf: 25, veh: 10, supp: 80 },
-  smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, radius: 12, clouds: 5, cloud: 7, dur: 20 },
+  recon: { name: 'Recon Flight', cost: 60, cd: 45, delay: 3, dur: 15, len: 80, width: 30 },
+  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, len: 24, width: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60 },
+  strafe: { name: 'Strafing Run', cost: 200, cd: 90, delay: 5, len: 36, width: 8, inf: 25, veh: 10, supp: 80 },
+  smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, len: 36, width: 14, clouds: 5, cloud: 7, dur: 20 },
 };
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
+
+// point in a len x width rectangle centered on s, long side along s.dir
+export function inStrip(s, t, len, width) {
+  const cx = Math.cos(s.dir), cz = Math.sin(s.dir), dx = t.x - s.x, dz = t.z - s.z;
+  return Math.abs(dx * cx + dz * cz) <= len / 2 && Math.abs(-dx * cz + dz * cx) <= width / 2;
+}
+// position at (along, side) inside a strike's rectangle
+const stripAt = (s, along, side) => ({ x: s.x + Math.cos(s.dir) * along - Math.sin(s.dir) * side, z: s.z + Math.sin(s.dir) * along + Math.cos(s.dir) * side });
+const angle = (v) => (Number.isFinite(v) ? v : null);
 
 export const alive = u => Math.ceil(u.hp / UNITS[u.type].hpPer);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -240,7 +249,7 @@ export function command(g, slot, cmd) {
     // one rifle squad digs a short trench across its line of approach
     const u = mine(ids[0]), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), p = g.players[slot];
     if (!u || u.type !== 'rifle' || u.retreating || x === null || z === null || p.mp < CFG.digCost) return;
-    const d = Math.hypot(x - u.x, z - u.z) || 1, px = -(z - u.z) / d, pz = (x - u.x) / d, cells = [];
+    const a = angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2, px = Math.cos(a), pz = Math.sin(a), cells = [];
     for (let i = 0; i < CFG.digCells; i++) {
       const o = (i - (CFG.digCells - 1) / 2) * CELL, c = cellOf(g, x + px * o, z + pz * o);
       if (c >= 0 && !(g.flags[c] & (MOVE | TRENCH)) && !cells.includes(c)) cells.push(c);
@@ -252,8 +261,7 @@ export function command(g, slot, cmd) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || p.mp < sp.cost) return;
     p.mp -= sp.cost; p.sup[cmd.kind] = sp.cd;
-    // planes come in from your own HQ
-    const dir = Math.atan2(z - p.spawn.z, x - p.spawn.x);
+    const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
   } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit)) {
     const p = g.players[slot], def = UNITS[cmd.unit];
@@ -312,7 +320,7 @@ function updateVision(g) {
     for (const t of g.units.values()) {
       if (t.owner === p.slot) continue;
       if (own.some(u => { const d = dist(u, t); return d < 6 || (d <= UNITS[u.type].vision && los(g, u, t)); })
-        || g.strikes.some(s => s.live && s.kind === 'recon' && s.owner === p.slot && dist(s, t) <= SUPPORT.recon.radius)) p.visible.add(t.id);
+        || g.strikes.some(s => s.live && s.kind === 'recon' && s.owner === p.slot && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) p.visible.add(t.id);
     }
   }
 }
@@ -425,23 +433,22 @@ export function step(g) {
     if (s.kind === 'recon') s.left -= dt;
     else if (s.kind === 'smoke') {
       for (let i = 0; i < sp.clouds; i++) {
-        const a = Math.random() * Math.PI * 2, r = i ? Math.sqrt(Math.random()) * sp.radius : 0;
-        g.smokes.push({ x: s.x + Math.cos(a) * r, z: s.z + Math.sin(a) * r, r: sp.cloud, t: sp.dur });
+        // a wall of clouds along the line
+        const at = stripAt(s, (i / (sp.clouds - 1) - 0.5) * (sp.len - sp.cloud), (Math.random() - 0.5) * 2);
+        g.smokes.push({ x: at.x, z: at.z, r: sp.cloud, t: sp.dur });
       }
       g.shots.push({ k: 'smokeshells', x: s.x, z: s.z, pub: true });
       s.left = 0;
     }
     else if (s.kind === 'artillery' && (s.next -= dt) <= 0) {
-      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * sp.radius, at = { x: s.x + Math.cos(a) * r, z: s.z + Math.sin(a) * r };
+      const at = stripAt(s, (Math.random() - 0.5) * sp.len, (Math.random() - 0.5) * sp.width);
       g.shots.push({ x: at.x, z: at.z, k: 'shell', pub: true });
       blast(g, list, at, sp.blast, sp, s.owner);
       s.left--; s.next = sp.every;
     } else if (s.kind === 'strafe') {
       // everything within `width` of the run's line gets raked
-      const cx = Math.cos(s.dir), cz = Math.sin(s.dir);
       for (const t of list) {
-        const along = (t.x - s.x) * cx + (t.z - s.z) * cz, side = Math.abs(-(t.x - s.x) * cz + (t.z - s.z) * cx);
-        if (Math.abs(along) <= sp.len / 2 && side <= sp.width && t.hp > 0) hurt(g, t, sp, 1, s.owner);
+        if (inStrip(s, t, sp.len, sp.width) && t.hp > 0) hurt(g, t, sp, 1, s.owner);
       }
       s.left = 0;
     }

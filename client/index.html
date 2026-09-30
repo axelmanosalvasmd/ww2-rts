@@ -60,6 +60,8 @@
   #help { position: absolute; bottom: 10px; right: 10px; padding: 8px 10px; color: var(--dim); font-size: 11px; }
   #status { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--accent); }
   #status:empty { display: none; }
+  #hint { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--ink); pointer-events: none; }
+  #hint:empty { display: none; }
   #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
 
   @media (max-width: 760px) { #help { display: none; } #scores { top: 64px; } .score { width: 100px; } #buy button { min-width: 0; } }
@@ -92,10 +94,12 @@
     Drag: select · Right-click: move / attack<br>
     WASD / edges: pan · Q/E: rotate · Wheel: zoom<br>
     R: retreat (heals at base) · F: ability · T: dig trench · X: stop · H: home<br>
-    Z: recon · C: artillery · V: strafe · B: smoke (click to aim)<br>
+    Z: recon · C: artillery · V: strafe · B: smoke<br>
+    Aim: click center, move to rotate, click to launch<br>
     Shift+1-9: set group · 1-9: recall · Space: focus
   </div>
   <div id="status" class="panel"></div>
+  <div id="hint" class="panel"></div>
 </div>
 <div id="box" class="hidden"></div>
 <script type="module" src="/client/main.js"></script>

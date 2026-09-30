@@ -53,7 +53,7 @@ export function think(g, slot) {
       if (near.length >= min) return { x: near.reduce((a, o) => a + o.x, 0) / near.length, z: near.reduce((a, o) => a + o.z, 0) / near.length };
     }
   };
-  const call = (kind, at) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z });
+  const call = (kind, at, dir) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z, dir });
   if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
   else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && me.mp > 250) call('recon', g.points.find(p => p.owner >= 0 && p.owner !== slot));
@@ -86,7 +86,7 @@ export function think(g, slot) {
         if (u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
           // dig a line between the point and the closest enemy HQ
           const foe = g.players.filter(q => q.slot !== slot).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0].spawn, l = d(foe, p) || 1;
-          command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5 });
+          command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 });
         }
         continue;
       }
@@ -111,7 +111,7 @@ export function think(g, slot) {
     // screen the assault on a held point with smoke, 60% of the way in
     if (p.owner >= 0 && p.owner !== slot && group.length && can('smoke')) {
       const cx = group.reduce((a, u) => a + u.x, 0) / group.length, cz = group.reduce((a, u) => a + u.z, 0) / group.length;
-      call('smoke', { x: cx + (p.x - cx) * 0.6, z: cz + (p.z - cz) * 0.6 });
+      call('smoke', { x: cx + (p.x - cx) * 0.6, z: cz + (p.z - cz) * 0.6 }, Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2); // wall across the approach
     }
     for (const u of group) { const s = spotNear(g, p); orders.push([u.id, s.x, s.z]); }
   });
