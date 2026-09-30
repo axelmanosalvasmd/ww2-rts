@@ -83,3 +83,41 @@ console.log(g.map(r => r.join('')).join('\n'));
   for (const p of [...spawns, ...points]) for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) set(p.x + x, p.y + y, '.');
   writeFileSync(new URL('../maps/six-fronts.json', import.meta.url), JSON.stringify({ name: 'Six Fronts', w: W, h: H, rows: g.map(r => r.join('')), heights: hgt.map(r => r.join('')), spawns, points }, null, 1));
 }
+
+// Hill 112: an assault map. The defenders dig in on a plateau (level 4); the attackers start at the foot
+// and climb terraces. On the upper slope the flanks are a two-level escarpment (a cliff), so the climb
+// funnels through a central ramp, with narrow goat paths at both map edges.
+{
+  const W = 80, H = 110;
+  const g = Array.from({ length: H }, () => Array(W).fill('.'));
+  const set = (x, y, ch) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; };
+  const box = (cx, cy, w, h, ch) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(cx - w / 2 + x, cy - h / 2 + y, ch); };
+  const line = (x0, y0, x1, y1, ch) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2); for (let i = 0; i <= n; i++) set(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, ch); };
+  // terrace edges wander a little so the hill doesn't look ruled
+  const edge = (y0, x, k) => y0 + 2.5 * Math.sin(x / 7 + k) + 1.5 * Math.sin(x / 3.1 + 2 * k);
+  const hgt = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => {
+    const L = y < edge(30, x, 0) ? 4 : y < edge(45, x, 1) ? 3 : y < edge(60, x, 2) ? 2 : y < edge(75, x, 3) ? 1 : 0;
+    const flank = x >= 6 && x <= 73 && (x < 31 || x > 48);
+    return L === 3 && flank ? 2 : L; // escarpment: the level-3 band only exists on the ramp and the goat paths
+  }));
+  let seed = 112; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // the slope has been shelled for days
+  for (let i = 0; i < 70; i++) set(4 + rnd() * 72, 28 + rnd() * 60, '+');
+  // defenders: a farm and a stone wall along the crest, trenches overlooking the ramp
+  box(16, 16, 5, 4, 'B'); box(64, 16, 5, 4, 'B'); box(40, 4, 6, 4, 'B');
+  line(8, 26, 30, 27, '#'); line(50, 27, 72, 26, '#');
+  line(31, 29, 38, 29, 'T'); line(42, 29, 49, 29, 'T');
+  // middle terrace: a hamlet astride the ramp, hedges along the terrace edges
+  box(33, 50, 4, 3, 'B'); box(47, 50, 4, 3, 'B'); box(40, 56, 3, 3, 'B');
+  line(4, 58, 22, 57, 'H'); line(58, 57, 76, 58, 'H');
+  line(10, 44, 26, 44, 'H'); line(54, 44, 70, 44, 'H');
+  // lower slope: orchards (hedges) and farms to advance through
+  box(18, 80, 5, 4, 'B'); box(62, 80, 5, 4, 'B');
+  for (const x of [8, 26, 54, 72]) line(x, 66, x, 74, 'H');
+  line(30, 88, 50, 88, '#');
+  const spawns = [{ x: 28, y: 9 }, { x: 52, y: 9 }, { x: 20, y: 102 }, { x: 60, y: 102 }];
+  const points = [{ x: 40, y: 14, vp: 2, mp: 1.5 }, { x: 40, y: 50, vp: 1, mp: 1.5 }, { x: 16, y: 72, vp: 1, mp: 1.5 }, { x: 64, y: 72, vp: 1, mp: 1.5 }];
+  for (const p of [...spawns, ...points]) for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) set(p.x + x, p.y + y, '.');
+  writeFileSync(new URL('../maps/hill-112.json', import.meta.url), JSON.stringify({ name: 'Hill 112', w: W, h: H, rows: g.map(r => r.join('')), heights: hgt.map(r => r.join('')), spawns, points, defend: [0, 1] }, null, 1));
+  console.log(hgt.map(r => r.join('')).join('\n'));
+}

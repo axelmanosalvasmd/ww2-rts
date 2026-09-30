@@ -40,7 +40,7 @@ async function saveMap(req, res, name) {
   const err = validateMap(map);
   if (err) return json(400, { error: err });
   const clean = { name: map.name, w: map.w, h: map.h, rows: map.rows, ...(map.heights && { heights: map.heights }), spawns: map.spawns.map(({ x, y }) => ({ x, y })),
-    points: map.points.map(({ x, y, vp, mp }) => ({ x, y, vp: vp ?? 1, mp: mp ?? 1 })) };
+    points: map.points.map(({ x, y, vp, mp }) => ({ x, y, vp: vp ?? 1, mp: mp ?? 1 })), ...(map.defend && { defend: map.defend }) };
   await writeFile(join(MAPS, name + '.json'), JSON.stringify(clean, null, 1));
   json(200, { ok: true });
 }

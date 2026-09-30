@@ -48,6 +48,13 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Attackers win when every bunker is down; defenders win when the 15:00 clock runs out. No VP; points give manpower.
 - Attackers start with 320 MP and +5/s, defenders 250 and +3.5/s. 90 AI 1v1 assaults per map, attacker wins:
   50% (default), 61% (River Towns). 3v3 on Six Fronts runs (3 bunkers).
+- A map can reserve spawns for the defenders with `"defend": [spawn numbers]`; attackers get the rest. Without it,
+  spawns are shuffled as usual.
+- Hill 112 (80x110, `tools/genmap.js`): defenders on a level-4 plateau, attackers at level 0. On the upper slope
+  the flanks are a 2-level cliff, so the climb funnels through a central ramp or narrow paths at the map edges.
+  The AI defender only holds points within 70 m of home, which here is just the summit, so the summit's MP
+  decides the balance: AI 1v1 assault, attacker wins 13/20 at summit mp 1, 14/20 at 1.25, 7/30 at 1.5 (kept:
+  the hill should favour the defender). Small samples; the swing between 1.25 and 1.5 is large.
 - Bug found while testing: veterancy thresholds are multiples of unit cost, so the free bunker counted as a 3-star
   veteran. Free units never rank up now.
 
@@ -63,7 +70,9 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Veterancy: damage dealt of 1/2.5/5x the unit's cost = 1-3 stars (+10% accuracy, -8% damage, -15% suppression each).
 - Rocket launcher (250 MP; T34 Calliope / Panzerwerfer / Katyusha): 8-rocket salvo up to 70 m on anything its side can
   see, no line of sight needed, +50% vs garrisons, 20s reload. F = Rocket Barrage on any clicked spot.
-- Bombing run (250 MP, N): 6 heavy bombs in a line, 7 m blasts, big craters, 400 structure damage per bomb.
+- Bombing run (250 MP, N): 6 heavy bombs in a line, 7 m blasts, big craters, 400 structure damage per bomb. Each bomb
+  lowers a 3x3 patch one level, each artillery shell one cell (never more than one below a neighbour, so no
+  inescapable pits).
 - Balance: garrisons alone dropped 2nd place to 55%; with rockets it's back to 63% (default) / 61% (River Towns).
 
 ## Tech

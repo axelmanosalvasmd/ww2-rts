@@ -6,6 +6,20 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 ## Unreleased
 
 - Added this changelog and AGENTS.md (the rule to keep it up to date).
+- Bombs and artillery now dig the ground. Each blast lowers the ground one level (a real dip that changes
+  sight lines and gives low ground): a bomb digs a 3x3 patch, an artillery shell a single cell. Repeated hits on
+  the same spot deepen the middle into a bowl, but a cell never ends up more than one level below its
+  neighbours, so units can always climb out.
+- New map, Hill 112, built for Assault: the defenders hold a plateau and the attackers start at the foot of the
+  hill and have to climb. Cliffs on the upper flanks funnel the climb through a central ramp, with narrow paths at
+  both edges. Shelled slopes, a hamlet on the middle terrace, and farms and orchards lower down give cover on the way up.
+  AI 1v1 assault: defenders win 23 of 30.
+- Maps can now pin the defenders to chosen spawns in Assault (`defend` in the map file). The editor keeps it on save.
+- Units show a shield next to their health bar when they're in cover: green for cover, faded green for cover
+  on one side ("by cover"), blue for a trench. No shield when garrisoned (the panel already says so).
+- Fixed: clicking or box-selecting units on high ground missed them. Selection projected every unit at ground
+  level 0, so on a level-4 plateau the click spot was about 90 px below the soldiers (the pick radius is 32 px).
+  It was barely noticeable on the older maps' low hills.
 
 ## 2026-09-30
 

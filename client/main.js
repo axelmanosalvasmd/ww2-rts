@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, canBuild, winVp } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, levelOf, levelChar, canBuild, winVp } from '/shared/sim.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -133,7 +133,10 @@ const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
   body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), helmet: new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
   ring: new THREE.RingGeometry(0.85, 1, 40), plane: new THREE.PlaneGeometry(1, 1), ball: new THREE.SphereGeometry(1, 12, 8),
+  shield: new THREE.ShapeGeometry(new THREE.Shape([[-0.5, 0.5], [0.5, 0.5], [0.5, 0], [0, -0.6], [-0.5, 0]].map(([x, y]) => new THREE.Vector2(x, y)))),
 };
+// cover shield next to the health bar, by snapshot cover state: 1 cover, 2 trench, 3 cover on one side
+const COVER_LOOK = { 1: [0x7fd06a, 1], 2: [0x3fe0ff, 1], 3: [0x7fd06a, 0.45] };
 const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
   const m = new THREE.Mesh(geo, material); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.castShadow = true; return m;
 };
@@ -205,7 +208,7 @@ function startGame(m) {
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: c, base, tex, px, group: new THREE.Group() };
   world.add(terrain.group);
-  for (const [cell, ch] of m.cells || []) terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch;
+  for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
   buildField(map);
   const ground = new THREE.Mesh(terrainGeometry(), new THREE.MeshLambertMaterial({ map: tex }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
@@ -354,13 +357,23 @@ function buildStructures() {
   }
 }
 
+// bombs and shells lower the ground: patch the map's height rows
+function setLevel(map, cell, lv) {
+  map.heights ??= map.rows.map(r => '0'.repeat(r.length));
+  const x = cell % map.w, y = Math.floor(cell / map.w), r = map.heights[y];
+  map.heights[y] = r.slice(0, x) + levelChar(lv) + r.slice(x + 1);
+}
+
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
-  for (const [cell, ch] of cells) {
+  let dug = false;
+  for (const [cell, ch, lv] of cells) {
     const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
     terrain.grid[y][x] = ch;
     paintCell(x, y);
+    if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
   }
+  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = terrainGeometry(); }
   terrain.tex.needsUpdate = true;
   buildStructures();
   mmImage = null;
@@ -501,6 +514,8 @@ function makeUnit(id, type, owner) {
   v.bars.add(bg, v.hpBar, v.suppBar);
   // veterancy: up to three gold stars above the bar
   v.stars = [-0.5, 0, 0.5].map(x => { const st = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); st.scale.set(0.32, 0.32, 1); st.position.set(x, 0.42, 0.01); st.rotation.z = Math.PI / 4; st.renderOrder = 4; st.visible = false; v.bars.add(st); return st; });
+  v.shield = new THREE.Mesh(GEO.shield, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }));
+  v.shield.scale.set(0.5, 0.5, 1); v.shield.position.set(-1.55, 0, 0.01); v.shield.renderOrder = 4; v.shield.visible = false; v.bars.add(v.shield);
   world.add(root, v.bars);
   return v;
 }
@@ -592,6 +607,9 @@ function applySnapshot(s) {
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
     Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32) });
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
+    const cl = !v.garr && COVER_LOOK[cover];
+    v.shield.visible = !!cl;
+    if (cl) { v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; }
     // inside a building: the squad disappears into it; its bars float above the roof
     v.base.material.color.set(flags & 1 ? 0xffffff : look(owner).color);
     const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
@@ -919,7 +937,7 @@ document.addEventListener('mouseleave', () => (mouse.inside = false));
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 renderer.domElement.addEventListener('wheel', (e) => { cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: true });
 
-const screenOf = (v) => { const p = new THREE.Vector3(v.x, 1, v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
+const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1, v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
 function pick(mx, my, test) {
   let best = null, bd = Infinity;
   for (const v of units.values()) {

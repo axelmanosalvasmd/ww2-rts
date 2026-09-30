@@ -81,11 +81,11 @@ export const allied = (g, a, b) => a >= 0 && b >= 0 && g.players[a].team === g.p
 // Off-map support bought with manpower. Every strike is announced to all players `delay` seconds ahead.
 export const SUPPORT = {
   recon: { name: 'Recon Flight', cost: 60, cd: 45, delay: 3, dur: 15, len: 80, width: 30 },
-  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, len: 24, width: 10, shells: 10, every: 0.4, blast: 4, inf: 30, veh: 35, supp: 60, terrain: 90 },
+  artillery: { name: 'Artillery Barrage', cost: 150, cd: 60, delay: 5, len: 24, width: 10, shells: 10, every: 0.4, blast: 4, dig: 0, inf: 30, veh: 35, supp: 60, terrain: 90 },
   strafe: { name: 'Strafing Run', cost: 200, cd: 90, delay: 5, len: 36, width: 8, inf: 25, veh: 10, supp: 80 },
   smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, len: 36, width: 14, clouds: 5, cloud: 7, dur: 20 },
   // a stick of heavy bombs along the line: flattens houses, big craters, deadly to tanks
-  bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, inf: 60, veh: 150, supp: 90, terrain: 400 },
+  bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, dig: 1, inf: 60, veh: 150, supp: 90, terrain: 400 },
 };
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
 
@@ -115,6 +115,8 @@ export function validateMap(m) {
   const at = (p) => m.rows[p.y][p.x];
   if (!Array.isArray(m.spawns) || m.spawns.length < 2 || m.spawns.length > MAX_PLAYERS) return 'needs 2-' + MAX_PLAYERS + ' spawns';
   for (const sp of m.spawns) if (!sp || !int(sp.x, 0, m.w - 1) || !int(sp.y, 0, m.h - 1) || TERRAIN[at(sp)] & MOVE) return 'spawns must be on open ground inside the map';
+  if (m.defend !== undefined && (!Array.isArray(m.defend) || !m.defend.length || m.defend.length >= m.spawns.length
+    || m.defend.some(i => !int(i, 0, m.spawns.length - 1)) || new Set(m.defend).size !== m.defend.length)) return 'defend must list some (not all) spawn numbers';
   if (!Array.isArray(m.points) || m.points.length < 1 || m.points.length > 9) return 'needs 1-9 capture points';
   for (const p of m.points) if (!p || !int(p.x, 0, m.w - 1) || !int(p.y, 0, m.h - 1) || TERRAIN[at(p)] & MOVE || !numIn(p.vp ?? 1, 0, 5) || !numIn(p.mp ?? 1, 0, 5)) return 'points must be on open ground, vp and mp 0-5';
   return null;
@@ -143,6 +145,12 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
   }
   const spawnIdx = spawnSlots(map.spawns.length, teams, shuffle);
+  // assault maps can reserve spawns for the defenders (a hilltop, a town); attackers get the rest
+  if (assault && map.defend?.length) {
+    const att = map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i));
+    let d = 0, a = 0;
+    teams.forEach((t, i) => { spawnIdx[i] = t === opts.defenderTeam ? map.defend[d++ % map.defend.length] : att[a++ % att.length]; });
+  }
   const g = {
     w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
     tick: 0, nextId: 1, winVp: winVp(teams), units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], winner: null,
@@ -257,6 +265,20 @@ function entryCell(g, c0, from, taken) {
 function setCell(g, c, ch) {
   g.flags[c] = TERRAIN[ch]; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
   g.cellLog.push([c, ch]); g.newCells.push([c, ch]);
+}
+// a heavy blast digs the cell one level down, but never below a neighbour's slope (no pits you can't climb out of)
+function dent(g, c) {
+  if (c < 0) return;
+  g.height ??= new Int8Array(g.w * g.h);
+  const L = g.height[c] - 1, x = c % g.w;
+  if (L < CFG.minLevel || [c - g.w, c + g.w, x > 0 ? c - 1 : -1, x < g.w - 1 ? c + 1 : -1].some(n => n >= 0 && n < g.height.length && g.height[n] - L > 1)) return;
+  g.height[c] = L;
+  g.cellLog.push([c, g.chars[c], L]); g.newCells.push([c, g.chars[c], L]);
+}
+// dig a (2r+1)^2 patch of cells around a blast, centre first so repeated hits deepen it into a bowl
+function digAt(g, at, r) {
+  dent(g, cellOf(g, at.x, at.z));
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx || dy) dent(g, cellOf(g, at.x + dx * CELL, at.z + dy * CELL));
 }
 
 // Grid ray walk (Amanatides-Woo). Skips the start cell; checks the end cell only if withEnd.
@@ -758,6 +780,7 @@ export function step(g) {
         const c = cellOf(g, at.x + dx * CELL, at.z + dy * CELL);
         if (c >= 0 && g.chars[c] === '.') setCell(g, c, '+');
       }
+      digAt(g, at, sp.dig);
       s.left--; s.next = sp.every;
     }
     else if (s.kind === 'artillery' && (s.next -= dt) <= 0) {
@@ -766,6 +789,7 @@ export function step(g) {
       blast(g, list, at, sp.blast, sp, s.owner);
       const hole = cellOf(g, at.x, at.z);
       if (hole >= 0 && g.chars[hole] === '.') setCell(g, hole, '+'); // shell holes are cover from now on
+      digAt(g, at, sp.dig);
       s.left--; s.next = sp.every;
     } else if (s.kind === 'strafe') {
       // everything within `width` of the run's line gets raked

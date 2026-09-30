@@ -42,7 +42,7 @@ export async function start(api) {
   $('edPw').value = store.get('ww2-edit-pw') || '';
 
   // ---------- model ----------
-  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), heights: heights.map(r => r.map(levelChar).join('')), spawns: map.spawns, points: map.points });
+  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), heights: heights.map(r => r.map(levelChar).join('')), spawns: map.spawns, points: map.points, ...(map.defend?.every(i => i < map.spawns.length) && { defend: map.defend }) });
   function load(m, n) {
     map = m; name = n; grid = m.rows.map(r => [...r]); sel = -1; picked = null;
     heights = (m.heights || m.rows.map(r => '0'.repeat(r.length))).map(r => [...r].map(levelOf));

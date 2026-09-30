@@ -1,7 +1,7 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGame, step, command, los, findPath, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT } from './shared/sim.js';
+import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
@@ -164,6 +164,7 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   Math.random = orig;
   assert.ok(r.hp < 100 || !g.units.has(r.id), 'barrage hits the squad');
   assert.equal(g.strikes.length, 0, 'barrage finished');
+  assert.equal(g.height.filter(l => l < 0).length, 1, 'shells dig a single cell (bombs dig more)');
 }
 
 // Strafe: hits along the line, misses off it.
@@ -403,6 +404,11 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   run(g, SUPPORT.bombing.delay + 3);
   assert.ok(houses() <= before / 4, `most of the row is gone (${before} -> ${houses()})`);
   assert.ok(g.chars.filter(c => c === '+').length >= 10, 'big craters');
+  assert.ok(g.height && g.height.filter(l => l < 0).length >= 9 * 3, 'each bomb digs a 3x3 patch');
+  assert.ok(g.cellLog.some(e => e[2] < 0), 'the dip is sent to clients');
+  // repeated bombing never digs a pit deeper than one level below its neighbours
+  for (let i = 0; i < 4; i++) { g.players[0].sup.bombing = 0; command(g, 0, { t: 'support', kind: 'bombing', x: 20, z: 21, dir: 0 }); run(g, SUPPORT.bombing.delay + 3); }
+  for (let c = 0; c < g.height.length; c++) if (c % g.w > 0) assert.ok(Math.abs(g.height[c] - g.height[c - 1]) <= 1, 'no cliffs from craters');
   assert.ok(!g.units.has(t.id) || t.hp < 360 * 0.5, 'tank under the bombs is wrecked or badly hurt');
 }
 
@@ -572,6 +578,19 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(g.players[0].vp, vp, 'no VP while away'); assert.equal(g.players[0].mp, mp, 'no manpower while away');
   g.players[0].away = false; run(g, 2);
   assert.ok(g.players[0].vp > vp, 'clock resumes on reconnect');
+}
+
+// Hill 112: in assault the defenders always get the hilltop, whatever the shuffle, and attackers can climb it.
+{
+  const map = JSON.parse(readFileSync('maps/hill-112.json', 'utf8'));
+  assert.equal(validateMap(map), null);
+  for (let i = 0; i < 10; i++) {
+    const g = createGame(map, ['a', 'b', 'd'], true, [0, 0, 1], [0, 1, 2], { mode: 'assault', defenderTeam: 1 });
+    const lv = (p) => g.height[Math.floor(p.spawn.z / CELL) * g.w + Math.floor(p.spawn.x / CELL)];
+    assert.deepEqual(g.players.map(lv), [0, 0, 4], 'attackers below, defender on top');
+    assert.ok(findPath(g, g.players[0].spawn, g.players[2].spawn).length, 'a way up');
+  }
+  assert.equal(validateMap({ ...map, defend: [0, 1, 2, 3] }), 'defend must list some (not all) spawn numbers');
 }
 
 // Real map loads for 3 players, all spawns start with their force.
