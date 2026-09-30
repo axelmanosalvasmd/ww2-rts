@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three Crossroads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #e9e2cf; --dim: #a39b85; --panel: rgba(24, 24, 18, 0.86); --edge: #5b5540; --accent: #d9b44a;
+    --p0: #3d7bd9; --p1: #e0b23a; --p2: #d94a3d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1c16; color: var(--ink); font: 13px/1.4 'IBM Plex Mono', ui-monospace, monospace; user-select: none; }
+  canvas { display: block; }
+  .stencil { font-family: 'Stardos Stencil', Impact, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; }
+  .panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 3px; }
+  button { font: inherit; color: var(--ink); background: #3b3a2c; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { background: #4d4b37; border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  input { font: inherit; color: var(--ink); background: #11110d; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 8px; }
+  .hidden { display: none !important; }
+
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(40,38,28,0.7), rgba(10,10,8,0.95)); z-index: 10; padding: 16px; }
+  #overlay .card { width: min(460px, 100%); padding: 24px; display: grid; gap: 14px; }
+  #overlay h1 { margin: 0; font-size: 34px; color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input { flex: 1; min-width: 0; }
+  #roster { display: grid; gap: 6px; }
+  .slot { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #11110d; border-radius: 3px; }
+  .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+  .muted { color: var(--dim); }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #hud > * { pointer-events: auto; }
+  #scores { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px 10px; }
+  .score { width: 150px; }
+  .score .bar { height: 6px; background: #11110d; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .score .bar > div { height: 100%; }
+  #econ { position: absolute; top: 10px; right: 10px; padding: 8px 12px; text-align: right; }
+  #econ .mp { font-size: 22px; color: var(--accent); }
+  #buy { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; }
+  #buy button { display: grid; gap: 2px; min-width: 104px; text-align: left; }
+  #buy button b { font-weight: 600; }
+  #buy button span { color: var(--accent); font-size: 12px; }
+  #selection { position: absolute; bottom: 10px; left: 10px; padding: 8px 10px; width: 260px; max-height: 40vh; overflow: auto; }
+  #selection:empty { display: none; }
+  .sel { display: flex; justify-content: space-between; gap: 8px; }
+  .tag { font-size: 11px; padding: 0 4px; border-radius: 2px; }
+  .tag.pin { background: #8a2b20; } .tag.sup { background: #7a6420; } .tag.cov { background: #2f5a2a; }
+  #help { position: absolute; bottom: 10px; right: 10px; padding: 8px 10px; color: var(--dim); font-size: 11px; }
+  #status { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--accent); }
+  #status:empty { display: none; }
+  #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
+
+  @media (max-width: 760px) { #help { display: none; } #scores { top: 64px; } .score { width: 100px; } #buy button { min-width: 0; } }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="overlay">
+  <div class="card panel">
+    <h1 class="stencil">Three Crossroads</h1>
+    <h2 id="result" class="stencil hidden" style="margin:0;font-size:26px"></h2>
+    <div class="muted">WW2 skirmish. Hold the points, bleed their VP, first to 500 wins.</div>
+    <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
+    <div>
+      <div class="muted">Invite link (send to your friends)</div>
+      <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
+    </div>
+    <div id="roster"></div>
+    <button id="start" class="stencil">Start</button>
+    <div id="lobbyMsg" class="muted"></div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="scores" class="panel"></div>
+  <div id="econ" class="panel"><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div></div>
+  <div id="buy" class="panel"></div>
+  <div id="selection" class="panel"></div>
+  <div id="help" class="panel">
+    Drag: select · Right-click: move / attack<br>
+    WASD / edges: pan · Q/E: rotate · Wheel: zoom<br>
+    Shift+1-9: set group · 1-9: recall · X: stop · Space: focus
+  </div>
+  <div id="status" class="panel"></div>
+</div>
+<div id="box" class="hidden"></div>
+<script type="module" src="/client/main.js"></script>
+</body>
+</html>
