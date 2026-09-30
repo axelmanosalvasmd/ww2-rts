@@ -7,7 +7,7 @@ import { think } from './shared/ai.js';
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
 const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
-const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n)); g.units.clear(); return g; };
+const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
 const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; return u; };
 
 // LOS: a building between two points blocks sight; a wall does not.
@@ -82,6 +82,61 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   command(g, 0, { t: 'buy', unit: 'rifle' }); command(g, 0, { t: 'buy', unit: 'tank' }); command(g, 0, { t: 'buy', unit: '__proto__' });
   command(g, 0, { t: 'move', orders: [[999, NaN, 'x'], 'junk'] });
   assert.equal(g.units.size, 1); assert.equal(g.players[0].mp, 50);
+}
+
+// Retreat: sprints home, takes a quarter of the damage, stops shooting.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+  g.players[0].spawn = { x: 5, z: 38 };
+  const r = put(g, 0, 'rifle', 5, 5), t = put(g, 1, 'tank', 20, 5);
+  command(g, 0, { t: 'retreat', ids: [r.id] });
+  assert.ok(r.retreating && r.path.length, 'retreat order sets a path home');
+  const orig = Math.random; Math.random = () => 0;
+  t.cooldown = 0; run(g, 0.3);
+  Math.random = orig;
+  assert.equal(r.hp, 100 - 30 * 0.25, 'retreating squad takes 25% damage');
+  assert.equal(r.targetId, 0, 'retreating squad does not fire');
+}
+
+// Reinforce: a damaged squad at its spawn regains models for manpower.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  g.players[0].spawn = { x: 20, z: 20 };
+  const r = put(g, 0, 'rifle', 21, 21); r.hp = 40;
+  const mp = g.players[0].mp;
+  run(g, 5);
+  assert.equal(r.hp, 80, 'two models restored in 5s');
+  assert.ok(Math.abs(mp - g.players[0].mp - 2 * 10) < 25, 'reinforcing costs manpower'); // income runs meanwhile
+}
+
+// Grenade: walks into range, throws, blast hurts everyone nearby (cover doesn't help).
+{
+  const rows = [...empty]; rows[2] = '.'.repeat(15) + '#' + '.'.repeat(4);
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+  const r = put(g, 0, 'rifle', 3, 5), m = put(g, 1, 'mg', 31, 5);
+  command(g, 0, { t: 'ability', ids: [r.id], x: 31, z: 5 });
+  const before = m.hp;
+  run(g, 4);
+  assert.ok(r.cd > 0, 'grenade on cooldown');
+  assert.ok(m.hp <= before - 30 || !g.units.has(m.id), `mg hit by grenade (${m.hp})`);
+}
+
+// Smoke blocks line of sight.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const t = put(g, 0, 'tank', 20, 20);
+  assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }));
+  command(g, 0, { t: 'ability', ids: [t.id] });
+  assert.equal(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), false, 'smoke blocks LOS');
+  run(g, 15);
+  assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), 'smoke clears');
+}
+
+// Catch-up: trailing players earn more manpower.
+{
+  const g = fresh(); g.players[0].vp = 400;
+  run(g, 0.1);
+  assert.ok(g.players[1].inc > g.players[0].inc + 3, 'trailing player gets catch-up income');
 }
 
 // Real map loads for 3 players, all spawns start with their force.

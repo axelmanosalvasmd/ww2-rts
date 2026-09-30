@@ -181,7 +181,7 @@ function startGame(m) {
     ring.rotation.x = prog.rotation.x = -Math.PI / 2; ring.position.y = 0.06; prog.position.y = 0.07;
     const flagMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
     const flag = mesh(GEO.plane, flagMat, 2.2, 1.4, 1, 1.1, 7.2, 0);
-    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag);
+    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(p.vp > 1 ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`));
     world.add(g);
     return { g, ringMat, prog, progMat, flagMat };
   });
@@ -195,13 +195,25 @@ function startGame(m) {
   world.add(fog);
 
   // camera: behind my spawn, looking at the map center
-  const s = map.spawns[me], sx = (s.x + 0.5) * CELL, sz = (s.y + 0.5) * CELL;
+  const sx = m.spawn.x, sz = m.spawn.z;
   cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
   cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
 
   buildBuyBar();
   $('hud').classList.remove('hidden');
   $('overlay').classList.add('hidden');
+}
+
+function label(text) {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const c = cv.getContext('2d');
+  c.font = 'bold 34px "IBM Plex Mono", monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = 'rgba(20,20,15,0.75)'; c.fillRect(8, 6, 240, 52);
+  c.fillStyle = '#f0d98a'; c.fillText(text, 128, 33);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sp.scale.set(8, 2, 1); sp.position.y = 10; sp.renderOrder = 5;
+  return sp;
 }
 
 // ---------- units ----------
@@ -220,7 +232,7 @@ function makeUnit(id, type, owner) {
   base.rotation.x = -Math.PI / 2; base.position.y = 0.15; base.scale.setScalar(def.radius + 0.4); base.renderOrder = 2;
   v.sel = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: 0xfff6c8, depthWrite: false, transparent: true }));
   v.sel.rotation.x = -Math.PI / 2; v.sel.position.y = 0.16; v.sel.scale.setScalar(def.radius + 1); v.sel.visible = false; v.sel.renderOrder = 2;
-  root.add(base, v.sel);
+  root.add(base, v.sel); v.base = base;
   if (type === 'tank') {
     const hull = mat(f.vehicle), dark = mat(0x2a2a24);
     root.add(mesh(GEO.box, hull, 4.2, 1.1, 2.4, 0, 1, 0), mesh(GEO.box, dark, 4.4, 0.8, 0.6, 0, 0.45, 1.1), mesh(GEO.box, dark, 4.4, 0.8, 0.6, 0, 0.45, -1.1));
@@ -335,11 +347,12 @@ function marker(x, z, color) {
 
 function applySnapshot(s) {
   const seen = new Set();
-  for (const [id, type, owner, x, z, rot, aim, hp, supp, , cover] of s.units) {
+  for (const [id, type, owner, x, z, rot, aim, hp, supp, , cover, cd, flags] of s.units) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover });
+    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, cover, cd, flags });
+    v.base.material.color.set(flags & 1 ? 0xffffff : FACTIONS[owner].color);
     const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
     if (type !== 'tank') while (v.alive > alive) corpse(v, v.models[--v.alive]);
     const frac = Math.max(0, hp / (def.models * def.hpPer));
@@ -350,6 +363,9 @@ function applySnapshot(s) {
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
   }
   for (const sh of s.shots) {
+    if (sh.k === 'throw') { const from = units.get(sh.f); if (from) lob(from, sh.x, sh.z); continue; }
+    if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
+    if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
     const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
     const end = new THREE.Vector3(tx, to?.type === 'tank' ? 1.2 : 0.8, tz);
@@ -374,8 +390,33 @@ function applySnapshot(s) {
     p.progMat.color.set(owner >= 0 ? oc : capper >= 0 ? FACTIONS[capper].color : 0xffffff);
     p.prog.geometry.setDrawRange(0, Math.round(progress * 64) * 6);
   });
+  syncSmoke(s.smokes);
   lastSnap = s;
   updateHud(s);
+}
+
+const smokes = new Map();
+function syncSmoke(list) {
+  const keep = new Set();
+  for (const [x, z, r] of list) {
+    const key = x + ',' + z; keep.add(key);
+    if (smokes.has(key)) continue;
+    const cloud = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0xd8d8d0, transparent: true, opacity: 0.5, depthWrite: false });
+    for (let i = 0; i < 9; i++) {
+      const a = i * 0.7, d = i ? r * 0.55 : 0, sz = r * (0.45 + Math.random() * 0.2);
+      cloud.add(mesh(GEO.ball, m, sz, sz * 0.7, sz, x + Math.cos(a) * d, sz * 0.5, z + Math.sin(a) * d));
+    }
+    cloud.traverse(o => (o.castShadow = false));
+    world.add(cloud); smokes.set(key, cloud);
+  }
+  for (const [key, cloud] of smokes) if (!keep.has(key)) { world.remove(cloud); smokes.delete(key); }
+}
+
+// grenade in flight: a small arc from the thrower to the target
+function lob(from, x, z) {
+  const start = from.root.position.clone(), end = new THREE.Vector3(x, 0, z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
+  n.scale.setScalar(0.25); world.add(n);
+  fx.push({ obj: n, life: 1.1, max: 1.1, update: (f) => { const t = 1 - f; n.position.lerpVectors(start, end, t); n.position.y = 1 + Math.sin(t * Math.PI) * 5; } });
 }
 
 // ---------- HUD ----------
@@ -391,12 +432,36 @@ function updateHud(s) {
     <div class="bar"><div style="width:${Math.min(100, s.vp[i] / CFG.vpToWin * 100)}%;background:${css(FACTIONS[i].color)}"></div></div><div class="muted">${s.vp[i]} / ${CFG.vpToWin} VP</div></div>`).join('');
   const pop = [...units.values()].filter(v => v.owner === me).length;
   $('mp').textContent = `${s.mp} MP`;
-  $('income').textContent = `+${CFG.mpBase + CFG.mpPerPoint * held(me)}/s · ${pop}/${CFG.popCap} units`;
+  $('income').textContent = `+${s.inc}/s · ${pop}/${CFG.popCap} units`;
   $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= CFG.popCap));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
-    const def = UNITS[v.type], tags = [v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.cover ? '<span class="tag cov">COVER</span>' : ''].join(' ');
+    const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.cover ? '<span class="tag cov">COVER</span>' : ''].join(' ');
     return `<div class="sel"><span>${FACTIONS[v.owner].names[v.type]}</span><span>${tags} ${v.type === 'tank' ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
   }).join('');
+  // ability bar for the current selection
+  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
+  const types = [...new Set(sel.map(v => v.type))];
+  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + types.map(t => {
+    const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
+    return `<button data-a="${t}" ${ready ? '' : 'disabled'}>${UNITS[t].ab.name} <kbd>F</kbd>${ready ? '' : ` ${cd}s`}</button>`;
+  }).join('') : '';
+  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : useAbility(b.dataset.a))));
+}
+
+function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); } }
+// F: instant abilities fire now; grenades arm a targeting click
+let targeting = false;
+function useAbility(only) {
+  const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && (!only || v.type === only));
+  const instant = ready.filter(v => UNITS[v.type].ab.id !== 'grenade');
+  if (instant.length) { sendCmd({ t: 'ability', ids: instant.map(v => v.id) }); blip(880); }
+  if (ready.some(v => v.type === 'rifle')) targeting = true;
+}
+function throwAt(g) {
+  const rifles = [...selected].map(id => units.get(id)).filter(v => v && v.type === 'rifle' && !v.cd);
+  if (!rifles.length) return;
+  rifles.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
+  sendCmd({ t: 'ability', ids: [rifles[0].id], x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(760);
 }
 
 // ---------- camera + input ----------
@@ -411,8 +476,10 @@ addEventListener('keydown', (e) => {
   if (n && e.shiftKey) groups[n] = [...selected];
   else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
   else if (e.code === 'KeyX') { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }
+  else if (e.code === 'KeyR') retreat();
+  else if (e.code === 'KeyF') useAbility();
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
-  else if (e.code === 'Escape') selected.clear();
+  else if (e.code === 'Escape') { if (targeting) targeting = false; else selected.clear(); }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
@@ -444,6 +511,11 @@ const groundAt = (mx, my) => {
 };
 
 renderer.domElement.addEventListener('mousedown', (e) => {
+  if (targeting) {
+    targeting = false;
+    if (e.button === 0) { const g = groundAt(e.clientX, e.clientY); if (g) throwAt(g); }
+    return;
+  }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
   const enemy = pick(e.clientX, e.clientY, v => v.owner !== me);
@@ -525,7 +597,7 @@ renderer.setAnimationLoop(() => {
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
-  renderer.domElement.style.cursor = selected.size && pick(mouse.x, mouse.y, v => v.owner !== me) ? 'crosshair' : 'default';
+  renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => v.owner !== me) ? 'crosshair' : 'default';
   renderer.render(scene, camera);
 });
 

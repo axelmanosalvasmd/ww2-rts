@@ -3,13 +3,23 @@
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
 ## Game
-- Tactics skirmish, no base building. PvP: 1v1 or 3-player FFA, joined by room link (`/#code`).
-- Win: first to 1200 VP (was 500; AI-vs-AI matches ended in ~3.5 min, now 7-9 min). Each held capture point gives +1 VP/s and +2 MP/s (plus a base of 1 MP/s).
-- Manpower buys reinforcements that spawn at your map edge. Pop cap is 12 units.
+- Tactics skirmish, no base building. PvP: 1v1 or 3-player FFA, joined by room link (`/#code`). The host can add AI opponents.
+- Win: first to 1200 VP. The center gives 2 VP/s and no manpower; villages give 1 VP/s + 1.5 MP/s.
+- Economy is mostly flat (4 MP/s base). Trailing players get up to +4 MP/s catch-up (1 per 80 VP behind the leader).
+- Retreat (R): sprint home at 1.5x speed, take 25% damage, don't fire. Near spawn, squads refill a soldier every 2s for half its cost; tanks repair for MP.
+- One ability per unit (F): rifle grenade (thrown at a clicked spot, friendly fire, ignores cover), MG suppressive fire, AT gun AP round, tank smoke (blocks LOS).
+- Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
   rifle squad, MG team, AT gun, light tank. Squads are one sim entity with N models.
 - Combat: cover cells halve incoming accuracy and suppression. The suppression meter slows and then pins infantry.
   Tanks take double damage from the rear. Grid line of sight. Fog of war is enforced by the server.
+
+### Balance log (30-40 AI-vs-AI matches each)
+| Version | 2nd place VP vs winner | Lead changes / match | Length |
+|---|---|---|---|
+| MVP (VP 500) | 10% | 0.0 | 6.8 min |
+| + retreat, abilities, flat economy, unequal points | 43% | 0.6 | 9.2 min |
+| + catch-up max 4 per 80 VP behind, spawn shuffle, AI group attacks | 63% | 1.2 | 9.7 min |
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

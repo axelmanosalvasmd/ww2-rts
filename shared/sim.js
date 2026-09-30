@@ -4,8 +4,11 @@
 export const CELL = 2;
 export const TICK = 1 / 20;
 export const CFG = {
-  vpToWin: 1200, mpStart: 150, mpBase: 1, mpPerPoint: 2,
+  vpToWin: 1200, mpStart: 150,
+  // flat income does most of the work; points add a little and trailing players catch up
+  mpBase: 4, catchupMax: 4, catchupPer: 80,
   captureTime: 8, pointRadius: 8, popCap: 12,
+  retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
   startForce: ['rifle', 'rifle', 'mg'],
 };
 
@@ -14,31 +17,39 @@ export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, 
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
 // perModel: damage scales with living squad members. moveFire: accuracy multiplier while moving (absent = can't).
-// setup: seconds stationary before it can fire.
+// setup: seconds stationary before it can fire. ab = the unit's one active ability (cd = cooldown seconds).
 export const UNITS = {
   rifle: { name: 'Rifle Squad', cost: 100, models: 5, hpPer: 20, speed: 4.5, radius: 1.5, vision: 36, infantry: true,
-    w: { range: 28, interval: 1.6, inf: 3, veh: 0.4, accInf: 0.7, accVeh: 0.7, supp: 4, perModel: true, moveFire: 0.5 } },
+    w: { range: 28, interval: 1.6, inf: 3, veh: 0.4, accInf: 0.7, accVeh: 0.7, supp: 4, perModel: true, moveFire: 0.5 },
+    ab: { id: 'grenade', name: 'Grenade', cd: 30, range: 18, fuse: 1.2, radius: 4.5, inf: 40, veh: 15, supp: 50 } },
   mg: { name: 'MG Team', cost: 150, models: 3, hpPer: 25, speed: 3.5, radius: 1.3, vision: 36, infantry: true,
-    w: { range: 36, interval: 0.3, inf: 2.4, veh: 0.2, accInf: 0.5, accVeh: 0.5, supp: 8, setup: 2 } },
+    w: { range: 36, interval: 0.3, inf: 2.4, veh: 0.2, accInf: 0.5, accVeh: 0.5, supp: 8, setup: 2 },
+    ab: { id: 'suppress', name: 'Suppressive Fire', cd: 40, dur: 10 } },
   at: { name: 'AT Gun', cost: 200, models: 4, hpPer: 20, speed: 2.5, radius: 1.8, vision: 34, infantry: true,
-    w: { range: 45, interval: 4.5, inf: 8, veh: 120, accInf: 0.3, accVeh: 0.75, supp: 0, setup: 2 } },
+    w: { range: 45, interval: 4.5, inf: 8, veh: 120, accInf: 0.3, accVeh: 0.75, supp: 0, setup: 2 },
+    ab: { id: 'ap', name: 'AP Round', cd: 45 } },
   tank: { name: 'Light Tank', cost: 300, models: 1, hpPer: 360, speed: 6.5, radius: 2.5, vision: 40, infantry: false,
-    w: { range: 35, interval: 3, inf: 30, veh: 45, accInf: 0.6, accVeh: 0.7, supp: 25, moveFire: 1 } },
+    w: { range: 35, interval: 3, inf: 30, veh: 45, accInf: 0.6, accVeh: 0.7, supp: 25, moveFire: 1 },
+    ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } },
 };
 export const UNIT_TYPES = Object.keys(UNITS);
 
 export const alive = u => Math.ceil(u.hp / UNITS[u.type].hpPer);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
-export function createGame(map, names) {
+export function createGame(map, names, shuffle = true) {
+  // random spawn per match: no 3-way map is perfectly fair on a square grid
+  const spawnOrder = [...map.spawns];
+  if (shuffle) for (let i = spawnOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [spawnOrder[i], spawnOrder[j]] = [spawnOrder[j], spawnOrder[i]]; }
   const g = {
     w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
-    tick: 0, nextId: 1, units: new Map(), shots: [], winner: null,
+    tick: 0, nextId: 1, units: new Map(), shots: [], nades: [], smokes: [], winner: null,
     players: names.map((name, slot) => {
-      const s = map.spawns[slot];
-      return { slot, name, vp: 0, mp: CFG.mpStart, spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
+      const s = spawnOrder[slot];
+      return { slot, name, vp: 0, mp: CFG.mpStart, inc: CFG.mpBase, spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
     }),
-    points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, owner: -1, capper: -1, progress: 0 })),
+    // vp/mp per second while held; the map can make some points worth more
+    points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
   for (const p of g.players) CFG.startForce.forEach((t, i) => spawnUnit(g, p.slot, t, i));
@@ -50,7 +61,8 @@ function spawnUnit(g, owner, type, n = g.units.size) {
   const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4);
   const u = { id: g.nextId++, type, owner, x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL,
     rot: 0, aim: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
-    path: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0 };
+    path: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
+    cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0 };
   g.units.set(u.id, u);
   return u;
 }
@@ -80,7 +92,13 @@ function clear(g, x0, z0, x1, z1, mask, withEnd) {
   }
   return true;
 }
-export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false);
+// does segment a-b pass through (or start/end inside) a circle?
+function segHits(a, b, c, r) {
+  const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz || 1;
+  const t = Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.z - a.z) * dz) / l2));
+  return Math.hypot(a.x + dx * t - c.x, a.z + dz * t - c.z) < r;
+}
+export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !g.smokes.some(s => segHits(a, b, s, s.r));
 
 function walkable(g, a, b) {
   // three parallel rays so wide units don't clip building corners
@@ -171,15 +189,31 @@ export function command(g, slot, cmd) {
     for (const o of cmd.orders.slice(0, 50)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
-      u.attackId = 0; u.targetId = 0; u.stuck = 0;
+      u.attackId = 0; u.targetId = 0; u.stuck = 0; u.retreating = false; u.nade = null;
       u.path = findPath(g, u, { x, z });
     }
   } else if (cmd.t === 'attack') {
     const t = g.units.get(cmd.target);
     if (!t || t.owner === slot || !g.players[slot].visible.has(t.id)) return;
-    for (const id of ids) { const u = mine(id); if (u) { u.attackId = t.id; u.repath = 0; } }
+    for (const id of ids) { const u = mine(id); if (u) { u.attackId = t.id; u.repath = 0; u.retreating = false; u.nade = null; } }
   } else if (cmd.t === 'stop') {
-    for (const id of ids) { const u = mine(id); if (u) { u.path = []; u.attackId = 0; } }
+    for (const id of ids) { const u = mine(id); if (u) { u.path = []; u.attackId = 0; u.retreating = false; u.nade = null; } }
+  } else if (cmd.t === 'retreat') {
+    for (const id of ids) {
+      const u = mine(id); if (!u) continue;
+      Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, stuck: 0 });
+      u.path = findPath(g, u, g.players[slot].spawn);
+    }
+  } else if (cmd.t === 'ability') {
+    const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
+    for (const id of ids) {
+      const u = mine(id), ab = u && UNITS[u.type].ab;
+      if (!u || u.cd > 0 || u.retreating) continue;
+      if (ab.id === 'grenade') { if (x === null || z === null) continue; u.nade = { x, z }; u.attackId = 0; u.repath = 0; }
+      else if (ab.id === 'suppress') { u.buff = ab.dur; u.cd = ab.cd; }
+      else if (ab.id === 'ap') { u.ap = true; u.cd = ab.cd; }
+      else if (ab.id === 'smoke') { g.smokes.push({ x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
+    }
   } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit)) {
     const p = g.players[slot], def = UNITS[cmd.unit];
     const pop = [...g.units.values()].filter(u => u.owner === slot).length;
@@ -212,7 +246,10 @@ function fire(g, u, t, moving) {
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
   const cover = inCover(g, t);
   let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * (cover ? 0.5 : 1);
-  let dmg = inf ? w.inf : w.veh;
+  let dmg = inf ? w.inf : w.veh, supp = w.supp, rate = sm.rate;
+  if (u.buff > 0) { dmg *= 0.5; supp *= 2.5; rate *= 0.5; } // suppressive fire: faster, pins harder, kills less
+  if (u.ap && !inf) { acc = 1; dmg *= 1.5; u.ap = false; }
+  if (t.retreating) dmg *= CFG.retreatDamage;
   if (!inf) {
     // rear armor: shot coming from behind the hull does double damage
     const a = Math.atan2(u.z - t.z, u.x - t.x) - t.rot;
@@ -222,8 +259,8 @@ function fire(g, u, t, moving) {
   let hits = 0;
   for (let i = 0; i < shots; i++) if (Math.random() < acc) hits++;
   t.hp -= dmg * hits;
-  if (inf) t.supp = Math.min(100, t.supp + w.supp * (cover ? 0.5 : 1) * (w.perModel ? shots / UNITS[u.type].models : 1));
-  u.cooldown = w.interval * sm.rate;
+  if (inf && !t.retreating) t.supp = Math.min(100, t.supp + supp * (cover ? 0.5 : 1) * (w.perModel ? shots / UNITS[u.type].models : 1));
+  u.cooldown = w.interval * rate;
   g.shots.push({ f: u.id, t: t.id, fo: u.owner, to: t.owner, x: t.x, z: t.z, hit: hits > 0, kill: t.hp <= 0, k: u.type });
 }
 
@@ -247,7 +284,17 @@ export function step(g) {
   for (const u of g.units.values()) {
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
     if (def.infantry) u.supp = Math.max(0, u.supp - 8 * dt);
-    u.cooldown -= dt; u.retarget -= dt; u.repath -= dt;
+    u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt;
+
+    // grenade order: walk into range, then throw
+    if (u.nade) {
+      const ab = def.ab;
+      if (dist(u, u.nade) <= ab.range) {
+        g.nades.push({ x: u.nade.x, z: u.nade.z, t: ab.fuse, owner: u.owner, ab });
+        g.shots.push({ f: u.id, fo: u.owner, x: u.nade.x, z: u.nade.z, k: 'throw', pub: true });
+        u.nade = null; u.path = []; u.cd = ab.cd;
+      } else if (u.repath <= 0) { u.path = findPath(g, u, u.nade); u.repath = 1; }
+    }
 
     // explicit attack order: chase until we can shoot
     if (u.attackId) {
@@ -259,7 +306,8 @@ export function step(g) {
 
     // movement
     const before = { x: u.x, z: u.z };
-    let budget = def.speed * sm.speed * dt;
+    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : sm.speed);
+    let budget = speed * dt;
     while (budget > 0 && u.path.length) {
       const wp = u.path[0], d = dist(u, wp);
       u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
@@ -269,9 +317,11 @@ export function step(g) {
     const moved = dist(u, before), moving = u.path.length > 0 || moved > 0.001;
     u.still = moving ? 0 : u.still + dt;
     // give up if blocked by friends crowding the destination
-    if (u.path.length && moved < def.speed * sm.speed * dt * 0.3) { u.stuck += dt; if (u.stuck > 1) { u.path = []; u.stuck = 0; } } else u.stuck = 0;
+    if (u.retreating && !u.path.length) u.retreating = false;
+    if (u.path.length && moved < speed * dt * 0.3) { u.stuck += dt; if (u.stuck > 1) { u.path = []; u.stuck = 0; } } else u.stuck = 0;
 
     // targeting + firing
+    if (u.retreating) { u.targetId = 0; u.aim = u.rot; continue; }
     if (!u.attackId && (u.retarget <= 0 || !canShoot(g, u, g.units.get(u.targetId)))) { u.targetId = pickTarget(g, u); u.retarget = 0.5; }
     const t = g.units.get(u.targetId);
     if (t && canShoot(g, u, t)) {
@@ -293,11 +343,41 @@ export function step(g) {
     if (!(flagsAt(g, b.x + px, b.z + pz) & MOVE)) { b.x += px; b.z += pz; }
   }
 
+  // grenades: hurt everyone in the blast (friendly fire included), cover doesn't help
+  for (const n of g.nades) {
+    if ((n.t -= dt) > 0) continue;
+    g.shots.push({ x: n.x, z: n.z, k: 'boom', pub: true });
+    for (const t of list) {
+      const d = dist(t, n);
+      if (d > n.ab.radius || t.hp <= 0) continue;
+      const inf = UNITS[t.type].infantry, fall = 1 - d / n.ab.radius * 0.5;
+      t.hp -= (inf ? n.ab.inf : n.ab.veh) * fall;
+      if (inf) t.supp = Math.min(100, t.supp + n.ab.supp);
+      g.shots.push({ t: t.id, fo: n.owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
+    }
+  }
+  g.nades = g.nades.filter(n => n.t > 0);
+  for (const s of g.smokes) s.t -= dt;
+  g.smokes = g.smokes.filter(s => s.t > 0);
+
+  // reinforce / repair near your own spawn, paid in manpower
+  for (const u of list) {
+    const def = UNITS[u.type], p = g.players[u.owner], full = def.models * def.hpPer;
+    if (u.hp <= 0 || u.hp >= full || dist(u, p.spawn) > CFG.reinforceRadius) { u.reinf = 0; continue; }
+    if (def.infantry) {
+      const cost = def.cost / def.models * 0.5;
+      if ((u.reinf += dt) >= CFG.reinforceEvery && p.mp >= cost) { u.reinf = 0; p.mp -= cost; u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
+    } else {
+      const hp = Math.min(full - u.hp, 18 * dt), cost = hp * 0.5;
+      if (p.mp >= cost) { u.hp += hp; p.mp -= cost; u.reinf = 1; }
+    }
+  }
+
   for (const u of list) if (u.hp <= 0) g.units.delete(u.id);
 
   // capture points: infantry only, uncontested
   for (const p of g.points) {
-    const present = new Set(list.filter(u => u.hp > 0 && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius).map(u => u.owner));
+    const present = new Set(list.filter(u => u.hp > 0 && !u.retreating && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius).map(u => u.owner));
     if (present.size !== 1) continue;
     const [s] = present, rate = dt / CFG.captureTime;
     if (p.owner === s) p.progress = 1;
@@ -309,10 +389,12 @@ export function step(g) {
     }
   }
 
+  const lead = Math.max(...g.players.map(q => q.vp));
   for (const pl of g.players) {
-    const held = g.points.filter(p => p.owner === pl.slot).length;
-    pl.vp += held * dt;
-    pl.mp += (CFG.mpBase + CFG.mpPerPoint * held) * dt;
+    const held = g.points.filter(p => p.owner === pl.slot);
+    pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt;
+    pl.inc = CFG.mpBase + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - pl.vp) / CFG.catchupPer);
+    pl.mp += pl.inc * dt;
     if (pl.vp >= CFG.vpToWin && g.winner === null) g.winner = pl.slot;
   }
 }
@@ -322,11 +404,14 @@ export function snapshotFor(g, slot, shots) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
   const seen = (id) => g.units.get(id)?.owner === slot || p.visible.has(id);
   return {
-    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp),
+    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc),
+    // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing. Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
-      .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inCover(g, u) ? 1 : 0]),
+      .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inCover(g, u) ? 1 : 0,
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0)]),
+    smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     points: g.points.map(q => [q.owner, q.capper, r(q.progress)]),
     vp: g.players.map(q => Math.floor(q.vp)),
-    shots: shots.filter(s => s.fo === slot || s.to === slot || p.visible.has(s.f) || p.visible.has(s.t)),
+    shots: shots.filter(s => s.pub || s.fo === slot || s.to === slot || p.visible.has(s.f) || p.visible.has(s.t)),
   };
 }

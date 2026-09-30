@@ -1,6 +1,6 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, CELL, CFG, COVER, MOVE, command } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, command, inCover } from './sim.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -34,12 +34,27 @@ export function think(g, slot) {
     if (i >= 0) load[i]++;
   }
 
-  const orders = [];
+  const orders = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
+  const enemies = [...me.visible].map(id => g.units.get(id)).filter(Boolean);
   for (const u of mine) {
-    if (u.path.length || u.attackId) continue;
-    const def = UNITS[u.type];
-    // badly hurt and pinned: fall back to spawn
-    if (u.hp < def.models * def.hpPer * 0.3 && u.supp >= 50 && d(u, me.spawn) > 15) { orders.push([u.id, me.spawn.x, me.spawn.z]); continue; }
+    const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = d(u, me.spawn) <= CFG.reinforceRadius;
+    if (u.retreating) continue;
+
+    // abilities
+    const target = g.units.get(u.targetId);
+    if (u.cd <= 0) {
+      if (def.ab.id === 'grenade') {
+        // lob it at a dug-in MG or AT gun, or any squad sitting in cover
+        const t = enemies.find(e => UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(g, e)));
+        if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z });
+      } else if (def.ab.id === 'suppress' && target) command(g, slot, { t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'ap' && target?.type === 'tank') command(g, slot, { t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'smoke' && frac < 0.5 && !home) command(g, slot, { t: 'ability', ids: [u.id] });
+    }
+    // save hurt units instead of letting them die: retreat, get reinforced, come back
+    if (!home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
+    if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
+    if (u.path.length || u.attackId || u.nade) continue;
     if (u.targetId) continue; // in a fight: hold
     const here = pointOf(u);
     // infantry stays to capture, and one squad stays behind to hold each captured point
@@ -48,13 +63,21 @@ export function think(g, slot) {
     let best = -1, bestScore = Infinity;
     g.points.forEach((p, i) => {
       if (p.owner === slot) return;
-      const score = d(u, p) + load[i] * 40;
+      // the center is worth double VP, villages feed manpower
+      const score = d(u, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10;
       if (score < bestScore) { bestScore = score; best = i; }
     });
     if (best < 0) continue; // we hold everything: stay put
     load[best]++;
-    const s = spotNear(g, g.points[best]);
-    orders.push([u.id, s.x, s.z]);
+    pending[best].push(u);
   }
+  // grab neutral points with whoever is free, but only hit enemy-held points as a group
+  const need = Math.min(3, mine.length);
+  pending.forEach((group, i) => {
+    const p = g.points[i];
+    if (p.owner >= 0 && p.owner !== slot && group.length + heading[i] < need) return;
+    for (const u of group) { const s = spotNear(g, p); orders.push([u.id, s.x, s.z]); }
+  });
+  if (retreat.length) command(g, slot, { t: 'retreat', ids: retreat });
   if (orders.length) command(g, slot, { t: 'move', orders });
 }

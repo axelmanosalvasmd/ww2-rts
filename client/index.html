@@ -45,7 +45,11 @@
   #buy button { display: grid; gap: 2px; min-width: 104px; text-align: left; }
   #buy button b { font-weight: 600; }
   #buy button span { color: var(--accent); font-size: 12px; }
-  #selection { position: absolute; bottom: 10px; left: 10px; padding: 8px 10px; width: 260px; max-height: 40vh; overflow: auto; }
+  #lowerleft { position: absolute; bottom: 10px; left: 10px; width: 280px; display: grid; gap: 6px; }
+  #selection { padding: 8px 10px; max-height: 40vh; overflow: auto; }
+  #abil { display: flex; gap: 6px; flex-wrap: wrap; }
+  #abil button { padding: 5px 8px; }
+  kbd { font: inherit; font-size: 11px; color: var(--accent); }
   #selection:empty { display: none; }
   .sel { display: flex; justify-content: space-between; gap: 8px; }
   .tag { font-size: 11px; padding: 0 4px; border-radius: 2px; }
@@ -80,11 +84,12 @@
   <div id="scores" class="panel"></div>
   <div id="econ" class="panel"><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div></div>
   <div id="buy" class="panel"></div>
-  <div id="selection" class="panel"></div>
+  <div id="lowerleft"><div id="abil"></div><div id="selection" class="panel"></div></div>
   <div id="help" class="panel">
     Drag: select · Right-click: move / attack<br>
     WASD / edges: pan · Q/E: rotate · Wheel: zoom<br>
-    Shift+1-9: set group · 1-9: recall · X: stop · Space: focus
+    R: retreat (heals at base) · F: ability · X: stop<br>
+    Shift+1-9: set group · 1-9: recall · Space: focus
   </div>
   <div id="status" class="panel"></div>
 </div>
