@@ -566,7 +566,7 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
   const TIPS = { fighter: [1.1, -0.15, 2.4], attacker: [1.2, -0.4, 3], flak: [1.7, 2.0, 0.15], flakpos: [0.95, 2.1, 0.2] };
   // world position of the k-th weapon of unit v into v3; false if it has none showing
   function muzzleAt(v, k, tx, tz, bazooka) {
-    const type = v.type, fixed = TIPS[type];
+    const type = v.type, fixed = v.turret && v.fxTip ? null : TIPS[type]; // a gun with a traversing turret (flak) gives its own muzzle
     if (fixed) {
       // left and right barrels (wings): the first one alternates shot to shot, the second is the other side
       if (k === 0) v.fxGun = ((v.fxGun ?? 0) + 1) % 2;

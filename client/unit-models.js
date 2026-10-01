@@ -9,6 +9,7 @@
 // Baked geometry is cached per look, so the second rifle squad of a color reuses the first one's geometry.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
+import { gunModel, GUN_SLOTS } from './models/guns.js'; // the crew-served weapons: machine guns, mortars, AT guns, flak
 
 // unit-sized shapes, scaled per part
 const GEO = {
@@ -147,12 +148,9 @@ function barrelTip(turret) {
 // Formation slots in local space (+x = forward). Gun crews stand behind the gun.
 const SLOTS = {
   rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
-  mg: [[0.2, 0], [-0.5, 0.7], [-0.5, -0.7]],
-  mortar: [[0.2, 0.6], [0.2, -0.6], [-0.6, 0]],
-  flak: [[-0.6, 0.8], [-0.6, -0.8], [-1.2, 0]],
+  ...GUN_SLOTS, // mg, mortar, at, flak: around the weapons of client/models/guns.js
   sniper: [[0.4, 0], [-0.5, 0.6]],
   engineer: [[0.6, 0], [-0.4, 0.7], [-0.4, -0.7]],
-  at: [[-0.5, 0.7], [-0.5, -0.7], [-1.2, 0.4], [-1.2, -0.4]],
   ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
   conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
 };
@@ -275,7 +273,7 @@ export function buildModel(v, root, f, fac, def) {
     // a sandbagged ring with a twin gun pointing up
     v.body = new THREE.Group();
     for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(part(GEO.box, skin('sandbag', 0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
-    v.body.add(part(GEO.cyl, DARK, 0.5, 0.6, 0.5, 0, 0.3, 0), part(GEO.cyl, DARK, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), part(GEO.cyl, DARK, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
+    v.body.add(part(gunModel('flakpos', fac, f).geo, 0xffffff)); // the twin gun on its pedestal
     root.add(bake(v.body, key, true)); v.models.push(root);
   } else if (building && BUILDINGS.has(type)) {
     // the command bunker stands from the first second (never built), so it keeps no v.body to scale
@@ -377,17 +375,15 @@ export function buildModel(v, root, f, fac, def) {
       root.add(man); v.models.push(man);
     });
     v.squad = { w: [1, 0, 0, 0], far: false };
-    const gun = new THREE.Group();
-    if (type === 'flak') gun.add(part(GEO.box, DARK, 1.0, 0.5, 1.0, 0.4, 0.3, 0), part(GEO.cyl, DARK, 0.07, 2.2, 0.07, 1.0, 1.2, 0.15).rotateZ(-0.7), part(GEO.cyl, DARK, 0.07, 2.2, 0.07, 1.0, 1.2, -0.15).rotateZ(-0.7));
-    if (type === 'mortar') gun.add(part(GEO.cyl, GEAR, 0.09, 1.1, 0.09, 0.7, 0.45, 0).rotateZ(-0.7), part(GEO.box, GEAR, 0.5, 0.06, 0.5, 0.45, 0.05, 0));
-    if (type === 'mg') gun.add(part(GEO.cyl, GEAR, 0.07, 1.4, 0.07, 1.0, 0.45, 0).rotateZ(Math.PI / 2), part(GEO.box, GEAR, 0.4, 0.4, 0.5, 0.5, 0.3, 0));
-    if (gun.children.length) root.add(bake(gun, key + '|gun', true));
-    if (type === 'at') {
-      v.turret = new THREE.Group(); v.turret.position.set(0.6, 0, 0);
-      v.turret.add(part(GEO.box, f.vehicle, 0.12, 1.1, 1.6, 0.3, 0.9, 0), part(GEO.cyl, GEAR, 0.08, 2.6, 0.08, 1.5, 0.95, 0).rotateZ(Math.PI / 2),
-        part(GEO.cyl, GEAR, 0.45, 0.2, 0.45, 0, 0.45, 0.8).rotateX(Math.PI / 2), part(GEO.cyl, GEAR, 0.45, 0.2, 0.45, 0, 0.45, -0.8).rotateX(Math.PI / 2));
-      v.fxTip = barrelTip(v.turret);
+    // the weapon of a gun squad: one merged mesh. Guns that traverse (at, flak) are the whole of v.turret, with the muzzle in v.fxTip
+    const gm = gunModel(type, fac, f);
+    if (gm?.pivot) {
+      v.turret = new THREE.Group(); v.turret.position.set(...gm.pivot);
+      v.turret.add(part(gm.geo, 0xffffff)); v.fxTip = gm.tip;
       root.add(bake(v.turret, key + '|turret', true));
+    } else if (gm) {
+      const gun = new THREE.Group(); gun.add(part(gm.geo, 0xffffff));
+      root.add(bake(gun, key + '|gun', true));
     }
   }
 }

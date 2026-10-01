@@ -46,7 +46,7 @@ const posture = int(q.get('posture'), 0, 3, 0);
 const POSTURES = ['standing', 'crouched', 'prone', 'retreating'];
 const bg = hex(q.get('bg')) ?? HAZE;
 const aim = (Number(q.get('aim')) || 0) * Math.PI / 180;
-const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1';
+const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1', noCrew = q.get('crew') === '0';
 
 // ---------- page ----------
 const $ = (id) => document.getElementById(id);
@@ -269,6 +269,7 @@ function singleUnit() {
     v.base.visible = game && !air;
     grid.visible = showGrid && !game;
     for (const c of v.root.children) if (c !== v.base) c.visible = !solo || c === man;
+    if (noCrew && v.squad) for (const m of v.models) m.visible = false; // &crew=0: only the weapon
     v.root.position.y = air ? (game ? AIR_ALT : lift) : 0;
     v.root.updateMatrixWorld(true);
   };
