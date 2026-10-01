@@ -14,6 +14,7 @@ import { gfx } from './gfx.js';
 import { modelMaterial } from './model-textures.js';
 import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier } from './models/infantry.js';
+import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 
 // unit-sized shapes, scaled per part (body: the corpses; client/models/infantry.js builds the soldiers)
 const GEO = {
@@ -318,6 +319,11 @@ export function buildModel(v, root, f, fac, def) {
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; shell.add(part(GEO.box, skin('sandbag', 0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
     shell.add(part(GEO.cyl, 0x4a3f30, 0.08, 4, 0.08, -1.8, 4.6, -1.8), part(GEO.plane, cloth(f.color), 1.8, 1.1, 1, -0.9, 6, -1.8));
     root.add(bake(shell, key, true, 'structure'));
+    v.models.push(root);
+  } else if (isArmorMedium(type, fac)) {
+    // M4 Sherman, Panzer IV, T-34, T34 Calliope and Wirbelwind: client/models/armor-medium.js
+    const hull = buildArmorMedium(v, root, type, fac, f);
+    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else if (TANKS[type]) {
     const hull = buildTank(v, root, TANKS[type][fac] ?? TANKS[type].find(Boolean), f);
