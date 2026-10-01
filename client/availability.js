@@ -50,7 +50,8 @@ export function availability(s, cfg = CFG, action = {}) {
         const type = Object.keys(UNITS).find((t) => UNITS[t].makes?.includes(action.unit));
         return no(`Needs a ${UNITS[type]?.name ?? 'Production Building'}`);
       }
-      if (!makers.some((v) => v.queue.length < 5)) return no(DENY_SENTENCES.queueFull);
+      // a card on a selected building asks that building (`from`); the server refuses a full one rather than using another
+      if (!makers.some((v) => v.queue.length < 5 && (action.from === undefined || v.id === action.from))) return no(DENY_SENTENCES.queueFull);
     }
     return yes();
   }
@@ -98,6 +99,20 @@ export function availability(s, cfg = CFG, action = {}) {
     return resources(s, 0, 0, abCost(s, UNITS[action.unit].ab));
   }
   return yes();
+}
+
+// How many of one unit a single Shift purchase can buy right now, up to `want`: what manpower, fuel, the army limit,
+// the unit limit and (Classic) the room in the training queues leave. 0 whenever availability() refuses the first one.
+export function buyCount(s, cfg, action, want) {
+  if (!availability(s, cfg, action).ok) return 0;
+  const def = UNITS[action.unit], price = priceOf(s, action.unit), classic = s.mode?.kind === 'classic';
+  const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
+  const pop = own.filter((v) => !UNITS[v.type].structure).length + queued.length;
+  const have = own.filter((v) => v.type === action.unit).length + queued.filter((t) => t === action.unit).length;
+  const room = own.filter((v) => v.built >= 1 && UNITS[v.type].makes?.includes(action.unit) && (action.from === undefined || v.id === action.from))
+    .reduce((n, v) => n + Math.max(0, 5 - v.queue.length), 0);
+  return Math.max(0, Math.min(want, price.mp ? Math.floor(s.mp / price.mp) : want, price.fuel ? Math.floor((s.fuel ?? 0) / price.fuel) : want,
+    popCap(s) - pop, (def.max ?? Infinity) - have, classic ? room : want));
 }
 
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.

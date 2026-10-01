@@ -257,6 +257,7 @@ Object.assign(SUPPORT.dive, { mun: 70 }); Object.assign(SUPPORT.para, { mun: 90 
 // Classic: unit abilities cost Munitions on top of their cooldown
 export const AB_MUN = { grenade: 15, suppress: 10, ap: 15, smoke: 10, satchel: 30, ura: 10, barrage: 25 };
 export const abCost = (g, ab) => (g.mode?.kind === 'classic' ? ab.mun ?? AB_MUN[ab.id] ?? 0 : 0);
+const AIMED_AB = new Set(['grenade', 'barrage', 'satchel']); // used on a spot: the unit walks into range, then throws
 // pay for an ability as it's used; false if the owner can't afford it
 function payAb(g, u) {
   const c = abCost(g, UNITS[u.type].ab), p = g.players[u.owner];
@@ -591,7 +592,9 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     rot: 0, aim: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
     path: [], orders: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
     cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null,
-    garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1, sprint: 0 };
+    garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1, sprint: 0,
+    // autocast starts on where abilities are free (cooldown only) and off where they cost Munitions (Classic)
+    auto: UNITS[type].ab.id !== 'none' && !abCost(g, UNITS[type].ab) };
   if (UNITS[type].air) { u.air = { state: 'base', fuel: CFG.air.station, ammo: UNITS[type].ammo, timer: 0, ang: 0, mission: null }; Object.assign(u, airBase(g, u)); }
   g.units.set(u.id, u);
   updateGrid(g, u);
@@ -1224,7 +1227,7 @@ function dispatchOrderGroups(g, slot, cmd) {
   return done ? undefined : reason ?? 'blocked';
 }
 
-export function command(g, slot, cmd) {
+export function command(g, slot, cmd, auto = false) {
   if (g.winner !== null || !Number.isInteger(slot) || !g.players[slot] || g.players[slot].out || g.players[slot].away || !cmd || typeof cmd !== 'object' || Array.isArray(cmd)) return 'blocked';
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
@@ -1335,6 +1338,7 @@ export function command(g, slot, cmd) {
     }
     if (!went) return reason;
   } else if (cmd.t === 'ability') {
+    // auto is only ever passed by step(): the autocast path, which keeps the unit's orders (a player's use clears them)
     const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
     let used = false, reason = 'needs';
     for (const id of ids) {
@@ -1345,7 +1349,11 @@ export function command(g, slot, cmd) {
         continue;
       }
       if (!u || u.cd > 0 || u.retreating || !(g.players[slot].mun >= abCost(g, ab) || !abCost(g, ab))) { reason = !u ? 'needs' : u.cd > 0 ? 'cooldown' : u.retreating ? 'retreating' : 'mun'; continue; }
-      if (ab.id === 'grenade' || ab.id === 'barrage' || ab.id === 'satchel') { if (x === null || z === null) { reason = 'blocked'; continue; } exitBuilding(g, u); Object.assign(u, { orders: [], nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
+      if (AIMED_AB.has(ab.id)) {
+        if (x === null || z === null) { reason = 'blocked'; continue; }
+        if (auto) u.nade = { x, z, auto: true };
+        else { exitBuilding(g, u); Object.assign(u, { orders: [], nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
+      }
       else if (!payAb(g, u)) { reason = 'mun'; continue; }
       else if (ab.id === 'suppress') { u.buff = ab.dur; u.cd = ab.cd; }
       else if (ab.id === 'ura') { u.sprint = ab.dur; u.supp = 0; u.cd = ab.cd; }
@@ -1355,6 +1363,12 @@ export function command(g, slot, cmd) {
       used = true;
     }
     if (!used) return reason;
+  } else if (cmd.t === 'autocast') {
+    // Warcraft 3 style: right-click an ability to let the unit use it by itself (autocastTarget decides when)
+    if (typeof cmd.on !== 'boolean') return 'blocked';
+    const list = ids.map(mine).filter(u => u && UNITS[u.type].ab.id !== 'none');
+    if (!list.length) return 'needs';
+    for (const u of list) u.auto = cmd.on;
   } else if (cmd.t === 'dig') {
     // one squad builds a field fortification (FORTS) across its line of approach
     const kind = cmd.kind ?? 'trench', f = typeof kind === 'string' && Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
@@ -1507,6 +1521,55 @@ function retarget(g, u) {
   u.targetId = next;
 }
 
+// Autocast: is now a good moment for this unit's ability, and where? null = not now, {} = use it (no spot needed),
+// {x, z} = use it there. Same judgment as the AI's, from what the unit's side can see; aimed ones never land on friends.
+const AUTO_EVERY = 10; // ticks between checks (0.5 s), staggered by unit id
+const SATCHEL_REACH = 20; // a Ranger ordered to attack a house or bunker this close walks up and plants its charge
+export function autocastTarget(g, u) {
+  const def = UNITS[u.type], ab = def.ab, w = def.w, grid = gridFor(g), seen = g.players[u.owner].visible;
+  const foes = (at, r) => grid.radius(at, r, e => e.hp > 0 && !e.air && !allied(g, e.owner, u.owner) && seen.has(e.id));
+  const clear = (at, r) => !grid.radius(at, r, o => o.hp > 0 && !o.air && allied(g, o.owner, u.owner)).length;
+  const spot = (e) => ({ x: e.x, z: e.z });
+  // holding fire: nothing thrown or fired on its own (smoke, AP loading and Ura! are not attacks; a satchel needs an attack order)
+  if (u.holdFire && (ab.id === 'grenade' || ab.id === 'suppress' || ab.id === 'barrage')) return null;
+  if (ab.id === 'grenade') {
+    // infantry in cover, in a trench or in a house, within throwing range (from inside a house the squad would have to step out)
+    if (u.garrison >= 0) return null;
+    const e = foes(u, ab.range).filter(e => UNITS[e.type].infantry && (e.garrison >= 0 || inCover(g, e) || inTrench(g, e)) && clear(e, ab.radius + 1))
+      .sort((a, b) => dist(u, a) - dist(u, b))[0];
+    return e ? spot(e) : null;
+  }
+  if (ab.id === 'suppress') {
+    // a squad coming at the MG while it is set up to fire: on the move, heading its way, in range and in sight
+    return !u.path.length && foes(u, w.range).some(e => UNITS[e.type].infantry && e.path.length && !e.retreating
+      && Math.cos(e.rot - Math.atan2(u.z - e.z, u.x - e.x)) > 0.5 && canShoot(g, u, e)) ? {} : null;
+  }
+  if (ab.id === 'ap') {
+    // loaded for the vehicle it is shooting at
+    const t = g.units.get(u.targetId);
+    return !u.ap && t && !UNITS[t.type].infantry && !UNITS[t.type].structure && canShoot(g, u, t) ? {} : null;
+  }
+  if (ab.id === 'smoke') return u.hp < def.models * def.hpPer * 0.5 && g.tick - (u.atHit ?? -1e9) <= 3 / TICK ? {} : null; // hurt and still taking anti-tank hits
+  if (ab.id === 'ura') return u.supp >= 50 && u.path.length ? {} : null; // pinned down on the move: get up and run
+  if (ab.id === 'barrage') {
+    // a crowd (3 or more in one blast area) or anyone dug in: a house, a trench, a bunker
+    const r = w.spread + w.blast;
+    let best = null, most = 0;
+    for (const e of foes(u, ab.range)) {
+      if (dist(u, e) < w.minRange || UNITS[e.type].building) continue;
+      const crowd = foes(e, r).length, dug = e.garrison >= 0 || inTrench(g, e) || UNITS[e.type].structure;
+      if ((dug || crowd >= 3) && crowd + (dug ? 2 : 0) > most && clear(e, r + 1)) { best = e; most = crowd + (dug ? 2 : 0); }
+    }
+    return best && spot(best);
+  }
+  if (ab.id === 'satchel') {
+    // the house (an enemy squad holding it) or bunker it was ordered to attack: walk up and plant it
+    const t = g.units.get(u.attackId), at = t && aimPoint(g, u, t);
+    return u.garrison < 0 && t && seen.has(t.id) && (t.garrison >= 0 || UNITS[t.type].structure) && dist(u, at) <= SATCHEL_REACH && clear(at, ab.radius) ? spot(at) : null;
+  }
+  return null;
+}
+
 function pickTarget(g, u) {
   const w = UNITS[u.type].w, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity;
@@ -1557,6 +1620,7 @@ function fire(g, u, t, moving) {
   if (hits) t.lastHit = u.owner;
   // shot at, hit or not: idle squads look for cover, idle vehicles turn to face a gun (not a plane overhead)
   if (inf || (w.veh >= 20 && !u.air)) { t.hitAt = g.tick; t.hitFrom = { x: u.x, z: u.z }; }
+  if (hits && !inf && !def.structure && w.veh >= 20) t.atHit = g.tick; // anti-tank fire (autocast smoke reacts to it)
   u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating && !(t.sprint > 0)) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
   u.cooldown = w.interval * rate; u.shotAt = g.tick;
@@ -1728,6 +1792,12 @@ export function step(g) {
 
     // auto-retreat: a broken unit runs for home by itself
     if (u.autoRetreat && u.owner !== g.mode?.slot && !u.retreating && def.speed > 0 && u.hp < def.models * def.hpPer * CFG.autoRetreat && dist(u, homeOf(g, u)) > CFG.reinforceRadius) retreatUnit(g, u);
+    // autocast: twice a second, a ready ability goes off by itself when it's worth it. Through command(), so Munitions,
+    // cooldowns and checks apply; never over a player's own ability order (u.nade) and never while retreating.
+    if (u.auto && u.cd <= 0 && !u.nade && !u.retreating && (g.tick + u.id) % AUTO_EVERY === 0) {
+      const at = autocastTarget(g, u);
+      if (at) command(g, u.owner, { t: 'ability', ids: [u.id], x: at.x, z: at.z }, true);
+    }
 
     // Engineers: walk up to the site, then build
     if (u.build) {
@@ -1753,17 +1823,17 @@ export function step(g) {
       }
     }
 
-    // grenade order: walk into range, then throw
+    // grenade order: walk into range, then throw. An autocast one thrown where the unit stands keeps its route.
     if (u.nade) {
-      const ab = def.ab;
+      const ab = def.ab, halt = !u.nade.auto || u.nade.walked;
       if ((ab.id === 'barrage' || ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range && !payAb(g, u)) u.nade = null; // can't afford it any more
       else if (ab.id === 'barrage' && dist(u, u.nade) <= ab.range) {
-        launchSalvo(g, u, u.nade, ab.shells); u.cooldown = w.interval; u.cd = ab.cd; u.nade = null; u.path = [];
+        launchSalvo(g, u, u.nade, ab.shells); u.cooldown = w.interval; u.cd = ab.cd; u.nade = null; if (halt) u.path = [];
       } else if ((ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range) {
         g.nades.push({ x: u.nade.x, z: u.nade.z, t: ab.fuse, owner: u.owner, ab });
         g.shots.push({ f: u.id, fo: u.owner, x: u.nade.x, z: u.nade.z, k: 'throw', pub: true });
-        u.nade = null; u.path = []; u.cd = ab.cd;
-      } else if (u.repath <= 0) requestStepPath(g, u, u.nade, 'nade');
+        u.nade = null; u.cd = ab.cd; if (halt) u.path = [];
+      } else if (u.repath <= 0) { requestStepPath(g, u, u.nade, 'nade'); u.nade.walked = true; }
     }
 
     // heading into a building: walk up to it, then step inside
@@ -1790,8 +1860,8 @@ export function step(g) {
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, at, 'fireAt');
     }
 
-    // explicit attack order: chase until we can shoot
-    if (u.attackId) {
+    // explicit attack order: chase until we can shoot (paused while an autocast satchel is carried up to the target)
+    if (u.attackId && !u.nade) {
       const t = g.units.get(u.attackId);
       if (!t || !g.players[u.owner].visible.has(t.id)) u.attackId = 0;
       else if (canShoot(g, u, t)) { u.path = []; u.targetId = t.id; }
@@ -2144,10 +2214,12 @@ export function terrainFor(g, slot, full = false) {
 }
 
 const rounded = (v) => Math.round(v * 10) / 10;
+export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
+const unitFlags = (g, u) => (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0);
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-    Math.max(0, Math.ceil(u.cd)), (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | stanceBits(u), vet(u), u.built ?? 1];
+    Math.max(0, Math.ceil(u.cd)), unitFlags(g, u) | stanceBits(u) | (u.auto ? AUTO_FLAG : 0), vet(u), u.built ?? 1];
 }
 // a unit's waiting orders as its owner sees them: [id, count, kind, x, z, ...]
 function ordersRow(g, u) { return [u.id, u.orders.length, ...u.orders.flatMap(o => queuedPlan(g, u.owner, o).map(rounded))]; }
@@ -2159,7 +2231,7 @@ function playerRow(row, slot, seen) {
   const result = row.slice();
   result[9] = row[9] && seen(row[9]) ? row[9] : 0;
   result[11] = row[2] === slot ? row[11] : 0;
-  if (row[2] !== slot) result[12] = row[12] & 2047; // stances are the owner's business
+  if (row[2] !== slot) result[12] = row[12] & 2047; // stances and autocast are the owner's business
   return result;
 }
 
@@ -2216,11 +2288,12 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: cache ? cache.teams.get(p.team).ghosts?.filter(gh => !seen(gh[0])) : g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
-    // 128 building a site, 256 hidden, 512 plane on the ground, 1024 on a mass entrenchment;
-    // own units only: 2048 holding fire, 4096 holding position, 8192 auto-retreat. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
+    // 128 building a site, 256 hidden sniper, 512 plane at base, 1024 on a mass entrenchment; own units only: 2048
+    // holding fire, 4096 holding position, 8192 auto-retreat, 16384 autocast on. Then veterancy stars, then how far a
+    // building is built (0-1). Cooldowns only for your own units.
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (u.owner === slot ? stanceBits(u) : 0), vet(u), u.built ?? 1]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, unitFlags(g, u) | (u.owner === slot ? stanceBits(u) | (u.auto ? AUTO_FLAG : 0) : 0), vet(u), u.built ?? 1]),
     smokes: cache ? cache.smokes : g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: cache ? cache.strikes : g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),

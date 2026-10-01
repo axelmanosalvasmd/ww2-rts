@@ -141,6 +141,10 @@ A plane destroyed by Flak or Fighter Cover before it finishes its run.
 The panel at the bottom center of the screen that lists what you can make. Outside Classic it holds every unit you can buy; in Classic it shows what the selected building trains or what the selected Engineers can build.
 _Avoid_: buy bar, build menu, production panel
 
+**Autocast**:
+A per-unit switch, set by right-clicking an ability button, that lets the unit use its ability by itself when it judges the moment worth it. It starts on where abilities are free and off in Classic, where they cost Munitions.
+_Avoid_: auto-ability, auto mode
+
 **Alert**:
 A short notice to one side that something needs its attention: it is under attack, it captured or lost a Point, it lost a unit, enemy Air Support is coming, or (in Classic) a unit or building is ready. Unlike an Air Support announcement, which everyone sees on the map, an Alert goes only to the side it concerns.
 _Avoid_: notification, toast, event

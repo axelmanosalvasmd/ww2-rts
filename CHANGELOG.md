@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Merging unit control with autocast: a squad on Hold fire no longer throws grenades, suppresses or barrages on its
+  own (smoke, the AP round and Ura! still go off, and a satchel still needs an attack order). The autocast flag moved
+  to snapshot bit 16384, because bit 1024 now marks a squad on a mass entrenchment for everyone.
 - Mass entrenchment, follow-up: help, ghost and queueing.
   - The plan stays on the ground: every segment still to be dug shows as faint squares (trench green, wire brass) for
     you and your allies, and shrinks as squads take segments. Enemies do not see it.
@@ -130,6 +133,55 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - New army size in the lobby: Endless. Same unit limit as Massive (5x) but 20x income and starting MP instead of 6x,
   so losses are replaced almost at once and the battle never thins out. Not balance-tested with AI runs; the unit
   limit is unchanged, so server load should match Massive.
+- Autocast, Warcraft 3 style: right-click an ability button to let the selected units of that type use it on their
+  own. Rifles throw grenades at infantry in cover, trenches or houses within 18 m, MGs fire Suppressive Fire at squads
+  advancing on them, AT guns load an AP round against vehicles, tanks pop smoke when badly hurt under anti-tank fire,
+  rocket trucks and mortars barrage crowds or dug-in enemies, Rangers plant a satchel on a house or bunker they were
+  told to attack once they are within 20 m of it (they stop to shoot at 26 m, so this is for close fights), and
+  Conscripts shout Ura! when pinned on the move. Units only act on what their side can see, pay
+  the same cooldowns and Munitions as a click, never override an ability you ordered, and never fire while retreating.
+  It starts on where abilities are free and off in Classic, where they cost Munitions. A button with autocast on has a
+  dashed brass border and a small A under its hotkey (clear of the Munitions cost in Classic), and the game remembers your choice per
+  unit type for new units.
+  Balance (300 paired AI-vs-AI Conquest matches, on vs off): 2nd place VP vs winner 0.57 both, lead changes 2.24 vs
+  2.23, length 9.1 vs 9.0 min, about 98 vs 88 abilities used per match; faction wins 35/36/29% vs 39/31/30% (probably
+  noise). The Tiger rear-armor test now turns autocast off so the AT gun's AP round does not skew it.
+  Checked live: an MG fired Suppressive Fire by itself, a rifle squad threw a grenade by itself at enemy squads
+  holding a capture point, and an MG turned off stayed off in the next match. Seen live in review: a rocket truck barraged
+  by itself and a tank popped smoke at 90 hp, enemy units never show the flag, and the switch, its memory and the Classic
+  default work at 1920x1080 and 1366x768. Not seen live: a rifle squad turned off holding its grenade, and the AP round,
+  satchel and Ura!; all of those, plus Suppressive Fire, smoke, barrage (friends in the blast, units out of sight) and a
+  walked-away squad, are now covered by tests.
+- Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
+  "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
+  like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends
+  it. While it is on, a letter that has a card buys, so WASD, Q/E, Stop (X), Retreat (R), Ability (F), Attack-move (G),
+  Trench (T) and the Z C V support calls pause (the arrows still pan) and their badges hide; B has no card in Conquest
+  and still aims smoke. In Classic, a selected HQ or production building shows the same letters on its train cards
+  without any mode and Shift+letter queues five at that building; an HQ uses only Q and W, so A S D E still pan and
+  rotate. Classic Tab explains this. Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit
+  (12/12)").
+  - Fixed along the way: a Classic card on a selected building now greys out when that building's queue is full, even
+    if another building still has room (the server refuses a full chosen building).
+  - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
+    and the extra buys come back refused with their reason.
+- Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
+  window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
+  goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window
+  keeps scrolling until it comes back (before, leaving the window stopped it, so in a normal browser window edge
+  scrolling barely worked). Switching windows or tabs, or opening the menu, stops it at once. It stays off while you
+  box-select, rotate with the middle button or watch the opening glide, and pushing an edge ends Follow. Checked at
+  1920x1080 at the default zoom: 66 m/s at an edge, 93 m/s in a corner, the same as the pan keys.
+- Capture mouse: a new button next to Fullscreen keeps the cursor inside the game (the game draws its own cursor), so
+  edge scrolling works in a window too. The menu setting chooses In fullscreen (the default), Always or Off, and Esc
+  lets go. Selecting, box select, double-click, orders, the minimap, the recruit bar, the menu, the volume slider and
+  strike aiming all work while it is on.
+- Fixed: the first click or box drag of a match could select nothing. The opening camera glide swallowed the first
+  mouse press to end itself; now a left press ends the glide and selects as well, and a right press still only ends
+  it (so it cannot give an order). A Node test covers it. Left for later: the first key pressed during the glide is
+  still swallowed.
+- Not checked: Alt+click pings while the mouse is captured (the test browser cannot hold Alt during a click), and
+  moving a captured mouse in fullscreen (headless Chrome answers each move there with a move back).
 
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
