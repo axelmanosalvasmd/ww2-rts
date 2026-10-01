@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { unitRole } from './unit-roles.js';
+import { createGround } from './ground.js';
+import { surface, roofGeometry, roofMaterials } from './surfaces.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -255,39 +257,17 @@ function startGame(m) {
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
-  // ground: painted canvas, 8px per cell
-  const px = 8, cv = document.createElement('canvas'); cv.width = map.w * px; cv.height = map.h * px;
-  const c = cv.getContext('2d');
-  c.fillStyle = '#6c7645'; c.fillRect(0, 0, cv.width, cv.height);
-  for (let i = 0; i < 5000; i++) {
-    c.fillStyle = ['#66703f', '#737d4b', '#6d6a43', '#5f6a3c', '#7a7a50'][i % 5]; c.globalAlpha = 0.35;
-    const s = 4 + Math.random() * 18; c.fillRect(Math.random() * cv.width, Math.random() * cv.height, s, s * 0.6);
-  }
-  c.globalAlpha = 1;
-  // high ground reads at a glance: drier grass per level, contour lines where the level drops
-  const lvl = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0');
-  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
-    const L = lvl(x, y);
-    // hills dry out, hollows get dark and muddy; a contour on every edge where the ground drops
-    if (L > 0) { c.fillStyle = `rgba(190, 180, 110, ${0.16 * L})`; c.fillRect(x * px, y * px, px, px); }
-    if (L < 0) { c.fillStyle = `rgba(55, 50, 30, ${0.22 * -L})`; c.fillRect(x * px, y * px, px, px); }
-    c.fillStyle = 'rgba(45, 40, 20, 0.45)';
-    if (x > 0 && lvl(x - 1, y) < L) c.fillRect(x * px, y * px, 1.5, px);
-    if (x < map.w - 1 && lvl(x + 1, y) < L) c.fillRect((x + 1) * px - 1.5, y * px, 1.5, px);
-    if (y > 0 && lvl(x, y - 1) < L) c.fillRect(x * px, y * px, px, 1.5);
-    if (y < map.h - 1 && lvl(x, y + 1) < L) c.fillRect(x * px, (y + 1) * px - 1.5, px, 1.5);
-  }
-  const base = document.createElement('canvas'); base.width = cv.width; base.height = cv.height; base.getContext('2d').drawImage(cv, 0, 0);
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-  terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: c, base, tex, px, group: new THREE.Group() };
+  // ground: painted canvas (client/ground.js), reused across rebuilds of a same-sized map
+  const gp = createGround(map, renderer);
+  terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
   buildField(map);
-  const ground = new THREE.Mesh(terrainGeometry(), new THREE.MeshLambertMaterial({ map: tex }));
+  const ground = new THREE.Mesh(terrainGeometry(), gp.material);
   ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
   world.add(ground); groundMesh = ground;
 
-  terrain.grid.forEach((row, y) => row.forEach((_, x) => paintCell(x, y)));
+  gp.paint(terrain.grid);
   buildStructures();
 
   // capture points
@@ -347,39 +327,21 @@ let terrain = null;
 // stable pseudo-random per cell, so rebuilding after a change doesn't reshuffle everything
 const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 
-// ground texture for one cell: base grass, then whatever is painted on that cell
-function paintCell(x, y) {
-  const { ctx: c, base, px, grid } = terrain, ch = grid[y][x], X = x * px, Y = y * px;
-  c.drawImage(base, X, Y, px, px, X, Y, px, px);
-  if (ch === '+') {
-    const gr = c.createRadialGradient(X + px / 2, Y + px / 2, 0.5, X + px / 2, Y + px / 2, px * 0.7);
-    gr.addColorStop(0, '#3b3526'); gr.addColorStop(0.8, '#5a4f36'); gr.addColorStop(1, 'rgba(90,79,54,0)');
-    c.fillStyle = gr; c.fillRect(X, Y, px, px);
-  } else if (ch === 'B') { c.fillStyle = '#6e6048'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'R') { c.fillStyle = '#6f665a'; c.fillRect(X, Y, px, px); c.fillStyle = '#4f483f'; c.fillRect(X + 1, Y + 2, 3, 2); c.fillRect(X + 5, Y + 5, 2, 2); }
-  else if (ch === 'W' || ch === '=') {
-    c.fillStyle = '#3c5d70'; c.fillRect(X, Y, px, px);
-    c.fillStyle = 'rgba(170, 200, 210, 0.35)'; c.fillRect(X + rnd(x, y) * 5, Y + 2 + rnd(x, y, 1) * 4, 3, 1);
-  } else if (ch === 'F') { c.fillStyle = '#6a7f7a'; c.fillRect(X, Y, px, px); c.fillStyle = 'rgba(200,215,210,0.3)'; c.fillRect(X + 2, Y + 3, 4, 1); }
-  else if (ch === 'X') { c.fillStyle = '#5d5a40'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'Y') { c.fillStyle = '#5e5d4c'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'T') { c.fillStyle = '#3e3222'; c.fillRect(X, Y, px, px); c.fillStyle = '#2c2418'; c.fillRect(X + 2, Y + 2, px - 4, px - 4); }
-}
-
 // all 3D terrain pieces, rebuilt from the grid whenever a cell changes
 function buildStructures() {
   const { grid, group, w } = terrain;
   group.clear();
   const cells = { B: [], H: [], '#': [], '=': [], R: [], X: [], Y: [] };
   grid.forEach((row, y) => row.forEach((ch, x) => cells[ch]?.push([x, y])));
-  const inst = (list, color, fn, per = 1) => {
-    const im = new THREE.InstancedMesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xffffff }), list.length * per);
+  // kind: a textured surface from client/surfaces.js (world-planar texture, so instancing still works)
+  const inst = (list, kind, fn, per = 1) => {
+    const im = new THREE.InstancedMesh(GEO.box, surface(kind), list.length * per);
     const m4 = new THREE.Matrix4(), col = new THREE.Color();
     list.forEach((cell, i) => {
       for (let k = 0; k < per; k++) {
         const [sx, sy, sz, y, tint, base, ox = 0, oz = 0] = fn(cell, k), cx = (cell[0] + 0.5) * CELL + ox, cz = (cell[1] + 0.5) * CELL + oz;
         m4.makeScale(sx, sy, sz).setPosition(cx, y + (base ?? hAt(cx, cz) - 0.2), cz);
-        im.setMatrixAt(i * per + k, m4); im.setColorAt(i * per + k, col.set(color).multiplyScalar(tint));
+        im.setMatrixAt(i * per + k, m4); im.setColorAt(i * per + k, col.setScalar(tint));
       }
     });
     im.castShadow = im.receiveShadow = true; group.add(im);
@@ -401,34 +363,35 @@ function buildStructures() {
     h.base = Math.min(...h.cells.map(([cx, cy]) => Math.min(hAt(cx * CELL, cy * CELL), hAt((cx + 1) * CELL, cy * CELL), hAt(cx * CELL, (cy + 1) * CELL), hAt((cx + 1) * CELL, (cy + 1) * CELL))));
     houses.push(h);
   }
-  inst(cells.B, 0xb8a888, ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
+  inst(cells.B, 'plaster', ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
   for (const h of houses) {
     const xs = h.cells.map(c => c[0]), ys = h.cells.map(c => c[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
     if ((x1 - x0) * (y1 - y0) !== h.cells.length) continue; // flat roof for odd (or half-collapsed) shapes
     const along = x1 - x0 >= y1 - y0, span = (along ? y1 - y0 : x1 - x0) * CELL + 0.6, len = (along ? x1 - x0 : y1 - y0) * CELL + 0.6;
-    const shape = new THREE.Shape([new THREE.Vector2(-span / 2, 0), new THREE.Vector2(span / 2, 0), new THREE.Vector2(0, span * 0.4)]);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false }); geo.translate(0, 0, -len / 2);
-    const roof = mesh(geo, mat(0x7a3f2c), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
+    const roof = mesh(roofGeometry(span, len), roofMaterials(), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
     if (along) roof.rotation.y = Math.PI / 2;
     group.add(roof);
   }
-  inst(cells.H, 0x3f5a2a, ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
-  inst(cells['#'], 0x9a958a, ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25]);
+  inst(cells.H, 'hedge', ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
+  // '#' from the map file is a stone wall; '#' added in play (Assault, Fortify) is a sandbag wall
+  const wall = ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25], stone = ([x, y]) => lastStart.map.rows[y]?.[x] === '#';
+  inst(cells['#'].filter(stone), 'stone', wall);
+  inst(cells['#'].filter(c => !stone(c)), 'sandbag', wall);
   // rubble: a few broken chunks per cell
-  inst(cells.R, 0x8a8070, ([x, y], k) => { const s = 0.5 + rnd(x, y, k) * 0.7; return [s, s * 0.6, s, s * 0.3, 0.7 + rnd(x, y, k + 5) * 0.4, undefined, (rnd(x, y, k + 9) - 0.5) * 1.4, (rnd(x, y, k + 13) - 0.5) * 1.4]; }, 3);
+  inst(cells.R, 'rubble', ([x, y], k) => { const s = 0.5 + rnd(x, y, k) * 0.7; return [s, s * 0.6, s, s * 0.3, 0.7 + rnd(x, y, k + 5) * 0.4, undefined, (rnd(x, y, k + 9) - 0.5) * 1.4, (rnd(x, y, k + 13) - 0.5) * 1.4]; }, 3);
   // barbed wire: two posts and a criss-cross of strands per cell
-  inst(cells.X, 0x4a3c2a, ([x, y], k) => [[0.14, 1.1, 0.14, 0.55, 1, undefined, -0.6, -0.6], [0.14, 1.1, 0.14, 0.55, 1, undefined, 0.6, 0.6],
+  inst(cells.X, 'darkwood', ([x, y], k) => [[0.14, 1.1, 0.14, 0.55, 1, undefined, -0.6, -0.6], [0.14, 1.1, 0.14, 0.55, 1, undefined, 0.6, 0.6],
     [CELL, 0.05, 0.05, 0.85, 0.6], [CELL, 0.05, 0.05, 0.45, 0.6], [0.05, 0.05, CELL, 0.65, 0.6], [0.05, 0.05, CELL, 0.3, 0.6]][k], 6);
   // tank traps: two steel hedgehogs (three crossed beams each) per cell
-  inst(cells.Y, 0x4f4f4c, ([x, y], k) => { const j = k % 3, o = k < 3 ? -0.45 : 0.45, L = 1.5; return [j === 0 ? L : 0.18, j === 1 ? L : 0.18, j === 2 ? L : 0.18, 0.75, 0.9 + rnd(x, y, k) * 0.2, undefined, o, -o]; }, 6);
+  inst(cells.Y, 'steel', ([x, y], k) => { const j = k % 3, o = k < 3 ? -0.45 : 0.45, L = 1.5; return [j === 0 ? L : 0.18, j === 1 ? L : 0.18, j === 2 ? L : 0.18, 0.75, 0.9 + rnd(x, y, k) * 0.2, undefined, o, -o]; }, 6);
   // bridges: a plank deck, with rails on the sides that face the water
-  inst(cells['='], 0x7a5a3a, () => [CELL * 1.02, 0.35, CELL * 1.02, 0.35, 1]);
+  inst(cells['='], 'wood', () => [CELL * 1.02, 0.35, CELL * 1.02, 0.35, 1]);
   const rails = [];
   for (const [x, y] of cells['=']) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[y + dy]?.[x + dx] === 'W') rails.push([x, y, dx, dy]);
-  inst(rails, 0x5a4028, ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
+  inst(rails, 'darkwood', ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
   // trench parapets on every side that isn't more trench
-  const dirt = mat(0x6b5a3e);
+  const dirt = surface('earth');
   for (const [x, y] of grid.flatMap((row, y) => row.map((ch, x) => ch === 'T' && [x, y]).filter(Boolean))) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       if (grid[y + dy]?.[x + dx] === 'T') continue;
@@ -451,11 +414,10 @@ function applyCells(cells) {
   for (const [cell, ch, lv] of cells) {
     const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
     terrain.grid[y][x] = ch;
-    paintCell(x, y);
     if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
   }
   if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = terrainGeometry(); }
-  terrain.tex.needsUpdate = true;
+  terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
   buildStructures();
   mmImage = null;
 }
@@ -469,7 +431,7 @@ function buildHQ(sp, slot) {
   // sandbags with gaps for the exits
   for (let i = 0; i < 36; i++) {
     if (i % 9 < 2) continue;
-    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, mat(0x9c8a60), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
+    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, surface('sandbag'), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
     bag.rotation.y = -a + Math.PI / 2; g.add(bag);
   }
   // command tent + crates
