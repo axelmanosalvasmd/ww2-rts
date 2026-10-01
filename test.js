@@ -1971,8 +1971,9 @@ async function serverHarness() {
     await new Promise(resolve => setTimeout(resolve, 4));
     await new Promise(resolve => setImmediate(resolve));
   };
+  // real-time limit: generous because starting a Massive six-army match can take seconds on a loaded machine
   const waitFor = async (predicate, label) => {
-    const until = Date.now() + 2000;
+    const until = Date.now() + (+process.env.WW2_TEST_WAIT_MS || 15000);
     for (;;) {
       const result = predicate();
       if (result) return result;
@@ -3226,6 +3227,8 @@ for (const lookupFinished of [false, true]) {
       for (const [slot, team] of [0, 0, 1, 1, 2, 2].entries()) await host.send({ t: 'team', slot, v: team });
       for (const [slot, faction] of [0, 1, 2, 0, 1, 2].entries()) await host.send({ t: 'faction', slot, v: faction });
       await host.send({ t: 'map', name: 'king-of-the-hill' }); await host.send({ t: 'mode', v: mode }); await host.send({ t: 'army', v: 'massive' });
+      // the map loads asynchronously: Start is checked against the current map's seats, so wait until it has switched
+      await host.wait('lobby', m => m.mapName === 'king-of-the-hill' && m.mode === mode && m.army === 'massive');
       await host.send({ t: 'start' }); await host.wait('start');
       const g = room.game;
       for (let tick = 0; tick < 1800 && g.winner === null; tick++) {

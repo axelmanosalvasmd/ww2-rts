@@ -7,10 +7,14 @@ export const DENY_SENTENCES = Object.freeze({
   unseen: 'That target is not visible', notVisible: 'That spot is not visible',
   blocked: 'That spot is blocked or uneven', needs: 'The required unit or building is missing',
   max: 'That unit or position is at its limit', suddenDeath: 'Not during Sudden Death',
-  queueFull: 'The training queue is full', retreating: 'That squad is retreating',
-  noBuilders: 'Select a builder squad',
+  queueFull: 'The training queue is full', ordersFull: 'This unit already has 8 queued orders',
+  retreating: 'That squad is retreating', noBuilders: 'Select a builder squad',
 });
-export const denySentence = (code) => DENY_SENTENCES[code] ?? 'That order cannot happen';
+// The server answers queueFull for both a full training queue (buy) and a full order queue (every other command).
+export const denySentence = (code, cmd) =>
+  DENY_SENTENCES[code === 'queueFull' && cmd && cmd !== 'buy' ? 'ordersFull' : code] ?? 'That order cannot happen';
+// The one rounding for every cooldown the player reads (reason sentences and button labels): whole seconds, rounded up.
+export const cooldownSeconds = (cd) => Math.max(0, Math.ceil(cd));
 const yes = () => ({ ok: true, reason: '' });
 const no = (reason) => ({ ok: false, reason });
 export const snapshotUnits = (s) => (s?.units ?? []).map((v) => ({
@@ -51,7 +55,7 @@ export function availability(s, cfg = CFG, action = {}) {
   }
   if (action.t === 'support') {
     const cd = s.sup?.[action.kind] ?? 0;
-    if (cd > 0) return no(`Cooldown ${Math.ceil(cd)} s`);
+    if (cd > 0) return no(`Cooldown ${cooldownSeconds(cd)} s`);
     const { cur, cost } = supCost(s, action.kind), money = resources(s, cur === 'mp' ? cost : 0, 0, cur === 'mun' ? cost : 0);
     if (!money.ok) return money;
     return action.kind === 'para' ? population() : yes();
@@ -77,7 +81,7 @@ export function availability(s, cfg = CFG, action = {}) {
     if (!crew.length) return no('Select a squad');
     const active = crew.filter((v) => !(v.flags & 1));
     if (!active.length) return no(DENY_SENTENCES.retreating);
-    if (active.every((v) => v.cd > 0)) return no(`Cooldown ${Math.ceil(Math.min(...active.map((v) => v.cd)))} s`);
+    if (active.every((v) => v.cd > 0)) return no(`Cooldown ${cooldownSeconds(Math.min(...active.map((v) => v.cd)))} s`);
     return resources(s, 0, 0, abCost(s, UNITS[action.unit].ab));
   }
   return yes();

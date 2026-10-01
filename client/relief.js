@@ -22,6 +22,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const material = options.material ?? createReliefMaterial(options.texture ?? null, { low });
   const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
   mesh.receiveShadow = true;
+  mesh.castShadow = !low;
   // client/light.js walks the board's edge with this to build the cut-earth sides (one column per surface step)
   mesh.userData.edge = { hAt, step: CELL / S };
   const stats = { vertices: 0, triangles: 0, cliffEdges: 0, buildMs: 0, updateMs: 0, cellsUpdated: 0 };
@@ -317,7 +318,9 @@ export function createRelief(map, grid = map.rows, options = {}) {
         if (Math.abs(levels[c] - levels[other]) < 2) continue;
         const distance = side === 0 ? u : side === 1 ? 1 - u : side === 2 ? v : 1 - v;
         const edge = Math.max(0, 1 - distance * CELL / 0.32);
-        if (levels[c] > levels[other]) lip = Math.max(lip, edge * 0.65); else foot = Math.max(foot, edge * 0.35);
+        // Spread foot paint across the existing quarter-cell vertices, without changing the surface.
+        const footEdge = Math.max(0, 1 - distance * CELL / 0.75);
+        if (levels[c] > levels[other]) lip = Math.max(lip, edge * 0.65); else foot = Math.max(foot, footEdge * 0.35);
       }
       if (heightOverride !== undefined) {
         const fx = u * S, fz = v * S, i = Math.min(3, Math.floor(fx)), j = Math.min(3, Math.floor(fz)), tx = fx - i, tz = fz - j;
@@ -431,7 +434,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
   for (let c = 0; c < n; c++) buildCell(c);
   rebuildGeometry(); stats.buildMs = performance.now() - t0;
   const unsubscribe = options.gfx?.onChange(() => {
-    low = options.gfx.low; material.userData.setLow?.(low); rebuildGeometry();
+    low = options.gfx.low; mesh.castShadow = !low; material.userData.setLow?.(low); rebuildGeometry();
   });
   return { mesh, get geometry() { return mesh.geometry; }, hAt, update, stats,
     dispose() { unsubscribe?.(); mesh.geometry.dispose(); if (!options.material) material.dispose(); } };

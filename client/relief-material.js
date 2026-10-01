@@ -60,7 +60,7 @@ float reliefPatch = 0.5;
 	reliefPatch = reliefNoise2( vReliefPosition.xz * 0.52 );
 #endif
 float reliefHeight = smoothstep( -5.0, 10.0, vReliefPosition.y );
-vec3 reliefTint = mix( vec3( 0.92, 0.99, 0.90 ), vec3( 1.09, 1.04, 0.95 ), reliefHeight );
+vec3 reliefTint = mix( vec3( 1.01, 0.98, 0.92 ), vec3( 1.12, 1.05, 0.98 ), reliefHeight );
 diffuseColor.rgb *= reliefTint;
 
 // At 45 degrees the dry earth reaches its full coverage; patches leave grass showing through.
@@ -73,13 +73,18 @@ float reliefWetEarth = reliefDamp * 0.24;
 vec3 reliefSoil = mix( vec3( 0.16, 0.115, 0.065 ), vec3( 0.14, 0.14, 0.075 ), reliefDamp );
 diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.32, 0.24, 0.12 ), reliefEarth );
 diffuseColor.rgb = mix( diffuseColor.rgb, reliefSoil, reliefWetEarth );
+diffuseColor.rgb *= 1.0 - 0.16 * reliefSlope * ( 1.0 - reliefRock );
+// Raised, level ground catches a little more light than the surrounding open ground.
+float reliefPlateau = smoothstep( 0.0, uReliefStep * 2.0, vReliefPosition.y )
+	* ( 1.0 - reliefSlope ) * ( 1.0 - reliefRock ) * ( 1.0 - reliefDamp );
+diffuseColor.rgb *= 1.0 + 0.06 * reliefPlateau;
 
-// World height locates each ramp's lowest 0.4 m and its crest without adding geometry attributes.
+// World height locates each ramp's lowest 0.95 m and its crest without adding geometry attributes.
 float reliefPhase = mod( vReliefPosition.y, uReliefStep );
 float reliefRampMask = smoothstep( 0.003, 0.06, reliefSteep ) * ( 1.0 - reliefRock );
-float reliefRampFoot = ( 1.0 - smoothstep( 0.28, 0.40, reliefPhase ) ) * reliefRampMask;
+float reliefRampFoot = ( 1.0 - smoothstep( 0.12, 0.95, reliefPhase ) ) * reliefRampMask;
 float reliefRampCrest = smoothstep( uReliefStep - 0.40, uReliefStep - 0.26, reliefPhase ) * reliefRampMask;
-diffuseColor.rgb *= 1.0 - 0.13 * reliefRampFoot;
+diffuseColor.rgb *= 1.0 - 0.27 * reliefRampFoot;
 diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * 1.10 + vec3( 0.008, 0.006, 0.003 ), reliefRampCrest );
 
 if ( reliefRock > 0.001 ) {
@@ -159,6 +164,8 @@ if ( reliefRock > 0.001 ) {
 	float reliefRim = smoothstep( 0.38, 0.62, reliefLip );
 	diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.62, 0.54, 0.38 ), reliefRim * 0.90 );
 	diffuseColor.rgb = mix( diffuseColor.rgb, reliefSoil, reliefFoot * 1.3 );
+	// The interpolated foot paint gives nearby flat ground a soft contact shadow.
+	diffuseColor.rgb *= 1.0 - 0.20 * smoothstep( 0.0, 0.35, reliefFoot );
 }
 `;
 
@@ -186,6 +193,8 @@ totalEmissiveRadiance += diffuseColor.rgb * ( reliefWallFill + reliefRampFill );
 
 export function createReliefMaterial(texture, { low = false } = {}) {
   const material = new THREE.MeshLambertMaterial({ map: texture });
+  // This is an open surface. Cast sun-facing tops, using the sun's existing normal and depth bias.
+  material.shadowSide = THREE.FrontSide;
   material.defines = low ? { RELIEF_LOW: '' } : {};
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uReliefStep = { value: CFG.levelHeight };
@@ -198,7 +207,7 @@ export function createReliefMaterial(texture, { low = false } = {}) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAG_NORMAL}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${FRAG_FILL}`);
   };
-  material.customProgramCacheKey = () => `relief-painted-v4-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
+  material.customProgramCacheKey = () => `relief-painted-v5-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
   material.userData.setLow = (next) => {
     if (Boolean(next) === ('RELIEF_LOW' in material.defines)) return;
     if (next) material.defines.RELIEF_LOW = '';

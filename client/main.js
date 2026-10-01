@@ -17,7 +17,7 @@ import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
 import { pings } from './pings.js';
-import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, MOVE_COLOR } from './markers.js';
+import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
@@ -98,7 +98,7 @@ connection.on('lobby', renderLobby);
 connection.on('start', receiveStart);
 connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
 connection.on('ping', (m) => pings.receive(m));
-connection.on('deny', (m) => feedback.show(denySentence(m.reason)));
+connection.on('deny', (m) => feedback.show(denySentence(m.reason, m.cmd)));
 connection.on('pong', (m) => { if (Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c); });
 connection.on('pause', receivePause);
 connection.on('retry', ({ left, reason }) => {
@@ -293,6 +293,7 @@ function renderLobby(m) {
 setSurfaces(surface); // structure models take the textured wood and sandbag (client/surfaces.js)
 setBuildings(buildingModel); // HQ, barracks, motor pool, depot and command bunker: one merged model each (client/structures.js)
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.localClippingEnabled = true; // the HQ's ring and disc are cut at the board edge (buildHQ)
 renderScale(renderer); // pixel ratio per graphics level (client/perf.js); shadows are set in client/light.js
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
@@ -339,7 +340,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
@@ -383,21 +384,22 @@ function startGame(m, restored = null) {
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
 
-  // camera: behind my spawn, looking at the map center
-  const sx = m.spawn.x, sz = m.spawn.z;
-  home = m.spawn;
-  if (m.resume && restored) Object.assign(cam, restored.camera);
-  else {
-    cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
-    cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
-  }
-  rig.startIntro(EDIT || m.resume === true);
-
   buildBuyBar();
   buildSupportBar();
   $('hud').classList.toggle('hidden', EDIT);
   $('overlay').classList.add('hidden');
   positionRoomBanners();
+
+  // camera: behind my spawn, looking at the map center, the HQ framed between the top panels and the recruit bar
+  // (after the HUD is shown, so the camera can measure it)
+  const sx = m.spawn.x, sz = m.spawn.z;
+  home = m.spawn;
+  if (m.resume && restored) Object.assign(cam, restored.camera);
+  else {
+    cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2); cam.dist = 60;
+    rig.frame(sx, sz);
+  }
+  rig.startIntro(EDIT || m.resume === true);
 }
 
 // ---------- terrain that can change mid-match (digging, destruction) ----------
@@ -429,13 +431,17 @@ function applyCells(cells) {
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
+// A spawn near the board edge would hang its ring over the table: the zone and ring are cut at the edge and the
+// bags past it are left out (the reinforce zone itself is unchanged).
 function buildHQ(sp, slot) {
   const f = look(slot), R = CFG.reinforceRadius, g = new THREE.Group();
   g.position.set(sp.x, hAt(sp.x, sp.z), sp.z);
-  const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
+  const edge = [[1, 0, 0, 0], [-1, 0, 0, MW], [0, 0, 1, 0], [0, 0, -1, MH]].map(([x, y, z, d]) => new THREE.Plane(new THREE.Vector3(x, y, z), d));
+  const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false, clippingPlanes: edge })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
   const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
-  g.add(zone, hqRing(R, f.color));
-  g.add(sandbagRing(R + 0.8)); // sandbags with gaps for the exits (client/structures.js)
+  const ring = hqRing(R, f.color, edge);
+  g.add(zone, ring);
+  g.add(onBoard(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
   // command tent + crates
   const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
   const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
@@ -446,6 +452,21 @@ function buildHQ(sp, slot) {
   g.add(mesh(GEO.cyl, mat(0x4a3f30), 0.12, 15, 0.12, 0, 7.5, 0), flag);
   const tag = label(`${names[slot] ?? f.name} HQ`, { style: 'hq', color: f.color }); tag.position.y = 17; g.add(tag);
   return g;
+}
+
+// Keep the instances of an HQ piece at (ox, oz) whose center is at least pad inside the board.
+function onBoard(im, ox, oz, pad) {
+  const m = new THREE.Matrix4(), p = new THREE.Vector3(), c = new THREE.Color();
+  let n = 0;
+  for (let i = 0; i < im.count; i++) {
+    im.getMatrixAt(i, m); p.setFromMatrixPosition(m);
+    const x = ox + p.x, z = oz + p.z;
+    if (x < pad || z < pad || x > MW - pad || z > MH - pad) continue;
+    if (n !== i) { im.setMatrixAt(n, m); if (im.instanceColor) { im.getColorAt(i, c); im.setColorAt(n, c); } }
+    n++;
+  }
+  if (n < im.count) { im.count = n; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); }
+  return im;
 }
 
 // ---------- units ----------
@@ -608,13 +629,22 @@ function syncStrikes(list) {
     const key = `${kind},${x},${z}`; keep.add(key);
     let m = strikeMarks.get(key);
     if (!m) {
-      m = aimShape(kind, !foe(owner) ? look(owner).color : 0xff3020);
-      m.position.set(x, hAt(x, z), z); m.rotation.y = -dir;
-      world.add(m); strikeMarks.set(key, m);
+      // grease-pencil outline, hatching and a faint wash on the ground (client/markers.js): red for the enemy's
+      m = strikeZone(strikeShape(kind), !foe(owner) ? look(owner).color : 0xd2321e, { x, z, rot: -dir, hAt });
+      world.add(m.group); strikeMarks.set(key, m);
     }
-    m.userData.t = t;
+    m.t = t;
   }
-  for (const [key, m] of strikeMarks) if (!keep.has(key)) { world.remove(m); strikeMarks.delete(key); }
+  for (const [key, m] of strikeMarks) if (!keep.has(key)) { world.remove(m.group); m.dispose(); strikeMarks.delete(key); }
+}
+function strikeShape(kind) {
+  if (UNITS[kind]?.building) { const size = UNITS[kind].size * CELL; return { len: size, width: size, arrow: false }; }
+  if (SUPPORT[kind]?.point) return { r: SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4 };
+  if (kind === 'grenade') return { r: UNITS.rifle.ab.radius };
+  if (kind === 'barrage') return { r: UNITS.rocket.w.spread };
+  if (kind === 'satchel') return { r: UNITS.ranger.ab.radius };
+  if (SUPPORT[kind]?.len) return { len: SUPPORT[kind].len, width: SUPPORT[kind].width };
+  return { r: 4 };
 }
 // ring for area strikes, a long strip for a strafing run
 function aimShape(kind, color) {
@@ -810,6 +840,8 @@ const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
 rig.init({ cam, camera, pitch: PITCH, keys, mouse: () => mouse, dragging: () => drag, world: () => world,
   units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
+  // the clear band for framing: below the score and status panels, above the recruit bar
+  band: () => { const t = $('top').getBoundingClientRect(), b = $('buy').getBoundingClientRect(); return { top: t.height ? t.bottom : 0, bottom: b.height ? b.top : innerHeight }; },
   chip: $('following'), top: $('top'), edgeButton: $('edgeBtn'), panButton: $('panBtn'),
   unitName: (v) => look(v.owner).names[v.type] ?? UNITS[v.type].name });
 function followSelected() {
@@ -842,7 +874,7 @@ const actions = {
   home: () => {
     if (!home) return;
     rig.cancelFollow();
-    cam.x = home.x; cam.z = home.z;
+    rig.frame(home.x, home.z);
     const hq = classicMode() && [...units.values()].find(v => v.owner === me && v.type === 'hq');
     if (hq) { selected.clear(); selected.add(hq.id); }
   },
@@ -927,7 +959,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
-    if (!aimCenter) { aimCenter = g; $('hint').textContent = 'Move the mouse to rotate · click to launch'; blip(560); return; }
+    if (!aimCenter) { aimCenter = g; $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
     if (kind === 'dig') {
       // Shift queues the dig behind the squad's orders (paid when it starts) and keeps the placement armed
@@ -1165,8 +1197,7 @@ renderer.setAnimationLoop(() => {
       aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
     }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
-  const pulse = 0.25 + 0.2 * Math.sin(now / 120);
-  for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
+  for (const m of strikeMarks.values()) m.frame(m.t > 0, now);
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
   renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
