@@ -298,6 +298,12 @@ the HUD.
 - As built, slice 2 (alerts): `client/alerts.js` and `client/alerts.css`, worked out client-side from two snapshots in
   a row. "Enemy Air Support incoming" covers the aviation calls too (dive bomber, paratroopers) but not fighter cover;
   your planes count as units for "under attack" and "lost".
+- As built, slice 3 (world): `client/light.js` (sun, sky fill, haze, the table and board edge, the far-edge blur and
+  the Graphics High / Low button), `client/ground.js` (the painted ground canvas, repainted in tiles when cells
+  change), `client/surfaces.js` (textured structure materials) and `client/markers.js` (rings, badges, order lines,
+  capture points, tags). Player colors are blue, red, chalk, orange, violet and cyan. The aviation types got map
+  symbols in `client/symbols.js` (plane, dome over armor, installation bar), since the 3D badges now use the same
+  symbols as the HUD and the old pictograms for flak and planes went away.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

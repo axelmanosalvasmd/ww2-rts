@@ -5,6 +5,31 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- World look (slice 3): painted ground, warm light, a planning table and map-symbol markers:
+  - The ground is painted from real textures per cell (grass, dirt, mud, ploughed field, road, water, rubble,
+    shelled earth, trench earth) with soft edges, and keeps the contour lines; shell holes and trenches are painted
+    on. Houses, roofs, hedges, walls, sandbags, wire, tank traps, bridges and trench parapets get textured surfaces.
+    When terrain changes in play or in the editor, only the patch around it is repainted.
+  - A warm low sun over each player's opening view with a sky fill, crisp shadows that don't crawl when the camera
+    moves, and haze that scales with zoom. The board sits on a dark wooden planning table with a cut-earth edge, so
+    panning past the map edge no longer shows a grey void.
+  - Graphics High / Low in the in-game menu. High blurs the far edge of the view; Low skips the blur and uses cheaper
+    shadows and a smaller ground texture. If the frame rate stays low, the game switches to Low once and says so.
+  - Player colors are now blue, red, chalk, orange, violet and cyan, so a 1v1 is blue against red.
+  - Over each unit, its military map symbol filled in the owner's color (the same symbols as the HUD). Owner,
+    selection, range and HQ rings are hand-drawn pencil strokes: selection is a chalk ring over a dark halo, weapon
+    range is dashed chalk. Order lines are pencil strokes with arrowheads, in the same colors as before.
+  - Capture points: a dashed chalk ring while neutral, a solid ring in the owner's color once taken, and capture
+    progress as a shaded band. Flags are cloth in the owner's color. HQ names are in stencil type with a color bar.
+  - Map symbols for the aviation types, which slice 1 left blank: Fighter and Ground-attack Plane (a plane seen from
+    above, with bombs under the wings for the attacker), Mobile Flak (the air defense dome over an armor oval),
+    Airfield and Flak Emplacement (the installation bar with the plane or the dome). They show on the Command Card
+    and over the units.
+  - Fixed: a dead unit's weapon range rings could stay on the ground. Order lines no longer make and free GPU
+    objects every snapshot.
+  - Left for later: the Fighter Cover circle is still the old flat blue ring, not a pencil stroke, and it is rebuilt
+    every snapshot. The headless test browser drops to Graphics Low within seconds, so the integration screenshots
+    don't show the far-edge blur.
 - Alerts (slice 2): short lines above the minimap tell you when something needs you, each with a ping on the minimap
   and a sound hook (the sounds arrive with the audio slice):
   - Under attack: your units and buildings (planes too), an allied HQ or bunker, or a point of your side losing
@@ -35,7 +60,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     At 1600x900 the orders panel covered the recruit bar. Classic's MP / Mun / Fuel readout wrapped to two lines.
     Engineers now get the fortification buttons too.
   - Left for later: Fighter, Ground-attack Plane, Mobile Flak, Airfield and Flak Emplacement have no map symbol yet
-    (blank frame). Y, U, I and O build sandbags, wire, traps and the MG nest only from the orders panel: those keys
+    (blank frame; slice 3 adds them). Y, U, I and O build sandbags, wire, traps and the MG nest only from the orders panel: those keys
     were already taken by the flak emplacement, dive bomber, fighter cover and airfield, so only T digs by key.
 - Army size in the lobby (host picks): Standard (as before), Large (2.5x unit limit, 3x income) or Massive (5x unit
   limit, 6x income: MP, Munitions, Fuel and starting MP). The AI buys several units at a time in big games. With 6 AIs

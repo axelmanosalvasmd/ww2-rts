@@ -12,6 +12,8 @@
 //   armor     an oval; weight bars above: one light, two medium, three heavy (and the heavy oval is filled)
 //   recon     the cavalry slash; with the armor oval and wheels it is the armored car
 //   fire support and weapons  mortar arrow on a ring, rocket arrows, MG on its tripod, anti-tank chevron, sniper reticle
+//   air defense  the dome; over a gun (flak gun) or an armor oval (mobile flak)
+//   aircraft  a plane seen from above; bombs under the wings for the ground-attack plane
 //   buildings a short solid bar on top of the frame (NATO's installation mark)
 
 export const STROKE = 7;
@@ -89,7 +91,9 @@ const mass = (p) => { p.dot(34, 11, 5); p.dot(50, 11, 5); p.dot(66, 11, 5); };
 const bars = (p, k) => { for (let i = 0; i < k; i++) p.line([CX + (i - (k - 1) / 2) * 12, 4], [CX + (i - (k - 1) / 2) * 12, 16]); };
 const wheels = (p) => { p.dot(33, 91, 5.5); p.dot(67, 91, 5.5); };
 const site = (p) => p.poly([34, 10], [66, 10], [66, T], [34, T]);
-const arrowUp = (p, x, y0, y1, head) => { p.line([x, y0], [x, y1 + head * 0.8]); p.poly([x - head * 0.75, y1 + head], [x, y1], [x + head * 0.75, y1 + head]); };
+const dome = (p) => p.arc(`M${L} ${B}C24 38 76 38 ${R} ${B}`);
+const plane = (p) => { p.line([CX, 31], [CX, 74]); p.line([18, 54], [CX, 44], [82, 54]); p.line([39, 72], [61, 72]); };
+const arrowUp = (p, x, y0, y1, head) =>{ p.line([x, y0], [x, y1 + head * 0.8]); p.poly([x - head * 0.75, y1 + head], [x, y1], [x + head * 0.75, y1 + head]); };
 
 // type -> name, branch (family), meaning (what the drawing shows, for tooltips) and how to draw it
 const DEFS = {
@@ -128,9 +132,18 @@ const DEFS = {
     draw: (p) => { site(p); p.line([31, 52], [69, 52]); p.arc(`M22 44A8 8 0 0 1 22 60`); p.arc(`M78 44A8 8 0 0 0 78 60`); } },
   depot: { name: 'Supply Depot', branch: 'building', mods: ['installation'], meaning: 'Supply depot: a supply installation (the base line)',
     draw: (p) => { site(p); p.line([L, 66], [R, 66]); } },
-  // not in UNITS yet; ready for a flak gun: the air defense dome over a gun
   flak: { name: 'Flak Gun', branch: 'airdefense', meaning: 'Air defense gun: the dome over a gun',
-    draw: (p) => { p.arc(`M${L} ${B}C24 38 76 38 ${R} ${B}`); p.dot(CX, 66, 6.5); } },
+    draw: (p) => { dome(p); p.dot(CX, 66, 6.5); } },
+  flaktrack: { name: 'Mobile Flak', branch: 'airdefense', mods: ['tracked'], meaning: 'Mobile air defense: the dome over an armor oval',
+    draw: (p) => { dome(p); p.oval(34, 58, 66, 72); } },
+  fighter: { name: 'Fighter', branch: 'air', meaning: 'Fighter: a plane seen from above',
+    draw: (p) => plane(p) },
+  attacker: { name: 'Ground-attack Plane', branch: 'air', meaning: 'Ground-attack plane: a plane with bombs under the wings',
+    draw: (p) => { plane(p); p.dot(31, 62, 5); p.dot(69, 62, 5); } },
+  airfield: { name: 'Airfield', branch: 'building', mods: ['installation'], meaning: 'Airfield: an aviation installation (the plane)',
+    draw: (p) => { site(p); plane(p); } },
+  flakpos: { name: 'Flak Emplacement', branch: 'building', mods: ['installation'], meaning: 'Flak emplacement: an air defense installation (the dome)',
+    draw: (p) => { site(p); dome(p); } },
 };
 
 // SYMBOLS[type] = { name, branch, mods, meaning, frame, stroke, fill }: frame is the outline path (also the
