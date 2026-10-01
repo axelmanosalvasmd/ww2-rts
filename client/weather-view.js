@@ -7,8 +7,8 @@ import { WEATHER, WEATHER_CHOICES, mapWeather, weatherEffects } from '/shared/we
 const LABEL = { map: 'Map default', clear: 'Clear', fog: 'Ground fog', rain: 'Rain', mud: 'Mud', snow: 'Snow', random: 'Random' };
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 const said = (kind) => `${WEATHER[kind].name}: ${weatherEffects(kind).join(', ') || 'no effect'}`;
-// a plan in a few words: "Snow", "Ground fog, lifts at 4:00"; short enough for the select: "Fog until 4:00"
-const planText = (p) => WEATHER[p.now].name + (p.next ? `, ${p.next === 'clear' ? 'lifts' : `turns to ${WEATHER[p.next].name.toLowerCase()}`} at ${clock(p.at)}` : '');
+// the planned change in a few words, "Lifts at 4:00" (for the tooltip); the select itself is short: "Fog until 4:00"
+const plannedChange = (p) => `${p.next === 'clear' ? 'Lifts' : `Turns to ${WEATHER[p.next].name.toLowerCase()}`} at ${clock(p.at)}`;
 const planShort = (p) => (p.next ? `${p.now === 'fog' ? 'Fog' : WEATHER[p.now].name} until ${clock(p.at)}` : WEATHER[p.now].name);
 // the warning line's tail: "Fog lifts in 8 s", "Mud in 8 s"
 const turnText = (now, next, s) => (next === 'clear' ? `${now === 'fog' ? 'Fog lifts' : 'Clearing'} in ${s} s` : `${WEATHER[next].name} in ${s} s`);
@@ -26,7 +26,7 @@ export function createWeatherView({ sendCmd }) {
     if (!sel) return;
     const v = sel.value;
     sel.title = v === 'random' ? 'Picked when the match starts. Fog may lift or rain may turn to mud partway through'
-      : v === 'map' ? (mapPlan ? `${said(mapPlan.now)}${mapPlan.next ? `. ${planText(mapPlan)}` : ''}` : 'The weather this map brings')
+      : v === 'map' ? (mapPlan ? `${said(mapPlan.now)}${mapPlan.next ? `. ${plannedChange(mapPlan)}` : ''}` : 'The weather this map brings')
         : said(v);
   }
 
@@ -44,7 +44,8 @@ export function createWeatherView({ sendCmd }) {
       sel.options[0].textContent = `Map default: ${planShort(mapPlan)}`;
       explain();
     },
-    start(r, a) { row = Array.isArray(r) ? r : ['clear']; atmos = a; shown = ''; atmos?.setWeather(row); },
+    // (the map editor has no match weather: leave the atmosphere on its own, so a winter map still snows there)
+    start(r, a) { row = Array.isArray(r) ? r : ['clear']; atmos = a; shown = ''; if (Array.isArray(r)) atmos?.setWeather(row); },
     // the line under the score strip, re-added when the HUD rebuilds the strip
     snapshot(s) {
       if (!Array.isArray(s.weather)) return;

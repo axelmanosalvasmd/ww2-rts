@@ -20,8 +20,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   Classic (20 each) lasts 19.2 to 20.0 min, 14 to 17 of 20 are decided before Sudden Death, faction wins 6/7/6,
   6/8/6, 6/9/4, 9/5/6 (2 draws in all). Found while measuring: asking for groups of 4 instead of 3 to attack a held
   point in poor weather made Conquest one-sided (2nd place 0.26 to 0.37 of the winner), so Conquest groups stay at 3.
-  Left for later: Mud was not measured, and Clear's 6/20/14 faction split (the unchanged game) is wider than the
-  older 150-match runs. The match-end test "a new match without the old result" failed once on a busy machine: the
+  Mud, measured in review (same harness, 40 Conquest matches each): mud ends at 0.60 of the winner's VP, 9.0 min, faction
+  wins 14/16/10, against Clear at 0.57, 9.0 min, 15/14/11. That Clear run also shows the 6/20/14 split above was
+  sampling noise. Classic in mud (24 matches against 24 in Clear) runs about 2 minutes longer (19.9 against 17.7 min)
+  and 7 of 24 reach Sudden Death against 2 of 24 (the same 7 of 24 with the AI's caution switched off, so the slower
+  armies cause it, not the AI). The AI's Classic caution on its own (24 fog matches each way) adds about 1.6 min (19.6
+  against 18.0) and one more match into Sudden Death (4 against 3).
+  Found and fixed in review: the map editor lost the falling snow on winter maps; the lobby tooltip repeated the
+  weather's name; Clear is now exactly the game before weather (the weather seed used to take one random number from
+  every match, which changed seeded bench runs; checked with the bench's final-state hash on both modes); a
+  made-up weather name in a map file or a bad setting falls back to the map default instead of freezing every unit.
+  Left for later: the match-end test "a new match without the old result" failed once on a busy machine: the
   server sends the lobby update after listing the map files, so it can arrive after the start message (a rerun passed).
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red

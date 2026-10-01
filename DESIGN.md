@@ -269,9 +269,16 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   | Fog | 0.63, 1.93, 9.6 min, 14/15/11 | 19.9 min, 14/20, 76%, 6/8/6 |
   | Rain | 0.62, 2.05, 9.3 min, 16/16/8 | 20.0 min, 16/20, 85%, 6/9/4 and 1 draw |
   | Snow | 0.62, 1.80, 9.1 min, 15/13/12 | 19.2 min, 15/20, 76%, 9/5/6 |
-  No weather comes out one-sided: closeness and length stay within the noise of Clear. The faction splits swing by
-  about 3 wins either way at 40 matches; Clear (the unchanged game) has the widest one, in line with the older
-  150-match Germany lead (45/63/42). Mud was not measured.
+  No weather comes out one-sided: closeness and length stay within the noise of Clear. A faction's win count at 40
+  matches spreads about 3 either way by chance alone; a second Clear run (review) gave 15/14/11 where the first gave 6/20/14.
+- Mud (review, same harness, 40 Conquest matches): 2nd place VP 0.60 of the winner, 1.60 leader changes, 9.0 min, faction
+  wins 14/16/10; the Clear run beside it gave 0.57, 1.75, 9.0 min, 15/14/11. Classic, 24 matches each: Mud 19.9 min with
+  7 reaching Sudden Death (the run was cut at 26 min), Clear 17.7 min with 2. Slower armies make Classic last longer;
+  the AI's caution is not the cause: Mud with it off gave 18.7 min and the same 7 of 24. Fog with the caution on or off,
+  24 matches each: 19.6 against 18.0 min, 4 against 3 reaching Sudden Death, so the caution costs a little time and no
+  balance. If Mud Classic should end sooner, speed up the AI's attack or shorten Mud, not the caution.
+- Clear is the game as it was before weather: only Random draws a random number (the seed), so a seeded bench run
+  gives the same final-state hash with and without this change in Clear weather.
 
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD

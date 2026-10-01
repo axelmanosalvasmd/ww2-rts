@@ -12,6 +12,7 @@ export const WEATHER = {
   snow: { name: 'Snow', sight: 0.9, inf: 0.9, veh: 0.85, offRoad: 1 },
 };
 export const WEATHER_KINDS = Object.keys(WEATHER);
+const known = (k) => typeof k === 'string' && Object.hasOwn(WEATHER, k); // not '__proto__' or 'constructor'
 // the lobby setting: the map's own weather, one of the states, or a seeded random pick
 export const WEATHER_CHOICES = ['map', ...WEATHER_KINDS, 'random'];
 export const WEATHER_WARN = 10; // seconds of notice before the weather changes
@@ -39,7 +40,7 @@ export function mapMood(map, key) {
 // What a map brings on Map default: a "weather" field in the map file, else its mood. Snowy maps snow; misty river
 // dawns start in ground fog that lifts after 4 minutes; every other map is clear.
 export function mapWeather(map, key) {
-  if (WEATHER[map?.weather]) return { now: map.weather };
+  if (known(map?.weather)) return { now: map.weather };
   const mood = mapMood(map, key);
   return mood === 'snow' ? { now: 'snow' } : mood === 'dawn' ? { now: 'fog', next: 'clear', at: 240 } : { now: 'clear' };
 }
@@ -60,7 +61,7 @@ export function planWeather(choice, map, key, seed = 1) {
     const rnd = seeded(seed >>> 0), now = WEATHER_KINDS[Math.floor(rnd() * WEATHER_KINDS.length)], turn = rnd() < 0.5, when = rnd();
     plan = turn && now === 'fog' ? { now, next: 'clear', at: 210 + Math.floor(when * 60) }
       : turn && now === 'rain' ? { now, next: 'mud', at: 300 + Math.floor(when * 120) } : { now };
-  } else plan = WEATHER[choice] ? { now: choice } : mapWeather(map, key);
+  } else plan = known(choice) ? { now: choice } : mapWeather(map, key);
   return { now: plan.now, next: plan.next ?? null, at: plan.next ? plan.at * TPS : 0 };
 }
 

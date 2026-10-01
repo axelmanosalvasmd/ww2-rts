@@ -321,7 +321,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
   // weather (shared/weather.js): the lobby's pick ('map' by default), the same plan for the same seed
-  g.weather = planWeather(opts.weather ?? 'map', map, opts.mapKey, opts.weatherSeed ?? Math.floor(Math.random() * 2 ** 31));
+  // (only Random uses the seed, so other weather leaves the sim's own random stream, and so the match, as it was)
+  g.weather = planWeather(opts.weather ?? 'map', map, opts.mapKey, opts.weatherSeed ?? (opts.weather === 'random' ? Math.floor(Math.random() * 2 ** 31) : 1));
   g.roads = roadMask(map);
   return g;
 }

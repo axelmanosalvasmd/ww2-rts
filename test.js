@@ -3516,6 +3516,13 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual(planWeather('map', plain, 'x'), { now: 'clear', next: null, at: 0 }, 'weather: other maps are clear');
   const twin = (seed) => createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'random', weatherSeed: seed }).weather;
   assert.deepEqual(twin(12345), twin(12345), 'weather: createGame with the same seed plans the same weather');
+  assert.deepEqual(planWeather('__proto__', plain, 'x', 7), { now: 'clear', next: null, at: 0 }, 'weather: a made-up setting falls back to the map default');
+  assert.deepEqual(planWeather('map', { ...plain, weather: 'constructor' }, 'x'), { now: 'clear', next: null, at: 0 }, 'weather: a map file naming no real weather is clear');
+  // only Random draws a random number, so every other weather leaves the sim's random stream (and a seeded bench run) as it was
+  const randomCalls = (opts) => { let n = 0; const real = Math.random; Math.random = () => (n++, real()); try { createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], opts); } finally { Math.random = real; } return n; };
+  assert.equal(randomCalls({}), 0, 'weather: Map default uses no random numbers');
+  assert.equal(randomCalls({ weather: 'fog' }), 0, 'weather: a host pick uses no random numbers');
+  assert.equal(randomCalls({ weather: 'random' }), 1, 'weather: Random draws its seed');
 
   // the one change: silent until WEATHER_WARN seconds before, then announced in every snapshot, then it happens
   const g = fresh();
