@@ -5,6 +5,29 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Smarter units (all modes, yours and the AI's alike). Units now make the small decisions you used to micromanage,
+  using only what your side can see:
+  - Targets: AT guns go for vehicles, snipers for MG, AT, mortar and flak crews, MGs and riflemen for infantry, and
+    mortars for trenches and cover. A unit answers whoever is shooting at it and keeps its target unless another is
+    clearly better (30%), so units no longer flip between two targets. A target you order always wins.
+  - Cover: a move that ends in the open within about 4 m of a hedge, wall, crater, ruin or trench settles into it,
+    facing the enemy. Squads sent to one spot take spots about 5 m apart, and idle squads closer than 3 m spread out.
+    Nobody takes a spot another squad holds.
+  - Under fire: an idle squad shot in the open steps into nearby cover (up to 8 m when it cannot shoot back), and a
+    fresh unit walking to the rally point answers fire. Move, attack, retreat and ability orders are never overridden.
+  - Vehicles: a stopped vehicle turns its front toward its target or whoever shot it, and one in a fight ordered less
+    than 16 m back reverses instead of turning its rear to the enemy. A badly hurt vehicle that cannot shoot back pulls
+    back 10 m, unless it holds a capture point.
+  - Numbers (AI-vs-AI with `tools/balance.mjs`, same seeds on the old and new code): Conquest over 300 matches, rear
+    hits 16.5% to 11.4% of vehicle hits and idle squads crowded within 3 m 43% to 10%; closeness 61% to 62%, lead
+    changes 1.16 to 1.15, length 9.3 to 9.4 min, USA/GER/USSR wins 38/33/30% to 40/31/29%. Classic over 120 matches:
+    rear hits 6.7% to 4.8%, crowded squads 49% to 32%, 87% decided before Sudden Death on both, median 17.3 to 17.4
+    min. Server tick cost +1.5% on a 300-unit Massive match.
+  - Bugs fixed: a stopped tank flanked from behind kept its rear to the gun, AI squads piled onto one spot inside one
+    grenade's reach, and idle squads ignored fire until they were pinned.
+  - Left for later: mortar, rocket and off-map shells do not count as incoming fire, so squads stay put under a
+    barrage (seen in a live match). Planes still re-pick targets every half second. Classic faction wins went from
+    30/36/33% to 24/47/28%; that is within chance (p = 0.25), but GER rose in both seed sets, so check it again.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

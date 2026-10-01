@@ -28,6 +28,12 @@ export const CFG = {
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
   terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
   fordSpeed: 0.5,
+  // unit behavior (DESIGN.md "Unit behavior"): how far a squad looks for cover at the end of a move, when shot at while
+  // it can answer, and when it can't; the gap between squads (vehicles take more) and in a spread-out group; a new
+  // target must score this much better to take over; how long incoming fire is remembered (seconds); hull turn speed
+  // (rad/s); vehicles back up on moves shorter than reverseMax (m) at reverseSpeed; a hurt vehicle pulls back this far
+  behavior: { coverSeek: 4, coverShift: 4, coverFlee: 8, spacing: 3, vehicleSpacing: 5, gap: 5, switchGain: 0.7, threatTime: 3,
+    hullTurn: 1.5, reverseMax: 16, reverseSpeed: 0.5, pullBack: 10 },
   // garrisoned squads: heavy cover, upper-floor vision, thrown out (and hurt) when the house comes down
   garrisonMul: 0.35, garrisonVision: 1.25, garrisonEvictDamage: 0.3,
   // veterancy: damage dealt (as multiples of the unit's cost) for 1/2/3 stars, and what each star is worth
@@ -379,7 +385,7 @@ function train(g, b, dt) {
   const c = nearestFree(g, b.x + Math.cos(a) * r, b.z + Math.sin(a) * r);
   Object.assign(u, cellCenter(g, c), { rot: a, aim: a });
   updateGrid(g, u);
-  if (b.rally) u.path = findPath(g, u, b.rally);
+  if (b.rally) { u.path = findPath(g, u, b.rally); u.drift = 'rally'; }
 }
 function wreckBuilding(g, u) {
   for (const c of u.cells) setCell(g, c, 'R');
@@ -475,7 +481,10 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     rot: 0, aim: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
     path: [], orders: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
     cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null,
-    garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1, sprint: 0 };
+    garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1, sprint: 0,
+    // incoming fire: who shot last, on which tick, and from where; drift = why a path was not ordered (rally, cover,
+    // space, back); reverse = the path end a vehicle backs up to; react = seconds until it next looks for cover
+    hitBy: 0, hitAt: -1e9, hitFrom: null, drift: false, reverse: null, react: 0 };
   if (UNITS[type].air) { u.air = { state: 'base', fuel: CFG.air.station, ammo: UNITS[type].ammo, timer: 0, ang: 0, mission: null }; Object.assign(u, airBase(g, u)); }
   g.units.set(u.id, u);
   updateGrid(g, u);
@@ -564,9 +573,14 @@ const coverMul = (g, t) => (t.garrison >= 0 ? CFG.garrisonMul : inTrench(g, t) ?
 // Cover from something solid between you and the shooter, within ~2 m on their side:
 // a house, wall, rubble, hedge, or a vehicle. Protects from the front, not the flank.
 const SOLID = new Set(['B', '#', 'R', 'H', 'K']);
-function behindCover(g, t, from) {
+function solidToward(g, t, from) {
   const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
   for (const d of [1.2, 2.2]) { const c = cellOf(g, t.x + ca * d, t.z + sa * d); if (c >= 0 && SOLID.has(g.chars[c])) return true; }
+  return false;
+}
+function behindCover(g, t, from) {
+  if (solidToward(g, t, from)) return true;
+  const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
   for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0)) {
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
     if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) return true;
@@ -1000,7 +1014,7 @@ function queuedPlan(g, slot, order) {
 function sendToRally(g, u) {
   const rally = g.players[u.owner].rally;
   if (g.mode?.kind === 'classic' || !rally || u.air || UNITS[u.type].structure) return;
-  u.path = findPath(g, u, rally);
+  u.path = findPath(g, u, rally); u.drift = 'rally';
 }
 
 // One click can order troops and set the selected Production Buildings' rallies.
@@ -1023,6 +1037,7 @@ export function command(g, slot, cmd) {
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     let moved = false, full = false;
+    const go = [];
     for (const o of cmd.orders.slice(0, limit)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
@@ -1030,9 +1045,15 @@ export function command(g, slot, cmd) {
       moved = true;
       u.orders = [];
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
+      go.push([u, x, z]);
+    }
+    // each unit gets its own end spot (infantry in cover nearby), see endSpots
+    for (const [u, x, z] of endSpots(g, go)) {
+      const engaged = !!u.targetId || g.tick - u.hitAt <= CFG.behavior.threatTime / TICK;
       exitBuilding(g, u);
-      Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null });
+      Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null, drift: false });
       u.path = findPath(g, u, { x, z });
+      reverseIfShort(g, u, engaged);
     }
     if (!moved) return full ? 'queueFull' : 'blocked';
   } else if (cmd.t === 'fireat') {
@@ -1221,18 +1242,168 @@ function aimPoint(g, u, t) {
   return best;
 }
 
+// ---------- unit behavior (DESIGN.md "Unit behavior") ----------
+
+// Weapons have jobs: AT guns hunt vehicles, MGs and rifles infantry, snipers the crews of heavy weapons.
+const CREWS = new Set(['mg', 'at', 'mortar', 'flak']), RIFLES = new Set(['mg', 'rifle', 'ranger', 'conscript', 'engineer']);
+function roleMul(u, t) {
+  const def = UNITS[t.type];
+  if (u.type === 'at') return def.infantry || def.structure ? 1 : 3;
+  if (u.type === 'sniper') return CREWS.has(t.type) ? 3 : 1;
+  return RIFLES.has(u.type) && def.infantry ? 2 : 1;
+}
+// what a hull hit from `from` is worth: double from behind, less on a Tiger's front (the same rule as fire)
+function armorMul(t, from) {
+  const c = Math.cos(Math.atan2(from.z - t.z, from.x - t.x) - t.rot);
+  return c < -0.5 ? 2 : UNITS[t.type].frontArmor && c > 0.5 ? UNITS[t.type].frontArmor : 1;
+}
+const firedOnBy = (g, u, t) => t.id === u.hitBy && g.tick - u.hitAt <= CFG.behavior.threatTime / TICK;
+
+// Value = the damage a shot is expected to do (after cover and armor) x the weapon's job x the threat: whoever
+// just shot at us counts 2.5x, an enemy aiming at us 1.5x. Mortars and rockets go for garrisons, then trenches and
+// cover, then whatever has the most enemies around it. The current target keeps its place unless another one scores
+// clearly better (switchGain), so near-equal targets don't flip back and forth. An ordered target never gets here.
 function pickTarget(g, u) {
-  const w = UNITS[u.type].w;
-  let best = 0, bestScore = Infinity;
+  const w = UNITS[u.type].w, cur = u.targetId;
+  let best = 0, bestScore = Infinity, curScore = Infinity;
   for (const t of gridFor(g).candidates(u, w.range, true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
-    const inf = UNITS[t.type].infantry;
-    // salvos go for garrisons first, then for whatever has the most enemies around it
-    const value = w.salvo ? (t.garrison >= 0 ? 3 : 1) * (1 + gridFor(g).candidates(t, 6).filter(o => o.owner === t.owner && dist(o, t) < 6).length) : inf ? w.inf * w.accInf : w.veh * w.accVeh;
-    const score = dist(u, t) / value * (UNITS[t.type].structure ? 5 : 1); // soldiers first, concrete later
+    const def = UNITS[t.type], inf = def.infantry;
+    const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
+    const value = w.salvo ? dug * (1 + gridFor(g).candidates(t, 6).filter(o => o.owner === t.owner && dist(o, t) < 6).length)
+      : (inf ? w.inf * w.accInf * coverMul(g, t) : w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
+    const threat = firedOnBy(g, u, t) ? 2.5 : t.targetId === u.id ? 1.5 : 1;
+    const score = dist(u, t) / (value * threat) * (def.structure ? 5 : 1); // soldiers first, concrete later
+    if (t.id === cur) curScore = score;
     if (score < bestScore) { bestScore = score; best = t.id; }
   }
+  return curScore < Infinity && bestScore > curScore * CFG.behavior.switchGain ? cur : best;
+}
+
+// A squad at p is sheltered from fire coming from `from` in a cover cell (hedge, wall, crater, ruins, trench, tank
+// traps: every side) or right behind something solid on that side (a house, wall, rubble or hedge).
+const shelterAt = (g, p, from) => (flagsAt(g, p.x, p.z) & COVER) > 0 || (!!from && solidToward(g, p, from));
+// Spots other ground units hold (where they stand idle) or are heading to (their path's end), near `at`.
+function heldSpots(g, skip, at, radius) {
+  const out = [];
+  for (const v of gridFor(g).candidates(at, radius + 24, false, v => !skip.has(v.id) && v.hp > 0 && !v.air && !UNITS[v.type].structure && v.garrison < 0)) {
+    const end = v.path.length ? v.path.at(-1) : v;
+    if (dist(end, at) <= radius + CFG.behavior.vehicleSpacing) out.push(end);
+  }
+  return out;
+}
+const spaceFor = u => (UNITS[u.type].infantry ? CFG.behavior.spacing : CFG.behavior.vehicleSpacing);
+// A spot that starts inside a capture circle stays inside it, so nobody walks off the point it is taking.
+const inPoints = (g, at) => g.points.filter(p => dist(p, at) <= CFG.pointRadius);
+// The best free cell within `radius` of `at` for u: the nearest sheltered one (trenches a little ahead) when `cover`,
+// else the nearest open one. It is on about the same level, reachable in a straight line from `at` and at least the
+// unit's spacing from every held spot. Null when there is none.
+function spotNear(g, u, at, radius, held, from, cover) {
+  const r = Math.ceil(radius / CELL), cx = Math.floor(at.x / CELL), cy = Math.floor(at.z / CELL), lv = levelAt(g, at.x, at.z);
+  const veh = !UNITS[u.type].infantry, block = veh ? MOVE | VBLOCK : MOVE | WIRE, space = spaceFor(u), points = inPoints(g, at);
+  let best = null, bestScore = Infinity;
+  for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
+    if (x < 0 || y < 0 || x >= g.w || y >= g.h) continue;
+    const c = y * g.w + x, f = g.flags[c], p = cellCenter(g, c), d = dist(p, at);
+    if (f & block || d > radius || Math.abs(level(g, c) - lv) > 1) continue;
+    const mul = !cover ? 1 : f & TRENCH ? CFG.trenchMul : f & COVER || (from && solidToward(g, p, from)) ? CFG.coverMul : 1;
+    if (cover && mul >= 1) continue;
+    const score = d + (mul - CFG.trenchMul) * 4;
+    if (score >= bestScore || held.some(h => dist(h, p) < space) || points.some(q => dist(q, p) > CFG.pointRadius - 1)) continue;
+    if (!clear(g, at.x, at.z, p.x, p.z, block, true)) continue;
+    bestScore = score; best = p;
+  }
   return best;
+}
+// Where the enemy probably is, seen from `at`: the nearest armed enemy the side can see within 50 m, else where the
+// last incoming fire came from, else straight ahead along the move.
+function threatFor(g, u, at) {
+  const seen = g.players[u.owner].visible;
+  let best = null, bd = 50;
+  for (const v of gridFor(g).candidates(at, 50, false, v => v.hp > 0 && !v.air && UNITS[v.type].w && !allied(g, v.owner, u.owner) && seen.has(v.id))) {
+    const d = dist(v, at); if (d < bd) { bd = d; best = v; }
+  }
+  if (best) return { x: best.x, z: best.z };
+  if (u.hitFrom && g.tick - u.hitAt <= 5 / TICK) return u.hitFrom;
+  const d = dist(u, at);
+  return d > 0.5 ? { x: at.x + (at.x - u.x) / d * 20, z: at.z + (at.z - u.z) / d * 20 } : null;
+}
+// One move order for several units: those sent to the same spot spread into rows across the line of travel, then each
+// gets its own end spot. Infantry ending in the open settle into the nearest cover that faces the threat within
+// coverSeek; nobody takes a spot another unit holds or is heading to (they shift to the nearest free one).
+function endSpots(g, go) {
+  const B = CFG.behavior, skip = new Set(go.map(([u]) => u.id)), claimed = [], groups = new Map();
+  for (const o of go) { const k = Math.round(o[1]) + ',' + Math.round(o[2]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const n = group.length, cx = group.reduce((a, [u]) => a + u.x, 0) / n, cz = group.reduce((a, [u]) => a + u.z, 0) / n, [, gx, gz] = group[0];
+    const len = Math.hypot(gx - cx, gz - cz) || 1, dx = (gx - cx) / len, dz = (gz - cz) / len, cols = Math.ceil(Math.sqrt(n));
+    group.sort((a, b) => (a[0].x - cx) * -dz + (a[0].z - cz) * dx - ((b[0].x - cx) * -dz + (b[0].z - cz) * dx));
+    group.forEach((o, i) => {
+      const col = i % cols - (Math.min(cols, n) - 1) / 2, row = Math.floor(i / cols);
+      o[1] = Math.min(g.w * CELL - 1, Math.max(1, gx - dz * col * B.gap - dx * row * B.gap));
+      o[2] = Math.min(g.h * CELL - 1, Math.max(1, gz + dx * col * B.gap - dz * row * B.gap));
+    });
+  }
+  return go.map(([u, x, z]) => {
+    let at = { x, z };
+    const held = claimed.concat(heldSpots(g, skip, at, B.coverSeek)), crowded = p => held.some(h => dist(h, p) < spaceFor(u));
+    if (UNITS[u.type].infantry) {
+      const from = threatFor(g, u, at);
+      if (!shelterAt(g, at, from) || crowded(at)) at = spotNear(g, u, at, B.coverSeek, held, from, true) ?? at;
+    }
+    if (crowded(at)) at = spotNear(g, u, at, B.coverSeek + 2, held, null, false) ?? at;
+    claimed.push(at);
+    return [u, at.x, at.z];
+  });
+}
+// Vehicles back up on a short move away from the way they face while they are fighting (front armor stays on the
+// enemy); otherwise they turn around and drive.
+function reverseIfShort(g, u, engaged) {
+  const end = u.path.at(-1);
+  u.reverse = null;
+  if (!end || UNITS[u.type].infantry || !engaged || dist(u, end) > CFG.behavior.reverseMax) return;
+  if (Math.cos(Math.atan2(end.z - u.z, end.x - u.x) - u.rot) < -0.5) u.reverse = end;
+}
+function turnHull(u, to, dt) {
+  const d = Math.atan2(Math.sin(to - u.rot), Math.cos(to - u.rot)), max = CFG.behavior.hullTurn * dt, r = u.rot + Math.max(-max, Math.min(max, d));
+  u.rot = Math.atan2(Math.sin(r), Math.cos(r));
+}
+// Incoming fire, for units with nothing ordered to do. A unit walking to its rally point stops to answer a shooter it
+// can hit (and walks on afterwards). An idle squad in the open moves to cover facing the fire: within coverShift when
+// it can answer, coverFlee when it can't (out of range or unseen). An idle vehicle that can't answer and is below half
+// health backs off pullBack metres, front first. Returning fire itself is target choice (pickTarget's threat bonus).
+function react(g, u, def) {
+  const B = CFG.behavior;
+  if (u.retreating || u.garrison >= 0 || u.attackId || u.amove || u.nade || u.dig || u.build || u.enter >= 0 || u.fireAt >= 0) return;
+  if (g.tick - u.hitAt > B.threatTime / TICK || !u.hitFrom) { if (!u.path.length && def.infantry) keepSpacing(g, u); return; }
+  const shooter = g.units.get(u.hitBy), answer = !!shooter && canShoot(g, u, shooter);
+  if (u.path.length) {
+    if (u.drift === 'rally' && answer) { u.amove = { ...u.path.at(-1) }; u.path = []; u.drift = false; u.targetId = shooter.id; }
+    return;
+  }
+  if (u.react > 0) return;
+  u.react = 2;
+  if (def.infantry) {
+    if (shelterAt(g, u, u.hitFrom)) return;
+    const radius = answer ? B.coverShift : B.coverFlee, spot = spotNear(g, u, u, radius, heldSpots(g, new Set([u.id]), u, radius), u.hitFrom, true);
+    if (spot) { u.path = findPath(g, u, spot); u.drift = 'cover'; }
+  } else if (!answer && u.hp < def.models * def.hpPer * 0.5 && !inPoints(g, u).length) {
+    const a = Math.atan2(u.z - u.hitFrom.z, u.x - u.hitFrom.x);
+    u.path = findPath(g, u, { x: u.x + Math.cos(a) * B.pullBack, z: u.z + Math.sin(a) * B.pullBack }); u.drift = 'back'; u.react = 10;
+    reverseIfShort(g, u, true);
+  }
+}
+// Idle squads not in a fight keep their distance: the newer of two squads closer than the spacing steps away, to cover
+// if it is in cover now (it never leaves cover for open ground).
+function keepSpacing(g, u) {
+  if (u.react > 0 || u.targetId) return;
+  u.react = 1;
+  const space = CFG.behavior.spacing, close = gridFor(g).candidates(u, space, false, v => v.id < u.id && v.owner === u.owner && v.hp > 0 && UNITS[v.type].infantry && v.garrison < 0 && !v.path.length && dist(u, v) < space - 0.25);
+  if (!close.length) return;
+  const held = heldSpots(g, new Set([u.id]), u, CFG.behavior.coverSeek), from = threatFor(g, u, u), sheltered = shelterAt(g, u, from);
+  const spot = spotNear(g, u, u, CFG.behavior.coverSeek, held, from, true) ?? (sheltered ? null : spotNear(g, u, u, CFG.behavior.coverSeek, held, null, false));
+  if (spot) { u.path = findPath(g, u, spot); u.drift = 'space'; }
 }
 
 function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
@@ -1268,6 +1439,9 @@ function fire(g, u, t, moving) {
   const before = t.hp;
   t.hp -= dmg * hits;
   if (hits) t.lastHit = u.owner;
+  // the target notices the shot, hit or miss, and where it came from (its player sees the tracer too); a new shooter
+  // makes it look over its targets right away
+  if (!u.air) { if (t.hitBy !== u.id) t.retarget = 0; t.hitBy = u.id; t.hitAt = g.tick; t.hitFrom = { x: u.x, z: u.z }; }
   u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating && !(t.sprint > 0)) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
   u.cooldown = w.interval * rate; u.shotAt = g.tick;
@@ -1422,7 +1596,7 @@ export function step(g) {
     if (def.building) { if (u.queue?.length && u.built >= 1 && !g.mode.suddenDeath) train(g, u, dt); continue; }
     if (def.air) { stepPlane(g, u, dt); continue; }
     if (def.infantry) u.supp = Math.max(0, u.supp - 8 * dt);
-    u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt;
+    u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt; u.react -= dt;
 
     // Engineers: walk up to the site, then build
     if (u.build) {
@@ -1490,17 +1664,22 @@ export function step(g) {
       else if (u.repath <= 0) requestStepPath(g, u, t, 'attackId');
     }
 
-    // movement
-    const before = { x: u.x, z: u.z };
-    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
+    // incoming fire and spacing for units with nothing ordered (see react)
+    if (!def.structure) react(g, u, def);
+
+    // movement (a vehicle backing up keeps its hull pointed the way it faced)
+    const before = { x: u.x, z: u.z }, back = !!u.reverse && u.path.at(-1) === u.reverse;
+    if (!back) u.reverse = null;
+    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1) * (back ? CFG.behavior.reverseSpeed : 1);
     let budget = speed * dt;
     while (budget > 0 && u.path.length) {
       const wp = u.path[0], d = dist(u, wp);
-      u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
+      if (!back) u.rot = Math.atan2(wp.z - u.z, wp.x - u.x);
       if (d <= budget) { u.x = wp.x; u.z = wp.z; u.path.shift(); budget -= d; }
       else { u.x += (wp.x - u.x) / d * budget; u.z += (wp.z - u.z) / d * budget; budget = 0; }
     }
     const moved = dist(u, before), moving = u.path.length > 0 || moved > 0.001;
+    if (!u.path.length) u.drift = false;
     updateGrid(g, u);
     if (def.crushes && moved > 0) { const c = cellOf(g, u.x, u.z); if (c >= 0 && CFG.crush[g.chars[c]]) wreckCell(g, [], c, CFG.crush[g.chars[c]]); }
     u.still = moving ? 0 : u.still + dt;
@@ -1523,12 +1702,19 @@ export function step(g) {
     }
     if (!u.attackId && (u.retarget <= 0 || (u.targetId && !canShoot(g, u, g.units.get(u.targetId))))) { u.targetId = pickTarget(g, u); u.retarget = 0.5; }
     const t = g.units.get(u.targetId);
+    // a stationary vehicle keeps its front to what it is shooting at, or else turns it to the latest incoming fire
+    const hull = !def.infantry && !def.structure && !moving;
     if (t && canShoot(g, u, t)) {
       u.aim = Math.atan2(t.z - u.z, t.x - u.x);
       if (def.infantry && !moving) u.rot = u.aim;
+      else if (hull) turnHull(u, u.aim, dt);
       const ready = moving ? w.moveFire !== undefined : u.still >= (w.setup ?? 0);
       if (ready && u.cooldown <= 0) fire(g, u, t, moving);
-    } else { u.targetId = 0; u.aim = u.rot; }
+    } else {
+      u.targetId = 0;
+      if (hull && u.hitFrom && g.tick - u.hitAt <= CFG.behavior.threatTime / TICK) turnHull(u, Math.atan2(u.hitFrom.z - u.z, u.hitFrom.x - u.x), dt);
+      u.aim = u.rot;
+    }
   }
 
   // more engineers build faster, with diminishing returns (2 = ~1.65x, 3 = ~2.2x). Finished buildings get

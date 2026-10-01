@@ -41,6 +41,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
+| before unit behavior, re-measured with tools/balance.mjs (300 matches, two seed sets; USA/GER/USSR wins 38/33/30%) | 61% | 1.16 | 9.3 min |
+| + unit behavior: job-based targets, cover at the end of a move, spreading, hull facing (same 300 seeds; 40/31/29%) | 62% | 1.15 | 9.4 min |
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
@@ -415,6 +417,71 @@ the HUD.
   The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
   box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
   step) along the four sides so the cut-earth skirt follows cliffs at the edge.
+
+## Unit behavior (2026-10-01, all modes)
+Units make the small decisions a player would otherwise micromanage, for human and AI players alike. Every choice
+reads only what the unit's side can see (the team's `visible` set), plus the direction of shots aimed at the unit
+(its player sees those tracers too). Tuning is in `CFG.behavior`; the code is the "unit behavior" block of
+`shared/sim.js`. `tools/balance.mjs` measures it in AI-vs-AI matches.
+
+What went wrong before (150 AI Conquest and 60 Classic matches on the default map):
+- Target choice was distance over raw damage. Nobody preferred whoever was shooting at them, snipers shot the
+  nearest squad instead of the MG crew, mortars ignored trenches, and every unit re-picked the nearest target every
+  half second, so near-equal targets flipped back and forth.
+- Move orders ended on the exact clicked spot, often in the open 2 m from a hedge, and the AI sent several squads
+  to one spot: 42% (Conquest) and 49% (Classic) of idle squads had a friendly squad within 3 m, inside one grenade.
+- An idle squad under fire stayed where it was until it was pinned, and a unit shot from beyond its range did
+  nothing. A fresh squad walking to its rally point walked on through a firefight.
+- A tank only turned while driving, so a stationary tank flanked from behind kept its rear to the gun: 16% of
+  vehicle hits in Conquest were rear hits (double damage).
+
+Rules:
+- Target choice (`pickTarget`): score = distance / (value x threat). Value is the expected damage after cover and
+  armor (rear hits x2, a Tiger's front x0.7) times the weapon's job: AT guns x3 on vehicles, snipers x3 on MG, AT,
+  mortar and flak crews, MGs and riflemen x2 on infantry. Mortars and rockets value a garrison x3, a trench x2 and
+  cover x1.5, times the enemies around the target. Threat: the unit that shot at it in the last 3 s counts x2.5, an
+  enemy aiming at it x1.5. A new target must score 30% better than the current one to take over (`switchGain`), and
+  a new shooter makes the target look over its choice at once. A target the player ordered always wins.
+- Cover at the end of a move (`endSpots`): an infantry move or attack-move ending in the open settles into the
+  nearest sheltered cell within 4 m (`coverSeek`): a cover cell (hedge, wall, crater, ruins, trench, tank traps) or
+  the cell right behind something solid on the threat's side. A trench beats other cover up to about 0.6 m farther.
+  The threat is the nearest armed enemy the side sees within 50 m, else where the last shots came from, else
+  straight ahead. Nobody takes a spot another unit holds or is walking to (3 m apart for infantry, 5 m for
+  vehicles), and a spot inside a capture circle stays inside it.
+- Spreading: units sent to one spot in one order (the AI's way) spread into rows across the line of travel, 5 m
+  apart (`gap`), before the cover step. Of two idle squads closer than 3 m, the newer one steps to the nearest free
+  spot: cover if there is any, and it never leaves cover for open ground.
+- Under fire (`react`), only for units with nothing ordered: a fresh unit walking to its rally point turns the walk
+  into an attack-move and answers a shooter it can hit. An idle squad in the open moves into cover facing the fire,
+  within 4 m if it can shoot back (`coverShift`) and within 8 m if it can't (`coverFlee`). An idle vehicle below half
+  health that can't shoot back pulls back 10 m from the fire, front first, unless it stands on a capture point. Move,
+  attack, retreat, garrison and ability orders are never overridden.
+- Facing: a stationary vehicle turns its hull (1.5 rad/s) to the target it is shooting, or to the last shots when it
+  has no target. A vehicle in a fight (it has a target or was shot at in the last 3 s) ordered less than 16 m
+  backwards reverses at half speed with its front to the enemy.
+- Not covered yet: mortar, rocket and off-map shells record no shooter, so they do not count as incoming fire and
+  units do not move away from a barrage. Planes still pick their best target every half second, without hysteresis.
+
+Results (`tools/balance.mjs`, the same seeds on the old and the new code):
+- Conquest, 300 matches over two seed sets: rear hits 16.5% to 11.4% of vehicle hits (front hits 53% to 72%), idle
+  squads with a friendly squad within 3 m 43% to 10%, infantry hits taken in a cover cell 18.1% to 19.4%, kills per
+  match 26.8 to 26.9. Closeness, lead changes and length did not move (balance log above).
+- Classic, 120 matches over two seed sets: 104 decided before Sudden Death on both codes (87%), median length 17.3
+  to 17.4 min, 2 draws before and 1 after. Rear hits 6.7% to 4.8% of vehicle hits (front hits 74% to 87%), idle squads with a
+  friendly squad within 3 m 49% to 32%, infantry hits in a cover cell 11.4% to 12.2%, kills per match 104.8 to 103.2.
+  Faction wins USA/GER/USSR went from 30/36/33% to 24/47/28%. GER gained in both seed sets, but the shift as a whole
+  is within chance (chi-square p = 0.25 over the three factions; GER alone z = 1.7), so no stats were changed. A
+  guess, not tested: turning the front to the enemy helps the Tiger (front hits x0.7) more than other tanks. Watch it
+  in the next Classic run.
+- Weapon jobs: the share of MG shots at infantry hardly moved (Conquest 84% to 83%, Classic 38% to 34%) because it
+  mostly measures what is around: in Classic 70% of MG shots hit buildings while no infantry is in sight. When an
+  enemy squad was in range and sight, MGs shot infantry 96.1% of the time before and 97.4% after, AT guns shot a
+  vehicle when one was there 97.9% and 97.3% (12 Classic matches each). The nearest-damage rule already did this
+  much; the gains are threat (answering the shooter), hysteresis, snipers (crews 10.9% to 15.5% of their shots in Classic) and
+  mortars (trenches and cover).
+- Server cost: a 300-unit Massive fixture (six AIs on six-fronts, alternating old and new code in one process so both
+  see the same machine load) ticks in 26.3 ms against 25.9 ms before (+1.5%). On an 18000-tick Massive Conquest
+  bench the step went from 6.5 to 8.0 ms, but more units stayed alive (231 against 188); per unit it is the same.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

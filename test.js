@@ -748,7 +748,8 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (let i = 0; i < popCap(g); i++) put(g, 0, 'rifle', 5, 5);
   const units = [...g.units.values()];
   command(g, 0, { t: 'amove', orders: units.map(u => [u.id, 30, 30]) });
-  assert.equal(units.filter(u => u.amove?.x === 30 && u.amove?.z === 30).length, units.length, 'Massive attack-move reaches every selected unit');
+  // one shared spot spreads into a formation (unit behavior), so each unit has its own attack-move end
+  assert.equal(units.filter(u => u.amove && u.path.length).length, units.length, 'Massive attack-move reaches every selected unit');
 }
 
 // Massive commands apply to every selected ID, including armies inherited above the population cap.
@@ -1528,6 +1529,181 @@ for (const flying of [false, true]) {
     assert.equal(rifle.targetId, next.id, 'a dead current target is replaced without waiting for the timer');
     assert.ok(next.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'the replacement target is shot immediately');
   } finally { Math.random = orig; }
+}
+
+// ---------- Unit behavior (DESIGN.md "Unit behavior") ----------
+// An 80 x 60 m field; `edit` gets the rows as character arrays. Passive enemies are seen but never pick a target or
+// shoot, so only the unit under test decides anything.
+const field = (edit = () => {}) => { const rows = Array.from({ length: 30 }, () => Array(40).fill('.')); edit(rows); return rows.map(r => r.join('')); };
+// (a shot wakes up a passive unit's target search, so the units under test hold their fire)
+const passive = u => Object.assign(u, { retarget: 1e9, cooldown: 1e9 }), holdFire = u => Object.assign(u, { cooldown: 1e9 });
+const covered = (g, p) => (g.flags[Math.floor(p.z / CELL) * g.w + Math.floor(p.x / CELL)] & sim.COVER) > 0;
+const hedge = rows => { for (let y = 3; y < 27; y++) rows[y][20] = 'H'; }; // x 40 to 42 m, z 6 to 54 m
+// sheltered from the east: in the hedge or close behind it (the sim counts solid ground within 2.2 m toward the shooter)
+const behindHedge = p => p.x >= 40 - 2.2 && p.x < 42 && p.z > 6 && p.z < 54;
+
+// Targets by job: snipers hunt heavy-weapon crews, mortars dug-in squads, AT guns vehicles.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const sniper = holdFire(put(g, 0, 'sniper', 5, 21)), rifle = passive(put(g, 1, 'rifle', 17, 21)), mg = passive(put(g, 1, 'mg', 35, 21));
+  run(g, 1);
+  assert.equal(sniper.targetId, mg.id, 'a sniper picks the MG crew 30 m away over a rifle squad 12 m away');
+  assert.ok(rifle.hp > 0);
+}
+{
+  const g = fresh(field(r => { r[20][16] = 'T'; })); g.players[0].mp = g.players[1].mp = 5000;
+  const mortar = holdFire(put(g, 0, 'mortar', 5, 41)), open = passive(put(g, 1, 'rifle', 22, 41)), dug = passive(put(g, 1, 'rifle', 33, 41));
+  run(g, 1);
+  assert.ok(inTrench(g, dug) && !inTrench(g, open));
+  assert.equal(mortar.targetId, dug.id, 'a mortar shells the squad in a trench 28 m away over one in the open 17 m away');
+}
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const at = holdFire(put(g, 0, 'at', 5, 21)), rifle = passive(put(g, 1, 'rifle', 12, 21)), tank = passive(put(g, 1, 'tank', 33, 21));
+  tank.rot = Math.PI; // front to the gun
+  run(g, 1);
+  assert.equal(at.targetId, tank.id, 'an AT gun picks the tank over a rifle squad at a quarter of the range');
+  assert.ok(rifle.hp > 0);
+}
+
+// Targets by threat, with hysteresis: a squad keeps its target unless another one is clearly better, answers whoever
+// is shooting at it first, and a player-ordered target beats both.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const u = holdFire(put(g, 0, 'rifle', 10, 21)), a = passive(put(g, 1, 'rifle', 30, 21)), b = passive(put(g, 1, 'rifle', 10, 46));
+  const moveTo = (t, x, z) => { Object.assign(t, { x, z }); updateGrid(g, t); };
+  run(g, 1);
+  assert.equal(u.targetId, a.id, 'the nearer of two equal squads first (20 m against 25 m)');
+  moveTo(b, 10, 38); run(g, 1);
+  assert.equal(u.targetId, a.id, 'a squad a little closer (17 m against 20 m) does not take over');
+  moveTo(b, 10, 34); run(g, 1);
+  assert.equal(u.targetId, b.id, 'a clearly closer squad (13 m against 20 m) does');
+  Object.assign(u, { hitBy: a.id, hitAt: g.tick, hitFrom: { x: a.x, z: a.z }, retarget: 0 }); step(g);
+  assert.equal(u.targetId, a.id, 'the squad that just shot at it comes first, though it is farther away');
+  command(g, 0, { t: 'attack', ids: [u.id], target: b.id }); run(g, 1);
+  Object.assign(u, { hitBy: a.id, hitAt: g.tick, retarget: 0 }); run(g, 1);
+  assert.equal(u.targetId, b.id, 'an ordered target stays the target while another squad shoots at it');
+}
+
+// Cover at the end of a move: a squad sent to open ground 5 m short of a hedge (heading east, so the enemy is
+// probably east) settles right behind it, but never into a spot another squad holds.
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 10, 21);
+  command(g, 0, { t: 'move', orders: [[u.id, 35, 21]] });
+  run(g, 10);
+  assert.ok(behindHedge(u) && Math.hypot(u.x - 35, u.z - 21) <= CFG.behavior.coverSeek, `settles behind the hedge (${u.x}, ${u.z})`);
+  const v = put(g, 0, 'rifle', 10, 31);
+  command(g, 0, { t: 'move', orders: [[v.id, 36, 24]] });
+  run(g, 10);
+  assert.ok(behindHedge(v), `the second squad finds its own spot at the hedge (${v.x}, ${v.z})`);
+  assert.ok(Math.hypot(v.x - u.x, v.z - u.z) >= CFG.behavior.spacing - 0.25, 'and keeps its distance from the squad already there');
+}
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 10, 21);
+  command(g, 0, { t: 'move', orders: [[u.id, 38, 21]] });
+  run(g, 10);
+  assert.ok(Math.hypot(u.x - 38, u.z - 21) < 1, 'with no cover nearby the squad goes exactly where it was sent');
+}
+
+// Under fire: an idle squad in the open shifts into cover within a few metres if it can shoot back, and farther if
+// it can't (out of range or unseen).
+{
+  const g = fresh(field(hedge)); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0;
+    const u = put(g, 0, 'rifle', 45, 21); put(g, 1, 'mg', 70, 21);
+    run(g, 6);
+    assert.ok(covered(g, u), `a squad under MG fire moves 4 m into the hedge (${u.x}, ${u.z})`);
+  } finally { Math.random = orig; }
+}
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 48, 21);
+  Object.assign(u, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 21 } });
+  run(g, 3);
+  assert.ok(covered(g, u), `a squad shot at from out of its reach moves 7 m into the hedge (${u.x}, ${u.z})`);
+  const w = put(g, 0, 'rifle', 52, 21);
+  Object.assign(w, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 21 } });
+  run(g, 3);
+  assert.ok(Math.hypot(w.x - 52, w.z - 21) < 1, 'cover farther than coverFlee is out of reach: the squad stays put');
+}
+
+// Return fire: a fresh squad walking to its rally point stops to answer a shooter; a squad under a plain move
+// order keeps walking.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0.99; // misses only: nobody dies or gets pinned
+    const u = put(g, 0, 'rifle', 10, 31), v = put(g, 0, 'rifle', 10, 11);
+    const a = put(g, 1, 'rifle', 30, 45), b = put(g, 1, 'rifle', 30, 1);
+    u.path = findPath(g, u, { x: 75, z: 31 }); u.drift = 'rally';
+    command(g, 0, { t: 'move', orders: [[v.id, 75, 11]] });
+    command(g, 1, { t: 'attack', ids: [a.id], target: u.id }); command(g, 1, { t: 'attack', ids: [b.id], target: v.id });
+    run(g, 2);
+    assert.ok(u.amove && u.targetId === a.id, 'the rally walker turns its walk into an attack-move and answers the shooter');
+    const x = u.x; run(g, 1);
+    assert.ok(Math.abs(u.x - x) < 0.5, 'and halts while the shooter is in range');
+    assert.ok(v.path.length && v.x > 20 && !v.amove, 'a squad under a move order keeps walking');
+  } finally { Math.random = orig; }
+}
+
+// Facing: a stationary tank turns its front to incoming fire it can't answer, and keeps it on the target it fights.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const tank = put(g, 0, 'tank', 40, 20); tank.rot = 0;
+  Object.assign(tank, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 5, z: 20 } });
+  run(g, 2.5);
+  assert.ok(Math.cos(tank.rot - Math.PI) > 0.95, `the hull turns to the shot from behind (rot ${tank.rot})`);
+  const foe = passive(put(g, 1, 'tank', 40, 52));
+  run(g, 2);
+  assert.equal(tank.targetId, foe.id);
+  assert.ok(Math.cos(tank.rot - Math.PI / 2) > 0.95, `the hull turns to the tank it engages (rot ${tank.rot})`);
+}
+
+// Short retreats: a tank in a fight backs up a short way with its front to the enemy; out of a fight it turns around.
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const fighting = put(g, 0, 'tank', 50, 15), calm = put(g, 0, 'tank', 50, 45);
+  fighting.rot = calm.rot = 0;
+  Object.assign(fighting, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 15 } });
+  command(g, 0, { t: 'move', orders: [[fighting.id, 40, 15], [calm.id, 40, 45]] });
+  run(g, 1.5);
+  assert.ok(fighting.x < 48 && Math.cos(fighting.rot) > 0.99, `the engaged tank reverses, front still east (${fighting.x}, rot ${fighting.rot})`);
+  assert.ok(Math.cos(calm.rot) < -0.9, 'the tank out of a fight turns around and drives');
+  run(g, 4);
+  assert.ok(Math.hypot(fighting.x - 40, fighting.z - 15) < 1, 'the reversing tank still gets there');
+}
+
+// A hurt vehicle shot at from beyond its reach backs off, front first, unless it is holding a capture point.
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const tank = put(g, 0, 'tank', 50, 40); tank.rot = 0; tank.hp = 100;
+  Object.assign(tank, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 40 } });
+  run(g, 4);
+  assert.ok(tank.x < 46 && Math.cos(tank.rot) > 0.95, `pulls back with its front to the fire (${tank.x}, rot ${tank.rot})`);
+  const holder = put(g, 0, 'tank', g.points[0].x + 2, g.points[0].z); holder.hp = 100;
+  Object.assign(holder, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: g.points[0].z } });
+  run(g, 2);
+  assert.ok(Math.hypot(holder.x - g.points[0].x - 2, holder.z - g.points[0].z) < 1, 'a vehicle on a capture point holds it');
+}
+
+// Spreading: squads sent to one spot (as the AI does) get their own end spots; idle squads on top of each other
+// spread to the spacing.
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const squads = Array.from({ length: 6 }, (_, i) => put(g, 0, 'rifle', 10, 15 + i * 3));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60, 30]) });
+  const ends = squads.map(u => u.path.at(-1));
+  const gaps = ends.flatMap((p, i) => ends.slice(i + 1).map(q => Math.hypot(p.x - q.x, p.z - q.z)));
+  assert.ok(Math.min(...gaps) >= CFG.behavior.spacing, `distinct end spots (closest pair ${Math.min(...gaps).toFixed(2)} m)`);
+  assert.ok(ends.every(p => Math.hypot(p.x - 60, p.z - 30) < 12), 'all around the ordered spot');
+  const a = put(g, 0, 'rifle', 30, 50), b = put(g, 0, 'rifle', 30.5, 50);
+  run(g, 4);
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= CFG.behavior.spacing - 0.25, `idle squads spread out (${Math.hypot(a.x - b.x, a.z - b.z).toFixed(2)} m)`);
 }
 
 // A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)
@@ -3186,7 +3362,7 @@ for (const lookupFinished of [false, true]) {
 // Live separation must discover later pairs brought into range by an earlier push.
 {
   const g = fresh(empty, 1); g.players[0].mp = 100000; g.army = { pop: 100, income: 1 };
-  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2);
+  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2).react = 1e9; // no spacing walks: separation alone
   const expected = [...g.units.values()].map(u => ({ ...u }));
   for (let i = 0; i < expected.length; i++) for (let j = i + 1; j < expected.length; j++) {
     const a = expected[i], b = expected[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
