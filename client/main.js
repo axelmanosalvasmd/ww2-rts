@@ -131,10 +131,11 @@ addEventListener('resize', positionRoomBanners);
 positionRoomBanners();
 
 let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
+let watching = false; // a spectator: no seat, the whole map, no orders (the server sends the first seat's view with the fog lifted)
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token }),
+  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching }), // a spectator who reconnects keeps watching
 });
 setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
 const sendCmd = (m) => connection.send(m);
@@ -227,11 +228,13 @@ $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
 const wx = createWeatherView({ sendCmd }); // client/weather-view.js: lobby select, score strip line
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
+$('watchBtn').onclick = () => sendCmd({ t: watching ? 'sit' : 'spectate' });
 // The host controls the match; leaving, restarting and ending need a second click.
 const menuOpen = (on) => $('menu').classList.toggle('hidden', !on);
 function renderMatchMenu() {
-  const host = lobbyState && lobbyState.you === lobbyState.host;
+  const host = !!lobbyState?.amHost;
   for (const id of ['restartBtn', 'endBtn', 'pauseBtn']) $(id).classList.toggle('hidden', !host);
+  $('leaveBtn').classList.toggle('hidden', watching); // a spectator has no army to hand over: closing the tab leaves
   $('pauseBtn').textContent = paused ? 'Resume match' : 'Pause match';
   $('offlineSeats').innerHTML = host && lobbyState.state === 'play' ? lobbyState.players.map((p, i) => !p.ai && !p.connected ? `<button data-slot="${i}">Hand ${esc(p.name)} to AI</button>` : '').join('') : '';
   $('offlineSeats').querySelectorAll('button').forEach(b => (b.onclick = () => sendCmd({ t: 'handAi', slot: +b.dataset.slot })));
@@ -293,13 +296,14 @@ async function previewMap(name, mode) {
 }
 
 function renderLobby(m) {
-  lobbyState = m; me = m.you;
+  lobbyState = m; watching = !!m.spectator; document.body.classList.toggle('watching', watching);
+  if (!(watching && m.state === 'play')) me = m.you; // a spectator's match view stays on the seat the start message named
   renderMatchMenu();
   // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
   $('overlay').classList.toggle('hidden', m.state === 'play');
-  const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
+  const n = m.players.length, host = !!m.amHost, lobby = m.state === 'lobby';
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   const level = (p, i) => p.ai ? ' ' + pick('level', i, AI_LEVELS.indexOf(p.level ?? 'normal'), ['Easy', 'Normal', 'Hard'], host).replace('<select', '<select title="AI difficulty" aria-label="AI difficulty"') : '';
@@ -308,7 +312,9 @@ function renderLobby(m) {
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(', ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}${level(p, i)}</span>${kick}</div>`;
-  }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
+  }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
+  $('watchBtn').textContent = watching ? 'Take a seat' : 'Watch as a spectator';
+  $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= COLORS.length));
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: el.dataset.kind === 'level' ? AI_LEVELS[+el.value] : +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
@@ -334,7 +340,7 @@ function renderLobby(m) {
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
   $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${horde ? `horde, ${n} defender${n === 1 ? '' : 's'}` : assault ? 'assault' : m.mode === 'classic' || m.mode === 'annihilation' ? m.mode + ' ' + mode : mode}`;
   const tooMany = n > (m.spawns ?? 3);
-  $('start').disabled = tooMany || !assaultOk;
+  $('start').disabled = tooMany || !assaultOk || !n;
   $('lobbyMsg').textContent = tooMany ? (horde ? `Horde seats ${m.spawns} defenders: remove a player.` : `This map has ${m.spawns} spawns: pick a bigger map or remove players.`) : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? `Send the invite link, or add an AI ${horde ? 'teammate' : 'opponent'}.` : '') : 'Waiting for the host to start...';
   // the last match's result, until the next one starts (the room is back in the lobby: change map or mode freely)
   const r = m.result, w = r?.winner;
@@ -746,7 +752,7 @@ function applySnapshot(s) {
   const ending = !epilogue.active();
   epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
   if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
-  alerts.snapshot(s, lastSnap);
+  if (!watching) alerts.snapshot(s, lastSnap); // the alerts are a commander's, a spectator has no army
   lastSnap = s; drawWorks(s.works);
   updateHud(s);
   wx.snapshot(s);
@@ -815,7 +821,7 @@ function placementView() {
   return placementCache;
 }
 const hud = createHud({
-  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return lobbyState?.host === me; },
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
@@ -1134,7 +1140,7 @@ rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag || fac
 function followSelected() {
   if (rig.following != null) { rig.cancelFollow(); return; }
   let v = [...selected].map(id => units.get(id)).find(Boolean);
-  if (!v && lastSnap?.out?.[me]) v = (mouse.inside && pick(mouse.x, mouse.y, () => true)) || pick(innerWidth / 2, innerHeight / 2, () => true, Infinity);
+  if (!v && (watching || lastSnap?.out?.[me])) v = (mouse.inside && pick(mouse.x, mouse.y, () => true)) || pick(innerWidth / 2, innerHeight / 2, () => true, Infinity);
   if (v) rig.follow(v.id);
 }
 function cancelInput(clearKeys = true) {
@@ -1150,7 +1156,7 @@ const centerSelection = (list) => {
   cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
-const selection = createSelection({ units, selected, groups, owner: () => me, definitions: UNITS,
+const selection = createSelection({ units, selected, groups, owner: () => (watching ? -1 : me), definitions: UNITS, // a spectator selects nothing, so orders nothing
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
@@ -1472,7 +1478,7 @@ const atmos = createAtmosphere({ scene, renderer, camera, cam }); // client/atmo
 // cover around the cursor while infantry is selected (client/cover-preview.js)
 const coverPreview = createCoverPreview({ scene, camera, canvas: renderer.domElement, units, selected, hAt, groundAt, gfx, foe,
   me: () => me, mouse: () => mouse, targeting: () => targeting, grid: () => terrain?.grid, state: () => terrain?.state, wrecks: () => lastSnap?.wrecks, fog: () => fogOfWar });
-endgame.init({ me: () => me, teams: () => teams });
+endgame.init({ me: () => me, teams: () => teams, watching: () => watching });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there

@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate]';
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate]';
 const factions = ['USA', 'Germany', 'USSR'];
 
 function seededRandom(initial) {
@@ -30,7 +30,9 @@ async function runMatches(options, indices) {
   const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
   const current = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
   const alternate = options.alt ? await import(pathToFileURL(resolve(options.alt)).href) : null;
-  const map = JSON.parse(await readFile(resolve(options.root, 'maps/default.json'), 'utf8'));
+  const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
+  // without --seats: one Normal AI per spawn the mode can use, every one for itself, factions cycling
+  const ffa = sim.spawnsFor(map, options.mode).map(() => 'normal');
   const maxSeconds = options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200;
   const maxTicks = Math.round(maxSeconds / sim.TICK), originalRandom = Math.random;
   try {
@@ -38,7 +40,7 @@ async function runMatches(options, indices) {
       // Each match has its own stream, so worker count and completion order do not affect results.
       const seed = options.seats ? (options.seed * 100003 + index * 7919) >>> 0 : (options.seed + index) >>> 0;
       Math.random = seededRandom(seed);
-      const seats = options.seats ?? ['normal', 'normal', 'normal'];
+      const seats = options.seats ?? ffa;
       const order = options.rotate && index % 2 ? [1, 0] : seats.map((_, i) => i);
       const pair = [index % 3, Math.floor(index / 3) % 3];
       const factionIds = options.rotate ? order.map(i => pair[i]) : order.map((_, i) => i % 3);
@@ -78,11 +80,11 @@ async function runMatches(options, indices) {
 if (!isMainThread) {
   await runMatches(workerData.options, workerData.indices);
 } else {
-  const options = { root: resolve(dirname(script), '..'), mode: 'conquest', matches: null, seed: 1, workers: Math.min(2, availableParallelism()), seats: null, alt: null, rotate: false };
+  const options = { root: resolve(dirname(script), '..'), map: 'default', mode: 'conquest', matches: null, seed: 1, workers: Math.min(2, availableParallelism()), seats: null, alt: null, rotate: false };
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
     if (key === '--rotate') { options.rotate = true; continue; }
-    if (!['--root', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
+    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
     options[key.slice(2)] = process.argv[++i];
   }
   options.root = resolve(options.root);
@@ -117,13 +119,13 @@ if (!isMainThread) {
     throw error;
   }
   results.sort((a, b) => a.match - b.match);
-  const map = JSON.parse(await readFile(resolve(options.root, 'maps/default.json'), 'utf8'));
+  const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
   const ended = results.filter(r => r.winner !== null), wins = ended.filter(r => r.winner >= 0);
   const byFaction = Object.fromEntries(factions.map(faction => [faction, wins.filter(r => r.winnerFaction === faction).length]));
   const bySpawn = map.spawns.map((spawn, index) => ({ spawn: index, x: spawn.x, y: spawn.y, wins: wins.filter(r => r.winnerSpawn === index).length }));
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
-    root: options.root, mode: options.mode, map: 'default', players: options.seats?.length ?? 3, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: 'standard', seed: options.seed,
+    root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: 'standard', seed: options.seed,
     matches: options.matches, workers: options.workers, maxSeconds: options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,

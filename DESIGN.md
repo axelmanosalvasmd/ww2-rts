@@ -391,6 +391,13 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   fog-fair; the owner sees a HIDDEN tag.
 - Armored car (220 MP): fastest unit (9 m/s), 170 hp, light gun + MG that fire on the move, weak vs tanks. No transport.
 - Medium tank (380 MP): 600 hp, 80 anti-tank damage, the mainline tank between the light tank and the Tiger.
+- Balance pass (2026-10-01), after a player won by massing rocket trucks: rocket damage to vehicles 30 -> 12, armored
+  car damage to vehicles 6 -> 14, MG damage to infantry 2.4 -> 4. Equal-cost duels on open ground showed the truck
+  beat every light vehicle and the armored car could not hurt it (2.4 damage a second against 160 hp); now the car
+  beats the truck (+78) and still loses to tanks (-73). No cap on trucks (decided). Reload, suppression and infantry
+  damage of the rocket made no measurable difference to a mass of trucks, so they stay. 60 AI matches: faction wins
+  24/19/17 -> 20/17/23, length and closeness unchanged. Open: halftracks and mobile flak beat basic infantry at equal
+  cost; MG teams still lose to conscripts in the open.
 - Looks per faction: Sherman / Panzer IV / T-34, M8 Greyhound / Sd.Kfz. 222 / BA-64.
 - AI: a mortar against dug-in MGs and AT guns (or once its army is 6+), a sniper against 6+ infantry seen, an armored car
   once the army is 7+ (it leads depot raids), medium tanks when affordable. It falls back to infantry when it can't make
@@ -704,6 +711,12 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Host and seats: the host is the first connected human, falling back to the first human. A lobby disconnect frees the
   seat after 10 s, and offline humans lose their seats when a match returns to the lobby. Tokens are per room plus an
   optional seat suffix, and a start with a matching matchId is a resume.
+- Spectators (2026-10-01): `room.spectators`, up to 8, beside the seats. A hello with `spectate: true`, a full room or a
+  running match makes you one; `spectate` and `sit` switch in the lobby. They get seat 0's start and snapshots through a
+  projection (`watchGame` in server.js: reveal on, every unit visible, no fog mask, a terrain memory of their own), so
+  the real seat 0 keeps its own fog and memory. Every command from a spectator is dropped except the host's lobby and
+  match controls; the host is the first connected human seat, else the first connected spectator (all-AI rooms). A
+  spectator's disconnect frees them at once and never pauses.
 - Fort keys are a Shift layer: T trench, Shift+Y sandbags, Shift+U wire, Shift+I traps, Shift+O nest. Plain Y/U/I/O
   keep the Classic build and support actions. `client/keys.js` is the single binding table and test.js rejects
   duplicate chords.

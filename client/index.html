@@ -311,6 +311,8 @@
   #following { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); padding: 4px 10px; color: var(--text); font-size: 13px; pointer-events: none !important; white-space: nowrap; }
   #box { position: fixed; border: 1px solid rgba(226, 223, 211, 0.85); background: rgba(226, 223, 211, 0.08); pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
+  /* a spectator commands nothing: no resources, recruit bar or Command Card (client/main.js sets the class) */
+  body.watching #econ, body.watching #buy, body.watching #lowerleft { display: none; }
 </style>
 <link rel="stylesheet" href="/client/alerts.css">
 <link rel="stylesheet" href="/client/connection.css">
@@ -328,6 +330,7 @@
         <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
         <div id="roster"></div>
         <button id="addAi" title="Fill an open slot with an AI player">+ Add AI player</button>
+        <button id="watchBtn" title="Spectators see the whole map and command nothing. With only AI players seated, a spectator hosts"></button>
         <h3 class="sec">Invite</h3>
         <div class="muted">Send this link to friends. It always opens this room.</div>
         <div class="row"><input id="link" readonly><button id="copy" title="Copy the invite link">Copy</button></div>

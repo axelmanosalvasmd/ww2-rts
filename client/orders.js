@@ -21,7 +21,7 @@ export function createOrders(ctx) {
   function dispatch(cursor, event = {}, options = {}) {
     const selected = selection(), { troops, buildings, planes, eng } = selected, order = kind(cursor, selected);
     const commands = [], g = cursor.ground;
-    let at = g, color = ctx.moveColor, tone = 660, voice = 'move';
+    let at = g, color = ctx.moveColor, tone = 660, voice = 'move', after = null;
     const add = command => commands.push(command);
     if (troops.length) {
       const b = cursor.building;
@@ -65,6 +65,7 @@ export function createOrders(ctx) {
     if (!commands.length) return false;
     const queue = !!event.shiftKey;
     ctx.send(commands.length === 1 ? { ...commands[0], queue } : { t: 'orders', queue, commands });
+    if (after) ctx.send(after);
     if (at) ctx.feedback(at, color, tone, voice);
     return true;
   }

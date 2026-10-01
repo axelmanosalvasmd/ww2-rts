@@ -113,6 +113,19 @@ const hostOf = (room) => {
   const online = room.players.findIndex(p => !p.ai && connected(p));
   return online >= 0 ? online : room.players.findIndex(p => !p.ai);
 };
+// Spectators have no seat: they watch the whole match from the first seat's side of the table, with the fog lifted.
+// Their view is a projection like the AI's (shared/ai-view.js), so the real seat's terrain memory and fog stay its own.
+// A room whose seats are all AIs is hosted by its first connected spectator.
+const MAX_SPECTATORS = 8, EVERYTHING = { has: () => true };
+const everyone = (room) => [...room.players, ...room.spectators];
+const isHost = (room, p) => { const h = hostOf(room); return h >= 0 ? room.players[h] === p : room.spectators.find(connected) === p; };
+function watchGame(g, s) {
+  const players = [...g.players];
+  // ponytail: every changed cell is replayed per snapshot (terrainFor drops the known ones). Keep a pending set per spectator if heavily scarred maps make this slow.
+  players[0] = { ...players[0], terrainMemory: s.terrain, terrainPending: new Set(g.cellLog.keys()), visible: EVERYTHING };
+  return { ...g, players, reveal: true, skipFog: true };
+}
+const sendWatchers = (room, shots, cells, cache, extra) => room.spectators.forEach(s => connected(s) && send(s.ws, { ...snapshotFor(watchGame(room.game, s), 0, shots, cells, cache), ...extra }));
 // new players default to their own team (free-for-all) and the next faction in the cycle
 // assault needs someone on the defending team and someone attacking it
 const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
@@ -123,14 +136,15 @@ const seats = (room) => (room.mode === 'horde' ? MAX_PLAYERS - 1 : spawnsFor({ s
 
 async function lobby(room) {
   const maps = await listMaps(), horde = room.mode === 'horde' ? await hordeMaps() : undefined;
-  room.players.forEach((p, i) => send(p.ws, {
+  everyone(room).forEach((p) => { const i = room.players.indexOf(p); send(p.ws, {
+    spectator: i < 0, amHost: isHost(room, p), spectators: room.spectators.map(s => s.name),
     hordeMaps: horde, hordeBest: room.mode === 'horde' ? recordOf(room) : null,
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
     mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
     // a finished match's result carries this player's own outcome (you); a match the host ended has none
-    result: room.result ? { ...room.result, you: room.result.story ? p.lastMatch ?? null : null } : null,
+    result: room.result ? { ...room.result, you: room.result.story && i >= 0 ? p.lastMatch ?? null : null } : null,
     players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction, level: q.ai ? q.level ?? 'normal' : null })),
-  }));
+  }); });
 }
 
 // (re)start a match with the room's settings; everyone gets the new game
@@ -160,11 +174,15 @@ async function startMatch(room) {
   await lobby(room);
   if (room.game !== game) return; // ended or restarted meanwhile
   room.players.forEach((_, i) => sendStart(room, i));
+  room.spectators.forEach(s => sendStart(room, 0, s));
 }
 
-function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(room.game, i, true), fog: fogFor(room.game, i, true), names: room.game.players.map((p, k) => room.players[k]?.name ?? p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction), weather: weatherRow(room.game) });
-  if (room.pause) send(room.players[i].ws, pauseMessage(room));
+// watcher: a spectator, who gets seat i's start without a fog mask (the client then hides nothing)
+function sendStart(room, i, watcher) {
+  if (watcher) watcher.terrain = new Map();
+  const g = watcher ? watchGame(room.game, watcher) : room.game, ws = (watcher ?? room.players[i]).ws;
+  send(ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(g, i, true), fog: watcher ? undefined : fogFor(g, i, true), names: room.game.players.map((p, k) => room.players[k]?.name ?? p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction), weather: weatherRow(room.game) });
+  if (room.pause) send(ws, pauseMessage(room));
 }
 
 function pauseMessage(room) {
@@ -175,7 +193,7 @@ function pauseMessage(room) {
 
 function broadcastPause(room) {
   const msg = pauseMessage(room);
-  room.players.forEach(p => send(p.ws, msg));
+  everyone(room).forEach(p => send(p.ws, msg));
 }
 
 function pauseRoom(room, player, reason) {
@@ -209,6 +227,7 @@ function pauseTick(room) {
     const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
     const cache = snapshotCache(g);
     room.players.forEach((p, i) => connected(p) && send(p.ws, { ...snapshotFor(g, i, shots, cells, cache), online, ping }));
+    sendWatchers(room, shots, cells, cache, { online, ping });
   }
   return true;
 }
@@ -217,7 +236,7 @@ function handToAi(room, player) {
   Object.assign(player, { ai: true, ws: null, token: '', name: player.name + ' (AI)' });
   if (room.game) (room.aiViews ??= [])[room.players.indexOf(player)] = null;
   if (room.pause?.reason === 'drop' && room.pause.player === player) resumeRoom(room);
-  if (!room.players.some(connected)) room.emptySince = clock.now();
+  if (!everyone(room).some(connected)) room.emptySince = clock.now();
   lobby(room);
 }
 
@@ -278,82 +297,87 @@ wss.on('connection', (ws, req) => {
     if (!me) {
       if (msg.t !== 'hello' || typeof msg.token !== 'string' || typeof msg.name !== 'string') return;
       room = rooms.get(code);
-      if (!room) rooms.set(code, room = { code, players: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0, matchId: 0, mapName: 'default', mapSpawns: MAP.spawns });
+      if (!room) rooms.set(code, room = { code, players: [], spectators: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0, matchId: 0, mapName: 'default', mapSpawns: MAP.spawns });
       const token = String(msg.token || '').slice(0, 40), name = cleanName(msg.name);
-      me = room.players.find(p => p.token === token && token);
+      me = everyone(room).find(p => p.token === token && token);
       if (me) {
         const old = me.ws;
         clock.clearTimeout(me.cleanupTimer);
         me.ws = ws; me.name = name;
         if (old && old !== ws) { send(old, { t: 'replaced' }); old.close(); }
       }
-      else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS) addSeat(room, me = newPlayer(room, { token, name, ws }));
+      else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));
+      else if (room.spectators.length < MAX_SPECTATORS) room.spectators.push(me = { token, name, ws }); // no seat to take, or asked to watch
       else { send(ws, { t: 'full', reason: room.state === 'play' ? 'started' : 'seats' }); return ws.close(); }
       room.emptySince = null;
       lobby(room);
-      if (room.state !== 'lobby' && room.game) sendStart(room, room.players.indexOf(me));
+      if (room.state !== 'lobby' && room.game) room.players.includes(me) ? sendStart(room, room.players.indexOf(me)) : sendStart(room, 0, me);
       if (room.pause?.reason === 'drop' && room.pause.player === me) resumeRoom(room);
       return;
     }
-    const slot = room.players.indexOf(me);
-    if (me.ws !== ws || slot < 0) return; // a replaced socket may still be open for a moment; a freed seat has no slot
+    const slot = room.players.indexOf(me), seated = slot >= 0, host = isHost(room, me);
+    if (me.ws !== ws || (!seated && !room.spectators.includes(me))) return; // a replaced socket may still be open for a moment; a freed seat has no slot
     if (msg.t === 'ping') {
       if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
       return send(ws, { t: 'pong', c: msg.c });
     }
     if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
-    else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
+    else if (msg.t === 'addAi' && host && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
       addSeat(room, newPlayer(room, { token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true, level: 'normal' }));
       lobby(room);
-    } else if (msg.t === 'level' && slot === hostOf(room) && room.state === 'lobby' && Number.isInteger(msg.slot) && room.players[msg.slot]?.ai && AI_LEVEL_NAMES.includes(msg.v)) {
+    } else if (msg.t === 'level' && host && room.state === 'lobby' && Number.isInteger(msg.slot) && room.players[msg.slot]?.ai && AI_LEVEL_NAMES.includes(msg.v)) {
       room.players[msg.slot].level = msg.v; lobby(room);
-    } else if (msg.t === 'kick' && slot === hostOf(room) && room.state === 'lobby' && Number.isInteger(msg.slot) && msg.slot >= 0 && room.players[msg.slot] && (room.players[msg.slot].ai || !connected(room.players[msg.slot]))) {
+    } else if (msg.t === 'kick' && host && room.state === 'lobby' && Number.isInteger(msg.slot) && msg.slot >= 0 && room.players[msg.slot] && (room.players[msg.slot].ai || !connected(room.players[msg.slot]))) {
       retainSeats(room, room.players.filter((_, i) => i !== msg.slot));
       lobby(room);
-    } else if (msg.t === 'handAi' && slot === hostOf(room) && room.state === 'play' && Number.isInteger(msg.slot) && room.players[msg.slot] && !room.players[msg.slot].ai && !connected(room.players[msg.slot])) {
+    } else if (msg.t === 'handAi' && host && room.state === 'play' && Number.isInteger(msg.slot) && room.players[msg.slot] && !room.players[msg.slot].ai && !connected(room.players[msg.slot])) {
       handToAi(room, room.players[msg.slot]);
-    } else if (msg.t === 'map' && slot === hostOf(room) && room.state !== 'play' && typeof msg.name === 'string' && (await listMaps()).includes(msg.name)) {
+    } else if (msg.t === 'map' && host && room.state !== 'play' && typeof msg.name === 'string' && (await listMaps()).includes(msg.name)) {
       const map = await loadMap(msg.name);
-      if (room.state === 'play' || me.ws !== ws || room.players.indexOf(me) !== hostOf(room)) return;
+      if (room.state === 'play' || me.ws !== ws || !isHost(room, me)) return;
       if (room.mode === 'horde' && !map.defend?.length) return; // Horde needs defender spawns
       room.mapName = msg.name; room.mapSpawns = map.spawns; lobby(room);
     } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.slot) && msg.slot >= 0 && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : 3)) {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
-      if (p && (slot === hostOf(room) ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
-    } else if (msg.t === 'mode' && slot === hostOf(room) && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde'].includes(msg.v)) {
+      if (p && (host ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
+    } else if (msg.t === 'mode' && host && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde'].includes(msg.v)) {
       if (msg.v === 'horde') {
         // Horde: a map with defender spawns (the first one, if the current map has none), and never Endless
         const ok = await hordeMaps(), name = ok.includes(room.mapName) ? room.mapName : ok[0];
-        if (!name || room.state === 'play' || me.ws !== ws || room.players.indexOf(me) !== hostOf(room)) return;
+        if (!name || room.state === 'play' || me.ws !== ws || !isHost(room, me)) return;
         if (name !== room.mapName) { room.mapName = name; room.mapSpawns = (await loadMap(name)).spawns; }
         if (room.army === 'endless') room.army = 'standard';
       }
       room.mode = msg.v; lobby(room);
-    } else if (msg.t === 'army' && slot === hostOf(room) && room.state !== 'play' && ['standard', 'large', 'massive', 'endless'].includes(msg.v) && !(room.mode === 'horde' && msg.v === 'endless')) {
+    } else if (msg.t === 'army' && host && room.state !== 'play' && ['standard', 'large', 'massive', 'endless'].includes(msg.v) && !(room.mode === 'horde' && msg.v === 'endless')) {
       room.army = msg.v; lobby(room);
-    } else if (msg.t === 'weather' && slot === hostOf(room) && room.state !== 'play' && WEATHER_CHOICES.includes(msg.v)) {
+    } else if (msg.t === 'weather' && host && room.state !== 'play' && WEATHER_CHOICES.includes(msg.v)) {
       room.weather = msg.v; lobby(room);
-    } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
+    } else if (msg.t === 'defender' && host && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
       room.defenderTeam = msg.v; lobby(room);
-    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= seats(room) && assaultReady(room)) {
+    } else if (msg.t === 'start' && host && room.state !== 'play' && room.players.length > 0 && room.players.length <= seats(room) && assaultReady(room)) {
       await startMatch(room);
-    } else if (msg.t === 'restart' && slot === hostOf(room) && room.state === 'play' && room.game) {
+    } else if (msg.t === 'restart' && host && room.state === 'play' && room.game) {
       await startMatch(room); // same map, mode and teams, from scratch
-    } else if (msg.t === 'end' && slot === hostOf(room) && room.state === 'play') {
+    } else if (msg.t === 'end' && host && room.state === 'play') {
       finishMatch(room, { ended: true });
-    } else if (msg.t === 'nextwave' && slot === hostOf(room) && room.state === 'play' && room.game?.mode?.kind === 'horde' && !room.pause) {
+    } else if (msg.t === 'nextwave' && host && room.state === 'play' && room.game?.mode?.kind === 'horde' && !room.pause) {
       if (!room.game.mode.active) room.game.mode.timeLeft = 0; // the host cuts the break short
-    } else if (msg.t === 'pause' && slot === hostOf(room) && room.state === 'play') {
+    } else if (msg.t === 'pause' && host && room.state === 'play') {
       pauseRoom(room, me, 'host');
-    } else if (msg.t === 'resume' && slot === hostOf(room) && room.state === 'play') {
+    } else if (msg.t === 'resume' && host && room.state === 'play') {
       resumeRoom(room);
-    } else if (msg.t === 'leave' && room.state === 'play' && !me.ai) {
+    } else if (msg.t === 'spectate' && seated && room.state === 'lobby' && room.spectators.length < MAX_SPECTATORS) {
+      retainSeats(room, room.players.filter(p => p !== me)); room.spectators.push(me); lobby(room); // give up the seat and watch
+    } else if (msg.t === 'sit' && !seated && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
+      room.spectators = room.spectators.filter(s => s !== me); addSeat(room, Object.assign(me, newPlayer(room, me))); lobby(room);
+    } else if (msg.t === 'leave' && seated && room.state === 'play' && !me.ai) {
       // an AI takes over your army so the match goes on for the others; you can join the lobby again afterwards
       handToAi(room, me);
       send(ws, { t: 'left' }); ws.close();
-    } else if (room.state === 'play' && room.game && !room.pause) {
+    } else if (seated && room.state === 'play' && room.game && !room.pause) {
       const reason = command(room.game, slot, msg);
       if (reason && allowDeny(me, clock.now())) send(ws, { t: 'deny', cmd: msg.t, reason });
     }
@@ -362,7 +386,10 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     if (!me || me.ws !== ws) return;
     me.ws = null;
-    if (!room.players.some(connected)) room.emptySince = clock.now();
+    const watching = room.spectators.includes(me);
+    if (watching) room.spectators = room.spectators.filter(s => s !== me); // a spectator holds nothing to come back to
+    if (!everyone(room).some(connected)) room.emptySince = clock.now();
+    if (watching) return lobby(room);
     autoPause(room, me);
     lobby(room);
     // in the lobby, free the slot unless they come back (e.g. a page refresh) within 10s
@@ -386,6 +413,7 @@ function holdEnding(room) {
     const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
     const cache = snapshotCache(g);
     room.players.forEach((p, i) => connected(p) && send(p.ws, { ...snapshotFor(g, i, shots, cells, cache), online, ping }));
+    sendWatchers(room, shots, cells, cache, { online, ping });
   }
   if (g.held < HOLD_TICKS) return true;
   room.players.forEach((p, i) => (p.lastMatch = { outcome: g.winner === -1 ? 'draw' : g.winner === g.players[i].team ? 'victory' : 'defeat', team: g.players[i].team }));
@@ -420,7 +448,8 @@ function timedRoomTick(room) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
     const recipients = [];
     room.players.forEach((p, i) => { if (p.ws?.readyState === 1) recipients.push(i); });
-    if (recipients.length) {
+    const watched = !!room.spectators?.some(s => s.ws?.readyState === 1);
+    if (recipients.length || watched) {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
       const cacheAt = process.hrtime.bigint(), cache = snapshotCache(g);
       snapshotBuild += Number(process.hrtime.bigint() - cacheAt) / 1e6;
@@ -431,6 +460,7 @@ function timedRoomTick(room) {
         snapshotStringify += Number(process.hrtime.bigint() - stringifyAt) / 1e6;
         p.ws.send(json);
       }
+      if (watched) sendWatchers(room, shots, cells, cache, { online, ping });
     }
   }
   const ended = process.hrtime.bigint(), now = Date.now();

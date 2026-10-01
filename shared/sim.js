@@ -116,10 +116,10 @@ export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, 
 // setup: seconds stationary before it can fire. ab = the unit's one active ability (cd = cooldown seconds).
 export const UNITS = {
   rifle: { name: 'Rifle Squad', cost: 100, models: 5, hpPer: 20, speed: 4.5, radius: 1.5, vision: 36, infantry: true,
-    w: { range: 28, interval: 1.6, inf: 3, veh: 0.4, accInf: 0.7, accVeh: 0.7, supp: 4, perModel: true, moveFire: 0.5 },
+    w: { range: 28, interval: 1.6, inf: 3, veh: 1.5, accInf: 0.7, accVeh: 0.7, supp: 4, perModel: true, moveFire: 0.5 },
     ab: { id: 'grenade', name: 'Grenade', cd: 30, range: 18, fuse: 1.2, radius: 4.5, inf: 40, veh: 15, supp: 50, terrain: 30 } },
   mg: { name: 'MG Team', cost: 150, models: 3, hpPer: 25, speed: 3.5, radius: 1.3, vision: 36, infantry: true,
-    w: { range: 36, interval: 0.3, inf: 2.4, veh: 0.2, accInf: 0.5, accVeh: 0.5, supp: 8, setup: 2 },
+    w: { range: 36, interval: 0.3, inf: 4, veh: 0.2, accInf: 0.5, accVeh: 0.5, supp: 8, setup: 2 },
     ab: { id: 'suppress', name: 'Suppressive Fire', cd: 40, dur: 10 } },
   at: { name: 'AT Gun', cost: 200, models: 4, hpPer: 20, speed: 2.5, radius: 1.8, vision: 34, infantry: true,
     w: { range: 45, interval: 4.5, inf: 8, veh: 120, accInf: 0.3, accVeh: 0.75, supp: 0, setup: 2 },
@@ -128,12 +128,13 @@ export const UNITS = {
     w: { range: 35, interval: 3, inf: 30, veh: 45, accInf: 0.6, accVeh: 0.7, supp: 25, moveFire: 1, shellTerrain: 90 },
     ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } },
 };
-// Rocket launcher: no direct fire. Arcs an 8-rocket salvo onto anything its side can see (no line of sight needed),
-// hits garrisons hard and wrecks buildings. Fragile, needs to stop to set up, slow to reload.
-UNITS.rocket = { name: 'Rocket Launcher', cost: 250, models: 1, hpPer: 160, speed: 5, radius: 2.2, vision: 30, infantry: false,
-  w: { range: 70, minRange: 18, interval: 20, setup: 2, inf: 25, veh: 30, accInf: 1, accVeh: 1, supp: 50,
-    salvo: true, rockets: 8, spread: 6, blast: 3.5, terrain: 120, antiGarrison: 1.5, flight: 1.2, every: 0.15 },
-  ab: { id: 'barrage', name: 'Rocket Barrage', cd: 45, range: 70 } };
+// Rocket launcher: area artillery. It never fires on its own at a unit (area): an 8-rocket salvo lands where it is
+// told (a barrage spot or an attack order), or by autocast on a crowd or a dug-in enemy its side can see (no line of
+// sight needed). Hits garrisons hard and wrecks buildings. Slow, fragile, needs to stop to set up, slow to reload.
+UNITS.rocket = { name: 'Rocket Launcher', cost: 250, models: 1, hpPer: 160, speed: 3.5, radius: 2.2, vision: 30, infantry: false,
+  w: { range: 70, minRange: 18, interval: 20, setup: 2, inf: 25, veh: 12, accInf: 1, accVeh: 1, supp: 50,
+    salvo: true, area: true, rockets: 8, spread: 6, blast: 3.5, terrain: 120, antiGarrison: 1.5, flight: 1.2, every: 0.15 },
+  ab: { id: 'barrage', name: 'Rocket Barrage', cd: 20, range: 70, mun: 0 } };
 
 // Mortar team: lobs one shell at anything its side can see (no line of sight needed); out-ranges MGs, breaks dug-in squads.
 // Flak gun: a towed 20mm cannon. Its job is the sky (aa: shoot-down chance against passing support planes, damage per
@@ -166,7 +167,7 @@ UNITS.sniper = { name: 'Sniper', cost: 160, models: 2, hpPer: 20, speed: 4.2, ra
   ab: { id: 'none', name: '', cd: 1e9 } };
 // Armored car: the fastest thing on the map. Scouts, raids, hunts snipers and mortars; fires on the move, weak vs tanks.
 UNITS.armoredcar = { name: 'Armored Car', cost: 220, models: 1, hpPer: 170, speed: 9, radius: 2, vision: 44, infantry: false,
-  w: { range: 28, interval: 1, inf: 4, veh: 6, accInf: 0.45, accVeh: 0.4, supp: 8, moveFire: 0.7 },
+  w: { range: 28, interval: 1, inf: 4, veh: 14, accInf: 0.45, accVeh: 0.4, supp: 8, moveFire: 0.7 },
   ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
 // Medium tank (Sherman / Panzer IV / T-34): the mainline tank, between the light tank and the Tiger.
 UNITS.medium = { name: 'Medium Tank', cost: 380, models: 1, hpPer: 600, speed: 5.5, radius: 2.7, vision: 40, infantry: false, crushes: true,
@@ -193,7 +194,7 @@ UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 
   ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
 // USSR Conscripts: cheap human waves. Ura! = sprint and shrug off suppression.
 UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, models: 7, hpPer: 14, speed: 4.6, radius: 1.8, vision: 34, infantry: true, garrisons: true,
-  w: { range: 24, interval: 1.8, inf: 2.2, veh: 0.3, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
+  w: { range: 24, interval: 1.8, inf: 2.2, veh: 1.1, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
   ab: { id: 'ura', name: 'Ura!', cd: 35, dur: 6, speed: 1.6 } };
 UNITS.rifle.garrisons = UNITS.mg.garrisons = true;
 UNITS.mg.aa = { range: 30, dps: 5, setup: true }; // an MG can fire at low planes too, a little
@@ -2850,7 +2851,7 @@ export function step(g) {
       u.aim = Math.atan2(t.z - u.z, t.x - u.x);
       if (def.infantry && !moving) u.rot = u.aim;
       const ready = moving ? w.moveFire !== undefined : u.still >= (w.setup ?? 0);
-      if (ready && u.cooldown <= 0) fire(g, u, t, moving);
+      if (ready && u.cooldown <= 0 && (!w.area || u.attackId === t.id)) fire(g, u, t, moving); // area weapons fire only when told
     } else {
       setTarget(g, u, 0);
       if (u.face && !moving && (!hull || !u.hitFrom || g.tick - u.hitAt > CFG.behavior.threatTime / TICK)) holdFacing(u, def, hull, dt);

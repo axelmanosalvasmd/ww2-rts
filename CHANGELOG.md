@@ -11,6 +11,34 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Less clutter: fortifications moved into a **Build** menu and dig patterns into a **Trenches** menu. Their hotkeys still work with the menus closed.
 - Left for later: queued legs do not keep the march-together pace, and a group's saved formation does not include its facing.
 
+- Spectator mode. In the lobby, "Watch as a spectator" gives up your seat; "Take a seat" sits you back down. A
+  spectator sees the whole map with no fog, every army and every shot, and has no orders, resources, recruit bar or
+  alerts (the banner under the scores says "Spectating"). Anyone who opens the invite while a match runs, or when all
+  six seats are taken, now watches instead of waiting outside. Up to eight spectators per room.
+  - AI-only matches: step back to watch, add AIs and start. With nobody seated, the first spectator hosts (start,
+    pause, end, restart). A match still needs at least one seat.
+  - A spectator who disconnects is simply gone (no pause, no seat kept). A spectator reconnecting keeps watching.
+  - Left for later: picking whose side to watch from. The view sits on the first seat's side, so friend and foe
+    markers follow that player.
+
+- Unit balance: rocket trucks, armored cars and MG teams.
+  - Rocket launcher: damage to vehicles 30 -> 12 per rocket. It still breaks infantry and garrisons, but no longer
+    beats light vehicles. Range, reload and cost are unchanged, and there is no limit on how many you can field.
+  - Armored car: damage to vehicles 6 -> 14, so the unit meant to hunt rocket trucks and other soft vehicles can
+    kill them. It still loses badly to tanks and AT guns.
+  - MG team: damage to infantry 2.4 -> 4 per hit.
+  - Measured on open flat ground, 2000 MP of one unit against 2000 MP of another, both attack-moving (share of army
+    left, first minus second): armored car vs rocket -22 -> +78, mobile flak vs rocket -72 -> -35, armored car vs
+    light tank -87 -> -73, MG vs rifles -77 -> -66, MG vs Rangers -45 -> +24. Ten MG teams set up and waiting for
+    15 rifle squads went from wiped out (rifles keep 64%) to nearly even (MGs keep 4%, rifles 16%).
+  - 60 AI matches on Three Crossroads, before -> after: faction wins USA/Germany/USSR 24/19/17 -> 20/17/23, median
+    length 439 s -> 444 s, runner-up VP share 0.42 -> 0.42. Too few matches to call the faction shift real.
+  - Left for later: a mass of rocket trucks still beats any infantry army and any army that stands still (they
+    outrange everything at 70 m); tanks, AT guns pushed forward and now armored cars are the answer. Halftracks and
+    mobile flak beat rifles and conscripts by about 70 points at equal cost, since rifles barely scratch vehicles.
+    MG teams still lose to equal-cost conscripts in the open. Planes, off-map support, cover and houses were not
+    part of these tests.
+
 ### 2026-10-01. Individual soldiers and troop selection (`c55fd0f`, `69575e3`, `c27bcef`)
 
 - Soldiers now walk, crouch-walk, crawl and retreat with moving limbs and individual stride timing. Men follow and turn separately inside their squad, keep their boots on the ground, and stop stepping when they stop. Moving shooters aim at their target, with flashes attached to the animated weapon. Squads return to normal spacing when a trench disappears.

@@ -44,9 +44,9 @@ function reset() {
 
 function render() {
   write(rateEl, state.rate); write(bonusEl, state.bonus); write(noticeEl, state.notice);
-  write(outEl, state.out ? "You are out. Watching with your team's vision" : '');
+  write(outEl, state.watching ? 'Spectating: the whole map is in view' : state.out ? "You are out. Watching with your team's vision" : '');
   if (strip) strip.hidden = !(state.rate || state.bonus || state.notice);
-  if (outEl) outEl.hidden = !state.out;
+  if (outEl) outEl.hidden = !(state.out || state.watching);
 }
 
 function announce(text) { notice = text; until = now() + NOTICE_LIFE; }
@@ -56,7 +56,7 @@ function snapshot(s) {
   const kind = s.mode?.kind ?? 'conquest', teams = hooks.teams(), me = hooks.me();
   if (kind !== lastKind || (lastTick !== null && s.tick < lastTick)) reset();
   lastKind = kind; lastTick = s.tick;
-  state.rate = ''; state.bonus = ''; state.out = !!s.out?.[me] && s.winner == null;
+  state.rate = ''; state.bonus = ''; state.out = !!s.out?.[me] && s.winner == null; state.watching = !!hooks.watching?.() && s.winner == null;
   if (s.winner != null) { notice = ''; state.notice = ''; render(); return; }
   if (kind === 'conquest') {
     const ids = [...new Set(teams)], totals = new Map(ids.map(t => [t, teams.reduce((n, team, slot) => n + (team === t ? s.vp?.[slot] ?? 0 : 0), 0)]));
