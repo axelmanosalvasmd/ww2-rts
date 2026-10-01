@@ -22,6 +22,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Model building: a part painted with the shared material now multiplies its paint color by the shape's own vertex
     colors when the shape has them, so wheels, tracks and markings keep their tire, link and insignia colors (paint
     them white to show the colors as built). Existing models have no vertex colors of their own and look the same.
+- Model viewer (developer tool, no gameplay change):
+  - `/client/viewer.html?type=medium&fac=0` builds one unit through the game's own model code (the same calls as
+    `makeUnit` in main.js, faction looks and player colors included) and shows it under the game's warm sun and
+    shadows from the front, left side, top, three-quarter front and back, plus the in-game camera (42° FOV, pitch
+    0.95, distance 40) at true 1920x1080 scale. A header gives the unit name and its draw calls and triangles in the
+    game view, shadow pass included; squads add a row with one soldier close up and the far soldier model's counts.
+    Options: `&color=`, `&posture=0..3`, `&bg=`, `&aim=`, `&far=1`, `&grid=0`. `&all=1` lines up every type one
+    faction can field, each labeled with its own draw calls and triangles (22 types, about 57 to 62 calls in all).
+  - `tools/model-shots.sh <port> <outdir> [types] [facs]` screenshots the viewer with agent-browser into
+    `<outdir>/<type>-<fac>.png`, and puts each next to `/tmp/ww2-models/refs/<type>-<fac>.png` when that reference
+    exists. It starts no server.
+  - Found: at the distance-40 zoom a plane flying at 20 m is about 15 m from the camera, so it draws about 2.6 times
+    larger than ground units and overflows a 640 px wide view. Left as is.
 - Miniatures (round 6):
   - Soldiers stand on small dark-green painted bases like tabletop miniatures (the base stays flat when they crouch,
     lie down or fall back), wear warmer faction uniforms (olive drab, field grey, khaki) and have a lighter crown on
