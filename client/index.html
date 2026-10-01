@@ -122,6 +122,7 @@
   .sc-lead { flex: none; width: var(--lead, 150px); display: grid; align-content: center; justify-items: center; text-align: center; }
   .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); white-space: nowrap; }
   .sc-clock { font-size: 28px; line-height: 1.05; color: var(--brass); }
+  .sc-next { margin-top: 4px; padding: 2px 10px; font-size: 13px; }
   .sc-team { flex: none; width: clamp(174px, calc((100vw - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
   .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 22px; }
   .sc-p .mark { width: 20px; height: 20px; flex: none; }
@@ -188,6 +189,11 @@
   .vet { color: #6b4708; font-size: 13px; letter-spacing: 1px; }
   #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
   #abil .ob { width: auto; }
+  #abil .ob.on { box-shadow: inset 0 0 0 2px var(--brass); } /* a stance switch that is on */
+  /* autocast on: a dashed pencil border and a small A at the right edge, under the hotkey and clear of the cost text
+     along the bottom (Classic shows "15 Mun" there, which fills the button) */
+  #abil .ob.auto { border: 1px dashed var(--brass); }
+  #abil .ob.auto::after { content: 'A'; position: absolute; top: 20px; right: 3px; font: 700 11px/1 var(--type); color: var(--brass); }
 
   /* bottom center: the Command Card, between the bottom-left column and the minimap */
   #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(100vw - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;
@@ -216,6 +222,21 @@
   @container (max-width: 72px) { .uc .nm, .uc .cu { display: none; } }
   .uc .nm kbd { margin-left: 6px; }
   .uc kbd { color: var(--ink); background: rgba(43, 36, 24, 0.1); border-color: rgba(43, 36, 24, 0.5); }
+  /* card letters (hud.js): shown in recruit mode, and on a selected Classic building's cards. The letter sits right of
+     the symbol, clear of the name and the cost; a narrow card moves its symbol left to make room */
+  .uc { position: relative; }
+  .uc .key { position: absolute; top: calc(2.3em + 17px); right: 3px; padding: 0 2px; min-width: 15px; display: none; }
+  #buy.lettered .uc .key { display: block; }
+  @container (max-width: 72px) { .uc .key { top: 15px; right: 2px; } }
+  @container (max-width: 80px) { #buy.lettered .uc .sym { width: 30px; margin-right: 16px; } }
+  .uc.hit { background: var(--manila-hi); border-color: var(--ink); }
+  /* a letter the cards are using: the order or support badge with the same letter hides until the cards give it back */
+  .ob kbd.quiet { visibility: hidden; }
+  /* the recruit tab over the card's left edge (the Rally button sits over the right one); on, it turns manila */
+  #buy .tab { position: absolute; left: 8px; bottom: calc(100% + 6px); padding: 4px 8px; font: 13px var(--type); background: var(--strip); }
+  #buy .tab[aria-pressed="true"] { color: var(--ink); background: var(--manila); border-color: var(--manila-edge); }
+  #buy .tab[aria-pressed="true"] kbd { color: var(--ink); background: rgba(43, 36, 24, 0.1); border-color: rgba(43, 36, 24, 0.5); }
+  #buy.lettered .hd { color: var(--text); }
   .cinfo { width: 190px; align-self: stretch; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
   .ci-t { display: flex; align-items: center; gap: 6px; font-size: 15px; }
   .ci-t .sym { width: 30px; height: 30px; flex: none; }
@@ -258,7 +279,7 @@
         <h3 class="sec">Battle</h3>
         <div class="row"><label for="mapSel">Map</label><select id="mapSel"></select></div>
         <div id="mapPrev"><canvas id="mapCanvas" width="280" height="280"></canvas><div id="mapInfo" class="muted"></div></div>
-        <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
+        <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option></select></div>
         <div class="row"><label for="armySel">Army size</label><select id="armySel" title="Unit limit and income for everyone"></select></div>
         <div id="modeInfo" class="muted"></div>
         <div class="row"><select id="defSel" class="hidden"></select></div>

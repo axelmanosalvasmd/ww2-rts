@@ -12,7 +12,9 @@ function decodeUnit(row) {
     path: [], orders: [], attackId: 0, retreating: !!(flags & 1), buff: flags & 2 ? 1 : 0,
     ap: !!(flags & 4), reinf: flags & 8 ? 1 : 0, dig: flags & 16 ? {} : null,
     garrison: flags & 32 ? 0 : -1, amove: null, build: flags & 128 ? 1 : 0,
-    enter: -1, fireAt: -1, nade: null };
+    enter: -1, fireAt: -1, nade: null,
+    // 1024 marks a mass entrenchment for everyone; the stances and autocast (2048 and up) are sent to the owner only
+    entrench: flags & 1024 ? {} : null, holdFire: !!(flags & 2048), holdPos: !!(flags & 4096), autoRetreat: !!(flags & 8192), auto: !!(flags & 16384) };
   // Other seats' aircraft expose only whether they are grounded.
   if (UNITS[type].air) u.air = { state: flags & 512 ? 'base' : 'out' };
   return u;
@@ -28,7 +30,7 @@ function decodeOwn(view, snap) {
     else if (kind === 4) u.attackId = u.targetId || 1;
     else if (kind === 5) u.fireAt = cellAt(view, x, z);
     else if (kind === 6) u.nade = at;
-    else if (kind === 7) u.dig = at;
+    else if (kind === 7 && u.dig) u.dig = at; // an entrenching squad reports kind 7 between segments too, but is not digging one
     else if (kind === 8) u.build = 1;
     else if (kind === 9) u.enter = cellAt(view, x, z);
     if (u.air && kind) u.air.mission = { kind: kind === 4 ? 'attack' : 'move', x, z };

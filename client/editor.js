@@ -31,7 +31,7 @@ export async function start(api) {
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
     <div id="edToolHint" class="muted"></div>
-    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
+    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option></select></div>
     <div id="edPlayersRow" class="row hidden">Players <select id="edPlayers"></select></div>
     <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
@@ -107,6 +107,7 @@ export async function start(api) {
       assault && `${defenders} defend, ${n - defenders} attack · ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey) · ${added} trench/wall cells added · clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? ` · ${cut} VP-only point(s) left out` : ''}`,
       mode === 'classic' && `an HQ on every player's spawn · ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange) · points pay Munitions`,
       mode === 'conquest' && `first to ${g.winVp} VP`,
+      mode === 'horde' && (g.mode?.kind === 'horde' ? `one shared HQ and bunker (grey) · the horde enters at ${g.mode.gates.length} spawn(s)` : 'Horde needs defend spawns and at most 5 players: this preview is Conquest'),
       'Editing is paused: pick Editing to change the map.',
     ].filter(Boolean).join('<br>');
   }

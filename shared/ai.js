@@ -83,13 +83,16 @@ function plan(observation, slot, opts, mem, send) {
       else if (cmd.t === 'garrison') u.enter = 0;
       else if (cmd.t === 'fireat') u.fireAt = 0;
       else if (cmd.t === 'dig') u.dig = { x: cmd.x, z: cmd.z };
+      else if (cmd.t === 'entrench') u.entrench = { x: cmd.x, z: cmd.z };
+      else if (cmd.t === 'stance') u[cmd.key] = cmd.on;
     }
   };
   const grid = rebuildGrid(view);
   const me = view.players[slot];
   if (me.out) return;
   const all = grid.ownedBy(slot).filter(u => !UNITS[u.type].structure);
-  const assault = view.mode?.kind === 'assault' || view.mode?.kind === 'annihilation', defending = assault && me.team === view.mode.defenderTeam, classic = view.mode?.kind === 'classic';
+  const horde = view.mode?.kind === 'horde' && slot === view.mode.slot; // the horde itself: no shopping, no retreat, straight at the bunker
+  const assault = view.mode?.kind === 'assault' || view.mode?.kind === 'annihilation' || view.mode?.kind === 'horde', defending = assault && me.team === view.mode.defenderTeam, classic = view.mode?.kind === 'classic';
   // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings
   // (Classic: only buildings its team has seen, remembered under fog; with none known, head for the enemy spawns)
   const known = classic ? knownBuildings(view, slot).filter(b => UNITS[b.type].produces && view.players[b.owner].team !== me.team) : [];
@@ -109,6 +112,9 @@ function plan(observation, slot, opts, mem, send) {
   // Classic: only what my finished buildings can train
   const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
   const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
+  // auto-retreat on for the whole army: a broken unit runs the moment it breaks, not at the next decision
+  const steady = all.filter(u => !u.air && !u.autoRetreat);
+  if (steady.length) submit({ t: 'stance', ids: steady.map(u => u.id), key: 'autoRetreat', on: true });
   const seenTanks = Math.max([...me.visible].filter(id => view.units.get(id)?.type === 'tank').length, rule(1) ? seenArmor : 0);
 
   // shopping: counter tanks it has seen, get one tank once the infantry is out, a mortar for dug-in enemies, a sniper
@@ -139,7 +145,7 @@ function plan(observation, slot, opts, mem, send) {
   if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
-  for (let k = 0; k < (view.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(view, buy).mp) submit({ t: 'buy', unit: buy });
+  if (!horde) for (let k = 0; k < (view.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(view, buy).mp) submit({ t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
   const pointOf = (pos) => view.points.findIndex(p => d(pos, p) <= CFG.pointRadius);
@@ -170,7 +176,7 @@ function plan(observation, slot, opts, mem, send) {
   const heavy = enemies.find(e => e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'flaktrack');
   if (heavy && can('dive')) call('dive', heavy);
   const dropZone = view.points.find(q => q.owner >= 0 && !allied(view, q.owner, slot) && view.sees(q));
-  if (dropZone && mine.length >= 6 && can('para')) call('para', dropZone);
+  if (dropZone && !horde && mine.length >= 6 && can('para')) call('para', dropZone);
   const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
   if (bombTarget && can('bombing')) call('bombing', bombTarget);
   else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && now - e.firstStillAt > 3));
@@ -246,8 +252,8 @@ function plan(observation, slot, opts, mem, send) {
       else if (def.ab.id === 'barrage') { const t = enemiesNear(u, def.ab.range).find(e => e.garrison >= 0 && d(u, e) <= def.ab.range); if (t) submit({ t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
     }
     // save hurt units instead of letting them die: retreat, get reinforced, come back
-    if (!home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
-    if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
+    if (!horde && !home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
+    if (!horde && home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
     // tanks knock down houses that enemy squads are hiding in
     if (def.w.shellTerrain && !u.targetId && u.fireAt < 0) {
       const house = enemiesNear(u, 60).find(e => e.garrison >= 0 && d(u, e) < 60);
@@ -255,6 +261,7 @@ function plan(observation, slot, opts, mem, send) {
     }
     if (u.path.length || u.attackId || u.nade || u.dig || u.enter >= 0 || u.fireAt >= 0) continue;
     if (u.targetId) continue; // in a fight: hold
+    if (horde) { if (bunkers[0]) assault_.push([u.id, bunkers[0].x, bunkers[0].z]); continue; }
     const here = pointOf(u);
     // infantry stays to capture, and one squad stays behind to hold each captured point (and digs in)
     if (here >= 0 && def.infantry) {
@@ -264,13 +271,13 @@ function plan(observation, slot, opts, mem, send) {
         // hold it from a house if there is one close by, otherwise dig in
         const house = u.garrison < 0 && def.garrisons && houseNear(view, p, CFG.pointRadius + 3);
         if (house && submit({ t: 'garrison', ids: [u.id], x: house.x, z: house.z }) === undefined) continue;
-        if (u.garrison < 0 && u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(view, p, CFG.pointRadius + 4) < 6) {
-          // dig a line between the point and the closest enemy HQ
+        if (u.garrison < 0 && CFG.fortBuilders.includes(u.type) && !u.dig && !u.entrench && me.mp >= CFG.digCost + 150 && trenchesNear(view, p, CFG.pointRadius + 4) < 6) {
+          // entrench toward the closest enemy HQ: an arc of trench, or a strongpoint when there is manpower to spare
           const foe = view.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
           if (!foe) continue;
           const l = d(foe, p) || 1;
-          submit({ t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 });
-        }
+          submit({ t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: p.x + (foe.x - p.x) / l * 6, z2: p.z + (foe.z - p.z) / l * 6 });
+        } else if (u.garrison < 0 && !u.dig && !u.entrench && !inCover(view, u)) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
         continue;
       }
     }

@@ -9,6 +9,7 @@ import { think } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief } from './client/relief.js';
+import { createAutocast } from './client/autocast.js';
 
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
@@ -92,7 +93,7 @@ const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x
 const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
 const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
-const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 185, tiger: 620, conscript: 80 })[t];
+const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 200, tiger: 560, conscript: 80 })[t];
 const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; return u; };
 
 // LOS: a building between two points blocks sight; a wall does not.
@@ -110,6 +111,19 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const path = findPath(g, { x: 5, z: 5 }, { x: 35, z: 5 });
   assert.ok(path.length >= 2, 'path found');
   assert.ok(path.some(p => p.z > 15 * CELL), 'path goes around the building column');
+}
+
+// Jam recovery keeps terrain corners when the next waypoint is obstructed.
+{
+  const rows = [...empty]; rows[6] = '......B' + '.'.repeat(13);
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 11, 11), corner = { x: 11, z: 15 }, end = { x: 17, z: 15 };
+  u.path = [corner, end]; u.was = { x: u.x, z: u.z }; u.jam = 3.1;
+  step(g);
+  assert.equal(u.path[0], corner, 'three seconds of crowding never skips a required corner');
+  assert.equal(u.x, 11, 'the squad keeps moving along the clear leg');
+  run(g, 3);
+  assert.ok(Math.hypot(u.x - end.x, u.z - end.z) < 1, 'the route still reaches its destination around the building');
 }
 
 // Movement: a move order gets the unit there.
@@ -672,7 +686,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   g.players[1].slot = 1;
   command(g, 1, { t: 'buy', unit: 'tiger' });
   const tg = [...g.units.values()].at(-1); tg.x = 20; tg.z = 20; tg.rot = 0; // facing +x
-  const at = put(g, 0, 'at', 40, 20); at.still = 5;
+  const at = put(g, 0, 'at', 40, 20); at.still = 5; at.auto = false; // plain rounds: no autocast AP round
   const orig = Math.random; Math.random = () => 0;
   run(g, 0.2); const front = 900 - tg.hp;
   tg.hp = 900; at.x = 1; at.cooldown = 0; run(g, 0.2); const rear = 900 - tg.hp;
@@ -766,6 +780,413 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(units.filter(u => u.amove === null).length, units.length, 'Massive stop reaches every selected unit');
   command(g, 0, { t: 'retreat', ids: units.map(u => u.id) });
   assert.equal(units.filter(u => u.retreating).length, units.length, 'Massive retreat reaches every selected unit');
+}
+
+// Seeking cover: idle infantry under fire shift to cover within reach; squads with orders and crewed weapons stay put.
+{
+  const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14); // a wall cell centered on (11, 21)
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  const squad = put(g, 0, 'rifle', 15, 21), mg = put(g, 0, 'mg', 13, 25), mover = put(g, 0, 'rifle', 15, 17);
+  put(g, 1, 'rifle', 35, 21);
+  command(g, 0, { t: 'move', orders: [[mover.id, 15, 5]] });
+  for (let i = 0; i < 80; i++) { mg.hitAt = g.tick; mg.hitFrom = { x: 35, z: 21 }; mover.hitAt = g.tick; mover.hitFrom = { x: 35, z: 21 }; step(g); }
+  assert.ok(sim.inCover(g, squad), 'an idle squad under fire moves into nearby cover');
+  assert.deepEqual([mg.x, mg.z], [13, 25], 'a crewed weapon under fire keeps its position');
+  assert.ok(!sim.inCover(g, mover) && mover.z < 12, 'a squad with a move order keeps following it under fire');
+  const far = fresh(); far.players.forEach(p => (p.mp = 10000));
+  const open = put(far, 0, 'rifle', 15, 21); put(far, 1, 'rifle', 35, 21);
+  run(far, 3);
+  assert.deepEqual([open.x, open.z], [15, 21], 'with no cover in reach the squad stays where it is');
+}
+
+// Take cover cancels orders to leave a trench even when no better cover exists.
+{
+  const rows = [...empty]; rows[10] = '.....T' + '.'.repeat(14);
+  for (const t of ['move', 'amove']) {
+    const g = fresh(rows); g.players[0].mp = 10000;
+    const u = put(g, 0, 'rifle', 11, 21);
+    command(g, 0, { t, orders: [[u.id, 31, 21]] });
+    command(g, 0, { t: 'move', orders: [[u.id, 31, 31]], queue: true });
+    assert.equal(command(g, 0, { t: 'cover', ids: [u.id] }), undefined);
+    assert.deepEqual(u.path, [], 'Take cover cancels the path out of the trench');
+    assert.deepEqual(u.orders, [], 'Take cover clears follow-up orders');
+    assert.equal(u.amove, null, 'Take cover cancels attack-move');
+    run(g, 3);
+    assert.deepEqual([u.x, u.z], [11, 21], 'the covered squad stays put');
+  }
+}
+
+// House corners: a squad beside a house is covered from shooters on the house's side, and can still shoot back.
+{
+  const rows = [...empty]; rows[9] = '.....BB' + '.'.repeat(13); rows[8] = rows[9]; // a house over cells x 5-6, y 8-9
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  // the squad stands just below the house's lower right corner cell (6, 9): cell (7, 10), the house is diagonal to it
+  const corner = put(g, 0, 'rifle', 15, 21), open = put(g, 0, 'rifle', 15, 31);
+  corner.coverTry = open.coverTry = Infinity; // stay put: this checks the cover rule, not the walking
+  const north = put(g, 1, 'rifle', 15, 3), south = put(g, 1, 'rifle', 15, 39);
+  for (let i = 0; i < 4; i++) step(g);
+  assert.ok(los(g, north, corner), 'the squad at the corner can be seen (and can see) past the house');
+  const row = (u) => snapshotFor(g, 0, []).units.find(v => v[0] === u.id);
+  assert.equal(row(corner)[10], 3, 'the HUD shows the corner squad as by cover');
+  assert.equal(row(open)[10], 0, 'and the squad in the open as not');
+  // suppression a single volley adds is scaled by cover, so it measures cover without random hits
+  const volley = (shooter, target) => { target.supp = 0; target.hp = 100; shooter.cooldown = 0; shooter.targetId = target.id; shooter.retarget = 1e9; step(g); return target.supp; };
+  g.units.delete(south.id);
+  const fromHouseSide = volley(north, corner);
+  g.units.delete(north.id);
+  const flank = put(g, 1, 'rifle', 15, 39); for (let i = 0; i < 4; i++) step(g);
+  const fromOpenSide = volley(flank, corner);
+  assert.ok(fromHouseSide > 0 && fromOpenSide > 0, 'both volleys were fired');
+  assert.ok(fromHouseSide < fromOpenSide * 0.7, 'fire from the house side is blunted; fire from the open side is not');
+}
+
+// Stances: hold fire, hold position and auto-retreat are per-unit switches, off for new units.
+{
+  const g = fresh(); g.players.forEach(p => (p.mp = 10000));
+  const a = put(g, 0, 'rifle', 11, 21), b = put(g, 1, 'rifle', 29, 21);
+  assert.ok(!a.holdFire && !a.holdPos && !a.autoRetreat, 'a new unit has every switch off');
+  assert.equal(command(g, 0, { t: 'stance', ids: [a.id], key: 'toString', on: true }), 'blocked', 'an unknown switch is refused');
+  assert.equal(command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: 1 }), 'blocked', 'on must be true or false');
+  assert.equal(command(g, 0, { t: 'stance', ids: [b.id], key: 'holdFire', on: true }), 'needs', 'only your own units');
+  assert.equal(command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: true }), undefined);
+  b.holdFire = true; run(g, 4);
+  assert.equal(b.hp, UNITS.rifle.models * UNITS.rifle.hpPer, 'a squad holding fire does not shoot an enemy in range');
+  for (const cache of [undefined, snapshotCache(g)]) {
+    const flags = (slot, u) => snapshotFor(g, slot, [], [], cache).units.find(v => v[0] === u.id)[12];
+    assert.ok(flags(0, a) & 2048, 'the owner sees its unit holding fire');
+    assert.equal(flags(1, a) & 2048, 0, 'an enemy who sees the unit does not see its stance');
+  }
+  command(g, 0, { t: 'attack', ids: [a.id], target: b.id }); run(g, 4);
+  assert.ok(b.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'an attack order still shoots while holding fire');
+  command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: false });
+  assert.equal(a.holdFire, false, 'the switch turns off again');
+}
+
+// Hold fire applies to aircraft, anti-air guns and support interception, with explicit plane attacks allowed.
+{
+  const big = Array(60).fill('.'.repeat(60)), g = fresh(big); g.players.forEach(p => (p.mp = 10000));
+  const plane = put(g, 0, 'attacker', 40, 50), target = put(g, 1, 'rifle', 50, 50);
+  target.holdFire = true;
+  command(g, 0, { t: 'stance', ids: [plane.id], key: 'holdFire', on: true });
+  Object.assign(plane.air, { state: 'station', mission: { kind: 'patrol', x: 50, z: 50 } });
+  plane.attackPick = target.id; plane.retarget = 99;
+  const ammo = plane.air.ammo;
+  run(g, 0.3);
+  assert.equal(plane.air.ammo, ammo, 'a Hold fire patrol never fires at ground units');
+  assert.equal(command(g, 0, { t: 'attack', ids: [plane.id], target: target.id }), undefined);
+  run(g, 1);
+  assert.ok(plane.air.ammo < ammo, 'an explicit ground attack overrides the plane stance');
+
+  for (const type of ['mg', 'flak', 'fighter']) {
+    const a = fresh(big); a.players.forEach(p => (p.mp = 10000));
+    const gun = put(a, 0, type, 50, 50), enemy = put(a, 1, 'attacker', 60, 50);
+    command(a, 0, { t: 'stance', ids: [gun.id], key: 'holdFire', on: true });
+    enemy.holdFire = true;
+    Object.assign(enemy.air, { state: 'station', mission: { kind: 'patrol', x: 60, z: 50 } });
+    if (gun.air) Object.assign(gun.air, { state: 'station', mission: { kind: 'patrol', x: 50, z: 50 } });
+    gun.still = 3;
+    const hp = enemy.hp;
+    run(a, 0.3);
+    assert.equal(enemy.hp, hp, `${type} holds anti-air fire`);
+    if (gun.air) command(a, 0, { t: 'attack', ids: [gun.id], target: enemy.id });
+    else command(a, 0, { t: 'stance', ids: [gun.id], key: 'holdFire', on: false });
+    run(a, 0.3);
+    assert.ok(enemy.hp < hp, `${type} resumes anti-air fire when permitted`);
+  }
+  const a = fresh(big); a.players.forEach(p => (p.mp = 10000));
+  const gun = put(a, 0, 'flak', 50, 50); gun.still = 3; gun.holdFire = true;
+  const random = Math.random;
+  try {
+    Math.random = () => 0;
+    command(a, 1, { t: 'support', kind: 'dive', x: 50, z: 50 });
+    run(a, SUPPORT.dive.delay + 0.1);
+    assert.ok(!a.shots.some(s => s.k === 'shotdown' && s.by === 'flak'), 'Hold fire also prevents support interception');
+  } finally { Math.random = random; }
+}
+
+// Hold position: no seeking cover. Auto-retreat: a broken squad runs for home; without the switch it stays.
+{
+  const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14);
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  const held = put(g, 0, 'rifle', 15, 21); put(g, 1, 'rifle', 35, 21);
+  command(g, 0, { t: 'stance', ids: [held.id], key: 'holdPos', on: true });
+  run(g, 4);
+  assert.deepEqual([held.x, held.z], [15, 21], 'a squad holding position under fire does not walk to cover');
+  const h = fresh(); h.players.forEach(p => (p.mp = 10000));
+  const stays = put(h, 0, 'rifle', 21, 21), runs = put(h, 0, 'rifle', 21, 31);
+  command(h, 0, { t: 'stance', ids: [runs.id], key: 'autoRetreat', on: true });
+  step(h);
+  assert.ok(!runs.retreating, 'a healthy squad with auto-retreat stays');
+  stays.hp = runs.hp = UNITS.rifle.models * UNITS.rifle.hpPer * 0.3; step(h);
+  assert.ok(runs.retreating && !stays.retreating, 'only the squad with auto-retreat on runs when broken');
+}
+
+// Vehicles turn their front to the gun shooting them; a group spreads its fire instead of overkilling one squad.
+{
+  const g = fresh(); g.players.forEach(p => (p.mp = 10000));
+  const tank = put(g, 0, 'tank', 21, 21), gun = put(g, 1, 'at', 5, 21);
+  tank.hp = 1e5; tank.rot = 0; gun.still = 10; // facing away from the gun
+  run(g, 9);
+  assert.ok(Math.cos(tank.rot - Math.PI) > 0.95, 'a tank shot in the rear turns its front to the gun');
+  const s = fresh(); s.players.forEach(p => (p.mp = 10000));
+  const shooters = Array.from({ length: 6 }, (_, i) => put(s, 0, 'rifle', 5, 11 + i * 3));
+  const weak = put(s, 1, 'rifle', 25, 19), far = put(s, 1, 'rifle', 27.5, 19);
+  weak.hp = 20; weak.holdFire = far.holdFire = true;
+  step(s);
+  const on = (t) => shooters.filter(u => u.targetId === t.id).length;
+  assert.equal(on(weak) + on(far), 6, 'every shooter has a target');
+  assert.ok(on(weak) >= 1 && on(far) >= 2, 'once the weak squad is covered, the rest shoot the next one');
+}
+
+// Take Cover order: the selected infantry run to cover, crewed weapons included; vehicles and open ground refuse.
+{
+  const rows = [...empty]; rows[10] = '.....##' + '.'.repeat(13);
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  const squad = put(g, 0, 'rifle', 17, 21), mg = put(g, 0, 'mg', 17, 23), tank = put(g, 0, 'tank', 30, 30);
+  squad.amove = { x: 30, z: 21 };
+  assert.equal(command(g, 0, { t: 'cover', ids: [tank.id] }), 'needs', 'Take Cover needs infantry');
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id, mg.id, tank.id] }), undefined, 'Take Cover is accepted');
+  assert.equal(squad.amove, null, 'Take Cover replaces the squad\'s orders');
+  run(g, 4);
+  assert.ok(sim.inCover(g, squad) && sim.inCover(g, mg), 'both squads end up in cover');
+  assert.notEqual(Math.floor(squad.x / CELL), Math.floor(mg.x / CELL), 'each squad takes its own cover cell');
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id] }), undefined, 'a squad already in cover accepts the order and stays');
+  const open = put(g, 0, 'rifle', 30, 5);
+  assert.equal(command(g, 0, { t: 'cover', ids: [open.id] }), 'noCover', 'no cover within reach is refused');
+  open.retreating = true;
+  assert.equal(command(g, 0, { t: 'cover', ids: [open.id] }), 'retreating', 'retreating squads do not take cover');
+}
+
+// Mass entrenchment: the pattern planner. Segments come middle first and face away from the diggers.
+{
+  const a = { x: 20, z: 40 }, b = { x: 60, z: 40 }, back = { x: 40, z: 50 }, plan = (p, q = b) => sim.entrenchPlan(p, a, q, back);
+  assert.equal(plan('line').length, 5, 'a 40 m line is five trench segments');
+  assert.deepEqual([plan('line')[0].x, plan('line')[0].z], [40, 40], 'the middle segment comes first');
+  assert.equal(plan('double').length, 10, 'a double line is two rows');
+  assert.ok(plan('double').some(j => j.z === 46) && !plan('double').some(j => j.z < 40), 'the second row is behind the first, on the diggers\' side');
+  assert.equal(plan('zigzag').length, 6, 'a zigzag packs more segments into the same frontage');
+  assert.ok(new Set(plan('zigzag').map(j => j.dir.toFixed(2))).size === 2, 'zigzag segments alternate between two directions');
+  assert.equal(plan('ring', { x: 30, z: 40 }).length, 8, 'a 10 m ring is eight segments');
+  assert.ok(plan('ring', { x: 30, z: 40 }).every(j => Math.abs(Math.hypot(j.x - 20, j.z - 40) - 10) < 1e-9), 'ring segments sit on the circle');
+  assert.ok(plan('arc', { x: 20, z: 20 }).every(j => j.z < 40), 'an arc bows toward the second point');
+  assert.deepEqual(plan('strongpoint').map(j => j.kind), ['trench', 'trench', 'trench', 'trench', 'wire', 'wire'], 'a strongpoint is a trench square with wire in front');
+  assert.equal(plan('line', a).length, 1, 'a plain click is one segment');
+  assert.ok(sim.ENTRENCH_TYPES.every(p => plan(p).length <= 24), 'patterns stay small enough to order at once');
+}
+
+// Entrenchment placements reveal nothing about unseen terrain and recheck sight when queued segments start.
+{
+  const big = Array(80).fill('.'.repeat(80)), g = fresh(big); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 5, 5), order = { t: 'entrench', pattern: 'line', ids: [u.id], x: 120, z: 120, queue: true };
+  for (const ch of ['.', 'K', 'W']) {
+    g.chars.fill(ch);
+    assert.equal(command(g, 0, order), 'notVisible', 'hidden open ground, buildings and water give the same refusal');
+    assert.deepEqual(snapshotFor(g, 0, []).works, [], 'unseen terrain never changes the project ghost');
+    const place = sim.placementCheck(g, { kind: 'trench', x: 120, z: 120 }, () => false);
+    assert.equal(place.reason, 'notVisible');
+    assert.deepEqual(place.cells, [], 'unseen placement cells are not exposed');
+  }
+  g.chars.fill('.');
+  assert.equal(sim.placementCheck(g, { kind: 'trench', x: 120, z: 120 }, at => at.x < 120).reason, 'notVisible', 'every cell of a segment needs sight');
+
+  const q = fresh(big); q.players[0].mp = 10000;
+  const digger = put(q, 0, 'rifle', 5, 5), scout = put(q, 0, 'rifle', 120, 130);
+  assert.equal(command(q, 0, { ...order, ids: [digger.id] }), undefined, 'a scout can provide sight when the pattern is queued');
+  q.units.delete(scout.id);
+  q.army = { ...q.army, income: 0 };
+  const mp = q.players[0].mp;
+  step(q);
+  assert.ok(!digger.dig, 'a deferred segment cannot start after its sight is lost');
+  assert.equal(q.players[0].mp, mp, 'a hidden segment is dropped without payment');
+  assert.deepEqual(snapshotFor(q, 0, []).works, [], 'the hidden segment is removed without inspecting its terrain');
+}
+
+// Full entrenchment queues cannot allocate unpaid projects or ghosts.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 40, 50);
+  for (let i = 0; i < 8; i++) command(g, 0, { t: 'move', orders: [[u.id, 40, 60]], queue: true });
+  for (let i = 0; i < 20; i++) {
+    assert.equal(command(g, 0, { t: 'entrench', pattern: 'line', ids: [u.id], x: 40, z: 40, queue: true }), 'queueFull');
+    assert.deepEqual(snapshotFor(g, 0, []).works, [], 'a refused pattern never appears in snapshots');
+    assert.equal(g.projects?.size ?? 0, 0, 'repeated refusals allocate no projects between ticks');
+  }
+  assert.equal(u.orders.length, 8, 'the full queue is unchanged');
+}
+
+// Refused replacement orders leave active entrenchments and paid segments intact.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 40, 50);
+  command(g, 0, { t: 'entrench', pattern: 'line', ids: [u.id], x: 20, z: 40, x2: 60, z2: 40 }); step(g);
+  const project = u.entrench, dig = u.dig;
+  assert.ok(project && dig, 'the squad has started a paid segment');
+  for (const order of [
+    { t: 'attack', target: 99999 },
+    { t: 'move', orders: [[u.id, NaN, 60]] },
+    { t: 'garrison', x: 40, z: 40 },
+    { t: 'cover' },
+  ]) {
+    assert.ok(command(g, 0, { ids: [u.id], ...order }), 'the replacement is refused');
+    assert.equal(u.entrench, project, 'a refusal keeps the shared project');
+    assert.equal(u.dig, dig, 'a refusal keeps the paid segment');
+  }
+  g.players[0].mp = 0;
+  assert.equal(command(g, 0, { t: 'dig', ids: [u.id], x: 40, z: 50 }), 'mp');
+  assert.equal(u.entrench, project, 'an unaffordable dig keeps the shared project');
+  assert.equal(command(g, 0, { t: 'move', orders: [[u.id, 40, 70]] }), undefined);
+  assert.equal(u.entrench, null, 'an accepted replacement detaches the squad');
+}
+
+// Mass entrenchment: every selected digger works the pattern, pays per segment and waits when the manpower runs out.
+{
+  const big = Array(40).fill('.'.repeat(40)), trenches = (g) => g.chars.filter(ch => ch === 'T').length;
+  const g = fresh(big); g.players[0].mp = 10000;
+  const crew = [put(g, 0, 'rifle', 36, 50), put(g, 0, 'rifle', 40, 50), put(g, 0, 'rifle', 44, 50)], tank = put(g, 0, 'tank', 10, 10);
+  const order = { t: 'entrench', pattern: 'line', x: 20, z: 40, x2: 60, z2: 40 };
+  assert.equal(command(g, 0, { ...order, ids: [tank.id] }), 'noBuilders', 'a tank cannot entrench');
+  assert.equal(command(g, 0, { ...order, ids: crew.map(u => u.id), pattern: 'toString' }), 'blocked', 'an unknown pattern is refused');
+  const mp = g.players[0].mp;
+  assert.equal(command(g, 0, { ...order, ids: [...crew.map(u => u.id), tank.id] }), undefined, 'the entrench order is accepted');
+  assert.equal(g.players[0].mp, mp, 'nothing is paid up front');
+  step(g);
+  assert.ok(crew.every(u => u.dig), 'every digger takes a segment at once');
+  assert.equal(new Set(crew.map(u => `${u.dig.x},${u.dig.z}`)).size, 3, 'each digger takes a different segment');
+  assert.ok(crew.some(u => u.dig.x === 40), 'the middle segment is among the first');
+  assert.ok(snapshotFor(g, 0, []).units.find(v => v[0] === crew[0].id)[12] & 1024, 'the snapshot flags a digger on a mass entrenchment');
+  run(g, 60);
+  assert.equal(trenches(g), 20, 'five segments of four cells are dug');
+  assert.equal(g.players[0].mp > mp - 150 - 1 && g.players[0].mp < mp + 400, true, 'the line cost five segments');
+  assert.ok(crew.every(u => !u.entrench && !u.dig), 'the diggers are free again when the pattern is done');
+
+  const poor = fresh(big); poor.players[0].mp = 10000;
+  const two = [put(poor, 0, 'rifle', 38, 50), put(poor, 0, 'rifle', 42, 50)];
+  poor.players[0].mp = 45; poor.players[0].inc = 0;
+  const income = poor.army.income; poor.army = { ...poor.army, income: 0 };
+  assert.equal(command(poor, 0, { ...order, ids: two.map(u => u.id) }), undefined, 'a pattern bigger than the purse is accepted');
+  run(poor, 30);
+  assert.equal(trenches(poor), 4, 'only the segment that could be paid for is dug');
+  assert.ok(two.every(u => u.entrench && !u.dig), 'the diggers wait for manpower');
+  poor.players[0].mp = 10000; run(poor, 60);
+  assert.equal(trenches(poor), 20, 'the rest is dug once the manpower is there');
+  poor.army = { ...poor.army, income };
+
+  const moved = fresh(big); moved.players[0].mp = 10000;
+  const one = put(moved, 0, 'rifle', 40, 50);
+  command(moved, 0, { ...order, ids: [one.id] }); step(moved);
+  command(moved, 0, { t: 'move', orders: [[one.id, 40, 70]] });
+  run(moved, 40);
+  assert.ok(!one.entrench && one.z > 60, 'a new order takes the digger off the entrenchment for good');
+  assert.ok(trenches(moved) < 20, 'and the pattern is left unfinished');
+
+  const fort = fresh(big); fort.players[0].mp = 10000;
+  const team = [put(fort, 0, 'rifle', 38, 54), put(fort, 0, 'rifle', 42, 54)];
+  assert.equal(command(fort, 0, { t: 'entrench', pattern: 'strongpoint', ids: team.map(u => u.id), x: 40, z: 40, x2: 40, z2: 20 }), undefined);
+  run(fort, 90);
+  assert.equal(trenches(fort), 12, 'the strongpoint is a closed square of twelve trench cells');
+  assert.equal(fort.chars.filter(ch => ch === 'X').length, 10, 'with two runs of wire in front');
+  assert.ok(fort.chars.findIndex(ch => ch === 'X') < fort.chars.findIndex(ch => ch === 'T'), 'the wire is on the side the strongpoint faces');
+}
+
+// Mass entrenchment is a shared project: its ghost goes to the whole side, more squads can join it, and it can wait
+// in a squad's order queue.
+{
+  const big = Array(40).fill('.'.repeat(40)), trenches = (g) => g.chars.filter(ch => ch === 'T').length;
+  const order = { t: 'entrench', pattern: 'line', x: 20, z: 40, x2: 60, z2: 40 };
+  const g = createGame(blank(big), ['a', 'b', 'c'], false, [0, 0, 1]); g.units.clear();
+  g.players.forEach(p => { p.spawn = { x: -1000, z: -1000 }; p.mp = 10000; });
+  const first = put(g, 0, 'rifle', 40, 50), helper = put(g, 0, 'rifle', 44, 50), ally = put(g, 1, 'rifle', 36, 50), foe = put(g, 2, 'rifle', 40, 70);
+  for (const u of g.units.values()) u.holdFire = true; // nobody shoots: this is about digging
+  command(g, 0, { ...order, ids: [first.id] }); step(g);
+  const works = (slot) => snapshotFor(g, slot, []).works;
+  assert.equal(works(0).length, 4, 'the owner sees the four segments still to dig (the fifth is being dug)');
+  assert.equal(works(1).length, 4, 'an ally sees the plan too');
+  assert.equal(works(2).length, 0, 'an enemy does not');
+  const id = works(0)[0][0];
+  assert.equal(command(g, 0, { t: 'entrench', ids: [helper.id], join: id + 99 }), 'blocked', 'an unknown project cannot be joined');
+  assert.equal(command(g, 2, { t: 'entrench', ids: [foe.id], join: id }), 'blocked', 'an enemy cannot join');
+  assert.equal(command(g, 0, { t: 'entrench', ids: [helper.id], join: id }), undefined, 'another squad joins the pattern');
+  assert.equal(command(g, 1, { t: 'entrench', ids: [ally.id], join: id }), undefined, 'an ally can help');
+  const allyMp = g.players[1].mp; step(g);
+  assert.ok(helper.dig && ally.dig, 'the helpers take segments of their own');
+  assert.ok(g.players[1].mp < allyMp, 'the ally pays for the segment it digs');
+  assert.equal(works(0).length, 2, 'the ghost shrinks as segments are taken');
+  run(g, 40);
+  assert.equal(trenches(g), 20, 'together they finish the line');
+  assert.equal(g.projects.size, 0, 'a finished project is dropped');
+
+  const q = fresh(big); q.players[0].mp = 10000;
+  const u = put(q, 0, 'rifle', 40, 60);
+  command(q, 0, { t: 'move', orders: [[u.id, 40, 52]] });
+  assert.equal(command(q, 0, { ...order, ids: [u.id], queue: true }), undefined, 'an entrenchment can be queued behind a move');
+  assert.ok(!u.entrench && u.orders.length === 1 && u.path.length, 'the squad keeps walking; the pattern waits');
+  assert.equal(snapshotFor(q, 0, []).works.length, 5, 'the ghost shows while the order waits');
+  assert.equal(command(q, 0, { t: 'move', queue: true, orders: [[u.id, 40, 74]] }), undefined);
+  run(q, 2);
+  assert.equal(q.projects.size, 1, 'a project somebody is waiting to start is kept');
+  run(q, 110);
+  assert.equal(trenches(q), 20, 'the queued pattern is dug after the move');
+  assert.ok(u.z > 70 && !u.entrench, 'and the move queued behind it runs once the pattern is done');
+
+  const s = fresh(big); s.players[0].mp = 10000;
+  const lone = put(s, 0, 'rifle', 40, 50);
+  command(s, 0, { ...order, ids: [lone.id] }); step(s);
+  command(s, 0, { t: 'stop', ids: [lone.id] }); run(s, 2);
+  assert.equal(s.projects.size, 0, 'a pattern nobody works on is dropped');
+  assert.deepEqual(snapshotFor(s, 0, []).works, [], 'and its ghost goes with it');
+}
+
+// Shared entrenchments hold follow-up orders until the last claimed segment is finished.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const fast = put(g, 0, 'rifle', 36, 41), slow = put(g, 0, 'rifle', 52, 65);
+  fast.type = 'engineer';
+  command(g, 0, { t: 'entrench', pattern: 'line', ids: [fast.id, slow.id], x: 32, z: 40, x2: 48, z2: 40 });
+  command(g, 0, { t: 'move', orders: [[fast.id, 36, 70]], queue: true });
+  step(g);
+  assert.ok(fast.dig && slow.dig && !fast.entrench.jobs.length, 'all segments are claimed');
+  for (let i = 0; fast.dig; i++) { assert.ok(i < 400, 'the engineer finishes'); step(g); }
+  assert.ok(slow.dig, 'the distant rifle squad is still digging');
+  run(g, 1);
+  assert.equal(fast.orders.length, 1, 'the queued move waits for the other digger');
+  assert.ok(fast.entrench, 'the engineer still belongs to the unfinished pattern');
+  assert.equal(g.projects.size, 1, 'the project survives a sweep while its final segment is active');
+  run(g, 35);
+  assert.ok(!slow.dig && !fast.entrench && fast.z > 65, 'the move starts after the shared pattern finishes');
+  assert.equal(g.projects.size, 0, 'the completed project is collected');
+}
+
+// Full shelling queues report queueFull while a mixed selection can still enqueue on an available tank.
+{
+  const rows = [...empty]; rows[4] = '.'.repeat(14) + 'BB....';
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const full = put(g, 0, 'tank', 21, 21), free = put(g, 0, 'tank', 21, 31);
+  for (let i = 0; i < 8; i++) command(g, 0, { t: 'move', orders: [[full.id, 21, 31]], queue: true });
+  const order = { t: 'fireat', ids: [full.id], x: 29, z: 9, queue: true };
+  assert.equal(command(g, 0, order), 'queueFull', 'a discarded shelling order is refused');
+  assert.equal(full.orders.length, 8, 'the full queue is unchanged');
+  assert.equal(command(g, 0, { ...order, ids: [full.id, free.id] }), undefined, 'one successful enqueue accepts the group');
+  assert.equal(free.orders.at(-1).t, 'fireat', 'the available tank keeps its shelling order');
+}
+
+// Shift-queue: take cover, an aimed ability and shelling a house wait their turn like moves do.
+{
+  const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14); rows[4] = '.'.repeat(14) + 'BB....';
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const squad = put(g, 0, 'rifle', 31, 21), tank = put(g, 0, 'tank', 21, 31);
+  command(g, 0, { t: 'move', orders: [[squad.id, 15, 21], [tank.id, 21, 21]] });
+  assert.equal(command(g, 0, { t: 'ability', ids: [squad.id], x: 15, z: 15, queue: true }), undefined, 'a grenade can be queued');
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id], queue: true }), undefined, 'take cover can be queued');
+  assert.ok(squad.nade === null && squad.orders.length === 2, 'neither starts while the squad is moving');
+  assert.equal(command(g, 0, { t: 'fireat', ids: [tank.id], x: 29, z: 9, queue: true }), undefined, 'shelling a house can be queued');
+  assert.ok(tank.fireAt < 0 && tank.orders.length === 1, 'the tank finishes its move first');
+  const rowsOf = snapshotFor(g, 0, []).orders;
+  assert.deepEqual(rowsOf.find(r => r[0] === squad.id).filter((_, i) => i >= 2 && (i - 2) % 3 === 0), [6, 1], 'queued orders are drawn as a throw, then a move to cover');
+  assert.equal(rowsOf.find(r => r[0] === tank.id)[2], 5, 'and as a fire order for the tank');
+  run(g, 12);
+  assert.ok(sim.inCover(g, squad), 'after the move and the grenade the squad ends up in cover');
+  assert.ok(squad.cd > 0, 'the grenade was thrown');
+  assert.ok(tank.fireAt >= 0 || g.chars[4 * 20 + 14] !== 'B', 'the tank went on to shell the house');
 }
 
 // Assault mode: the defender gets a bunker and fortifications; attackers must destroy it before time runs out.
@@ -996,6 +1417,194 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const c = createGame(map, ['a', 'b'], false), r2 = [...c.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   command(c, 0, { t: 'ability', ids: [r2.id], x: r2.x + 5, z: r2.z }); run(c, 0.2);
   assert.ok(r2.cd > 0, 'free in Conquest');
+}
+
+// Autocast (Warcraft 3 style): right-click an ability and the unit uses it by itself. On by default where abilities are
+// free, off where they cost Munitions. It goes through the ability command (cost, cooldown) and sees only what its side sees.
+{
+  const cover = [...empty]; cover[10] = '.'.repeat(10) + '+' + '.'.repeat(9); // sandbags at x 20-22, z 20-22
+  const setup = (rows) => {
+    const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+    const r = put(g, 0, 'rifle', 10, 21), e = put(g, 1, 'rifle', 21, 21); // 11 m apart: grenade range is 18
+    e.auto = false;
+    return { g, r, e };
+  };
+  // grenades r throws in secs (both rifle squads kept at full strength so the duel never ends first)
+  const throws = (g, r, secs) => {
+    let n = 0;
+    for (let i = 0; i < secs * 20; i++) { const cd = r.cd; for (const u of g.units.values()) u.hp = 100; step(g); if (r.cd > cd + 1) n++; }
+    return n;
+  };
+
+  // the command: your own units that have an ability, and a real on/off
+  {
+    const { g, r, e } = setup(empty), flak = put(g, 0, 'flak', 4, 4);
+    assert.equal(r.auto, true, 'free abilities autocast by default');
+    assert.equal(flak.auto, false, 'nothing to autocast without an ability');
+    assert.equal(command(g, 0, { t: 'autocast', ids: [r.id], on: 'yes' }), 'blocked', 'on must be true or false');
+    assert.equal(command(g, 0, { t: 'autocast', ids: [e.id, flak.id], on: true }), 'needs', 'enemy units and units without an ability are refused');
+    assert.equal(e.auto, false, "an enemy's autocast is not yours to change");
+    assert.equal(command(g, 0, { t: 'autocast', ids: [r.id, flak.id], on: false }), undefined);
+    assert.equal(r.auto, false, 'autocast turned off');
+  }
+
+  // a grenade at the squad in cover, once per cooldown; nothing while autocast is off
+  {
+    const { g, r, e } = setup(cover);
+    let thrown = null;
+    for (let i = 0; i < 20 && !thrown; i++) { step(g); thrown = g.nades.find(n => n.owner === 0); }
+    assert.ok(thrown && Math.hypot(thrown.x - e.x, thrown.z - e.z) < 2, 'autocast grenade thrown at the squad in cover');
+    assert.ok(throws(g, r, 10) === 0 && r.cd > 0, 'one throw per cooldown');
+    r.cd = 0; r.auto = false;
+    assert.equal(throws(g, r, 3), 0, 'autocast off: no grenade');
+    r.auto = true;
+    assert.equal(throws(g, r, 1), 1, 'autocast on again: the cooldown was all that held it');
+    r.cd = 0; r.holdFire = true;
+    assert.equal(throws(g, r, 3), 0, 'holding fire: no autocast grenade either');
+  }
+
+  // not at a squad its side cannot see (a house in between)
+  {
+    const rows = cover.map((row, z) => (z >= 8 && z <= 12 ? row.slice(0, 7) + 'B' + row.slice(8) : row));
+    const { g, r, e } = setup(rows);
+    run(g, 3);
+    assert.equal(g.players[0].visible.has(e.id), false, 'the house hides the squad');
+    assert.ok(r.cd <= 0 && !r.nade, 'no grenade at what it cannot see');
+  }
+
+  // a retreating squad never autocasts, and a player's own ability order is never replaced
+  {
+    const { g, r } = setup(cover);
+    g.players[0].spawn = { x: 3, z: 39 };
+    command(g, 0, { t: 'retreat', ids: [r.id] });
+    assert.equal(throws(g, r, 1.5), 0, 'no autocast while retreating');
+    assert.ok(r.retreating, 'still on the way home');
+    const o = setup(cover);
+    command(o.g, 0, { t: 'ability', ids: [o.r.id], x: 35, z: 39 }); // 31 m: out of range, so the squad walks first
+    run(o.g, 1);
+    assert.ok(o.r.nade?.x === 35 && !o.r.nade.auto, "the player's grenade order stands");
+  }
+
+  // Classic: off by default, and an autocast grenade waits for Munitions, then pays for itself
+  {
+    const g = createGame(blank(cover), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), p = g.players[0];
+    const of = (slot) => [...g.units.values()].find(u => u.owner === slot && u.type === 'rifle');
+    const r = of(0), e = of(1);
+    for (const u of [...g.units.values()]) if (u.type === 'engineer') g.units.delete(u.id);
+    assert.equal(r.auto, false, 'abilities that cost Munitions start with autocast off');
+    r.x = 10; r.z = 21; e.x = 21; e.z = 21; r.auto = true; p.mun = 0;
+    run(g, 2);
+    assert.ok(r.cd <= 0 && !r.nade, 'no Munitions, no grenade');
+    p.mun = 20;
+    run(g, 1);
+    assert.ok(r.cd > 25 && Math.abs(p.mun - 5) < 1, `autocast grenade paid 15 Munitions (${p.mun})`);
+  }
+
+  // the snapshot tells only the owner (AUTO_FLAG, 16384), cached or not
+  {
+    const { g, r } = setup(empty);
+    run(g, 0.5);
+    const flagOf = (s) => s.units.find(row => row[0] === r.id)[12] & sim.AUTO_FLAG;
+    const cache = snapshotCache(g);
+    assert.ok(flagOf(snapshotFor(g, 0, [])) && flagOf(snapshotFor(g, 0, [], [], cache)), 'the owner sees autocast on');
+    assert.equal(flagOf(snapshotFor(g, 1, [])), 0, 'the enemy does not');
+    assert.equal(flagOf(snapshotFor(g, 1, [], [], snapshotCache(g))), 0, 'the enemy does not (cached)');
+  }
+
+  // the client remembers the choice per unit type (Classic apart) and gives it to new units once
+  {
+    const sent = [], store = new Map(), storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+    const ac = createAutocast({ storage, send: (c) => sent.push(c) }), A = sim.AUTO_FLAG;
+    const row = (id, type, owner, flags) => { const x = Array(15).fill(0); x[0] = id; x[1] = type; x[2] = owner; x[12] = flags; return x; };
+    assert.equal(ac.toggle('rifle', [{ id: 1, flags: A }, { id: 2, flags: 0 }], false), true, 'mixed selection: turn it on for all');
+    assert.equal(ac.toggle('rifle', [{ id: 1, flags: A }, { id: 2, flags: A }], false), false, 'all on: turn it off');
+    assert.deepEqual(sent.at(-1), { t: 'autocast', ids: [1, 2], on: false });
+    sent.length = 0;
+    ac.adopt([row(5, 'rifle', 0, A), row(6, 'rifle', 0, 0), row(7, 'mg', 0, A), row(8, 'rifle', 1, A)], 0, false);
+    assert.deepEqual(sent, [{ t: 'autocast', ids: [5], on: false }], 'a new rifle squad takes the remembered choice; other types and enemies are left alone');
+    ac.adopt([row(5, 'rifle', 0, A)], 0, false);
+    assert.equal(sent.length, 1, 'once per unit, so turning one back on by hand sticks');
+    const again = createAutocast({ storage, send: (c) => sent.push(c) });
+    again.adopt([row(9, 'rifle', 0, A)], 0, true);
+    assert.equal(sent.length, 1, 'Classic keeps its own memory');
+    again.adopt([row(10, 'rifle', 0, A)], 0, false);
+    assert.deepEqual(sent.at(-1), { t: 'autocast', ids: [10], on: false }, 'remembered across matches');
+  }
+}
+
+// Autocast, the other abilities: each has its own reason to fire (the cooldown starting is the sign), judged from what the
+// unit's side can see. Enemies here have autocast off and never shoot, so only the unit under test acts.
+{
+  const wide = Array(20).fill('.'.repeat(60));
+  const rich = (g) => { g.players.forEach(p => (p.mp = 5000)); return g; };
+  const setup = (n = 2) => rich(fresh(wide, n));
+  const within = (g, secs, done) => { for (let i = 0; i < secs * 20; i++) { step(g); if (done()) return true; } return false; };
+  const foe = (g, type, x, z) => { const u = put(g, 1, type, x, z); u.auto = false; u.cooldown = 1e9; return u; };
+  const crowd = (g, xs) => xs.forEach(x => foe(g, 'rifle', x, 21 + (x % 2)));
+
+  // Suppressive Fire: for a squad advancing on the MG, not one walking away
+  {
+    const g = setup(), mg = put(g, 0, 'mg', 20, 21), e = foe(g, 'rifle', 45, 21); mg.still = 5; // set up
+    command(g, 1, { t: 'move', orders: [[e.id, 22, 21]] });
+    assert.ok(within(g, 2, () => mg.cd > 0 && mg.buff > 0), 'the MG suppresses a squad coming at it');
+    const h = setup(), mg2 = put(h, 0, 'mg', 20, 21), away = foe(h, 'rifle', 40, 21); mg2.still = 5;
+    command(h, 1, { t: 'move', orders: [[away.id, 58, 21]] });
+    assert.ok(!within(h, 3, () => mg2.cd > 0), 'no Suppressive Fire at a squad walking away');
+  }
+  // AP round: for a vehicle it is shooting at, not for infantry
+  {
+    const g = setup(), at = put(g, 0, 'at', 20, 21); at.still = 5; foe(g, 'tank', 50, 21);
+    assert.ok(within(g, 2, () => at.cd > 0), 'the AT gun loads AP against a tank');
+    const h = setup(), at2 = put(h, 0, 'at', 20, 21); at2.still = 5; foe(h, 'rifle', 40, 21);
+    assert.ok(!within(h, 2, () => at2.cd > 0), 'no AP round against infantry');
+  }
+  // smoke: only a badly hurt tank that was just hit by anti-tank fire
+  {
+    const smokeAfter = (hp, hit) => {
+      const g = setup(), tk = put(g, 0, 'tank', 20, 21); tk.hp = hp; if (hit) tk.atHit = g.tick;
+      return within(g, 1, () => g.smokes.length > 0 && tk.cd > 0);
+    };
+    assert.equal(smokeAfter(100, true), true, 'a hurt tank under anti-tank fire pops smoke');
+    assert.equal(smokeAfter(300, true), false, 'a healthy tank does not');
+    assert.equal(smokeAfter(100, false), false, 'a hurt tank nobody is hitting does not');
+  }
+  // barrage: a crowd it can see, never over its own troops, never at what its side cannot see
+  {
+    const spotter = (g, x) => { put(g, 0, 'rifle', x, 21).auto = false; };
+    for (const type of ['rocket', 'mortar']) {
+      const g = setup(), gun = put(g, 0, type, 20, 21); gun.still = 5; crowd(g, [46, 47, 48]); spotter(g, 30);
+      assert.ok(within(g, 2, () => gun.cd > 0), `${type}: a crowd of three it can see gets a barrage`);
+    }
+    const near = setup(), r1 = put(near, 0, 'rocket', 20, 21); crowd(near, [50, 51, 52]); spotter(near, 45);
+    assert.ok(!within(near, 2, () => r1.cd > 0), 'a friendly squad inside the blast stops it');
+    const hidden = setup(), r2 = put(hidden, 0, 'rocket', 20, 21); crowd(hidden, [55, 56, 57]);
+    assert.ok(!within(hidden, 2, () => r2.cd > 0) && hidden.players[0].visible.size === 0, 'a crowd its side cannot see is left alone');
+    const two = setup(), r3 = put(two, 0, 'rocket', 20, 21); crowd(two, [50, 51]); spotter(two, 30);
+    assert.ok(!within(two, 2, () => r3.cd > 0), 'two in the open are not worth a barrage');
+  }
+  // Ura!: a pinned squad on the move, not one standing still
+  {
+    const g = setup(3), cs = put(g, 2, 'conscript', 20, 21); cs.supp = 70;
+    command(g, 2, { t: 'move', orders: [[cs.id, 50, 21]] });
+    assert.ok(within(g, 1, () => cs.sprint > 0), 'pinned conscripts on the move shout Ura!');
+    const h = setup(3), idle = put(h, 2, 'conscript', 20, 21);
+    assert.ok(!within(h, 1.5, () => { idle.supp = 70; return idle.sprint > 0; }), 'pinned but standing still: no Ura!');
+  }
+  // satchel: Rangers ordered to attack a squad in a house walk up and plant it once within 20 m (they stop to shoot at 26 m)
+  {
+    const rows = wide.map((row, z) => (z === 9 || z === 10 ? row.slice(0, 30) + 'BB' + row.slice(32) : row));
+    const planted = (auto) => {
+      const g = rich(fresh(rows)), e = foe(g, 'rifle', 75, 20);
+      command(g, 1, { t: 'garrison', ids: [e.id], x: 63, z: 20 });
+      assert.ok(within(g, 20, () => e.garrison >= 0), 'the squad took the house');
+      const rg = put(g, 0, 'ranger', 82, 20); rg.auto = auto;
+      run(g, 0.5);
+      assert.equal(command(g, 0, { t: 'attack', ids: [rg.id], target: e.id }), undefined);
+      return within(g, 10, () => rg.cd > 0);
+    };
+    assert.equal(planted(true), true, 'the Rangers plant a satchel on the house they were told to attack');
+    assert.equal(planted(false), false, 'with autocast off they only shoot');
+  }
 }
 
 // Fuel (Classic): contested depots and the HQ pay Fuel; vehicles need it. New units: camouflaged sniper, mortar barrage.
@@ -1622,8 +2231,10 @@ const referenceSeparation = `
     const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
     if (sa && sb) continue;
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
+    const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
+    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
 `;
 
@@ -1657,6 +2268,7 @@ const referenceSeparation = `
 const referenceNearCover = (g, u) => {
   const solid = new Set(['B', '#', 'R', 'H', 'K']), x = Math.floor(u.x / CELL), y = Math.floor(u.z / CELL);
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (solid.has(g.chars[(y + dy) * g.w + x + dx])) return true;
+  for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) if ('BK'.includes(g.chars[(y + dy) * g.w + x + dx] ?? ' ')) return true;
   return [...g.units.values()].some(v => v !== u && !v.air && !UNITS[v.type].infantry && massiveInternals.dist(u, v) < 3.5);
 };
 
@@ -1982,6 +2594,38 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.equal(command(blocked, 0, { ...build, ids: [engineer.id] }), 'notVisible', 'authoritative command still rejects the blind proposed site');
 }
 
+// Entrenching and taking cover plan on remembered terrain; auto-retreat is set from the seat's own units.
+{
+  const field = (trench) => {
+    const map = aiMap();
+    if (trench) for (const r of [39, 40, 41]) map.rows[r] = '.'.repeat(39) + 'TTT' + '.'.repeat(38);
+    const g = createGame(map, ['AI', 'enemy'], false, [0, 1]);
+    const squad = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+    Object.assign(squad, { x: g.points[0].x, z: g.points[0].z }); g.points[0].owner = 0; g.players[0].mp = 1000;
+    return { g, squad };
+  };
+  // Positive control: on open ground the squad holding a point entrenches, and every squad is put on auto-retreat.
+  const open = field(false), plain = aiCommands(open.g, 0, {}, 5).commands;
+  const dug = plain.find(c => c.t === 'entrench');
+  assert.ok(dug && dug.ids.includes(open.squad.id) && dug.pattern === 'strongpoint', 'a squad holding open ground entrenches');
+  assert.ok(plain.some(c => c.t === 'stance' && c.key === 'autoRetreat' && c.on === true && c.ids.includes(open.squad.id)), 'the army is put on auto-retreat');
+  // Trench already stands around the point (public map): no new entrenchment, the squad takes cover in it instead.
+  const dugIn = field(true); dugIn.squad.x += 6; // beside the trench, still on the point
+  const known = aiCommands(dugIn.g, 0, {}, 5).commands;
+  assert.ok(!known.some(c => c.t === 'entrench'), 'a point with trench around it is not entrenched again');
+  assert.ok(known.some(c => c.t === 'cover' && c.ids.includes(dugIn.squad.id)), 'the squad takes cover in the existing trench');
+  // An unseen enemy building covers that trench. The seat's remembered map still shows it, so nothing changes.
+  const hidden = structuredClone(dugIn.g), post = massiveInternals.placeBuilding(hidden, 1, 'barracks', 39 * hidden.w + 39, true);
+  assert.ok(!teamSees(hidden, 0, post), 'the enemy building is under fog');
+  aiEquivalent(dugIn.g, hidden, 0, {}, 5, 'an unseen building over trench cells does not trigger an entrenchment');
+  // Stances come from the seat's own rows: once a squad reports auto-retreat the AI stops ordering it.
+  open.squad.autoRetreat = true;
+  assert.ok(!aiCommands(open.g, 0, {}, 5).commands.some(c => c.t === 'stance' && c.ids.includes(open.squad.id)), 'a squad already on auto-retreat is left alone');
+  // A squad already on a mass entrenchment is not given another one.
+  open.squad.entrench = { jobs: [{ x: 1, z: 1 }], active: 0, crew: 1 };
+  assert.ok(!aiCommands(open.g, 0, {}, 5).commands.some(c => c.t === 'entrench'), 'a squad on a mass entrenchment is not ordered to entrench again');
+}
+
 // A detached view contains no live player, unit, terrain, or visibility references.
 {
   const g = createGame(aiMap(), ['AI', 'ally', 'enemy'], false, [0, 0, 1], [0, 1, 2]), memory = {}, before = aiDigest(g);
@@ -2063,71 +2707,114 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   }
 }
 
-// Two seeds per mode exercise hidden perturbations across hundreds of real AI turns.
+// Each perturbation below is only kept for a turn when the seat's human snapshot stays identical: a hidden building
+// beside a visible enemy changes that enemy's public cover value, for example, so that world is not equivalent.
+// Two seeds per mode exercise hidden perturbations across hundreds of real AI turns, in every mode the AI plays.
 {
-  const map = JSON.parse(readFileSync('maps/default.json', 'utf8')), originalRandom = Math.random;
-  const counts = { comparisons: 0, commands: 0, hiddenUnits: 0, footprints: 0, depots: 0, visibleUnits: 0 };
+  const maps = { default: JSON.parse(readFileSync('maps/default.json', 'utf8')), 'hill-112': JSON.parse(readFileSync('maps/hill-112.json', 'utf8')) };
+  // The same map without houses: holding squads have nowhere to garrison, so they entrench.
+  maps.open = { ...maps.default, rows: maps.default.rows.map(row => row.replaceAll('B', '.')) };
+  const originalRandom = Math.random;
+  const counts = { comparisons: 0, commands: 0, hiddenUnits: 0, footprints: 0, depots: 0, visibleUnits: 0, digits: 0, dropped: 0 }, byType = {};
+  const hordeSeats = new Set();
   try {
-    for (const mode of ['conquest', 'classic', 'assault']) for (const seed of [617, 902]) {
+    for (const [mode, mapName, ticks] of [['conquest', 'default', 1600], ['conquest', 'open', 1600], ['classic', 'default', 1600], ['assault', 'default', 1600], ['horde', 'hill-112', 2600]]) for (const seed of [617, 902]) {
       Math.random = aiRandom(seed);
-      const g = createGame(map, ['AI 0', 'AI 1', 'AI 2'], true, [0, 1, 2], [0, 1, 2], { mode, defenderTeam: 0 });
-      const memories = [{}, {}, {}], views = memories.map((m, slot) => viewFor(g, slot, m));
-      for (let tick = 0; tick < 1600 && g.winner === null; tick++) {
+      const names = mode === 'horde' ? ['AI 0', 'AI 1'] : ['AI 0', 'AI 1', 'AI 2'];
+      const g = createGame(maps[mapName], names, true, names.map((_, i) => i), [0, 1, 2], { mode, defenderTeam: 0 });
+      assert.equal(g.mode?.kind ?? 'conquest', mode, `${mode} fixture really runs ${mode}`);
+      const seats = g.players.map(p => p.slot), memories = seats.map(() => ({})), views = memories.map((m, slot) => viewFor(g, slot, m));
+      for (let tick = 0; tick < ticks && g.winner === null; tick++) {
         step(g);
-        if (g.tick % 2 === 0) for (let slot = 0; slot < 3; slot++) views[slot] = viewFor(g, slot, memories[slot]);
-        for (let slot = 0; slot < 3; slot++) if ((g.tick + slot * 13) % 40 === 0) {
-          const altered = structuredClone(g), visible = new Set(aiSnapshot(g, slot).units.map(u => u[0])), team = g.players[slot].team;
-          for (const p of altered.players) if (p.team !== team) {
-            p.mp += 12345.67; p.mun = (p.mun ?? 0) + 891.2; p.fuel = (p.fuel ?? 0) + 765.4;
-            for (const kind of Object.keys(p.sup)) p.sup[kind] += 97;
-          }
-          let index = 0;
-          for (const [id, u] of [...altered.units]) if (altered.players[u.owner].team !== team && !visible.has(id)) {
-            counts.hiddenUnits++;
-            u.x = -10000 - index; u.z = -10000; u.hp = index % 2 ? 1 : UNITS[u.type].hpPer * UNITS[u.type].models;
-            u.still = 1000; u.path = [{ x: 150, z: 150 }]; u.orders = [{ t: 'move', x: 140, z: 140 }];
-            u.targetId = 999999; u.attackId = 999998; u.cd = 999; u.prog = 999;
-            if (u.queue) u.queue = ['rifle', 'mg', 'tank'];
-            if (u.air) Object.assign(u.air, { state: 'rearm', fuel: 0, ammo: 0, timer: 999 });
-            if (!UNITS[u.type].building && index++ % 3 === 0) altered.units.delete(id);
-          }
-          // Enemies the seat can see still keep private state: stationary timers, queued paths and the digits below the wire precision.
-          const exact = [];
-          for (const u of altered.units.values()) if (altered.players[u.owner].team !== team && visible.has(u.id)) {
-            exact.push([u, u.x, u.z, u.hp]);
-            Object.assign(u, { still: UNITS[u.type].camo ? u.still : 1000 - u.still, path: [{ x: 150, z: 150 }], orders: [{ t: 'move', x: 140, z: 140 }], retarget: 77, repath: 77, stuck: 3 });
-            u.x = Math.round(u.x * 10) / 10; u.z = Math.round(u.z * 10) / 10; u.hp = Math.max(0.01, Math.ceil(u.hp) - 0.45);
-            counts.visibleUnits++;
-          }
-          try { assert.deepEqual(aiSnapshot(altered, slot), aiSnapshot(g, slot)); }
-          catch { for (const [u, x, z, hp] of exact) Object.assign(u, { x, z, hp }); } // a camouflage flag or cover edge made the digits public
-          const foe = altered.players.find(p => p.team !== team);
-          if (foe) {
-            const added = massiveInternals.spawnUnit(altered, foe.slot, 'tank'); Object.assign(added, { x: -20000, z: -20000, hp: 1, still: 777 });
-            for (const node of altered.nodes ?? []) if (!node.depot && !teamSees(g, team, node)) {
-              node.depot = massiveInternals.placeBuilding(altered, foe.slot, 'depot', node.c, true).id; counts.depots++;
+        if (g.tick % 2 === 0) for (const slot of seats) views[slot] = viewFor(g, slot, memories[slot]);
+        for (const slot of seats) if ((g.tick + slot * 13) % 40 === 0) {
+          if (mode === 'horde' && slot === g.mode.slot) hordeSeats.add(`${seed}`);
+          const visible = new Set(aiSnapshot(g, slot).units.map(u => u[0])), team = g.players[slot].team;
+          const perturb = {
+            economy(a) {
+              for (const p of a.players) if (p.team !== team) {
+                p.mp += 12345.67; p.mun = (p.mun ?? 0) + 891.2; p.fuel = (p.fuel ?? 0) + 765.4;
+                for (const kind of Object.keys(p.sup)) p.sup[kind] += 97;
+              }
+            },
+            hiddenUnits(a) {
+              let index = 0, n = 0;
+              for (const [id, u] of [...a.units]) if (a.players[u.owner].team !== team && !visible.has(id)) {
+                n++;
+                u.x = -10000 - index; u.z = -10000; u.hp = index % 2 ? 1 : UNITS[u.type].hpPer * UNITS[u.type].models;
+                u.still = 1000; u.path = [{ x: 150, z: 150 }]; u.orders = [{ t: 'move', x: 140, z: 140 }];
+                u.targetId = 999999; u.attackId = 999998; u.cd = 999; u.prog = 999;
+                if (u.queue) u.queue = ['rifle', 'mg', 'tank'];
+                if (u.air) Object.assign(u.air, { state: 'rearm', fuel: 0, ammo: 0, timer: 999 });
+                if (!UNITS[u.type].building && index++ % 3 === 0) a.units.delete(id);
+              }
+              return n;
+            },
+            addedTank(a) {
+              const foe = a.players.find(p => p.team !== team);
+              if (foe) Object.assign(massiveInternals.spawnUnit(a, foe.slot, 'tank'), { x: -20000, z: -20000, hp: 1, still: 777 });
+            },
+            // enemies the seat can see still keep private state: stationary timers, queued paths, a stance, a mass entrenchment
+            visibleUnits(a) {
+              let n = 0;
+              for (const u of a.units.values()) if (a.players[u.owner].team !== team && visible.has(u.id)) {
+                Object.assign(u, { still: UNITS[u.type].camo ? u.still : 1000 - u.still, path: [{ x: 150, z: 150 }], orders: [{ t: 'move', x: 140, z: 140 }], retarget: 77, repath: 77, stuck: 3,
+                  autoRetreat: !u.autoRetreat, holdFire: !u.holdFire, holdPos: !u.holdPos });
+                n++;
+              }
+              return n;
+            },
+            // the digits below the wire precision
+            digits(a) {
+              let n = 0;
+              for (const u of a.units.values()) if (a.players[u.owner].team !== team && visible.has(u.id)) {
+                u.x = Math.round(u.x * 10) / 10; u.z = Math.round(u.z * 10) / 10; u.hp = Math.max(0.01, Math.ceil(u.hp) - 0.45); n++;
+              }
+              return n;
+            },
+            depots(a) {
+              const foe = a.players.find(p => p.team !== team);
+              let n = 0;
+              for (const node of foe ? a.nodes ?? [] : []) if (!node.depot && !teamSees(g, team, node)) { node.depot = massiveInternals.placeBuilding(a, foe.slot, 'depot', node.c, true).id; n++; }
+              return n;
+            },
+            footprints(a) {
+              const hiddenBuilding = [...g.units.values()].find(u => UNITS[u.type].building && g.players[u.owner].team !== team && !visible.has(u.id) && !teamSees(g, team, u));
+              if (!hiddenBuilding) return 0;
+              for (const cell of hiddenBuilding.cells) massiveInternals.setCell(a, cell, 'R');
+              return 1;
+            },
+          };
+          const same = a => { try { assert.deepEqual(aiSnapshot(a, slot), aiSnapshot(g, slot)); return true; } catch { return false; } };
+          let altered = structuredClone(g), made = {};
+          for (const [name, fn] of Object.entries(perturb)) made[name] = fn(altered) ?? 1;
+          if (!same(altered)) {
+            // keep only the perturbations that leave the seat's observations alone
+            altered = structuredClone(g); made = {};
+            for (const [name, fn] of Object.entries(perturb)) {
+              const trial = structuredClone(altered), n = fn(trial) ?? 1;
+              if (same(trial)) { altered = trial; made[name] = n; } else counts.dropped++;
             }
-            const hiddenBuilding = [...g.units.values()].find(u => UNITS[u.type].building && g.players[u.owner].team !== team && !visible.has(u.id) && !teamSees(g, team, u));
-            if (hiddenBuilding) {
-              for (const cell of hiddenBuilding.cells) massiveInternals.setCell(altered, cell, 'R'); counts.footprints++;
-            }
           }
-          aiEquivalent(g, altered, slot, memories[slot], seed * 10000 + g.tick * 3 + slot, `${mode} seed ${seed} tick ${g.tick} seat ${slot}`);
+          for (const [name, n] of Object.entries(made)) if (name in counts) counts[name] += n;
+          aiEquivalent(g, altered, slot, memories[slot], seed * 10000 + g.tick * 3 + slot, `${mode} on ${mapName}, seed ${seed} tick ${g.tick} seat ${slot}`);
           counts.comparisons++;
           let expected = aiDigest(g);
           think(g, slot, { memory: memories[slot], view: views[slot], submit: cmd => {
             assert.equal(aiDigest(g), expected, 'AI changes no authoritative state before submitting a command');
-            const result = command(g, slot, cmd); expected = aiDigest(g); counts.commands++; return result;
+            const result = command(g, slot, cmd); expected = aiDigest(g); counts.commands++; byType[cmd.t] = (byType[cmd.t] ?? 0) + 1; return result;
           } });
           assert.equal(aiDigest(g), expected, 'AI changes no authoritative state after its last command');
         }
       }
     }
   } finally { Math.random = originalRandom; }
-  assert.ok(counts.comparisons >= 500, `checked ${counts.comparisons} paired turns`);
-  assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100,
+  assert.ok(counts.comparisons >= 600, `checked ${counts.comparisons} paired turns`);
+  assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100 && counts.digits >= 100,
     'proof exercised actual orders, hidden armies, private footprints, secret depots and visible enemies\' private state');
-  console.log(`AI fog proofs: ${counts.comparisons} paired turns, ${counts.commands} command-only orders, ${counts.hiddenUnits} hidden-unit, ${counts.visibleUnits} visible-unit and ${counts.depots} secret-depot perturbations`);
+  assert.ok(byType.entrench > 0 && byType.stance > 0, `the matches exercised entrenchment and auto-retreat orders (${JSON.stringify(byType)})`);
+  assert.equal(hordeSeats.size, 2, 'the Horde seat itself planned through the view in both Horde runs');
+  console.log(`AI fog proofs: ${counts.comparisons} paired turns, ${counts.commands} command-only orders (${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(', ')}), ${counts.hiddenUnits} hidden-unit, ${counts.visibleUnits} visible-unit, ${counts.digits} sub-precision and ${counts.depots} secret-depot perturbations, ${counts.dropped} dropped as visible`);
 }
 
 // Replay an AI seat's actual commands as a human: income, payments, queues and limits stay equal.
@@ -2632,26 +3319,49 @@ for (const lookupFinished of [false, true]) {
 }
 // Hotkey chords remain unique in every combination of simultaneously active contexts.
 {
-  const { bindings, match, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS } = await import('./client/keys.js');
+  const { bindings, match, rank, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS, CARD_KEYS } = await import('./client/keys.js');
+  // Recruit mode only exists outside Classic and the building letters only in Classic, so they never meet.
   for (const contexts of [['global', 'army'], ['global', 'classic'], ['global', 'targeting'],
-    ['global', 'army', 'targeting'], ['global', 'classic', 'targeting']]) {
+    ['global', 'army', 'targeting'], ['global', 'classic', 'targeting'],
+    ['global', 'army', 'recruit'], ['global', 'army', 'recruit', 'targeting'],
+    ['global', 'classic', 'building'], ['global', 'classic', 'building', 'targeting']]) {
     const seen = new Map();
     for (const binding of bindings.filter(b => contexts.includes(b.context))) {
       const chord = [binding.code, binding.shift, binding.ctrl, binding.alt].join(':');
       const previous = seen.get(chord) ?? [];
+      // a chord may be shared only across layers (base table, card letters, targeting), never inside one
       for (const other of previous) {
-        assert.ok((other.context === 'targeting') !== (binding.context === 'targeting'),
-          `${contexts.join('+')}: ${binding.id} collides with ${other.id}`);
+        assert.notEqual(rank(other.context), rank(binding.context), `${contexts.join('+')}: ${binding.id} collides with ${other.id}`);
       }
       seen.set(chord, [...previous, binding]);
     }
     for (const bindingsForChord of seen.values()) {
       const first = bindingsForChord[0];
-      const expected = bindingsForChord.find(b => b.context === 'targeting') ?? first;
+      const expected = bindingsForChord.reduce((a, b) => (rank(b.context) > rank(a.context) ? b : a));
       assert.equal(match({ code: first.code, shiftKey: first.shift, ctrlKey: first.ctrl, altKey: first.alt }, contexts),
-        expected.id, `${contexts.join('+')}: targeting overrides the mode binding`);
+        expected.id, `${contexts.join('+')}: the top layer wins ${first.code}`);
     }
   }
+  // The card letters: Q W E R T, A S D F G, Z X C V B in reading order, Shift for five, Tab or backquote to toggle.
+  assert.equal(CARD_KEYS.join(''), 'QWERTASDFGZXCVB');
+  for (const context of ['recruit', 'building']) {
+    CARD_KEYS.forEach((key, i) => {
+      assert.equal(match({ code: `Key${key}` }, ['army', context]), `card:${i + 1}`, `${context}: ${key} buys card ${i + 1}`);
+      assert.equal(match({ code: `Key${key}`, shiftKey: true }, ['classic', context]), `cardMany:${i + 1}`);
+    });
+  }
+  assert.equal(match({ code: 'KeyW' }, 'army'), 'panForward', 'WASD pans again once recruit mode is off');
+  assert.equal(match({ code: 'KeyW' }, ['army', 'recruit']), 'card:2', 'recruit mode suspends WASD panning');
+  assert.equal(match({ code: 'ArrowUp' }, ['army', 'recruit']), 'panForward', 'arrow keys still pan in recruit mode');
+  assert.equal(match({ code: 'KeyR' }, ['army', 'recruit']), 'card:4', 'recruit mode suspends the army letters');
+  assert.equal(match({ code: 'KeyJ' }, ['classic', 'building']), 'build:depot', 'Engineer build keys sit outside the card letters');
+  for (const code of ['Tab', 'Backquote']) {
+    assert.equal(match({ code }, 'army'), 'recruitMode');
+    assert.equal(match({ code }, ['army', 'recruit']), 'recruitMode', `${code} also turns recruit mode off`);
+  }
+  assert.equal(match({ code: 'Escape' }, ['army', 'recruit']), 'recruitOff', 'Esc leaves recruit mode before clearing the selection');
+  assert.equal(match({ code: 'Escape' }, ['army', 'recruit', 'targeting']), 'cancelAim', 'Esc cancels an aim first');
+  assert.equal(match({ code: 'Tab' }, 'classic'), 'recruitMode', 'Classic answers Tab with a hint instead of moving focus');
   assert.equal(match({ code: 'Space' }, 'army'), 'alert');
   assert.equal(match({ code: 'Space', shiftKey: true }, 'army'), 'follow', 'Shift+Space never triggers the plain Space action');
   assert.equal(match({ code: 'KeyH', shiftKey: true }, 'army'), 'rally');
@@ -3880,6 +4590,155 @@ for (const lookupFinished of [false, true]) {
     relief.dispose();
   }
 }
+// Horde: one shared HQ and bunker, waves from the attacker spawns, the break only after a wave is dead.
+{
+  const map = { name: 'Horde fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde' });
+  const H = CFG.horde, m = g.mode, bunker = g.units.get(m.bunker), horde = () => [...g.units.values()].filter(u => u.owner === m.slot);
+  assert.deepEqual(g.players.map(p => [p.name, p.team]), [['a', 0], ['b', 0], ['Horde', 1]], 'Horde adds the horde as the last player and puts everyone else on one team');
+  assert.equal(g.players[2].faction, 2, 'the horde wears a faction no defender picked');
+  assert.deepEqual(g.players[0].spawn, g.players[1].spawn, 'Horde defenders share one HQ');
+  assert.equal([...g.units.values()].filter(u => u.type === 'bunker').length, 1, 'Horde has one shared bunker');
+  assert.ok(m.gates.length === 2 && !horde().length && g.players[2].mp === 0, 'the horde starts with nothing, at the attacker spawns');
+  step(g);
+  assert.ok(!m.active && m.wave === 0 && snapshotFor(g, 0, []).mode.timeLeft === Math.ceil(H.break - 0.05), 'Horde opens with a break');
+  m.timeLeft = 0; for (let i = 0; i < 40; i++) step(g);
+  assert.ok(m.active && m.wave === 1 && m.left > 0 && horde().length > 0, 'wave 1 walks on when the break ends');
+  assert.ok(horde().every(u => u.amove && Math.hypot(u.amove.x - bunker.x, u.amove.z - bunker.z) < 1), 'every horde unit attack-moves on the bunker');
+  assert.equal(g.players[2].inc, 0, 'the horde has no income');
+  // the wave's make-up: within budget, only what is unlocked, never snipers
+  const cost = (list) => list.reduce((a, t) => a + UNITS[t].cost, 0);
+  for (let i = 0; i < 20; i++) {
+    const w1 = sim.hordeWave(1, 2), w9 = sim.hordeWave(9, 3, 3), budget9 = H.budget * H.growth ** 8 * 9;
+    assert.ok(cost(w1) <= H.budget * 2 && cost(w1) > H.budget * 2 - 100 && w1.every(t => t === 'rifle' || t === 'conscript'), 'wave 1 spends its budget on rifles and conscripts');
+    assert.ok(cost(w9) <= budget9 && cost(w9) > budget9 - 100 && !w9.includes('tiger') && !w9.includes('sniper'), 'wave 9 scales with defenders and army size and holds no Tiger or sniper');
+  }
+  // the horde's AI neither shops nor retreats
+  const count = g.units.size; g.players[2].mp = 5000;
+  const hurtOne = horde()[0]; hurtOne.hp = 1;
+  think(g, m.slot);
+  assert.ok(g.units.size === count && !hurtOne.retreating, 'the horde AI buys nothing and never retreats');
+  g.players[2].mp = 0;
+  // the last few are revealed through the fog
+  m.reserve = []; m.budget = 0;
+  const last = horde()[0];
+  for (const u of horde()) if (u !== last) g.units.delete(u.id);
+  Object.assign(last, { x: 5, z: 115, hp: UNITS[last.type].models * UNITS[last.type].hpPer, path: [], amove: null });
+  for (let i = 0; i < 5; i++) step(g);
+  assert.ok(m.left === 1 && g.players[0].visible.has(last.id), 'the last of a wave show through the fog');
+  // wave dead: break, bunker patched up, bounty paid to the killer but never to the horde
+  bunker.hp = 1000; last.hp = 0; last.lastHit = 0;
+  const before = g.players[0].mp;
+  step(g);
+  assert.ok(!m.active && m.timeLeft === H.break && bunker.hp === 1000 + UNITS.bunker.hpPer * H.heal, 'a dead wave starts the break and patches the bunker');
+  assert.ok(g.players[0].mp - before >= UNITS[last.type].cost * CFG.bounty, 'killing horde units pays the Kill Bounty');
+  for (let i = 0; i < 40; i++) step(g);
+  assert.ok(!m.active && m.wave === 1, 'the next wave waits out the break');
+  // the run ends when the bunker falls
+  bunker.hp = 0; step(g); step(g);
+  assert.ok(g.winner === 1 && g.endReason === 'structures', 'Horde ends when the bunker falls');
+  // no defender spawns, or no free seat for the horde: not a horde game
+  const { defend, ...plain } = map;
+  assert.equal(createGame(plain, ['a'], false, [0], [0], { mode: 'horde' }).mode, undefined, 'Horde needs a map with defender spawns');
+  assert.equal(createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, undefined, undefined, { mode: 'horde' }).players.length, 6, 'Horde needs a free seat for the horde');
+}
+
+// Horde start and restart refuse a freshly edited map without defender spawns.
+{
+  const map = { name: 'Horde edited fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const { defend, ...plain } = map;
+  assert.equal(validateMap(map), null); assert.equal(validateMap(plain), null, 'the edit keeps a valid map');
+  const h = await serverHarness(), code = 'hordeedit'; h.useMap(JSON.stringify(map));
+  const host = await h.connect(code, { token: code, name: 'Host' }), room = h.rooms.get(code);
+  await host.send({ t: 'mode', v: 'horde' });
+  await h.waitFor(() => host.lobby().mode === 'horde', 'Horde selected');
+  const guest = await h.connect(code, { token: code + 'guest', name: 'Guest' });
+  h.useMap(JSON.stringify(plain));
+  await host.send({ t: 'start' }); await h.settleServer();
+  assert.equal(room.state, 'lobby', 'an invalid Horde Start stays in the lobby');
+  assert.equal(room.game, null, 'no Conquest game is created');
+  assert.equal(host.messages.filter(m => m.t === 'start').length, 0, 'no start message is sent');
+  h.useMap(JSON.stringify(map));
+  await host.send({ t: 'start' }); await host.wait('start'); await guest.wait('start');
+  const game = room.game, matchId = room.matchId;
+  h.useMap(JSON.stringify(plain));
+  await host.send({ t: 'restart' }); await h.settleServer();
+  assert.equal(room.game, game, 'an invalid Restart preserves the running Horde game');
+  assert.equal(room.matchId, matchId, 'a refused Restart does not start a new match');
+  assert.equal(host.messages.filter(m => m.t === 'start').length, 1, 'no replacement start message is sent');
+  assert.equal(room.mode, 'horde', 'the selected mode stays Horde');
+  h.holdMaps();
+  await host.send({ t: 'restart' });
+  assert.equal(room.game, null, 'Restart is waiting for the map load');
+  await guest.close(); h.releaseMaps();
+  await h.waitFor(() => room.game === game, 'refused Restart restores the game');
+  assert.equal(room.pause?.reason, 'drop', 'a disconnect during the refused Restart still pauses the restored game');
+  await h.close();
+}
+
+// Horde reserves bound purchases per tick and memory while preserving ordinary wave strength.
+{
+  const map = { w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [] };
+  const make = (n, army = 'standard') => createGame(map, Array(n).fill('Defender'), false, Array(n).fill(0), Array(n).fill(0), { mode: 'horde', army });
+  const g = make(5, 'massive'), m = g.mode, random = Math.random;
+  m.wave = 39; m.timeLeft = 0;
+  let rolls = 0;
+  try { Math.random = () => { rolls++; return 0.5; }; step(g); }
+  finally { Math.random = random; }
+  assert.ok(m.reserve.length <= CFG.horde.fieldMax, 'wave 40 keeps a fixed reserve buffer');
+  assert.ok(rolls < 1000, 'a large wave makes only bounded purchases in one tick');
+  assert.ok(Number.isFinite(m.budget) && m.budget > 0, 'the rest of the wave stays as unspent budget');
+  for (let i = 0; i < 12; i++) {
+    step(g);
+    assert.ok(m.reserve.length <= CFG.horde.fieldMax, 'later ticks cannot grow the buffer past its cap');
+  }
+  for (const u of g.units.values()) if (u.owner === m.slot) g.units.delete(u.id);
+  m.reserve = []; step(g);
+  assert.ok(m.active && m.left > CFG.horde.reveal, 'unspent budget prevents early wave completion or final-three reveal');
+
+  const normal = make(3), n = normal.mode;
+  for (const u of normal.units.values()) { u.holdFire = true; u.auto = false; }
+  n.wave = 8; n.timeLeft = 0;
+  try {
+    Math.random = () => 0.5;
+    const expected = sim.hordeWave(9, 3);
+    for (let i = 0; !n.active || n.budget > 0; i++) { assert.ok(i < 100, 'normal wave generation finishes promptly'); step(normal); }
+    const actual = [...n.reserve, ...[...normal.units.values()].filter(u => u.owner === n.slot && !u.air).map(u => u.type)];
+    assert.deepEqual(actual.sort(), expected.sort(), 'ordinary waves buy the same weighted units for the same budget');
+  } finally { Math.random = random; }
+  const extreme = make(1); extreme.mode.wave = 3999; extreme.mode.timeLeft = 0; step(extreme);
+  assert.ok(Number.isFinite(extreme.mode.budget) && extreme.mode.reserve.length <= CFG.horde.fieldMax, 'overflow-sized waves still finish their tick with bounded storage');
+}
+
+// Horde over the server: lobby rules, the horde's seat, the host's early wave, and the record after the run.
+{
+  const map = { name: 'Horde fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const h = await serverHarness(), code = 'horde', { module } = await serverModule; h.useMap(JSON.stringify(map));
+  let saved = null; const disk = { ...module.recordFile };
+  Object.assign(module.recordFile, { read: () => '{}', write: (json) => { saved = JSON.parse(json); } });
+  const host = await h.connect(code, { token: 'host', name: 'Host' }), room = h.rooms.get(code);
+  await host.send({ t: 'army', v: 'endless' }); await host.send({ t: 'mode', v: 'horde' });
+  await h.waitFor(() => host.lobby().mode === 'horde', 'horde lobby');
+  assert.ok(room.army === 'standard' && host.lobby().hordeMaps.includes(room.mapName) && host.lobby().spawns === 5 && host.lobby().hordeBest === null, 'Horde lobby: a horde map, five seats, no Endless, no record yet');
+  await host.send({ t: 'army', v: 'endless' });
+  assert.equal(room.army, 'standard', 'Horde refuses Endless');
+  await host.send({ t: 'start' });
+  const start = await host.wait('start'), g = room.game;
+  assert.deepEqual([start.names, start.teams], [['Host', 'Horde'], [0, 1]], 'the start message names the horde');
+  await h.tick(2);
+  assert.ok(!g.mode.active, 'the first break is running');
+  await host.send({ t: 'nextwave' }); await h.tick(2);
+  assert.ok(g.mode.active && g.mode.wave === 1 && h.snapshots(host).at(-1).mode.wave === 1, 'the host sends the wave early');
+  g.units.get(g.mode.bunker).hp = 0;
+  for (let i = 0; room.state !== 'lobby'; i++) { assert.ok(i < 400, 'the horde run returns to the lobby'); await h.tick(); }
+  await h.waitFor(() => host.lobby().result?.horde, 'horde result');
+  const r = host.lobby().result;
+  assert.ok(r.horde.wave === 1 && r.horde.record && r.names.at(-1) === 'Horde' && r.you.outcome === 'defeat', 'the result carries the wave reached');
+  assert.deepEqual([saved['default|1|standard'].wave, host.lobby().hordeBest.wave], [1, 1], 'the best run is saved per map, team size and army size, and shown in the lobby');
+  Object.assign(module.recordFile, disk);
+  await h.close();
+}
+
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and
@@ -3939,7 +4798,7 @@ console.log('all sim checks passed');
   assert.equal(placementCheck(ground, place, () => false).reason, 'notVisible', 'sight is checked before hidden ground');
   ground.height[flat.cells[1]] = 0;
   assert.equal(placementCheck(ground, place, at => at.x !== 19 || at.z !== 19).ok, true, 'a visible center permits an unseen corner');
-  assert.equal(placementCheck(ground, { kind: 'trench', x: 21, z: 21, dir: 0 }, () => false).ok, true, 'a valid fort needs no sight');
+  assert.equal(placementCheck(ground, { kind: 'trench', x: 21, z: 21, dir: 0 }, () => false).reason, 'notVisible', 'a fort on unseen ground is refused even when valid, so the answer says nothing about hidden terrain');
   const blockedFort = fresh(); blockedFort.chars.fill('W');
   const trench = { kind: 'trench', x: 21, z: 21, dir: 0 };
   assert.equal(placementCheck(blockedFort, trench, () => false).reason, 'notVisible', 'fog masks a rejected fort');
@@ -3976,10 +4835,10 @@ console.log('all sim checks passed');
   let unseenFort = null;
   for (let y = 2; y < fortGame.h - 2 && !unseenFort; y++) for (let x = 2; x < fortGame.w - 2; x++) {
     const at = { kind: 'trench', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL, dir: 0 };
-    if (!teamSees(fortGame, fortGame.players[0].team, at) && placementCheck(fortGame, at, () => false).ok) { unseenFort = at; break; }
+    if (!teamSees(fortGame, fortGame.players[0].team, at) && placementCheck(fortGame, at).ok) { unseenFort = at; break; }
   }
   assert.ok(unseenFort, 'the map has an unseen valid fort site');
-  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), undefined, 'dig accepts a valid fort in fog');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'dig refuses a valid fort in fog');
   fortGame.chars.fill('W');
   assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'a rejected fort in fog masks its terrain');
   assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], kind: 'trench', x: fortEngineer.x, z: fortEngineer.z, dir: 0 }), 'blocked', 'a rejected visible fort reports blocked');
@@ -4008,9 +4867,32 @@ console.log('all sim checks passed');
 }
 console.log('all command feedback checks passed');
 
+// Queued aimed ability availability defers cooldown and munitions while keeping eligibility checks.
+{
+  const { availability } = await import('./client/availability.js');
+  const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const u = [...g.units.values()].find(v => v.owner === 0 && v.type === 'rifle');
+  const check = (action) => availability(snapshotFor(g, 0, []), CFG, { slot: 0, ids: [u.id], ...action });
+  g.players[0].mun = 0; u.cd = 5;
+  for (const type of ['rifle', 'mortar', 'ranger']) {
+    u.type = type;
+    const action = { t: 'ability', unit: type, queue: true };
+    assert.equal(check(action).ok, true, `${type} can queue during cooldown without munitions`);
+    assert.equal(check({ ...action, queue: false }).ok, false, 'an immediate ability still checks readiness');
+    assert.equal(command(g, 0, { ...action, ids: [u.id], x: 20, z: 20 }), undefined, 'the server accepts the deferred ability');
+    assert.equal(u.nade, null, 'queueing does not start the ability');
+    u.retreating = true;
+    assert.equal(check(action).reason, 'That squad is retreating'); u.retreating = false;
+    assert.equal(check({ ...action, unit: 'tank' }).ok, false, 'queueing still requires the selected ability type');
+  }
+  u.type = 'mg';
+  assert.equal(check({ t: 'ability', unit: 'mg', queue: true }).ok, false, 'instant abilities cannot defer cooldown');
+  assert.equal(g.players[0].mun, 0, 'waiting abilities charge no munitions up front');
+}
+
 // Availability uses real snapshots and prices, including queued units and completed buildings.
 {
-  const { availability, placementState, denySentence } = await import('./client/availability.js');
+  const { availability, buyCount, placementState, denySentence } = await import('./client/availability.js');
   const { createFeedback, setAvailability } = await import('./client/feedback.js');
   const { priceOf, popCap, placementCheck, teamSees } = await import('./shared/sim.js');
   const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
@@ -4030,10 +4912,28 @@ console.log('all command feedback checks passed');
   eng.retreating = true;
   assert.equal(check({ t: 'build', kind: 'barracks' }).reason, 'That squad is retreating');
   assert.equal(check({ t: 'dig', kind: 'trench' }).reason, 'That squad is retreating');
+  assert.equal(check({ t: 'cover' }).reason, 'That squad is retreating');
   eng.retreating = false;
+  assert.equal(check({ t: 'cover' }).ok, true);
+  assert.equal(check({ t: 'entrench' }).ok, true, 'Engineers can entrench, and nothing is charged up front');
+  assert.equal(check({ t: 'entrench', ids: [hq.id] }).reason, 'Select a builder squad');
+  assert.equal(check({ t: 'stance' }).ok, true);
+  assert.equal(check({ t: 'stance', ids: [hq.id] }).reason, 'Select a unit');
+  assert.equal(check({ t: 'cover', ids: [hq.id] }).reason, 'Select an infantry squad');
   assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
   hq.queue = Array(5).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'The training queue is full');
+  // A card on one selected building asks that building: the server refuses a full one instead of using another.
+  {
+    const second = { ...hq, id: g.nextId++, queue: [] };
+    g.units.set(second.id, second);
+    assert.equal(check({ t: 'buy', unit: 'rifle' }).ok, true, 'any building with room will do for an unaimed buy');
+    assert.equal(check({ t: 'buy', unit: 'rifle', from: second.id }).ok, true);
+    assert.equal(check({ t: 'buy', unit: 'rifle', from: hq.id }).reason, 'The training queue is full', 'the chosen building is full');
+    assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), 'queueFull', 'the server agrees');
+    assert.equal(buyCount(snapshotFor(g, 0, []), CFG, { t: 'buy', unit: 'rifle', from: hq.id, slot: 0 }, 5), 0);
+    g.units.delete(second.id);
+  }
   hq.queue = Array(popCap(g) - [...g.units.values()].filter(v => v.owner === 0 && !UNITS[v.type].structure).length).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, `Army at its limit (${popCap(g)}/${popCap(g)})`);
   hq.queue = [];
@@ -4055,6 +4955,25 @@ console.log('all command feedback checks passed');
   rifle.type = 'rocket';
   assert.equal(check({ t: 'ability', unit: 'rocket', ids: [rifle.id] }).reason, 'Needs 25 munitions');
   rifle.type = 'rifle';
+  // Shift+letter asks for as many as the limits allow: the server takes exactly that many and refuses the next one.
+  {
+    const count = (unit, from) => buyCount(snapshotFor(g, 0, []), CFG, { t: 'buy', unit, from, slot: 0 }, 5);
+    p.mp = priceOf(g, 'rifle').mp * 3 + 1;
+    assert.equal(count('rifle', hq.id), 3, 'manpower for three');
+    for (let i = 0; i < 3; i++) assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), undefined);
+    assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), 'mp');
+    p.mp = 10000;
+    assert.equal(count('rifle', hq.id), 2, 'the queue has two places left');
+    assert.equal(count('mg'), 0, 'refused outright: no Barracks');
+    hq.queue = [];
+    const c = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1]), cp = c.players[0];
+    cp.mp = 1e6;
+    while (popOf(c, 0) < popCap(c) - 2) command(c, 0, { t: 'buy', unit: 'rifle' });
+    const n = buyCount(snapshotFor(c, 0, []), CFG, { t: 'buy', unit: 'rifle', slot: 0 }, 5);
+    assert.equal(n, 2, 'two places left under the army limit');
+    for (let i = 0; i < n; i++) assert.equal(command(c, 0, { t: 'buy', unit: 'rifle' }), undefined);
+    assert.equal(command(c, 0, { t: 'buy', unit: 'rifle' }), 'pop');
+  }
 
   const snapshot = snapshotFor(g, 0, []), map = blank(empty);
   // Terrain after initial HQ footprints is the same terrain the client receives.
