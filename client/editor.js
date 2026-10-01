@@ -30,8 +30,9 @@ export async function start(api) {
     <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option><option>150</option><option>200</option></select><button id="edNew">New blank</button></div>
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
-    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select>
-      players <select id="edPlayers"></select></div>
+    <div id="edToolHint" class="muted"></div>
+    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
+    <div id="edPlayersRow" class="row hidden">Players <select id="edPlayers"></select></div>
     <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
     <div id="edPoint"></div>
@@ -109,7 +110,7 @@ export async function start(api) {
       'Editing is paused: pick Editing to change the map.',
     ].filter(Boolean).join('<br>');
   }
-  $('edMode').onchange = () => { previewMode = $('edMode').value; picked = null; sel = -1; if (!previewMode) $('edModeInfo').textContent = ''; rebuild(); };
+  $('edMode').onchange = () => { previewMode = $('edMode').value; picked = null; sel = -1; if (!previewMode) $('edModeInfo').textContent = ''; $('edToolHint').textContent = toolHint(); $('edPlayersRow').classList.toggle('hidden', !previewMode); rebuild(); };
   $('edPlayers').onchange = () => rebuild();
 
   // validity + every spawn can walk to every point
@@ -131,7 +132,7 @@ export async function start(api) {
   function pointPanel() {
     const p = map.points[sel];
     $('edPoint').innerHTML = p ? `<div class="row">Point ${sel + 1}: VP/s <input id="edVp" type="number" min="0" max="5" step="0.5" value="${p.vp}" style="width:56px">
-      MP/s <input id="edMp" type="number" min="0" max="5" step="0.5" value="${p.mp}" style="width:56px"><button id="edDel" title="Delete">✕</button></div>` : '<span class="muted">Capture point tool: click to add, click one to edit it</span>';
+      MP/s <input id="edMp" type="number" min="0" max="5" step="0.5" value="${p.mp}" style="width:56px"><button id="edDel" title="Delete">✕</button></div>` : '';
     if (!p) return;
     $('edVp').onchange = () => { p.vp = Math.max(0, Math.min(5, +$('edVp').value || 0)); rebuild(); };
     $('edMp').onchange = () => { p.mp = Math.max(0, Math.min(5, +$('edMp').value || 0)); rebuild(); };
@@ -139,7 +140,16 @@ export async function start(api) {
   }
 
   // ---------- tools ----------
-  const pickTool = (k) => { tool = k; ui.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === k)); };
+  // the line under the tool buttons always describes the highlighted tool
+  function toolHint() {
+    const label = TOOLS.find(([k]) => k === tool)?.[1] ?? tool;
+    return previewMode ? '' : tool === 'sel' ? 'Select tool: click a structure, spawn or point to pick it, drag to move it'
+      : tool === 'pt' ? 'Capture point tool: click to add, click one to edit it'
+      : /^s\d$/.test(tool) ? `${label} tool: click to place it`
+      : HEIGHT_TOOLS[tool] ? `${label} tool: click or drag, right-drag does the opposite`
+      : `${label} tool: click or drag to paint, right-drag erases`;
+  }
+  const pickTool = (k) => { tool = k; ui.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === k)); $('edToolHint').textContent = toolHint(); };
   ui.querySelectorAll('[data-tool]').forEach(b => (b.onclick = () => pickTool(b.dataset.tool)));
   pickTool(tool);
   $('edBrush').onchange = () => (brush = +$('edBrush').value);
