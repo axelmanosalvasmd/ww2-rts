@@ -1,9 +1,206 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT, UNITS } from './shared/sim.js';
+import { runInNewContext } from 'node:vm';
+import { join, normalize, extname } from 'node:path';
+import * as sim from './shared/sim.js';
+import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees } from './shared/sim.js';
 import { think } from './shared/ai.js';
 import { unitRole } from './client/unit-roles.js';
+
+// Run the actual server handlers without binding sockets. Map reads can pause to expose async races.
+const serverHarness = (map = readFileSync('maps/default.json', 'utf8')) => {
+  let connection, held = false, waiting = [], game, tick, snapshots = 0;
+  runInNewContext(readFileSync('server.js', 'utf8').replace(/^import .*;\n/gm, '').replace('import.meta.dirname', JSON.stringify(process.cwd())), {
+    ...sim, think, createGame: (...args) => (game = sim.createGame(...args)), snapshotFor: (...args) => { snapshots++; return sim.snapshotFor(...args); }, join, normalize, extname, URL, Buffer,
+    process: { env: { EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' } },
+    http: { createServer: () => ({ listen() {} }) },
+    WebSocketServer: class { on(t, fn) { if (t === 'connection') connection = fn; } },
+    readFileSync: () => map, existsSync: () => true, writeFileSync() {}, writeFile: async () => {},
+    readFile: async () => { if (held) await new Promise(resolve => waiting.push(resolve)); return map; },
+    readdir: async () => ['default.json', 'other.json'],
+    setInterval(fn) { tick = fn; }, setTimeout() {}, console: { log() {} },
+  });
+  return {
+    game: () => game,
+    tick: () => tick(), snapshots: () => snapshots,
+    holdMaps() { held = true; },
+    releaseMaps() { held = false; for (const resolve of waiting) resolve(); waiting = []; },
+    connect() {
+      const handlers = {}, messages = [];
+      const ws = { readyState: 1, on(t, fn) { handlers[t] = fn; }, send(raw) { messages.push(JSON.parse(raw)); }, close() { this.readyState = 2; } };
+      connection(ws, { url: '/ws?room=testroom' });
+      return { ws, messages, send: msg => handlers.message(JSON.stringify(msg)), raw: raw => handlers.message(raw), lobby: () => messages.filter(m => m.t === 'lobby').at(-1) };
+    },
+  };
+};
+const settleServer = () => new Promise(resolve => setImmediate(resolve));
+
+// Server: repeated hello messages must not race initialization or close their own connection.
+{
+  const h = serverHarness(), p = h.connect(); h.holdMaps();
+  const first = p.send({ t: 'hello', token: 'host', name: 'Host' });
+  const again = p.send({ t: 'hello', token: 'host', name: 'Host' });
+  h.releaseMaps(); await Promise.all([first, again]); await settleServer();
+  assert.equal(p.ws.readyState, 1, 'server repeated hello keeps its connection open');
+  assert.equal(p.lobby().players.length, 1, 'server repeated hello occupies one player slot');
+}
+
+// Server: a replaced or departed socket cannot keep controlling its old player slot.
+{
+  const h = serverHarness(), old = h.connect(), current = h.connect();
+  await old.send({ t: 'hello', token: 'host', name: 'Old' });
+  await current.send({ t: 'hello', token: 'host', name: 'Current' }); await settleServer();
+  await old.send({ t: 'name', name: 'Stale' }); await settleServer();
+  assert.equal(current.lobby().players[0].name, 'Current', 'server replaced socket cannot rename its former player');
+  const guest = h.connect(); await guest.send({ t: 'hello', token: 'guest', name: 'Guest' });
+  await current.send({ t: 'start' });
+  const before = h.game().units.size;
+  await current.send({ t: 'leave' });
+  await current.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(h.game().units.size, before, 'server departed socket cannot buy for the AI that took over');
+}
+
+// Server: a map request still awaiting disk cannot change settings once the match has started.
+for (const lookupFinished of [false, true]) {
+  const h = serverHarness(), p = h.connect();
+  await p.send({ t: 'hello', token: 'host', name: 'Host' }); h.holdMaps();
+  const map = p.send({ t: 'map', name: 'other' });
+  if (lookupFinished) await settleServer();
+  const start = p.send({ t: 'start' }); await settleServer();
+  h.releaseMaps(); await Promise.all([map, start]); await settleServer();
+  assert.equal(p.lobby().mapName, 'default', `server pending map ${lookupFinished ? 'load' : 'lookup'} cannot change a started match`);
+}
+
+// Server: ending a match while its map loads must cancel that start.
+{
+  const h = serverHarness(), p = h.connect();
+  await p.send({ t: 'hello', token: 'host', name: 'Host' }); h.holdMaps();
+  const start = p.send({ t: 'start' });
+  await p.send({ t: 'end' });
+  h.releaseMaps(); await start; await settleServer();
+  assert.equal(p.messages.filter(m => m.t === 'start').length, 0, 'server cancelled start never sends players back into play');
+  assert.equal(p.lobby().state, 'lobby', 'server cancelled start keeps the lobby open');
+  assert.deepEqual(p.lobby().result, { ended: true }, 'server cancelled start preserves the host end result');
+}
+
+// Server: player-slot commands require numeric integer slots, without string or array coercion.
+{
+  const h = serverHarness(), p = h.connect();
+  await p.send({ t: 'hello', token: 'host', name: 'Host' });
+  await p.send({ t: 'addAi' }); await settleServer();
+  for (const slot of ['1', [1], 1.5, -1, null, true]) {
+    await p.send({ t: 'faction', slot, v: 2 }); await settleServer();
+    assert.equal(p.lobby().players[1].faction, 1, 'server malformed faction slot is ignored');
+    await p.send({ t: 'team', slot, v: 4 }); await settleServer();
+    assert.equal(p.lobby().players[1].team, 1, 'server malformed team slot is ignored');
+    await p.send({ t: 'kick', slot }); await settleServer();
+    assert.equal(p.lobby().players.length, 2, 'server malformed kick slot is ignored');
+  }
+  await p.send({ t: 'faction', slot: 1, v: 2 }); await settleServer();
+  assert.equal(p.lobby().players[1].faction, 2, 'server valid integer faction slot still works');
+  await p.send({ t: 'kick', slot: 1 }); await settleServer();
+  assert.equal(p.lobby().players.length, 1, 'server valid integer kick slot still works');
+}
+
+// AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
+{
+  const map = { w: 20, h: 20, rows: Array(20).fill('.'.repeat(20)), spawns: [{ x: 1, y: 1 }, { x: 18, y: 18 }], points: [{ x: 10, y: 10 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 0]); g.players[0].mp = 1000;
+  const u = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  Object.assign(u, { x: g.points[0].x, z: g.points[0].z }); g.points[0].owner = 0;
+  assert.doesNotThrow(() => think(g, 0), 'AI holding an allied point without opponents does not crash');
+}
+
+// AI: a hidden plane over a destroyed HQ must not change purchasing at the surviving base.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  g.units.delete(hq.id);
+  const barracks = { ...hq, id: g.nextId++, type: 'barracks', x: 120, z: 120, hp: UNITS.barracks.hpPer, queue: [] };
+  g.units.set(barracks.id, barracks);
+  g.units.set(g.nextId, { ...barracks, id: g.nextId++, type: 'motorpool', hp: UNITS.motorpool.hpPer, queue: [] });
+  const rifle = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  for (let i = 0; i < 2; i++) g.units.set(g.nextId, { ...rifle, id: g.nextId++, path: [] });
+  for (const u of g.units.values()) if (u.owner === 0) Object.assign(u, { x: 120, z: 120 });
+  g.nodes.forEach(n => n.depot = barracks.id); // Every node is already claimed, so there is no depot to save for.
+  const mode = g.mode; g.mode = null; g.players[1].mp = 1000;
+  command(g, 1, { t: 'buy', unit: 'fighter' }); g.mode = mode;
+  const plane = [...g.units.values()].find(u => u.type === 'fighter');
+  Object.assign(plane, g.players[0].spawn); plane.air.state = 'out';
+  assert.ok([...g.units.values()].filter(u => u.owner === 0).every(u => Math.hypot(u.x - plane.x, u.z - plane.z) > CFG.air.seeRange), 'plane is outside all friendly observers');
+  assert.ok(!snapshotFor(g, 0, []).units.some(u => u[0] === plane.id), 'plane over the old HQ is hidden from the AI team');
+  g.players[0].mp = 200; think(g, 0, { adaptive: false });
+  assert.deepEqual(barracks.queue, ['mg'], 'AI ignores hidden planes when reserving money for flak');
+}
+
+// Server: JSON objects masquerading as names or tokens cannot crash text conversion.
+{
+  const h = serverHarness(), p = h.connect(), invalid = { toString: null, valueOf: null };
+  for (const field of ['token', 'name']) {
+    await assert.doesNotReject(() => p.send({ t: 'hello', token: 'host', name: 'Host', [field]: invalid }), `server malformed hello ${field} does not throw`);
+    await settleServer(); assert.equal(p.messages.length, 0, 'server malformed hello text does not claim a player slot');
+  }
+  await p.send({ t: 'hello', token: 'host', name: 'Host' }); await settleServer();
+  await assert.doesNotReject(() => p.send({ t: 'name', name: invalid }), 'server malformed rename does not throw');
+  await settleServer(); assert.equal(p.lobby().players[0].name, 'Host', 'server malformed rename preserves the player name');
+}
+
+// Server: Massive rooms construct snapshots only for sockets that can receive them.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [5, 75].flatMap(y => [5, 40, 75].map(x => ({ x, y }))), points: [{ x: 40, y: 40 }] };
+  const h = serverHarness(JSON.stringify(map)), p = h.connect();
+  await p.send({ t: 'hello', token: 'host', name: 'Host' });
+  for (let i = 0; i < 5; i++) await p.send({ t: 'addAi' });
+  await p.send({ t: 'army', v: 'massive' }); await p.send({ t: 'start' });
+  for (let slot = 0; slot < 6; slot++) {
+    h.game().players[slot].mp = 50000;
+    for (let i = 0; i < 42; i++) command(h.game(), slot, { t: 'buy', unit: 'rifle' });
+  }
+  assert.equal(h.game().units.size, 270, 'server snapshot fixture fields 270 units');
+  h.tick(); h.tick();
+  assert.equal(h.snapshots(), 1, 'server constructs one snapshot for one connected human and five AIs');
+  p.ws.readyState = 2; h.tick(); h.tick();
+  assert.equal(h.snapshots(), 1, 'server constructs no snapshot for a socket that is closing');
+}
+
+// Fog: building footprints follow the same visibility and memory rules as the buildings themselves.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const eng = [...g.units.values()].find(u => u.owner === 1 && u.type === 'engineer');
+  const scout = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  g.players[1].mp = 1000;
+  command(g, 1, { t: 'build', ids: [eng.id], kind: 'barracks', x: 140, z: 140 }); step(g);
+  const b = [...g.units.values()].find(u => u.owner === 1 && u.type === 'barracks');
+  assert.ok(b && !g.players[0].visible.has(b.id), 'enemy Construction Site is outside friendly vision');
+  const hidden = snapshotFor(g, 0, [], g.newCells);
+  assert.ok(!hidden.cells.some(([c]) => b.cells.includes(c)), 'hidden building footprint cells are absent from snapshots');
+  Object.assign(scout, { x: 130, z: 140 }); for (let i = 0; i < 4; i++) step(g);
+  assert.ok(g.players[0].visible.has(b.id), 'scout discovers the enemy building');
+  g.newCells = [];
+  const seen = snapshotFor(g, 0, [], []);
+  assert.equal(seen.cells.filter(([c, ch]) => b.cells.includes(c) && ch === 'K').length, 9, 'discovering a building sends its complete footprint without new terrain changes');
+  Object.assign(scout, g.players[0].spawn); for (let i = 0; i < 4; i++) step(g);
+  b.hp = 0; step(g);
+  const gone = snapshotFor(g, 0, [], g.newCells);
+  assert.ok(!gone.cells.some(([c]) => b.cells.includes(c)), 'unseen building destruction does not change remembered terrain');
+  assert.ok(gone.ghosts.some(gh => gh[0] === b.id), 'unseen building destruction preserves its Ghost');
+  assert.equal(sim.terrainFor(g, 0, true).filter(([c, ch]) => b.cells.includes(c) && ch === 'K').length, 9, 'reconnect terrain remembers the old footprint under fog');
+  Object.assign(scout, { x: 130, z: 140 }); while (g.tick % 4 !== 1) step(g);
+  const revisited = snapshotFor(g, 0, [], []);
+  assert.equal(revisited.cells.filter(([c, ch]) => b.cells.includes(c) && ch === 'R').length, 9, 'revisiting a destroyed building catches up all rubble cells');
+  assert.ok(!revisited.ghosts.some(gh => gh[0] === b.id), 'revisiting the rubble clears its Ghost');
+  assert.ok(sim.terrainFor(g, 0, true).length <= g.w * g.h, 'remembered terrain is bounded by the map cell count');
+  const h = serverHarness(JSON.stringify(map)), p = h.connect(), guest = h.connect();
+  await p.send({ t: 'hello', token: 'host', name: 'Host' }); await guest.send({ t: 'hello', token: 'guest', name: 'Guest' });
+  await p.send({ t: 'mode', v: 'classic' }); await p.send({ t: 'start' });
+  const enemyHq = [...h.game().units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  assert.ok(!p.messages.find(m => m.t === 'start').cells.some(([c]) => enemyHq.cells.includes(c)), 'server initial terrain excludes unseen enemy HQ footprints');
+  const returning = h.connect(); await returning.send({ t: 'hello', token: 'host', name: 'Host' });
+  assert.ok(!returning.messages.find(m => m.t === 'start').cells.some(([c]) => enemyHq.cells.includes(c)), 'server reconnect terrain excludes unseen enemy HQ footprints');
+}
 
 // Recruitment descriptions stay readable when the roster gains a unit without role copy.
 {
@@ -98,6 +295,74 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   command(g, 0, { t: 'buy', unit: 'rifle' }); command(g, 0, { t: 'buy', unit: 'tank' }); command(g, 0, { t: 'buy', unit: '__proto__' });
   command(g, 0, { t: 'move', orders: [[999, NaN, 'x'], 'junk'] });
   assert.equal(g.units.size, 1); assert.equal(g.players[0].mp, 50);
+}
+
+// Commands require an active player's numeric slot, including direct simulation callers.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  for (const slot of [-1, 2, null, '0', NaN, Infinity]) {
+    assert.doesNotThrow(() => command(g, slot, { t: 'buy', unit: 'rifle' }), `invalid player slot ${slot} does not throw`);
+    assert.equal(g.units.size, 0, `invalid player slot ${slot} cannot buy`);
+  }
+  const p = g.players[0];
+  for (const state of ['out', 'away']) {
+    p[state] = true;
+    command(g, 0, { t: 'buy', unit: 'rifle' });
+    command(g, 0, { t: 'support', kind: 'dive', x: 20, z: 20 });
+    assert.equal(g.units.size, 0, `${state} player cannot buy`);
+    assert.equal(g.strikes.length, 0, `${state} player cannot call support`);
+    assert.equal(p.mp, 1000, `${state} commands do not spend manpower`);
+    p[state] = false;
+  }
+}
+
+// Unit names are strings, rather than values coerced into table keys.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  for (const unit of [{ toString: null, valueOf: null }, ['rifle'], 'toString', '__proto__']) {
+    assert.doesNotThrow(() => command(g, 0, { t: 'buy', unit }), 'malformed unit names do not throw');
+    assert.equal(g.units.size, 0, 'malformed unit names cannot recruit');
+    assert.equal(g.players[0].mp, 1000, 'malformed unit names do not spend manpower');
+  }
+}
+
+// Support names are strings and inherited table keys are rejected.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  for (const kind of [{ toString: null, valueOf: null }, ['dive'], 'toString', '__proto__']) {
+    assert.doesNotThrow(() => command(g, 0, { t: 'support', kind, x: 20, z: 20 }), 'malformed support names do not throw');
+    assert.equal(g.strikes.length, 0, 'malformed support names cannot call strikes');
+    assert.equal(g.players[0].mp, 1000, 'malformed support names do not spend manpower');
+  }
+}
+
+// Fortification names are strings and inherited table keys are rejected.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const u = put(g, 0, 'rifle', 10, 10), mp = g.players[0].mp;
+  for (const kind of [{ toString: null, valueOf: null }, ['trench'], 'toString', '__proto__']) {
+    assert.doesNotThrow(() => command(g, 0, { t: 'dig', ids: [u.id], kind, x: 20, z: 20 }), 'malformed fortification names do not throw');
+    assert.equal(u.dig, null, 'malformed fortification names cannot start digging');
+    assert.equal(g.players[0].mp, mp, 'malformed fortification names do not spend manpower');
+  }
+}
+
+// Explicit recruitment buildings must be valid owned makers rather than falling back to another building.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const hq = [...g.units.values()].find(u => u.type === 'hq' && u.owner === 0), enemy = [...g.units.values()].find(u => u.type === 'hq' && u.owner === 1);
+  const engineer = [...g.units.values()].find(u => u.type === 'engineer' && u.owner === 0);
+  g.players[0].mp = 1000;
+  for (const from of [enemy.id, engineer.id, String(hq.id), NaN, Infinity, null, 0, {}]) {
+    command(g, 0, { t: 'buy', unit: 'rifle', from });
+    assert.equal(hq.queue.length, 0, 'invalid recruitment building does not fall back to the HQ');
+    assert.equal(g.players[0].mp, 1000, 'invalid recruitment building does not spend manpower');
+  }
+  command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id });
+  assert.deepEqual(hq.queue, ['rifle'], 'valid explicit recruitment building works');
+  command(g, 0, { t: 'buy', unit: 'rifle' });
+  assert.equal(hq.queue.length, 2, 'unspecified recruitment building chooses an owned maker');
 }
 
 // Retreat: sprints home, takes a quarter of the damage, stops shooting.
@@ -587,6 +852,50 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (let i = 0; i < 20; i++) { const s = spawnSlots(6, [0, 0, 1, 1, 2, 2]); assert.equal(new Set(s).size, 6, 'no shared spawns'); }
 }
 
+// Army size accepts only named settings and scales each supported mode without changing the balance values.
+{
+  for (const army of ['toString', '__proto__', ['massive'], { toString: null, valueOf: null }, 'unknown']) {
+    let g;
+    assert.doesNotThrow(() => { g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { army }); }, 'malformed army setting does not throw');
+    assert.equal(g.players[0].mp, CFG.mpStart, 'malformed army setting uses Standard starting manpower');
+    assert.equal(popCap(g), CFG.popCap, 'malformed army setting uses Standard population cap');
+  }
+  for (const [army, scale] of Object.entries(CFG.armies)) {
+    for (const mode of ['conquest', 'classic', 'annihilation', 'assault']) {
+      const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+      const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { army, mode, defenderTeam: 1 });
+      const start = mode === 'classic' ? CFG.classic.mpStart : mode === 'annihilation' ? CFG.assault.annihilationMp : mode === 'assault' ? CFG.assault.attackerMp : CFG.mpStart;
+      assert.equal(g.players[0].mp, start * scale.income, `${mode} ${army} starting manpower`);
+      assert.equal(popCap(g), Math.round((mode === 'classic' ? CFG.classic.popCap : CFG.popCap) * scale.pop), `${mode} ${army} population cap`);
+      step(g);
+      assert.ok(Number.isFinite(g.players[0].mp) && Number.isFinite(g.players[0].inc), `${mode} ${army} finite income`);
+    }
+  }
+}
+
+// Massive move orders reach the whole army, including units beyond the old 50-unit command limit.
+{
+  const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { army: 'massive' });
+  g.units.clear(); g.players[0].mp = 100000;
+  for (let i = 0; i < popCap(g); i++) put(g, 0, 'rifle', 5, 5);
+  const units = [...g.units.values()];
+  command(g, 0, { t: 'amove', orders: units.map(u => [u.id, 30, 30]) });
+  assert.equal(units.filter(u => u.amove?.x === 30 && u.amove?.z === 30).length, units.length, 'Massive attack-move reaches every selected unit');
+}
+
+// Massive commands apply to every selected ID, including armies inherited above the population cap.
+{
+  const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { army: 'massive' });
+  g.units.clear(); g.players.forEach(p => { p.mp = 100000; });
+  for (let slot = 0; slot < 2; slot++) for (let i = 0; i < popCap(g); i++) put(g, slot, 'rifle', 5, 5);
+  const units = [...g.units.values()];
+  for (const u of units) { u.owner = 0; u.amove = { x: 30, z: 30 }; }
+  command(g, 0, { t: 'stop', ids: units.map(u => u.id) });
+  assert.equal(units.filter(u => u.amove === null).length, units.length, 'Massive stop reaches every selected unit');
+  command(g, 0, { t: 'retreat', ids: units.map(u => u.id) });
+  assert.equal(units.filter(u => u.retreating).length, units.length, 'Massive retreat reaches every selected unit');
+}
+
 // Assault mode: the defender gets a bunker and fortifications; attackers must destroy it before time runs out.
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
@@ -917,6 +1226,61 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   assert.equal(validateMap({ ...m, spawns: [{ ...m.spawns[0], assault: true }, { ...m.spawns[1], assault: true }, m.spawns[2]] }), 'needs 2+ spawns that every mode can use');
 }
 
+// Pending paratroopers reserve a population slot until the squad arrives or its plane is shot down.
+{
+  for (const intercepted of [false, true]) {
+    const g = fresh(); g.players[0].mp = 10000;
+    for (let i = 0; i < popCap(g) - 1; i++) put(g, 0, 'rifle', 10, 10);
+    const count = g.units.size;
+    command(g, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
+    assert.equal(g.strikes.length, 1, 'paratroopers accepted with one free population slot');
+    assert.equal(popOf(g, 0), popCap(g), 'pending paratroopers reserve population');
+    const mp = g.players[0].mp;
+    command(g, 0, { t: 'buy', unit: 'rifle' });
+    assert.equal(g.units.size, count, 'recruitment cannot take the paratroopers slot');
+    assert.equal(g.players[0].mp, mp, 'rejected recruitment does not spend manpower');
+    if (intercepted) g.covers = [{ team: 1, x: 20, z: 12, r: SUPPORT.cover.radius, t: SUPPORT.para.delay + 1 }];
+    run(g, SUPPORT.para.delay + 0.2);
+    assert.equal(g.units.size, count + (intercepted ? 0 : 1), 'accepted drop arrives unless intercepted');
+    assert.equal(g.strikes.length, 0, `paratroopers ${intercepted ? 'shot down' : 'delivered'} leave no pending strike`);
+    assert.equal(popOf(g, 0), g.units.size, 'the resolved drop has no pending reservation');
+    if (intercepted) {
+      command(g, 0, { t: 'buy', unit: 'rifle' });
+      assert.equal(g.units.size, count + 1, 'a shoot-down releases the reserved population');
+    }
+  }
+}
+
+// Fighter Cover hands off its lifetime to the cover zone when it arrives.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  command(g, 0, { t: 'support', kind: 'cover', x: 20, z: 20 });
+  assert.equal(g.strikes.length, 1, 'fighter cover is announced before arrival');
+  run(g, SUPPORT.cover.delay + 0.1);
+  assert.equal(g.covers.length, 1, 'fighter cover zone starts on arrival');
+  assert.equal(g.strikes.length, 0, 'delivered fighter cover no longer appears as an incoming strike');
+  run(g, SUPPORT.cover.dur + 1);
+  assert.equal(g.covers.length, 0, 'fighter cover zone expires');
+  assert.equal(snapshotFor(g, 0, []).strikes.length, 0, 'expired cover has no lingering ring');
+}
+
+// Every support call leaves only its intended short-lived effects in both economy modes.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  for (const mode of ['conquest', 'classic']) {
+    const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode });
+    const p = g.players[0]; p.mp = 5000; if (mode === 'classic') p.mun = 5000;
+    const dir = Math.atan2(g.h * CELL / 2 - p.spawn.z, g.w * CELL / 2 - p.spawn.x);
+    const x = p.spawn.x + Math.cos(dir) * 28, z = p.spawn.z + Math.sin(dir) * 28;
+    run(g, 0.2);
+    for (const kind of Object.keys(SUPPORT)) command(g, 0, { t: 'support', kind, x, z });
+    assert.deepEqual(g.strikes.map(s => s.kind), Object.keys(SUPPORT), `${mode} accepted every support kind`);
+    run(g, 200);
+    for (const key of ['strikes', 'covers', 'smokes', 'nades', 'salvos'])
+      assert.equal(g[key].length, 0, `${mode} ${key} expire after every support resolves`);
+  }
+}
+
 // Aviation: air support (dive bomber, paratroopers, fighter cover), flak shoot-downs, planes on sorties, anti-air.
 {
   const R = Math.random;
@@ -926,6 +1290,7 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   command(d, 0, { t: 'support', kind: 'dive', x: 30, z: 30 });
   run(d, SUPPORT.dive.delay + 0.5);
   assert.ok(tank.hp <= 0 || !d.units.has(tank.id), 'a dive bomber kills a tank it lands on');
+  assert.equal(d.strikes.length, 0, 'delivered dive bomber leaves no pending strike');
   // paratroopers: only where your side can see, and they arrive as a rifle squad
   const pa = fresh(); pa.players[0].mp = 1000;
   const eye = put(pa, 0, 'rifle', 10, 10); run(pa, 0.3);
@@ -934,6 +1299,7 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   command(pa, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
   run(pa, SUPPORT.para.delay + 0.5);
   assert.equal([...pa.units.values()].filter(u => u.owner === 0 && u.type === 'rifle').length, 2, 'a squad dropped in');
+  assert.equal(pa.strikes.length, 0, 'delivered paratroopers leave no pending strike');
   // fighter cover intercepts the next enemy strike over it (but never recon)
   const fc = fresh(); fc.players[0].mp = fc.players[1].mp = 2000;
   const target = put(fc, 1, 'tank', 30, 30); run(fc, 0.2);
@@ -942,6 +1308,7 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   assert.ok(fc.strikes.some(q => q.kind === 'recon' && q.live), 'recon flies through fighter cover');
   command(fc, 0, { t: 'support', kind: 'dive', x: 30, z: 30 }); run(fc, SUPPORT.dive.delay + 0.5);
   assert.ok(fc.units.has(target.id) && target.hp === UNITS.tank.hpPer, 'the dive bomber was shot down: no damage');
+  assert.equal(fc.strikes.filter(q => q.kind === 'dive').length, 0, 'intercepted dive bomber leaves no pending strike');
   assert.equal(fc.covers.length, 0, 'fighter cover is used up');
   // flak: each gun in range rolls its chance to shoot a support plane down
   const fk = fresh(); fk.players[0].mp = fk.players[1].mp = 2000;
@@ -950,6 +1317,7 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   command(fk, 0, { t: 'support', kind: 'dive', x: 30, z: 30 }); run(fk, SUPPORT.dive.delay + 0.5);
   Math.random = R;
   assert.equal(t2.hp, UNITS.tank.hpPer, 'flak shot the dive bomber down');
+  assert.equal(fk.strikes.length, 0, 'flak shot-down leaves no pending strike');
   // flak can't hurt tanks
   const fv = fresh(); fv.players[0].mp = fv.players[1].mp = 2000;
   const tk = put(fv, 1, 'tank', 20, 20), fl = put(fv, 0, 'flak', 34, 20); run(fv, 6);
@@ -983,11 +1351,14 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   const at = put(ga, 0, 'attacker', 0, 0), tank = put(ga, 1, 'tank', 50, 50), spot = put(ga, 0, 'rifle', 30, 50);
   run(ga, 0.5);
   command(ga, 0, { t: 'attack', ids: [at.id], target: tank.id });
-  run(ga, 15);
+  const random = Math.random;
+  try { Math.random = () => 0; run(ga, 15); } finally { Math.random = random; }
   assert.ok(tank.hp < UNITS.tank.hpPer, `the ground-attack plane hit the tank (${tank.hp})`);
   const fl1 = put(ga, 1, 'flak', 52, 50), fl2 = put(ga, 1, 'flak', 48, 50);
+  // Ready guns and a damaged plane make this shoot-down and bounty check deterministic.
+  fl1.still = fl2.still = 2; at.hp = 50; at.cooldown = 1e9;
   const mp1 = ga.players[1].mp;
-  run(ga, 20);
+  run(ga, 2);
   assert.ok(!ga.units.has(at.id), 'two flak guns shot the plane down');
   assert.ok(ga.players[1].mp > mp1 + UNITS.attacker.cost * CFG.bounty * 0.9, 'and paid the kill bounty');
 }
@@ -1010,6 +1381,17 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   run(g, UNITS.fighter.train + 1);
   const f = [...g.units.values()].find(u => u.type === 'fighter');
   assert.ok(f && f.air.state === 'base' && Math.hypot(f.x - af.x, f.z - af.z) < 1, 'the new fighter sits at its Airfield');
+  const site = sim.siteNear(g, af.x + 40, af.z, UNITS.airfield.size);
+  assert.ok(site, 'there is an open site for the distant Airfield');
+  eng.x = site.x; eng.z = site.z + 5;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'airfield', x: site.x, z: site.z });
+  const far = [...g.units.values()].find(u => u.type === 'airfield' && u.id !== af.id);
+  assert.ok(far, 'a second Airfield can be placed away from the HQ');
+  far.built = 1; far.hp = UNITS.airfield.hpPer;
+  command(g, 0, { t: 'buy', unit: 'fighter', from: far.id });
+  run(g, UNITS.fighter.train + 0.1);
+  const second = [...g.units.values()].find(u => u.type === 'fighter' && u.id !== f.id);
+  assert.ok(second && Math.hypot(second.x - far.x, second.z - far.z) < 1, 'a plane trained at the distant Airfield starts at that Airfield');
 }
 {
   // kill bounty: 20% of the dead unit's cost to the enemy who finished it
@@ -1019,6 +1401,192 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   run(g, 3);
   assert.ok(!g.units.has(b.id), 'enemy squad died');
   assert.ok(g.players[0].mp >= mp0 + UNITS.rifle.cost * CFG.bounty - 0.01, `bounty paid (${g.players[0].mp - mp0})`);
+}
+
+// Fighter Cover stops one strike even when two planes arrive on the same tick.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 2000;
+  const tank = put(g, 1, 'tank', 30, 30);
+  command(g, 1, { t: 'support', kind: 'cover', x: 30, z: 30 });
+  run(g, SUPPORT.cover.delay + 0.1);
+  command(g, 0, { t: 'support', kind: 'dive', x: 30, z: 30 });
+  command(g, 0, { t: 'support', kind: 'strafe', x: 30, z: 30, dir: 0 });
+  run(g, SUPPORT.dive.delay + 0.1);
+  assert.equal(g.shots.filter(s => s.k === 'shotdown').length, 1, 'Fighter Cover intercepts only one simultaneous arrival');
+  assert.ok(tank.hp < UNITS.tank.hpPer, 'the second strike delivers its attack');
+}
+
+// A returning plane disappears from enemy snapshots immediately on reaching base.
+{
+  const g = fresh(Array(60).fill('.'.repeat(60))); g.players[0].mp = g.players[1].mp = 1000;
+  g.players[0].spawn = { x: 10, z: 60 };
+  const plane = put(g, 0, 'fighter', 0, 0);
+  put(g, 1, 'rifle', 5, 60);
+  run(g, 0.2);
+  plane.x += 4; plane.air.state = 'home';
+  step(g);
+  assert.equal(plane.air.state, 'rearm', 'the returning plane reaches its base');
+  assert.equal(snapshotFor(g, 1, []).units.some(u => u[0] === plane.id), false, 'a rearming plane is hidden even between vision updates');
+}
+
+// Spot visibility follows the same airborne rules as unit visibility.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const plane = put(g, 0, 'fighter', 10, 10);
+  assert.equal(teamSees(g, 0, { x: 12, z: 10 }), false, 'a parked plane cannot spot a paratrooper landing');
+}
+{
+  const rows = [...empty]; rows[5] = '.'.repeat(10) + 'B' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = 1000;
+  const plane = put(g, 0, 'fighter', 10, 11);
+  command(g, 0, { t: 'move', orders: [[plane.id, 30, 11]] });
+  assert.equal(los(g, plane, { x: 30, z: 11 }), false, 'the house blocks a ground observer');
+  assert.equal(teamSees(g, 0, { x: 30, z: 11 }), true, 'an airborne plane spots landing ground across a house');
+}
+
+// Bridge demolition affects the ground units on it, while planes fly above it.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(10) + '=' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+  const plane = put(g, 0, 'fighter', 20.2, 20.2);
+  command(g, 0, { t: 'move', orders: [[plane.id, 20.2, 20.2]] });
+  command(g, 1, { t: 'support', kind: 'dive', x: 21, z: 21 });
+  g.strikes[0].t = 0;
+  step(g);
+  assert.equal(g.chars[10 * g.w + 10], 'W', 'the bridge is demolished');
+  assert.equal(g.units.has(plane.id), true, 'demolishing a bridge cannot kill a plane above it');
+  assert.equal(plane.hp, UNITS.fighter.hpPer, 'the ground explosion does not damage the plane');
+}
+
+// Shoot-down events do not expose commandable planes to a team outside vision.
+{
+  const g = fresh(Array(60).fill('.'.repeat(60)), 3);
+  g.players.forEach(p => { p.mp = 2000; });
+  const plane = put(g, 0, 'fighter', 30, 30);
+  put(g, 1, 'flaktrack', 32, 30);
+  command(g, 0, { t: 'move', orders: [[plane.id, 30, 30]] });
+  plane.hp = 1;
+  step(g);
+  assert.equal(g.units.has(plane.id), false, 'mobile flak shoots down the plane');
+  assert.ok(snapshotFor(g, 0, g.shots).shots.some(s => s.k === 'planedown'), 'the owner receives its shoot-down event');
+  assert.equal(snapshotFor(g, 2, g.shots).shots.some(s => s.k === 'planedown'), false, 'a hidden shoot-down does not reveal the plane to a third team');
+}
+
+// Public support effects preserve the announcement without revealing hidden flak IDs.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 2000;
+  const gun = put(g, 1, 'flak', 30, 30);
+  run(g, 3);
+  const random = Math.random;
+  try {
+    Math.random = () => 0;
+    command(g, 0, { t: 'support', kind: 'dive', x: 30, z: 30 });
+    run(g, SUPPORT.dive.delay + 0.1);
+  } finally { Math.random = random; }
+  assert.equal(g.players[0].visible.has(gun.id), false, 'the flak gun stays outside vision');
+  const flak = snapshotFor(g, 0, g.shots).shots.find(s => s.k === 'flak');
+  assert.ok(flak, 'the public strike still shows interception fire');
+  assert.equal(flak.f, undefined, 'public flak effects omit a hidden shooter ID');
+  assert.ok(g.shots.find(s => s.k === 'flak').f === gun.id, 'filtering one snapshot preserves the event for other viewers');
+}
+
+// Hidden Classic buildings do not announce their destruction to uninvolved teams.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b', 'c'], false, [0, 1, 2], [0, 1, 2], { mode: 'classic' });
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  run(g, 0.2);
+  assert.equal(g.players[2].visible.has(hq.id), false, 'the distant HQ is hidden');
+  hq.hp = 0;
+  step(g);
+  assert.ok(snapshotFor(g, 0, g.shots).shots.some(s => s.k === 'collapse' && s.x === hq.x), 'the owner sees its HQ collapse');
+  assert.equal(snapshotFor(g, 2, g.shots).shots.some(s => s.k === 'collapse' && s.x === hq.x), false, 'a hidden HQ collapse does not disclose its position');
+}
+
+// An incoming paratrooper drop cannot recreate an eliminated player's army.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b', 'c'], false, [0, 0, 1], [0, 1, 2], { mode: 'classic' });
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  g.players[0].mun = 1000;
+  command(g, 0, { t: 'support', kind: 'para', x: hq.x + 10, z: hq.z });
+  assert.equal(g.strikes.length, 1, 'the visible drop is ordered before elimination');
+  hq.hp = 0; step(g);
+  assert.equal(g.players[0].out, true, 'the player loses its last Production Building');
+  assert.equal(g.winner, null, 'its teammate keeps the match running');
+  run(g, SUPPORT.para.delay + 0.1);
+  assert.equal([...g.units.values()].some(u => u.owner === 0), false, 'paratroopers do not revive an eliminated army');
+}
+
+// A plane overhead is not solid cover for infantry below it.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 2000;
+  const rifle = put(g, 0, 'rifle', 10, 10);
+  const plane = put(g, 0, 'fighter', 12, 10);
+  command(g, 0, { t: 'move', orders: [[plane.id, 12, 10]] });
+  assert.equal(snapshotFor(g, 0, []).units.find(u => u[0] === rifle.id)[10], 0, 'a nearby plane does not mark infantry as next to cover');
+  const shooter = put(g, 1, 'rifle', 30, 10);
+  rifle.cooldown = plane.cooldown = 1e9;
+  const random = Math.random;
+  try { Math.random = () => 0.5; step(g); } finally { Math.random = random; }
+  assert.ok(rifle.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'a plane does not block ground fire aimed at the squad');
+}
+
+// A vehicle killed earlier in a tick cannot fire after its destruction.
+{
+  const g = fresh(empty, 3); g.players.forEach(p => { p.mp = 1000; });
+  const killer = put(g, 0, 'tank', 10, 10), doomed = put(g, 1, 'tank', 30, 10);
+  const rifle = put(g, 2, 'rifle', 34, 10);
+  doomed.hp = 1; rifle.cooldown = 1e9;
+  const random = Math.random;
+  try { Math.random = () => 0; step(g); } finally { Math.random = random; }
+  assert.equal(g.units.has(doomed.id), false, 'the first tank destroys the enemy tank');
+  assert.equal(rifle.hp, UNITS.rifle.models * UNITS.rifle.hpPer, 'a destroyed tank cannot fire later in the same tick');
+  assert.equal(g.shots.some(s => s.f === doomed.id), false, 'the destroyed tank produces no firing event');
+}
+
+// Ghosts use airborne visibility: parked planes cannot spot, flying planes see across terrain.
+for (const flying of [false, true]) {
+  const rows = Array(80).fill('.'.repeat(80)); if (flying) rows[73] = 'B'.repeat(80);
+  const map = { w: 80, h: 80, rows, spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }, { x: 2, y: 77 }], points: [{ x: 40, y: 40 }] };
+  const g = createGame(map, ['a', 'b', 'c'], false, [0, 1, 1], [0, 1, 2], { mode: 'classic' });
+  const hq = [...g.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  const scout = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  Object.assign(scout, { x: hq.x - 12, z: hq.z, cooldown: 1e9 }); run(g, 0.2);
+  assert.ok(snapshotFor(g, 0, []).units.some(u => u[0] === hq.id), 'the scout sees the HQ before leaving');
+  Object.assign(scout, g.players[0].spawn); run(g, 0.2);
+  g.players[0].spawn = { x: 110, z: 110 }; g.players[0].mp = 1000;
+  const mode = g.mode; g.mode = null; command(g, 0, { t: 'buy', unit: 'fighter' }); g.mode = mode;
+  const plane = [...g.units.values()].find(u => u.type === 'fighter');
+  assert.equal(plane.air.state, 'base', 'the nearby plane remains parked');
+  assert.ok(Math.hypot(plane.x - hq.x, plane.z - hq.z) < UNITS.fighter.vision, 'the parked plane is within spotting range of the Ghost');
+  if (flying) {
+    assert.equal(los(g, plane, hq), false, 'the houses block ground sight to the HQ');
+    command(g, 0, { t: 'move', orders: [[plane.id, plane.x, plane.z]] });
+  }
+  hq.hp = 0; run(g, 0.3);
+  assert.equal(g.winner, null, 'the enemy teammate keeps the match running');
+  assert.equal(snapshotFor(g, 0, []).ghosts.some(gh => gh[0] === hq.id), !flying,
+    flying ? 'a flying plane clears a destroyed building Ghost across terrain' : 'a parked plane cannot clear a destroyed building Ghost under fog');
+}
+
+// A ground attack order cannot lock onto a visible plane it cannot shoot.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 2000;
+  const rifle = put(g, 0, 'rifle', 10, 10), enemy = put(g, 1, 'rifle', 18, 10);
+  const plane = put(g, 1, 'fighter', 20, 10);
+  Object.assign(plane.air, { state: 'station', mission: { kind: 'patrol', x: 20, z: 10 } });
+  rifle.cooldown = enemy.cooldown = 1e9;
+  run(g, 0.2);
+  assert.ok(g.players[0].visible.has(plane.id), 'the plane is visible to the squad');
+  command(g, 0, { t: 'attack', ids: [rifle.id], target: plane.id });
+  assert.equal(rifle.attackId, 0, 'ground units ignore an attack order against a plane');
+  rifle.targetId = 0; rifle.retarget = 0;
+  step(g);
+  assert.equal(rifle.targetId, enemy.id, 'the squad still picks a ground enemy automatically');
+  const fighter = put(g, 0, 'fighter', 12, 10);
+  command(g, 0, { t: 'attack', ids: [fighter.id], target: plane.id });
+  assert.equal(fighter.air.mission?.id, plane.id, 'fighters can still be sent after planes');
 }
 
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.
@@ -1033,6 +1601,322 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   command(g, 0, { t: 'attack', ids: [a.id], target: b.id });
   plans = snapshotFor(g, 0, []).plans;
   assert.deepEqual(plans[0].slice(1, 4), [4, b.x, b.z], 'locked onto the target it was ordered to attack');
+}
+
+// Terrain replay stays bounded when the same construction site is placed and cancelled repeatedly.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const p = g.players[0], eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  const node = g.nodes.filter(n => !n.fuel).sort((a, b) => Math.hypot(a.x - eng.x, a.z - eng.z) - Math.hypot(b.x - eng.x, b.z - eng.z))[0];
+  eng.x = node.x + 8; eng.z = node.z; p.mp = 10000; p.mun = 100;
+  const orig = Math.random;
+  try {
+    const rolls = Array.from({ length: SUPPORT.artillery.shells }, (_, i) => [
+      0.5 + (i % 2 ? 1 : -1) / SUPPORT.artillery.len,
+      0.5 + (Math.floor(i / 2) % 2 ? 1 : -1) / SUPPORT.artillery.width,
+    ]).flat();
+    Math.random = () => rolls.shift() ?? 0.5;
+    command(g, 0, { t: 'support', kind: 'artillery', x: node.x, z: node.z, dir: 0 });
+    run(g, SUPPORT.artillery.delay + SUPPORT.artillery.shells * SUPPORT.artillery.every + 0.3);
+  } finally { Math.random = orig; }
+  const hole = Math.floor(node.z / CELL) * g.w + Math.floor(node.x / CELL);
+  assert.ok(g.height[hole] < 0, 'terrain replay fixture has a crater under the future site');
+  let emitted, emittedBefore;
+  for (let i = 0; i < 20; i++) {
+    const at = g.newCells.length;
+    command(g, 0, { t: 'build', ids: [eng.id], kind: 'depot', x: node.x, z: node.z });
+    const site = g.units.get(node.depot);
+    assert.ok(site, `terrain replay cycle ${i}: a legitimate construction site is accepted`);
+    if (i === 0) { emitted = g.newCells.slice(at); emittedBefore = structuredClone(emitted); }
+    command(g, 0, { t: 'cancel', id: site.id });
+    assert.equal(node.depot, 0, `terrain replay cycle ${i}: the node is free after cancellation`);
+  }
+  assert.equal(g.cellLog.length, new Set(g.cellLog.map(([c]) => c)).size, 'terrain replay keeps one latest entry per changed cell');
+  assert.equal(g.cellLog.find(([c]) => c === hole)[2], g.height[hole], 'later character changes retain the crater height for reconnecting players');
+  assert.ok(g.cellLog.every(([c, ch]) => ch === g.chars[c]), 'terrain replay contains the current character for each cell');
+  assert.deepEqual(emitted, emittedBefore, 'later terrain changes do not mutate previously emitted incremental updates');
+  assert.equal(g.newCells.length > g.cellLog.length, true, 'incremental updates keep every transition for connected players');
+}
+
+// Idle troops wait for their next target search, but immediately replace a target that dies.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+  const rifle = put(g, 0, 'rifle', 5, 5), first = put(g, 1, 'rifle', 40, 5), next = put(g, 1, 'rifle', 40, 10);
+  first.cooldown = next.cooldown = 1e9;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0;
+    step(g);
+    assert.equal(rifle.targetId, 0, 'no target before an enemy enters weapon range');
+    first.x = 20;
+    step(g);
+    assert.equal(first.hp, UNITS.rifle.models * UNITS.rifle.hpPer, 'a newly arrived enemy waits for the scheduled target search');
+    run(g, 0.6);
+    assert.ok(first.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'troops acquire and shoot the enemy when the search timer expires');
+    assert.equal(rifle.targetId, first.id, 'the first target is acquired');
+    first.hp = 0; next.x = 20; rifle.cooldown = 0;
+    step(g);
+    assert.equal(rifle.targetId, next.id, 'a dead current target is replaced without waiting for the timer');
+    assert.ok(next.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'the replacement target is shot immediately');
+  } finally { Math.random = orig; }
+}
+
+// Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
+const massiveInternals = await import('data:text/javascript;base64,' + Buffer.from(readFileSync('shared/sim.js', 'utf8')
+  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell };').toString('base64'));
+const massiveFixture = () => {
+  const map = JSON.parse(readFileSync('maps/six-fronts.json', 'utf8'));
+  const g = createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, [0, 1, 2, 3, 4, 5], [0, 1, 2, 0, 1, 2], { mode: 'classic', army: 'massive' });
+  for (let i = 0; i < 73; i++) {
+    const c = (10 + Math.floor(i / 13) * 22) * g.w + 10 + i % 13 * 10;
+    const b = massiveInternals.placeBuilding(g, i % 6, 'barracks', c, true);
+    if (i % 3 !== 0) { massiveInternals.wreckBuilding(g, b); g.units.delete(b.id); }
+  }
+  const types = ['rifle', 'mg', 'tank', 'at', 'mortar', 'sniper', 'fighter', 'conscript'];
+  for (let i = 0; g.units.size < 300; i++) {
+    const owner = i % 6, u = massiveInternals.spawnUnit(g, owner, types[Math.floor(i / 6) % types.length]), p = g.players[owner].spawn;
+    Object.assign(u, { x: p.x + (Math.floor(i / 6) % 10 - 4.5) * 4, z: p.z + Math.floor(i / 60) * 4, cooldown: 1e9, still: 5, shotAt: -1000 });
+    if (u.air) Object.assign(u.air, { state: ['base', 'out', 'station', 'home'][owner % 4], mission: { kind: 'patrol', x: p.x, z: p.z } });
+  }
+  const houses = g.chars.flatMap((ch, c) => ch === 'B' ? [c] : []);
+  for (let owner = 0; owner < 6; owner++) {
+    const u = [...g.units.values()].find(u => u.owner === owner && u.type === 'rifle'), c = houses[owner * 3];
+    Object.assign(u, { garrison: c, x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+  }
+  for (let c = 0; g.cellLog.length < 1075; c++) if (!g.cellLogIndexes.has(c)) massiveInternals.setCell(g, c, g.chars[c]);
+  g.tick = 101; g.shots = []; g.newCells = [];
+  g.strikes.push({ kind: 'recon', owner: 0, x: g.w * CELL / 2, z: g.h * CELL / 2, dir: 0, t: 0, left: SUPPORT.recon.dur, next: 0, live: true });
+  return g;
+};
+
+// Reference before range-gated aim points and team-level vision preparation.
+const referenceVision = g => {
+  const { dist, airborne, aimPoint, levelAt, los, inStrip } = massiveInternals;
+  const byTeam = new Map();
+  for (const p of g.players) {
+    if (byTeam.has(p.team)) { p.visible = byTeam.get(p.team); continue; }
+    const vis = new Set(), own = [...g.units.values()].filter(u => g.players[u.owner].team === p.team);
+    for (const t of g.units.values()) {
+      if (g.players[t.owner].team === p.team) continue;
+      if (UNITS[t.type].structure && !UNITS[t.type].building) { vis.add(t.id); continue; }
+      if (t.air) { if (airborne(t) && own.some(u => (!u.air || airborne(u)) && dist(u, t) <= CFG.air.seeRange)) vis.add(t.id); continue; }
+      const aim = t.cells ? null : t;
+      const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
+      if (own.some(u => { const d = dist(u, t), at = aim ?? aimPoint(g, u, t); if (u.air) return airborne(u) && d <= UNITS[u.type].vision && (!hidden || d < CFG.camoRange * 2); if (hidden) return d < CFG.camoRange; return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, at)); })
+        || g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
+    }
+    byTeam.set(p.team, p.visible = vis);
+    if (g.mode?.kind !== 'classic') continue;
+    const mem = (g.ghosts ??= new Map()).get(p.team) ?? new Map();
+    g.ghosts.set(p.team, mem);
+    for (const id of vis) { const t = g.units.get(id); if (UNITS[t.type].building) mem.set(id, { id, type: t.type, owner: t.owner, x: t.x, z: t.z, built: t.built }); }
+    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => (!u.air || airborne(u)) && dist(u, gh) <= UNITS[u.type].vision && (u.air || UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
+  }
+};
+
+// Massive vision preserves visible sets and Ghosts across ground, air, camouflage, garrisons and recon.
+{
+  const g = massiveFixture();
+  assert.equal(g.units.size, 300, 'fixed Massive fixture has 300 units');
+  assert.equal(new Set([...g.buildingCells.values()].map(b => b.id)).size, 79, 'fixture remembers 79 placed buildings');
+  assert.equal(g.cellLog.length, 1075, 'fixture has 1075 latest terrain entries');
+  for (let round = 0; round < 8; round++) {
+    if (round === 2) g.players.forEach((p, i) => { p.team = Math.floor(i / 2); });
+    if (round === 4) { const b = [...g.units.values()].find(u => UNITS[u.type].building && u.owner === 1); g.units.delete(b.id); }
+    for (const u of g.units.values()) {
+      if (u.air) u.air.state = ['base', 'out', 'station', 'home', 'rearm'][(u.owner + round) % 5];
+      if (UNITS[u.type].camo) { u.still = round % 2 ? 5 : 0; u.shotAt = round % 3 ? -1000 : g.tick; }
+    }
+    const expected = structuredClone(g);
+    referenceVision(expected); massiveInternals.updateVision(g);
+    assert.deepEqual(g.players.map(p => p.visible), expected.players.map(p => p.visible), `vision sets match the old function in round ${round}`);
+    assert.deepEqual(g.ghosts, expected.ghosts, `Ghost memory matches the old function in round ${round}`);
+    g.tick += 4;
+  }
+}
+
+// Reference before the cheap separation gates. Pair order and floating-point pushes are unchanged.
+const referenceSeparation = `
+  const list = [...g.units.values()];
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
+    if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air) continue;
+    const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+    if (d >= min || d === 0) continue;
+    const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
+    if (sa && sb) continue;
+    const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
+    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+  }
+`;
+
+// Twenty ticks of a seeded crowded army produce identical coordinates with the old separation loop.
+{
+  const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  // soft separation;'), end = source.indexOf('  // grenades:', start);
+  const old = await import('data:text/javascript;base64,' + Buffer.from(source.slice(0, start) + referenceSeparation + source.slice(end)).toString('base64'));
+  const g = massiveFixture(); g.players.forEach(p => { p.team = 0; }); g.mode.teams = 1;
+  let seed = 123456;
+  const random = () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 4294967296; };
+  const centers = [...g.units.values()].filter(u => UNITS[u.type].building).slice(0, 3);
+  let i = 0;
+  for (const u of g.units.values()) {
+    u.cooldown = u.retarget = 1e9;
+    if (UNITS[u.type].structure || u.garrison >= 0) continue;
+    const at = centers[i++ % centers.length];
+    Object.assign(u, { x: at.x + UNITS[at.type].radius + random() * 6, z: at.z + (random() - 0.5) * 12 });
+  }
+  const ground = [...g.units.values()].filter(u => !UNITS[u.type].structure && !u.air && u.garrison < 0);
+  ground[1].x = ground[0].x; ground[1].z = ground[0].z; // the zero-distance rule still applies
+  const expected = structuredClone(g), savedRandom = Math.random;
+  try {
+    for (let tick = 0; tick < 20; tick++) {
+      seed = tick + 1; Math.random = random; step(g);
+      seed = tick + 1; Math.random = random; old.step(expected);
+      assert.deepEqual([...g.units.values()].map(u => [u.id, u.x, u.z]), [...expected.units.values()].map(u => [u.id, u.x, u.z]), `crowded positions exactly match after tick ${tick + 1}`);
+    }
+  } finally { Math.random = savedRandom; }
+}
+
+const referenceNearCover = (g, u) => {
+  const solid = new Set(['B', '#', 'R', 'H', 'K']), x = Math.floor(u.x / CELL), y = Math.floor(u.z / CELL);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (solid.has(g.chars[(y + dy) * g.w + x + dx])) return true;
+  return [...g.units.values()].some(v => v !== u && !v.air && !UNITS[v.type].infantry && massiveInternals.dist(u, v) < 3.5);
+};
+
+// Snapshot cover hints retain the old terrain, vehicle, structure and air exclusions.
+{
+  const g = massiveFixture();
+  for (const u of g.units.values()) if (UNITS[u.type].infantry)
+    assert.equal(massiveInternals.nearCover(g, u), referenceNearCover(g, u), `Massive cover hint matches for squad ${u.id}`);
+  const flat = fresh(); flat.players[0].mp = 1000;
+  const rifle = put(flat, 0, 'rifle', 10, 10), tank = put(flat, 0, 'tank', 30, 10), plane = put(flat, 0, 'fighter', 11, 10);
+  for (const x of [30, 13.5, 13.499, 10]) {
+    tank.x = x; tank.hp = 0;
+    assert.equal(massiveInternals.nearCover(flat, rifle), referenceNearCover(flat, rifle), `cover hint preserves the radius and dead vehicle rule at ${x}`);
+  }
+  flat.units.delete(tank.id);
+  assert.equal(massiveInternals.nearCover(flat, rifle), false, 'a nearby plane supplies no cover hint');
+  for (const ch of ['B', '#', 'R', 'H', 'K']) {
+    flat.chars[5 * flat.w + 6] = ch;
+    assert.equal(massiveInternals.nearCover(flat, rifle), referenceNearCover(flat, rifle), `adjacent ${ch} preserves its cover hint`);
+  }
+}
+
+// Incremental terrain matches the prior ordered scan for each viewer's independent history.
+{
+  const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));
+  const referenceTerrainFor = (slot, full = false) => {
+    const p = g.players[slot], memory = memories[slot], changes = [], visible = new Map();
+    for (const cell of g.cellLog) {
+      const [c, ch, height] = cell, building = g.buildingCells?.get(c);
+      if (building) {
+        if (!visible.has(building)) visible.set(building, sim.allied(g, building.owner, slot)
+          || (g.units.has(building.id) ? p.visible.has(building.id) : teamSees(g, p.team, building)));
+        if (!visible.get(building)) continue;
+      }
+      const old = memory.get(c);
+      if (old && old[1] === ch && old[2] === height) continue;
+      const known = [...cell]; memory.set(c, known); changes.push(known);
+    }
+    return full ? [...memory.values()] : changes;
+  };
+  let comparison = 0;
+  const check = (slot, full = false, snapshot = false) => {
+    const expected = referenceTerrainFor(slot, full);
+    const actual = snapshot ? snapshotFor(g, slot, [], []).cells : sim.terrainFor(g, slot, full);
+    assert.deepEqual(actual, expected, `incremental terrain comparison ${comparison++}: viewer ${slot}, full ${full}`);
+    assert.deepEqual([...g.players[slot].terrainMemory], [...memories[slot]], 'incremental terrain preserves ordered remembered tuples');
+    return actual;
+  };
+  for (let slot = 0; slot < g.players.length; slot++) check(slot, true);
+
+  // Existing replay entries can change without extending the log. Writes can also return to the remembered value.
+  const publicCells = g.cellLog.map(([c]) => c).filter(c => !g.buildingCells?.has(c));
+  assert.ok(publicCells.length >= 3, 'terrain fixture contains public changed cells');
+  const first = publicCells[0], last = publicCells.at(-1), remembered = g.players[0].terrainMemory.get(first);
+  const logLength = g.cellLog.length, saved = check(0, true), savedBefore = structuredClone(saved);
+  massiveInternals.setCell(g, last, g.chars[last] === '+' ? 'R' : '+');
+  massiveInternals.setCell(g, first, remembered[1] === 'R' ? '+' : 'R');
+  check(0, false, true);
+  assert.equal(g.cellLog.length, logLength, 'updates to existing terrain do not grow the replay log');
+  assert.deepEqual(saved, savedBefore, 'later changes do not mutate terrain tuples already returned for reconnect');
+  const untouched = g.chars.findIndex((_, c) => !g.cellLogIndexes.has(c) && !g.buildingCells?.has(c));
+  assert.ok(untouched >= 0, 'terrain fixture contains an unchanged public cell');
+  massiveInternals.setCell(g, untouched, 'R');
+  massiveInternals.setCell(g, first, g.chars[first] === '+' ? 'R' : '+');
+  check(0);
+  const beforeRevert = g.chars[first];
+  massiveInternals.setCell(g, first, beforeRevert === '+' ? 'R' : '+');
+  massiveInternals.setCell(g, first, beforeRevert);
+  assert.equal(check(0).some(([c]) => c === first), false, 'same-cell writes that return to the remembered value emit no change');
+
+  // An elevation change followed by a character-only write retains the latest elevation in the replay tuple.
+  g.height ??= new Int8Array(g.w * g.h);
+  g.height[first] = g.height[first] === -1 ? -2 : -1;
+  massiveInternals.logCell(g, first, [first, g.chars[first], g.height[first]]);
+  massiveInternals.setCell(g, first, g.chars[first] === '+' ? 'R' : '+');
+  const crater = check(0).find(([c]) => c === first);
+  assert.equal(crater[2], g.height[first], 'incremental terrain keeps elevation after a character-only transition');
+  g.newCells = [];
+  check(1, false, true);
+  check(0, true);
+
+  // Discover unchanged enemy footprints, retain their old terrain under fog, then revisit their rubble.
+  const slot = 0, p = g.players[slot];
+  const building = [...g.units.values()].find(u => u.cells && !sim.allied(g, u.owner, slot)
+    && u.cells.every(c => g.buildingCells.get(c)?.id === u.id));
+  assert.ok(building, 'terrain fixture contains an enemy building');
+  p.visible.delete(building.id);
+  for (const c of building.cells) massiveInternals.setCell(g, c, 'K');
+  assert.equal(check(slot).some(([c]) => building.cells.includes(c)), false, 'hidden enemy footprint writes are withheld');
+  p.visible.add(building.id);
+  const visible = check(slot, false, true);
+  assert.equal(visible.filter(([c, ch]) => building.cells.includes(c) && ch === 'K').length, building.cells.length,
+    'visibility alone sends the complete unknown footprint');
+  const oldTerrain = structuredClone(building.cells.map(c => p.terrainMemory.get(c)));
+  p.visible.delete(building.id);
+  const friendlyPositions = [...g.units.values()].filter(u => sim.allied(g, u.owner, slot)).map(u => [u, u.x, u.z]);
+  for (const [u] of friendlyPositions) { u.x = -10000; u.z = -10000; }
+  g.units.delete(building.id);
+  massiveInternals.wreckBuilding(g, building);
+  assert.equal(check(slot, false, true).some(([c]) => building.cells.includes(c)), false, 'unseen destruction remains withheld');
+  const reconnect = check(slot, true);
+  assert.deepEqual(building.cells.map(c => reconnect.find(([cell]) => cell === c)), oldTerrain, 'full reconnect keeps the last seen footprint under fog');
+  const scout = friendlyPositions.find(([u]) => !u.air && !sim.UNITS[u.type].building)?.[0];
+  assert.ok(scout, 'terrain fixture contains a ground scout');
+  scout.x = building.x; scout.z = building.z;
+  assert.equal(teamSees(g, p.team, g.buildingCells.get(building.cells[0])), true, 'the scout sees the destroyed building position');
+  assert.equal(check(slot, false, true).filter(([c, ch]) => building.cells.includes(c) && ch === 'R').length, building.cells.length,
+    'revisiting a destroyed building sends all rubble cells without new terrain writes');
+  for (const [u, x, z] of friendlyPositions) { u.x = x; u.z = z; }
+
+  // A replacement building gets a new footprint descriptor and must not reuse the old visibility decision.
+  const replacementOwner = g.players.find(q => !sim.allied(g, q.slot, slot)).slot;
+  const replacement = massiveInternals.placeBuilding(g, replacementOwner, building.type, building.cells[0], true);
+  p.visible.delete(replacement.id);
+  assert.equal(check(slot).some(([c]) => replacement.cells.includes(c)), false, 'hidden replacement footprint is withheld');
+  p.visible.add(replacement.id);
+  assert.equal(check(slot).filter(([c, ch]) => replacement.cells.includes(c) && ch === 'K').length, replacement.cells.length,
+    'discovering a replacement catches up the complete current footprint');
+
+  // Viewers consume at different rates; repeated writes and cleared transient batches must not lose changes.
+  let state = 0x3c12;
+  const pick = n => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state % n; };
+  const chars = ['.', '+', 'R', 'T', 'W'];
+  for (let i = 0; i < 96; i++) {
+    const c = publicCells[pick(publicCells.length)];
+    massiveInternals.setCell(g, c, chars[pick(chars.length)]);
+    if (i % 5 === 0) {
+      g.height[c] = -pick(3);
+      massiveInternals.logCell(g, c, [c, g.chars[c], g.height[c]]);
+    }
+    if (i % 7 === 0) g.newCells = [];
+    for (let viewer = 0; viewer < g.players.length; viewer++) if (i % (viewer + 1) === 0) check(viewer, false, i % 3 === 0);
+    if (i % 13 === 0) check(pick(g.players.length), true);
+  }
+  for (let viewer = 0; viewer < g.players.length; viewer++) check(viewer, true);
 }
 
 // Every shipped map is valid, and every spawn can walk to every capture point and every other spawn.
