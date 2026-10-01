@@ -21,6 +21,6 @@
 /* the kind reads in the text: light grease-pencil red for trouble, brass for a point won, chalk for the rest */
 #alerts .alert.k-attack, #alerts .alert.k-unitLost, #alerts .alert.k-pointLost, #alerts .alert.k-air { color: #f0a493; }
 #alerts .alert.k-pointWon { color: #e3c675; }
-#alerts .alert:hover { background: rgba(48, 52, 38, 0.92); }
+#alerts .alert:hover, #alerts .alert.vhover { background: rgba(48, 52, 38, 0.92); }
 @keyframes alert-in { from { opacity: 0; transform: translateX(12px); } }
 @media (prefers-reduced-motion: reduce) { #alerts .alert { animation: none; } }

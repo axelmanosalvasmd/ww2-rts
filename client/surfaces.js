@@ -1,18 +1,19 @@
 // Textured materials for the 3D terrain pieces: house walls and roofs, hedges, stone walls, sandbags, rubble, bridges,
-// wire posts and tank traps. Boxes take their texture coordinates from world position (top faces from x/z, walls from
+// wire posts and tank traps, and for the HQ tent, single burlap bags, haystacks and the props' rocks and timber. Boxes take their texture coordinates from world position (top faces from x/z, walls from
 // the side), so a texture keeps its real size on any box scale and the instanced meshes stay instanced. Every material
 // here also darkens itself where the fog of war is, the same way the fog overlay darkens the ground.
 import * as THREE from 'three';
 
 const loader = new THREE.TextureLoader();
 const textures = new Map(); // file name -> { tex, ready, waiting: [fn] }
+// name: a file in client/textures, '.jpg' unless it names its own extension
 export function loadTexture(name, onReady) {
   let t = textures.get(name);
   if (!t) {
     t = { tex: null, ready: false, waiting: [] };
     textures.set(name, t);
     const entry = t;
-    entry.tex = loader.load(`/client/textures/${name}.jpg`, () => { entry.ready = true; entry.waiting.forEach(fn => fn(entry.tex)); entry.waiting = []; });
+    entry.tex = loader.load(`/client/textures/${name.includes('.') ? name : name + '.jpg'}`, () => { entry.ready = true; entry.waiting.forEach(fn => fn(entry.tex)); entry.waiting = []; });
     entry.tex.wrapS = entry.tex.wrapT = THREE.RepeatWrapping;
     entry.tex.colorSpace = THREE.SRGBColorSpace;
     entry.tex.anisotropy = 4;
@@ -59,7 +60,10 @@ const SURF = {
   plaster: { tex: 'plaster', size: 6, flat: 0xb8a888, tint: [0.78, 0.76, 0.74], top: [0.5, 0.47, 0.44] },
   hedge: { tex: 'hedge', size: 1.6, flat: 0x3f5a2a, tint: [1, 1.35, 1.15], top: [1.15, 1.15, 1] },
   stone: { tex: 'stone', size: 2, flat: 0x9a958a, tint: [1.1, 1.15, 1.2], top: [1.1, 1.1, 1.1] },
-  sandbag: { tex: 'sandbag', size: 1, flat: 0x9c8a60, tint: [1.2, 1.3, 1.3], top: [1.1, 1.1, 1.1] },
+  sandbag: { tex: 'sandbag', size: 1, flat: 0x9c8a60, tint: [1.2, 1.3, 1.3], top: [1.1, 1.1, 1.1] }, // stacks drawn as one box
+  burlap: { tex: 'burlap', size: 0.5, flat: 0x9c8a60, tint: [0.82, 0.78, 0.68], top: [1.05, 1.05, 1.05] }, // single bags
+  canvas: { tex: 'canvas', size: 2.4, flat: 0x5f6440, tint: [0.8, 0.8, 0.7], top: [1.08, 1.08, 1.04] },
+  straw: { tex: 'burlap', size: 1.4, flat: 0xa89060, tint: [0.92, 0.82, 0.58], top: [1.05, 1.05, 1.05] },
   rubble: { tex: 'rubble', size: 2, flat: 0x8a8070, tint: [1, 1.15, 1.25], top: [1.05, 1.05, 1.05] },
   wood: { tex: 'planks', size: 1.2, flat: 0x7a5a3a, tint: [1, 0.85, 0.7], top: [1, 1, 1] },
   darkwood: { tex: 'planks', size: 1.2, flat: 0x5a4028, tint: [0.6, 0.48, 0.38], top: [1, 1, 1] },
@@ -94,10 +98,11 @@ function planar(shader) {
 }
 
 const cache = new Map();
-// a shared material for a kind of surface; per-instance colors still multiply it
-export function surface(key) {
-  if (cache.has(key)) return cache.get(key);
-  const s = SURF[key], m = new THREE.MeshLambertMaterial({ color: s.flat });
+// a shared material for a kind of surface; per-instance colors still multiply it, and with painted, vertex colors too
+export function surface(key, painted = false) {
+  const id = painted ? `${key}:painted` : key;
+  if (cache.has(id)) return cache.get(id);
+  const s = SURF[key], m = new THREE.MeshLambertMaterial({ color: s.flat, vertexColors: painted });
   m.userData.uvScale = { value: 1 / s.size };
   m.userData.topTint = { value: new THREE.Color(1, 1, 1) };
   m.onBeforeCompile = planar;
@@ -105,6 +110,6 @@ export function surface(key) {
     m.map = tex; m.color.setRGB(...s.tint); m.userData.topTint.value.setRGB(...s.top);
     m.needsUpdate = true;
   });
-  cache.set(key, m);
+  cache.set(id, m);
   return m;
 }

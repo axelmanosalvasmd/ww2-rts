@@ -110,6 +110,8 @@ flat.push(flat[FIELD]);
 // ---------- per-cell ground materials ----------
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 // ploughed fields: some 10x8 blocks of open ground (from the map file, so they never move) get a crop field
+// fieldCells: per cell 0 (no field), 1 (a field) or 2 (a field ploughed at right angles); client/props.js grows crops on some
+export function fieldCells(map) { return fieldsOf(map).map(v => (v === FIELD ? 1 : v === FIELD_V ? 2 : 0)); }
 function fieldsOf(map) {
   const { w, h, rows } = map, f = new Uint8Array(w * h), BW = 10, BH = 8;
   const keep = [...(map.spawns || []).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
