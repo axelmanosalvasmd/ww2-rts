@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { unitRole } from './unit-roles.js';
+import { createAviation } from './aircraft.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -251,7 +252,7 @@ function startGame(m) {
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear(); aviation.reset();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -614,23 +615,9 @@ function makeUnit(id, type, owner) {
     for (const r of [def.w.range, def.w.minRange].filter(Boolean)) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.25, r, 96), rm); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; v.range.add(m); }
     root.add(v.range);
   }
-  if (isAir(type)) {
-    // fighter: slim, long nose; ground-attack plane: bigger, rockets and a bomb under the wings
-    const big = type === 'attacker', c = mat(f.vehicle), dark = mat(0x2a2a24);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, c, big ? 7 : 6, big ? 1.1 : 0.9, big ? 1.1 : 0.9), mesh(GEO.box, c, big ? 1.8 : 1.4, 0.2, big ? 11 : 9.5, big ? 0.4 : 0.6, -0.1, 0),
-      mesh(GEO.box, c, 0.9, 0.15, 3.4, big ? -3 : -2.6, 0.1, 0), mesh(GEO.box, c, 0.9, 1.3, 0.15, big ? -3 : -2.6, 0.7, 0),
-      mesh(GEO.box, mat(f.color), 0.5, 0.22, big ? 11.2 : 9.7, big ? 0.4 : 0.6, -0.05, 0), mesh(GEO.cyl, dark, 0.15, 0.4, 0.15, big ? 3.7 : 3.2, 0, 0).rotateZ(Math.PI / 2));
-    if (big) for (const z of [-3.5, -2.5, 2.5, 3.5]) v.body.add(mesh(GEO.cyl, dark, 0.12, 1.2, 0.12, 0.6, -0.4, z).rotateZ(Math.PI / 2));
-    if (big) v.body.add(mesh(GEO.box, dark, 1.4, 0.4, 0.4, 0.3, -0.7, 0));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'airfield') {
-    // a dirt strip, a hangar and a windsock
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x6a5e44), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
-      mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'flakpos') {
+  if (isAir(type)) aviation.buildUnit(v, root, type, owner);   // per-faction plane, propellers, shadow (client/aircraft.js)
+  else if (type === 'airfield') aviation.buildAirfield(v, root, owner);
+  else if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     const dark = mat(0x2a2a24);
     v.body = new THREE.Group();
@@ -753,6 +740,7 @@ function corpse(v, man) {
 
 function removeUnit(v) {
   world.remove(v.bars);
+  if (isAir(v.type)) aviation.release(v);
   if (v.killed && isVeh(v.type)) {
     // leave a burnt-out wreck for a while
     v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
@@ -818,6 +806,9 @@ function marker(x, z, color) {
   fx.push({ obj: m, life: 0.6, max: 0.6, update: (f) => { m.scale.setScalar(0.5 + (1 - f) * 2); m.material.opacity = f; }, dispose: () => m.material.dispose() });
 }
 
+// planes, airfields, flak bursts and shoot-downs (client/aircraft.js)
+const aviation = createAviation({ hAt, UNITS, SUPPORT, units, altitude: AIR_ALT, world: () => world, facOf, colorOf: (slot) => look(slot).color, vehicleOf: (slot) => look(slot).vehicle, me: () => me, boom, sound, flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
+
 // ---------- snapshots ----------
 
 function applySnapshot(s) {
@@ -854,11 +845,11 @@ function applySnapshot(s) {
     if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
     if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
-    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing' || sh.k === 'dive' || sh.k === 'para') { plane(sh); continue; }
+    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing' || sh.k === 'dive' || sh.k === 'para') { aviation.supportPlane(sh); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'chutes') { chutes(sh.x, sh.z); continue; }
-    if (sh.k === 'shotdown' || sh.k === 'planedown') { downed(sh); continue; }
-    if (sh.k === 'flak') { for (let i = 0; i < 5; i++) setTimeout(() => puff(sh.x + (Math.random() - 0.5) * 16, sh.z + (Math.random() - 0.5) * 16), i * 90); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'aa') { const a = units.get(sh.f), b = units.get(sh.t); if (a && b) { const st = a.root.getWorldPosition(new THREE.Vector3()); st.y += isAir(a.type) ? 0 : 1.5; tracer(st, b.root.getWorldPosition(new THREE.Vector3()), 0xffe08a, 0.08); sound('mg', a.x, a.z); } continue; }
+    if (sh.k === 'shotdown' || sh.k === 'planedown') { aviation.shotDown(sh); continue; }
+    if (sh.k === 'flak') { aviation.flak(sh); sound('at', sh.x, sh.z); continue; }
+    if (sh.k === 'aa') { const a = units.get(sh.f), b = units.get(sh.t); if (a && b) { aviation.aaBurst(a, b); const st = a.root.getWorldPosition(new THREE.Vector3()); st.y += isAir(a.type) ? 0 : 1.5; tracer(st, b.root.getWorldPosition(new THREE.Vector3()), 0xffe08a, 0.08); sound('mg', a.x, a.z); } continue; }
     if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
@@ -954,29 +945,6 @@ function aimShape(kind, color) {
   g.userData.mat = matl;
   return g;
 }
-// a plane crossing the map along the run, coming in from the caller's side
-function plane(sh) {
-  const p = new THREE.Group(), c = mat(0x55594a), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir);
-  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
-  p.rotation.y = -sh.dir; world.add(p);
-  const low = sh.k === 'strafe' ? 9 : sh.k === 'bombing' ? 18 : sh.k === 'dive' ? 12 : sh.k === 'para' ? 24 : 26, span = 140, life = 3;
-  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, hAt(sh.x, sh.z) + low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
-  if (sh.k === 'strafe') {
-    // guns rake the strip as it passes over
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 9 - 0.5) * SUPPORT.strafe.len;
-      setTimeout(() => { boom(sh.x + dx * a + (Math.random() - 0.5) * 3, sh.z + dz * a + (Math.random() - 0.5) * 3, 0.8); sound('mg', sh.x + dx * a, sh.z + dz * a); }, 1300 + i * 40);
-    }
-  }
-  sound('tank', sh.x, sh.z);
-}
-
-// a flak shell bursting in the sky over a spot
-function puff(x, z) {
-  const m = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x5a5a52, transparent: true, depthWrite: false }));
-  m.position.set(x, hAt(x, z) + AIR_ALT + (Math.random() - 0.5) * 6, z); world.add(m);
-  fx.push({ obj: m, life: 1.2, max: 1.2, update: (f) => { m.scale.setScalar(0.6 + (1 - f) * 2.2); m.material.opacity = f * 0.8; }, dispose: () => m.material.dispose() });
-}
 // paratroopers: a few canopies drifting down onto the drop
 function chutes(x, z) {
   for (let i = 0; i < 5; i++) {
@@ -986,17 +954,6 @@ function chutes(x, z) {
     fx.push({ obj: g, life: 3, max: 3, update: (f) => g.position.set(cx, hAt(cx, cz) + f * 22, cz) });
   }
 }
-// a plane shot down: it tips over, falls, and blows up where it hits the ground
-function downed(sh) {
-  const p = new THREE.Group(), c = mat(0x3a3a32), dir = sh.dir ?? 0, dx = Math.cos(dir), dz = Math.sin(dir);
-  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9));
-  p.rotation.y = -dir; world.add(p);
-  const life = 2.2, gy = hAt(sh.x, sh.z);
-  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f; p.position.set(sh.x + dx * t * 25, gy + AIR_ALT * f + 1, sh.z + dz * t * 25); p.rotation.z = t * 2.5; } });
-  setTimeout(() => { boom(sh.x + dx * 25, sh.z + dz * 25, 4); sound('tank', sh.x, sh.z); }, life * 1000);
-  puff(sh.x, sh.z);
-}
-
 // rocket salvo: eight streaks arcing from the launcher onto the target area
 function salvo(from, x, z, n = 8) {
   const start = from.root.position.clone(); start.y += 2.5;
@@ -1592,7 +1549,7 @@ renderer.setAnimationLoop(() => {
     const gy = hAt(v.x, v.z);
     const air = isAir(v.type), up = air ? AIR_ALT : 0;
     v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
-    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; }
+    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; aviation.tick(v, dt); }
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
@@ -1602,6 +1559,7 @@ renderer.setAnimationLoop(() => {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
+  aviation.update(dt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
@@ -1628,4 +1586,4 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, aviation, get me() { return me; } };
