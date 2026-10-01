@@ -4,40 +4,49 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Three Crossroads</title>
-<!-- inline icon: three roads meeting at a brass node on the HUD's olive strip. With a declared icon, browsers skip /favicon.ico -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2322251b'/%3E%3Cpath d='M16 16V4M16 16l10.4 6M16 16L5.6 22' stroke='%23d2a849' stroke-width='3.2' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='16' r='4.2' fill='%23d2a849'/%3E%3C/svg%3E">
+<!-- inline icon: three roads meeting at a brass node on a gunmetal tile. With a declared icon, browsers skip /favicon.ico -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='2' fill='%231a1d1f'/%3E%3Cpath d='M16 16V4M16 16l10.4 6M16 16L5.6 22' stroke='%23d6b25e' stroke-width='3.2' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='16' r='4.2' fill='%23d6b25e'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Stardos+Stencil:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Panel style E (DESIGN.md, Look and feel): a dark olive-charcoal strip holds the HUD; only the Command Card's unit
-     cards and the selection list are manila. Courier Prime for text, Stardos Stencil only for big numbers. */
+  /* Gunmetal HUD (DESIGN.md, Look and feel): translucent gunmetal panels edged with a 1 px khaki hairline, Barlow Semi
+     Condensed for every word and number, brass only on the numbers that matter (manpower, victory points, the clock).
+     Cards and buttons sit a step lighter than their panel; hover lights the hairline brass. */
   :root {
-    --strip: rgba(34, 37, 27, 0.85); --strip-hi: rgba(255, 246, 214, 0.07); --edge: rgba(150, 140, 102, 0.45);
-    --text: #e6dcc0; --dim: #b4aa8e; --brass: #d2a849; --red: #b8322a; --red-hi: #e0574a;
-    --manila: #d8c69a; --manila-hi: #e7d9b4; --manila-edge: #a08c5f; --ink: #2b2418; --ink-dim: #4a3f2b;
-    --type: 'Courier Prime', 'Courier New', ui-monospace, monospace; --stencil: 'Stardos Stencil', Impact, sans-serif;
+    --panel: rgba(25, 28, 30, 0.86); --panel-solid: rgba(25, 28, 30, 0.96);
+    --cell: #24282b; --cell-hi: #2e3337; --cell-lo: #15181a;
+    --line: rgba(176, 164, 122, 0.46); --line-soft: rgba(176, 164, 122, 0.24); --line-hot: rgba(214, 178, 94, 0.8);
+    --text: #e2dfd3; --dim: #a6a292; --brass: #d6b25e; --olive: #a9b37b; --red: #c8483b; --red-hi: #ee8a7b;
+    --type: 'Barlow Semi Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+    --strip: var(--panel); /* hud.js's Rally button reads this name */
     /* layout: screen margin, minimap size, bottom-left column width, Command Card height (the hint sits above it) */
-    --gap: 8px; --mm: 184px; --left-w: 248px; --card-h: 138px;
+    --gap: 8px; --mm: 184px; --left-w: 248px; --card-h: 150px;
     --p0: #3b73d6; --p1: #cc3a2e; --p2: #ece6d6; --p3: #e2832b; --p4: #9b5cd4; --p5: #35b6c0;
   }
-  @media (min-width: 1600px) and (min-height: 860px) { :root { --mm: 228px; --left-w: 268px; --card-h: 146px; } }
+  @media (min-width: 1600px) and (min-height: 860px) { :root { --mm: 228px; --left-w: 268px; --card-h: 168px; } }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1c16; color: var(--text); font: 14px/1.35 var(--type); user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #16191b; color: var(--text); font: 500 14px/1.35 var(--type); font-variant-numeric: tabular-nums; user-select: none; caret-color: var(--brass); }
+  ::selection { background: rgba(214, 178, 94, 0.35); color: var(--text); }
   canvas { display: block; }
-  .stencil, .num { font-family: var(--stencil); font-weight: 700; letter-spacing: 0.03em; }
-  .panel { background: var(--strip); border: 1px solid var(--edge); border-radius: 3px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35); }
-  button { font: inherit; color: var(--text); background: var(--strip-hi); border: 1px solid var(--edge); border-radius: 2px; padding: 6px 12px; cursor: pointer; }
+  .num { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 2px; }
+  button { font: inherit; color: var(--text); background: var(--cell); border: 1px solid var(--line-soft); border-radius: 2px; padding: 5px 10px; cursor: pointer; }
   /* .vhover: the hover look under the game-drawn cursor while Capture mouse is on (client/pointer.js) */
-  button:hover:not(:disabled), button.vhover:not(:disabled) { background: rgba(255, 246, 214, 0.14); border-color: var(--brass); }
+  button:hover:not(:disabled), button.vhover:not(:disabled) { background: var(--cell-hi); border-color: var(--line-hot); }
+  button:active:not(:disabled) { background: var(--cell-lo); }
   button:disabled { opacity: 0.42; cursor: default; }
-  select, input { font: inherit; color: var(--text); background: #16170f; border: 1px solid var(--edge); border-radius: 2px; padding: 5px 7px; }
+  select, input { font: inherit; color: var(--text); background: var(--cell-lo); border: 1px solid var(--line-soft); border-radius: 2px; padding: 5px 8px; }
+  select:hover:not(:disabled), input:hover:not([readonly]) { border-color: var(--line); }
+  select:focus, input:focus { border-color: var(--line-hot); }
   select { flex: 1; min-width: 0; }
-  a { color: var(--brass); }
+  option { background: #1d2023; color: var(--text); }
+  a { color: var(--text); text-underline-offset: 3px; text-decoration-color: var(--line); }
+  a:hover { text-decoration-color: var(--brass); }
   :focus { outline: none; }
-  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-  * { scrollbar-width: thin; scrollbar-color: #6e6748 transparent; }
-  kbd { display: inline-block; min-width: 17px; padding: 1px 3px; font: 700 13px/1.1 var(--type); text-align: center; color: var(--brass); background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(210, 168, 73, 0.55); border-radius: 2px; }
+  :focus-visible { outline: 1px solid var(--brass); outline-offset: 1px; }
+  * { scrollbar-width: thin; scrollbar-color: rgba(176, 164, 122, 0.45) transparent; }
+  kbd { display: inline-block; padding: 0 4px; font: 600 13px/1.3 var(--type); text-align: center; color: var(--dim); border: 1px solid var(--line-soft); border-radius: 2px; }
   kbd:empty { display: none; }
   .muted { color: var(--dim); }
   .danger { color: var(--red-hi) !important; }
@@ -45,52 +54,57 @@
   .row { display: flex; gap: 8px; align-items: center; }
   .row input { flex: 1; min-width: 0; }
   .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); }
+  /* icons from client/symbols.js: filled silhouettes in the current text color */
+  .sym, .ico { display: block; flex: none; fill: currentColor; }
 
-  /* ---------- map editor (/?edit): only takes the fonts and colors ---------- */
-  #editor { position: fixed; top: 10px; left: 10px; width: 300px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; z-index: 5; font-size: 13px; }
-  #editor button { padding: 6px 8px; }
+  /* ---------- map editor (/?edit): the HUD's panel, type and colors ---------- */
+  #editor { position: fixed; top: 10px; left: 10px; width: 300px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; z-index: 5; font-size: 14px; }
+  #editor button { padding: 5px 8px; }
   #edBrush, #edPlayers { flex: none; }
-  #editor h2 { margin: 0; color: var(--brass); font-size: 22px; }
+  #editor h2 { margin: 0 0 2px; color: var(--text); font-size: 20px; font-weight: 600; }
   #editor label { display: grid; gap: 3px; }
   .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .ed-tools button.on { border-color: var(--brass); background: rgba(210, 168, 73, 0.2); }
+  .ed-tools button.on { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.16); color: var(--brass); }
 
-  /* ---------- lobby: the room form as a manila order card ---------- */
-  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(18, 19, 14, 0.96); z-index: 10; padding: 16px; }
-  #overlay .card { width: min(880px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 26px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; color: var(--ink);
-    background: var(--manila); border-radius: 2px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6); scrollbar-color: var(--manila-edge) transparent; }
-  #overlay h1 { margin: 0; font: 700 38px/1 var(--stencil); color: var(--ink); letter-spacing: 0.04em; }
-  #overlay #result { margin: 0; font: 700 28px/1.1 var(--stencil); color: var(--red); }
-  #overlay .muted { color: var(--ink-dim); }
-  #overlay .row > label { flex: none; width: 84px; font-weight: 700; }
-  #overlay input, #overlay select { color: var(--ink); background: var(--manila-hi); border-color: var(--manila-edge); }
-  #overlay select:disabled, #overlay input[readonly] { background: rgba(43, 36, 24, 0.07); }
-  #overlay button { color: var(--text); background: #33362a; border-color: #1f2118; }
-  #overlay button:hover:not(:disabled) { background: #444836; border-color: var(--ink); }
-  #overlay #start { flex: 1; padding: 10px; font: 700 20px/1 var(--stencil); letter-spacing: 0.04em; color: #f3e9cc; background: var(--ink); }
-  #overlay :focus-visible { outline-color: var(--red); }
-  #overlay a { color: var(--ink); }
-  #overlay hr { border: none; border-top: 1px dashed rgba(43, 36, 24, 0.45); margin: 0; }
-  #roster { display: grid; gap: 6px; }
-  .slot { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 28px; align-items: center; gap: 10px; padding: 6px 8px; background: rgba(43, 36, 24, 0.07); border: 1px dashed rgba(43, 36, 24, 0.35); border-radius: 2px; }
-  .slot.muted { display: block; }
-  /* the name gets the whole line; "you · host" goes on a small second line, so neither is cut off */
+  /* ---------- lobby: the room form on one gunmetal panel ---------- */
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: #16191b; z-index: 10; padding: 16px; }
+  /* the selected map's battlefield drifting behind the form (client/lobby-view.js): rendered at half resolution, so it is
+     soft, and shown at half strength over the dark ground, so the form stays the thing you read */
+  #overlay > .lobby-view { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.6s ease-out; pointer-events: none; }
+  #overlay > .lobby-view.on { opacity: 0.5; }
+  #overlay .card { position: relative; z-index: 1; width: min(920px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 26px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; color: var(--text);
+    background: var(--panel-solid); border: 1px solid var(--line); border-radius: 2px; }
+  #overlay h1 { margin: 0 0 2px; font: 600 30px/1.1 var(--type); color: var(--text); }
+  #overlay #result { margin: 0; font: 600 24px/1.1 var(--type); color: var(--brass); }
+  #overlay .row > label { flex: none; width: 84px; color: var(--dim); }
+  #overlay select:disabled, #overlay input[readonly] { color: var(--dim); background: rgba(21, 24, 26, 0.6); opacity: 1; }
+  #overlay #start { flex: 1; padding: 10px; font: 600 17px/1 var(--type); color: #191c1e; background: var(--brass); border-color: var(--brass); }
+  #overlay #start:hover:not(:disabled) { background: #e2c374; border-color: #e2c374; }
+  #overlay #start:active:not(:disabled) { background: #c7a452; }
+  #overlay a { color: var(--dim); }
+  #overlay a:hover { color: var(--text); }
+  #roster { display: grid; gap: 4px; }
+  .slot { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 28px; align-items: center; gap: 10px; padding: 6px 8px; background: var(--cell); border: 1px solid var(--line-soft); border-radius: 2px; }
+  .slot.muted { display: block; background: none; border-style: dashed; }
+  /* the name gets the whole line; "you, host" goes on a small second line, so neither is cut off */
   .slot > .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
   .slot > .who > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .slot > .who .muted { font-size: 11px; }
+  .slot > .who .nm { font-weight: 600; }
+  .slot > .who .muted { font-size: 13px; }
   .slot > .who .muted:empty { display: none; }
   .slot > span:nth-child(3) { display: flex; gap: 6px; margin-left: 0 !important; }
-  .slot select { flex: none; padding: 3px 5px; }
+  .slot select { flex: none; padding: 3px 6px; }
   .kick { padding: 2px 8px; }
   /* two columns: players and invite on the left, the battle (map preview, mode, army size) on the right */
-  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; }
   .cols section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
-  .sec { margin: 6px 0 0; padding-bottom: 4px; font: 700 16px/1.1 var(--type); color: var(--ink); border-bottom: 1px dashed rgba(43, 36, 24, 0.45); }
+  .sec { margin: 10px 0 0; padding-bottom: 5px; font: 600 15px/1.2 var(--type); color: var(--text); border-bottom: 1px solid var(--line-soft); }
   .cols section > .sec:first-child { margin-top: 0; }
   #mapPrev { display: flex; gap: 12px; align-items: flex-start; }
-  #mapCanvas { width: 150px; height: 150px; flex: none; border: 1px solid var(--manila-edge); border-radius: 2px; background: #11110d; }
-  #mapInfo { display: grid; gap: 2px; font-size: 13px; }
-  #modeInfo { font-size: 13px; }
+  #mapCanvas { width: 150px; height: 150px; flex: none; border: 1px solid var(--line-soft); border-radius: 2px; background: var(--cell-lo); }
+  #mapInfo { display: grid; gap: 2px; }
+  #mapInfo b { color: var(--text); font-weight: 600; }
+  #modeInfo { max-width: 60ch; }
   @media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 
   /* ---------- HUD ---------- */
@@ -99,165 +113,183 @@
   #hud .hd { color: var(--dim); font-size: 13px; line-height: 1; margin: 0 0 6px 1px; white-space: nowrap; }
 
   /* top left: menu, fullscreen, capture mouse */
-  #util { position: absolute; top: var(--gap); left: var(--gap); display: flex; gap: 4px; padding: 4px; }
-  #util button { width: 32px; height: 30px; padding: 0; display: grid; place-items: center; }
-  #util .ico { width: 20px; height: 20px; }
-  #util button[aria-pressed="true"] { background: rgba(255, 246, 214, 0.2); border-color: var(--brass); color: var(--brass); }
-  #menu { position: absolute; top: calc(var(--gap) + 46px); left: var(--gap); display: grid; gap: 6px; padding: 8px; z-index: 20; }
+  #util { position: absolute; top: var(--gap); left: var(--gap); display: flex; gap: 3px; padding: 3px; }
+  #util button { width: 32px; height: 30px; padding: 0; display: grid; place-items: center; background: transparent; border-color: transparent; }
+  #util button:hover { background: var(--cell-hi); border-color: var(--line); }
+  #util .ico { width: 18px; height: 18px; }
+  #util button[aria-pressed="true"] { background: rgba(214, 178, 94, 0.14); border-color: var(--line-hot); color: var(--brass); }
+  #menu { position: absolute; top: calc(var(--gap) + 44px); left: var(--gap); display: grid; gap: 4px; padding: 6px; z-index: 20; background: var(--panel-solid); }
+  #menu > button { text-align: left; }
   /* one volume for effects, voices and alerts (audio.js); M mutes */
-  #menu .vol { display: flex; align-items: center; gap: 8px; padding: 2px 2px 0; color: var(--dim); }
+  #menu .vol { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; color: var(--dim); }
   #menu .vol input { flex: 1; min-width: 0; margin: 0; padding: 0; accent-color: var(--brass); }
 
   /* top center: score and clock */
   /* centered between the top-left buttons and the resources. hud.js sets --n (teams) and --lead (clock block width):
      team blocks share the room between 174px and 240px wide, and only five or more teams at 1366px wrap to a second row */
-  #top { position: absolute; top: var(--gap); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none !important; }
+  #top { position: absolute; top: var(--gap); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none !important; }
   #top > * { pointer-events: auto; }
-  #scores { max-width: calc(100vw - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px; }
-  /* the top panels are solid: world labels (+1.5 MP/s) and units must not read through them */
-  #util, #scores, #status, #econ { background: #22251b; }
+  #scores { max-width: calc(100vw - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px 9px; }
+  /* the top panels are near solid: world labels (+1.5 MP/s) and units must not read through them */
+  #util, #scores, #status, #econ { background: var(--panel-solid); }
   #scores > div { padding: 0 12px; min-width: 0; }
-  #scores > div + div { border-left: 1px solid var(--edge); }
+  #scores > div + div { border-left: 1px solid var(--line-soft); }
   /* client/weather-view.js: the match weather and what it does, one plain line under the teams; brass while it turns.
      contain: inline-size keeps its text out of the strip's width, so the strip stays as wide as the teams need */
-  #scores > .sc-wx { flex: 0 0 100%; margin: 0; padding: 5px 12px 0; border-top: 1px solid var(--edge); font-size: 13px; line-height: 1.2; color: var(--dim);
+  #scores > .sc-wx { flex: 0 0 100%; margin: 0; padding: 5px 12px 0; border-top: 1px solid var(--line-soft); font-size: 13px; line-height: 1.2; color: var(--dim);
     text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; contain: inline-size; }
   #scores > .sc-wx.turning { color: var(--brass); }
   /* hud.js sets --lead to the clock block width: wider in Assault, whose mode line is longer, and it never wraps */
   .sc-lead { flex: none; width: var(--lead, 150px); display: grid; align-content: center; justify-items: center; text-align: center; }
   .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); white-space: nowrap; }
-  .sc-clock { font-size: 28px; line-height: 1.05; color: var(--brass); }
-  .sc-next { margin-top: 4px; padding: 2px 10px; font-size: 13px; }
+  .sc-clock { font-size: 26px; line-height: 1.05; color: var(--brass); }
+  .sc-next { margin-top: 4px; padding: 2px 10px; font-size: 13px; } /* Horde: send the next wave early */
   .sc-team { flex: none; width: clamp(174px, calc((100vw - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
-  .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 22px; }
-  .sc-p .mark { width: 20px; height: 20px; flex: none; }
+  .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; line-height: 22px; }
+  .sc-p .mark { width: 18px; height: 18px; flex: none; }
   .sc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .you { font-size: 13px; color: var(--brass); }
+  .you { font-size: 13px; font-weight: 500; color: var(--brass); }
   .sc-sub { display: flex; gap: 8px; font-size: 13px; color: var(--dim); padding-left: 18px; white-space: nowrap; }
   .sc-held { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .sc-net { margin-left: auto; flex: none; }
   .sc-role { font-size: 13px; color: var(--dim); }
-  .bar { height: 6px; background: rgba(0, 0, 0, 0.45); border-radius: 1px; overflow: hidden; margin-top: 5px; }
+  .bar { height: 4px; background: rgba(226, 223, 211, 0.1); overflow: hidden; margin-top: 6px; }
   .bar > div { height: 100%; width: 0; transition: width 0.3s; }
-  .sc-val { display: flex; justify-content: center; align-items: baseline; gap: 6px; margin-top: 3px; font-size: 13px; color: var(--dim); white-space: nowrap; }
-  .sc-val .num { font-size: 18px; line-height: 1; color: var(--brass); }
+  .sc-val { display: flex; justify-content: center; align-items: baseline; gap: 5px; margin-top: 4px; font-size: 13px; color: var(--dim); white-space: nowrap; }
+  .sc-val .num { font-size: 19px; line-height: 1; color: var(--brass); }
   .sc-val > span:empty { display: none; }
-  #status { padding: 6px 12px; color: var(--brass); }
+  #status { padding: 5px 12px; color: var(--text); }
   #status:empty { display: none; }
 
   /* top right: resources, income and army size, then the support calls */
-  #econ { position: absolute; top: var(--gap); right: var(--gap); padding: 8px 10px 10px; display: grid; justify-items: end; gap: 2px; }
+  #econ { position: absolute; top: var(--gap); right: var(--gap); padding: 7px 8px 8px; display: grid; justify-items: end; gap: 2px; }
   .res { display: flex; gap: 14px; align-items: baseline; white-space: nowrap; }
-  .res > span { color: var(--dim); font-size: 13px; }
-  .res .num { font-size: 26px; line-height: 1; color: var(--brass); margin-right: 4px; }
-  #munRes .num, #fuelRes .num { font-size: 22px; }
+  .res > span { display: flex; align-items: baseline; gap: 4px; color: var(--dim); font-size: 13px; }
+  .res .ri { width: 16px; height: 16px; align-self: center; color: var(--dim); }
+  .res .num { font-size: 28px; line-height: 1; color: var(--brass); }
+  #munRes .num, #fuelRes .num { font-size: 22px; color: var(--text); }
   #income { display: flex; gap: 12px; font-size: 13px; color: var(--dim); white-space: nowrap; }
+  #incRate { color: var(--olive); }
   /* eight calls since aviation: two rows of four */
-  #support { display: grid; grid-template-columns: repeat(4, 54px); gap: 4px; margin-top: 6px; }
+  #support { display: grid; grid-template-columns: repeat(4, 54px); gap: 3px; margin-top: 6px; }
   /* your planes under the support calls: name, then what it is doing */
   #airPanel { display: grid; gap: 3px; margin-top: 6px; min-width: 200px; }
   #airPanel:empty { display: none; }
   #airPanel button { display: flex; gap: 8px; justify-content: space-between; padding: 3px 8px; font-size: 13px; }
-  #airPanel button .st { color: var(--brass); white-space: nowrap; }
-  #airPanel button.on { border-color: var(--brass); background: rgba(210, 168, 73, 0.16); }
+  #airPanel button .st { color: var(--dim); white-space: nowrap; }
+  #airPanel button.on { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.12); }
 
   /* order and support buttons: an icon, its hotkey in the corner, the cost or cooldown underneath */
-  .ob { position: relative; width: 54px; height: 50px; padding: 4px 1px 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
-  .ob .ico { width: 22px; height: 22px; flex: none; }
+  .ob { position: relative; width: 54px; height: 50px; padding: 6px 1px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .ob .ico { width: 23px; height: 23px; }
   .ob .val:empty { display: none; }
-  .ob kbd { position: absolute; top: 2px; right: 2px; padding: 0 2px; min-width: 15px; }
-  .ob .val { font-size: 13px; line-height: 1; color: var(--brass); white-space: nowrap; min-height: 13px; }
-  .ob:disabled { opacity: 0.65; } /* costs and hotkeys stay readable, so you can plan */
-  .ob:disabled .val { color: var(--text); }
-  .ob .usym { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; color: var(--text); }
-  .ob .usym .sym { width: 18px; height: 18px; display: block; }
+  .ob kbd { position: absolute; top: 2px; right: 3px; padding: 0; border: none; line-height: 1; }
+  .ob .val { font-size: 13px; line-height: 1; color: var(--text); white-space: nowrap; min-height: 13px; }
+  .ob:hover kbd, .ob.vhover kbd { color: var(--brass); }
+  .ob .usym { position: absolute; top: 3px; left: 3px; width: 15px; height: 15px; color: var(--dim); }
+  .ob .usym .sym { width: 15px; height: 15px; }
 
-  /* bottom left: the selection list (manila) and its orders */
+  /* bottom left: the selection list and its orders */
   #lowerleft { position: absolute; bottom: var(--gap); left: var(--gap); width: var(--left-w); max-height: calc(100vh - 64px); display: flex; flex-direction: column; gap: 6px; pointer-events: none !important; }
   #lowerleft > * { pointer-events: auto; }
-  #selection, #abil { padding: 8px 6px 6px; }
+  #selection, #abil { padding: 7px 6px 6px; }
   #selection:empty, #abil:empty { display: none; }
   #selection { min-height: 0; display: flex; flex-direction: column; }
-  #selection .list { min-height: 0; max-height: 40vh; overflow: auto; background: var(--manila); color: var(--ink); border: 1px solid var(--manila-edge); border-radius: 2px; scrollbar-color: var(--manila-edge) transparent; }
-  .srow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 7px; align-items: center; padding: 3px 7px; font-size: 14px; }
-  .srow + .srow { border-top: 1px dashed rgba(43, 36, 24, 0.28); }
-  .srow .sym { width: 28px; height: 28px; margin: -3px 0; }
-  .srow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .srow .ct { font-weight: 700; white-space: nowrap; }
-  .srow .tg, .srow .q { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 3px; font-size: 13px; }
+  #selection .hd { color: var(--text); font-weight: 600; }
+  #selection [data-idle] { color: var(--dim); }
+  #selection .list { min-height: 0; max-height: 40vh; overflow: auto; border-top: 1px solid var(--line-soft); }
+  .srow { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; column-gap: 8px; align-items: center; padding: 4px 4px 4px 0; font-size: 14px; }
+  .srow + .srow { border-top: 1px solid var(--line-soft); }
+  .srow:hover { background: rgba(226, 223, 211, 0.05); }
+  .srow .pt { grid-row: span 2; width: 48px; height: 36px; border-radius: 1px; background: rgba(0, 0, 0, 0.22); }
+  .srow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .srow .ct { color: var(--dim); font-weight: 600; white-space: nowrap; }
+  .srow .tg, .srow .q { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 3px 6px; align-items: baseline; font-size: 13px; color: var(--dim); }
   .srow .tg:empty, .srow .q:empty { display: none; }
-  .srow .q { color: var(--ink-dim); }
-  .tag { font-size: 13px; line-height: 1.2; padding: 0 5px; border-radius: 2px; border: 1px solid rgba(43, 36, 24, 0.45); }
-  .tag.pin { background: var(--red); border-color: var(--red); color: #f6ecd6; }
-  .tag.sup { background: #8a5a14; border-color: #8a5a14; color: #f6ecd6; }
-  .tag.cov { background: #4f5d33; border-color: #4f5d33; color: #efe6cc; }
-  .vet { color: #6b4708; font-size: 13px; letter-spacing: 1px; }
-  #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .tag { font-size: 13px; line-height: 1.25; padding: 0 5px; border-radius: 2px; border: 1px solid var(--line-soft); color: var(--text); }
+  .tag.pin { color: var(--red-hi); border-color: rgba(200, 72, 59, 0.6); }
+  .tag.sup { color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
+  .tag.cov { color: var(--olive); border-color: rgba(169, 179, 123, 0.45); }
+  .vet { color: var(--brass); font-size: 13px; letter-spacing: 1px; }
+  #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
   #abil .ob { width: auto; }
-  #abil .ob.on { box-shadow: inset 0 0 0 2px var(--brass); } /* a stance switch that is on */
-  /* autocast on: a dashed pencil border and a small A at the right edge, under the hotkey and clear of the cost text
-     along the bottom (Classic shows "15 Mun" there, which fills the button) */
-  #abil .ob.auto { border: 1px dashed var(--brass); }
-  #abil .ob.auto::after { content: 'A'; position: absolute; top: 20px; right: 3px; font: 700 11px/1 var(--type); color: var(--brass); }
+  /* the HUD's on state (brass hairline over a faint brass tint, like a pressed toggle) for a stance switch that is on
+     and for autocast, which also gets a small A at the right edge, under the hotkey and clear of the cost text along
+     the bottom (Classic shows "15 Mun" there) */
+  #abil .ob.on, #abil .ob.auto { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.1); }
+  #abil .ob.on .val { color: var(--brass); }
+  #abil .ob.auto::after { content: 'A'; position: absolute; top: 19px; right: 4px; font: 600 13px/1 var(--type); color: var(--brass); }
+
+  /* a unit portrait (client/portraits.js): the live 3D model rendered small, or its silhouette until that is ready */
+  .pt { display: grid; place-items: center; overflow: hidden; color: var(--dim); }
+  .pt > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .pt > .sym { width: 58%; height: 58%; opacity: 0.6; }
 
   /* bottom center: the Command Card, between the bottom-left column and the minimap */
   #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(100vw - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;
-    display: flex; align-items: flex-end; gap: 14px; padding: 8px 8px 7px; }
+    display: flex; align-items: flex-end; gap: 12px; padding: 7px 7px 7px; }
   #buy:empty { display: none; }
   #buy .grp { min-width: 0; }
-  #buy .grp + .grp { border-left: 1px solid var(--edge); padding-left: 14px; }
+  #buy .grp + .grp { border-left: 1px solid var(--line-soft); padding-left: 12px; }
+  #buy .hd { display: flex; align-items: center; gap: 5px; }
+  #buy .hd .ico { width: 17px; height: 17px; margin: -2px 0; }
   #buy .cards { display: flex; gap: 4px; }
-  .uc { width: clamp(80px, 5.9vw, 100px); padding: 4px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink);
-    background: var(--manila); border: 1px solid var(--manila-edge); }
-  .uc:hover:not(:disabled), .uc.vhover:not(:disabled) { background: var(--manila-hi); border-color: var(--ink); }
-  /* a locked card goes flat and fades its symbol; its name, cost and the note that says why stay at full strength */
-  .uc:disabled { opacity: 1; background: #c9ba95; border-color: rgba(160, 140, 95, 0.75); }
-  .uc:disabled .sym { opacity: 0.4; }
-  .uc .nm { height: 2.3em; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 1.15; letter-spacing: -0.025em; overflow-wrap: anywhere; }
-  .uc .sym { width: 40px; height: 40px; flex: none; }
-  .uc .cost { font-size: 13px; font-weight: 700; line-height: 1.25; padding: 0 5px; white-space: nowrap; border: 1px solid rgba(43, 36, 24, 0.35); background: rgba(43, 36, 24, 0.1); border-radius: 2px; }
-  .uc .sub { font-size: 13px; line-height: 1.2; color: var(--ink-dim); text-align: center; }
-  .uc.broke .cost { color: #f6ecd6; background: var(--red); border-color: var(--red); }
-  .uc .sub.danger { color: var(--ink) !important; font-weight: 700; }
-  .uc .sub.danger::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--red); vertical-align: 1px; }
+  .uc { width: clamp(80px, 5.9vw, 100px); padding: 0; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; }
+  .uc:hover:not(:disabled), .uc.vhover:not(:disabled) { background: var(--cell-hi); border-color: var(--line-hot); }
+  .uc .nm { height: 2.4em; padding: 2px 3px 0; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.12; overflow-wrap: anywhere; }
+  .uc .pt { width: 100%; aspect-ratio: 4 / 3; background: rgba(0, 0, 0, 0.22); }
+  .uc .cost { padding: 3px 2px 4px; border-top: 1px solid var(--line-soft); font-size: 14px; font-weight: 600; line-height: 1.1; text-align: center; white-space: nowrap; }
+  .uc .cost .cu { color: var(--dim); font-size: 13px; font-weight: 500; }
+  .uc .sub { padding: 0 3px 4px; font-size: 13px; line-height: 1.2; color: var(--dim); text-align: center; }
+  .uc.broke .cost { color: var(--red-hi); }
+  /* a locked card keeps its name and cost readable (so you can plan); only the picture fades */
+  #buy .uc[aria-disabled="true"] { opacity: 1; }
+  #buy .uc[aria-disabled="true"] .pt { opacity: 0.42; filter: grayscale(0.8); }
+  #buy .uc[aria-disabled="true"] .nm { color: var(--dim); }
+  .uc .sub.danger { color: var(--red-hi) !important; }
   .uc.wide { width: 136px; }
   /* the recruit row (outside Classic) splits the room between its cards (hud.js sets --nc cards and --ng groups);
-     below about 78 px a card shows only its symbol and cost, the name stays in the tooltip */
-  #buy.fit .uc { container-type: inline-size; width: clamp(50px, calc((100vw - var(--left-w) - var(--mm) - 4 * var(--gap) - 18px - (var(--ng) - 1) * 29px - (var(--nc) - var(--ng)) * 4px) / var(--nc)), 100px); }
+     below about 72 px a card shows only its portrait and cost, the name stays in the tooltip */
+  #buy.fit .uc { container-type: inline-size; width: clamp(50px, calc((100vw - var(--left-w) - var(--mm) - 4 * var(--gap) - 16px - (var(--ng) - 1) * 25px - (var(--nc) - var(--ng)) * 4px) / var(--nc)), 100px); }
   @container (max-width: 72px) { .uc .nm, .uc .cu { display: none; } }
   .uc .nm kbd { margin-left: 6px; }
-  .uc kbd { color: var(--ink); background: rgba(43, 36, 24, 0.1); border-color: rgba(43, 36, 24, 0.5); }
-  /* card letters (hud.js): shown in recruit mode, and on a selected Classic building's cards. The letter sits right of
-     the symbol, clear of the name and the cost; a narrow card moves its symbol left to make room */
+  /* card letters (hud.js): shown in recruit mode, and on a selected Classic building's cards. The letter sits at the
+     left end of the cost line, clear of the name and the portrait; the cost moves right to make room */
   .uc { position: relative; }
-  .uc .key { position: absolute; top: calc(2.3em + 17px); right: 3px; padding: 0 2px; min-width: 15px; display: none; }
+  .uc .key { position: absolute; left: 3px; bottom: 4px; padding: 0 3px; display: none; color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
   #buy.lettered .uc .key { display: block; }
-  @container (max-width: 72px) { .uc .key { top: 15px; right: 2px; } }
-  @container (max-width: 80px) { #buy.lettered .uc .sym { width: 30px; margin-right: 16px; } }
-  .uc.hit { background: var(--manila-hi); border-color: var(--ink); }
+  #buy.lettered .uc .cost { padding-left: 18px; }
+  /* a card bought by its letter: the pressed look for a moment, the hairline brass */
+  .uc.hit, .uc.hit:hover:not(:disabled) { background: var(--cell-lo); border-color: var(--brass); }
   /* a letter the cards are using: the order or support badge with the same letter hides until the cards give it back */
   .ob kbd.quiet { visibility: hidden; }
-  /* the recruit tab over the card's left edge (the Rally button sits over the right one); on, it turns manila */
-  #buy .tab { position: absolute; left: 8px; bottom: calc(100% + 6px); padding: 4px 8px; font: 13px var(--type); background: var(--strip); }
-  #buy .tab[aria-pressed="true"] { color: var(--ink); background: var(--manila); border-color: var(--manila-edge); }
-  #buy .tab[aria-pressed="true"] kbd { color: var(--ink); background: rgba(43, 36, 24, 0.1); border-color: rgba(43, 36, 24, 0.5); }
+  /* the recruit tab over the card's left edge (the Rally button sits over the right one). On, it takes the HUD's on
+     state and the Command Card's hairline turns brass, so the mode shows wherever you look along the card */
+  #buy .tab { position: absolute; left: 8px; bottom: calc(100% + 6px); padding: 4px 8px; font: 13px var(--type); color: var(--dim); background: var(--panel); }
+  #buy .tab:hover { color: var(--text); }
+  #buy .tab[aria-pressed="true"] { color: var(--brass); background: rgba(38, 36, 28, 0.94); border-color: var(--line-hot); }
+  #buy .tab[aria-pressed="true"] kbd { color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
+  #buy.lettered { border-color: var(--line-hot); }
   #buy.lettered .hd { color: var(--text); }
   .cinfo { width: 190px; align-self: stretch; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
   .ci-t { display: flex; align-items: center; gap: 6px; font-size: 15px; }
-  .ci-t .sym { width: 30px; height: 30px; flex: none; }
+  .ci-t .sym { width: 28px; height: 28px; color: var(--dim); }
   .ci-s { color: var(--text); }
   .ci-h { color: var(--dim); margin-top: auto; }
-  .cancel { display: grid; gap: 2px; align-self: center; border-color: var(--red); }
+  .cancel { display: grid; gap: 2px; align-self: center; border-color: rgba(200, 72, 59, 0.7); }
   .cancel span { font-size: 13px; color: var(--dim); }
+  #buy [data-rally] { color: var(--dim); }
+  #buy [data-rally]:hover { color: var(--text); }
 
-  /* bottom right: the minimap; the alerts list (client/alerts.js) stacks just above it, so keep that slot free */
-  #minimap { position: absolute; bottom: var(--gap); right: var(--gap); width: var(--mm); height: var(--mm); padding: 0; cursor: crosshair; border: none; border-radius: 2px;
-    box-shadow: 0 0 0 4px rgba(34, 37, 27, 0.92), 0 0 0 5px var(--edge), 0 2px 14px 4px rgba(0, 0, 0, 0.4); }
+  /* bottom right: the minimap in a plain frame; the alerts list (client/alerts.js) stacks just above it, so keep that slot free */
+  #minimap { position: absolute; bottom: var(--gap); right: var(--gap); width: var(--mm); height: var(--mm); padding: 0; cursor: crosshair; border: none; border-radius: 0;
+    box-shadow: 0 0 0 4px var(--panel-solid), 0 0 0 5px var(--line); }
   #alerts { position: absolute; right: var(--gap); bottom: calc(var(--mm) + 2 * var(--gap) + 5px); }
-  #hint { position: absolute; bottom: calc(var(--card-h) + 2 * var(--gap)); left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--text); pointer-events: none !important; white-space: nowrap; }
+  #hint { position: absolute; bottom: calc(var(--card-h) + 2 * var(--gap)); left: 50%; transform: translateX(-50%); padding: 5px 12px; color: var(--text); pointer-events: none !important; white-space: nowrap; }
   #hint:empty { display: none; }
-  #following { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); padding: 4px 10px; color: var(--text); font: 13px/1.35 var(--type); pointer-events: none !important; white-space: nowrap; }
-  #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
+  #following { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); padding: 4px 10px; color: var(--text); font-size: 13px; pointer-events: none !important; white-space: nowrap; }
+  #box { position: fixed; border: 1px solid rgba(226, 223, 211, 0.85); background: rgba(226, 223, 211, 0.08); pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
 </style>
 <link rel="stylesheet" href="/client/alerts.css">
 <link rel="stylesheet" href="/client/connection.css">
@@ -292,7 +324,7 @@
       </section>
     </div>
     <div id="lobbyMsg" class="muted"></div>
-    <div class="row"><button id="start" class="stencil" title="Start the match for everyone in the room">Start</button></div>
+    <div class="row"><button id="start" title="Start the match for everyone in the room">Start</button></div>
     <a href="/?edit" target="_blank" class="muted">Map editor</a>
   </div>
 </div>
@@ -302,17 +334,17 @@
 
 <div id="hud" class="hidden">
   <div id="util" class="panel">
-    <button id="menuBtn" title="Menu: restart, end or leave the match" aria-label="Menu"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9h20M6 16h20M6 23h20"/></svg></button>
-    <button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7"/></svg></button>
-    <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M12 10v12l3-3 2.5 5 2.4-1.2-2.4-4.8H22z" fill="currentColor" stroke-width="1.2"/></svg></button>
+    <button id="menuBtn" title="Menu: restart, end or leave the match" aria-label="Menu"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M14 22L86 22L86 32L14 32ZM14 45L86 45L86 55L14 55ZM14 68L86 68L86 78L14 78Z"/></svg></button>
+    <button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M8 8L38 8L38 17L17 17L17 38L8 38ZM92 8L92 38L83 38L83 17L62 17L62 8ZM8 92L8 62L17 62L17 83L38 83L38 92ZM92 92L62 92L62 83L83 83L83 62L92 62Z"/></svg></button>
+    <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M6 14L94 14L94 86L6 86ZM13 21L87 21L87 79L13 79ZM38 28L38 68L47 60L53 73L59.5 70L53.5 57.5L65 57.5Z"/></svg></button>
   </div>
   <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
   <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
-      <span title="Manpower: buys units, fortifications and support"><b class="num" id="mp">0</b>MP</span>
-      <span id="munRes" class="hidden" title="Munitions: support calls and abilities. Hold points to earn them"><b class="num" id="mun">0</b>Mun</span>
-      <span id="fuelRes" class="hidden" title="Fuel: vehicles. Depots on the contested nodes and the HQ earn it"><b class="num" id="fuel">0</b>Fuel</span>
+      <span title="Manpower: buys units, fortifications and support"><svg class="ico ri" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M16 62L16.3 57.3L17.2 52.7L18.6 48.2L20.6 44L23 40.1L26 36.5L29.3 33.4L33 30.8L37 28.7L41.2 27.2L45.6 26.3L50 26L54.4 26.3L58.8 27.2L63 28.7L67 30.8L70.7 33.4L74 36.5L77 40.1L79.4 44L81.4 48.2L82.8 52.7L83.7 57.3L84 62L88 64L91 67L84 68.5L60 66.5L32 68L21 77L10 76L13 68Z"/></svg><b class="num" id="mp">0</b>MP</span>
+      <span id="munRes" class="hidden" title="Munitions: support calls and abilities. Hold points to earn them"><svg class="ico ri" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M42 34L42.2 28.3L42.9 23L44 18.3L45.6 14L47.6 10.3L50 7L52.4 10.3L54.4 14L56 18.3L57.1 23L57.8 28.3L58 34ZM42 37L58 37L58 44L64 52L64 79L61.5 81L61.5 83L64.5 83L64.5 90L35.5 90L35.5 83L38.5 83L38.5 81L36 79L36 52L42 44Z"/></svg><b class="num" id="mun">0</b>Mun</span>
+      <span id="fuelRes" class="hidden" title="Fuel: vehicles. Depots on the contested nodes and the HQ earn it"><svg class="ico ri" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M28 90L24 86L24 32L28 28L28 14L31 11L61 11L64 14L64 28L66 28L70 13L80 13L76 30L76 86L72 90ZM32 15L39 15L39 24L32 24ZM43 15L50 15L50 24L43 24ZM54 15L61 15L61 24L54 24ZM65.9 72.4L62.4 75.9L50 63.5L37.6 75.9L34.1 72.4L46.5 60L34.1 47.6L37.6 44.1L50 56.5L62.4 44.1L65.9 47.6L53.5 60Z"/></svg><b class="num" id="fuel">0</b>Fuel</span>
     </div>
     <div id="income"><span id="incRate" title="Income per second"></span><span id="popCount" title="Army size: units fielded and in training, out of the cap"></span></div>
     <div id="support"></div>

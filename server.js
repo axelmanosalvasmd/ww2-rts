@@ -150,9 +150,11 @@ async function startMatch(room) {
   room.result = null;
   room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
-  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army,
+  const game = room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army,
     weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
-  lobby(room);
+  // lobby() reads the map list first, so wait for it: everyone gets the lobby (playing, no old result) before the start
+  await lobby(room);
+  if (room.game !== game) return; // ended or restarted meanwhile
   room.players.forEach((_, i) => sendStart(room, i));
 }
 

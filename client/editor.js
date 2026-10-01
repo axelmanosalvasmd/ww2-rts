@@ -104,10 +104,10 @@ export async function start(api) {
     const unused = used.map((u, i) => (u < 0 ? i + 1 : 0)).filter(Boolean);
     $('edModeInfo').innerHTML = [
       `${spawnsFor(m, mode).length} spawns usable${unused.length ? `; spawn ${unused.join(', ')} not used here` : ''}`,
-      assault && `${defenders} defend, ${n - defenders} attack · ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey) · ${added} trench/wall cells added · clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? ` · ${cut} VP-only point(s) left out` : ''}`,
-      mode === 'classic' && `an HQ on every player's spawn · ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange) · points pay Munitions`,
+      assault && `${defenders} defend, ${n - defenders} attack, ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey), ${added} trench/wall cells added, clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? `, ${cut} VP-only point(s) left out` : ''}`,
+      mode === 'classic' && `an HQ on every player's spawn, ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange), points pay Munitions`,
       mode === 'conquest' && `first to ${g.winVp} VP`,
-      mode === 'horde' && (g.mode?.kind === 'horde' ? `one shared HQ and bunker (grey) · the horde enters at ${g.mode.gates.length} spawn(s)` : 'Horde needs defend spawns and at most 5 players: this preview is Conquest'),
+      mode === 'horde' && (g.mode?.kind === 'horde' ? `one shared HQ and bunker (grey), the horde enters at ${g.mode.gates.length} spawn(s)` : 'Horde needs defend spawns and at most 5 players: this preview is Conquest'),
       'Editing is paused: pick Editing to change the map.',
     ].filter(Boolean).join('<br>');
   }
@@ -126,7 +126,7 @@ export async function start(api) {
       }));
       err = bad.slice(0, 3).join(', ');
     }
-    $('edCheck').innerHTML = err ? `<span style="color:#e0704a">⚠ ${esc(err)}</span>` : '✓ playable';
+    $('edCheck').innerHTML = err ? `<span style="color:var(--red-hi)">⚠ ${esc(err)}</span>` : '✓ playable';
     return !err;
   }
 
@@ -192,7 +192,7 @@ export async function start(api) {
   function highlight() {
     hl.clear();
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];
-    $('edSel').innerHTML = sp ? `Spawn ${picked.i + 1} · drag to move · Delete removes it (later spawns renumber)<br><label style="display:flex;gap:6px"><input type="checkbox" id="edAssaultOnly" ${sp.assault ? 'checked' : ''}> Assault only (e.g. inside the defenders' fortress; other modes skip it)</label>` : '';
+    $('edSel').innerHTML = sp ? `Spawn ${picked.i + 1}: drag to move, Delete removes it (later spawns renumber)<br><label style="display:flex;gap:6px"><input type="checkbox" id="edAssaultOnly" ${sp.assault ? 'checked' : ''}> Assault only (e.g. inside the defenders' fortress; other modes skip it)</label>` : '';
     if (sp) $('edAssaultOnly').onchange = (e) => { if (e.target.checked) sp.assault = true; else delete sp.assault; rebuild(); };
     if (!picked?.cells) return;
     const m = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.45, depthTest: false });
@@ -200,7 +200,7 @@ export async function start(api) {
       const cx = (x + 0.5 + dragOffset[0]) * CELL, cz = (y + 0.5 + dragOffset[1]) * CELL, box = new THREE.Mesh(new THREE.BoxGeometry(CELL, 0.4, CELL), m);
       box.position.set(cx, api.hAt(cx, cz) + 0.3, cz); box.renderOrder = 6; hl.add(box);
     }
-    $('edSel').textContent = `Selected ${NAMES[picked.ch] || 'structure'} (${picked.cells.length} cells) · drag to move · Delete removes · Esc deselects`;
+    $('edSel').textContent = `Selected ${NAMES[picked.ch] || 'structure'} (${picked.cells.length} cells): drag to move, Delete removes, Esc deselects`;
   }
   function commitMove() {
     const [ox, oy] = dragOffset;
@@ -301,15 +301,15 @@ export async function start(api) {
     $('edMsg').textContent = 'Running AI matches...';
     worker.onmessage = ({ data: d }) => {
       const played = d.done - d.timeouts, pct = d.wins.map(w => (played ? Math.round(w / played * 100) : 0));
-      const warn = (t) => `<br><span style="color:#e0704a">⚠ ${t}</span>`;
+      const warn = (t) => `<br><span style="color:var(--red-hi)">⚠ ${t}</span>`;
       // verdicts only at the end; fairness needs enough finished matches to beat the noise (±~10% per spawn)
       const verdict = d.done < d.n ? ''
         : d.timeouts > d.n * 0.2 ? warn('Matches too long: most hit the 30 min cap. Add capture points or raise their VP.')
         : played < 60 ? warn('Too few finished matches to judge fairness.')
         : pct.some(p => p < 60 / pct.length || p > 140 / pct.length) ? warn('Unfair: a spawn wins far more or less than its share.')
         : '<br>✓ Looks fair';
-      $('edMsg').innerHTML = `${d.done}/${d.n} matches · spawn wins ${pct.map((p, i) => `<b>${i + 1}</b>: ${p}%`).join(' ')}<br>
-        avg ${d.avgMin.toFixed(1)} min · 2nd place at ${Math.round(d.second * 100)}% of winner${d.timeouts ? ` · ${d.timeouts} timeouts` : ''}${verdict}`;
+      $('edMsg').innerHTML = `${d.done}/${d.n} matches, spawn wins ${pct.map((p, i) => `<b>${i + 1}</b>: ${p}%`).join(' ')}<br>
+        avg ${d.avgMin.toFixed(1)} min, 2nd place at ${Math.round(d.second * 100)}% of winner${d.timeouts ? `, ${d.timeouts} timeouts` : ''}${verdict}`;
     };
     worker.postMessage({ map: m, n: 90 });
   };

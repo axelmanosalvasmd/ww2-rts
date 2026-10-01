@@ -66,7 +66,7 @@ export function createWeatherView({ sendCmd }) {
       // (Mud's soaked ground is Mud itself, so only a shower's rain is news there)
       const shower = SHOWERS(now) && Array.isArray(s.wx) ? showerText(s.wx[0], WEATHER[now]?.soaks ? 0 : s.wx[1]) : '';
       // a shower on a clear day is the whole story; on top of fog or mud it is added to it
-      const text = !shower ? base : now === 'clear' && !next ? shower : `${base} · ${shower}`;
+      const text = !shower ? base : now === 'clear' && !next ? shower : `${base}. ${shower}`;
       if (text !== shown) {
         shown = text; line.textContent = text;
         line.classList.toggle('turning', !!next);

@@ -7,7 +7,7 @@ const COLUMNS = [['kills', 'Kills'], ['losses', 'Losses'], ['built', 'Built'], [
   ['mpSpent', 'Manpower spent'], ['supportCalls', 'Support calls'], ['planesDowned', 'Planes downed']];
 const DECIDED = { vp: 'on victory points', bunkers: 'when the last bunker fell', structures: 'when the last defending structure fell',
   timer: 'when the clock ran out', hq: 'when the last Production Building fell', draw: 'in a draw' };
-const STRIP = '#22251b', LIGHT = '#e6dcc0', FONT = "13px 'Courier Prime', 'Courier New', monospace";
+const STRIP = '#15181a', LIGHT = '#e2dfd3', FONT = "500 13px 'Barlow Semi Condensed', 'Arial Narrow', sans-serif";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const clock = (secs) => { const m = Math.floor(secs / 60), s = Math.round(secs % 60); return m ? `${m} min${s ? ` ${s} s` : ''}` : `${s} s`; };
@@ -18,21 +18,22 @@ function style() {
   styled = true;
   const st = document.createElement('style');
   st.textContent = `
-    .rp { color: var(--ink); }
-    .rp > summary { cursor: pointer; font: 700 18px/1.2 var(--stencil); letter-spacing: 0.04em; }
-    .rp .rp-sub { margin-left: 6px; font: 400 14px/1.3 var(--type); color: var(--ink-dim); letter-spacing: 0; }
+    .rp { color: var(--text); }
+    .rp > summary { cursor: pointer; font: 600 17px/1.2 var(--type); }
+    .rp .rp-sub { margin-left: 8px; font: 500 14px/1.3 var(--type); color: var(--dim); }
     .rp-top { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; align-items: start; margin: 8px 0 10px; }
-    .rp canvas { display: block; width: 100%; height: 132px; background: ${STRIP}; border: 1px solid var(--manila-edge); border-radius: 2px; }
+    .rp canvas { display: block; width: 100%; height: 132px; background: ${STRIP}; border: 1px solid var(--line-soft); border-radius: 2px; }
     .rp-legend { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; font-size: 14px; line-height: 1.25; }
     .rp-legend li { display: flex; gap: 8px; align-items: baseline; }
-    .rp-sw { flex: none; display: inline-block; width: 12px; height: 12px; border: 1px solid var(--ink); border-radius: 1px; transform: translateY(1px); }
+    .rp-sw { flex: none; display: inline-block; width: 12px; height: 12px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); transform: translateY(1px); }
     .rp table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.2; }
-    .rp th { padding: 3px 6px; text-align: right; vertical-align: bottom; font-weight: 700; border-bottom: 1px dashed rgba(43, 36, 24, 0.45); }
-    .rp td { padding: 3px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+    .rp th { padding: 4px 6px; text-align: right; vertical-align: bottom; font-weight: 600; color: var(--dim); border-bottom: 1px solid var(--line-soft); }
+    .rp td { padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+    .rp tbody tr + tr td { border-top: 1px solid rgba(176, 164, 122, 0.12); }
     .rp th:first-child, .rp td:first-child { text-align: left; }
     .rp-name { display: inline-flex; gap: 8px; align-items: baseline; max-width: 190px; white-space: nowrap; }
     .rp-name span:last-child { overflow: hidden; text-overflow: ellipsis; }
-    .rp tr.me td { background: rgba(43, 36, 24, 0.08); font-weight: 700; }`;
+    .rp tr.me td { background: rgba(214, 178, 94, 0.08); font-weight: 600; }`;
   document.head.append(st);
 }
 
@@ -59,7 +60,7 @@ function draw(cv, r, list) {
   const L = Math.ceil(c.measureText(String(top)).width) + 12, R = 10, T = 10, B = 22, pw = w - L - R, ph = h - T - B;
   const X = (t) => L + (t / end) * pw, Y = (v) => T + ph - (v / top) * ph;
   // frame and labels
-  c.strokeStyle = 'rgba(230, 220, 192, 0.18)'; c.lineWidth = 1;
+  c.strokeStyle = 'rgba(226, 223, 211, 0.14)'; c.lineWidth = 1;
   for (const v of [0, top / 2, top]) { c.beginPath(); c.moveTo(L, Math.round(Y(v)) + 0.5); c.lineTo(L + pw, Math.round(Y(v)) + 0.5); c.stroke(); }
   c.fillStyle = LIGHT; c.textBaseline = 'middle'; c.textAlign = 'right';
   c.fillText('0', L - 6, Y(0)); c.fillText(String(top), L - 6, Y(top) + 2);
