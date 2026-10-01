@@ -5,12 +5,12 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
-import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
-import { availability, cooldownSeconds } from './availability.js';
+import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label } from './keys.js';
+import { availability, buyCount, cooldownSeconds } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 
 const $ = (id) => document.getElementById(id);
@@ -75,6 +75,13 @@ export function createHud(ctx) {
   const tooltips = installTooltips($('hud'));
   const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, ids: [...ctx.selected] });
   const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
+  // A card purchase, by click or by letter: the same command and refusal either way. `many` (Shift+letter) sends the
+  // command up to five times, as often as the limits allow; the server takes each one like a separate click.
+  const buy = (action, many = false) => attempt(action, () => {
+    const n = many ? Math.max(1, buyCount(snapshot, CFG, { ...action, slot: ctx.me }, 5)) : 1;
+    for (let i = 0; i < n; i++) ctx.send(action);
+    ctx.blip('recruit');
+  });
   const name = (t, slot = ctx.me) => ctx.look(slot).names[t] ?? UNITS[t].name;
   const pc = (i) => `var(--p${i}, ${ctx.color(i)})`;
   const selUnits = () => [...ctx.selected].map((id) => ctx.units.get(id)).filter(Boolean);
@@ -83,6 +90,7 @@ export function createHud(ctx) {
     return `${n}${n !== base ? ` (${base})` : ''}${role ? `: ${role}` : ''}${extra}`;
   };
   // a Command Card card: name, portrait of the unit (client/portraits.js), cost (and a second line in Classic)
+  // (its card letter, if any, is added once the card is laid out: lettered())
   const unitCard = (t, attr, cost, sub, tip) => `<button class="uc" ${attr} title="${esc(tip)}" aria-label="${esc(name(t))}">` +
     `<span class="nm">${soft(name(t))}</span>${portrait(t, ctx.me)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
   const groupsHTML = (types, card) => GROUPS.map((_, g) => {
@@ -262,13 +270,16 @@ export function createHud(ctx) {
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
-        types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown`, t); }).join('') +
+        types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
         '</div>';
-      el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
+      el.querySelectorAll('button').forEach((b) => {
         const a = b.dataset.a;
-        if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
-        else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
-      }));
+        b.onclick = () => {
+          if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
+          else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
+        };
+        if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
+      });
     }
     if (!key) return;
     const fType = ctx.fType();
@@ -283,6 +294,7 @@ export function createHud(ctx) {
         const mun = abCost(s, UNITS[a].ab);
         result = check({ t: 'ability', unit: a }); txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
         setText(b.querySelector('kbd'), a === fType ? label('ability') : '');
+        b.classList.toggle('auto', all.every((v) => v.flags & AUTO_FLAG)); // autocast on for every selected one
       }
       setAvailability(b, result);
       setText(val, txt);
@@ -293,16 +305,56 @@ export function createHud(ctx) {
   // Outside Classic: every unit you can recruit, always shown. In Classic: what the selection can make (a building's
   // units and its queue, or the Engineers' buildings), rebuilt only when the selected building or builder changes.
   let cardKey = '';
+  // The card letters: Q W E R T, A S D F G, Z X C V B over the cards in reading order (across the groups). Each card
+  // keeps its purchase in b._buy so a letter and a click run the same code. Cards past the 15th stay click-only.
+  const slots = () => [...$('buy').querySelectorAll('[data-unit], [data-train]')];
+  function lettered() {
+    slots().forEach((b, i) => { if (CARD_KEYS[i]) b.insertAdjacentHTML('beforeend', `<kbd class="key">${CARD_KEYS[i]}</kbd>`); });
+  }
+  function pressCard(n, many) {
+    const b = slots()[n - 1];
+    if (!b) return false;
+    b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 140);
+    b._buy(many);
+    return true;
+  }
+  // A letter on a card belongs to the card, so the support and order badges that show the same letter go quiet.
+  function quietBadges() {
+    const used = $('buy').classList.contains('lettered') ? CARD_KEYS.slice(0, slots().length) : [];
+    for (const k of document.querySelectorAll('#support kbd, #abil kbd')) k.classList.toggle('quiet', used.includes(k.textContent));
+  }
+  // Recruit mode (outside Classic): the letters show on the cards and the header tab reads "Recruiting".
+  let recruiting = false;
+  function setRecruit(on) {
+    recruiting = !!on && !ctx.classic();
+    const card = $('buy'), tab = card.querySelector('[data-recruit]');
+    card.classList.toggle('lettered', recruiting);
+    quietBadges();
+    if (tab) {
+      tab.setAttribute('aria-pressed', String(recruiting));
+      tab.innerHTML = recruiting ? `Recruiting <kbd>${label('recruitOff')}</kbd>` : `Recruit <kbd>${label('recruitMode')}</kbd>`;
+      tab.title = recruiting ? `Letters buy the cards; Shift+letter buys five. ${label('recruitMode')}, ${label('recruitOff')} or a right-click stops`
+        : `Recruit by letter (${label('recruitMode')}): each card gets a key, Shift+key buys five. WASD pans again when you stop`;
+    }
+  }
+  addEventListener('mousedown', (e) => { if (e.button === 2 && recruiting) setRecruit(false); }, { capture: true });
   function buildCard() {
     cardKey = '';
     const card = $('buy');
+    card.classList.remove('lettered');
+    recruiting = false;
     if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); return; }
     card.classList.remove('hidden');
     const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic);
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
     card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
-    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.unit }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
+    card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.unit }, many); b.onclick = () => b._buy(false); });
+    lettered();
+    const tab = document.createElement('button');
+    tab.dataset.recruit = ''; tab.className = 'tab';
+    tab.onclick = (e) => { setRecruit(!recruiting); e.currentTarget.blur(); };
+    card.append(tab); setRecruit(false);
   }
   function drawRecruit(s, pop, cap) {
     const card = $('buy');
@@ -340,7 +392,9 @@ export function createHud(ctx) {
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else card.innerHTML = '';
       const id = bld?.id;
-      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.train, from: id }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
+      card.querySelectorAll('[data-train]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.train, from: id }, many); b.onclick = () => b._buy(false); });
+      // a selected production building answers to the card letters without recruit mode
+      lettered(); card.classList.toggle('lettered', !!card.querySelector('[data-train]'));
       card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'cancel', id }); ctx.selected.clear(); ctx.blip(300); }));
       card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.build(b.dataset.build)));
     }
@@ -394,8 +448,10 @@ export function createHud(ctx) {
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);
+    quietBadges();
     tooltips.update();
   }
 
-  return { buildSupport, buildCard, update };
+  return { buildSupport, buildCard, update, pressCard, setRecruit, recruiting: () => recruiting,
+    lettered: () => ctx.classic() && !!$('buy').querySelector('[data-train]'), hasCard: (n) => !!slots()[n - 1] };
 }

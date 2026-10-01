@@ -203,6 +203,10 @@
   .vet { color: var(--brass); font-size: 13px; letter-spacing: 1px; }
   #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
   #abil .ob { width: auto; }
+  /* autocast on: the HUD's on state (brass hairline over a faint brass tint, like a pressed toggle) and a small A at
+     the right edge, under the hotkey and clear of the cost text along the bottom (Classic shows "15 Mun" there) */
+  #abil .ob.auto { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.1); }
+  #abil .ob.auto::after { content: 'A'; position: absolute; top: 19px; right: 4px; font: 600 13px/1 var(--type); color: var(--brass); }
 
   /* a unit portrait (client/portraits.js): the live 3D model rendered small, or its silhouette until that is ready */
   .pt { display: grid; place-items: center; overflow: hidden; color: var(--dim); }
@@ -235,6 +239,24 @@
   #buy.fit .uc { container-type: inline-size; width: clamp(50px, calc((100vw - var(--left-w) - var(--mm) - 4 * var(--gap) - 16px - (var(--ng) - 1) * 25px - (var(--nc) - var(--ng)) * 4px) / var(--nc)), 100px); }
   @container (max-width: 72px) { .uc .nm, .uc .cu { display: none; } }
   .uc .nm kbd { margin-left: 6px; }
+  /* card letters (hud.js): shown in recruit mode, and on a selected Classic building's cards. The letter sits at the
+     left end of the cost line, clear of the name and the portrait; the cost moves right to make room */
+  .uc { position: relative; }
+  .uc .key { position: absolute; left: 3px; bottom: 4px; padding: 0 3px; display: none; color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
+  #buy.lettered .uc .key { display: block; }
+  #buy.lettered .uc .cost { padding-left: 18px; }
+  /* a card bought by its letter: the pressed look for a moment, the hairline brass */
+  .uc.hit, .uc.hit:hover:not(:disabled) { background: var(--cell-lo); border-color: var(--brass); }
+  /* a letter the cards are using: the order or support badge with the same letter hides until the cards give it back */
+  .ob kbd.quiet { visibility: hidden; }
+  /* the recruit tab over the card's left edge (the Rally button sits over the right one). On, it takes the HUD's on
+     state and the Command Card's hairline turns brass, so the mode shows wherever you look along the card */
+  #buy .tab { position: absolute; left: 8px; bottom: calc(100% + 6px); padding: 4px 8px; font: 13px var(--type); color: var(--dim); background: var(--panel); }
+  #buy .tab:hover { color: var(--text); }
+  #buy .tab[aria-pressed="true"] { color: var(--brass); background: rgba(38, 36, 28, 0.94); border-color: var(--line-hot); }
+  #buy .tab[aria-pressed="true"] kbd { color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
+  #buy.lettered { border-color: var(--line-hot); }
+  #buy.lettered .hd { color: var(--text); }
   .cinfo { width: 190px; align-self: stretch; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
   .ci-t { display: flex; align-items: center; gap: 6px; font-size: 15px; }
   .ci-t .sym { width: 28px; height: 28px; color: var(--dim); }

@@ -18,6 +18,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   calls, orders and the badge beside each unit's health bar on the battlefield (drawn there in the owner's color on a
   small dark plate). Costs are plain numbers; resources get a small icon (helmet, cartridge, jerrycan).
 - The Victory or Defeat notice at the end of a match is a quiet panel that fades in, instead of a tilted rubber stamp.
+- Recruit by letter and autocast take the new look. The Recruit tab, when on, reads in brass with a brass hairline
+  and the Command Card's edge turns brass while the letters are live; each card's letter sits at the left end of its
+  cost line, clear of the name and the portrait; a card bought by its letter shows the pressed look for a moment.
+  An ability with autocast on gets the HUD's on state (brass hairline over a faint brass tint) and a small A, instead
+  of a dashed pencil border.
 - Status lines and hints read as plain sentences ("0 pts, 0 held", "60 MP, 20s", "Right-click cancels") instead of
   pieces joined with middle dots.
 - Checked in Conquest and Classic at 1920x1080 and 1366x768 (lobby, HQ view, selection with orders and recruit row,
@@ -28,6 +33,66 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   the lobby's kick cross, the editor's check and warning marks, the star on double-VP point tags); `client/markers.js`
   still exports the old ink color, unused now; the menu button's tooltip can cover the first menu item while the
   cursor stays on the button.
+
+- The scenery looks like real places instead of toys, everything at real size (checked against a Company of Heroes 3
+  style reference). Trees are real trees: broadleaf oaks about 12.5 m tall with 9 to 10 m crowns, spruces about 14 m,
+  Lombardy poplars about 17 m, with bark trunks and limbs and crowns of photographed leaf clusters, each tree its own
+  height, girth, heading and shade of green. Bushes and the bocage hedgerows are dense, ragged leaf masses instead of
+  green balls, meadow grass grows in tufts across open ground, and about half the ploughed fields stand in ripe wheat.
+  Rocks are weathered field stones, fences weathered post-and-rail.
+- Houses: two in five farmhouses and every church are fieldstone, the rest limewashed render with stone quoins up the
+  corners; flat Normandy clay-tile roofs replace the orange Spanish tiles; windows have depth (a shadowed reveal, a frame
+  proud of the wall, a sill, sky in the glass, plank shutters); doors get stone jambs; chimneys get clay pots. Damage
+  states and footprints are unchanged.
+- The HQ is a real camp: a canvas wall tent with sagging roof, guy lines, an open door and a stovepipe, crates, a drum,
+  jerricans and a field table with a map, a 15 m guyed flagpole, and a ring of real-size sandbags (about 0.8 m long, three
+  courses) instead of the green box and oversized bags. The barracks, motor pool, depot, command bunker and Classic HQ
+  show canvas, timber, concrete and corrugated-sheet grain.
+- New textures, generated with gpt-image-2 and made seamless: leaf, spruce and grass sprites (one atlas), bark, plaster,
+  roof tiles, canvas and burlap.
+- Cost, measured with renderer.info in the same views (before, after): Three Crossroads HQ view 119 draw calls and 195k
+  triangles, 128 and 245k; village 92 and 192k, 93 and 239k; zoomed out 154 and 202k, 158 and 273k. Bocage HQ view
+  121 and 275k, 132 and 346k; zoomed out 190 and 280k, 194 and 367k. Graphics Low hides the grass, keeps half the
+  trees and turns off tree and bush shadows (bocage HQ view 98 calls, 193k triangles). Frame rate could only be
+  measured in headless Chrome on a software renderer (SwiftShader, 0.6 to 0.9 fps before and after on a heavily loaded
+  machine), so the cost on real laptop graphics is not yet checked.
+- Trees, bushes and hedgerow leaves darken under the fog of war as the ground does (before, trees ignored the fog and
+  hedges turned grey).
+- Left for later: real laptop fps with 250+ units; wind sway in the crowns; the haystack texture (burlap stands in for
+  straw); a second broadleaf shape to break up repeats in big woods.
+
+- Autocast, Warcraft 3 style: right-click an ability button to let the selected units of that type use it on their
+  own. Rifles throw grenades at infantry in cover, trenches or houses within 18 m, MGs fire Suppressive Fire at squads
+  advancing on them, AT guns load an AP round against vehicles, tanks pop smoke when badly hurt under anti-tank fire,
+  rocket trucks and mortars barrage crowds or dug-in enemies, Rangers plant a satchel on a house or bunker they were
+  told to attack once they are within 20 m of it (they stop to shoot at 26 m, so this is for close fights), and
+  Conscripts shout Ura! when pinned on the move. Units only act on what their side can see, pay
+  the same cooldowns and Munitions as a click, never override an ability you ordered, and never fire while retreating.
+  It starts on where abilities are free and off in Classic, where they cost Munitions. A button with autocast on has a
+  dashed brass border and a small A under its hotkey (clear of the Munitions cost in Classic), and the game remembers your choice per
+  unit type for new units.
+  Balance (300 paired AI-vs-AI Conquest matches, on vs off): 2nd place VP vs winner 0.57 both, lead changes 2.24 vs
+  2.23, length 9.1 vs 9.0 min, about 98 vs 88 abilities used per match; faction wins 35/36/29% vs 39/31/30% (probably
+  noise). The Tiger rear-armor test now turns autocast off so the AT gun's AP round does not skew it.
+  Checked live: an MG fired Suppressive Fire by itself, a rifle squad threw a grenade by itself at enemy squads
+  holding a capture point, and an MG turned off stayed off in the next match. Seen live in review: a rocket truck barraged
+  by itself and a tank popped smoke at 90 hp, enemy units never show the flag, and the switch, its memory and the Classic
+  default work at 1920x1080 and 1366x768. Not seen live: a rifle squad turned off holding its grenade, and the AP round,
+  satchel and Ura!; all of those, plus Suppressive Fire, smoke, barrage (friends in the blast, units out of sight) and a
+  walked-away squad, are now covered by tests.
+- Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
+  "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
+  like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends
+  it. While it is on, a letter that has a card buys, so WASD, Q/E, Stop (X), Retreat (R), Ability (F), Attack-move (G),
+  Trench (T) and the Z C V support calls pause (the arrows still pan) and their badges hide; B has no card in Conquest
+  and still aims smoke. In Classic, a selected HQ or production building shows the same letters on its train cards
+  without any mode and Shift+letter queues five at that building; an HQ uses only Q and W, so A S D E still pan and
+  rotate. Classic Tab explains this. Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit
+  (12/12)").
+  - Fixed along the way: a Classic card on a selected building now greys out when that building's queue is full, even
+    if another building still has room (the server refuses a full chosen building).
+  - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
+    and the extra buys come back refused with their reason.
 
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and

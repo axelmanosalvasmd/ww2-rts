@@ -18,7 +18,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Directional aiming for every targeted ability except the grenade: click the center, move the mouse to rotate, click to launch.
   Each is a rectangle along the chosen line: strafe 36x8 (the plane flies that way), artillery 24x10 (creeping barrage),
   smoke wall 36x14, recon corridor 80x30, trench line 4 cells. Without a direction the server falls back to 'out from your HQ'.
-- Each spawn is a visible HQ: tinted reinforce zone, sandbags, tent, tall flag, name label. H jumps home.
+- Each spawn is a visible HQ: tinted reinforce zone, a ring of real-size sandbags, a canvas wall tent with guy lines,
+  crates and a field table, a guyed flagpole with the team flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
 - Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawns are listed in order around the map; teammates
   get neighbouring spawns and fewer players spread out (spawnSlots). The host sets teams, each player picks a faction.
@@ -99,6 +100,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   orange attack-move, white retreat, red attack, yellow dig/build. The server sends these plans for your own units
   only, so nothing leaks through the fog.
 - F fires one ability: the first ready type in rifle > MG > AT > tank > rocket order; others are click-only in the bar.
+  Right-clicking an ability button turns autocast on or off (see Autocast below).
 - Garrison: right-click a house with rifles/MGs. One squad per house cell (edge cells, so they can shoot out).
   Inside: 35% incoming accuracy, +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.
 - Tanks shell a house on right-click (fire-at), and every tank round damages the structure it lands on.
@@ -110,6 +112,38 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   lowers a 3x3 patch one level, each artillery shell one cell (never more than one below a neighbour, so no
   inescapable pits).
 - Balance: garrisons alone dropped 2nd place to 55%; with rockets it's back to 63% (default) / 61% (River Towns).
+
+## Autocast (2026-10-01, all modes)
+- Warcraft 3 style: each unit with an ability has an autocast switch (`u.auto`), set with `{t:'autocast', ids, on}`.
+  The server accepts it for your own units that have an ability and ignores the rest of the list.
+- Default: on where the ability is free (Conquest, Assault, Annihilation), off in Classic, where abilities cost
+  Munitions, so a squad never spends the stockpile without being told to. The AI never turns it on in Classic.
+- The server checks every 0.5 s (10 ticks), staggered by unit id. A unit with autocast on, its cooldown ready, no
+  ability order in flight and not retreating looks for a reason, using only what its side can see:
+  - Grenade: the nearest enemy infantry in cover, in a trench or in a house within 18 m (never from inside a house).
+  - Suppressive fire: the MG is set up (not moving) and an enemy squad in range and sight is advancing towards it.
+  - AP round: the AT gun is shooting at a vehicle.
+  - Tank smoke: the tank is below half health and took an anti-tank hit in the last 3 s.
+  - Rocket or mortar barrage: a spot with 3+ visible enemies in one blast area, or anyone dug in (house, trench,
+    bunker); the most crowded or dug-in spot wins.
+  - Satchel: the house or bunker the Ranger squad was ordered to attack, once within 20 m. An attack order stops the
+    squad at its weapon range (26 m), so this fires in close fights, not when Rangers are sent at a house from afar.
+    Open question: raise the reach to 26 m so a Ranger sent at a house or bunker always runs in and plants it
+    (it would also send Rangers into a bunker's machine gun for little damage), then re-run the balance check.
+  - Ura!: the squad is pinned (suppression 50+) while moving.
+  Aimed abilities (grenade, barrage, satchel) skip spots where the blast would also hit a friendly unit.
+- It goes through the same ability command as a player's click, so cooldowns, Munitions and the usual checks apply.
+  An autocast grenade or barrage in range goes off without stopping the unit's current orders; a satchel charge walks
+  up first and the squad stays where it planted it. A player's own ability order is never replaced while it is in flight.
+- The flag reaches the owner only (snapshot flag 1024, stripped for everyone else). The HUD marks an ability button
+  whose selected units all have autocast on with a dashed brass border and a small A, and the tooltip says
+  "Right-click: autocast on/off". Right-clicking toggles it for the selected units of that type: on unless all are on.
+- The client remembers each player's last choice per unit type, separately for Classic and the free modes (local
+  storage), and applies it to new units of that type as they arrive.
+- Balance (300 paired AI-vs-AI Conquest matches, default map, 3 AIs, autocast on vs forced off): 2nd place VP vs winner
+  0.57 both, lead changes 2.24 vs 2.23, length 9.1 vs 9.0 min (median 9.1 vs 9.2), about 98 vs 88 ability uses per match,
+  25.2 vs 25.3 units killed. Faction wins USA/GER/USSR 35/36/29% vs 39/31/30%: Germany up and USA down about 4 points,
+  roughly 1.5 to 2 standard deviations, so probably noise. Classic is unchanged because autocast starts off there.
 
 ## Classic mode (decided and built 2026-09-30, all 5 slices)
 Base building as a third lobby mode next to Conquest and Assault. Terms are defined in CONTEXT.md.
@@ -345,10 +379,25 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   wrecks). `client/battle-sound.js` only moves the listener with the camera, drives the tank engine bed from moving
   vehicles and plays dig and build foley. The Volume slider sits in the in-game menu and replaces the old mute
   button. `tools/build-audio.mjs` rebuilds the mp3s and index from the raw takes (needs ffmpeg).
-- As built, round 2 (props): `client/props.js` (`createProps({ map, grid, hAt, parent })`) places painted scenery
-  from integer hash seeds, so every browser and late joiner sees the same trees, poplar rows, pines, bushes, rocks,
-  fences, haystacks and crates. One InstancedMesh per kind, kept clear of spawns, points, the paths between points and
-  resource nodes (`setNodes`); `refresh()` after terrain changes, and Graphics Low shows half of them.
+- As built, round 2 (props): `client/props.js` (`createProps({ map, grid, hAt, parent })`) places scenery
+  from integer hash seeds, so every browser and late joiner sees the same trees, poplar rows, pines, bushes, meadow
+  grass, standing wheat (about half the ploughed fields from `fieldCells` in `client/ground.js`), rocks, fences,
+  haystacks and crates. One InstancedMesh per kind (trees two: bark and leaves), kept clear of spawns, points, the paths
+  between points and resource nodes (`setNodes`); `refresh()` after terrain changes. Graphics Low shows half of them,
+  keeps crop fields whole, drops the grass and turns off tree and bush shadows.
+- Realistic scenery (October 2026): everything at real size, as in the Company of Heroes 3 reference
+  (`/tmp/ww2-hud/world-target.png` at the time). `client/foliage.js` builds broadleaf trees about 12.5 m tall with
+  9 to 10 m crowns, spruces about 14 m, Lombardy poplars about 17 m, bushes about 1.5 m, hedgerow stretches, grass
+  tufts and wheat. Trunks and limbs are tapered bark tubes; crowns are clumps of alpha-tested leaf cards cut from one
+  atlas (`client/textures/foliage.webp`, generated with gpt-image-2), each card lit with its crown's normal so a crown
+  shades as one mass. The alpha is raised with the mip level so distant crowns stay full, and fog of war darkens
+  foliage instead of greying it. Per instance: heading, height, girth and shade of green. Houses: two in five
+  farmhouses and every church are fieldstone, the rest limewashed render with stone quoins on outside corners; flat
+  clay-tile roofs; windows with a shadowed reveal, a frame proud of the wall, sky in the glass and plank shutters;
+  stone door jambs; clay chimney pots. Base buildings keep one merged mesh and one material: each part carries a
+  surface id in `uv.x` that picks canvas, timber or concrete grain from one packed detail texture
+  (`client/textures/detail.jpg`), and corrugated sheet gets ridges that fade out before they could shimmer. Mobile-game
+  tells are out: no saturated greens, no fat trunks or puffy round crowns, no oversized props.
 - As built, round 2 (water): `client/water.js` (`createWater(grid, map)`) is one see-through mesh over river, ford and
   bridge cells, painted from a mask texture (shoreline, depth guess, fords, bridges) with a per-vertex flow
   direction. It draws first in the see-through pass and writes no depth, so fog of war, smoke and effects draw over
@@ -371,6 +420,21 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Fort keys are a Shift layer: T trench, Shift+Y sandbags, Shift+U wire, Shift+I traps, Shift+O nest. Plain Y/U/I/O
   keep the Classic build and support actions. `client/keys.js` is the single binding table and test.js rejects
   duplicate chords.
+- Recruit by letter (2026-10-01): outside Classic, Tab or Backquote toggles recruit mode. The Command Card cards take
+  Q W E R T / A S D F G / Z X C V B in reading order, a letter buys exactly like a click (same availability check and
+  refusal reason), and Shift+letter buys five or as many as MP, Fuel, the army limit and the type limit allow
+  (`buyCount` in `client/availability.js`). The server still gets one 'buy' per unit. The mode lasts until Tab,
+  Backquote, Esc or a right-click, and a new match starts with it off. A letter that has a card buys, so while the mode
+  is on WASD, Q/E, the orders on those keys (X stop, R retreat, F ability, G attack-move, T trench) and the support calls
+  on Z C V B are suspended, and their badges hide so the screen never shows one letter doing two things. The arrows still
+  pan, Ctrl+A, N/U/P/I and the Shift fort keys still work. A letter with no card under it keeps its usual action,
+  camera keys included (Conquest has 14 cards for 15 letters, so B still aims smoke). In Classic, a selected production
+  building's train cards answer to the same letters without a mode ('building' context, Shift buys five up to that
+  building's queue room): an HQ takes Q and W, so A S D E still pan and rotate. Classic Tab only explains this.
+  Keys.js contexts are ranked (targeting 2, recruit and building 1, the rest 0): the highest rank wins, and test.js
+  allows a repeated chord only across different ranks. Tab is preventDefaulted only in a match with the menu closed, so
+  it still moves focus in the lobby and menus. The client's queue check follows the building a card belongs to (`from`),
+  as the server does.
 - Team pings: Alt+click sends `{t:'ping', x, z}`. The server accepts 3 per 5 s per player, only inside the map, and
   relays only to humans on the sender's team. No unit ids travel with it. The ring lasts 4 s.
 - Order queue: up to 8 waiting orders per unit, and a full queue is refused with 'queueFull'. A queued dig is paid when
@@ -453,8 +517,10 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
 - Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
   sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
-  It never changes gameplay cells. The five base buildings are one merged, vertex-colored model per type and team
-  (`buildingModel`). Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
+  A hedgerow stretch is a shaded lumpy core inside leaf cards that run along the hedge, so neighbours close into one
+  wall. It never changes gameplay cells. The five base buildings are one merged model per type and team
+  (`buildingModel`), textured through the detail map above. `hqCamp(f, tent)` builds the HQ's tent, crates, table and
+  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
   `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
 - Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
   drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
