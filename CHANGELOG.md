@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New **Formation** menu in the Orders panel: line, block, column and wedge (Shift+V cycles), Tighten and Spread (`[` and `]`) to re-form units where they stand, March together (the group moves at its slowest unit's pace) and Snap to trenches (infantry placed next to a trench step into it). Mortars, rockets and medics stand in the rear rank.
+- A wider right-drag now fits more units side by side, so a long drag gives fewer ranks. A double right-click turns the selection to face a spot without moving.
+- Control groups remember their formation: Ctrl+number saves it, recalling the group brings it back.
+- Less clutter: fortifications moved into a **Build** menu and dig patterns into a **Trenches** menu. Their hotkeys still work with the menus closed.
+- Left for later: queued legs do not keep the march-together pace, and a group's saved formation does not include its facing.
+
 ### 2026-10-01. Individual soldiers and troop selection (`c55fd0f`, `69575e3`, `c27bcef`)
 
 - Soldiers now walk, crouch-walk, crawl and retreat with moving limbs and individual stride timing. Men follow and turn separately inside their squad, keep their boots on the ground, and stop stepping when they stop. Moving shooters aim at their target, with flashes attached to the animated weapon. Squads return to normal spacing when a trench disappears.

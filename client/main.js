@@ -8,10 +8,10 @@ import { createSelection, selectionDragged } from './selection.js';
 import { selectionPoints } from './selection-view.js';
 import { createOrders } from './orders.js';
 import { createFormationPreview } from './formation-preview.js';
-import { facingSpots, slotSize } from '/shared/formation.js';
+import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -818,7 +818,7 @@ const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return lobbyState?.host === me; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
-  dig: (k) => startDig(k), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -1028,19 +1028,67 @@ function throwAt(g, kind, type, queue = false) {
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z, queue }); marker(g.x, g.z, 0xffa030); blip(760);
 }
 // rows perpendicular to the direction of travel
+// The Formation menu (client/hud.js): shape, spacing, march together, snap to trenches. A control group saved with
+// Ctrl+number keeps a copy and brings it back when recalled. faced: the last facing each unit was ordered to hold.
+const fm = { shape: 'line', spread: 1, together: true, snap: true }, groupForm = new Map(), faced = new Map();
+const rearRank = (t) => !!UNITS[t].w?.minRange || !UNITS[t].w?.range; // mortars, rockets and medics stand behind
+const centroid = (list) => ({ x: list.reduce((a, v) => a + v.x, 0) / list.length, z: list.reduce((a, v) => a + v.z, 0) / list.length });
+const myTroops = () => [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure && !isAir(v.type));
+// a plain click (no face) faces the way the units travel
 function formation(sel, g, face, reach) {
-  if (Number.isFinite(face)) return facingSpots(sel.map(v => ({ id: v.id, x: v.x, z: v.z, size: slotSize(UNITS[v.type]) })), g, face, reach)
-    .map(([id, x, z]) => [id, Math.min(MW - 1, Math.max(1, x)), Math.min(MH - 1, Math.max(1, z))]);
-  const cx = sel.reduce((a, v) => a + v.x, 0) / sel.length, cz = sel.reduce((a, v) => a + v.z, 0) / sel.length;
-  const len = Math.hypot(g.x - cx, g.z - cz) || 1, dx = (g.x - cx) / len, dz = (g.z - cz) / len, cols = Math.ceil(Math.sqrt(sel.length)), gap = 5;
-  sel.sort((a, b) => (a.x - cx) * -dz + (a.z - cz) * dx - ((b.x - cx) * -dz + (b.z - cz) * dx));
-  return sel.map((v, i) => {
-    const col = i % cols - (Math.min(cols, sel.length) - 1) / 2, row = Math.floor(i / cols);
-    return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
-  });
+  if (!Number.isFinite(face)) { const c = centroid(sel); face = Math.atan2(g.z - c.z, g.x - c.x); reach = 0; }
+  const spots = facingSpots(sel.map(v => ({ id: v.id, x: v.x, z: v.z, size: slotSize(UNITS[v.type]), back: rearRank(v.type) })), g, face, reach, fm);
+  if (fm.snap) snapToTrench(spots);
+  return spots.map(([id, x, z]) => [id, Math.min(MW - 1, Math.max(1, x)), Math.min(MH - 1, Math.max(1, z))]);
 }
+// an infantry slot within 3 m of a trench cell nobody else was given steps into it
+function snapToTrench(spots) {
+  const grid = terrain?.grid, taken = new Set();
+  if (!grid) return;
+  for (const s of spots) {
+    if (!UNITS[units.get(s[0])?.type]?.infantry) continue;
+    const cx = Math.floor(s[1] / CELL), cy = Math.floor(s[2] / CELL);
+    let best = null, bd = 3;
+    for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
+      if (!(TERRAIN[grid[y]?.[x]] & TRENCH) || taken.has(y * 4096 + x)) continue;
+      const px = (x + 0.5) * CELL, pz = (y + 0.5) * CELL, d = Math.hypot(px - s[1], pz - s[2]);
+      if (d < bd) { bd = d; best = [y * 4096 + x, px, pz]; }
+    }
+    if (best) { taken.add(best[0]); s[1] = best[1]; s[2] = best[2]; }
+  }
+}
+function faceOrder(troops, at, face, reach = 0) {
+  for (const v of troops) faced.set(v.id, face);
+  return { t: 'move', orders: formation(troops, at, face, reach), face };
+}
+// double right-click: turn to face the spot without moving
+function faceToward(g) {
+  const troops = myTroops();
+  if (!troops.length || !g) return;
+  const c = centroid(troops), face = Math.atan2(g.z - c.z, g.x - c.x);
+  for (const v of troops) faced.set(v.id, face);
+  sendCmd({ t: 'move', orders: troops.map(v => [v.id, v.x, v.z]), face }); marker(g.x, g.z, MOVE_COLOR); blip(600);
+}
+// Tighten / Spread: change the spacing and re-form the selection where it stands, facing as last ordered (or up the screen)
+function reform(step) {
+  fm.spread = Math.round(Math.min(2.5, Math.max(1, fm.spread + step)) * 4) / 4;
+  const troops = myTroops();
+  feedback.show(`Formation spacing ${fm.spread}x`); blip(700);
+  if (troops.length < 2) return;
+  const c = centroid(troops), g0 = groundAt(innerWidth / 2, innerHeight / 2), g1 = groundAt(innerWidth / 2, innerHeight / 2 - 100);
+  const face = faced.get(troops[0].id) ?? (g0 && g1 ? Math.atan2(g1.z - g0.z, g1.x - g0.x) : 0);
+  const cmd = faceOrder(troops, c, face), mid = centroid(cmd.orders.map(([, x, z]) => ({ x, z })));
+  cmd.orders = cmd.orders.map(([id, x, z]) => [id, x + c.x - mid.x, z + c.z - mid.z]); // stay centered where they stand
+  sendCmd(cmd);
+}
+function setFormation(patch) {
+  Object.assign(fm, patch);
+  if (patch.shape) { feedback.show(`Formation: ${fm.shape}`); blip(700); }
+  if (lastSnap) updateHud(lastSnap);
+}
+const cycleFormation = () => setFormation({ shape: SHAPES[(SHAPES.indexOf(fm.shape) + 1) % SHAPES.length] });
 const orders = createOrders({
-  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, send: sendCmd, moveColor: MOVE_COLOR,
+  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, together: () => fm.together, send: sendCmd, moveColor: MOVE_COLOR,
   feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); if (at.id === undefined) coverPreview.flash(at.x, at.z); },
 });
 const formationPreview = createFormationPreview({ THREE, hAt });
@@ -1048,7 +1096,7 @@ const formationPreview = createFormationPreview({ THREE, hAt });
 // ---------- camera + input ----------
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
-let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null;
+let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null, lastRight = null;
 function clearFacing() { facingGesture = null; formationPreview.hide(); }
 function beginFacing(cursor, e, attack = false) {
   clearFacing();
@@ -1110,6 +1158,7 @@ const actions = {
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
   follow: followSelected, rally: startRally,
+  formation: cycleFormation, tighten: () => reform(-0.25), spread: () => reform(0.25),
   home: () => {
     if (!home) return;
     rig.cancelFollow();
@@ -1131,7 +1180,11 @@ for (const { id } of bindings) {
   else if (kind === 'entrench') actions[id] = () => startEntrench(value);
   else if (kind === 'stance') actions[id] = () => toggleStance(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
-  else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
+  else if (kind === 'group') actions[id] = () => {
+    selection.group(number, value, performance.now()); if (value !== 'recall') blip(990);
+    if (value === 'set') groupForm.set(number, { ...fm });
+    else if (value === 'recall' && groupForm.has(number)) Object.assign(fm, groupForm.get(number));
+  };
   else if (kind === 'card' || kind === 'cardMany') actions[id] = () => hud.pressCard(+value, kind === 'cardMany');
 }
 // In a match (not the lobby or the open menu) Tab belongs to the game: it toggles recruit mode and never moves focus.
@@ -1271,9 +1324,13 @@ addEventListener('mouseup', (e) => {
   if (e.button === 1) rig.stopDrag();
   if (!EDIT && facingGesture?.button === e.button) {
     updateFacing(e.clientX, e.clientY);
-    const f = facingGesture, facing = Number.isFinite(f.face);
+    const f = facingGesture, facing = Number.isFinite(f.face), now = performance.now();
     clearFacing();
     if (f.attack) cancelAim();
+    const twice = !facing && !f.attack && lastRight && now - lastRight.t < 350 && Math.hypot(e.clientX - lastRight.x, e.clientY - lastRight.y) < 16;
+    lastRight = facing || twice ? null : { t: now, x: e.clientX, y: e.clientY };
+    if (twice) { faceToward(f.cursor.ground); return; }
+    if (facing) for (const v of myTroops()) faced.set(v.id, f.face);
     orders.dispatch(f.cursor, facing ? { shiftKey: f.event.shiftKey || !!e.shiftKey, ctrlKey: f.event.ctrlKey || !!e.ctrlKey } : f.event,
       facing ? { face: f.face, reach: f.reach, attack: f.attack || f.event.ctrlKey || !!e.ctrlKey } : f.attack ? { attack: true } : {});
     return;

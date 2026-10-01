@@ -1238,7 +1238,21 @@ Right-click at a destination, drag toward the desired facing, and release. A pla
 
 `shared/formation.js` is shared by preview and simulation. Slots have at least 3 m between infantry and 5 m between vehicles; a longer drag widens a rank up to three times its natural width. More than ten units form ranks. The server validates and wraps an optional finite `face` angle into (-PI, PI]. Each queued leg stores its own angle. Infantry and guns face on arrival; a hull turns at the behavior turn speed. Combat aiming takes priority, followed by remembered anti-tank fire, then the ordered facing. Accepted replacement orders and Retreat clear it. Preview geometry follows terrain height and reuses one buffer. A live two-human-seat server check on port 3811 sent a PI/2 facing to seven units, including a tank: all seven reported rotation 1.6 (0.029 rad from the requested angle, within snapshot rounding), with no refused orders.
 
-Remaining limits: queued plan lines do not draw facing, AI orders do not set facing, later ranks sort by lateral position, and the minimap has no facing drag. An automatic cover shift still cancels the formation facing.
+Remaining limits: queued plan lines do not draw facing, AI orders do not set facing, and the minimap has no facing drag. An automatic cover shift still cancels the formation facing.
+
+## Formation menu (2026-10-01)
+
+The Orders panel keeps its everyday buttons in one grid and moves the rest into submenus that open a second grid under it: **Formation** for every selection, **Build** (the fortifications) and **Trenches** (the dig patterns) for builder squads. A menu stays open until its button is clicked again; the hotkeys work with it closed. A builder squad's panel shows two menu buttons instead of every fortification and dig pattern.
+
+Formation settings live on the client and shape the slots it sends (the server keeps distinct per-unit spots as sent):
+- Shapes (Shift+V cycles): line (ranks of up to ten), block (square), column (two files), wedge (ranks of 1, 2, 3...). Plain clicks use the shape too, facing the way the group travels, and still settle into cover on arrival.
+- A right-drag sets facing and width. A line or block takes as many side by side as the drag has room for, so a wider drag means fewer ranks; a single rank still stops at three times its natural width. Column and wedge ignore the width.
+- Ranks are filled by whoever already stands furthest forward, each rank keeping left to right order. Mortars, rockets and medics (minimum range or no weapon) take the rear ranks.
+- Tighten and Spread (`[` and `]`) scale every gap from 1x to 2.5x and re-form the selection around its center, facing its last ordered facing, or up the screen.
+- March together (on by default) sends `together: true`: the server caps every unit of the order at the slowest one's speed (`u.pace`) until it arrives, attacks or retreats. Queued legs replay one unit at a time and do not keep the pace.
+- Snap to trenches (on by default): an infantry slot within 3 m of a trench cell no other slot took moves onto it.
+- A double right-click (two releases within 350 ms, 16 px) turns the selection in place toward the spot.
+- Ctrl+number saves the formation settings with the group; recalling the group restores them. Facing is not saved.
 
 ## Behavior balance investigation (2026-10-01)
 

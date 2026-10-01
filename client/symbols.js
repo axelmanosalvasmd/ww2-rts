@@ -42,6 +42,8 @@ function band(line, w0, w1 = w0) {
   return poly(...L, ...R.reverse());
 }
 const bar = (a, b, w0, w1 = w0) => band([a, b], w0, w1);
+// a square h from its center to each side
+const sq = (x, y, h) => poly([x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]);
 // a point `along` units from p in direction deg, then `side` units to its right
 const at = ([x, y], deg, along, side = 0) => {
   const c = Math.cos(rad(deg)), s = Math.sin(rad(deg));
@@ -360,6 +362,15 @@ const GLYPH_DEFS = {
     poly([72, 20], [92, 20], [92, 86], [72, 86]) + poly([77, 25], [87, 25], [87, 81], [77, 81]) + poly([80, 66], [84, 66], [84, 78], [80, 78]),
   // mass entrenchment patterns, seen from above: what the two clicks dig
   e_line: bar([17, 50], [83, 50], 11) + bar([7, 36], [7, 64], 6) + bar([93, 36], [93, 64], 6),
+  // formations, seen from above with the front at the top: one square per unit
+  f_line: [14, 32, 50, 68, 86].map((x) => sq(x, 50, 7)).join(''),
+  f_block: [25, 50, 75].flatMap((y) => [25, 50, 75].map((x) => sq(x, y, 9))).join(''),
+  f_column: [16, 39, 62, 85].flatMap((y) => [38, 62].map((x) => sq(x, y, 8))).join(''),
+  f_wedge: [[50, 22], [34, 48], [66, 48], [18, 74], [50, 74], [82, 74]].map(([x, y]) => sq(x, y, 8)).join(''),
+  f_tight: sq(38, 50, 8) + sq(62, 50, 8) + poly([6, 36], [22, 50], [6, 64]) + poly([94, 36], [78, 50], [94, 64]),
+  f_spread: sq(40, 50, 7) + sq(60, 50, 7) + poly([84, 36], [98, 50], [84, 64]) + bar([72, 50], [85, 50], 6) + poly([16, 36], [2, 50], [16, 64]) + bar([28, 50], [15, 50], 6),
+  f_together: [22, 50, 78].map((x) => sq(x, 36, 9)).join('') + bar([14, 70], [86, 70], 8) + bar([22, 51], [22, 64], 5) + bar([50, 51], [50, 64], 5) + bar([78, 51], [78, 64], 5),
+  f_snap: sq(28, 26, 10) + sq(72, 26, 10) + poly([20, 44], [36, 44], [28, 54]) + poly([64, 44], [80, 44], [72, 54]) + bar([6, 72], [94, 72], 14),
   e_zigzag: band([[6, 66], [28, 34], [50, 66], [72, 34], [94, 66]], 10),
   e_double: bar([8, 34], [92, 34], 10) + bar([8, 66], [92, 66], 10),
   e_arc: band(arc(50, 80, 42, 42, 195, 345, 18), 10) + circle(50, 80, 6),

@@ -53,8 +53,9 @@ export function createOrders(ctx) {
       } else if (order === 'move') {
         const attack = options.attack || event.ctrlKey;
         color = attack ? 0xff9a40 : ctx.moveColor; tone = attack ? 500 : 660; voice = attack ? 'attack' : 'move';
-        if (Number.isFinite(options.face)) add({ t: attack ? 'amove' : 'move', orders: ctx.formation(troops, g, options.face, options.reach), face: options.face });
-        else add({ t: attack ? 'amove' : 'move', orders: ctx.formation(troops, g) });
+        const together = ctx.together?.() ? { together: true } : {};
+        if (Number.isFinite(options.face)) add({ t: attack ? 'amove' : 'move', orders: ctx.formation(troops, g, options.face, options.reach), face: options.face, ...together });
+        else add({ t: attack ? 'amove' : 'move', orders: ctx.formation(troops, g), ...together });
       }
     }
     if (buildings.length && g) {

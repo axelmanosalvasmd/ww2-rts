@@ -2742,6 +2742,38 @@ for (const type of ['rifle', 'tank']) {
   for (let i = 1; i < ends.length; i++) assert.ok(ends[i].z - ends[i - 1].z >= rifleSize - 1e-9, 'shared facing spots keep a full slot between neighbours');
 }
 
+// Formation shapes, rear ranks, spacing, a wide drag, and marching together.
+{
+  const at = { x: 100, z: 100 }, size = slotSize(UNITS.rifle);
+  const nine = Array.from({ length: 9 }, (_, i) => ({ id: i + 1, x: 100 + (i - 4) * 4, z: 60, size }));
+  const depths = (spots) => new Set(spots.map(s => (s[2] - at.z).toFixed(3))).size; // face +z: depth runs along z
+  const face = Math.PI / 2;
+  assert.equal(depths(facingSpots(nine, at, face, 0)), 1, 'a line of nine is one rank');
+  assert.equal(depths(facingSpots(nine, at, face, 0, { shape: 'block' })), 3, 'a block of nine is three ranks');
+  assert.equal(depths(facingSpots(nine, at, face, 0, { shape: 'column' })), 5, 'a column of nine is two files deep');
+  assert.equal(depths(facingSpots(nine, at, face, 0, { shape: 'wedge' })), 4, 'a wedge of nine has ranks of 1, 2, 3, 3');
+  const wedge = facingSpots(nine, at, face, 0, { shape: 'wedge' });
+  assert.equal(wedge.filter(s => Math.abs(s[2] - at.z) < 1e-9).length, 1, 'one unit at the tip of the wedge');
+  const thirty = Array.from({ length: 30 }, (_, i) => ({ id: i, x: i, z: 0, size }));
+  assert.equal(depths(facingSpots(thirty, at, face, 0)), 3, 'thirty in a short drag stand three deep');
+  assert.equal(depths(facingSpots(thirty, at, face, 15 * size)), 2, 'a wider drag fits more side by side, so fewer ranks');
+  const mixed = nine.map((u, i) => ({ ...u, back: i < 2 }));
+  const spots = facingSpots(mixed, at, face, 0, { shape: 'block' }), rear = Math.min(...spots.map(s => s[2]));
+  assert.ok(spots.filter(s => s[0] <= 2).every(s => s[2] === rear), 'mortars and medics take the rear rank');
+  const width = (sp) => Math.max(...sp.map(s => s[1])) - Math.min(...sp.map(s => s[1]));
+  assert.ok(width(facingSpots(nine, at, face, 0, { spread: 2 })) > width(facingSpots(nine, at, face, 0)) * 1.5, 'Spread widens the gaps');
+  // march together: the light tank waits for the AT gun's pace until it arrives
+  const g = fresh(Array(60).fill('.'.repeat(60))); g.players[0].mp = 10000;
+  const tank = put(g, 0, 'tank', 10, 20), gun = put(g, 0, 'at', 10, 30);
+  command(g, 0, { t: 'move', orders: [[tank.id, 90, 20], [gun.id, 90, 30]], together: true });
+  assert.equal(tank.pace, UNITS.at.speed, 'the group marches at its slowest unit');
+  for (let i = 0; i < 20; i++) step(g);
+  assert.ok(Math.abs((tank.x - 10) - (gun.x - 10)) < 2, 'tank and gun stay level on the march');
+  command(g, 0, { t: 'move', orders: [[tank.id, 90, 20]] });
+  assert.equal(tank.pace, 0, 'a plain order drops the march pace');
+  console.log('formation shapes, ranks, spacing and marching together checked');
+}
+
 // Formation facing queued orders.
 {
   const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;

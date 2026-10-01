@@ -1511,8 +1511,11 @@ export function command(g, slot, cmd, auto = false) {
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
       go.push([u, x, z]);
     }
+    // together: the group marches at its slowest unit's pace, so the formation arrives in one piece
+    const pace = cmd.together === true && go.length > 1 ? Math.min(...go.map(([u]) => UNITS[u.type].speed)) : 0;
     // A facing order keeps its formation spots. Plain moves still settle infantry into nearby cover.
     for (const [u, x, z] of endSpots(g, go, face)) {
+      u.pace = pace;
       const engaged = !!u.targetId || g.tick - u.hitAt <= CFG.behavior.threatTime / TICK;
       exitBuilding(g, u);
       Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, board: 0, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null, drift: false });
@@ -2768,7 +2771,8 @@ export function step(g) {
     // the ground under it, blended over its footprint, and the grade of the next metre if that is uphill
     let grade = 0;
     if (g.height && u.path.length) { const wp = u.path[0], d = dist(u, wp) || 1; grade = heightAt(g, u.x + (wp.x - u.x) / d, u.z + (wp.z - u.z) / d) - heightAt(g, u.x, u.z); }
-    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u) * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade)))
+    if (u.pace && (u.attackId || u.retreating || !u.path.length)) u.pace = 0; // the march ends on arrival or any other job
+    const speed = (u.pace ? Math.min(def.speed, u.pace) : def.speed) * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u) * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade)))
       * weatherSpeed(g, def) * (back ? CFG.behavior.reverseSpeed : 1); // the match weather: infantry in mud, everyone in snow (shared/weather.js)
     // jammed: units that reach one waypoint together push each other off it for good (the separation below undoes each
     // step). After a second without real progress, a unit that can walk straight to its next waypoint skips this one.

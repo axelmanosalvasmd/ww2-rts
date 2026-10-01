@@ -9,6 +9,7 @@ import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTREN
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
+import { SHAPES } from '/shared/formation.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
 import { availability, buyCount, cooldownSeconds } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
@@ -283,13 +284,31 @@ export function createHud(ctx) {
   }
 
   // ---------- bottom left: orders ----------
-  let ordKey = '';
+  // Formation, Build and Trenches are submenus: their buttons open a second grid under the orders, which stays open
+  // until clicked again. The hotkeys work with the menus closed.
+  let ordKey = '', menu = null;
+  const SHAPE_TIP = { line: 'ranks of up to ten across the facing; a longer right-drag fits more side by side',
+    block: 'a square, widened by a longer right-drag', column: 'two files deep, for roads and gaps', wedge: 'an arrowhead, one unit at the tip' };
+  const MENUS = { form: ['f_wedge', 'Form', 'Formation'], build: ['sandbags', 'Build', 'Build'], trench: ['e_zigzag', 'Trench', 'Trench patterns'] };
+  const menuBtn = (m, tip) => `<button class="ob${menu === m ? ' on' : ''}" data-m="${m}" title="${esc(tip)}" aria-label="${MENUS[m][2]}" aria-expanded="${menu === m}">` +
+    icon(MENUS[m][0]) + `<kbd></kbd><span class="val">${MENUS[m][1]} ${menu === m ? '▾' : '▸'}</span></button>`;
+  function menuHTML(m) {
+    if (m === 'form') return SHAPES.map((k) => orderBtn(`data-f="shape:${k}"`, `f_${k}`, '', `${k[0].toUpperCase() + k.slice(1)} (${label('formation')} cycles): ${SHAPE_TIP[k]}`)).join('') +
+      orderBtn('data-f="tighten"', 'f_tight', label('tighten'), `Tighten (${label('tighten')}): closer spacing; the selection re-forms where it stands`) +
+      orderBtn('data-f="spread"', 'f_spread', label('spread'), `Spread (${label('spread')}): wider spacing; the selection re-forms where it stands`) +
+      orderBtn('data-f="together"', 'f_together', '', 'March together: the group moves at the pace of its slowest unit and arrives in one piece') +
+      orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
+    if (m === 'build') return Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
+    return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
+      `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
+  }
   function drawOrders(s, sel) {
     const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
     const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries);
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}`;
+    if (menu && menu !== 'form' && !dig) menu = null;
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${menu}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
@@ -299,12 +318,11 @@ export function createHud(ctx) {
         Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
         (carry ? orderBtn('data-a="unload"', 'unload', badge('unload'), `Unload (${label('unload')}): the squad inside gets out beside the halftrack. To board, right-click the halftrack with infantry selected`) : '') +
-        (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('') : '') +
-        (dig ? ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
-          `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('') : '') +
+        menuBtn('form', 'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width; double right-click turns to face a spot') +
+        (dig ? menuBtn('build', 'Build: sandbags, wire, traps, nests, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
-        '</div>';
-      el.querySelectorAll('button').forEach((b) => {
+        '</div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
+      el.querySelectorAll('button[data-a]').forEach((b) => {
         const a = b.dataset.a;
         b.onclick = (e) => {
           if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
@@ -313,8 +331,22 @@ export function createHud(ctx) {
         };
         if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
       });
+      el.querySelectorAll('button[data-m]').forEach((b) => (b.onclick = () => { menu = menu === b.dataset.m ? null : b.dataset.m; drawOrders(s, sel); }));
+      el.querySelectorAll('button[data-f]').forEach((b) => (b.onclick = () => {
+        const f = b.dataset.f;
+        if (f.startsWith('shape:')) ctx.setForm({ shape: f.slice(6) });
+        else if (f === 'tighten' || f === 'spread') ctx.reform(f === 'spread' ? 0.25 : -0.25);
+        else ctx.setForm({ [f]: !ctx.form()[f] });
+        drawOrders(s, sel);
+      }));
     }
     if (!key) return;
+    const form = ctx.form();
+    for (const b of el.querySelectorAll('button[data-f]')) {
+      const f = b.dataset.f, toggle = f === 'together' || f === 'snap', on = f.startsWith('shape:') ? form.shape === f.slice(6) : toggle && form[f];
+      b.classList.toggle('on', on);
+      setText(b.lastElementChild, toggle ? (on ? 'On' : 'Off') : f === 'spread' ? `${form.spread}x` : '');
+    }
     const fType = ctx.fType();
     for (const b of el.querySelectorAll('button[data-a]')) {
       const a = b.dataset.a, val = b.lastElementChild;
