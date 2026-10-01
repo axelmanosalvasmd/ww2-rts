@@ -203,6 +203,7 @@ const MODE_INFO = {
   assault: 'One team defends a fortified command bunker. Everyone else attacks and must destroy it before the clock runs out.',
   annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
   classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks, Motor Pool and Airfield.',
+  horde: 'Co-op: everyone shares one HQ and defends one command bunker against waves that keep growing. The next wave comes when the last one is dead. How far can you get?',
 };
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
 // lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
@@ -223,20 +224,20 @@ async function previewMap(name, mode) {
   const tmp = document.createElement('canvas'); tmp.width = m.w; tmp.height = m.h; tmp.getContext('2d').putImageData(img, 0, 0);
   c.fillStyle = '#11110d'; c.fillRect(0, 0, cv.width, cv.height);
   c.imageSmoothingEnabled = false; c.drawImage(tmp, ox, oy, m.w * s, m.h * s);
-  const at = (p) => [ox + (p.x + 0.5) * s, oy + (p.y + 0.5) * s], assault = mode === 'assault', noVp = assault || mode === 'annihilation';
+  const at = (p) => [ox + (p.x + 0.5) * s, oy + (p.y + 0.5) * s], horde = mode === 'horde', assault = mode === 'assault' || horde, noVp = assault || mode === 'annihilation';
   const points = m.points.filter(p => !noVp || (p.mp ?? 1) > 0);
   for (const p of points) { c.beginPath(); c.arc(...at(p), Math.max(4, CFG.pointRadius / CELL * s), 0, 7); c.strokeStyle = '#f0d98a'; c.lineWidth = 2; c.stroke(); }
-  const spawns = m.spawns.map((sp, i) => [sp, i]).filter(([sp]) => assault || !sp.assault);
+  const spawns = m.spawns.map((sp, i) => [sp, i]).filter(([sp]) => mode === 'assault' || !sp.assault);
   for (const [sp, i] of spawns) {
     c.beginPath(); c.arc(...at(sp), 6, 0, 7);
     c.fillStyle = assault && m.defend ? (m.defend.includes(i) ? '#d94a3d' : '#3d7bd9') : '#f2ecd8'; c.fill();
     c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke();
   }
   const top = Math.max(0, ...(m.heights || []).flatMap(r => [...r].map(levelOf)));
-  $('mapInfo').innerHTML = [`<b style="color:var(--ink)">${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, `up to ${spawns.length} players`,
+  $('mapInfo').innerHTML = [`<b style="color:var(--ink)">${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, horde ? `up to ${COLORS.length - 1} defenders` : `up to ${spawns.length} players`,
     `${points.length} capture point${points.length === 1 ? '' : 's'}`, top >= 3 ? 'hills and cliffs' : top > 0 ? 'rolling hills' : '',
-    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (assault ? '<span style="color:#d94a3d">●</span> defend · <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
-    assault && m.assaultTime ? `${Math.round(m.assaultTime / 60)} minute clock` : ''].filter(Boolean).map(t => `<div>${t}</div>`).join('');
+    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (horde ? '<span style="color:#d94a3d">●</span> your HQ is one of these · <span style="color:#3d7bd9">●</span> the horde comes from here' : assault ? '<span style="color:#d94a3d">●</span> defend · <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
+    mode === 'assault' && m.assaultTime ? `${Math.round(m.assaultTime / 60)} minute clock` : ''].filter(Boolean).map(t => `<div>${t}</div>`).join('');
 }
 
 function renderLobby(m) {
@@ -253,19 +254,22 @@ function renderLobby(m) {
     const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
-      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
+      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
-  $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''}>${esc(prettyMap(n))}</option>`).join('');
+  const horde = m.mode === 'horde'; // Horde: only maps with defender spawns, never Endless
+  $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''} ${horde && !m.hordeMaps?.includes(n) ? 'disabled' : ''}>${esc(prettyMap(n))}</option>`).join('');
   previewMap(m.mapName, m.mode || 'conquest');
   $('mapSel').disabled = !host || !lobby;
   // Assault: the host picks which team defends; everyone else attacks
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
   $('armySel').value = m.army || 'standard'; $('armySel').disabled = !host || !lobby;
-  $('modeInfo').textContent = MODE_INFO[m.mode || 'conquest'] ?? '';
+  for (const o of $('armySel').options) if (o.value === 'endless') o.hidden = o.disabled = horde;
+  const best = m.hordeBest, mins = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  $('modeInfo').textContent = (MODE_INFO[m.mode || 'conquest'] ?? '') + (!horde ? '' : best ? ` Record here with ${n} defender${n === 1 ? '' : 's'}: wave ${best.wave} in ${mins(best.time)} (${best.names.join(', ')}).` : ` No record yet here with ${n} defender${n === 1 ? '' : 's'}.`);
   $('defSel').classList.toggle('hidden', !assault);
   $('defSel').innerHTML = teamIds.map(t => `<option value="${t}" ${t === m.defenderTeam ? 'selected' : ''}>Team ${t + 1} defends (${m.players.filter(p => p.team === t).map(p => esc(p.name)).join(', ')})</option>`).join('');
   $('defSel').disabled = !host || !lobby;
@@ -274,14 +278,14 @@ function renderLobby(m) {
   // "3v3", "2v2v2", "1v1", or FFA when nobody shares a team
   const sizes = [...new Set(m.players.map(p => p.team))].map(t => m.players.filter(p => p.team === t).length);
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
-  $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${assault ? 'assault' : m.mode === 'classic' || m.mode === 'annihilation' ? m.mode + ' ' + mode : mode}`;
+  $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${horde ? `horde, ${n} defender${n === 1 ? '' : 's'}` : assault ? 'assault' : m.mode === 'classic' || m.mode === 'annihilation' ? m.mode + ' ' + mode : mode}`;
   const tooMany = n > (m.spawns ?? 3);
   $('start').disabled = tooMany || !assaultOk;
-  $('lobbyMsg').textContent = tooMany ? `This map has ${m.spawns} spawns: pick a bigger map or remove players.` : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
+  $('lobbyMsg').textContent = tooMany ? (horde ? `Horde seats ${m.spawns} defenders: remove a player.` : `This map has ${m.spawns} spawns: pick a bigger map or remove players.`) : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? `Send the invite link, or add an AI ${horde ? 'teammate' : 'opponent'}.` : '') : 'Waiting for the host to start...';
   // the last match's result, until the next one starts (the room is back in the lobby: change map or mode freely)
   const r = m.result, w = r?.winner;
   $('result').classList.toggle('hidden', !r);
-  if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
+  if (r) $('result').textContent = r.ended ? 'Match ended by the host' : r.horde ? `Overrun on wave ${r.horde.wave}: ${r.horde.kills} kills in ${mins(r.horde.time)}${r.horde.record ? ' · new record' : r.horde.best ? ` · record: wave ${r.horde.best.wave}` : ''}` : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
   renderReport(r, $('report'), { colors: COLORS.map(css), me: m.you }); // the chart and table under it (client/report.js)
   if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
@@ -362,7 +366,7 @@ function startGame(m, restored = null) {
   props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
 
   // capture points
-  const assault = lobbyState?.mode === 'assault' || lobbyState?.mode === 'annihilation'; // no VP in either
+  const assault = ['assault', 'annihilation', 'horde'].includes(lobbyState?.mode); // no VP in these
   points = map.points.filter(p => !assault || (p.mp ?? 1) > 0).map((p) => {
     const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, hAt((p.x + 0.5) * CELL, (p.y + 0.5) * CELL), (p.y + 0.5) * CELL);
     const cp = capturePoint(CFG.pointRadius, classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`); // Classic: points pay Munitions
@@ -616,7 +620,7 @@ function applySnapshot(s) {
   epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
   if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
   alerts.snapshot(s, lastSnap);
-  lastSnap = s;
+  lastSnap = s; drawWorks(s.works);
   updateHud(s);
   endgame.snapshot(s);
 }
@@ -690,9 +694,9 @@ function placementView() {
   return placementCache;
 }
 const hud = createHud({
-  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return lobbyState?.host === me; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
-  retreat: () => retreat(), takeCover: () => takeCover(), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
+  retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -730,18 +734,40 @@ function entrenchSummary(segs) {
   return !segs.length ? `${ENTRENCH[entrenchKind]}: nothing can be dug there`
     : `${ENTRENCH[entrenchKind]}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? ` · ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
 }
-// green squares on every cell the pattern would dig (wire in brass), redrawn as the mouse moves
-function entrenchPreview(group, a, b) {
-  const segs = entrenchSegments(a, b), w = placementView()?.game.w ?? 1, tiles = group.userData.tiles;
+// a square on every cell the segments would dig (trench green, wire brass); the tiles are pooled on the group
+function paintTiles(group, segs, opacity) {
+  const w = placementView()?.game.w ?? 1, tiles = group.userData.tiles ??= [];
   let n = 0;
   for (const j of segs) for (const [c] of j.place.cells) {
     let t = tiles[n];
-    if (!t) { t = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.86, CELL * 0.86), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); t.rotation.x = -Math.PI / 2; t.renderOrder = 2; tiles.push(t); group.add(t); }
+    if (!t) { t = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.86, CELL * 0.86), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); t.rotation.x = -Math.PI / 2; t.renderOrder = 2; tiles.push(t); group.add(t); }
     const x = (c % w + 0.5) * CELL, z = (Math.floor(c / w) + 0.5) * CELL;
-    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(j.kind === 'wire' ? 0xd2a849 : 0x60e070);
+    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(j.kind === 'wire' ? 0xd2a849 : 0x60e070); t.material.opacity = opacity;
     n++;
   }
   for (let i = n; i < tiles.length; i++) tiles[i].visible = false;
+}
+// The ghost of your side's ordered entrenchments: what is still to dig, fainter than the placement preview. Redrawn
+// when the list changes. works: [project id, 1 for wire, x, z, dir] from the snapshot.
+let works = [], worksKey = '', worksGroup = null;
+function drawWorks(list = []) {
+  works = list;
+  const key = list.join(';'), view = placementView();
+  if (!world || !view || (key === worksKey && worksGroup?.parent === world)) return;
+  worksKey = key;
+  if (worksGroup?.parent !== world) { worksGroup = new THREE.Group(); world.add(worksGroup); }
+  paintTiles(worksGroup, list.map(([, wire, x, z, dir]) => { const j = { kind: wire ? 'wire' : 'trench', x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), 0.26);
+}
+// the planned entrenchment under a ground click (a segment within 5 m), for sending more squads to it
+function worksAt(g) {
+  let best = null, bd = 5;
+  if (g) for (const [id, , x, z] of works) { const d = Math.hypot(x - g.x, z - g.z); if (d < bd) { bd = d; best = id; } }
+  return best;
+}
+// the placement preview, redrawn as the mouse moves
+function entrenchPreview(group, a, b) {
+  const segs = entrenchSegments(a, b);
+  paintTiles(group, segs, 0.5);
   const text = `${entrenchSummary(segs)} · click ${aimCenter ? 'to dig' : 'where it starts'} · right-click cancels`;
   if (text !== entrenchHint) { entrenchHint = text; $('hint').textContent = text; }
 }
@@ -810,7 +836,7 @@ function toggleStance(key) {
   if (!us.length) return;
   sendCmd({ t: 'stance', ids: us.map(v => v.id), key, on: !us.every(v => v.flags & STANCE_BIT[key]) }); blip(480);
 }
-function takeCover() { if (!selected.size || explainUnavailable(available({ t: 'cover' }))) return; sendCmd({ t: 'cover', ids: [...selected] }); blip(420); }
+function takeCover(queue = false) { if (!selected.size || explainUnavailable(available({ t: 'cover' }))) return; sendCmd({ t: 'cover', ids: [...selected], queue: queue === true }); blip(420); }
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
 let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
@@ -854,12 +880,12 @@ function useAbility(type) {
   if (AIMED[id]) setAim(id, type);
   else { sendCmd({ t: 'ability', ids: ready.map(v => v.id) }); blip(880); }
 }
-function throwAt(g, kind, type) {
+function throwAt(g, kind, type, queue = false) {
   if (explainUnavailable(available({ t: 'ability', unit: type }))) return;
   const who = [...selected].map(id => units.get(id)).filter(v => v && v.type === type && UNITS[v.type].ab.id === kind && !v.cd && !(v.flags & 1));
   if (!who.length) return;
   who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
-  sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(760);
+  sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z, queue }); marker(g.x, g.z, 0xffa030); blip(760);
 }
 // rows perpendicular to the direction of travel
 function formation(sel, g) {
@@ -872,7 +898,7 @@ function formation(sel, g) {
   });
 }
 const orders = createOrders({
-  units, selected, get me() { return me; }, defs: UNITS, formation, send: sendCmd, moveColor: MOVE_COLOR,
+  units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, send: sendCmd, moveColor: MOVE_COLOR,
   feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); },
 });
 
@@ -909,7 +935,7 @@ const selection = createSelection({ units, selected, groups, owner: () => me, de
   screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
-  retreat, cover: takeCover, ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
+  retreat, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
   follow: followSelected, rally: startRally,
@@ -1000,7 +1026,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
       return;
     }
     if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
-    if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
+    if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
@@ -1009,7 +1035,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
       const a = aimCenter, segs = entrenchSegments(a, g);
       if (!segs.length) { feedback.show(denySentence('blocked')); return; }
       cancelAim();
-      sendCmd({ t: 'entrench', ids: diggers().map(v => v.id), pattern: entrenchKind, x: a.x, z: a.z, x2: g.x, z2: g.z });
+      sendCmd({ t: 'entrench', ids: diggers().map(v => v.id), pattern: entrenchKind, x: a.x, z: a.z, x2: g.x, z2: g.z, queue: e.shiftKey });
       marker(a.x, a.z, 0xc8a060); blip(600); bark('move');
       return;
     }
@@ -1034,6 +1060,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     ground: groundAt(e.clientX, e.clientY), enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
     friend: pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
     building: pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), house: houseAt(e.clientX, e.clientY),
+    works: worksAt(groundAt(e.clientX, e.clientY)),
   }, e);
 });
 

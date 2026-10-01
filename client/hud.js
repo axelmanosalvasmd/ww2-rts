@@ -167,7 +167,7 @@ export function createHud(ctx) {
     const key = [kind, ctx.me, teams.join(), names.join('\u0001')].join('|');
     if (key !== scoreKey) {
       scoreKey = key;
-      const lead = kind === 'conquest' ? '' : '<div class="sc-lead"><div class="sc-mode"></div><div class="num sc-clock"></div></div>';
+      const lead = kind === 'conquest' ? '' : `<div class="sc-lead"><div class="sc-mode"></div><div class="num sc-clock"></div>${kind === 'horde' ? '<button class="sc-next hidden" title="Skip the break">Send next wave</button>' : ''}</div>`;
       el.innerHTML = lead + tids.map((t) => {
         const mem = members(t);
         return `<div class="sc-team">${mem.map((i) => `<div class="sc-p"><span class="swatch" style="background:${pc(i)}"></span>${mark(ctx.facOf(i))}` +
@@ -177,7 +177,8 @@ export function createHud(ctx) {
           `<div class="sc-val"><span class="u0"></span><span class="num"></span><span class="u"></span></div></div>`;
       }).join('');
       // the stylesheet sizes each team block from the team count (and the clock block, if any)
-      el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', !lead ? '0px' : kind === 'assault' ? '216px' : '150px');
+      el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', !lead ? '0px' : kind === 'assault' || kind === 'horde' ? '216px' : '150px');
+      el.querySelector('.sc-next')?.addEventListener('click', () => ctx.send({ t: 'nextwave' }));
       score = { lead: el.querySelector('.sc-lead'), teams: [...el.querySelectorAll('.sc-team')].map((b, k) => ({
         t: tids[k], mem: members(tids[k]), role: b.querySelector('.sc-role'), bar: b.querySelector('.bar'), fill: b.querySelector('.bar > div'),
         u0: b.querySelector('.u0'), num: b.querySelector('.sc-val .num'), u: b.querySelector('.sc-val .u'),
@@ -188,8 +189,14 @@ export function createHud(ctx) {
     const mine = teams[ctx.me] ?? ctx.me, units = [...ctx.units.values()];
     const net = (i) => (s.online?.[i] === false ? ['danger', 'Offline'] : s.ping?.[i] === -1 ? ['', 'AI'] : s.ping?.[i] != null ? ['', `${s.ping[i]} ms`] : ['', '']);
     if (score.lead) {
-      const mode = score.lead.firstChild, clk = score.lead.lastChild;
-      if (kind === 'assault') {
+      const mode = score.lead.firstChild, clk = score.lead.children[1];
+      if (kind === 'horde') {
+        // a wave on the map: how many are left (reserve included). Between waves: the break's countdown
+        const on = !!s.mode.active;
+        setText(mode, on ? `Wave ${s.mode.wave}` : `Wave ${s.mode.wave + 1} in`); setText(clk, on ? `${s.mode.left} left` : clock(s.mode.timeLeft));
+        score.lead.title = 'Hold the bunker. The next wave comes 45 seconds after this one is dead';
+        show(score.lead.lastChild, !on && ctx.host);
+      } else if (kind === 'assault') {
         setText(mode, mine === s.mode.defenderTeam ? 'Assault: hold out' : 'Assault: take the bunker'); setText(clk, clock(s.mode.timeLeft));
         score.lead.title = mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker before the clock runs out';
       } else if (kind === 'classic') {
@@ -210,7 +217,7 @@ export function createHud(ctx) {
         const why = cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '';
         if (tm.net[k].title !== why) tm.net[k].title = why;
         const out = kind === 'classic' && s.out?.[i];
-        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts · ${held(i)} held` : `${held(i)} held`) : kind === 'assault' ? '' : out ? 'Out' : `${held(i)} held`);
+        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts · ${held(i)} held` : `${held(i)} held`) : kind === 'assault' || i === s.mode?.slot ? '' : out ? 'Out' : `${held(i)} held`);
         tm.held[k].classList.toggle('danger', !!out);
       });
       let frac = null, u0 = '', num = '', u = '', role = '', danger = false;
@@ -221,6 +228,10 @@ export function createHud(ctx) {
         const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => UNITS[v.type]?.structure && v.hp > 0 && teams[v.owner] === tm.t);
         role = def ? 'Defending' : 'Attacking';
         if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), total = s.mode.total ?? tm.mem.length, max = total * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Structures left'; num = `${own.length} / ${total}`; }
+      } else if (kind === 'horde') {
+        const b = units.find((v) => v.type === 'bunker' && v.hp > 0);
+        if (tm.t !== s.mode.defenderTeam) role = 'Horde';
+        else if (b) { frac = b.hp / UNITS.bunker.hpPer; u0 = 'Bunker'; num = `${Math.ceil(frac * 100)}%`; } else { u0 = 'Bunker lost'; danger = true; }
       } else if (kind === 'annihilation') {
         const own = units.filter((v) => v.type === 'bunker' && v.hp > 0 && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = (s.mode.bunkers?.[tm.t] ?? tm.mem.length) * UNITS.bunker.hpPer;
         if (own.length) { frac = hp / max; u0 = own.length > 1 ? `${own.length} bunkers` : 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; } else { u0 = 'Out'; danger = true; }
@@ -308,16 +319,16 @@ export function createHud(ctx) {
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
         Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
-        (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m`) : '') +
+        (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
         (dig ? ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
-          `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started`)).join('') : '') +
+          `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown`, t); }).join('') +
         '</div>';
-      el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
+      el.querySelectorAll('button').forEach((b) => (b.onclick = (e) => {
         const a = b.dataset.a;
         if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
-        else if (a === 'cover') ctx.takeCover(); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
+        else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
         else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
       }));
     }

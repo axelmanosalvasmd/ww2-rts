@@ -88,6 +88,58 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   6+ units. AI runs, time to finish: 1v1 Three Crossroads 4:47-26:43 (8 games), River Towns 5:41-23:45 (4),
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
 
+## Horde mode (decided and built 2026-10-01)
+Co-op: 1-5 players (humans or AI teammates) defend against Waves from the Horde, an extra AI player that
+`createGame` adds after the last name (so no room seat maps to it; the server thinks for it). There is no winning:
+the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CFG.horde`.
+- Defend: one shared Command Bunker. Every player spawns, reinforces and retreats at the same HQ (the middle one of
+  the map's `defend` spawns), and `fortify()` runs once there (the first player owns the bunker). The bunker has
+  3000 hp per defender, done as damage divided by the number of defenders so its bar stays 0-100%. The run ends when
+  it falls.
+- Maps: only maps with `defend` spawns (11 of 22); the lobby greys out the rest, and picking Horde on another map
+  switches to the first horde map. The Horde enters at every other spawn, one unit per spawn twice a second.
+- Waves: the 45 s break starts only when the Wave is dead (no horde ground unit on the map or in the Reserve). The
+  host can send the next Wave early (`{t:'nextwave'}`, host only, handled by the server). With 3 or fewer left they
+  are revealed through the fog until they die.
+- Escalation: a Wave is an MP budget, 300 x 1.25^(wave - 1) x defenders x the army size's income factor, spent at
+  random by weight on the normal roster at normal prices (`hordeWave`). No stat buffs. Unlocks: rifles and
+  conscripts from 1, MG and mortar at 3, armored car, light tank and AT gun at 5, medium tank and rockets at 8, Tiger
+  at 12 (the Horde ignores factions and the Tiger's limit of one). Never snipers.
+- Big Waves: the Horde fields at most 60 units per defender (240 in all); the rest waits in the Reserve and enters as
+  units die. HUD: "Wave 16, 41 left".
+- Horde support: from Wave 6 it gets 150 MP of off-map support per Wave past 5, per defender, spent by the existing
+  AI (no paratroopers); what it doesn't spend is lost. From Wave 10 it gets planes (1, +1 every 3 Waves, x half the
+  defenders rounded up, at most 8; every third a fighter), so players need Flak. Planes don't count toward "Wave
+  dead" and are removed when it is cleared.
+- Horde brain: `think()` with a horde branch. Every unit attack-moves on the bunker from spawn. No shopping, no
+  retreat (auto-retreat is ignored for it), no reinforcing, no capturing points, no Kill Bounty, no income. It keeps
+  abilities, smoke, mortars and support.
+- Player economy: the Assault defender's (250 MP, +3.5/s) plus the Kill Bounty and MP from held points.
+- Bunker repair: +10% max hp per cleared Wave. No paid repair.
+- Army size: scales the players as usual and the Wave budget by the same income factor. Endless is refused.
+- AI teammates: allowed, use the defender AI (they stay within 70 m of the HQ), and count as defenders for the
+  budget and the record.
+- Records: best Wave per map, team size and army size in `horde-records.json` beside server.js (not in git), with
+  names, kills and time; a tie on the Wave goes to the longer run. The lobby shows the record for the current
+  settings, the result line shows Wave, kills and time.
+- Balance (AI defenders only, `node tools/horde.mjs <map> <defenders> <runs>`, Standard, 3 runs each, the Wave the
+  run ended on): Hill 112 solo 11/9/11, three 12/12/11, five 14/14/9; Seawall 11/11/13 and 12/12/12; Pegasus
+  13/14/11 and 13/11/15; Monte Cassino 13/12/12 and 12/14/11; Bocage 11/10/8 and 13/11/11; Stalingrad 13/11/11 and
+  13/14/13; Kasserine 13/15/14 and 14/15/14; the four XL maps 8-14. Runs last 22-36 minutes. So the budget x
+  defenders rule holds from 1 to 5 defenders, and runs end by themselves: a 12-unit army can't stop Wave 12+
+  (4400 MP per defender). Humans should get further than the AI. Massive (2 runs, three defenders): Waves 4 and 8,
+  308 units at the peak, worst server tick 16 ms. Massive is harder than Standard and is not tuned.
+- Bug found while testing, in the shared movement code: units that reach one waypoint together pushed each other off
+  it for good, because the "stuck" check measured movement before units are pushed apart and so never fired. Horde
+  units spawn in a clump with the same route, so whole groups froze near their spawn (Monte Cassino with three
+  defenders: 4 of 6 runs never ended). A unit with no real progress for a second now skips a waypoint it can walk
+  past, and after three seconds counts standing next to it as reaching it.
+- Known, left for later: AI teammates don't leave home to hunt a mortar or rocket truck shelling the bunker from
+  range. A horde unit with no route to the bunker (vehicles behind a closed ring of tank traps) waits where it is
+  until the players kill it. No regression test reproduces the waypoint jam in isolation; `tools/horde.mjs` reports
+  runs cut off at 90 minutes (none in the 68 runs above).
+- Deferred: difficulty levels, a hand-built horde map, paid repair, a Horde that takes points.
+
 ## Command & readability (slice after destruction)
 - Recruitment cards and tooltips share role descriptions, including Flak's role against enemy air support.
   A unit without role copy shows its name in both the buy bar and Classic training cards.
@@ -540,3 +592,18 @@ Slice 4, the AI and the rebalance (`shared/ai.js`):
   - tried alone, 800 matches each: Ranger 185 -> 200: 40/31/29. Tiger 620 -> 560: 40/31/28. Both together, 1400
     matches: 36/35/29 (default 38/34/27, River Towns 34/35/31). Kept both.
   - One 400-match run moves a faction by 2 to 3 points on its own; smaller runs cannot tell these variants apart.
+
+Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
+- Projects now live in `g.projects` (id -> `{ id, owner, jobs, crew }`). This replaces slice 2's "no registry": a
+  ghost and a join order both need to name a project. A sweep once a second drops a project with no segments left or
+  with nobody on it and nobody queued to join it, and recounts `crew`.
+- The `entrench` command takes `join: id` instead of a pattern. Own and allied projects only; the digger's owner pays.
+- Queueing an entrenchment creates the project at once and queues a join for each squad, so the squads share one
+  project (queueing the pattern itself per squad would make one project each, digging and paying for the same cells).
+- `planOf` reports a digger as busy (kind 7) while its project has segments left, so waiting orders start after the
+  pattern, not between two segments. A squad waiting for manpower therefore holds its queue too.
+- Queued commands no longer clear `u.entrench` (they did, which made a Shift-queued move cancel the digging).
+- Snapshot `works`: [project id, 1 for wire, x, z, dir] per remaining segment, unrounded so the client computes the
+  same cells with `placementCheck`. Sent to the owner's whole team.
+- Retreat is deliberately not queueable: an existing test requires Retreat and Stop to clear the queue even with
+  Shift held.

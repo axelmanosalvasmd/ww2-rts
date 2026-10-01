@@ -5,6 +5,47 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Mass entrenchment, follow-up: help, ghost and queueing.
+  - The plan stays on the ground: every segment still to be dug shows as faint squares (trench green, wire brass) for
+    you and your allies, and shrinks as squads take segments. Enemies do not see it.
+  - Send more squads to help: select builder squads and right-click the planned pattern. They join it and share the
+    remaining segments. Allies can help on your pattern too; each player pays for the segments their own squads dig.
+  - Shift-queue works for more orders. Hold Shift on the second click of a pattern to queue the entrenchment behind
+    the squads' current orders (the ghost appears at once). Shift+click the Take cover button, and Shift on the click
+    of a grenade, satchel charge or rocket barrage, queue those; shelling a house with Shift held now queues as well
+    (it used to replace the orders). A queued ability is checked for cooldown and munitions when its turn comes.
+  - Orders queued behind an entrenchment (a move, say) now wait until the pattern is finished. Before, a Shift-queued
+    move took the squad off the pattern.
+  - A pattern is dropped, ghost included, when it is finished or when nobody is working on it or queued to.
+  - Retreat and Stop never queue: they always act at once and clear the queue, as before.
+  - Not seen running: the ghost and the right-click to join are tested in the rules and the snapshot, but not looked at
+    in a browser.
+
+- New mode: Horde. You and your friends (up to five, AI teammates allowed) share one HQ and defend one command bunker
+  against waves that keep growing. Nobody wins: the result is the wave the bunker fell on.
+  - Pick Horde in the lobby. It plays on the 11 maps built for Assault (the others are greyed out). Everyone is on one
+    team and starts at the same HQ behind one trench line; the horde comes from the attackers' spawns.
+  - The first wave comes after 45 seconds. The next one comes 45 seconds after the last is dead, and the host can send
+    it early with "Send next wave" at the top of the screen, which also shows the wave number and how many are left.
+    When 3 or fewer are left they show through the fog.
+  - Each wave is worth 25% more than the last (wave 1: 300 MP of units per defender) and brings new units: MGs and
+    mortars from wave 3, armored cars, light tanks and AT guns from 5, medium tanks and rockets from 8, Tigers from
+    12. From wave 6 the horde calls artillery and air strikes, from wave 10 it flies planes, so bring Flak. At most
+    60 horde units per defender are on the map at once; the rest of a big wave walks on as you kill them.
+  - The horde never retreats, never reinforces and ignores the points, which are yours to hold for manpower. You get
+    the Assault defender's income (250 MP, +3.5/s) and the Kill Bounty for every horde unit.
+  - The bunker has 3000 hp per defender and gets 10% back for every wave you clear.
+  - The lobby shows the best run for the map, team size and army size you have picked, and the result says how far
+    you got and whether it is a new record. Army size scales the horde too; Endless is not offered in Horde.
+  - Balance (AI defenders, Standard army, 3 runs per map and team size, 68 runs over all 11 maps): runs end on waves
+    8 to 15, median 12, after 22 to 36 minutes, about the same with 1, 3 or 5 defenders. Massive is harder (waves 4
+    and 8 in two runs) and is not tuned. `node tools/horde.mjs <map> <defenders> <runs>` repeats the runs.
+- Fixed: a group of units that reached the same waypoint at the same moment could push each other off it forever and
+  stand still with their orders intact (seen with horde waves, which start in a clump; it could happen in any mode).
+  A unit that makes no progress for a second now walks on to its next waypoint.
+- Found and left for later: in Horde, AI teammates do not go out to hunt a mortar that shells the bunker from range,
+  and horde vehicles with no way in (a closed ring of tank traps) wait outside until you kill them.
+
 - Unit control, part 4: the computer uses it, and a rebalance.
   - Computer players dig in properly: the squad holding a captured point entrenches an arc of trench toward the
     nearest enemy HQ (a strongpoint with wire when it has 600 MP or more), instead of one short trench line. Soviet

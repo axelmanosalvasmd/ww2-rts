@@ -50,7 +50,8 @@ export function think(g, slot, opts = {}) {
   const me = g.players[slot];
   if (me.out) return;
   const all = grid.ownedBy(slot).filter(u => !UNITS[u.type].structure);
-  const assault = g.mode?.kind === 'assault' || g.mode?.kind === 'annihilation', defending = assault && me.team === g.mode.defenderTeam, classic = g.mode?.kind === 'classic';
+  const horde = g.mode?.kind === 'horde' && slot === g.mode.slot; // the horde itself: no shopping, no retreat, straight at the bunker
+  const assault = g.mode?.kind === 'assault' || g.mode?.kind === 'annihilation' || g.mode?.kind === 'horde', defending = assault && me.team === g.mode.defenderTeam, classic = g.mode?.kind === 'classic';
   // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings
   // (Classic: only buildings its team has seen, remembered under fog; with none known, head for the enemy spawns)
   const known = classic ? knownBuildings(g, slot).filter(b => UNITS[b.type].produces && g.players[b.owner].team !== me.team) : [];
@@ -110,7 +111,7 @@ export function think(g, slot, opts = {}) {
   if (classic && count('engineer') < (g.nodes.some(n => !n.depot) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
-  for (let k = 0; k < (g.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(g, buy).mp) command(g, slot, { t: 'buy', unit: buy });
+  if (!horde) for (let k = 0; k < (g.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(g, buy).mp) command(g, slot, { t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
   const pointOf = (pos) => g.points.findIndex(p => d(pos, p) <= CFG.pointRadius);
@@ -141,7 +142,7 @@ export function think(g, slot, opts = {}) {
   const heavy = enemies.find(e => e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'flaktrack');
   if (heavy && can('dive')) call('dive', heavy);
   const dropZone = g.points.find(q => q.owner >= 0 && !allied(g, q.owner, slot) && teamSees(g, me.team, q));
-  if (dropZone && mine.length >= 6 && can('para')) call('para', dropZone);
+  if (dropZone && !horde && mine.length >= 6 && can('para')) call('para', dropZone);
   const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
   if (bombTarget && can('bombing')) call('bombing', bombTarget);
   else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
@@ -217,8 +218,8 @@ export function think(g, slot, opts = {}) {
       else if (def.ab.id === 'barrage') { const t = enemiesNear(u, def.ab.range).find(e => e.garrison >= 0 && d(u, e) <= def.ab.range); if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
     }
     // save hurt units instead of letting them die: retreat, get reinforced, come back
-    if (!home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
-    if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
+    if (!horde && !home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
+    if (!horde && home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
     // tanks knock down houses that enemy squads are hiding in
     if (def.w.shellTerrain && !u.targetId && u.fireAt < 0) {
       const house = enemiesNear(u, 60).find(e => e.garrison >= 0 && d(u, e) < 60);
@@ -226,6 +227,7 @@ export function think(g, slot, opts = {}) {
     }
     if (u.path.length || u.attackId || u.nade || u.dig || u.enter >= 0 || u.fireAt >= 0) continue;
     if (u.targetId) continue; // in a fight: hold
+    if (horde) { if (bunkers[0]) assault_.push([u.id, bunkers[0].x, bunkers[0].z]); continue; }
     const here = pointOf(u);
     // infantry stays to capture, and one squad stays behind to hold each captured point (and digs in)
     if (here >= 0 && def.infantry) {

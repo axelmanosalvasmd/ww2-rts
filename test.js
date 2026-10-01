@@ -947,6 +947,74 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(fort.chars.findIndex(ch => ch === 'X') < fort.chars.findIndex(ch => ch === 'T'), 'the wire is on the side the strongpoint faces');
 }
 
+// Mass entrenchment is a shared project: its ghost goes to the whole side, more squads can join it, and it can wait
+// in a squad's order queue.
+{
+  const big = Array(40).fill('.'.repeat(40)), trenches = (g) => g.chars.filter(ch => ch === 'T').length;
+  const order = { t: 'entrench', pattern: 'line', x: 20, z: 40, x2: 60, z2: 40 };
+  const g = createGame(blank(big), ['a', 'b', 'c'], false, [0, 0, 1]); g.units.clear();
+  g.players.forEach(p => { p.spawn = { x: -1000, z: -1000 }; p.mp = 10000; });
+  const first = put(g, 0, 'rifle', 40, 50), helper = put(g, 0, 'rifle', 44, 50), ally = put(g, 1, 'rifle', 36, 50), foe = put(g, 2, 'rifle', 40, 70);
+  for (const u of g.units.values()) u.holdFire = true; // nobody shoots: this is about digging
+  command(g, 0, { ...order, ids: [first.id] }); step(g);
+  const works = (slot) => snapshotFor(g, slot, []).works;
+  assert.equal(works(0).length, 4, 'the owner sees the four segments still to dig (the fifth is being dug)');
+  assert.equal(works(1).length, 4, 'an ally sees the plan too');
+  assert.equal(works(2).length, 0, 'an enemy does not');
+  const id = works(0)[0][0];
+  assert.equal(command(g, 0, { t: 'entrench', ids: [helper.id], join: id + 99 }), 'blocked', 'an unknown project cannot be joined');
+  assert.equal(command(g, 2, { t: 'entrench', ids: [foe.id], join: id }), 'blocked', 'an enemy cannot join');
+  assert.equal(command(g, 0, { t: 'entrench', ids: [helper.id], join: id }), undefined, 'another squad joins the pattern');
+  assert.equal(command(g, 1, { t: 'entrench', ids: [ally.id], join: id }), undefined, 'an ally can help');
+  const allyMp = g.players[1].mp; step(g);
+  assert.ok(helper.dig && ally.dig, 'the helpers take segments of their own');
+  assert.ok(g.players[1].mp < allyMp, 'the ally pays for the segment it digs');
+  assert.equal(works(0).length, 2, 'the ghost shrinks as segments are taken');
+  run(g, 40);
+  assert.equal(trenches(g), 20, 'together they finish the line');
+  assert.equal(g.projects.size, 0, 'a finished project is dropped');
+
+  const q = fresh(big); q.players[0].mp = 10000;
+  const u = put(q, 0, 'rifle', 40, 60);
+  command(q, 0, { t: 'move', orders: [[u.id, 40, 52]] });
+  assert.equal(command(q, 0, { ...order, ids: [u.id], queue: true }), undefined, 'an entrenchment can be queued behind a move');
+  assert.ok(!u.entrench && u.orders.length === 1 && u.path.length, 'the squad keeps walking; the pattern waits');
+  assert.equal(snapshotFor(q, 0, []).works.length, 5, 'the ghost shows while the order waits');
+  assert.equal(command(q, 0, { t: 'move', queue: true, orders: [[u.id, 40, 74]] }), undefined);
+  run(q, 2);
+  assert.equal(q.projects.size, 1, 'a project somebody is waiting to start is kept');
+  run(q, 110);
+  assert.equal(trenches(q), 20, 'the queued pattern is dug after the move');
+  assert.ok(u.z > 70 && !u.entrench, 'and the move queued behind it runs once the pattern is done');
+
+  const s = fresh(big); s.players[0].mp = 10000;
+  const lone = put(s, 0, 'rifle', 40, 50);
+  command(s, 0, { ...order, ids: [lone.id] }); step(s);
+  command(s, 0, { t: 'stop', ids: [lone.id] }); run(s, 2);
+  assert.equal(s.projects.size, 0, 'a pattern nobody works on is dropped');
+  assert.deepEqual(snapshotFor(s, 0, []).works, [], 'and its ghost goes with it');
+}
+
+// Shift-queue: take cover, an aimed ability and shelling a house wait their turn like moves do.
+{
+  const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14); rows[4] = '.'.repeat(14) + 'BB....';
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const squad = put(g, 0, 'rifle', 31, 21), tank = put(g, 0, 'tank', 21, 31);
+  command(g, 0, { t: 'move', orders: [[squad.id, 15, 21], [tank.id, 21, 21]] });
+  assert.equal(command(g, 0, { t: 'ability', ids: [squad.id], x: 15, z: 15, queue: true }), undefined, 'a grenade can be queued');
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id], queue: true }), undefined, 'take cover can be queued');
+  assert.ok(squad.nade === null && squad.orders.length === 2, 'neither starts while the squad is moving');
+  assert.equal(command(g, 0, { t: 'fireat', ids: [tank.id], x: 29, z: 9, queue: true }), undefined, 'shelling a house can be queued');
+  assert.ok(tank.fireAt < 0 && tank.orders.length === 1, 'the tank finishes its move first');
+  const rowsOf = snapshotFor(g, 0, []).orders;
+  assert.deepEqual(rowsOf.find(r => r[0] === squad.id).filter((_, i) => i >= 2 && (i - 2) % 3 === 0), [6, 1], 'queued orders are drawn as a throw, then a move to cover');
+  assert.equal(rowsOf.find(r => r[0] === tank.id)[2], 5, 'and as a fire order for the tank');
+  run(g, 12);
+  assert.ok(sim.inCover(g, squad), 'after the move and the grenade the squad ends up in cover');
+  assert.ok(squad.cd > 0, 'the grenade was thrown');
+  assert.ok(tank.fireAt >= 0 || g.chars[4 * 20 + 14] !== 'B', 'the tank went on to shell the house');
+}
+
 // Assault mode: the defender gets a bunker and fortifications; attackers must destroy it before time runs out.
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
@@ -3658,6 +3726,88 @@ for (const lookupFinished of [false, true]) {
     relief.dispose();
   }
 }
+// Horde: one shared HQ and bunker, waves from the attacker spawns, the break only after a wave is dead.
+{
+  const map = { name: 'Horde fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'horde' });
+  const H = CFG.horde, m = g.mode, bunker = g.units.get(m.bunker), horde = () => [...g.units.values()].filter(u => u.owner === m.slot);
+  assert.deepEqual(g.players.map(p => [p.name, p.team]), [['a', 0], ['b', 0], ['Horde', 1]], 'Horde adds the horde as the last player and puts everyone else on one team');
+  assert.equal(g.players[2].faction, 2, 'the horde wears a faction no defender picked');
+  assert.deepEqual(g.players[0].spawn, g.players[1].spawn, 'Horde defenders share one HQ');
+  assert.equal([...g.units.values()].filter(u => u.type === 'bunker').length, 1, 'Horde has one shared bunker');
+  assert.ok(m.gates.length === 2 && !horde().length && g.players[2].mp === 0, 'the horde starts with nothing, at the attacker spawns');
+  step(g);
+  assert.ok(!m.active && m.wave === 0 && snapshotFor(g, 0, []).mode.timeLeft === Math.ceil(H.break - 0.05), 'Horde opens with a break');
+  m.timeLeft = 0; for (let i = 0; i < 40; i++) step(g);
+  assert.ok(m.active && m.wave === 1 && m.left > 0 && horde().length > 0, 'wave 1 walks on when the break ends');
+  assert.ok(horde().every(u => u.amove && Math.hypot(u.amove.x - bunker.x, u.amove.z - bunker.z) < 1), 'every horde unit attack-moves on the bunker');
+  assert.equal(g.players[2].inc, 0, 'the horde has no income');
+  // the wave's make-up: within budget, only what is unlocked, never snipers
+  const cost = (list) => list.reduce((a, t) => a + UNITS[t].cost, 0);
+  for (let i = 0; i < 20; i++) {
+    const w1 = sim.hordeWave(1, 2), w9 = sim.hordeWave(9, 3, 3), budget9 = H.budget * H.growth ** 8 * 9;
+    assert.ok(cost(w1) <= H.budget * 2 && cost(w1) > H.budget * 2 - 100 && w1.every(t => t === 'rifle' || t === 'conscript'), 'wave 1 spends its budget on rifles and conscripts');
+    assert.ok(cost(w9) <= budget9 && cost(w9) > budget9 - 100 && !w9.includes('tiger') && !w9.includes('sniper'), 'wave 9 scales with defenders and army size and holds no Tiger or sniper');
+  }
+  // the horde's AI neither shops nor retreats
+  const count = g.units.size; g.players[2].mp = 5000;
+  const hurtOne = horde()[0]; hurtOne.hp = 1;
+  think(g, m.slot);
+  assert.ok(g.units.size === count && !hurtOne.retreating, 'the horde AI buys nothing and never retreats');
+  g.players[2].mp = 0;
+  // the last few are revealed through the fog
+  m.reserve = [];
+  const last = horde()[0];
+  for (const u of horde()) if (u !== last) g.units.delete(u.id);
+  Object.assign(last, { x: 5, z: 115, hp: UNITS[last.type].models * UNITS[last.type].hpPer, path: [], amove: null });
+  for (let i = 0; i < 5; i++) step(g);
+  assert.ok(m.left === 1 && g.players[0].visible.has(last.id), 'the last of a wave show through the fog');
+  // wave dead: break, bunker patched up, bounty paid to the killer but never to the horde
+  bunker.hp = 1000; last.hp = 0; last.lastHit = 0;
+  const before = g.players[0].mp;
+  step(g);
+  assert.ok(!m.active && m.timeLeft === H.break && bunker.hp === 1000 + UNITS.bunker.hpPer * H.heal, 'a dead wave starts the break and patches the bunker');
+  assert.ok(g.players[0].mp - before >= UNITS[last.type].cost * CFG.bounty, 'killing horde units pays the Kill Bounty');
+  for (let i = 0; i < 40; i++) step(g);
+  assert.ok(!m.active && m.wave === 1, 'the next wave waits out the break');
+  // the run ends when the bunker falls
+  bunker.hp = 0; step(g); step(g);
+  assert.ok(g.winner === 1 && g.endReason === 'structures', 'Horde ends when the bunker falls');
+  // no defender spawns, or no free seat for the horde: not a horde game
+  const { defend, ...plain } = map;
+  assert.equal(createGame(plain, ['a'], false, [0], [0], { mode: 'horde' }).mode, undefined, 'Horde needs a map with defender spawns');
+  assert.equal(createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, undefined, undefined, { mode: 'horde' }).players.length, 6, 'Horde needs a free seat for the horde');
+}
+
+// Horde over the server: lobby rules, the horde's seat, the host's early wave, and the record after the run.
+{
+  const map = { name: 'Horde fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const h = await serverHarness(), code = 'horde', { module } = await serverModule; h.useMap(JSON.stringify(map));
+  let saved = null; const disk = { ...module.recordFile };
+  Object.assign(module.recordFile, { read: () => '{}', write: (json) => { saved = JSON.parse(json); } });
+  const host = await h.connect(code, { token: 'host', name: 'Host' }), room = h.rooms.get(code);
+  await host.send({ t: 'army', v: 'endless' }); await host.send({ t: 'mode', v: 'horde' });
+  await h.waitFor(() => host.lobby().mode === 'horde', 'horde lobby');
+  assert.ok(room.army === 'standard' && host.lobby().hordeMaps.includes(room.mapName) && host.lobby().spawns === 5 && host.lobby().hordeBest === null, 'Horde lobby: a horde map, five seats, no Endless, no record yet');
+  await host.send({ t: 'army', v: 'endless' });
+  assert.equal(room.army, 'standard', 'Horde refuses Endless');
+  await host.send({ t: 'start' });
+  const start = await host.wait('start'), g = room.game;
+  assert.deepEqual([start.names, start.teams], [['Host', 'Horde'], [0, 1]], 'the start message names the horde');
+  await h.tick(2);
+  assert.ok(!g.mode.active, 'the first break is running');
+  await host.send({ t: 'nextwave' }); await h.tick(2);
+  assert.ok(g.mode.active && g.mode.wave === 1 && h.snapshots(host).at(-1).mode.wave === 1, 'the host sends the wave early');
+  g.units.get(g.mode.bunker).hp = 0;
+  for (let i = 0; room.state !== 'lobby'; i++) { assert.ok(i < 400, 'the horde run returns to the lobby'); await h.tick(); }
+  await h.waitFor(() => host.lobby().result?.horde, 'horde result');
+  const r = host.lobby().result;
+  assert.ok(r.horde.wave === 1 && r.horde.record && r.names.at(-1) === 'Horde' && r.you.outcome === 'defeat', 'the result carries the wave reached');
+  assert.deepEqual([saved['default|1|standard'].wave, host.lobby().hordeBest.wave], [1, 1], 'the best run is saved per map, team size and army size, and shown in the lobby');
+  Object.assign(module.recordFile, disk);
+  await h.close();
+}
+
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and

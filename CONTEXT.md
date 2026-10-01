@@ -17,6 +17,18 @@ _Avoid_: base-building mode, RTS mode
 **Annihilation**:
 A player is eliminated when they have no Production Buildings left, where a Construction Site of one still counts. A team is out when all its players are, and the last team standing wins.
 
+**Horde**:
+A co-op mode: every player shares one HQ and defends one Command Bunker against Waves. Nobody wins; the result is the Wave the bunker fell on. Also the name of the enemy side, an extra AI player no human sits in.
+_Avoid_: survival, tower defense, zombies
+
+**Wave**:
+One numbered attack of the Horde. It is dead when no horde ground unit is left on the map or in its Reserve, and only then does the break before the next one start.
+_Avoid_: round, level
+
+**Reserve**:
+The part of a Wave that has not entered the map yet. It walks on at the attacker spawns as units die and room opens up.
+_Avoid_: queue, backlog
+
 **Sudden Death**:
 Classic's endgame once the clock runs out. Production and construction stop and Production Buildings decay, so Annihilation always arrives.
 _Avoid_: overtime, time decision
