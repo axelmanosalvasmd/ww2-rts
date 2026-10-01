@@ -21,7 +21,8 @@ types=$(echo "${3:-tank medium tiger rifle mg at flak fighter attacker armoredca
 facs=$(echo "${4:-0 1 2}" | tr ',' ' ')
 refs=${REFS:-/tmp/ww2-models/refs}
 read -r vw vh <<< "${VIEWPORT:-1920 1080}"
-ab() { agent-browser --session model-shots "$@"; }
+# SESSION picks the agent-browser session, so several builders can shoot in parallel
+ab() { agent-browser --session "${SESSION:-model-shots}" "$@"; }
 declare -A lock=([ranger]=0 [tiger]=1 [conscript]=2)
 
 curl -sf -o /dev/null "http://127.0.0.1:$port/client/viewer.html" || { echo "no server with the viewer on port $port" >&2; exit 1; }
