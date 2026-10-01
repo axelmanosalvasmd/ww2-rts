@@ -76,6 +76,10 @@ only through `command()`.
   like a player, and `command()` applies the same sight rules (every segment must be in the team's sight). Where it
   entrenches is decided from remembered terrain (`trenchesNear`) and the squad's own cover value; whether it is already
   entrenching comes from its own flag bits.
+- Weather is public: every snapshot carries the match weather (and the ten second warning of a change), so the view
+  carries it too. `aiCaution(view)` and the view's own sight (`view.sees`, which `teamSees` scales by the weather) give
+  the same answers as the game's for every weather kind. A weather change planned beyond the warning is hidden from
+  everyone, and the match proof perturbs it.
 - Horde. The horde is a scripted wave director plus one more seat. The sim itself spawns each wave and sends every
   unit at the shared bunker, a public structure that is always visible, so nothing in that needs hidden information.
   The horde seat's own `think()` (its off-map support, planes and abilities) is not exempt: it plans through the same
