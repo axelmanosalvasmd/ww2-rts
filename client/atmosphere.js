@@ -708,7 +708,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     // the game's weather: rain dims the sun, thickens the cloud shade and falls as streaks on the wind
     if (wx.rain !== shown) {
       shown = wx.rain;
-      sun.intensity = M.sunI * (1 - 0.45 * wx.rain); hemi.intensity = M.hemiI * (1 + 0.12 * wx.rain);
+      sun.intensity = M.sunI * (1 - 0.3 * wx.rain); hemi.intensity = M.hemiI * (1 + 0.12 * wx.rain);
       cloudMat.uniforms.strength.value = M.clouds + 0.16 * wx.rain;
       if (wx.rain > 0.02 && !rain) { rain = weatherPoints('rain'); root.add(rain); }
       // each shower keeps the slant it started with (the streaks' positions follow from their speed times the clock)
