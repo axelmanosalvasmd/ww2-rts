@@ -295,6 +295,9 @@ the HUD.
   list (`#airPanel`) under them. The Command Card has a fourth group, Aircraft. The lobby kept the two-column layout
   from the aviation work (map preview, army size), restyled as the manila card. Hotkeys: only T digs by key, since
   Y, U, I and O went to the air calls and air buildings; the other forts are on the orders panel.
+- As built, slice 2 (alerts): `client/alerts.js` and `client/alerts.css`, worked out client-side from two snapshots in
+  a row. "Enemy Air Support incoming" covers the aviation calls too (dive bomber, paratroopers) but not fighter cover;
+  your planes count as units for "under attack" and "lost".
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

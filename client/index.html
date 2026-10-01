@@ -215,6 +215,7 @@
   #hint:empty { display: none; }
   #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
 </style>
+<link rel="stylesheet" href="/client/alerts.css">
 <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
 </head>
 <body>
@@ -269,6 +270,7 @@
   </div>
   <div id="buy" class="panel"></div>
   <div id="lowerleft"><div id="selection" class="panel"></div><div id="abil" class="panel"></div></div>
+  <div id="alerts" aria-live="polite"></div>
   <canvas id="minimap" width="240" height="240"></canvas>
   <div id="hint" class="panel"></div>
 </div>

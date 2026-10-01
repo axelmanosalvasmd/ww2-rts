@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
+import { alerts } from './alerts.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -895,6 +896,7 @@ function applySnapshot(s) {
   syncSmoke(s.smokes);
   syncStrikes(s.strikes);
   applyCells(s.cells);
+  alerts.snapshot(s, lastSnap);
   lastSnap = s;
   updateHud(s);
 }
@@ -1229,7 +1231,7 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyO') startBuild('airfield');
   else if (e.code === 'KeyY') startBuild('flakpos');
   else if (e.code === 'KeyM') setMuted(!muted);
-  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
+  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) {
     cam.x = home.x; cam.z = home.z;
@@ -1414,6 +1416,7 @@ function drawMinimap() {
     c.beginPath(); c.arc(v.x, v.z, isVeh(v.type) ? 3.5 : 2.6, 0, Math.PI * 2); c.fillStyle = col(v.owner); c.fill();
     if (selected.has(v.id)) { c.strokeStyle = '#fff'; c.lineWidth = 1.5 / S; c.stroke(); }
   }
+  alerts.drawPings(c, S);
   // what the camera sees
   const corners = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => groundAt(x, y)).filter(Boolean);
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
@@ -1485,7 +1488,8 @@ renderer.setAnimationLoop(() => {
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
-  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = 0.15; drawMinimap(); }
+  alerts.frame();
+  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
@@ -1510,4 +1514,8 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, get me() { return me; } };
+// the alerts list above the minimap (client/alerts.js) sees the match through these
+alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
+  pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },
+  onScreen: (x, z) => { const p = screenOf({ x, z }); return p.front && p.x >= 0 && p.x <= innerWidth && p.y >= 0 && p.y <= innerHeight; } });

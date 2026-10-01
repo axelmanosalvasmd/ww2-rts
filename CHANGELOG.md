@@ -5,6 +5,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Alerts (slice 2): short lines above the minimap tell you when something needs you, each with a ping on the minimap
+  and a sound hook (the sounds arrive with the audio slice):
+  - Under attack: your units and buildings (planes too), an allied HQ or bunker, or a point of your side losing
+    ground. At most once per 20 s per area, and not while the fight is on screen. Friendly fire and Sudden Death
+    crumbling don't count.
+  - Point captured, point lost, unit lost or building destroyed (losses close together share one line, so a plane
+    shot down reads "Fighter lost").
+  - Enemy Air Support incoming near your side: strafing, bombing, recon, dive bomber and paratroopers. Artillery and
+    smoke barrages and fighter cover don't raise it.
+  - Classic: a unit out of a building's queue, a building finished.
+  - The newest line is bold; lines fade after about 6 s, four at most. Space jumps to the newest alert while one is
+    showing (otherwise it centers the selection as before); clicking a line jumps there too.
+  - Only what the server already sends you is used, so nothing under fog leaks.
 - New HUD, "sand table" look (slice 1 of the look and feel work):
   - A dark olive strip holds the panels; the unit cards and the selection list are manila cards. Courier Prime for
     text, Stardos Stencil for the big numbers (MP, clock, VP).

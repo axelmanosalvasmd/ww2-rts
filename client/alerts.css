@@ -1,0 +1,23 @@
+/* Alerts list above the minimap (client/alerts.js). Self-contained: everything here is under #alerts. */
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+#hud > #alerts {
+  position: absolute; right: 10px; bottom: 232px; /* alerts.js moves it to sit just above the minimap */
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  max-width: min(320px, calc(100vw - 20px));
+  pointer-events: none; /* only the lines take clicks, the gaps between them stay on the map */
+}
+#hud > #alerts:empty { display: none; }
+#alerts .alert {
+  pointer-events: auto; cursor: pointer;
+  max-width: 100%; padding: 3px 10px 3px 8px;
+  background: rgba(34, 37, 27, 0.85); color: #e6dcc0;
+  border-left: 3px solid var(--rule, #b8322a); border-radius: 2px;
+  font: 400 14px/1.35 'Courier Prime', 'Courier New', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: alert-in 0.18s ease-out;
+}
+#alerts .alert:first-child { font-weight: 700; } /* the newest one, where Space goes */
+#alerts .alert:hover { background: rgba(48, 52, 38, 0.92); }
+@keyframes alert-in { from { opacity: 0; transform: translateX(12px); } }
+@media (prefers-reduced-motion: reduce) { #alerts .alert { animation: none; } }
