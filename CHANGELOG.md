@@ -164,8 +164,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     a 0.5 s timer, vision and terrain updates skip work they threw away, and AI players get no snapshots.
   - Balance is unchanged within noise: Conquest wins 34/36/30% by faction over 300 AI matches (was 41/29/31%), and
     Classic 47/47/44 wins over 160 matches.
-  - Left for later: the lobby still labels Large and Massive as 2x and 3.5x income while the game uses 3x and 6x; the
-    Tiger limit of 1 does not grow with army size; the server tests strip `import` lines from server.js with a
+  - Left for later: the Tiger limit of 1 does not grow with army size; the server tests strip `import` lines from server.js with a
     regex; AI anti-tank buying against medium tanks is untested; an idle squad now notices a new enemy up to 0.5 s
     later; and AI thinking spikes in big armies were not profiled.
 
@@ -194,7 +193,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     Play again kept the whole previous match on the GPU. Both are freed now. The fog of war now follows craters and
     trenches. The minimap no longer raycasts the terrain on every redraw (it was costly while an alert was showing).
     A machine gun shooting at a plane no longer shows flak bursts or plays the flak sound.
-  - Left for later: warmer ground and rounder hedges, smoother contour lines, a north arrow and scale bar on the
+  - Left for later: warmer ground, smoother contour lines, a north arrow and scale bar on the
     minimap, Graphics Low cutting shadow draw calls, patching only the dug part of the terrain instead of rebuilding
     it, trimming the blur pass's unused GPU memory, unit names on recruit cards at 1366 and 1600 px wide, and a
     design decision on whether the lobby title and Start button may keep the stencil font.
@@ -215,8 +214,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     pile up a new sound every few tenths of a second while firing.
   - Left for later: the Armored Car's cannon uses the tank gun sound. A hedge or fence falling still throws up the
     full dust cloud of a house (only the sound is lighter). The Fighter Cover circle is still the old flat ring. The
-    refused-order sound (`ui_error`) is recorded but nothing plays it yet. The automated browser checks confirm which
-    sounds are played, not how they sound.
+    automated browser checks confirm which sounds are played, not how they sound.
 - Combat effects (slice 4): muzzle flashes, tracers, explosions, scorch, fire and smoke:
   - Every shot has a muzzle flash at the gun and a glowing tracer to the target, with the impact landing when the
     round arrives: dust and dirt for small arms, sparks off armor, a fireball and debris for shells and bombs.
@@ -234,9 +232,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Fixed: a Flak Emplacement firing at ground units drew puffs in the sky instead of tracers to the target. A Fighter
     or Ground-attack Plane that was killed stayed frozen in the air as a wreck for 40 s. Shots no longer make and free
     GPU objects each time: all particles are one mesh and the planes come from a small pool.
-  - Left for later: the old synthesized battle sounds still play next to the new effect sound hooks until the audio
-    slice. If every pooled plane is in use, a support plane shot down shows only an airburst. The Fighter Cover
-    circle is still the old flat ring.
+  - Left for later: if every pooled plane is in use, a support plane shot down shows only an airburst. The Fighter
+    Cover circle is still the old flat ring.
 - World look (slice 3): painted ground, warm light, a planning table and map-symbol markers:
   - The ground is painted from real textures per cell (grass, dirt, mud, ploughed field, road, water, rubble,
     shelled earth, trench earth) with soft edges, and keeps the contour lines; shell holes and trenches are painted
@@ -291,9 +288,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Fixed: the HUD rebuilt its buttons 10 times a second, which could eat clicks (orders, Command Card, air panel).
     At 1600x900 the orders panel covered the recruit bar. Classic's MP / Mun / Fuel readout wrapped to two lines.
     Engineers now get the fortification buttons too.
-  - Left for later: Fighter, Ground-attack Plane, Mobile Flak, Airfield and Flak Emplacement have no map symbol yet
-    (blank frame; slice 3 adds them). Y, U, I and O build sandbags, wire, traps and the MG nest only from the orders panel: those keys
-    were already taken by the flak emplacement, dive bomber, fighter cover and airfield, so only T digs by key.
+  - The aviation map symbols and keyboard shortcuts for every fortification came in later rounds (see above).
 - Army size in the lobby (host picks): Standard (as before), Large (2.5x unit limit, 3x income) or Massive (5x unit
   limit, 6x income: MP, Munitions, Fuel and starting MP). The AI buys several units at a time in big games. With 6 AIs
   on Six Fronts, Massive peaked at about 240 units (Conquest) and 270 (Classic); the server stayed under 8 ms per tick
