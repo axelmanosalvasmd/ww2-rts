@@ -237,6 +237,8 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   more than the limit, or armies never fill it (Massive at 3.5x income: 98 units with 6 AIs; at 6x: ~240 Conquest,
   ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
   Browser cost at 250+ units hasn't been measured on the friends' PCs.
+- Endless: Massive's unit limit (x5) with income x20, for players who want the cap full all match. Money stops being a
+  constraint, so it is a sandbox setting, not a balanced one (no AI runs behind it).
 
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD

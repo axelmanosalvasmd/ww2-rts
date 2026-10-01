@@ -5,6 +5,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New army size in the lobby: Endless. Same unit limit as Massive (5x) but 20x income and starting MP instead of 6x,
+  so losses are replaced almost at once and the battle never thins out. Not balance-tested with AI runs; the unit
+  limit is unchanged, so server load should match Massive.
+
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

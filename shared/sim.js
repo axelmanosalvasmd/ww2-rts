@@ -22,7 +22,7 @@ export const CFG = {
   // kill bounty: whoever lands the killing blow gets this share of the dead unit's (or building's) cost in MP
   bounty: 0.2,
   // army size, picked in the lobby: multiplies the unit limit and every income (MP, Munitions, Fuel, starting MP)
-  armies: { standard: { pop: 1, income: 1 }, large: { pop: 2.5, income: 3 }, massive: { pop: 5, income: 6 } },
+  armies: { standard: { pop: 1, income: 1 }, large: { pop: 2.5, income: 3 }, massive: { pop: 5, income: 6 }, endless: { pop: 5, income: 20 } },
   air: { seeRange: 60, station: 50, rearm: 30, orbit: 18, seek: 60, bail: 0.35, offmap: 40 },
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
