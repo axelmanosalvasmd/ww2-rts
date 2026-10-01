@@ -1,107 +1,11 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
-import { join, normalize, extname } from 'node:path';
 import * as sim from './shared/sim.js';
-import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees } from './shared/sim.js';
+import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees } from './shared/sim.js';
+import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { think } from './shared/ai.js';
 import { unitRole } from './client/unit-roles.js';
-
-// Run the actual server handlers without binding sockets. Map reads can pause to expose async races.
-const serverHarness = (map = readFileSync('maps/default.json', 'utf8')) => {
-  let connection, held = false, waiting = [], game, tick, snapshots = 0;
-  runInNewContext(readFileSync('server.js', 'utf8').replace(/^import .*;\n/gm, '').replace('import.meta.dirname', JSON.stringify(process.cwd())), {
-    ...sim, think, createGame: (...args) => (game = sim.createGame(...args)), snapshotFor: (...args) => { snapshots++; return sim.snapshotFor(...args); }, join, normalize, extname, URL, Buffer,
-    process: { env: { EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' } },
-    http: { createServer: () => ({ listen() {} }) },
-    WebSocketServer: class { on(t, fn) { if (t === 'connection') connection = fn; } },
-    readFileSync: () => map, existsSync: () => true, writeFileSync() {}, writeFile: async () => {},
-    readFile: async () => { if (held) await new Promise(resolve => waiting.push(resolve)); return map; },
-    readdir: async () => ['default.json', 'other.json'],
-    setInterval(fn) { tick = fn; }, setTimeout() {}, console: { log() {} },
-  });
-  return {
-    game: () => game,
-    tick: () => tick(), snapshots: () => snapshots,
-    holdMaps() { held = true; },
-    releaseMaps() { held = false; for (const resolve of waiting) resolve(); waiting = []; },
-    connect() {
-      const handlers = {}, messages = [];
-      const ws = { readyState: 1, on(t, fn) { handlers[t] = fn; }, send(raw) { messages.push(JSON.parse(raw)); }, close() { this.readyState = 2; } };
-      connection(ws, { url: '/ws?room=testroom' });
-      return { ws, messages, send: msg => handlers.message(JSON.stringify(msg)), raw: raw => handlers.message(raw), lobby: () => messages.filter(m => m.t === 'lobby').at(-1) };
-    },
-  };
-};
-const settleServer = () => new Promise(resolve => setImmediate(resolve));
-
-// Server: repeated hello messages must not race initialization or close their own connection.
-{
-  const h = serverHarness(), p = h.connect(); h.holdMaps();
-  const first = p.send({ t: 'hello', token: 'host', name: 'Host' });
-  const again = p.send({ t: 'hello', token: 'host', name: 'Host' });
-  h.releaseMaps(); await Promise.all([first, again]); await settleServer();
-  assert.equal(p.ws.readyState, 1, 'server repeated hello keeps its connection open');
-  assert.equal(p.lobby().players.length, 1, 'server repeated hello occupies one player slot');
-}
-
-// Server: a replaced or departed socket cannot keep controlling its old player slot.
-{
-  const h = serverHarness(), old = h.connect(), current = h.connect();
-  await old.send({ t: 'hello', token: 'host', name: 'Old' });
-  await current.send({ t: 'hello', token: 'host', name: 'Current' }); await settleServer();
-  await old.send({ t: 'name', name: 'Stale' }); await settleServer();
-  assert.equal(current.lobby().players[0].name, 'Current', 'server replaced socket cannot rename its former player');
-  const guest = h.connect(); await guest.send({ t: 'hello', token: 'guest', name: 'Guest' });
-  await current.send({ t: 'start' });
-  const before = h.game().units.size;
-  await current.send({ t: 'leave' });
-  await current.send({ t: 'buy', unit: 'rifle' });
-  assert.equal(h.game().units.size, before, 'server departed socket cannot buy for the AI that took over');
-}
-
-// Server: a map request still awaiting disk cannot change settings once the match has started.
-for (const lookupFinished of [false, true]) {
-  const h = serverHarness(), p = h.connect();
-  await p.send({ t: 'hello', token: 'host', name: 'Host' }); h.holdMaps();
-  const map = p.send({ t: 'map', name: 'other' });
-  if (lookupFinished) await settleServer();
-  const start = p.send({ t: 'start' }); await settleServer();
-  h.releaseMaps(); await Promise.all([map, start]); await settleServer();
-  assert.equal(p.lobby().mapName, 'default', `server pending map ${lookupFinished ? 'load' : 'lookup'} cannot change a started match`);
-}
-
-// Server: ending a match while its map loads must cancel that start.
-{
-  const h = serverHarness(), p = h.connect();
-  await p.send({ t: 'hello', token: 'host', name: 'Host' }); h.holdMaps();
-  const start = p.send({ t: 'start' });
-  await p.send({ t: 'end' });
-  h.releaseMaps(); await start; await settleServer();
-  assert.equal(p.messages.filter(m => m.t === 'start').length, 0, 'server cancelled start never sends players back into play');
-  assert.equal(p.lobby().state, 'lobby', 'server cancelled start keeps the lobby open');
-  assert.deepEqual(p.lobby().result, { ended: true }, 'server cancelled start preserves the host end result');
-}
-
-// Server: player-slot commands require numeric integer slots, without string or array coercion.
-{
-  const h = serverHarness(), p = h.connect();
-  await p.send({ t: 'hello', token: 'host', name: 'Host' });
-  await p.send({ t: 'addAi' }); await settleServer();
-  for (const slot of ['1', [1], 1.5, -1, null, true]) {
-    await p.send({ t: 'faction', slot, v: 2 }); await settleServer();
-    assert.equal(p.lobby().players[1].faction, 1, 'server malformed faction slot is ignored');
-    await p.send({ t: 'team', slot, v: 4 }); await settleServer();
-    assert.equal(p.lobby().players[1].team, 1, 'server malformed team slot is ignored');
-    await p.send({ t: 'kick', slot }); await settleServer();
-    assert.equal(p.lobby().players.length, 2, 'server malformed kick slot is ignored');
-  }
-  await p.send({ t: 'faction', slot: 1, v: 2 }); await settleServer();
-  assert.equal(p.lobby().players[1].faction, 2, 'server valid integer faction slot still works');
-  await p.send({ t: 'kick', slot: 1 }); await settleServer();
-  assert.equal(p.lobby().players.length, 1, 'server valid integer kick slot still works');
-}
 
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
@@ -135,36 +39,6 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual(barracks.queue, ['mg'], 'AI ignores hidden planes when reserving money for flak');
 }
 
-// Server: JSON objects masquerading as names or tokens cannot crash text conversion.
-{
-  const h = serverHarness(), p = h.connect(), invalid = { toString: null, valueOf: null };
-  for (const field of ['token', 'name']) {
-    await assert.doesNotReject(() => p.send({ t: 'hello', token: 'host', name: 'Host', [field]: invalid }), `server malformed hello ${field} does not throw`);
-    await settleServer(); assert.equal(p.messages.length, 0, 'server malformed hello text does not claim a player slot');
-  }
-  await p.send({ t: 'hello', token: 'host', name: 'Host' }); await settleServer();
-  await assert.doesNotReject(() => p.send({ t: 'name', name: invalid }), 'server malformed rename does not throw');
-  await settleServer(); assert.equal(p.lobby().players[0].name, 'Host', 'server malformed rename preserves the player name');
-}
-
-// Server: Massive rooms construct snapshots only for sockets that can receive them.
-{
-  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [5, 75].flatMap(y => [5, 40, 75].map(x => ({ x, y }))), points: [{ x: 40, y: 40 }] };
-  const h = serverHarness(JSON.stringify(map)), p = h.connect();
-  await p.send({ t: 'hello', token: 'host', name: 'Host' });
-  for (let i = 0; i < 5; i++) await p.send({ t: 'addAi' });
-  await p.send({ t: 'army', v: 'massive' }); await p.send({ t: 'start' });
-  for (let slot = 0; slot < 6; slot++) {
-    h.game().players[slot].mp = 50000;
-    for (let i = 0; i < 42; i++) command(h.game(), slot, { t: 'buy', unit: 'rifle' });
-  }
-  assert.equal(h.game().units.size, 270, 'server snapshot fixture fields 270 units');
-  h.tick(); h.tick();
-  assert.equal(h.snapshots(), 1, 'server constructs one snapshot for one connected human and five AIs');
-  p.ws.readyState = 2; h.tick(); h.tick();
-  assert.equal(h.snapshots(), 1, 'server constructs no snapshot for a socket that is closing');
-}
-
 // Fog: building footprints follow the same visibility and memory rules as the buildings themselves.
 {
   const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] };
@@ -193,13 +67,6 @@ for (const lookupFinished of [false, true]) {
   assert.equal(revisited.cells.filter(([c, ch]) => b.cells.includes(c) && ch === 'R').length, 9, 'revisiting a destroyed building catches up all rubble cells');
   assert.ok(!revisited.ghosts.some(gh => gh[0] === b.id), 'revisiting the rubble clears its Ghost');
   assert.ok(sim.terrainFor(g, 0, true).length <= g.w * g.h, 'remembered terrain is bounded by the map cell count');
-  const h = serverHarness(JSON.stringify(map)), p = h.connect(), guest = h.connect();
-  await p.send({ t: 'hello', token: 'host', name: 'Host' }); await guest.send({ t: 'hello', token: 'guest', name: 'Guest' });
-  await p.send({ t: 'mode', v: 'classic' }); await p.send({ t: 'start' });
-  const enemyHq = [...h.game().units.values()].find(u => u.owner === 1 && u.type === 'hq');
-  assert.ok(!p.messages.find(m => m.t === 'start').cells.some(([c]) => enemyHq.cells.includes(c)), 'server initial terrain excludes unseen enemy HQ footprints');
-  const returning = h.connect(); await returning.send({ t: 'hello', token: 'host', name: 'Host' });
-  assert.ok(!returning.messages.find(m => m.t === 'start').cells.some(([c]) => enemyHq.cells.includes(c)), 'server reconnect terrain excludes unseen enemy HQ footprints');
 }
 
 // Recruitment descriptions stay readable when the roster gains a unit without role copy.
@@ -1662,9 +1529,12 @@ for (const flying of [false, true]) {
   } finally { Math.random = orig; }
 }
 
+// A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)
+// point at the real files, so the copy shares those modules with the normal import.
+const simCopy = (source) => import('data:text/javascript;base64,' + Buffer.from(source.replace(/from '\.\/([\w-]+\.js)'/g, (_, file) => `from '${new URL(`./shared/${file}`, import.meta.url)}'`)).toString('base64'));
 // Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
-const massiveInternals = await import('data:text/javascript;base64,' + Buffer.from(readFileSync('shared/sim.js', 'utf8')
-  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell };').toString('base64'));
+const massiveInternals = await simCopy(readFileSync('shared/sim.js', 'utf8')
+  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell };');
 const massiveFixture = () => {
   const map = JSON.parse(readFileSync('maps/six-fronts.json', 'utf8'));
   const g = createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, [0, 1, 2, 3, 4, 5], [0, 1, 2, 0, 1, 2], { mode: 'classic', army: 'massive' });
@@ -1755,7 +1625,7 @@ const referenceSeparation = `
 // Twenty ticks of a seeded crowded army produce identical coordinates with the old separation loop.
 {
   const source = readFileSync('shared/sim.js', 'utf8'), start = source.indexOf('  // soft separation;'), end = source.indexOf('  // grenades:', start);
-  const old = await import('data:text/javascript;base64,' + Buffer.from(source.slice(0, start) + referenceSeparation + source.slice(end)).toString('base64'));
+  const old = await simCopy(source.slice(0, start) + referenceSeparation + source.slice(end));
   const g = massiveFixture(); g.players.forEach(p => { p.team = 0; }); g.mode.teams = 1;
   let seed = 123456;
   const random = () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 4294967296; };
@@ -1793,7 +1663,7 @@ const referenceNearCover = (g, u) => {
   const flat = fresh(); flat.players[0].mp = 1000;
   const rifle = put(flat, 0, 'rifle', 10, 10), tank = put(flat, 0, 'tank', 30, 10), plane = put(flat, 0, 'fighter', 11, 10);
   for (const x of [30, 13.5, 13.499, 10]) {
-    tank.x = x; tank.hp = 0;
+    tank.x = x; tank.hp = 0; updateGrid(flat, tank); // the sim moves units through the grid (shared/grid.js)
     assert.equal(massiveInternals.nearCover(flat, rifle), referenceNearCover(flat, rifle), `cover hint preserves the radius and dead vehicle rule at ${x}`);
   }
   flat.units.delete(tank.id);
@@ -1968,5 +1838,1801 @@ for (const f of readdirSync('maps')) {
   assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
+  assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
+  assert.ok(g.timeline.length >= secs / 10, 'and samples it every 10 s');
 }
+
+// The end of a match (shared/story.js, finish() in sim.js, holdEnding() in server.js): every win records why and where,
+// the story counts what each player did, and the server holds the ending for 6 s before the lobby shows the result.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const near = (a, b) => Math.abs(a.x - b.x) < 0.11 && Math.abs(a.z - b.z) < 0.11;
+  // Conquest: VP; the decisive spot is the point the winners took last
+  const g = fresh(Array(60).fill('.'.repeat(60))); g.players[0].mp = g.players[1].mp = 1000;
+  const pt = g.points[0], mp0 = g.players[0].mp, r = put(g, 0, 'rifle', pt.x, pt.z), e = put(g, 1, 'rifle', 110, 110);
+  assert.equal(g.story[0].mpSpent, mp0 - g.players[0].mp, 'the story counts manpower spent');
+  run(g, CFG.captureTime + 1);
+  assert.equal(pt.owner, 0); assert.equal(g.story[0].captures, 1, 'and captures');
+  assert.ok(!snapshotFor(g, 0, []).units.some(u => u[0] === e.id), 'fog holds while the match is on');
+  assert.equal(snapshotFor(g, 0, []).end, undefined, 'no end data before the winner');
+  assert.equal(g.timeline[0].t, 0); assert.equal(g.timeline[0].vp.length, 2, 'the timeline starts at 0 s with VP per team');
+  g.players[0].vp = g.winVp - 0.01; run(g, 1);
+  assert.equal(g.winner, 0); assert.equal(g.endReason, 'vp');
+  assert.ok(near(g.endAt, pt), 'a VP win ends on the point the winners took last');
+  const snap = snapshotFor(g, 0, []);
+  assert.deepEqual(snap.end, { reason: 'vp', x: g.endAt.x, z: g.endAt.z });
+  assert.ok(snap.units.some(u => u[0] === e.id) && snap.units.length === g.units.size, 'once decided, everyone sees everything');
+  // after the winner the sim runs on (the server's hold) but orders, the story and the timeline stop
+  const samples = g.timeline.length, ids = g.nextId;
+  command(g, 1, { t: 'buy', unit: 'rifle' }); command(g, 1, { t: 'move', orders: [[e.id, 30, 30]] });
+  assert.equal(g.nextId, ids, 'no buying after the end'); assert.equal(e.path.length, 0, 'no orders after the end');
+  r.hp = 0; run(g, 11);
+  assert.ok(!g.units.has(r.id), 'the sim still runs after the end');
+  assert.equal(g.story[0].losses, 0, 'nothing counts after the end');
+  assert.equal(g.timeline.length, samples, 'and the timeline stops');
+  assert.equal(g.winner, 0, 'the winner never changes');
+
+  // Assault: the last structure falling, or the clock
+  const as = () => createGame(map, ['att', 'def'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 1 });
+  const a = as(), structs = [...a.units.values()].filter(u => UNITS[u.type].structure), last = structs.at(-1);
+  structs.slice(0, -1).forEach(s => (s.hp = 0)); run(a, 0.1);
+  assert.equal(a.winner, null, 'a structure still stands');
+  last.hp = 0; run(a, 0.1);
+  assert.equal(a.winner, 0); assert.equal(a.endReason, 'structures');
+  assert.ok(near(a.endAt, last), 'it ends where the last structure fell');
+  const t = as(); t.mode.timeLeft = 0.01; run(t, 0.1);
+  assert.equal(t.winner, 1); assert.equal(t.endReason, 'timer');
+  assert.deepEqual(t.endAt, { x: t.w * CELL / 2, z: t.h * CELL / 2 }, 'a timer win ends over the middle of the map');
+
+  // Annihilation: the last bunker; all of them at once is a draw
+  const an = () => createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 1, 1], [0, 1, 2, 0], { mode: 'annihilation' });
+  const n = an(), bunker = (gg, o) => [...gg.units.values()].find(u => u.type === 'bunker' && u.owner === o);
+  bunker(n, 2).hp = 0; run(n, 0.1);
+  const b3 = bunker(n, 3); b3.hp = 0; run(n, 0.1);
+  assert.equal(n.winner, 0); assert.equal(n.endReason, 'bunkers'); assert.ok(near(n.endAt, b3), 'it ends at the last bunker');
+  assert.equal(n.story[0].losses + n.story[1].losses, 0); assert.equal(n.story[2].losses + n.story[3].losses, 2, 'bunkers count as losses');
+  const d = an(); for (const u of d.units.values()) if (u.type === 'bunker') u.hp = 0;
+  run(d, 0.1);
+  assert.equal(d.winner, -1); assert.equal(d.endReason, 'draw', 'every bunker down together: a draw');
+  assert.ok(d.timeline.at(-1).points && d.timeline.at(-1).structures.every(v => v === 0), 'the timeline counts points and structures');
+
+  // Classic: the last Production Building
+  const c = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), hq = [...c.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  hq.hp = 0; run(c, 0.1);
+  assert.equal(c.winner, 0); assert.equal(c.endReason, 'hq'); assert.ok(near(c.endAt, hq), 'it ends at the fallen HQ');
+
+  // the counters: kills and losses, support calls, planes downed, field works
+  const k = fresh(); k.players[0].mp = k.players[1].mp = 1000;
+  put(k, 0, 'rifle', 5, 5); const victim = put(k, 1, 'rifle', 15, 5); victim.hp = 1;
+  run(k, 5);
+  assert.ok(!k.units.has(victim.id)); assert.equal(k.story[0].kills, 1); assert.equal(k.story[1].losses, 1);
+  assert.equal(k.story[0].losses + k.story[1].kills, 0, 'kills and losses go to the right players');
+  const fc = fresh(); fc.players[0].mp = fc.players[1].mp = 2000;
+  put(fc, 1, 'tank', 30, 30); run(fc, 0.2);
+  command(fc, 1, { t: 'support', kind: 'cover', x: 30, z: 30 }); run(fc, SUPPORT.cover.delay + 0.2);
+  command(fc, 0, { t: 'support', kind: 'dive', x: 30, z: 30 }); run(fc, SUPPORT.dive.delay + 0.5);
+  assert.deepEqual(fc.story.map(s => s.supportCalls), [1, 1], 'support calls');
+  assert.equal(fc.story[1].planesDowned, 1, 'fighter cover downing a dive bomber');
+  assert.equal(fc.story[1].mpSpent, UNITS.tank.cost + SUPPORT.cover.cost);
+  const dg = fresh(); dg.players[0].mp = 1000;
+  const digger = put(dg, 0, 'rifle', 20, 20);
+  command(dg, 0, { t: 'dig', ids: [digger.id], x: 20, z: 20 }); run(dg, CFG.digTime * CFG.digCells + 5);
+  assert.equal(digger.dig, null); assert.equal(dg.story[0].built, 1, 'a finished trench counts as built');
+}
+
+// Server tests share one in-process server.js on a free port (PORT=0). Its tick loop is stopped: tests call tick().
+// Every serverHarness() call gets a fresh fake clock for timers, pauses and denial limits, and its own clients.
+// close() ends that block's clients and rooms; stopServerHarness() at the end of the file closes the server.
+// holdMaps() pauses map file reads (to expose async races) and useMap() serves a fixture map; close() restores the disk.
+// A client's late() delivers a message on its server-side socket even after the server replaced or closed it.
+function fakeClock() {
+  let now = 0, nextId = 0;
+  const timers = new Map();
+  return {
+    now: () => now,
+    setTimeout(fn, ms) { const id = ++nextId; timers.set(id, { at: now + ms, fn }); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    advance(ms) {
+      const until = now + ms;
+      for (;;) {
+        const due = [...timers].filter(([, timer]) => timer.at <= until).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+        if (!due) break;
+        now = due[1].at; timers.delete(due[0]); due[1].fn();
+      }
+      now = until;
+    },
+  };
+}
+let serverModule = null;
+async function serverHarness() {
+  serverModule ??= (async () => {
+    const env = { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' }; // no .edit-password file, no tailscale call
+    const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+    Object.assign(process.env, env);
+    let module;
+    try { module = await import('./server.js'); }
+    finally { for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    clearInterval(module.loop);
+    if (!module.server.listening) await new Promise((resolve, reject) => { module.server.once('listening', resolve); module.server.once('error', reject); });
+    // Server-side sockets in accept order; connect() waits for its own (clients connect one at a time).
+    const accepting = [];
+    module.wss.on('connection', ws => accepting.shift()?.(ws));
+    return { module, accepting, originalClock: { ...module.clock }, originalMaps: { ...module.mapFiles } };
+  })();
+  const { module, accepting, originalMaps } = await serverModule;
+  const { default: WebSocket } = await import('ws');
+  const clock = fakeClock(), clients = [];
+  Object.assign(module.clock, clock);
+  Object.assign(module.mapFiles, originalMaps);
+  let mapGate = null;
+  const settleServer = async () => {
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setTimeout(resolve, 4));
+    await new Promise(resolve => setImmediate(resolve));
+  };
+  const waitFor = async (predicate, label) => {
+    const until = Date.now() + 2000;
+    for (;;) {
+      const result = predicate();
+      if (result) return result;
+      assert.ok(Date.now() < until, label);
+      await settleServer();
+    }
+  };
+  const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier', hello = true } = {}) => {
+    const serverSide = new Promise(resolve => accepting.push(resolve));
+    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
+    const messages = [], errors = [];
+    const client = {
+      code, token, ws, messages, log: messages, errors, closed: false, serverSide,
+      async send(message) { await new Promise((resolve, reject) => ws.send(JSON.stringify(message), error => error ? reject(error) : resolve())); await settleServer(); },
+      async late(message) { (await serverSide).emit('message', Buffer.from(JSON.stringify(message)), false); await settleServer(); },
+      lobby: () => messages.filter(message => message.t === 'lobby').at(-1),
+      async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
+      wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
+    };
+    ws.on('message', raw => messages.push(JSON.parse(String(raw))));
+    ws.on('close', () => { client.closed = true; });
+    ws.on('error', error => errors.push(error)); clients.push(client);
+    await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+    if (!hello) return client;
+    await client.send({ t: 'hello', token, name });
+    await waitFor(() => messages.find(message => ['lobby', 'full'].includes(message.t)), 'hello is answered');
+    return client;
+  };
+  return {
+    clock, connect, settleServer, waitFor, rooms: module.rooms,
+    game: code => module.rooms.get(code)?.game,
+    snapshots: client => client.messages.filter(message => message.t === 's'),
+    async tick(n = 1) { for (let i = 0; i < n; i++) module.tickRooms(); await settleServer(); },
+    holdMaps() {
+      let open; mapGate = new Promise(resolve => (open = resolve)); mapGate.open = open;
+      const read = module.mapFiles.read, gate = mapGate;
+      module.mapFiles.read = async (name) => { await gate; return read(name); };
+    },
+    releaseMaps() { mapGate?.open(); mapGate = null; },
+    useMap(json) { module.mapFiles.read = async () => json; },
+    async clear(code) { await Promise.all(clients.filter(client => client.code === code && !client.closed).map(client => client.close())); module.rooms.delete(code); },
+    async close() {
+      mapGate?.open(); mapGate = null; Object.assign(module.mapFiles, originalMaps);
+      await Promise.all(clients.filter(client => !client.closed).map(client => client.close()));
+      for (const code of new Set(clients.map(client => client.code))) module.rooms.delete(code);
+    },
+  };
+}
+async function stopServerHarness() {
+  if (!serverModule) return;
+  const { module, originalClock, originalMaps } = await serverModule;
+  for (const ws of module.wss.clients) ws.terminate();
+  module.rooms.clear(); Object.assign(module.clock, originalClock); Object.assign(module.mapFiles, originalMaps);
+  await new Promise(resolve => module.wss.close(() => resolve()));
+  if (module.server.listening) await new Promise(resolve => module.server.close(resolve));
+}
+
+// Round 2 server checks, on the shared harness.
+// Server: repeated hello messages must not race initialization or close their own connection.
+{
+  const h = await serverHarness(), code = 'rehello';
+  const p = await h.connect(code, { hello: false }); h.holdMaps();
+  const first = p.send({ t: 'hello', token: 'host', name: 'Host' });
+  const again = p.send({ t: 'hello', token: 'host', name: 'Host' });
+  h.releaseMaps(); await Promise.all([first, again]); await p.wait('lobby');
+  assert.equal(p.closed, false, 'server repeated hello keeps its connection open');
+  assert.equal(p.lobby().players.length, 1, 'server repeated hello occupies one player slot');
+  await h.close();
+}
+
+// Server: a replaced or departed socket cannot keep controlling its old player slot.
+{
+  const h = await serverHarness(), code = 'replaced';
+  const old = await h.connect(code, { token: 'host', name: 'Old' });
+  const current = await h.connect(code, { token: 'host', name: 'Current' });
+  await old.late({ t: 'name', name: 'Stale' });
+  assert.equal(current.lobby().players[0].name, 'Current', 'server replaced socket cannot rename its former player');
+  await h.connect(code, { token: 'guest', name: 'Guest' });
+  await current.send({ t: 'start' }); await current.wait('start');
+  const before = h.game(code).units.size;
+  await current.send({ t: 'leave' });
+  await current.late({ t: 'buy', unit: 'rifle' });
+  assert.equal(h.game(code).units.size, before, 'server departed socket cannot buy for the AI that took over');
+  await h.close();
+}
+
+// Server: a map request still awaiting disk cannot change settings once the match has started.
+for (const lookupFinished of [false, true]) {
+  const h = await serverHarness(), code = 'pending' + (lookupFinished ? 1 : 0);
+  const p = await h.connect(code, { token: 'host', name: 'Host' }); h.holdMaps();
+  const map = p.send({ t: 'map', name: 'river-towns' });
+  if (lookupFinished) await h.settleServer();
+  const start = p.send({ t: 'start' }); await h.settleServer();
+  h.releaseMaps(); await Promise.all([map, start]); await h.settleServer();
+  assert.equal(p.lobby().mapName, 'default', `server pending map ${lookupFinished ? 'load' : 'lookup'} cannot change a started match`);
+  await h.close();
+}
+
+// Server: ending a match while its map loads must cancel that start.
+{
+  const h = await serverHarness(), code = 'cancelstart';
+  const p = await h.connect(code, { token: 'host', name: 'Host' }); h.holdMaps();
+  const start = p.send({ t: 'start' });
+  await p.send({ t: 'end' });
+  h.releaseMaps(); await start; await h.settleServer();
+  assert.equal(p.messages.filter(m => m.t === 'start').length, 0, 'server cancelled start never sends players back into play');
+  assert.equal(p.lobby().state, 'lobby', 'server cancelled start keeps the lobby open');
+  assert.deepEqual(p.lobby().result, { ended: true, you: null }, 'server cancelled start preserves the host end result');
+  await h.close();
+}
+
+// Server: player-slot commands require numeric integer slots, without string or array coercion.
+{
+  const h = await serverHarness(), code = 'slots';
+  const p = await h.connect(code, { token: 'host', name: 'Host' });
+  await p.send({ t: 'addAi' });
+  for (const slot of ['1', [1], 1.5, -1, null, true]) {
+    await p.send({ t: 'faction', slot, v: 2 });
+    assert.equal(p.lobby().players[1].faction, 1, 'server malformed faction slot is ignored');
+    await p.send({ t: 'team', slot, v: 4 });
+    assert.equal(p.lobby().players[1].team, 1, 'server malformed team slot is ignored');
+    await p.send({ t: 'kick', slot });
+    assert.equal(p.lobby().players.length, 2, 'server malformed kick slot is ignored');
+  }
+  await p.send({ t: 'faction', slot: 1, v: 2 });
+  assert.equal(p.lobby().players[1].faction, 2, 'server valid integer faction slot still works');
+  await p.send({ t: 'kick', slot: 1 });
+  assert.equal(p.lobby().players.length, 1, 'server valid integer kick slot still works');
+  await h.close();
+}
+
+// Server: JSON objects masquerading as names or tokens cannot crash text conversion.
+{
+  const h = await serverHarness(), code = 'badtext', invalid = { toString: null, valueOf: null };
+  const p = await h.connect(code, { hello: false });
+  for (const field of ['token', 'name']) {
+    await p.send({ t: 'hello', token: 'host', name: 'Host', [field]: invalid });
+    assert.equal(p.messages.length, 0, 'server malformed hello text does not claim a player slot');
+    assert.equal(p.closed, false, `server malformed hello ${field} does not throw`);
+  }
+  await p.send({ t: 'hello', token: 'host', name: 'Host' }); await p.wait('lobby');
+  await p.send({ t: 'name', name: invalid });
+  assert.equal(p.closed, false, 'server malformed rename does not throw');
+  assert.equal(p.lobby().players[0].name, 'Host', 'server malformed rename preserves the player name');
+  await h.close();
+}
+
+// Server: Massive rooms construct snapshots only for sockets that can receive them.
+{
+  const map = { name: 'Massive fixture', w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [5, 75].flatMap(y => [5, 40, 75].map(x => ({ x, y }))), points: [{ x: 40, y: 40 }] };
+  const h = await serverHarness(), code = 'massive'; h.useMap(JSON.stringify(map));
+  const p = await h.connect(code, { token: 'host', name: 'Host' });
+  await p.send({ t: 'map', name: 'default' }); // seats follow the fixture's six spawns
+  for (let i = 0; i < 5; i++) await p.send({ t: 'addAi' });
+  await p.send({ t: 'army', v: 'massive' }); await p.send({ t: 'start' }); await p.wait('start');
+  const g = h.game(code);
+  for (let slot = 0; slot < 6; slot++) {
+    g.players[slot].mp = 50000;
+    for (let i = 0; i < 42; i++) command(g, slot, { t: 'buy', unit: 'rifle' });
+  }
+  assert.equal(g.units.size, 270, 'server snapshot fixture fields 270 units');
+  // Each snapshot built for a socket is serialized once, so counting snapshot serializations counts the builds.
+  const stringify = JSON.stringify, built = async (ticks) => {
+    let n = 0;
+    JSON.stringify = function (value, ...rest) { if (value?.t === 's') n++; return stringify.call(this, value, ...rest); };
+    try { await h.tick(ticks); } finally { JSON.stringify = stringify; }
+    return n;
+  };
+  assert.equal(await built(2), 1, 'server constructs one snapshot for one connected human and five AIs');
+  const socket = await p.serverSide;
+  Object.defineProperty(socket, 'readyState', { value: 2, configurable: true });
+  try { assert.equal(await built(2), 0, 'server constructs no snapshot for a socket that is closing'); }
+  finally { delete socket.readyState; }
+  await h.close();
+}
+
+// Server: building footprints under fog stay out of the start and reconnect terrain.
+{
+  const map = { name: 'Footprint fixture', w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] };
+  const h = await serverHarness(), code = 'footprint'; h.useMap(JSON.stringify(map));
+  const p = await h.connect(code, { token: 'host', name: 'Host' });
+  await h.connect(code, { token: 'guest', name: 'Guest' });
+  await p.send({ t: 'mode', v: 'classic' }); await p.send({ t: 'start' });
+  const enemyHq = [...h.game(code).units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  assert.ok(!(await p.wait('start')).cells.some(([c]) => enemyHq.cells.includes(c)), 'server initial terrain excludes unseen enemy HQ footprints');
+  const returning = await h.connect(code, { token: 'host', name: 'Host' });
+  assert.ok(!(await returning.wait('start')).cells.some(([c]) => enemyHq.cells.includes(c)), 'server reconnect terrain excludes unseen enemy HQ footprints');
+  await h.close();
+}
+
+// The server's side of the end, in-process: the 6 s hold (half speed, orders refused, AIs idle, fog lifted), then the
+// lobby with the result and each player's own outcome. Real WebSocket clients against the shared server harness.
+{
+  const h = await serverHarness();
+  const lobbies = (c) => c.messages.filter(m => m.t === 'lobby');
+  const ticksUntil = async (fn, what, max = 2000) => { for (let i = 0; !fn(); i++) { assert.ok(i < max, 'timed out: ' + what); await h.tick(); } };
+  const setUp = async (code, names) => {
+    const people = [];
+    for (const nm of names) people.push(await h.connect(code, { token: code + nm, name: nm }));
+    const room = h.rooms.get(code), host = people[0], ai = names.length;
+    await host.send({ t: 'addAi' }); assert.equal(room.players.length, ai + 1, 'AI added');
+    await host.send({ t: 'team', slot: ai, v: 1 }); await host.send({ t: 'mode', v: 'annihilation' });
+    assert.ok(room.mode === 'annihilation' && room.players[ai].team === 1, 'settings');
+    await host.send({ t: 'start' }); await host.wait('start');
+    await ticksUntil(() => h.snapshots(host).length, 'match started');
+    return { room, g: room.game, people };
+  };
+  const decided = (room) => ticksUntil(() => room.game.winner !== null, 'a winner');
+  const backInLobby = (room, c) => ticksUntil(() => room.state === 'lobby' && lobbies(c).at(-1)?.result?.story, 'the lobby result', 400);
+
+  // win and loss: Ann (team 0) against Ben and an AI (team 1)
+  {
+    const { room, g, people: [ann, ben] } = await setUp('endwin', ['Ann', 'Ben']);
+    // count the AI's thinking: think() first reads its player's out flag
+    let thinks = 0;
+    Object.defineProperty(g.players[2], 'out', { get() { if (/\/ai\.js:/.test(new Error().stack)) thinks++; return undefined; }, set() {}, configurable: true });
+    await ticksUntil(() => thinks > 0, 'the AI thinks during the match');
+    const mine = () => [...g.units.values()].filter(u => u.owner === 0).length, before = mine();
+    await ann.send({ t: 'buy', unit: 'rifle' }); assert.equal(mine(), before + 1, 'orders work during the match');
+    await h.tick(3);
+    const seenByAnn = new Set(h.snapshots(ann).flatMap(s => s.units.map(u => u[0])));
+    const hidden = [...g.units.values()].find(u => g.players[u.owner].team === 1 && !UNITS[u.type].structure && !seenByAnn.has(u.id));
+    assert.ok(hidden, 'an enemy unit Ann never saw: the fog holds while the match is on');
+    assert.ok([...h.snapshots(ann), ...h.snapshots(ben)].every(s => s.end === undefined && s.winner === null && !('story' in s) && !('timeline' in s)), 'no end data while the match is on');
+    assert.equal(lobbies(ann).at(-1).result, null, 'no result while the match is on');
+    const nSnaps = h.snapshots(ann).length;
+    for (const u of g.units.values()) if (u.type === 'bunker' && g.players[u.owner].team === 1) u.hp = 0;
+    await decided(room);
+    const winTick = g.tick, thought = thinks, ids = g.nextId, benUnit = [...g.units.values()].find(u => u.owner === 1 && !UNITS[u.type].structure);
+    assert.equal(g.winner, 0); assert.equal(g.endReason, 'bunkers');
+    // the hold: orders refused, everything in sight
+    await ben.send({ t: 'buy', unit: 'rifle' }); await ben.send({ t: 'move', orders: [[benUnit.id, 5, 5]] });
+    await h.tick(6);
+    assert.equal(room.state, 'play', 'the match holds before the lobby');
+    assert.equal(g.nextId, ids, 'no buying during the hold');
+    assert.ok(!benUnit.path.length || Math.hypot(benUnit.path.at(-1).x - 5, benUnit.path.at(-1).z - 5) > 1, 'no orders during the hold');
+    assert.equal(snapshotFor(g, 0, []).units.length, g.units.size, 'full vision during the hold');
+    await backInLobby(room, ann);
+    assert.equal(thinks, thought, 'the AI stops thinking during the hold');
+    assert.equal(g.tick - winTick, 60, 'the hold runs the sim at half speed: 60 steps in 6 s');
+    const held = h.snapshots(ann).slice(nSnaps);
+    assert.ok(held.length >= 55 && held.every(s => s.winner === 0 && s.end.reason === 'bunkers'), 'snapshots carry the end through the hold');
+    assert.ok(held.some(s => s.units.some(u => u[0] === hidden.id)), 'the fog lifts for everyone');
+    const ra = lobbies(ann).at(-1).result, rb = lobbies(ben).at(-1).result;
+    assert.equal(ra.reason, 'bunkers'); assert.deepEqual(ra.at, g.endAt); assert.equal(ra.story.length, 3); assert.ok(ra.timeline.length >= 2);
+    assert.ok(ra.story[1].losses + ra.story[2].losses >= 2, 'the bunkers are in the story');
+    assert.deepEqual(ra.you, { outcome: 'victory', team: 0 }); assert.deepEqual(rb.you, { outcome: 'defeat', team: 1 });
+    assert.deepEqual(room.players[2].lastMatch, { outcome: 'defeat', team: 1 }, 'the AI lost too');
+    // a seat freed after the match takes its row of the story with it
+    await ben.close(); h.clock.advance(10_000);
+    await h.waitFor(() => lobbies(ann).at(-1).players.length === 2, 'the offline seat is freed');
+    const after = lobbies(ann).at(-1).result;
+    assert.deepEqual([after.names[0], after.names[1], after.names[2]], ['Ann', room.players[1].name, 'Ben'], 'the freed seat moves to the end');
+    assert.deepEqual(after.story[2], ra.story[1], 'its story row moves with it');
+    assert.deepEqual(after.story[1], ra.story[2], 'and the AI keeps its own row');
+    await h.clear('endwin');
+  }
+  // a draw: Cal against an AI, every bunker down on the same tick
+  {
+    const { room, g, people: [cal] } = await setUp('enddraw', ['Cal']);
+    for (const u of g.units.values()) if (u.type === 'bunker') u.hp = 0;
+    await decided(room);
+    assert.equal(g.winner, -1);
+    await backInLobby(room, cal);
+    const res = lobbies(cal).at(-1).result;
+    assert.equal(res.winner, -1); assert.equal(res.reason, 'draw');
+    assert.deepEqual(res.you, { outcome: 'draw', team: 0 }); assert.deepEqual(room.players[1].lastMatch, { outcome: 'draw', team: 1 });
+    // the next start clears the result
+    const after = cal.messages.length;
+    await cal.send({ t: 'start' }); await cal.wait('start', () => true, after);
+    assert.ok(room.state === 'play' && room.game && lobbies(cal).at(-1).result === null, 'a new match without the old result');
+    await h.clear('enddraw');
+  }
+  await h.close();
+  console.log('match end: hold, fog lift, result and story checked over the server');
+}
+// Hotkey chords remain unique in every combination of simultaneously active contexts.
+{
+  const { bindings, match, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS } = await import('./client/keys.js');
+  for (const contexts of [['global', 'army'], ['global', 'classic'], ['global', 'targeting'],
+    ['global', 'army', 'targeting'], ['global', 'classic', 'targeting']]) {
+    const seen = new Map();
+    for (const binding of bindings.filter(b => contexts.includes(b.context))) {
+      const chord = [binding.code, binding.shift, binding.ctrl, binding.alt].join(':');
+      const previous = seen.get(chord) ?? [];
+      for (const other of previous) {
+        assert.ok((other.context === 'targeting') !== (binding.context === 'targeting'),
+          `${contexts.join('+')}: ${binding.id} collides with ${other.id}`);
+      }
+      seen.set(chord, [...previous, binding]);
+    }
+    for (const bindingsForChord of seen.values()) {
+      const first = bindingsForChord[0];
+      const expected = bindingsForChord.find(b => b.context === 'targeting') ?? first;
+      assert.equal(match({ code: first.code, shiftKey: first.shift, ctrlKey: first.ctrl, altKey: first.alt }, contexts),
+        expected.id, `${contexts.join('+')}: targeting overrides the mode binding`);
+    }
+  }
+  assert.equal(match({ code: 'Space' }, 'army'), 'alert');
+  assert.equal(match({ code: 'Space', shiftKey: true }, 'army'), 'follow', 'Shift+Space never triggers the plain Space action');
+  assert.equal(match({ code: 'KeyH', shiftKey: true }, 'army'), 'rally');
+  for (const modifier of ['shiftKey', 'ctrlKey', 'altKey', 'metaKey']) {
+    assert.equal(match({ code: 'KeyR', [modifier]: true }, 'classic'), undefined, `plain R rejects ${modifier}`);
+  }
+  assert.equal(match({ code: 'KeyA', metaKey: true }, 'army'), 'army', 'Meta selects the army like Ctrl');
+  for (const [event, action] of [
+    [{ code: 'Digit1' }, 'group:recall:1'],
+    [{ code: 'Digit1', ctrlKey: true }, 'group:set:1'],
+    [{ code: 'Digit1', metaKey: true }, 'group:set:1'],
+    [{ code: 'Digit1', shiftKey: true }, 'group:append:1'],
+    [{ code: 'Digit1', shiftKey: true, ctrlKey: true }, 'group:append:1'],
+    [{ code: 'Digit1', shiftKey: true, metaKey: true }, 'group:append:1'],
+  ]) assert.equal(match(event, 'army'), action);
+  for (const [kind, key] of Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' })) {
+    for (const context of ['army', 'classic']) assert.equal(match({ code: `Key${key}`, shiftKey: kind !== 'trench' }, context), `fort:${kind}`);
+    assert.equal(FORT_KEYS[kind], label(`fort:${kind}`));
+  }
+  assert.equal(badge('fort:sandbags'), '\u21e7Y');
+  assert.equal(badge('fort:trench'), 'T');
+  for (const [kind, key] of Object.entries(SUPPORT_KEYS)) assert.equal(match({ code: `Key${key}` }, 'classic'), `support:${kind}`);
+  for (const [kind, key] of Object.entries(BUILD_KEYS)) {
+    assert.equal(match({ code: `Key${key}` }, 'classic'), `build:${kind}`);
+    assert.equal(match({ code: `Key${key}` }, 'army'), undefined, 'Classic building chords stay mode-specific');
+  }
+  assert.equal(match({ code: 'Escape' }, 'army'), 'clear');
+  assert.equal(match({ code: 'Escape' }, 'classic'), 'clear');
+  assert.equal(match({ code: 'Escape' }, 'targeting'), 'cancelAim');
+}
+
+// Selection rules operate on own snapshot rows, including plans and dead group members.
+{
+  const { createSelection } = await import('./client/selection.js');
+  const row = (id, type = 'rifle', extra = {}) => ({ id, type, owner: 0, hp: 20, x: 150, z: 10, flags: 0, ...extra });
+  const units = new Map([
+    row(12, 'rifle', { x: 80, plan: { kind: 0 } }),
+    row(11, 'rifle', { flags: 128 }), row(10, 'rifle', { flags: 16 }), row(9, 'rifle', { flags: 1 }),
+    row(8, 'rifle', { plan: { kind: 1 } }), row(7, 'rifle', { flags: 32 }), row(6, 'rifle', { owner: 1, x: 10 }),
+    row(5, 'fighter', { x: 30, flags: 512 }), row(4, 'hq', { x: 30 }), row(3, 'engineer', { x: 20 }),
+    row(2), row(1, 'rifle', { x: 10 }),
+  ].map(v => [v.id, v]));
+  const selected = new Set(), groups = {}, centers = [];
+  const selection = createSelection({ units, selected, groups, owner: () => 0, definitions: UNITS,
+    screenOf: v => ({ x: v.x, y: v.z, front: true }), viewport: () => ({ width: 100, height: 100 }),
+    center: list => centers.push(list.map(v => v.id)) });
+  const ids = () => [...selected].sort((a, b) => a - b);
+  selection.click(units.get(1)); selection.click(units.get(3), { shiftKey: true });
+  assert.deepEqual(ids(), [1, 3], 'Shift+click adds an unselected unit');
+  selection.click(units.get(1), { shiftKey: true }); assert.deepEqual(ids(), [3], 'Shift+click removes a selected unit');
+  selection.box({ x0: 0, x1: 15, y0: 0, y1: 30 }, { shiftKey: true }); assert.deepEqual(ids(), [1, 3], 'Shift+box adds');
+  selection.box({ x0: 0, x1: 35, y0: 0, y1: 30 }); assert.deepEqual(ids(), [1, 3], 'box excludes enemy, building and grounded plane');
+  selection.doubleClick(units.get(1)); assert.deepEqual(ids(), [1, 12], 'double-click selects the type on screen');
+  selection.doubleClick(units.get(1), { ctrlKey: true }); assert.deepEqual(ids(), [1, 2, 7, 8, 9, 10, 11, 12], 'Ctrl+double-click selects the type map-wide');
+  selection.army(); assert.deepEqual(ids(), [1, 2, 3, 7, 8, 9, 10, 11, 12], 'army selection excludes buildings, enemies and grounded planes');
+  selection.type('rifle', { shiftKey: true }); assert.deepEqual(ids(), [3], 'Shift row click removes that type');
+  selection.type('engineer'); assert.deepEqual(ids(), [3], 'plain row click keeps only that type');
+  selection.army(); selection.type('engineer', { ctrlKey: true }); assert.deepEqual(ids(), [3], 'Ctrl row click keeps only that type');
+  assert.deepEqual(selection.idle().map(v => v.id), [1, 2, 3, 12], 'idle units are sorted and exclude busy flags, plans, planes and buildings');
+  selection.findIdle(); assert.deepEqual(ids(), [1]); selection.findIdle(); assert.deepEqual(ids(), [2]);
+  selection.findIdle(false, true); assert.deepEqual(ids(), [3], 'Engineers have their own idle cursor');
+  selection.findIdle(); assert.deepEqual(ids(), [3], 'army cursor continues independently');
+  assert.deepEqual(centers.at(-1), [3], 'idle cycling centers the selected unit');
+  selection.findIdle(true); assert.deepEqual(ids(), [1, 2, 3, 12], 'all idle units can be selected together');
+  selection.click(units.get(3)); selection.group(1, 'set'); selection.click(units.get(1));
+  groups[2] = [6, 999]; selection.group(1, 'append'); selection.group(1, 'append');
+  assert.deepEqual(groups[1], [3, 1], 'append preserves the old selection without duplicates');
+  assert.deepEqual(groups[2], [], 'group edits prune enemy and missing IDs');
+  selection.group(1, 'recall', 100); const count = centers.length;
+  selection.group(1, 'recall', 400); assert.equal(centers.length, count + 1, 'a second tap within 300 ms centers the group');
+  selection.group(1, 'recall', 701); assert.equal(centers.length, count + 1, 'a later tap does not center');
+  units.delete(3); selection.group(1, 'recall', 1002);
+  assert.deepEqual(groups[1], [1]); assert.deepEqual(ids(), [1], 'recall drops dead members');
+  selection.reset(); assert.deepEqual(groups, {}, 'new matches clear groups');
+  selection.findIdle(); assert.deepEqual(ids(), [1], 'new matches reset idle cursors');
+  const beforeRecall = centers.length; selection.group(1, 'set'); selection.group(1, 'recall', 1100);
+  assert.equal(centers.length, beforeRecall, 'new matches and group edits reset the double-tap timer');
+}
+// Map pings: the relay rules directly, then over the shared server harness.
+{
+  const { mapPing } = await import('./server/map-pings.js');
+  const sent = [], player = { team: 0, ws: { readyState: 1 } };
+  const ally = { team: 0, ws: { readyState: 1 } }, enemy = { team: 1, ws: { readyState: 1 } };
+  const room = { state: 'play', game: { w: 10, h: 10, players: [{ out: true }, {}, {}] },
+    players: [player, ally, enemy, { team: 0, ai: true, ws: { readyState: 1 } }, { team: 0, ws: { readyState: 3 } }] };
+  const relay = (ws, msg) => sent.push({ ws, msg });
+  mapPing(room, player, 0, { x: -1, z: 1 }, (_, msg) => sent.push(msg));
+  assert.equal(player.mapPingTimes, undefined, 'invalid pings do not use the budget');
+  player.mapPingTimes = [Date.now() - 5001, Date.now() - 5001, Date.now() - 5001];
+  mapPing(room, player, 0, { x: 12.34, z: 20 }, relay);
+  assert.deepEqual(sent.map(({ msg }) => msg), Array(2).fill({ t: 'ping', from: 0, x: 12.3, z: 20 }),
+    'eliminated players can ping and expired limits clear');
+  assert.deepEqual(sent.map(({ ws }) => ws), [player.ws, ally.ws], 'only open human teammate sockets receive pings');
+  assert.equal(player.mapPingTimes.length, 1, 'the timestamp list stays small');
+  sent.length = 0;
+  for (const coordinates of [{ x: -5, z: 5 }, { x: 1e9, z: 5 }, { x: 'abc', z: 5 }, { x: 5, z: null },
+    { x: 5 }, { x: NaN, z: 5 }, { x: 5, z: 21 }, { z: 5 }]) mapPing(room, player, 0, coordinates, relay);
+  assert.equal(sent.length, 0, 'invalid map pings are not relayed');
+  assert.equal(player.mapPingTimes.length, 1, 'invalid map pings preserve the remaining budget');
+  for (let i = 0; i < 4; i++) mapPing(room, ally, 1, { x: i, z: 0 }, relay);
+  assert.deepEqual(sent.filter(({ ws }) => ws === player.ws).map(({ msg }) => msg.x), [0, 1, 2], 'three pings per five seconds');
+  assert.equal(sent.filter(({ ws }) => ws === enemy.ws).length, 0, 'the other team receives no map pings');
+  sent.length = 0; player.ai = true;
+  mapPing(room, player, 0, { x: 5, z: 5 }, relay);
+  assert.equal(sent.length, 0, 'only human players can send map pings');
+  delete player.ai; room.state = 'lobby';
+  mapPing(room, player, 0, { x: 5, z: 5 }, relay);
+  assert.equal(sent.length, 0, 'map pings require a running match');
+
+  // the same rules over the shared server harness: real sockets, the real message handler
+  const h = await serverHarness(), code = 'pings', clients = [];
+  for (let slot = 0; slot < 3; slot++) clients.push(await h.connect(code, { token: `${code}${slot}`, name: `Player ${slot}` }));
+  await clients[0].send({ t: 'team', slot: 1, v: 0 });
+  await clients[0].send({ t: 'team', slot: 2, v: 1 });
+  assert.equal(h.rooms.get(code).players.map(p => p.team).join(','), '0,0,1', 'teams');
+  await clients[0].send({ t: 'start' });
+  for (const client of clients) await client.wait('start');
+  const map = clients[0].messages.find(msg => msg.t === 'start').map;
+  const pings = client => client.messages.filter(msg => msg.t === 'ping');
+  const clear = () => clients.forEach(client => { client.messages.length = 0; });
+  clear();
+  await clients[0].send({ t: 'ping', x: 12.3, z: 45.6 });
+  await h.waitFor(() => pings(clients[0]).length === 1 && pings(clients[1]).length === 1, 'team ping');
+  await h.settleServer();
+  assert.deepEqual(pings(clients[1]), [{ t: 'ping', from: 0, x: 12.3, z: 45.6 }], 'the teammate receives the ping');
+  assert.deepEqual(pings(clients[0]), pings(clients[1]), 'the sender receives the same relay');
+  assert.equal(pings(clients[2]).length, 0, 'the other team receives no ping');
+  clear();
+  for (const coordinates of [
+    { x: -5, z: 5 }, { x: 1e9, z: 5 }, { x: 'abc', z: 5 }, { x: 5, z: null },
+    { x: 5 }, { x: NaN, z: 5 }, { x: 5, z: map.h * CELL + 1 }, { z: 5 },
+  ]) await clients[0].send({ t: 'ping', ...coordinates });
+  assert.ok(clients.every(client => pings(client).length === 0), 'invalid coordinates are silently dropped');
+  clear();
+  for (let i = 0; i < 4; i++) await clients[1].send({ t: 'ping', x: 20 + i, z: 30 });
+  await h.waitFor(() => pings(clients[0]).length >= 3, 'three accepted pings');
+  await h.settleServer();
+  assert.deepEqual(pings(clients[0]).map(msg => msg.x), [20, 21, 22], 'the fourth ping inside five seconds is dropped');
+  assert.deepEqual(pings(clients[1]), pings(clients[0]), 'the sender sees only accepted pings');
+  assert.equal(pings(clients[2]).length, 0, 'rate-limited pings stay within the team');
+  clear();
+  await clients[0].send({ t: 'ping', c: 123, rtt: 5 });
+  await clients[0].wait('pong', msg => msg.c === 123);
+  assert.ok(clients.every(client => pings(client).length === 0), 'latency pings are never relayed');
+  await h.close();
+}
+// Room lifecycle checks use one fake clock for captured timers and the socket retry module.
+{
+
+  const { createConnection } = await import('./client/connection.js');
+  const { roomAddress, roomToken, matchStorage } = await import('./client/room-session.js');
+  class FakeWebSocket {
+    static sockets = [];
+    constructor(url) { this.url = url; this.readyState = 0; this.sent = []; FakeWebSocket.sockets.push(this); }
+    open() { this.readyState = 1; this.onopen?.({}); }
+    send(data) { this.sent.push(JSON.parse(data)); }
+    message(data) { this.onmessage?.({ data: JSON.stringify(data) }); }
+    close() { this.readyState = 3; this.onclose?.({ code: 1006 }); }
+  }
+  {
+    const clock = fakeClock(), retry = [], connected = [], dispatched = [];
+    FakeWebSocket.sockets = [];
+    const connection = createConnection({ url: () => 'ws://test/ws', hello: () => ({ t: 'hello', token: 'seat' }), WebSocket: FakeWebSocket, clock });
+    connection.on('retry', data => retry.push(data));
+    connection.on('connected', data => connected.push(data));
+    connection.on('lobby', data => dispatched.push(data));
+    connection.start();
+    assert.equal(connection.send({ t: 'pause' }), false, 'closed sockets reject sends');
+    let socket = FakeWebSocket.sockets.at(-1);
+    socket.open();
+    assert.deepEqual(socket.sent, [{ t: 'hello', token: 'seat' }], 'every connection sends the seat hello');
+    for (const seconds of [1, 2, 4, 8, 8]) {
+      socket.close();
+      assert.deepEqual(retry.at(-1), { left: seconds, reason: 'lost' }, 'reconnect backoff is bounded');
+      const count = FakeWebSocket.sockets.length;
+      clock.advance(seconds * 1000 - 1);
+      assert.equal(FakeWebSocket.sockets.length, count, 'a retry waits its full delay');
+      if (seconds > 1) assert.equal(retry.at(-1).left, 1, 'the retry banner counts down each second');
+      clock.advance(1);
+      assert.equal(FakeWebSocket.sockets.length, count + 1, 'the retry opens a socket on time');
+      socket = FakeWebSocket.sockets.at(-1); socket.open();
+    }
+    socket.message({ t: 'lobby', you: 0 }); socket.message({ t: 'lobby', you: 0 });
+    assert.equal(connected.length, 1, 'a server answer marks the connection recovered once');
+    assert.equal(dispatched.length, 2, 'registered handlers receive messages');
+    socket.close();
+    assert.equal(retry.at(-1).left, 1, 'a server answer resets the retry delay');
+    clock.advance(1000);
+    const newer = FakeWebSocket.sockets.at(-1); newer.open();
+    socket.message({ t: 'replaced' }); socket.close();
+    assert.equal(connection.isOpen(), true, 'late events from an old socket cannot stop the new one');
+    newer.message({ t: 'lobby', you: 0 });
+    connection.stop();
+    const count = FakeWebSocket.sockets.length;
+    clock.advance(60_000);
+    assert.equal(FakeWebSocket.sockets.length, count, 'stop cancels pending retries');
+  }
+  {
+    const clock = fakeClock(), retry = [], full = [], replaced = [];
+    FakeWebSocket.sockets = [];
+    const connection = createConnection({ url: 'ws://test/ws', hello: { t: 'hello', token: 'invite' }, WebSocket: FakeWebSocket, clock });
+    connection.on('retry', data => retry.push(data)); connection.on('full', data => full.push(data)); connection.on('replaced', data => replaced.push(data));
+    connection.start();
+    const first = FakeWebSocket.sockets.at(-1); first.open(); first.message({ t: 'full', reason: 'started' });
+    assert.equal(full.at(-1).reason, 'started', 'full preserves the server reason');
+    assert.deepEqual(retry.at(-1), { left: 10, reason: 'full' }, 'an invite retries every ten seconds');
+    first.close(); clock.advance(9999);
+    assert.equal(FakeWebSocket.sockets.length, 1, 'the close after full cannot shorten the retry');
+    clock.advance(1);
+    const second = FakeWebSocket.sockets.at(-1); second.close();
+    assert.deepEqual(retry.at(-1), { left: 10, reason: 'full' }, 'transport failure keeps the invite retry interval');
+    clock.advance(10_000);
+    const third = FakeWebSocket.sockets.at(-1); third.open(); third.message({ t: 'lobby', you: 0 }); third.close();
+    assert.equal(retry.at(-1).left, 1, 'joining the room restores normal reconnect timing');
+    clock.advance(1000);
+    const fourth = FakeWebSocket.sockets.at(-1); fourth.open(); fourth.message({ t: 'replaced' });
+    assert.equal(replaced.length, 1, 'a replaced seat is reported');
+    assert.equal(connection.isOpen(), false, 'a replaced seat releases the socket');
+    const count = FakeWebSocket.sockets.length; clock.advance(60_000);
+    assert.equal(FakeWebSocket.sockets.length, count, 'a replaced tab stops retrying');
+    connection.start();
+    const reclaimed = FakeWebSocket.sockets.at(-1); reclaimed.open(); reclaimed.message({ t: 'lobby', you: 0 });
+    fourth.message({ t: 'replaced' }); fourth.close();
+    assert.equal(connection.isOpen(), true, 'Use it here starts a connection protected from old events');
+    connection.stop();
+  }
+  {
+    const storage = () => {
+      const data = new Map();
+      return { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, String(value)), removeItem: key => data.delete(key) };
+    };
+    const local = storage(), session = storage(); let generated = 0;
+    const token = (room, seat = '', mirror = session) => roomToken({ room, seat, local, session: mirror, create: () => 'token-' + ++generated });
+    assert.deepEqual(roomAddress('#ABC&seat=2'), { room: 'abc', seat: '2', hash: '#abc&seat=2' }, 'room hashes retain the seat suffix');
+    assert.deepEqual(roomAddress('#&seat=2'), { room: 'main', seat: '2', hash: '#&seat=2' }, 'the main room retains its seat suffix');
+    const first = token('abc'), second = token('abc', '2'), other = token('xyz');
+    assert.notEqual(first, second, 'two seats on one machine have separate tokens');
+    assert.notEqual(first, other, 'tokens are scoped to the room');
+    const reopened = storage();
+    assert.equal(token('abc', '', reopened), first, 'a reopened tab keeps its seat from local storage');
+    assert.equal(reopened.getItem('ww2-token:abc'), first, 'the token is mirrored into the new session');
+    assert.equal(local.getItem('ww2-token:abc:2'), second, 'a seat suffix has its own persistent key');
+    session.setItem('ww2-token:fallback', 'session-seat');
+    assert.equal(token('fallback'), 'session-seat', 'a session mirror can recover a missing local token');
+    assert.equal(local.getItem('ww2-token:fallback'), 'session-seat', 'recovered tokens restore the local mirror');
+    const saved = { matchId: 3, camera: { x: 20, z: 30, yaw: 0.5, dist: 80 }, selected: [1, 4], groups: { 1: [1], 2: [4] } };
+    const state = matchStorage(first, local, session); state.write(saved);
+    assert.deepEqual(matchStorage(first, local, reopened).read(), saved, 'camera, selection and groups survive reopening the same seat');
+    assert.equal(matchStorage(second, local, session).read(), null, 'one seat cannot inherit another seat camera');
+    local.setItem('ww2-match:' + first, '{broken');
+    assert.deepEqual(state.read(), saved, 'the session mirror recovers a damaged local match record');
+    state.clear();
+    assert.equal(state.read(), null, 'ending a match clears both saved mirrors');
+    state.write({ ...saved, selected: 'invalid', groups: null });
+    const clean = state.read();
+    assert.deepEqual(clean.selected, [], 'malformed saved selection cannot reach the game');
+    assert.deepEqual(clean.groups, {}, 'malformed saved groups cannot reach the game');
+  }
+
+  async function roomLifecycleChecks(h) {
+    let caseId = 0;
+    const last = (client, type) => client.messages.findLast(message => message.t === type);
+    const check = async fn => { const code = 'r3t' + ++caseId; try { await fn(code); } finally { await h.clear(code); } };
+    const humans = async (code, names = ['Ana', 'Ben']) => {
+      const players = [];
+      for (const name of names) players.push(await h.connect(code, { token: code + name, name }));
+      return players;
+    };
+    const start = async (code, host) => {
+      const after = host.messages.length; await host.send({ t: 'start' }); await host.wait('start', () => true, after); return h.rooms.get(code);
+    };
+
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']);
+      await ana.close();
+      assert.equal(h.rooms.get(code).emptySince, 0, 'an empty room can start its grace period at fake time zero');
+      h.clock.advance(60_000); await h.tick();
+      assert.ok(h.rooms.has(code), 'an empty room survives the full one-minute grace period');
+      h.clock.advance(1); await h.tick();
+      assert.equal(h.rooms.has(code), false, 'an empty room expires after its grace period');
+    });
+    await check(async code => {
+      const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
+      await ana.close();
+      await ben.wait('lobby', message => message.host === 1 && !message.players[0].connected);
+      assert.equal(last(ben, 'lobby').host, 1, 'the next connected human inherits host controls');
+      const room = h.rooms.get(code); h.clock.advance(9999); await h.settleServer();
+      assert.equal(room.players.length, 3, 'an offline seat is held for ten seconds');
+      await cy.send({ t: 'kick', slot: 0 });
+      assert.equal(room.players.length, 3, 'only the host can kick an offline human');
+      await ben.send({ t: 'kick', slot: 0 });
+      assert.equal(room.players.length, 2, 'the host can kick an offline human');
+      await ben.wait('lobby', message => message.you === 0 && message.host === 0);
+      await ben.send({ t: 'kick', slot: 1 });
+      assert.equal(room.players.length, 2, 'a connected human cannot be kicked');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = h.rooms.get(code), player = room.players[1];
+      await ben.close(); h.clock.advance(9999); await h.settleServer();
+      assert.equal(room.players.length, 2, 'cleanup does not free a seat early');
+      const refresh = await h.connect(code, { token: ben.token, name: 'Ben' });
+      h.clock.advance(1); await h.settleServer();
+      assert.equal(room.players[1], player, 'a refresh retains the player object and cancels cleanup');
+      await refresh.close(); h.clock.advance(10_000); await h.settleServer();
+      assert.equal(room.players.length, 1, 'an unrecovered lobby seat is freed after ten seconds');
+      await ana.wait('lobby', message => message.players.length === 1);
+    });
+    await check(async code => {
+      const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
+      const room = await start(code, ana), player = room.players[1];
+      await ben.close();
+      assert.equal(room.pause?.player, player, 'a human drop pauses their match');
+      await cy.send({ t: 'handAi', slot: 1 });
+      assert.equal(player.ai, undefined, 'a non-host cannot hand an army to AI');
+      await ana.send({ t: 'handAi', slot: '1' });
+      assert.equal(player.ai, undefined, 'hand to AI requires an integer seat');
+      await ana.send({ t: 'handAi', slot: 1 });
+      assert.equal(room.players[1], player, 'hand to AI keeps the army seat');
+      assert.equal(player.ai, true); assert.equal(player.token, ''); assert.equal(player.ws, null);
+      assert.equal(room.pause, null, 'hand to AI ends that player drop pause');
+      await h.tick(); assert.equal(room.game.players[1].away, false, 'the AI army is active');
+      await cy.send({ t: 'leave' }); await cy.wait('left');
+      assert.equal(room.players[2].ai, true, 'leave uses the same AI handover');
+    });
+    await check(async code => {
+      const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
+      const room = await start(code, ana), retained = [room.players[1], room.players[2]];
+      const { finish } = await import('./shared/sim.js');
+      await ana.close(); await ben.send({ t: 'resume' }); finish(room.game, 1, 'vp');
+      for (let i = 0; i < 200 && room.state === 'play'; i++) await h.tick(); // the 6 s closing hold, then the lobby
+      assert.equal(room.state, 'lobby', 'natural match end returns to the lobby');
+      assert.deepEqual(room.players, retained, 'match end frees offline humans and retains player objects');
+      assert.deepEqual(room.players.map(player => player.lastMatch), [{ outcome: 'victory', team: 1 }, { outcome: 'defeat', team: 2 }], 'per-player reports survive seat freeing');
+      assert.equal(room.result.story.length, 3, 'the story keeps a row per seat');
+      assert.deepEqual(room.result.teams, [1, 2, 0], 'result teams follow current seats before freed players');
+      assert.deepEqual(room.result.names, ['Ben', 'Cy', 'Ana'], 'result names use the same order');
+      const lobby = await ben.wait('lobby', message => message.state === 'lobby' && message.result?.winner === 1);
+      assert.equal(lobby.result.teams[lobby.you], lobby.result.winner, 'the remaining winner still sees Victory after their seat shifts');
+      const dana = await h.connect(code, { token: code + 'Dana', name: 'Dana' });
+      assert.equal(room.players[2].team, 0, 'a new seat receives an unused team');
+      assert.deepEqual(room.result.teams, [1, 2, null, 0], 'newcomers do not inherit the freed player result');
+      assert.deepEqual(last(dana, 'lobby').result.names, ['Ben', 'Cy', '', 'Ana']);
+      await cy.close(); h.clock.advance(10_000); await h.settleServer();
+      assert.deepEqual(room.result.teams, [1, null, 2, 0], 'later lobby cleanup keeps the result aligned');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = await start(code, ana), player = room.players[0], matchId = room.matchId;
+      assert.ok(Number.isSafeInteger(matchId) && matchId > 0, 'start identifies the match');
+      const replacement = await h.connect(code, { token: ana.token, name: 'Ana' });
+      await ana.wait('replaced'); await h.settleServer();
+      assert.equal(ana.closed, true, 'the replaced socket is closed after its message');
+      assert.equal(room.players[0], player, 'replacement keeps the same player object');
+      assert.equal(room.pause, null, 'replacement does not trigger a drop pause');
+      assert.equal((await replacement.wait('start')).matchId, matchId, 'same-match reconnect keeps its match id');
+      await replacement.send({ t: 'pause' });
+      const joining = await h.connect(code, { token: ben.token, name: 'Ben' }); await joining.wait('start');
+      const types = joining.messages.map(message => message.t);
+      assert.ok(types.indexOf('start') < types.indexOf('pause'), 'a reconnect gets start before the pause state');
+      assert.equal(last(joining, 'pause').reason, 'host', 'a reconnect sees the current host pause');
+      const after = replacement.messages.length; await replacement.send({ t: 'restart' });
+      const restarted = await replacement.wait('start', message => message.matchId === matchId + 1, after);
+      assert.equal(restarted.matchId, matchId + 1, 'restart increments the match counter');
+      assert.equal(room.pause, null, 'restart clears pause');
+      assert.equal(last(replacement, 'pause').paused, false, 'restart broadcasts resume');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code); await ana.send({ t: 'addAi' });
+      const room = await start(code, ana), g = room.game;
+      await ben.send({ t: 'pause' }); assert.equal(room.pause, null, 'only the host can pause');
+      await ana.send({ t: 'pause' });
+      assert.deepEqual(last(ana, 'pause'), { t: 'pause', paused: true, by: 'Ana', reason: 'host', left: 0 });
+      const before = { tick: g.tick, nextId: g.nextId, mp: g.players[0].mp, units: g.units.size };
+      await ana.send({ t: 'buy', unit: 'rifle' }); await h.tick(40);
+      assert.deepEqual({ tick: g.tick, nextId: g.nextId, mp: g.players[0].mp, units: g.units.size }, before, 'pause rejects commands and skips simulation and AI');
+      const count = h.snapshots(ana).length;
+      h.clock.advance(999); await h.tick(); assert.equal(h.snapshots(ana).length, count, 'paused snapshots wait one second');
+      h.clock.advance(1); await h.tick(); assert.equal(h.snapshots(ana).length, count + 1, 'paused matches send a snapshot once a second');
+      await h.tick(20); assert.equal(h.snapshots(ana).length, count + 1, 'paused snapshots do not repeat before time advances');
+      await ben.send({ t: 'resume' }); assert.ok(room.pause, 'only the host can resume');
+      await ana.send({ t: 'resume' }); assert.equal(room.pause, null);
+      await h.tick(); assert.equal(g.tick, before.tick + 1, 'host resume restarts simulation');
+      await ana.send({ t: 'pause' }); await ben.close(); await ana.send({ t: 'end' });
+      assert.equal(room.pause, null, 'host end clears pause');
+      assert.equal(room.state, 'lobby'); assert.equal(room.players.length, 2, 'host end frees the offline human and keeps the AI');
+      assert.equal(last(ana, 'pause').paused, false, 'host end broadcasts resume');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = await start(code, ana), g = room.game;
+      await ben.close();
+      assert.deepEqual(last(ana, 'pause'), { t: 'pause', paused: true, by: 'Ben', reason: 'drop', left: 30 });
+      h.clock.advance(6000); await h.tick(); assert.equal(last(ana, 'pause').left, 24, 'drop pause shows whole seconds remaining');
+      h.clock.advance(23_999); await h.tick(); assert.ok(room.pause, 'drop pause lasts until its deadline');
+      assert.equal(g.tick, 0, 'simulation stays stopped while waiting');
+      h.clock.advance(1); await h.tick(); assert.equal(room.pause, null, 'drop pause expires at thirty seconds');
+      assert.equal(g.tick, 1, 'the first tick after the deadline advances the match');
+      const returned = await h.connect(code, { token: ben.token, name: 'Ben' }); await returned.wait('start'); await returned.close();
+      assert.equal(room.pause, null, 'the same player cannot auto-pause twice in one match');
+      const returnedAgain = await h.connect(code, { token: ben.token, name: 'Ben' });
+      const after = ana.messages.length; await ana.send({ t: 'restart' }); await ana.wait('start', () => true, after);
+      await returnedAgain.close(); assert.equal(room.pause?.reason, 'drop', 'a new match resets the auto-pause allowance');
+      const restored = await h.connect(code, { token: ben.token, name: 'Ben' }); await restored.wait('start');
+      assert.equal(room.pause, null, 'reconnect ends a drop pause');
+      assert.equal(last(ana, 'pause').paused, false, 'reconnect broadcasts resume');
+      await ana.close(); assert.equal(room.pause?.by, 'Ana', 'each human has their own pause allowance');
+      await restored.send({ t: 'resume' }); assert.equal(room.pause, null, 'the current host can end a drop pause');
+    });
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']);
+      const { MAX_PLAYERS } = await import('./shared/sim.js');
+      for (let i = 1; i < MAX_PLAYERS; i++) await ana.send({ t: 'addAi' });
+      const full = await h.connect(code, { token: code + 'invite', name: 'Invite' });
+      assert.equal(last(full, 'full').reason, 'seats', 'a full lobby reports occupied seats');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code); await start(code, ana);
+      const invite = await h.connect(code, { token: code + 'invite', name: 'Invite' });
+      assert.equal(last(invite, 'full').reason, 'started', 'an invite cannot claim a new seat during play');
+      await ben.close(); await ana.send({ t: 'end' });
+      const joined = await h.connect(code, { token: invite.token, name: 'Invite' });
+      assert.equal(last(joined, 'lobby').state, 'lobby', 'the invite joins after the match returns to lobby');
+      assert.equal(h.rooms.get(code).players.length, 2, 'the disconnected match seat was freed for the invite');
+    });
+    console.log(`Room lifecycle: ${caseId} scenarios passed`);
+  }
+
+  const harness = await serverHarness();
+  try { await roomLifecycleChecks(harness); }
+  finally { await harness.close(); }
+}
+// Shift orders finish one task before starting the next, and ordinary orders replace the plan.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'move', queue: true, orders: [[u.id, 15, 5]] });
+  step(g);
+  assert.deepEqual(snapshotFor(g, 0, []).orders, [], 'an active order without waiting orders adds no snapshot row');
+  command(g, 0, { t: 'move', queue: true, orders: [[u.id, 27, 5]] });
+  command(g, 0, { t: 'amove', queue: true, orders: [[u.id, 27, 27]] });
+  assert.equal(u.orders.length, 2, 'the first Shift order starts on the next tick, with two waiting');
+  assert.equal(u.amove, null, 'queued attack-move does not interrupt movement');
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id), [u.id, 2, 1, 27, 5, 2, 27, 27], 'snapshot preserves waiting order sequence');
+  let passedFirst = false, passedSecond = false;
+  for (let i = 0; i < 20 * 15; i++) {
+    step(g);
+    if (Math.hypot(u.x - 15, u.z - 5) < 1) passedFirst = true;
+    if (u.amove) {
+      assert.ok(passedFirst, 'first move finished before attack-move');
+      assert.ok(Math.hypot(u.x - 27, u.z - 5) < 1 || passedSecond, 'second move finished before attack-move');
+      passedSecond = true;
+    }
+  }
+  assert.ok(passedFirst && passedSecond, 'both move destinations were visited in sequence');
+  assert.ok(Math.hypot(u.x - 27, u.z - 27) < 3, 'attack-move reaches the final destination');
+  assert.equal(u.orders.length, 0, 'finished orders leave the queue');
+  assert.deepEqual(snapshotFor(g, 0, []).orders, [], 'finished queues have no snapshot rows');
+  for (const replacement of ['move', 'stop', 'retreat']) {
+    command(g, 0, { t: 'move', orders: [[u.id, 5, 5]] });
+    command(g, 0, { t: 'amove', queue: true, orders: [[u.id, 5, 27]] });
+    assert.equal(u.orders.length, 1, 'an order is waiting before replacement');
+    command(g, 0, replacement === 'move' ? { t: 'move', orders: [[u.id, 35, 27]] } : { t: replacement, ids: [u.id], queue: true });
+    assert.equal(u.orders.length, 0, `${replacement} clears waiting orders`);
+  }
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 5]] });
+  for (let i = 0; i < 12; i++) command(g, 0, { t: 'move', queue: true, orders: [[u.id, 7 + i * 2, 15]] });
+  assert.equal(u.orders.length, 8, 'at most eight orders can wait');
+  assert.equal(u.orders.at(-1).x, 21, 'overflow leaves accepted orders unchanged');
+  assert.equal(command(g, 0, { t: 'move', queue: true, orders: [[u.id, 9, 9]] }), 'queueFull', 'a full order queue is refused with its reason');
+  assert.equal(command(g, 0, { t: 'orders', queue: true, commands: [{ t: 'move', orders: [[u.id, 9, 9]] }] }), 'queueFull', 'grouped orders report the refusal too');
+}
+
+// Queued digging spends MP when it starts, and an unaffordable task is skipped.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const u = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'move', orders: [[u.id, 27, 5]] });
+  const mp = g.players[0].mp;
+  command(g, 0, { t: 'dig', ids: [u.id], queue: true, x: 27, z: 5, dir: 0 });
+  command(g, 0, { t: 'move', queue: true, orders: [[u.id, 27, 27]] });
+  assert.equal(g.players[0].mp, mp, 'waiting trench has not spent MP');
+  assert.equal(u.dig, null, 'waiting trench does not begin early');
+  let paid = false;
+  for (let i = 0; i < 20 * 8 && !u.dig; i++) {
+    const before = g.players[0].mp;
+    step(g);
+    if (u.dig) paid = before - g.players[0].mp > CFG.digCost - 1 && before - g.players[0].mp <= CFG.digCost;
+  }
+  assert.ok(u.dig && paid, 'trench is paid for on activation');
+  const cells = u.dig.cells.map(([c]) => c);
+  run(g, CFG.digCells * CFG.digTime + 8);
+  assert.ok(cells.every(c => g.chars[c] === 'T'), 'queued trench is finished');
+  assert.ok(Math.hypot(u.x - 27, u.z - 27) < 1, 'movement after the trench continues');
+
+  const poor = fresh(); poor.players[0].mp = 1000;
+  const r = put(poor, 0, 'rifle', 5, 5);
+  command(poor, 0, { t: 'move', orders: [[r.id, 7, 5]] });
+  command(poor, 0, { t: 'dig', ids: [r.id], queue: true, x: 7, z: 5, dir: 0 });
+  command(poor, 0, { t: 'move', queue: true, orders: [[r.id, 17, 5]] });
+  poor.players[0].mp = 0;
+  run(poor, 4);
+  assert.equal(r.dig, null, 'trench is dropped when its activation cannot be paid');
+  assert.ok(!poor.chars.includes('T'), 'unpaid task creates no trench cells');
+  assert.ok(Math.hypot(r.x - 17, r.z - 5) < 1, 'a skipped trench does not block the following move');
+  assert.equal(r.orders.length, 0, 'skipped and finished orders leave the queue');
+}
+
+// Queued targets remember their issued position without exposing movement under fog.
+{
+  const rows = Array(60).fill('.'.repeat(60));
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+  const u = put(g, 0, 'rifle', 5, 5), enemy = put(g, 1, 'rifle', 15, 5);
+  u.cooldown = enemy.cooldown = 100;
+  run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 27]] });
+  command(g, 0, { t: 'attack', ids: [u.id], target: enemy.id, queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 27, 27]], queue: true });
+  assert.deepEqual([u.orders[0].x, u.orders[0].z], [15, 5], 'attack saves the position visible when issued');
+  enemy.x = 19;
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id).slice(2, 5), [4, 19, 5], 'a currently visible queued target uses its current position');
+  enemy.x = enemy.z = 111;
+  run(g, 0.3);
+  assert.ok(!g.players[0].visible.has(enemy.id), 'target has left team vision');
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id).slice(2, 5), [4, 15, 5], 'hidden target stays at the recorded issued position');
+  run(g, 12);
+  assert.equal(u.attackId, 0, 'hidden target is skipped when its order starts');
+  assert.ok(Math.hypot(u.x - 27, u.z - 27) < 1, 'following move proceeds after the hidden target');
+
+  enemy.x = 35; enemy.z = 27; run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[u.id, 27, 39]] });
+  command(g, 0, { t: 'attack', ids: [u.id], target: enemy.id, queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 39, 39]], queue: true });
+  assert.equal(u.orders.length, 2, 'visible target is queued before disappearing');
+  g.units.delete(enemy.id);
+  run(g, 8);
+  assert.equal(u.attackId, 0, 'removed target is skipped when its order starts');
+  assert.ok(Math.hypot(u.x - 39, u.z - 39) < 1, 'following move proceeds after the removed target');
+}
+
+// Shared team vision reveals units, but waiting orders and recruit rallies stay personal.
+{
+  const g = createGame(blank(Array(60).fill('.'.repeat(60))), ['a', 'b', 'c'], false, [0, 0, 1]);
+  g.units.clear(); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  const own = put(g, 0, 'rifle', 5, 5), ally = put(g, 1, 'rifle', 11, 5), enemy = put(g, 2, 'rifle', 19, 5);
+  for (const u of [own, ally, enemy]) {
+    u.cooldown = 100;
+    command(g, u.owner, { t: 'move', orders: [[u.id, u.x, 27]] });
+    command(g, u.owner, { t: 'amove', queue: true, orders: [[u.id, u.x, 39]] });
+  }
+  command(g, 0, { t: 'rally', x: 51, z: 51 });
+  command(g, 1, { t: 'rally', x: 61, z: 61 });
+  command(g, 2, { t: 'rally', x: 71, z: 71 });
+  run(g, 0.3);
+  for (const slot of [0, 1, 2]) {
+    const snap = snapshotFor(g, slot, []), id = [own, ally, enemy][slot].id;
+    assert.deepEqual(snap.orders.map(q => q[0]), [id], 'snapshot contains only the receiving player\'s waiting orders');
+    assert.deepEqual(snap.rally, [51 + slot * 10, 51 + slot * 10], 'snapshot contains only the receiving player\'s recruit rally');
+  }
+  assert.ok(snapshotFor(g, 0, []).units.some(q => q[0] === ally.id), 'ally is visible despite its private orders');
+  ally.x = 63; ally.z = 65; enemy.x = enemy.z = 65;
+  command(g, 1, { t: 'stop', ids: [ally.id] });
+  command(g, 2, { t: 'stop', ids: [enemy.id] });
+  run(g, 0.3);
+  assert.ok(Math.hypot(own.x - enemy.x, own.z - enemy.z) > UNITS.rifle.vision, 'queued target is outside the ordering squad\'s vision');
+  command(g, 0, { t: 'attack', ids: [own.id], target: enemy.id, queue: true });
+  enemy.x = 67;
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === own.id).slice(5, 8), [4, 67, 65], 'allied spotting updates a queued target for the whole team');
+}
+
+// Conquest and Assault recruits walk to a valid personal rally, with strict destination validation.
+{
+  const rows = Array(60).fill('.'.repeat(60)); rows[25] = '.'.repeat(25) + 'W' + '.'.repeat(34);
+  const map = { ...blank(rows), spawns: [{ x: 5, y: 5 }, { x: 50, y: 50 }] };
+  for (const mode of ['conquest', 'assault']) {
+    const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], mode === 'assault' ? { mode, defenderTeam: 1 } : {});
+    const p = g.players[0]; p.mp = 5000;
+    assert.equal(snapshotFor(g, 0, []).rally, null, `${mode} starts without a recruit rally`);
+    command(g, 0, { t: 'rally', x: 41, z: 41 });
+    assert.deepEqual(snapshotFor(g, 0, []).rally, [41, 41], `${mode} stores the personal recruit rally`);
+    for (const [x, z] of [[-1, 41], [120, 41], [41, 120], [NaN, 41], [51, 51]]) {
+      command(g, 0, { t: 'rally', x, z });
+      assert.deepEqual(snapshotFor(g, 0, []).rally, [41, 41], `${mode} rejects an invalid or impassable rally`);
+    }
+    command(g, 0, { t: 'buy', unit: 'rifle' });
+    const recruit = [...g.units.values()].at(-1);
+    assert.ok(recruit.path.length, `${mode} recruit immediately receives a route`);
+    assert.deepEqual(recruit.path.at(-1), { x: 41, z: 41 }, `${mode} recruit heads to the personal rally`);
+  }
+}
+
+// Recruit rallies leave purchased planes at base and deliberate drops at their landing point.
+{
+  const map = blank(Array(60).fill('.'.repeat(60)));
+  const g = createGame(map, ['a', 'b'], false); g.players[0].mp = 2000;
+  command(g, 0, { t: 'rally', x: 80, z: 80 });
+  for (const type of ['fighter', 'attacker']) command(g, 0, { t: 'buy', unit: type });
+  const planes = [...g.units.values()].filter(u => u.owner === 0 && u.air);
+  assert.deepEqual(planes.map(u => u.type), ['fighter', 'attacker'], 'both planes were recruited');
+  run(g, 4);
+  for (const plane of planes) {
+    assert.equal(plane.air.state, 'base', `${plane.type} waits at base despite the rally`);
+    assert.equal(plane.air.mission, null, `${plane.type} has no automatic mission`);
+    assert.equal(plane.air.fuel, CFG.air.station, `${plane.type} does not burn fuel`);
+  }
+
+  const drop = fresh(Array(60).fill('.'.repeat(60))); drop.players[0].mp = 1000;
+  drop.players[0].spawn = { x: 10, z: 10 };
+  const scout = put(drop, 0, 'rifle', 10, 10);
+  run(drop, 0.3);
+  command(drop, 0, { t: 'rally', x: 80, z: 80 });
+  command(drop, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
+  assert.equal(drop.strikes.length, 1, 'visible paradrop was accepted');
+  run(drop, SUPPORT.para.delay + 0.1);
+  const trooper = [...drop.units.values()].find(u => u.owner === 0 && u.type === 'rifle' && u !== scout);
+  assert.ok(trooper, 'paratroopers landed');
+  assert.deepEqual(trooper.path, [], 'paratroopers have no rally route');
+  assert.ok(Math.hypot(trooper.x - 20, trooper.z - 12) < 3, 'paratroopers landed at the chosen point');
+  const at = { x: trooper.x, z: trooper.z };
+  run(drop, 1);
+  assert.deepEqual({ x: trooper.x, z: trooper.z }, at, 'paratroopers stay at the drop point');
+}
+
+// Classic keeps training separate from unit orders, and Engineers finish queued field and building work.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }, { x: 5, y: 70 }], points: [{ x: 40, y: 40 }] };
+  const classic = (teams = [0, 1]) => createGame(map, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
+  const g = classic(), p = g.players[0]; p.mp = 5000;
+  const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer'), hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  for (const u of [...g.units.values()]) if (!UNITS[u.type].structure && u !== eng) g.units.delete(u.id);
+  eng.x = eng.z = 71;
+  command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id });
+  command(g, 0, { t: 'rally', id: hq.id, x: 41, z: 41 });
+  assert.deepEqual(hq.queue, ['rifle'], 'Classic training still uses the production queue');
+  assert.deepEqual(hq.rally, { x: 41, z: 41 }, 'Classic rally stays on the selected building');
+  assert.equal(snapshotFor(g, 0, []).rally, null, 'Classic has no personal recruit rally');
+  command(g, 0, { t: 'dig', ids: [eng.id], x: 71, z: 71, dir: 0 });
+  const firstCells = eng.dig.cells.map(([c]) => c);
+  command(g, 0, { t: 'dig', ids: [eng.id], queue: true, x: 87, z: 71, dir: 0 });
+  assert.equal(eng.orders.length, 1, 'second trench waits behind the first');
+  assert.deepEqual(hq.queue, ['rifle'], 'unit orders do not change production');
+  for (let i = 0; i < 20 * 20 && eng.dig?.x !== 87; i++) step(g);
+  assert.equal(eng.dig?.x, 87, 'Engineers start their second trench');
+  assert.ok(firstCells.every(c => g.chars[c] === 'T'), 'first trench is complete before the second starts');
+  const secondCells = eng.dig.cells.map(([c]) => c);
+  run(g, 12);
+  assert.ok(secondCells.every(c => g.chars[c] === 'T'), 'Engineers finish the second trench');
+  assert.equal(eng.orders.length, 0, 'both trench orders have finished');
+
+  eng.x = eng.z = 71; run(g, 0.3);
+  const mp = p.mp;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 71, z: 83 });
+  const first = [...g.units.values()].at(-1);
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 91, z: 83, queue: true });
+  const second = [...g.units.values()].at(-1);
+  assert.ok(first.type === 'barracks' && second.type === 'barracks' && first.id !== second.id, 'both building sites are placed immediately');
+  assert.equal(p.mp, mp - 2 * UNITS.barracks.cost, 'both sites are paid for up front');
+  assert.equal(eng.build, first.id, 'first site remains the active work');
+  assert.equal(eng.orders.length, 1, 'work on the second site waits');
+  assert.equal(second.built, 0, 'queued site has not been constructed');
+  for (let i = 0; i < 20 * 65 && eng.build !== second.id; i++) step(g);
+  assert.equal(first.built, 1, 'first building finishes before work starts on the second');
+  assert.equal(eng.build, second.id, 'Engineers advance to the queued site');
+  run(g, 65);
+  assert.equal(second.built, 1, 'queued construction finishes');
+  first.hp -= 100;
+  command(g, 0, { t: 'move', orders: [[eng.id, 71, 101]] });
+  command(g, 0, { t: 'assist', ids: [eng.id], id: first.id, queue: true });
+  assert.equal(eng.build, 0, 'queued repair does not interrupt movement');
+  run(g, 35);
+  assert.equal(first.hp, UNITS.barracks.hpPer, 'queued assist repairs the damaged building');
+
+  const transfer = classic([0, 0, 1]);
+  const inherited = [...transfer.units.values()].find(u => u.owner === 1 && u.type === 'rifle');
+  command(transfer, 1, { t: 'move', orders: [[inherited.id, 71, 71]] });
+  command(transfer, 1, { t: 'amove', queue: true, orders: [[inherited.id, 91, 71]] });
+  assert.equal(inherited.orders.length, 1, 'eliminated player had a waiting order');
+  [...transfer.units.values()].find(u => u.owner === 1 && u.type === 'hq').hp = 0;
+  run(transfer, 0.1);
+  assert.ok(transfer.players[1].out && inherited.owner === 0, 'surviving teammate receives the army');
+  assert.equal(inherited.orders.length, 0, 'ownership transfer clears waiting orders');
+}
+// Compound clicks preserve the outer queue choice and validate each unit and building owner.
+{
+  const map = { ...blank(Array(60).fill('.'.repeat(60))), spawns: [{ x: 5, y: 5 }, { x: 50, y: 50 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const own = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle'), foreign = [...g.units.values()].find(u => u.owner === 1 && u.type === 'rifle');
+  const ownHq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq'), foreignHq = [...g.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  command(g, 0, { t: 'move', orders: [[own.id, 41, 41]] });
+  command(g, 1, { t: 'move', orders: [[foreign.id, 81, 81]] });
+  const ownRoute = own.path.map(p => ({ ...p })), foreignRoute = foreign.path.map(p => ({ ...p }));
+  command(g, 0, { t: 'orders', queue: true, commands: [
+    { t: 'move', queue: false, slot: 1, orders: [[own.id, 41, 61], [foreign.id, 41, 61]] },
+    { t: 'rally', ids: [ownHq.id, foreignHq.id], x: 61, z: 61 },
+  ] });
+  assert.deepEqual(own.path, ownRoute, 'compound Shift move preserves the active route');
+  assert.deepEqual(own.orders.map(o => [o.t, o.x, o.z]), [['move', 41, 61]], 'outer queue choice overrides the leaf choice');
+  assert.deepEqual(ownHq.rally, { x: 61, z: 61 }, 'compound click sets the owned building rally immediately');
+  assert.deepEqual(foreign.path, foreignRoute, 'compound move cannot redirect another player\'s squad');
+  assert.equal(foreign.orders.length, 0, 'compound move cannot queue another player\'s squad');
+  assert.equal(foreignHq.rally, null, 'compound rally cannot change another player\'s building');
+  command(g, 0, { t: 'orders', queue: false, commands: [
+    { t: 'amove', queue: true, orders: [[own.id, 61, 41]] },
+    { t: 'rally', id: ownHq.id, x: 71, z: 71 },
+  ] });
+  assert.equal(own.orders.length, 0, 'ordinary compound move replaces waiting orders despite the leaf queue flag');
+  assert.deepEqual(own.amove, { x: 61, z: 41 }, 'ordinary compound attack-move starts immediately');
+  assert.deepEqual(ownHq.rally, { x: 71, z: 71 }, 'ordinary compound click updates its building rally');
+}
+
+// Queued house entry completes before a move exits, while an ordinary exit replaces waiting orders.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(9) + 'BB' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = 1000;
+  const u = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 17]] });
+  command(g, 0, { t: 'garrison', ids: [u.id], x: 19, z: 21, queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 31, 31]], queue: true });
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id), [u.id, 2, 9, 19, 21, 1, 31, 31], 'snapshot retains the house entry before its exit move');
+  let passedMove = false;
+  for (let i = 0; i < 20 * 12 && u.garrison < 0; i++) {
+    step(g);
+    if (Math.hypot(u.x - 5, u.z - 17) < 1) passedMove = true;
+  }
+  assert.ok(passedMove && u.garrison >= 0, 'squad visits the first waypoint and enters the queued house');
+  assert.equal(u.orders.length, 1, 'exit move waits until house entry is complete');
+  run(g, 6);
+  assert.equal(u.garrison, -1, 'queued move exits the house');
+  assert.ok(Math.hypot(u.x - 31, u.z - 31) < 1, 'queued exit move reaches its destination');
+  command(g, 0, { t: 'garrison', ids: [u.id], x: 19, z: 21 });
+  run(g, 8);
+  assert.ok(u.garrison >= 0, 'squad is back inside before an ordinary exit');
+  command(g, 0, { t: 'move', orders: [[u.id, 31, 5]], queue: true });
+  command(g, 0, { t: 'amove', orders: [[u.id, 35, 5]], queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 31]] });
+  assert.equal(u.garrison, -1, 'ordinary move exits immediately');
+  assert.equal(u.orders.length, 0, 'ordinary exit clears waiting orders');
+  run(g, 6);
+  assert.ok(Math.hypot(u.x - 5, u.z - 31) < 1, 'ordinary exit reaches its replacement destination');
+}
+
+// A full Engineer order queue cannot leave a paid Construction Site without assigned work.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }], points: [{ x: 40, y: 40 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  g.players[0].mp = 5000; eng.x = eng.z = 71;
+  run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[eng.id, 71, 101]] });
+  for (let i = 0; i < 8; i++) command(g, 0, { t: 'move', orders: [[eng.id, 73 + i * 2, 101]], queue: true });
+  assert.equal(eng.orders.length, 8, 'Engineer queue is full before construction');
+  const mp = g.players[0].mp, count = g.units.size, nextId = g.nextId, terrain = g.chars.join('');
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 91, z: 83, queue: true });
+  assert.equal(g.players[0].mp, mp, 'rejected queued construction spends no MP');
+  assert.equal(g.units.size, count, 'rejected queued construction places no site');
+  assert.equal(g.nextId, nextId, 'rejected queued construction creates no discarded building');
+  assert.equal(g.chars.join(''), terrain, 'rejected queued construction stamps no terrain');
+  assert.equal(eng.orders.length, 8, 'rejected construction preserves accepted waiting orders');
+  // The same placement must work once the Engineer has queue space.
+  command(g, 0, { t: 'stop', ids: [eng.id] });
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 91, z: 83, queue: true });
+  const site = [...g.units.values()].at(-1);
+  assert.ok(site.type === 'barracks' && site.built === 0, 'the rejected site position was valid');
+  assert.equal(g.players[0].mp, mp - UNITS.barracks.cost, 'accepted construction pays exactly once');
+  assert.equal(eng.orders[0].id, site.id, 'accepted site has an assigned queued Engineer');
+}
+// Battlefield readability: contested points obey team vision, and bunker totals never shrink.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['blue', 'red', 'observer'], false, [0, 1, 2], [0, 1, 2]);
+  g.units.clear();
+  g.players.forEach(p => { p.mp = 1000; p.spawn = { x: -1000, z: -1000 }; });
+  const point = g.points[0];
+  const infantry = (owner, x, z) => {
+    command(g, owner, { t: 'buy', unit: 'rifle' });
+    const u = [...g.units.values()].at(-1);
+    Object.assign(u, { x, z, cooldown: 1000 });
+    return u;
+  };
+  const blue = infantry(0, point.x - 1, point.z), red = infantry(1, point.x + 1, point.z);
+  step(g);
+  assert.equal(point.contested, true, 'two opposing teams contest a point');
+  assert.deepEqual(new Set(point.onPoint), new Set([blue.id, red.id]), 'the point remembers only its on-point infantry');
+  assert.equal(point.progress, 0, 'contested capture makes no progress');
+  assert.equal(snapshotFor(g, 0, []).points[0][3], 1, 'a team seeing both sides receives the contest');
+  assert.equal(snapshotFor(g, 2, []).points[0][3], 0, 'a team with no vision of the point receives zero');
+  g.players[0].visible.delete(red.id);
+  assert.equal(snapshotFor(g, 0, []).points[0][3], 0, 'own infantry do not expose a hidden contesting enemy');
+  g.players[2].visible.add(red.id);
+  assert.equal(snapshotFor(g, 2, []).points[0][3], 0, 'seeing just one contesting team does not expose the other');
+  g.players[2].visible.add(blue.id);
+  assert.equal(snapshotFor(g, 2, []).points[0][3], 1, 'a third team seeing both sides can read the contest');
+  red.x += CFG.pointRadius * 3;
+  step(g);
+  assert.equal(point.contested, false, 'the contest clears when one team leaves');
+  assert.equal(snapshotFor(g, 0, []).points[0][3], 0, 'cleared contest is sent as zero');
+  assert.ok(point.progress > 0, 'the remaining team resumes capture');
+  blue.x += CFG.pointRadius * 3;
+  step(g);
+  assert.equal(point.contested, false, 'an empty point stays uncontested');
+  assert.deepEqual(point.onPoint, [], 'an empty point keeps no stale infantry ids');
+
+  const assault = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 1, 1, 0], [0, 1, 2, 0], { mode: 'assault', defenderTeam: 1 });
+  const structures = [...assault.units.values()].filter(u => UNITS[u.type].structure);
+  assert.equal(assault.mode.total, structures.length, 'Assault records the starting structure count');
+  assert.equal(assault.mode.total, 2, 'each defender contributes one starting structure');
+  assert.equal(snapshotFor(assault, 0, []).mode.total, 2, 'the Assault snapshot includes its starting total');
+  structures[0].hp = 0; step(assault);
+  assert.equal(snapshotFor(assault, 0, []).mode.total, 2, 'losing a structure leaves the Assault denominator fixed');
+
+  const annihilation = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 2, 2], [0, 1, 2, 0], { mode: 'annihilation' });
+  const bunkers = [...annihilation.units.values()].filter(u => u.type === 'bunker');
+  const counts = [0, 0, 0];
+  for (const u of bunkers) counts[annihilation.players[u.owner].team]++;
+  assert.deepEqual(annihilation.mode.bunkers, counts, 'Annihilation counts starting bunkers by team id');
+  assert.deepEqual(snapshotFor(annihilation, 2, []).mode.bunkers, [2, 0, 2], 'all teams receive the static initial counts');
+  bunkers[0].hp = 0; step(annihilation);
+  assert.deepEqual(snapshotFor(annihilation, 2, []).mode.bunkers, [2, 0, 2], 'losing a bunker leaves the Annihilation denominators fixed');
+}
+// Unit models (client/unit-models.js): merged parts keep their shape and facing, every unit builds with each
+// soldier as one draw, postures blend and keep the weapon above ground, and corpses stay under the cap.
+{
+  const THREE = await import('three');
+  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies } = await import('./client/unit-models.js');
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
+  assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
+  merged.computeBoundingBox();
+  assert.deepEqual([merged.boundingBox.min.toArray(), merged.boundingBox.max.toArray()], [[-2.5, -1, -0.5], [2.5, 1, 0.5]], 'merge bakes each part\'s transform');
+  const P = merged.attributes.position, N = merged.attributes.normal, I = merged.index, t = [0, 1, 2].map(() => new THREE.Vector3()), n = new THREE.Vector3();
+  for (let i = 0; i < I.count; i += 3) {
+    t.forEach((p, k) => p.fromBufferAttribute(P, I.getX(i + k)));
+    const face = new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0]));
+    assert.ok(face.dot(n.fromBufferAttribute(N, I.getX(i))) > 0, `triangle ${i / 3} faces outward, also on the mirrored part`);
+  }
+  const mat = new THREE.MeshLambertMaterial(), bags = [0, 1, 2].map((i) => { const m = new THREE.Mesh(box, mat); m.position.x = i * 3; m.castShadow = true; return m; });
+  const one = mergeMeshes(bags);
+  assert.ok(one.material === mat && one.castShadow && one.geometry.index.count === 3 * box.index.count, 'scenery merges into one shadow-casting mesh');
+
+  const look = { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 };
+  for (const [type, def] of Object.entries(UNITS)) for (const fac of [0, 1, 2]) {
+    if (def.air || type === 'airfield') continue; // client/aircraft.js builds the planes and the airfield
+    const root = new THREE.Group(), v = { type, root, models: [], turret: null };
+    buildModel(v, root, look, fac, def);
+    assert.ok(v.models.length, `${type}: has a model`);
+    if (v.squad) {
+      assert.equal(v.models.length, def.models, `${type}: one soldier per model`);
+      for (const man of v.models) {
+        const { hi, lo } = man.userData;
+        assert.ok(hi.length === 1 && lo.length === 1, `${type}: a soldier is one draw near and far`);
+        assert.ok(![...hi, ...lo].some((m) => m.castShadow), `${type}: soldiers cast no shadow`);
+      }
+    } else {
+      let draws = 0;
+      root.traverse((o) => { if (o.isMesh) { draws++; assert.ok(o.castShadow, `${type}: vehicles and structures cast shadows`); } });
+      assert.ok(draws >= 1 && draws <= 3, `${type}: ${draws} draws`);
+    }
+  }
+
+  assert.deepEqual([49, POSTURE.crouch, 89, POSTURE.prone].map((s) => postureOf(s, 0)), [0, 1, 1, 2], 'stand, crouch at 50, prone at 90');
+  assert.equal(postureOf(100, 1), 3, 'retreating squads lean even when pinned');
+  assert.equal(postureOf(100, 0, 2), 1, 'pinned in a trench: crouch, not out of sight');
+  const root = new THREE.Group(), v = { type: 'rifle', root, models: [], x: 0, z: 0, supp: 95, flags: 0, cover: 0 }, eye = new THREE.Vector3(0, 30, 30);
+  buildModel(v, root, look, 0, UNITS.rifle);
+  animate(v, POSTURE.blend / 2, eye);
+  assert.ok(Math.abs(v.squad.w[2] - 0.5) < 0.01, 'halfway to prone after half the blend time');
+  animate(v, POSTURE.blend / 2 + 0.01, eye);
+  assert.equal(v.squad.w[2], 1, 'prone after the blend time');
+  const man = v.models[0];
+  man.updateMatrixWorld(true);
+  const muzzle = new THREE.Vector3(0.72, 1.1, 0.2).applyMatrix4(man.matrixWorld); // client/fx.js HAND.rifle
+  assert.ok(man.userData.pose.rotation.z < -1.3 && muzzle.y > 0.3 && muzzle.y < 1, `lying down, weapon just above ground (${muzzle.y.toFixed(2)})`);
+  animate(v, 0.016, new THREE.Vector3(0, 0, LOD.high + 10));
+  assert.ok(v.squad.far && !man.userData.hi[0].visible && man.userData.lo[0].visible, 'far model beyond the LOD distance');
+
+  const bodies = createBodies(), scene = new THREE.Scene(), world = new THREE.Group();
+  scene.add(world);
+  let most = 0;
+  for (let i = 0; i < 600; i++) { bodies.add(world, i % 50, 0.3, i / 50); bodies.update(0.02); most = Math.max(most, bodies.count); }
+  assert.ok(most <= CORPSES.cap && most > CORPSES.cap - 20, `corpses stay at or under the cap (${most})`);
+  assert.equal(world.children.find((o) => o.isInstancedMesh).count, bodies.count, 'one instanced mesh draws them all');
+  for (let s = 0; s < CORPSES.life + CORPSES.fade + 1; s += 0.5) bodies.update(0.5);
+  assert.equal(bodies.count, 0, 'old bodies fade out and leave');
+  bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
+  assert.equal(bodies.count, 0, 'a finished match empties the pool');
+}
+// Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
+{
+  let seed = 0x519ac;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
+  const units = new Map();
+  for (let i = 0; i < 300; i++) units.set(1000 - i, { id: 1000 - i, owner: i % 3, x: i < 10 ? 16 : random() * 256 - 64, z: i < 10 ? 32 : random() * 256 - 64 });
+  units.set(0, { id: 0, owner: 2, x: 15, z: 32 });
+  units.set(1, { id: 1, owner: 2, x: 17, z: 32 });
+  const grid = new SpatialGrid(units), brute = (at, r) => [...units.values()].filter(u => Math.hypot(u.x - at.x, u.z - at.z) <= r);
+  for (let i = 0; i < 200; i++) {
+    const at = i % 5 ? { x: random() * 256 - 64, z: random() * 256 - 64 } : { x: 16, z: 32 }, r = i % 5 ? random() * 60 : 1;
+    assert.deepEqual(grid.radius(at, r), brute(at, r), 'radius query matches Map iteration');
+    const match = u => u.owner === i % 3;
+    const expected = brute(at, r).filter(match).sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z))[0] ?? null;
+    assert.equal(grid.nearest(at, r, match), expected, 'nearest query keeps the first exact tie');
+  }
+  const moved = units.get(1000); moved.x = 112; moved.z = -32; grid.update(moved);
+  units.delete(999);
+  const added = { id: 4000, owner: 0, x: 112, z: -32 }; units.set(added.id, added); grid.update(added);
+  assert.deepEqual(grid.radius(moved, 0), brute(moved, 0), 'live updates include teleports and additions, and exclude removals');
+  assert.deepEqual(grid.ownedBy(0), [...units.values()].filter(u => u.owner === 0), 'owner grouping keeps insertion order after movement');
+
+  const g = fresh(); g.players.forEach(p => { p.mp = 1000; });
+  const shooter = put(g, 0, 'rifle', 20, 20), first = put(g, 1, 'rifle', 16, 20);
+  put(g, 1, 'rifle', 24, 20); step(g);
+  assert.equal(shooter.targetId, first.id, 'pickTarget keeps the first equal-score target');
+}
+
+// Live separation must discover later pairs brought into range by an earlier push.
+{
+  const g = fresh(empty, 1); g.players[0].mp = 100000; g.army = { pop: 100, income: 1 };
+  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2);
+  const expected = [...g.units.values()].map(u => ({ ...u }));
+  for (let i = 0; i < expected.length; i++) for (let j = i + 1; j < expected.length; j++) {
+    const a = expected[i], b = expected[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
+    const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+    if (d >= min || d === 0) continue;
+    const push = (min - d) / 2 * 0.5, px = dx / d * push, pz = dz / d * push;
+    a.x -= px; a.z -= pz; b.x += px; b.z += pz;
+  }
+  step(g);
+  assert.deepEqual([...g.units.values()].map(u => [u.x, u.z]), expected.map(u => [u.x, u.z]), 'dense separation preserves exact arithmetic and pair order');
+}
+
+// The server's shared snapshot cache gives every player the same wire snapshot as an uncached build. Massive 6-player
+// Classic and Conquest run through the real tick loop (serverHarness: a host and five AIs); the round 3 fields (queued
+// orders, rally, contested points, the fog lift at the end, Assault and Annihilation totals) are checked too.
+{
+  const originalRandom = Math.random;
+  const h = await serverHarness();
+  const { finish } = await import('./shared/sim.js');
+  const wire = value => JSON.parse(JSON.stringify(value));
+  const same = (g, label) => {
+    const shots = g.shots, cells = g.newCells, cache = snapshotCache(g), saved = JSON.stringify(cache.units), out = [];
+    for (let slot = 0; slot < g.players.length; slot++) {
+      // terrain is each player's own memory (terrainFor, outside the cache): the first build takes the pending cells
+      const cached = wire(snapshotFor(g, slot, shots, cells, cache)), plain = wire(snapshotFor(g, slot, shots, cells));
+      assert.deepEqual({ ...cached, cells: undefined }, { ...plain, cells: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
+      out.push(cached);
+    }
+    assert.equal(JSON.stringify(cache.units), saved, 'player filtering never mutates shared unit rows');
+    return out;
+  };
+  try {
+    let seed = 4916;
+    Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
+    for (const mode of ['classic', 'conquest']) {
+      const code = 'snap' + mode, host = await h.connect(code, { token: code, name: 'host' }), room = h.rooms.get(code);
+      for (let i = 1; i < 6; i++) await host.send({ t: 'addAi' });
+      for (const [slot, team] of [0, 0, 1, 1, 2, 2].entries()) await host.send({ t: 'team', slot, v: team });
+      for (const [slot, faction] of [0, 1, 2, 0, 1, 2].entries()) await host.send({ t: 'faction', slot, v: faction });
+      await host.send({ t: 'map', name: 'king-of-the-hill' }); await host.send({ t: 'mode', v: mode }); await host.send({ t: 'army', v: 'massive' });
+      await host.send({ t: 'start' }); await host.wait('start');
+      const g = room.game;
+      for (let tick = 0; tick < 1800 && g.winner === null; tick++) {
+        await h.tick();
+        if (tick >= 1600 && tick % 2) same(g, mode);
+      }
+      assert.ok(h.snapshots(host).length > 500, `${mode}: the host gets the cached snapshots`);
+      if (mode === 'classic') assert.ok([...g.units.values()].some(u => UNITS[u.type].building), 'Classic snapshots include building rows');
+      const own = [...g.units.values()].find(u => u.owner === 0 && !UNITS[u.type].structure), before = snapshotFor(g, 0, []);
+      own.x += 0.2; own.hp -= 1;
+      assert.notDeepEqual(snapshotFor(g, 0, []), before, 'uncached snapshots see changes within the same tick');
+      if (mode === 'classic') { await h.clear(code); continue; }
+
+      // queued orders and the rally point, sent over the socket like the client does
+      const point = g.points[0], home = g.players[0].spawn, foot = [...g.units.values()].find(u => u.owner === 0 && UNITS[u.type].infantry && u.hp > 0);
+      await host.send({ t: 'move', orders: [[foot.id, home.x, home.z]] });
+      await host.send({ t: 'move', queue: true, orders: [[foot.id, point.x, point.z]] });
+      await host.send({ t: 'rally', x: home.x, z: home.z });
+      let rows = same(g, 'orders and rally');
+      assert.ok(rows[0].orders.some(o => o[0] === foot.id), 'the cache carries queued orders');
+      assert.deepEqual(rows[0].rally, [Math.round(home.x * 10) / 10, Math.round(home.z * 10) / 10], 'the cache keeps the rally point');
+      assert.ok(rows.slice(1).every(r => !r.orders.some(o => o[0] === foot.id)), 'nobody else sees those orders');
+      // a contested point, read only by a player who sees both teams on it
+      const foe = [...g.units.values()].find(u => g.players[u.owner].team !== g.players[0].team && UNITS[u.type].infantry && u.hp > 0);
+      Object.assign(point, { contested: true, onPoint: [foot.id, foe.id] });
+      g.players[0].visible.add(foe.id);
+      rows = same(g, 'contested');
+      assert.equal(rows[0].points[0][3], 1, 'the cache keeps the contest for a player who sees it');
+      g.players[0].visible.delete(foe.id);
+      assert.equal(same(g, 'contested, hidden')[0].points[0][3], 0, 'a hidden contest stays hidden with the cache');
+      // the decisive moment lifts the fog; the hold sends cached snapshots too
+      finish(g, 1, 'vp', { x: point.x, z: point.z });
+      rows = same(g, 'reveal');
+      assert.ok(rows[0].units.some(u => g.players[u[2]].team !== g.players[0].team && !g.players[0].visible.has(u[0])), 'the fog lift shows hidden enemies');
+      const after = h.snapshots(host).length;
+      await h.tick(4);
+      assert.ok(h.snapshots(host).slice(after).some(s => s.end?.reason === 'vp'), 'the hold keeps sending snapshots');
+      await h.clear(code);
+    }
+  } finally { Math.random = originalRandom; await h.close(); }
+  // starting totals ride the cache too
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  for (const mode of ['assault', 'annihilation']) {
+    const g = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 1, 1], [0, 1, 2, 0], mode === 'assault' ? { mode, defenderTeam: 1 } : { mode }), rows = same(g, mode);
+    if (mode === 'assault') assert.ok(rows[0].mode.total > 0 && rows[0].mode.total === g.mode.total, 'Assault total in the cached snapshot');
+    else assert.ok(rows[0].mode.bunkers.some(n => n > 0) && rows[0].mode.bunkers.join() === g.mode.bunkers.join(), 'Annihilation bunkers in the cached snapshot');
+  }
+}
+// Paths preserve directed cliff edges and reject separated regions without expanding A* nodes.
+{
+  const rows = empty.map(row => row.slice(0, 10) + 'B' + row.slice(11)), g = fresh(rows);
+  const before = g.pathStats?.expansions ?? 0;
+  assert.deepEqual(findPath(g, { x: 5, z: 5 }, { x: 35, z: 5 }), [], 'sealed wall has no route');
+  assert.equal(g.pathStats.expansions, before, 'different regions reject before A* expansion');
+  assert.ok(g.pathStats.regionRejected > 0);
+  assert.ok(findPath(g, { x: 21, z: 5 }, { x: 35, z: 5 }).length, 'blocked starts retain the original escape search');
+  const failed = g.pathStats.failed;
+  assert.deepEqual(findPath(g, { x: 5, z: 5 }, { x: 5, z: 5 }), [], 'a goal in the start cell needs no waypoints');
+  assert.equal(g.pathStats.failed, failed, 'a goal in the start cell does not count as a failed path');
+  const directed = createGame({ w: 2, h: 2, rows: ['..', '..'], heights: ['02', '21'], spawns: [{ x: 0, y: 0 }], points: [] }, ['a'], false);
+  assert.ok(findPath(directed, { x: 3, z: 3 }, { x: 1, z: 1 }).length, 'descending diagonal checks corners from its own level');
+  assert.deepEqual(findPath(directed, { x: 1, z: 1 }, { x: 3, z: 3 }), [], 'reverse direction has no legal cliff edge');
+}
+
+// Digging changes the vehicle movement mask; destroying the traps opens its region again.
+{
+  const rows = empty.map((row, y) => y === 10 ? row : row.slice(0, 10) + 'W' + row.slice(11)), g = fresh(rows);
+  g.players[0].mp = 5000;
+  const crew = put(g, 0, 'rifle', 19, 21), from = { x: 5, z: 21, type: 'tank' }, to = { x: 35, z: 21 };
+  assert.ok(findPath(g, from, to).length, 'vehicles cross the open gap');
+  const version = g.terrainVersion ?? 0;
+  command(g, 0, { t: 'dig', ids: [crew.id], kind: 'traps', x: 21, z: 21, dir: Math.PI / 2 });
+  run(g, CFG.digTime + 0.1);
+  assert.equal(g.chars[10 * g.w + 10], 'Y', 'digging closes the gap to vehicles');
+  assert.ok(g.terrainVersion > version, 'digging invalidates region labels');
+  const expansions = g.pathStats.expansions;
+  assert.deepEqual(findPath(g, from, to), [], 'new traps separate vehicle regions');
+  assert.deepEqual(findPath(g, from, { x: 21, z: 21 }), [], 'a trap cell itself is an unreachable vehicle goal');
+  assert.equal(g.pathStats.expansions, expansions, 'vehicle region rejection does not expand A*');
+  assert.ok(findPath(g, { ...from, type: 'rifle' }, to).length, 'infantry still cross tank traps');
+  g.nades.push({ x: 21, z: 21, t: 0, owner: 0, ab: { radius: 1, inf: 0, veh: 0, supp: 0, terrain: 1000 } });
+  step(g);
+  assert.equal(g.chars[10 * g.w + 10], '.', 'the normal blast collapses the traps');
+  assert.ok(findPath(g, from, to).length, 'collapse restores vehicle connectivity');
+}
+
+// Classic footprint placement and collapse invalidate labels that were already queried.
+{
+  const w = 40, h = 22, rows = Array.from({ length: h }, (_, y) => '.'.repeat(20) + (y >= 8 && y <= 10 ? '.' : 'W') + '.'.repeat(19));
+  const g = createGame({ w, h, rows, spawns: [{ x: 2, y: 2 }, { x: 37, y: 19 }], points: [] }, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  g.nodes = []; g.players[0].mp = 5000;
+  const crew = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  crew.x = 37; crew.z = 19;
+  const from = { x: 5, z: 19 }, to = { x: 75, z: 19 };
+  assert.ok(findPath(g, from, to).length, 'corridor begins open');
+  step(g);
+  command(g, 0, { t: 'build', ids: [crew.id], kind: 'barracks', x: 41, z: 19 });
+  const site = [...g.units.values()].find(u => u.type === 'barracks');
+  assert.ok(site, 'a building site is stamped in the corridor');
+  assert.deepEqual(findPath(g, from, to), [], 'footprint closes the only corridor');
+  command(g, 0, { t: 'stop', ids: [crew.id] });
+  site.hp = 0; step(g);
+  assert.ok(site.cells.every(c => g.chars[c] === 'R'), 'normal destruction changes the footprint to rubble');
+  assert.ok(findPath(g, from, to).length, 'collapsed footprint reopens the corridor');
+}
+
+// A blast that lowers a cliff makes a previously unreachable region walkable.
+{
+  const map = blank(empty); map.heights = empty.map(() => '0'.repeat(10) + '2' + '0'.repeat(9));
+  const g = createGame(map, ['a', 'b'], false); g.units.clear(); g.players[0].mp = 1000;
+  const from = { x: 5, z: 21 }, to = { x: 35, z: 21 };
+  assert.deepEqual(findPath(g, from, to), [], 'two-level cliff separates the map');
+  command(g, 0, { t: 'support', kind: 'dive', x: 21, z: 21 });
+  run(g, SUPPORT.dive.delay + 0.1);
+  assert.equal(g.height[10 * g.w + 10], 1, 'blast lowers the cliff by one level');
+  assert.ok(findPath(g, from, to).length, 'height changes invalidate weak regions');
+}
+
+// A small path budget serves older requests before repeated requests from earlier unit ids.
+{
+  const g = fresh(); g.players[0].mp = 5000; g.pathBudget = 1;
+  const units = [5, 12, 19, 26].map(z => put(g, 0, 'rifle', 5, z));
+  for (const u of units) { u.path = []; u.repath = 0; u.amove = { x: 35, z: u.z }; }
+  step(g);
+  assert.ok(units[0].path.length, 'first request fits the budget');
+  assert.ok(units.slice(1).every(u => !u.path.length), 'overflow waits');
+  assert.equal(g.pathStats.deferred, 3, 'each waiting requester joins once');
+  units[0].path = []; units[0].repath = 0;
+  for (let next = 1; next < units.length; next++) {
+    step(g);
+    assert.ok(units[next].path.length, `FIFO serves request ${next}`);
+    assert.equal(units[0].path.length, 0, 'new requests cannot jump the queue');
+  }
+  step(g); assert.ok(units[0].path.length, 'the repeated early unit is served after the original overflow');
+  g.pathBudget = 0;
+  command(g, 0, { t: 'move', orders: [[units[0].id, 8, 5]] });
+  assert.ok(units[0].path.length, 'human movement orders remain immediate with no step budget');
+}
+
+// Repeated failures drop the same unreachable order, and a new command gets a fresh retry count.
+{
+  const rows = empty.map(row => row.slice(0, 10) + 'B' + row.slice(11)), g = fresh(rows);
+  g.players[0].mp = 1000; g.pathRetryLimit = 3;
+  const u = put(g, 0, 'rifle', 5, 5);
+  u.amove = { x: 35, z: 5 }; u.repath = 0;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    u.repath = 0; step(g);
+    assert.equal(g.pathStats.failed, attempt, 'each retry performs one failed search');
+    assert.equal(g.pathStats.dropped, attempt === 3 ? 1 : 0, 'retry cap applies only at its limit');
+  }
+  assert.equal(u.amove, null, 'failed attack-move order is dropped');
+  const calls = g.pathStats.calls; step(g);
+  assert.equal(g.pathStats.calls, calls, 'dropped order stops searching');
+  command(g, 0, { t: 'amove', orders: [[u.id, 35, 5]] });
+  u.repath = 0; step(g);
+  assert.ok(u.amove, 'new immediate order resets its earlier failures');
+  assert.equal(g.pathStats.dropped, 1, 'fresh order gets its own retry allowance');
+}
+
+// Snapshot cadence reduces load, then recovers only after sustained spare capacity.
+{
+  const { createTickMeter, recordTick, tickStats } = await import('./tickmeter.js');
+  const meter = createTickMeter({ snapshotSize: 10 });
+  const sample = (tick) => ({ tick, step: tick / 2, think: 1, snapshot: tick / 2 - 1,
+    snapshotBuild: 2, snapshotStringify: 1, sent: true });
+  const feed = (from, to, tick) => { for (let now = from; now <= to; now += 100) recordTick(meter, sample(tick), now); };
+  assert.equal(meter.snapEvery, 2, 'rooms begin with 10 Hz snapshots');
+  feed(100, 1000, 45);
+  assert.equal(meter.snapEvery, 3, 'snapshot tick p95 above 40 ms stretches to 3 ticks');
+  feed(1100, 2000, 45);
+  assert.equal(meter.snapEvery, 4, 'continued load stretches to 4 ticks');
+  feed(2100, 3000, 12);
+  feed(3100, 12900, 12);
+  assert.equal(meter.snapEvery, 4, 'recovery waits 10 seconds below 24 ms');
+  feed(13000, 13000, 12);
+  assert.equal(meter.snapEvery, 3, 'recovery lowers cadence one step');
+  feed(13100, 22900, 12);
+  assert.equal(meter.snapEvery, 3, 'each recovery step has its own sustained wait');
+  feed(23000, 24000, 12);
+  assert.equal(meter.snapEvery, 2, 'sustained recovery restores 10 Hz');
+  assert.equal(tickStats(meter).snapshotTick.p95, 12, 'snapshot ring expires old expensive ticks');
+
+  const noisy = createTickMeter({ snapshotSize: 50 });
+  for (let now = 100; now <= 5000; now += 100) recordTick(noisy, sample(now === 4100 ? 100 : 12), now);
+  assert.equal(noisy.snapEvery, 2, 'one isolated spike does not stretch the interval');
+  assert.equal(tickStats(noisy).snapshotTick.p95, 12, 'p95 ignores an isolated outlier');
+
+  const interrupted = createTickMeter({ snapshotSize: 10 });
+  for (let now = 100; now <= 2000; now += 100) recordTick(interrupted, sample(45), now);
+  for (let now = 2100; now <= 9000; now += 100) recordTick(interrupted, sample(12), now);
+  for (let now = 9100; now <= 10000; now += 100) recordTick(interrupted, sample(30), now);
+  for (let now = 10100; now <= 20000; now += 100) recordTick(interrupted, sample(12), now);
+  assert.equal(interrupted.snapEvery, 4, 'a moderate load interrupts the recovery wait');
+  recordTick(interrupted, sample(12), 21000);
+  assert.equal(interrupted.snapEvery, 3, 'recovery starts again after interrupted low-load period');
+}
+
 console.log('all sim checks passed');
+
+// Command feedback: exact denials, partial ability success, shared placement and
+// the same per-player throttle used by the server, with a deterministic clock.
+{
+  const { placementCheck, popCap, teamSees } = await import('./shared/sim.js');
+  const g = fresh();
+  g.players[0].mp = 0;
+  assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), 'mp');
+  assert.equal(g.units.size, 0, 'denied purchase does not create a unit');
+  g.players[0].mp = 10000;
+  for (let i = 0; i < popCap(g); i++) assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined);
+  assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), 'pop');
+  g.players[0].sup.recon = 23;
+  assert.equal(command(g, 0, { t: 'support', kind: 'recon', x: 10, z: 10 }), 'cooldown');
+  g.players[1].mp = 10000;
+  assert.equal(command(g, 1, { t: 'buy', unit: 'tiger' }), undefined);
+  assert.equal(command(g, 1, { t: 'buy', unit: 'tiger' }), 'max');
+  const a = [...g.units.values()].find(u => u.owner === 0), hidden = [...g.units.values()].find(u => u.owner === 1);
+  g.players[0].visible.clear();
+  const hiddenReason = command(g, 0, { t: 'attack', ids: [a.id], target: hidden.id });
+  assert.equal(hiddenReason, 'unseen');
+  assert.equal(command(g, 0, { t: 'attack', ids: [a.id], target: 999999 }), hiddenReason, 'missing and hidden targets are indistinguishable');
+  assert.equal(a.attackId, 0, 'denied target does not change the order');
+  a.cd = 10;
+  assert.equal(command(g, 0, { t: 'ability', ids: [a.id], x: 10, z: 10 }), 'cooldown');
+  const ready = [...g.units.values()].find(u => u.owner === 0 && u !== a);
+  assert.equal(command(g, 0, { t: 'ability', ids: [a.id, ready.id], x: 10, z: 10 }), undefined, 'one ready squad accepts a mixed selection');
+  assert.deepEqual(ready.nade, { x: 10, z: 10 });
+
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const classic = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const p = classic.players[0], own = [...classic.units.values()].filter(u => u.owner === 0);
+  const eng = own.find(u => u.type === 'engineer'), hq = own.find(u => u.type === 'hq');
+  p.mp = 10000;
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'mg' }), 'needs');
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'tank' }), 'fuel');
+  assert.equal(command(classic, 0, { t: 'support', kind: 'recon', x: 10, z: 10 }), 'mun');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'motorpool', x: eng.x, z: eng.z }), 'needs');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: hq.x, z: hq.z }), 'blocked');
+  assert.equal(command(classic, 0, { t: 'build', ids: [], kind: 'barracks', x: hq.x, z: hq.z }), 'noBuilders');
+  eng.retreating = true;
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: hq.x, z: hq.z }), 'retreating');
+  eng.retreating = false;
+  hq.queue = Array(5).fill('rifle');
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'rifle' }), 'queueFull');
+  classic.mode.suddenDeath = true;
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'rifle' }), 'suddenDeath');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: eng.x, z: eng.z }), 'suddenDeath');
+
+  const ground = fresh(); ground.nodes = []; ground.height = new Int8Array(ground.w * ground.h);
+  const place = { kind: 'barracks', x: 21, z: 21 };
+  const flat = placementCheck(ground, place, () => true);
+  assert.equal(flat.ok, true, 'flat ground permits a building');
+  ground.height[flat.cells[1]] = 1;
+  assert.equal(placementCheck(ground, place, () => true).reason, 'blocked', 'a footprint across levels is rejected');
+  assert.equal(placementCheck(ground, place, () => false).reason, 'notVisible', 'sight is checked before hidden ground');
+  ground.height[flat.cells[1]] = 0;
+  assert.equal(placementCheck(ground, place, at => at.x !== 19 || at.z !== 19).ok, true, 'a visible center permits an unseen corner');
+  assert.equal(placementCheck(ground, { kind: 'trench', x: 21, z: 21, dir: 0 }, () => false).ok, true, 'a valid fort needs no sight');
+  const blockedFort = fresh(); blockedFort.chars.fill('W');
+  const trench = { kind: 'trench', x: 21, z: 21, dir: 0 };
+  assert.equal(placementCheck(blockedFort, trench, () => false).reason, 'notVisible', 'fog masks a rejected fort');
+  assert.equal(placementCheck(blockedFort, trench, () => true).reason, 'blocked', 'a visible rejected fort reports blocked');
+  ground.nodes = [{ c: 8 * ground.w + 8, x: 18, z: 18, depot: 0 }, { c: 8 * ground.w + 11, x: 24, z: 18, depot: 0 }];
+  const depotClick = { kind: 'depot', x: 21, z: 18 }, depotSees = at => at.x >= 20;
+  const hiddenFree = placementCheck(ground, depotClick, depotSees);
+  assert.equal(hiddenFree.reason, 'notVisible', 'the nearest free node needs a visible center');
+  ground.nodes[0].depot = 999;
+  const hiddenOccupied = placementCheck(ground, depotClick, depotSees);
+  assert.equal(hiddenOccupied.ok, true, 'a taken nearer node is skipped');
+  assert.equal(placementCheck(ground, { kind: 'depot', x: 19, z: 18 }, depotSees).ok, true, 'the click itself needs no sight');
+  const depotFog = fresh();
+  depotFog.nodes = [{ c: 8 * depotFog.w + 8, x: 18, z: 18, depot: 999 }, { c: 8 * depotFog.w + 17, x: 36, z: 18, depot: 0 }];
+  const takenClick = { kind: 'depot', x: 18, z: 18 }, freeClick = { kind: 'depot', x: 36, z: 18 };
+  const hiddenTaken = placementCheck(depotFog, takenClick, () => false);
+  const hiddenAvailable = placementCheck(depotFog, freeClick, () => false);
+  assert.equal(hiddenTaken.reason, 'notVisible', 'a hidden taken node does not reveal its depot');
+  assert.equal(hiddenAvailable.reason, hiddenTaken.reason, 'hidden taken and free nodes give the same denial');
+  assert.equal(placementCheck(depotFog, takenClick, () => true).reason, 'blocked', 'a visible taken node reports blocked');
+  for (const rejected of [{ kind: 'barracks', x: -10, z: -10 }, { kind: 'depot', x: 2, z: 2 }, { kind: 'barracks', x: NaN, z: Infinity }]) {
+    const result = placementCheck(ground, rejected);
+    assert.equal(result.ok, false);
+    assert.ok(Number.isFinite(result.x) && Number.isFinite(result.z), 'every invalid placement has finite preview coordinates');
+  }
+  classic.mode.suddenDeath = false;
+  const outside = { kind: 'barracks', x: classic.w * CELL - 8, z: classic.h * CELL - 8 };
+  assert.equal(placementCheck(classic, outside, at => teamSees(classic, p.team, at)).reason, 'notVisible');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], ...outside }), 'notVisible', 'server uses the same visibility check as the preview');
+
+  const fortGame = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const fortEngineer = [...fortGame.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  fortGame.players[0].mp = 10000;
+  let unseenFort = null;
+  for (let y = 2; y < fortGame.h - 2 && !unseenFort; y++) for (let x = 2; x < fortGame.w - 2; x++) {
+    const at = { kind: 'trench', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL, dir: 0 };
+    if (!teamSees(fortGame, fortGame.players[0].team, at) && placementCheck(fortGame, at, () => false).ok) { unseenFort = at; break; }
+  }
+  assert.ok(unseenFort, 'the map has an unseen valid fort site');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), undefined, 'dig accepts a valid fort in fog');
+  fortGame.chars.fill('W');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'a rejected fort in fog masks its terrain');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], kind: 'trench', x: fortEngineer.x, z: fortEngineer.z, dir: 0 }), 'blocked', 'a rejected visible fort reports blocked');
+
+  // the throttle through the shared server harness: refused orders come back as deny messages, at most four a second
+  const h = await serverHarness(), code = 'denies';
+  const ana = await h.connect(code, { token: code + 'a', name: 'Ana' }), ben = await h.connect(code, { token: code + 'b', name: 'Ben' });
+  await ana.send({ t: 'start' }); await ana.wait('start'); await ben.wait('start');
+  const live = h.game(code), denies = client => client.messages.filter(msg => msg.t === 'deny');
+  live.players[0].mp = 0; live.players[1].mp = 0;
+  h.clock.advance(100);
+  for (let i = 0; i < 20; i++) await ana.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ana).length, 4, 'at most four denials per player in one second');
+  assert.deepEqual(denies(ana)[0], { t: 'deny', cmd: 'buy', reason: 'mp' });
+  await ben.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ben).length, 1, 'another player has a separate allowance');
+  h.clock.advance(999); await ana.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ana).length, 4, 'burst allowance does not reset at a wall-clock boundary');
+  h.clock.advance(1); await ana.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ana).length, 5, 'allowance returns after one full second');
+  live.players[0].mp = 10000; await ana.send({ t: 'buy', unit: 'rifle' });
+  const mine = [...live.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  await ana.send({ t: 'stop', ids: [mine.id] });
+  assert.equal(denies(ana).length, 5, 'only a denial adds a reply');
+  await h.close();
+}
+console.log('all command feedback checks passed');
+
+// Availability uses real snapshots and prices, including queued units and completed buildings.
+{
+  const { availability, placementState, denySentence } = await import('./client/availability.js');
+  const { createFeedback, setAvailability } = await import('./client/feedback.js');
+  const { priceOf, popCap, placementCheck, teamSees } = await import('./shared/sim.js');
+  const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const p = g.players[0], eng = [...g.units.values()].find(v => v.owner === 0 && v.type === 'engineer');
+  const hq = [...g.units.values()].find(v => v.owner === 0 && v.type === 'hq');
+  const check = (action) => availability(snapshotFor(g, 0, []), CFG, { slot: 0, ids: [eng.id], ...action });
+  p.mp = 0;
+  assert.deepEqual(check({ t: 'buy', unit: 'rifle' }), { ok: false, reason: `Needs ${priceOf(g, 'rifle').mp} MP` });
+  p.mp = 10000;
+  assert.deepEqual(check({ t: 'buy', unit: 'mg' }), { ok: false, reason: 'Needs a Barracks' });
+  assert.deepEqual(check({ t: 'build', kind: 'motorpool' }), { ok: false, reason: 'Needs a Barracks' });
+  assert.deepEqual(check({ t: 'buy', unit: 'tank' }), { ok: false, reason: `Needs ${priceOf(g, 'tank').fuel} fuel` });
+  p.sup.artillery = 22.1;
+  assert.deepEqual(check({ t: 'support', kind: 'artillery' }), { ok: false, reason: 'Cooldown 23 s' });
+  p.sup.artillery = 0;
+  assert.deepEqual(check({ t: 'support', kind: 'artillery' }), { ok: false, reason: `Needs ${SUPPORT.artillery.mun} munitions` });
+  eng.retreating = true;
+  assert.equal(check({ t: 'build', kind: 'barracks' }).reason, 'That squad is retreating');
+  assert.equal(check({ t: 'dig', kind: 'trench' }).reason, 'That squad is retreating');
+  eng.retreating = false;
+  assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
+  hq.queue = Array(5).fill('rifle');
+  assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'The training queue is full');
+  hq.queue = Array(popCap(g) - [...g.units.values()].filter(v => v.owner === 0 && !UNITS[v.type].structure).length).fill('rifle');
+  assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, `Army at its limit (${popCap(g)}/${popCap(g)})`);
+  hq.queue = [];
+  g.mode.suddenDeath = true;
+  assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'Not during Sudden Death');
+  assert.equal(check({ t: 'build', kind: 'barracks' }).reason, 'Not during Sudden Death');
+  g.mode.suddenDeath = false;
+  command(g, 0, { t: 'buy', unit: 'rifle' }); run(g, UNITS.rifle.train + 1);
+  const rifle = [...g.units.values()].find(v => v.owner === 0 && v.type === 'rifle');
+  rifle.cd = 3.2; p.mun = 100;
+  assert.equal(check({ t: 'ability', unit: 'rifle', ids: [rifle.id] }).reason, 'Cooldown 4 s');
+  rifle.cd = 0; p.mun = 0;
+  assert.equal(check({ t: 'ability', unit: 'rifle', ids: [rifle.id] }).reason, 'Needs 15 munitions');
+  p.mun = 100;
+  assert.equal(check({ t: 'ability', unit: 'rifle', ids: [rifle.id] }).ok, true);
+  rifle.type = 'mortar'; p.mun = 15;
+  assert.equal(check({ t: 'ability', unit: 'mortar', ids: [rifle.id] }).ok, true, 'Mortar Barrage uses the mortar price');
+  assert.equal(check({ t: 'ability', unit: 'rocket', ids: [rifle.id] }).ok, false, 'a mortar selection is not a rocket selection');
+  rifle.type = 'rocket';
+  assert.equal(check({ t: 'ability', unit: 'rocket', ids: [rifle.id] }).reason, 'Needs 25 munitions');
+  rifle.type = 'rifle';
+
+  const snapshot = snapshotFor(g, 0, []), map = blank(empty);
+  // Terrain after initial HQ footprints is the same terrain the client receives.
+  const grid = Array.from({ length: g.h }, (_, y) => g.chars.slice(y * g.w, (y + 1) * g.w));
+  const view = placementState(snapshot, map, grid, [0, 1]);
+  const order = { kind: 'barracks', x: hq.x, z: hq.z };
+  assert.equal(placementCheck(view.game, order, at => view.sees(0, at)).reason,
+    placementCheck(g, order, at => teamSees(g, p.team, at)).reason, 'preview and server share blocked footprint and sight rules');
+
+  const oldSet = globalThis.setTimeout, oldClear = globalThis.clearTimeout;
+  const pending = new Map(); let next = 0, sounds = 0;
+  globalThis.setTimeout = (fn, ms) => { assert.equal(ms, 2000); pending.set(++next, fn); return next; };
+  globalThis.clearTimeout = (id) => pending.delete(id);
+  try {
+    const hint = { textContent: 'Click where to build' }, feedback = createFeedback(hint, () => sounds++);
+    feedback.show(denySentence('blocked'));
+    assert.equal(hint.textContent, 'That spot is blocked or uneven');
+    feedback.show(denySentence('unseen'));
+    assert.equal(pending.size, 1, 'a second denial replaces the timer');
+    assert.equal(sounds, 2, 'each denial plays the error sound');
+    [...pending.values()][0](); pending.clear();
+    assert.equal(hint.textContent, 'Click where to build', 'armed placement prompt returns after two seconds');
+    feedback.show(denySentence('notVisible')); feedback.reset(); hint.textContent = '';
+    assert.equal(pending.size, 0, 'canceling placement clears pending feedback');
+    const button = { disabled: true, title: 'Rifle Squad', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+    setAvailability(button, { ok: false, reason: 'Needs 100 MP' });
+    assert.equal(button.disabled, false, 'unavailable cards remain clickable');
+    assert.equal(button.attrs['aria-disabled'], 'true');
+    assert.equal(button.title, 'Needs 100 MP');
+    setAvailability(button, { ok: true, reason: '' });
+    assert.equal(button.title, 'Rifle Squad', 'affordable card restores its description');
+    const hovered = { ...button, title: '', _baseTip: undefined, _tooltip: 'Mortar Team', _tipActive: true };
+    setAvailability(hovered, { ok: true, reason: '' });
+    assert.equal(hovered._tooltip, 'Mortar Team', 'hover before the first availability update preserves its description');
+  } finally { globalThis.setTimeout = oldSet; globalThis.clearTimeout = oldClear; }
+}
+console.log('all availability checks passed');
+
+await stopServerHarness(); // the last server check is done

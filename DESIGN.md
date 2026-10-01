@@ -334,9 +334,52 @@ the HUD.
   draws only the ground war plus the anti-air tracers (`effects.aaFire`). Paratroop canopies stay in main.js. Crashes
   and strafing hits use `effects.explode`, and every air sound plays through `client/audio.js`.
 
+## Rooms, controls and match flow (round 3, 2026-10-01)
+- Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,
+  at most once per player per match (reset in startMatch). While paused, sim, AI and commands are off, and a filtered
+  snapshot plus the pause message go out about once a second.
+- Host and seats: the host is the first connected human, falling back to the first human. A lobby disconnect frees the
+  seat after 10 s, and offline humans lose their seats when a match returns to the lobby. Tokens are per room plus an
+  optional seat suffix, and a start with a matching matchId is a resume.
+- Fort keys are a Shift layer: T trench, Shift+Y sandbags, Shift+U wire, Shift+I traps, Shift+O nest. Plain Y/U/I/O
+  keep the Classic build and support actions. `client/keys.js` is the single binding table and test.js rejects
+  duplicate chords.
+- Team pings: Alt+click sends `{t:'ping', x, z}`. The server accepts 3 per 5 s per player, only inside the map, and
+  relays only to humans on the sender's team. No unit ids travel with it. The ring lasts 4 s.
+- Order queue: up to 8 waiting orders per unit, and a full queue is refused with 'queueFull'. A queued dig is paid when
+  it starts. Any non-queued order, stop or retreat clears the queue. 'orders' and 'rally' go only to their owner.
+- Rally outside Classic is one personal point per player set with `{t:'rally', x, z}` on a passable cell. It applies to
+  ground units bought with 'buy', and Classic keeps per-building rallies.
+- Epilogue: `finish(g, winner, reason, at)` is the only way a winner is set. It sets `g.reveal` (fog lifted for all) and
+  `endAt`. The server holds 120 ticks (6 s), stepping every other tick (half speed) with orders refused and AIs idle,
+  then returns to the lobby with the result and story.
+- Contested points are flagged per receiver: 1 only when the on-point units that player can see belong to two or more
+  teams, so the flag never reveals a hidden enemy.
+- Damage ladder: finished structures smoke at 0.66 hp or below and burn at 0.33 or below. Posture: crouch at
+  suppression 50, prone at 90 (crouch at most in a trench), and lean when retreating. LOD: simple soldier model beyond
+  110 m (80 m on Low) with 4 m hysteresis. Corpses are capped at 200 and live 25 s.
+- Adaptive snapshot interval: rooms start at every 2 ticks (10 Hz) and stretch to 3, then 4, when the snapshot-tick p95
+  over 50 samples exceeds 40 ms. They recover one step after 10 s under 24 ms. The client smooths units over the
+  measured gap (60 to 400 ms).
+- Snapshot cache: `snapshotCache(g)` is built once per send and passed as the fifth argument to `snapshotFor`. Without
+  it, `snapshotFor` reads live state. Owner orders and the mode row with Assault total and Annihilation bunkers are
+  cached. Rally, contested and the fog lift stay per player.
+- As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
+  fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
+  gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign
+  buildings, and it returns the round 3 reason strings. Cover checks use the spatial grid (`shared/grid.js`), so code
+  that moves a unit directly calls `updateGrid`. The server keeps the round 2 start guard (`room.starting`) and builds
+  snapshots only for sockets that are open (`readyState` 1).
+- As merged on the client: `client/unit-models.js` builds soldiers, vehicles, guns and structures, and
+  `client/aircraft.js` keeps the planes and the Airfield. Structure parts take the round 1 wood and sandbag textures
+  through `setSurfaces(surface)` from main.js and fall back to plain colors in Node tests. House roofs stay separate
+  meshes because `mergeMeshes` keeps one material and a roof has two. `client/fx.js` still owns every effect sound and
+  `client/battle-sound.js` exports only `battleFrame`, so there is still one Volume slider and no mute button.
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
-- Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz.
+- Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
+  ticks while a room falls behind, see round 3 above).
   Clients send commands and smooth toward the latest snapshot.
 - All command validation lives in `command()` in `shared/sim.js`.
 - Map = grid of cells (2 m). `B` building, `H` hedgerow, `#` wall, `+` crater. LOS, pathing (A*), and cover all read the grid.

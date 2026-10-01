@@ -5,6 +5,80 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Rooms, controls, match endings and performance (round 3):
+  - Keys and selection: Shift+Y, Shift+U, Shift+I and Shift+O now place sandbags, wire, tank traps and an MG nest (T
+    still digs a trench), and the fort buttons show the Shift key. Shift+click adds or removes a squad. Double-click
+    selects every squad of that type on screen, and Ctrl+double-click selects them on the whole map. Ctrl+A selects
+    the army. The selection list groups squads by type with a count and total health. Period cycles idle squads, Comma
+    cycles idle Engineers, and an Idle chip does the same. Control groups forget dead units, reset each match, add
+    units with Shift+number, and center the camera on a double tap.
+  - Camera and pings: the mouse wheel zooms toward the cursor, middle-drag rotates the view, and Shift+Space follows
+    the selected unit. The menu has Edge scroll on/off and Pan speed. A match opens with a 2.5 s glide down to your
+    HQ, which any key or click skips. Alt+click on the map or minimap pings your teammates with a chalk ring for 4 s
+    and an alert line, and Space jumps to it (3 pings per 5 s). Picking the ground under the cursor is faster and
+    exact on hills.
+  - Rooms: if a player drops mid-match, the game waits up to 30 s for them (once per player per match), and the host
+    can pause and resume. The host role passes to the next connected player. A refresh keeps your seat, camera,
+    selection and groups, and &seat=2 gives a second player a seat on the same computer. The host can remove an
+    offline player in the lobby or hand their army to an AI. An invite opened mid-match joins by itself when the match
+    ends, and the reconnect banner counts down 1, 2, 4, then 8 s. The Large and Massive army labels now show the real
+    numbers.
+  - Command feedback: orders that cannot happen now say why. Recruit cards, support calls, forts, Classic builds and
+    abilities grey out with a reason (Needs 120 MP, Cooldown 23 s, Army at its limit) and can still be clicked to show
+    it. An order the server refuses plays an error sound and shows one plain sentence for 2 s, for example 'Not enough
+    manpower'. A blocked or uneven footprint shows red and placement stays armed.
+  - Order queue and rally: hold Shift while right-clicking (or on the minimap) to chain up to 8 orders. Moves,
+    attack-moves, attacks, houses, trenches and Engineer builds run in turn and show as dashed pencil lines. A ninth
+    order is refused with the error sound. Outside Classic, the Rally button or Shift+H sets a rally point that newly
+    bought ground troops walk to. Minimap right-click now attacks, garrisons and assists like a click in the world.
+  - Match endings: when a match is decided, the action slows to half speed, the camera glides to where it was won or
+    lost, and a Victory, Defeat or Draw stamp says why. The battle stays on screen for 6 s with orders closed and the
+    fog lifted. The lobby then shows a match report: a chart of the victory point race (or points held), a legend in
+    words, and each player's kills, losses, builds, captures, manpower spent, support calls and planes downed.
+  - Battlefield readability: contested points pulse red and brass, and only when your team can see both sides on the
+    point. A captured point flips with a short flourish. Buildings smoke below two thirds health and burn below one
+    third. A strip under the scores shows the time to victory at the current rate, the catch-up bonus, the last minute
+    of an Assault and Sudden Death. Eliminated players see an 'out' banner, Assault and Annihilation totals no longer
+    shrink as structures fall, and the Classic rules list the Airfield.
+  - Unit rendering: big battles draw far fewer objects with the same look. Each soldier, hull, turret and building is
+    one draw, soldiers beyond 110 m (80 m on Low) use a simple model, scenery is merged, and corpses share one pooled
+    mesh (200 at most). Measured on the stream branch, draw calls in a Massive Classic 3v3 at 70 s fell 78 to 86% (885
+    to about 150 in the own-army view). Suppressed squads crouch at 50 and go prone at 90, retreating squads lean
+    forward, '?perf' shows an fps and draw-call box, and Low renders at 0.75 resolution.
+  - Server performance: six-player Massive matches run smoother. On the stream branch, benchmark p95 tick time fell
+    from 26.1 ms to 7.8 ms in Classic and from 8.2 ms to 3.4 ms in Conquest, with identical match results. A room that
+    still falls behind sends updates every 3 or 4 ticks instead of 2, and units still glide smoothly. The pause and
+    the end hold also use the shared snapshot cache.
+  - Merged with rounds 1 and 2: the planes and the Airfield keep their round 2 models (client/aircraft.js) while
+    soldiers, vehicles, guns and structures use the new one-draw models, and Classic buildings keep the round 1 wood
+    and sandbag textures. Explosions and battle sounds still come from the round 1 effects layer, with the one Volume
+    slider (M still mutes). The round 2 fog, command and start-race fixes and the round 3 server speedups both stay,
+    with one copy of each guard, and all server tests now run on one in-process server.
+  - Left for later:
+    - Rejoining a running Classic match (reload) draws the Conquest command tent and crates at every HQ. The server
+      sends 'start' before the async lobby() message, so classicMode() is false when buildHQ runs. This is the same in
+      base c21777f and master. See /tmp/ww2-shots/stage-r3/rejoin-high.png.
+    - After a reload mid-match, cratered ground near the HQ shows as gray-blue blocks instead of the dark scorch seen
+      in live play. The cause is not traced; the start message's cell levels and the rebuild path are unchanged from
+      the base. See /tmp/ww2-shots/stage-r3/low-home.png.
+    - An unsaved default name (SoldierNN) is re-rolled on every load, so a reload renames your seat and HQ label
+      mid-match. This predates round 3.
+    - The 'queueFull' sentence reads 'The training queue is full' but now also covers a full order queue.
+    - The client blocks arming a fort when MP is short; only a Shift-queued dig skips that check, even though queued
+      digs are paid when they start.
+    - Outside Classic, a rally message that carries building ids is ignored.
+    - The lobby result header uses r.teams[me] rather than r.you.
+    - The away flag in tickRooms and the online list in timedRoomTick still use !!p.ws, while pauseTick and holdEnding
+      use connected(p).
+    - On a resume, startGame may replay match_start or restart the ambience.
+    - From the streams: blast-area scans and server timer drift under sustained overload (sim-server-perf); greyed
+      Barracks-only units on the Classic HQ card (command-feedback); no static controls list in the menu yet
+      (keys-and-selection); saveMap may drop assaultTime and the per-spawn assault flag (plan).
+    - Fallen soldiers are plain dark bodies again (the pooled corpses, one draw for up to 200) instead of the round 1
+      soldier copies in helmet and colors; a pooled body in soldier shape and colors would bring that look back.
+    - House roofs are not merged into one draw, since a roof uses two materials (plaster gable and tiles) and
+      mergeMeshes keeps one.
+
 - Scenery, water and planes (round 2):
   - Map symbols now cover every aviation unit (fighter, ground-attack plane, mobile flak, flak emplacement, airfield)
     and all eight support calls, and an unknown unit type shows an empty frame with a "?" instead of a blank one.

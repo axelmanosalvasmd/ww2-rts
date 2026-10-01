@@ -1,0 +1,19 @@
+/* Match notices stay in the score stack, clear of the minimap and command controls. */
+#top > #match-strip, #top > #eliminated-banner {
+  max-width: calc(100vw - 660px);
+  box-sizing: border-box;
+  padding: 4px 10px;
+  color: #e6dcc0;
+  background: rgba(34, 37, 27, 0.88);
+  border-left: 2px solid #d2a849;
+  font: 400 13px/1.35 'Courier Prime', 'Courier New', monospace;
+  pointer-events: none;
+}
+#top > #match-strip {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 14px;
+}
+#match-strip > span:empty { display: none; }
+#match-strip .match-bonus { color: #d8c69a; }
+#match-strip .match-notice { flex-basis: 100%; text-align: center; color: #d2a849; }
+#top > #eliminated-banner { border-left-color: #b8322a; text-align: center; }
+#top > #match-strip[hidden], #top > #eliminated-banner[hidden] { display: none; }

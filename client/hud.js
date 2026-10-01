@@ -8,6 +8,9 @@
 import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
 import { symbolSVG } from './symbols.js';
 import { unitRole } from './unit-roles.js';
+import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
+import { availability } from './availability.js';
+import { setAvailability, installTooltips } from './feedback.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -16,11 +19,6 @@ const setHTML = (el, h) => { if (el && el._html !== h) { el._html = h; el.innerH
 const show = (el, on) => el && el.classList.toggle('hidden', !on);
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.max(0, t) % 60).padStart(2, '0')}`;
 
-// hotkeys (main.js binds the keys; these only label the buttons)
-const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N', dive: 'U', para: 'P', cover: 'I' };
-// only T digs by key: Y, U, I and O went to the air calls and air buildings, which main.js checks first
-const FORT_KEYS = { trench: 'T' };
-const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' };
 const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward',
   smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks',
   dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops a rifle squad where your side can see (counts toward pop)',
@@ -92,7 +90,7 @@ export const icon = (k) => `<svg class="ico" viewBox="0 0 32 32" aria-hidden="tr
 // ---------- the HUD ----------
 
 // ctx: state getters (me, teams, names, units, selected, PRIORITY) and helpers/actions from main.js:
-// look, facOf, color, classic, send, blip, retreat, stop, amove, dig, build, ability, support, fType, builders, owns, canPlace, select
+// look, facOf, color, classic, send, blip, retreat, stop, amove, rally, dig, build, ability, support, fType, builders, owns, canPlace, select
 export function createHud(ctx) {
   // the placement hint sits just above the Command Card, whose height changes (the Classic build card is taller
   // than the recruit row), so --card-h follows the card's real height
@@ -100,6 +98,10 @@ export function createHud(ctx) {
     const h = $('buy').offsetHeight;
     if (h) $('hud').style.setProperty('--card-h', h + 'px'); else $('hud').style.removeProperty('--card-h');
   }).observe($('buy'));
+  let snapshot = null;
+  const tooltips = installTooltips($('hud'));
+  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, ids: [...ctx.selected] });
+  const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
   const name = (t, slot = ctx.me) => ctx.look(slot).names[t] ?? UNITS[t].name;
   const pc = (i) => `var(--p${i}, ${ctx.color(i)})`;
   const selUnits = () => [...ctx.selected].map((id) => ctx.units.get(id)).filter(Boolean);
@@ -134,8 +136,8 @@ export function createHud(ctx) {
     setText($('popCount'), `${pop}/${cap} units`);
     $('popCount').classList.toggle('danger', pop >= cap);
     for (const b of $('support').children) {
-      const k = b.dataset.k, cd = s.sup?.[k] ?? 0, { cur, cost } = supCost(s, k), off = cd > 0 || !(s[cur] >= cost);
-      if (b.disabled !== off) b.disabled = off;
+      const k = b.dataset.k, cd = s.sup?.[k] ?? 0, { cur, cost } = supCost(s, k);
+      setAvailability(b, check({ t: 'support', kind: k }));
       setText(b.lastElementChild, cd > 0 ? `${cd}s` : `${cost ?? '?'} ${cur === 'mun' ? 'Mun' : 'MP'}`);
     }
   }
@@ -176,7 +178,7 @@ export function createHud(ctx) {
       } else if (kind === 'classic') {
         setText(mode, s.mode.suddenDeath ? 'Sudden death' : 'Sudden death in'); setText(clk, s.mode.suddenDeath ? '' : clock(s.mode.timeLeft));
         mode.classList.toggle('danger', !!s.mode.suddenDeath);
-        score.lead.title = s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : 'Destroy every enemy HQ, Barracks and Motor Pool';
+        score.lead.title = s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : 'Destroy every enemy HQ, Barracks, Motor Pool and Airfield';
       } else {
         setText(mode, 'Annihilation'); setText(clk, ''); score.lead.title = 'Destroy every enemy bunker. Last side standing wins';
       }
@@ -199,11 +201,11 @@ export function createHud(ctx) {
         const vp = tm.mem.reduce((a, i) => a + (s.vp?.[i] ?? 0), 0), goal = winVp(teams);
         frac = vp / goal; num = `${vp} / ${goal}`; u = 'VP';
       } else if (kind === 'assault') {
-        const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => v.type === 'bunker' && teams[v.owner] === tm.t);
+        const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => UNITS[v.type]?.structure && v.hp > 0 && teams[v.owner] === tm.t);
         role = def ? 'Defending' : 'Attacking';
-        if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), max = own.length * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; }
+        if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), total = s.mode.total ?? tm.mem.length, max = total * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Structures left'; num = `${own.length} / ${total}`; }
       } else if (kind === 'annihilation') {
-        const own = units.filter((v) => v.type === 'bunker' && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = tm.mem.length * UNITS.bunker.hpPer;
+        const own = units.filter((v) => v.type === 'bunker' && v.hp > 0 && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = (s.mode.bunkers?.[tm.t] ?? tm.mem.length) * UNITS.bunker.hpPer;
         if (own.length) { frac = hp / max; u0 = own.length > 1 ? `${own.length} bunkers` : 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; } else { u0 = 'Out'; danger = true; }
       } else if (kind === 'classic') {
         const own = units.filter((v) => v.type === 'hq' && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = own.length * UNITS.hq.hpPer;
@@ -218,7 +220,7 @@ export function createHud(ctx) {
   }
 
   // ---------- bottom left: selection list ----------
-  let selKey = '', selRows = [];
+  let selKey = null, selRows = [];
   const tagsOf = (v) => {
     const t = [];
     if (v.flags & 256) t.push(['cov', 'Hidden']);
@@ -235,39 +237,58 @@ export function createHud(ctx) {
     return t.map(([c, s]) => `<span class="tag ${c}">${s}</span>`).join('') + (v.vet ? `<span class="vet" title="Veteran: ${v.vet} star${v.vet > 1 ? 's' : ''}">${'★'.repeat(v.vet)}</span>` : '');
   };
   function drawSelection(sel) {
-    const el = $('selection'), key = sel.map((v) => v.id).join(',');
+    const el = $('selection'), byType = new Map();
+    for (const v of sel) {
+      if (!byType.has(v.type)) byType.set(v.type, []);
+      byType.get(v.type).push(v);
+    }
+    const grouped = [...byType.entries()].sort(([a], [b]) => rank(a) - rank(b));
+    const key = grouped.map(([t, us]) => `${t}:${us.length}`).join(',');
     if (key !== selKey) {
       selKey = key;
-      el.innerHTML = sel.length ? `<div class="hd"></div><div class="list">${sel.map((v) => `<div class="srow" title="${esc(unitTip(v.type, v.owner))}">` +
-        `${symbolSVG(v.type)}<span class="nm">${esc(name(v.type, v.owner))}</span><span class="ct"></span><span class="tg"></span>` +
-        `${UNITS[v.type].building ? '<span class="q"></span>' : ''}</div>`).join('')}</div>` : '';
-      selRows = [...el.querySelectorAll('.srow')].map((r, k) => ({ id: sel[k].id, ct: r.querySelector('.ct'), tg: r.querySelector('.tg'), q: r.querySelector('.q') }));
+      el.innerHTML = '<div class="hd" style="display:flex;align-items:center;gap:6px"><span data-selected style="min-width:0;overflow:hidden;text-overflow:ellipsis;flex:1"></span>' +
+        '<button data-idle style="margin-left:auto;padding:2px 6px;font-size:13px;line-height:1.1;flex:none" title="Find the next idle unit. Shift+click selects all idle units"></button></div>' +
+        `<div class="list">${grouped.map(([t, us]) => `<div class="srow" data-type="${t}" style="cursor:pointer" title="${esc(unitTip(t, us[0].owner))}. Click to keep this type; Shift+click removes it">` +
+        `${symbolSVG(t)}<span class="nm"></span><span class="ct"></span><span class="tg"><span class="hp"></span><span class="status" style="display:contents"></span></span>` +
+        `${UNITS[t].building ? '<span class="q"></span>' : ''}</div>`).join('')}</div>`;
+      el.querySelector('[data-idle]').onclick = (e) => { ctx.findIdle(e.shiftKey); e.currentTarget.blur(); };
+      selRows = [...el.querySelectorAll('.srow')].map((r) => {
+        r.onclick = (e) => ctx.selectType(r.dataset.type, e);
+        return { type: r.dataset.type, nm: r.querySelector('.nm'), ct: r.querySelector('.ct'), hp: r.querySelector('.hp'), tags: r.querySelector('.status'), q: r.querySelector('.q') };
+      });
     }
+    const idle = ctx.idleCount(), chip = el.querySelector('[data-idle]');
+    setText(chip, `Idle ${idle}`); show(chip, idle > 0);
+    show(el, sel.length > 0 || idle > 0); show(el.querySelector('.list'), sel.length > 0);
+    setText(el.querySelector('[data-selected]'), sel.length === 1 && UNITS[sel[0].type].building ? name(sel[0].type, sel[0].owner) : sel.length ? `${sel.length} unit${sel.length > 1 ? 's' : ''} selected` : 'Selection');
     if (!sel.length) return;
-    setText(el.firstChild, sel.length === 1 && UNITS[sel[0].type].building ? name(sel[0].type, sel[0].owner) : `${sel.length} unit${sel.length > 1 ? 's' : ''} selected`);
     for (const r of selRows) {
-      const v = ctx.units.get(r.id); if (!v) continue;
-      const def = UNITS[v.type];
-      setText(r.ct, def.building || !def.infantry ? `${Math.ceil(v.hp)} hp` : `${Math.ceil(v.hp / def.hpPer)}/${def.models}`);
-      setHTML(r.tg, tagsOf(v));
-      if (r.q) setText(r.q, v.queue?.length ? `Training ${name(v.queue[0], v.owner)} ${Math.round((v.prog ?? 0) * 100)}% (${v.queue.length}/5)` : '');
+      const us = byType.get(r.type), v = us[0], def = UNITS[r.type];
+      const hp = Math.ceil(us.reduce((sum, u) => sum + u.hp, 0)), max = us.length * def.hpPer * (def.models ?? 1);
+      const tags = [...new Set(us.flatMap((u) => tagsOf(u).match(/<span\b[^>]*>.*?<\/span>/g) ?? []))];
+      setText(r.nm, name(r.type, v.owner)); setText(r.ct, `×${us.length}`);
+      setText(r.hp, `${hp}/${max} hp`); setHTML(r.tags, tags.join(''));
+      if (r.q) {
+        const training = us.filter((u) => u.queue?.length);
+        setText(r.q, training.length === 1 ? `Training ${name(training[0].queue[0], training[0].owner)} ${Math.round((training[0].prog ?? 0) * 100)}% (${training[0].queue.length}/5)` : training.length ? `${training.length} buildings training` : '');
+      }
     }
   }
 
   // ---------- bottom left: orders ----------
   let ordKey = '';
   function drawOrders(s, sel) {
-    const el = $('abil'), bld = sel.some((v) => UNITS[v.type].building);
-    // fort buttons whenever a squad that can build them is selected (Engineers too, as the T-O keys allow)
+    const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
+    // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
     const key = bld || !sel.length ? '' : `${types.join()}|${dig}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
-        orderBtn('data-a="retreat"', 'retreat', 'R', 'Retreat (R): run back to base, heal and reinforce there') +
-        orderBtn('data-a="amove"', 'amove', 'G', 'Attack-move (G, or Ctrl+right-click): move and fight anything met on the way') +
-        orderBtn('data-a="stop"', 'stop', 'X', 'Stop (X): halt where they are') +
-        (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_KEYS[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
+        orderBtn('data-a="retreat"', 'retreat', label('retreat'), `Retreat (${label('retreat')}): run back to base, heal and reinforce there`) +
+        orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
+        orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
+        (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown`, t); }).join('') +
         '</div>';
       el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
@@ -280,15 +301,15 @@ export function createHud(ctx) {
     const fType = ctx.fType();
     for (const b of el.querySelectorAll('button[data-a]')) {
       const a = b.dataset.a, val = b.lastElementChild;
-      let off = false, txt = '';
-      if (a.startsWith('fort:')) { const f = FORTS[a.slice(5)]; off = !(s.mp >= f.cost); txt = `${f.cost} MP`; }
+      let result = { ok: true, reason: '' }, txt = '';
+      if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (UNITS[a]) {
         const us = sel.filter((v) => v.type === a), ready = us.filter((v) => !v.cd).length, cd = Math.min(...us.map((v) => v.cd || 0));
-        const mun = abCost(s, UNITS[a].ab), broke = mun && !(s.mun >= mun);
-        off = !ready || !!broke; txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
-        setText(b.querySelector('kbd'), a === fType ? 'F' : '');
+        const mun = abCost(s, UNITS[a].ab);
+        result = check({ t: 'ability', unit: a }); txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
+        setText(b.querySelector('kbd'), a === fType ? label('ability') : '');
       }
-      if (b.disabled !== off) b.disabled = off;
+      setAvailability(b, result);
       setText(val, txt);
     }
   }
@@ -306,18 +327,26 @@ export function createHud(ctx) {
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
     card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
-    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.unit }); ctx.blip('recruit'); }));
+    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.unit }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
   }
   function drawRecruit(s, pop, cap) {
+    const card = $('buy');
+    if (!card.querySelector('[data-rally]')) {
+      const b = document.createElement('button');
+      b.dataset.rally = ''; b.title = `Rally (${label('rally')}): choose where new recruits gather`;
+      b.innerHTML = `Rally <kbd>${label('rally')}</kbd>`;
+      Object.assign(b.style, { position: 'absolute', right: '8px', bottom: 'calc(100% + 6px)', padding: '4px 8px', font: '13px var(--type)', background: 'var(--strip)' });
+      b.onclick = () => ctx.rally(); card.append(b);
+    }
     for (const b of $('buy').querySelectorAll('[data-unit]')) {
-      const broke = s.mp < UNITS[b.dataset.unit].cost, off = broke || pop >= cap;
-      if (b.disabled !== off) b.disabled = off;
+      const broke = s.mp < UNITS[b.dataset.unit].cost;
+      setAvailability(b, check({ t: 'buy', unit: b.dataset.unit }));
       b.classList.toggle('broke', broke);
     }
   }
   function drawClassicCard(s, pop, cap, sel) {
     const card = $('buy');
-    const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === ctx.me ? sel[0] : null, eng = !bld && ctx.builders().length > 0;
+    const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === ctx.me ? sel[0] : null, eng = !bld && sel.some((v) => v.owner === ctx.me && v.type === 'engineer');
     const key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : '';
     if (key !== cardKey) {
       cardKey = key;
@@ -336,7 +365,7 @@ export function createHud(ctx) {
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else card.innerHTML = '';
       const id = bld?.id;
-      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.train, from: id }); ctx.blip('recruit'); }));
+      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.train, from: id }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
       card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'cancel', id }); ctx.selected.clear(); ctx.blip(300); }));
       card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.build(b.dataset.build)));
     }
@@ -345,17 +374,18 @@ export function createHud(ctx) {
       const q = bld.queue ?? [], nm = (t) => name(t);
       setText(card.querySelector('[data-queue]'), q.length ? `Training ${nm(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(nm).join(', ')}` : '') : 'Idle');
       for (const b of card.querySelectorAll('[data-train]')) {
-        const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel, off = broke || pop >= cap || q.length >= 5;
-        if (b.disabled !== off) b.disabled = off;
+        const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel;
+        setAvailability(b, check({ t: 'buy', unit: b.dataset.train, from: bld.id }));
         b.classList.toggle('broke', broke);
       }
     }
     if (eng) for (const b of card.querySelectorAll('[data-build]')) {
-      const k = b.dataset.build, need = UNITS[k].needs && !ctx.owns(UNITS[k].needs), off = !ctx.canPlace(k);
-      if (b.disabled !== off) b.disabled = off;
+      const k = b.dataset.build, need = UNITS[k].needs && !ctx.owns(UNITS[k].needs);
+      const result = check({ t: 'build', kind: k });
+      setAvailability(b, result);
       b.classList.toggle('broke', !(s.mp >= UNITS[k].cost));
       const note = b.querySelector('[data-note]');
-      setText(note, need ? `Needs a ${UNITS[UNITS[k].needs].name}` : BUILD_ROLE[k] ?? '');
+      setText(note, result.ok ? BUILD_ROLE[k] ?? '' : result.reason);
       note.classList.toggle('danger', !!need);
     }
   }
@@ -379,6 +409,7 @@ export function createHud(ctx) {
   }
 
   function update(s) {
+    snapshot = s;
     const me = ctx.me, all = [...ctx.units.values()];
     const pop = all.filter((v) => v.owner === me && !UNITS[v.type].structure).length + all.reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
     const cap = popCap(s), sel = selUnits();
@@ -388,6 +419,7 @@ export function createHud(ctx) {
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);
+    tooltips.update();
   }
 
   return { buildSupport, buildCard, update };
