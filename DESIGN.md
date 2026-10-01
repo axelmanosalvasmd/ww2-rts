@@ -435,6 +435,10 @@ the HUD.
   shows), dimmed (explored) or dark (never seen). Cells fade to a new look within 0.25 s, and only the changed span of
   each texture row is uploaded (`addUpdateRange`, after the first full upload). The ground overlay, structures, props
   and the minimap read it; water darkens under the overlay. The match-end lift clears it.
+- Fog on 3D pieces (`fogShader` in `client/surfaces.js`) mixes toward the overlay's own colour (10 / 255) right after
+  `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
+  in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
+  (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
 - Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech

@@ -23,11 +23,20 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     Bocage 0 of 13588 shown ground units over 1465 snapshots stood on fog. A new server test checks each
     team's mask against a cell-by-cell vision check on the 300-unit Massive fixture, including after a hedge, smoke
     and raised ground appear in a standing unit's view.
+  - Review fix: houses, walls, hedges and props in the fog now darken like the ground. On High graphics they faded
+    toward a mid grey, so hedge rows and trees showed as pale shapes on dark ground. The fog mix ran after the colour
+    conversion, which High does in a later pass, so it used a grey meant for Low. It now mixes toward the overlay's own
+    colour before conversion, and both graphics levels match the ground.
+  - Review checks: a live reconnect on Bocage kept every explored cell and the changed-cells stream stayed in step
+    afterwards (0 of 15818 shown ground units outside the server's mask over 1274 snapshots). Replays of Classic
+    (Default, Bocage) and Annihilation (Hill 112) had 0 mismatches between the client's seen cells and the server's
+    mask, and every building footprint matched cell by cell (7340 building rows on Bocage alone). Client fog work on a
+    six-player Massive game costs 0.16 ms per snapshot and 0.009 ms per frame on average, about 3 KB of texture upload
+    a frame.
   - Left for later: terrain changes (craters, trenches) still reach every client, even in the fog. Enemy planes
     still show over fog (by design), and a camouflaged sniper can stand unseen on clear ground. The fog edge can
     trail a moving unit by up to about half a second (five vision passes a second plus the fade). In Annihilation the
-    ground under the always-visible enemy bunkers is clear. Buildings and props in the fog fade toward a lighter grey
-    than the ground. The new test adds about 3 seconds to `node test.js`.
+    ground under the always-visible enemy bunkers is clear. The new test adds about 3 seconds to `node test.js`.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a
