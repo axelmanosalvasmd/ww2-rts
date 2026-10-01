@@ -443,6 +443,49 @@ the HUD.
   draws only the ground war plus the anti-air tracers (`effects.aaFire`). Paratroop canopies stay in main.js. Crashes
   and strafing hits use `effects.explode`, and every air sound plays through `client/audio.js`.
 
+## Combat effects, realistic (2026-10-01)
+The art direction moved from the sand table to a realistic modern PC RTS (Company of Heroes 3, Men of War II, Gates of
+Hell), and nothing may look like a mobile game: no cartoon starbursts, no saturated stylized fire, no glow halos, no big
+screen shake. `client/fx.js` keeps its API and its one-draw-call design; what it draws changed.
+- Textures: one atlas, `client/textures/fx-atlas.webp` (2048 px, 8 x 8 cells of 256 px), built by
+  `tools/build-fx-atlas.mjs` from nine gpt-image-2 pictures with alpha (raw in `~/.local/share/ww2-rts/fx-raw/2026-10-01/`):
+  billowing smoke, thin wisps, a 16-frame flame, a 15-frame fireball that cools into smoke (the sheet's first frame,
+  a starburst, is dropped), dirt plumes, dust kicks, debris (soil, brick, stone, concrete, wood, scorched metal) and
+  side-view muzzle flashes, plus a drawn glow, tracer, spark and ember. Smoke, dust, dirt and debris cells store a
+  surface normal and a detail value instead of color, so the game lights them; the generator's red fringe around fire
+  is cut out. `client/textures/fx-crater.webp` is a shell crater seen from above, multiplied into the ground (2x, so
+  the rim can brighten and the burnt center darkens).
+- Light: lit particles read the scene's sun and hemisphere light (light.js and atmosphere.js keep owning them) at the
+  same Lambert scale as the world: a soft terminator, sky from above, ground bounce from below, darker low down, and a
+  bright rim on thin edges when the sun is behind the smoke. Glowing sprites shine where the picture is hot and are lit
+  like smoke where it has cooled.
+- Soft edges: every sprite fades out over half its size (a fifth for sprites standing on the ground) above the terrain
+  height under it, refreshed as it drifts. No depth texture is needed, so light.js's render path is untouched. Sprites
+  can still cut into units and walls, as before.
+- Sorting: one draw call, back to front each frame with a 4-pass radix sort of 16-bit depth and 12-bit index keys (no
+  allocation). Glowing sprites sort 1.5 m nearer so flames show through the foot of their own smoke.
+- Explosion sizes (about the blast radius in m): grenade 2, satchel 3.2, mortar bomb 2.6, rocket 3, 37 mm 1.5, 57 mm
+  2.4, 75 mm 2.6, Panzer IV gun 3, 88 mm 3.4, barrage shell 4.2, bomb 6, vehicle death 3.2 (x1.15 medium, x1.3 Tiger),
+  plane crash 3.6. Each has a brief flash, 1 to 3 fireballs, a dirt plume and clods that fall and bounce, a ring of dust,
+  smoke held back 0.1 to 0.4 s that rises and drifts for 5 to 13 s, and a crater; from 4 up a column keeps rising for
+  2 to 3 s. Mortar and rocket impacts (both `rocket` shots) are told apart by the salvo they belong to. Strafing hits
+  are spurts of dirt, not explosions.
+- Guns: a side-view flash along the barrel. MGs show a tracer every round, rifles and SMGs a faint one on about half
+  their shots, snipers on 60%. Tank and AT guns blow a ring of dust off the ground and leave gun smoke; bazookas have a
+  back-blast. A shell that hits a vehicle bursts on its near face, not inside the hull.
+- Impacts: dust kicks on the ground, brick and stone chips with pale dust on walls, sparks on armor.
+- Fire: wrecks burn with looping flipbook flames for 20 s (structures 8 s), then smolder; the smoke is black while the
+  fuel burns and browner as it smolders, and leans downwind. The spreading fire (`snapshot.fires`, which main.js now
+  passes with the cell type): grass in low flames, hedges in a wall of flame with dark smoke, houses in tall flames at
+  windows and roof. A fire that goes out leaves a burn mark (darkening only); a house leaves rubble. The smoke cloud the
+  server lights over a burning hedge or house draws as grey-black rising smoke, a smoke shell's cloud as white smoke that
+  hangs and rolls; both block sight the same.
+- Air: aircraft.js no longer has its own puff pool. Flak bursts (a flash and black puffs that hang), damage smoke, flame
+  puffs, strafing hits and crash fires go through `effects.air`, so they are lit and sorted with everything else.
+- Wind: everything drifts on `client/wind.js`, the server's wind.
+- Budget: 4096 particles on High, 1600 on Low. Low emits about half, makes smoke and dust 15% smaller (screens keep
+  their size so they still hide what they should), keeps 24 craters instead of 64 and skips flipbook frame blending.
+
 ## Rooms, controls and match flow (round 3, 2026-10-01)
 - Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,
   at most once per player per match (reset in startMatch). While paused, sim, AI and commands are off, and a filtered
@@ -713,7 +756,7 @@ the sand-table look, move the rules away from the board a little.
 - Client: `client/wind.js` holds the wind for fx.js and atmosphere.js (it was a constant in both). ground.js maps the
   state byte onto the existing material blend (mud share for wear, shelled earth for burnt and for broken road).
   structures.js lowers a damaged stone wall and drops its capstones, removes sandbag courses, and thins a hedge.
-  fx.js draws fires with the existing flame, ember and wreck smoke particles and leaves the existing scorch decal.
+  fx.js draws fires by what burns and leaves a burn mark (see Combat effects, realistic).
   atmosphere.js adds rain as a third kind of weather points (the snow system with a streak fragment) and dims the sun.
 - Balance and wear numbers: see the changelog entry.
 

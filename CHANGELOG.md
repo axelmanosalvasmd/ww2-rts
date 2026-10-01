@@ -5,6 +5,37 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Combat effects look like a modern PC war game instead of toy puffs (art direction: realistic modern RTS):
+  - Explosions are sized by weapon (grenade, mortar bomb, 75 mm shell, 88 mm, barrage shell, bomb): a brief flash,
+    a fireball that cools from yellow-white through orange into dark smoke, a plume of dirt thrown up with clods
+    raining back, dust rolling out along the ground, then a dark brown-grey smoke column that drifts downwind and fades
+    slowly, and a shell crater left in the ground. Big shells and bombs keep the column rising for a few seconds.
+  - Smoke is lit by the sun and sky like the rest of the world: brighter on its sun side, darker underneath, with a
+    bright edge when the sun is behind it. It fades out where it meets the ground instead of cutting into it, turns
+    slowly, grows as it rises and drifts on the game's wind.
+  - Smoke screens are thick white clouds that roll slowly in place and drift with the wind. The smoke over a burning
+    hedge or house is grey-black and rises. Both block sight as before.
+  - Burning wrecks have flickering flames (a flame flipbook) and a long trail of black smoke leaning downwind that
+    turns browner as the fire dies. Wrecks stay charred black.
+  - Spreading fire: grass burns in low flames, hedges in a wall of flame with dark smoke, houses in tall flames at
+    their windows and roof. Burnt ground keeps a dark burn mark.
+  - Guns: rifles, MGs and tank guns each have their own muzzle flash; MGs fire a tracer every round, rifles only a
+    faint one now and then; tank and anti-tank guns blow a ring of dust off the ground and leave gun smoke; bazookas
+    have a back-blast. Bullets kick up dirt on the ground, chip walls and spark off armor. A shell that hits a tank
+    bursts on its armor, no longer hidden inside the hull.
+  - Flak bursts are a sharp flash and a black puff that hangs; damaged planes trail lit smoke and fire, and a crashed
+    plane keeps burning. Strafing runs throw up spurts of dirt instead of small fireballs.
+  - All sprites come from one generated texture atlas (gpt-image-2 photos of smoke, fire, explosions, dirt, debris and
+    muzzle flashes, `client/textures/fx-atlas.webp`, built by `tools/build-fx-atlas.mjs`) and a crater texture.
+  - Cost: still one draw call for every particle plus one for craters (aircraft.js's separate puff pool is gone, one
+    draw call fewer when planes smoke). Particles are now sorted back to front every frame without allocating.
+    In a staged 8 s fight (3 tank duels, 4 MGs, 6 rifle squads, 12 barrage shells, 2 bombs, grenades, 3 smoke
+    clouds and a burning wreck) the effects peak at 980 particles on High (922 before) and 420 on Low, and still cost
+    2 draw calls. Measured in headless Chrome with software WebGL, so no frame times.
+  - Graphics Low emits about half the particles (cap 1600), makes smoke and dust 15% smaller, keeps 24 craters and
+    skips flipbook frame blending. The small screen shake stays small: only blasts of 3.2 m and up, a little weaker.
+  - Left for later: sprites can still cut into units and walls (they only fade against the ground); the fx.js support
+    planes (an older pool, not used since aircraft.js draws the planes) are still in the file.
 - Fog of war now shows exactly what your team sees:
   - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
     (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn

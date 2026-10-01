@@ -554,7 +554,8 @@ function marker(x, z, color) {
 // planes, airfields, flak bursts and shoot-downs (client/aircraft.js)
 // effects is made further down; explode and play only run once a match is on
 const aviation = createAviation({ hAt, UNITS, SUPPORT, units, altitude: AIR_ALT, world: () => world, facOf, colorOf: (slot) => look(slot).color, vehicleOf: (slot) => look(slot).vehicle, me: () => me,
-  explode: (x, z, size, opts) => effects.explode(x, z, size, opts), play: (name, x, z, opts) => audio.play(name, { x, z }, opts), flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
+  explode: (x, z, size, opts) => effects.explode(x, z, size, opts), air: (kind, x, y, z, k) => effects.air(kind, x, y, z, k),
+  play: (name, x, z, opts) => audio.play(name, { x, z }, opts), flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
 // shots aircraft.js draws instead of fx.js; a support plane's value is the engine sound it comes in with
 const SUPPORT_PLANES = { strafe: 'plane_flyby', recon: 'plane_flyby', dive: 'plane_flyby', bombing: 'bomber', para: 'bomber' };
 // ('flak' with a target or a hit flag is a flak gun firing at the ground, which stays with fx.js)
@@ -615,7 +616,8 @@ function applySnapshot(s) {
   // planes' strike warnings are left out so nothing is drawn twice
   // the wind first: it carries this snapshot's smoke, dust and flames
   if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setWeather(s.wx[0], s.wx[1]); showWeather(s.wx[0], s.wx[1]); }
-  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL]);
+  // each burning cell as [x, z, what burns]: grass '.', hedge 'H' or house 'B' (client/fx.js draws each its own way)
+  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL, terrain.grid[Math.floor(c / terrain.w)]?.[c % terrain.w]]);
   effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);

@@ -8,7 +8,7 @@
 // The faction paint and insignia are small flat shapes baked into the same mesh; the owner's colour is on the spinner,
 // the wing tips and the top of the tail, so you can tell whose plane it is from above.
 //
-// Smoke and flak bursts are puffs from one pooled InstancedMesh (one draw call, a fixed number of puffs). Everything
+// Smoke, fire and flak bursts are drawn by client/fx.js through ctx.air, with the rest of the battle's effects. Everything
 // here only draws: the simulation decides what happens, and the shots it sends say when.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
@@ -374,88 +374,13 @@ export function createAviation(ctx) {
     return mesh;
   }
   const hideBomb = (mesh) => { if (mesh) { mesh.visible = false; mesh.userData.busy = false; } };
-  let puffs = null;
-
-  // ----- pooled smoke -----
-  // Soft lumpy sprites (one canvas texture, tinted per puff) that always face the camera, drawn as one InstancedMesh.
-  // Per puff the shader gets an alpha and a turn angle; the matrix carries position and size.
-  const CAP = 220;
-  function puffTexture() {
-    if (typeof document === 'undefined') return null;
-    const S = 64, cv = document.createElement('canvas'); cv.width = cv.height = S;
-    const c = cv.getContext('2d');
-    for (const [x, y, r, a] of [[0.5, 0.5, 0.42, 0.85], [0.36, 0.42, 0.26, 0.6], [0.64, 0.4, 0.27, 0.6], [0.44, 0.66, 0.26, 0.55], [0.67, 0.64, 0.24, 0.55]]) {
-      const g = c.createRadialGradient(x * S, y * S, 0, x * S, y * S, r * S);
-      g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(0.55, `rgba(255,255,255,${a * 0.55})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-      c.fillStyle = g; c.fillRect(0, 0, S, S);
-    }
-    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }
-  function makePuffs() {
-    const geo = new THREE.PlaneGeometry(2, 2);
-    const alpha = new THREE.InstancedBufferAttribute(new Float32Array(CAP).fill(1), 1), turn = new THREE.InstancedBufferAttribute(new Float32Array(CAP), 1);
-    alpha.setUsage(THREE.DynamicDrawUsage); turn.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('aAlpha', alpha); geo.setAttribute('aTurn', turn);
-    const mat = new THREE.MeshBasicMaterial({ map: puffTexture(), transparent: true, depthWrite: false });
-    mat.onBeforeCompile = (sh) => {
-      sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float aAlpha;\nattribute float aTurn;\nvarying float vAlpha;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlpha = aAlpha;')
-        .replace('#include <project_vertex>', `vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-float bs = length(instanceMatrix[0].xyz), bc = cos(aTurn), bn = sin(aTurn);
-mvPosition.xy += vec2(position.x * bc - position.y * bn, position.x * bn + position.y * bc) * bs;
-gl_Position = projectionMatrix * mvPosition;`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAlpha;').replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vAlpha;');
-    };
-    const mesh = new THREE.InstancedMesh(geo, mat, CAP);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.setColorAt(0, new THREE.Color(1, 1, 1)); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    mesh.count = 0; mesh.frustumCulled = false; mesh.renderOrder = 3;
-    return { mesh, alpha, turn, list: [] };
-  }
-  const mtx = new THREE.Matrix4(), ZERO = new THREE.Quaternion(), tints = new Map();
-  const tint = (hex) => { let c = tints.get(hex); if (!c) tints.set(hex, c = new THREE.Color(hex)); return c; };
-  // one puff: from size s0 to s1 over its life, fading out; colour as 0xrrggbb; (vx, vy, vz) its drift
-  function puff(x, y, z, s0, s1, life, color, a = 0.8, vx = 0, vy = 0.6, vz = 0) {
-    puffs ??= makePuffs();
-    if (puffs.list.length >= CAP) return;
-    puffs.list.push({ x, y, z, s0, s1, life, age: 0, c: tint(color), a, vx, vy, vz, r0: Math.random() * TAU, spin: (Math.random() - 0.5) * 0.8 });
-  }
-  function tickPuffs(dt) {
-    if (!puffs) return;
-    const world = ctx.world();
-    if (puffs.mesh.parent !== world && world) world.add(puffs.mesh);
-    const L = puffs.list;
-    let n = 0;
-    for (let i = 0; i < L.length; i++) {
-      const p = L[i]; p.age += dt;
-      if (p.age >= p.life) continue;
-      const t = p.age / p.life;
-      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-      const s = p.s0 + (p.s1 - p.s0) * Math.sqrt(t);
-      puffs.mesh.setMatrixAt(n, mtx.compose(_p.set(p.x, p.y, p.z), ZERO, _s.set(s, s, s)));
-      puffs.mesh.instanceColor.setXYZ(n, p.c.r, p.c.g, p.c.b);
-      puffs.alpha.setX(n, p.a * Math.min(1, (1 - t) * 2.4, t * 14 + 0.25));
-      puffs.turn.setX(n, p.r0 + p.spin * p.age);
-      L[n++] = p;
-    }
-    L.length = n;
-    puffs.mesh.count = n;
-    puffs.mesh.instanceMatrix.needsUpdate = puffs.mesh.instanceColor.needsUpdate = puffs.alpha.needsUpdate = puffs.turn.needsUpdate = true;
-  }
-
-  const rnd = (a, b) => a + Math.random() * (b - a), jit = (m) => (Math.random() - 0.5) * m;
-  // a dark flak burst: a quick flash and a few chunky black puffs that hang and thin out
-  function burst(x, y, z, big = 1) {
-    puff(x, y, z, 1.4 * big, 3.6 * big, 0.16, 0xffd070, 1, 0, 0, 0);
-    for (let i = 0, n = gfx.low ? 2 : 4; i < n; i++) {
-      const a = Math.random() * TAU, d = Math.random() * 0.9 * big;
-      puff(x + Math.cos(a) * d, y + jit(0.8 * big), z + Math.sin(a) * d, rnd(1.3, 1.9) * big, rnd(3, 4.6) * big, rnd(1.3, 2), i % 2 ? 0x2f2d2a : 0x58544c, 0.85, jit(0.8), rnd(0.4, 0.9), jit(0.8));
-    }
-  }
-  // damage smoke: grey, or black when heavy; a flame flicker
-  const smoke = (x, y, z, heavy) => puff(x + jit(0.5), y + jit(0.3), z + jit(0.5), heavy ? rnd(1.1, 1.6) : rnd(0.8, 1.2), heavy ? rnd(3.2, 4.2) : rnd(2.6, 3.4), gfx.low ? 1.1 : rnd(1.5, 2.1), heavy ? 0x38342f : 0x8d887d, heavy ? 0.9 : 0.7, jit(0.5), rnd(0.6, 1.2), jit(0.5));
-  const flame = (x, y, z) => puff(x + jit(0.4), y, z + jit(0.4), 1.4, 0.4, 0.25, 0xff9430, 0.95, 0, 0.8, 0);
+  // ----- smoke, fire and flak bursts: drawn by client/fx.js (ctx.air), lit and sorted with every other effect -----
+  const air = (kind, x, y, z, k) => ctx.air?.(kind, x, y, z, k);
+  // a flak burst: a sharp flash and a black puff that swells, hangs and drifts
+  const burst = (x, y, z, big = 1) => air('flak', x, y, z, big);
+  // damage smoke: grey, or black when heavy; a flicker of fire
+  const smoke = (x, y, z, heavy) => air('smoke', x, y, z, heavy ? 1 : 0);
+  const flame = (x, y, z) => air('flame', x, y, z);
 
   // ----- plane instances -----
   // a plane Group (units: attached to the unit's root; effects: its own holder) with its propellers
@@ -509,19 +434,8 @@ gl_Position = projectionMatrix * mvPosition;`);
   const DEBRIS = new THREE.MeshLambertMaterial({ color: 0x2b2a25 });
   function crash(x, g, z, heading, speed) {
     ctx.explode(x, z, 3.6, { smokeK: 1.2 }); ctx.play('vehicle_destroyed', x, z); ctx.play('fire_loop', x, z, { delay: 0.5, dur: 9 });
-    const low = gfx.low;
-    for (let i = 0; i < (low ? 3 : 6); i++) puff(x + jit(2), g + 0.8, z + jit(2), 2, rnd(5, 6.5), 0.5, i % 2 ? 0xff9430 : 0xffd070, 0.9, jit(3), rnd(1, 3), jit(3));
-    // a column of black smoke that leans downwind and lingers a few seconds
-    let t = 0, n = 0;
-    live.push({
-      tick(dt) {
-        t += dt; n -= dt;
-        if (n <= 0) { n = low ? 0.4 : 0.2; puff(x + jit(1), g + 0.6, z + jit(1), rnd(1.6, 2.2), rnd(4.6, 6), low ? 2 : 2.8, 0x3a3631, 0.7, 0.9, 2.4, 0.3); }
-        return t < (low ? 3 : 6);
-      },
-      kill() {},
-    });
-    if (low) return;
+    air('crash', x, g, z); // flames and a column of black smoke that leans downwind (client/fx.js)
+    if (gfx.low) return;
     // a few chunks of the plane thrown about
     const world = ctx.world();
     for (let i = 0; i < 6; i++) {
@@ -594,7 +508,7 @@ gl_Position = projectionMatrix * mvPosition;`);
         while (r.events.length && r.events[0].at <= r.t) {
           const ev = r.events.shift(), bx = sh.x + dx * ev.a, bz = sh.z + dz * ev.a;
           if (!r.opened) { r.opened = true; ctx.play('strafe', bx, bz); } // one burst of the guns for the whole run
-          ctx.explode(bx + (Math.random() - 0.5) * 3, bz + (Math.random() - 0.5) * 3, 0.8, { decal: false });
+          air('strafe', bx + (Math.random() - 0.5) * 3, 0, bz + (Math.random() - 0.5) * 3); // spurts of dirt, no fireball
         }
         // flak bursts around the plane while it is in range
         while (r.flak.length && r.flak[0] <= r.t) {
@@ -626,12 +540,10 @@ gl_Position = projectionMatrix * mvPosition;`);
       live.length = 0; runs.length = 0;
       for (const b of bombPool) { hideBomb(b); b.parent?.remove(b); }
       lastCamera = null;
-      if (puffs) { puffs.list.length = 0; puffs.mesh.count = 0; puffs.mesh.parent?.remove(puffs.mesh); }
     },
     // per frame, after the units moved
     update(dt) {
       for (let i = live.length - 1; i >= 0; i--) if (live[i].tick(dt) === false) live.splice(i, 1);
-      tickPuffs(dt);
     },
     // a support plane crossing the map ('strafe', 'recon', 'bombing', 'dive' or 'para' shot)
     supportPlane,
@@ -713,7 +625,7 @@ gl_Position = projectionMatrix * mvPosition;`);
       live.push({ tick(dt) { spin(props, dt); return true; }, kill() { holder.parent?.remove(holder); shadow.parent?.remove(shadow); } });
       return { holder, body, props, shadow, m };
     },
-    stats: () => ({ models: built.size, puffs: puffs?.list.length ?? 0, live: live.length, runs: runs.length }),
+    stats: () => ({ models: built.size, live: live.length, runs: runs.length }),
   };
 }
 
