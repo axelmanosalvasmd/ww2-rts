@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
+import { bindings, match } from './keys.js';
+import { createSelection } from './selection.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 
@@ -251,7 +253,7 @@ function startGame(m) {
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  units.clear(); selected.clear(); selection.reset(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -1026,6 +1028,9 @@ const hud = createHud({
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
+  selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
+  idleCount: () => selection.idle().length,
+  findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
 });
 function buildSupportBar() { hud.buildSupport(); }
 function aimSupport(k) {
@@ -1212,44 +1217,50 @@ function moveTo(g, attack) {
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
 
-addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  keys.add(e.code);
-  if (EDIT) return;
-  const n = /^Digit([1-9])$/.exec(e.code)?.[1];
-  // Ctrl+number sets a group (Shift+number too: in a plain browser tab Ctrl+1-8 switches tabs and pages can't stop it)
-  if (n && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); groups[n] = [...selected]; blip(990); }
-  else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
-  else if (e.code === 'KeyX') { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }
-  else if (e.code === 'KeyR') retreat();
-  else if (e.code === 'KeyF') useAbility(fKeyType());
-  else if (e.code === 'KeyG' && selected.size) setAim('amove');
-  else if (e.code === 'KeyN') aimSupport('bombing');
-  else if (e.code === 'KeyU') aimSupport('dive');
-  else if (e.code === 'KeyP') aimSupport('para');
-  else if (e.code === 'KeyI') aimSupport('cover');
-  else if (e.code === 'KeyO') startBuild('airfield');
-  else if (e.code === 'KeyY') startBuild('flakpos');
-  else if (e.code === 'KeyM') setMuted(!muted);
-  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
-  else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
-  else if (e.code === 'KeyH' && home) {
+const centerSelection = (list) => {
+  if (!list.length) return;
+  cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
+  cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
+};
+const selection = createSelection({ units, selected, groups, owner: () => me, definitions: UNITS,
+  screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
+const actions = {
+  stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
+  retreat, ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
+  mute: () => setMuted(!muted),
+  alert: () => { const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
+  follow: () => {}, rally: () => {},
+  home: () => {
+    if (!home) return;
     cam.x = home.x; cam.z = home.z;
     const hq = classicMode() && [...units.values()].find(v => v.owner === me && v.type === 'hq');
-    if (hq) { selected.clear(); selected.add(hq.id); if (lastSnap) updateHud(lastSnap); }
-  }
-  else if (e.code === 'KeyZ') aimSupport('recon');
-  else if (e.code === 'KeyC') aimSupport('artillery');
-  else if (e.code === 'KeyV') aimSupport('strafe');
-  else if (e.code === 'KeyB') aimSupport('smoke');
-  else if (e.code === 'KeyT') startDig('trench');
-  else if (e.code === 'KeyY') startDig('sandbags');
-  else if (e.code === 'KeyU') startDig('wire');
-  else if (e.code === 'KeyI') startDig('traps');
-  else if (e.code === 'KeyO') startDig('nest');
-  else if (e.code === 'KeyJ') startBuild('depot');
-  else if (e.code === 'KeyK') startBuild('barracks');
-  else if (e.code === 'KeyL') startBuild('motorpool');
+    if (hq) { selected.clear(); selected.add(hq.id); }
+  },
+  clear: () => selected.clear(), cancelAim,
+  army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
+  idleEngineer: () => selection.findIdle(false, true),
+  panForward: () => {}, panBack: () => {}, panLeft: () => {}, panRight: () => {}, rotateLeft: () => {}, rotateRight: () => {},
+};
+for (const { id } of bindings) {
+  const [kind, value, number] = id.split(':');
+  if (kind === 'support') actions[id] = () => aimSupport(value);
+  else if (kind === 'fort') actions[id] = () => startDig(value);
+  else if (kind === 'build') actions[id] = () => startBuild(value);
+  else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
+}
+addEventListener('keydown', (e) => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+  keys.add(e.code);
+  if (EDIT) return;
+  const id = match(e, [classicMode() ? 'classic' : 'army', ...(targeting ? ['targeting'] : [])]);
+  // Shortcuts that share camera codes must not also pan.
+  if (id && !id.startsWith('pan') && !id.startsWith('rotate')) keys.delete(e.code);
+  if (!id || !actions[id]) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  actions[id]();
+  if (id.startsWith('pan') || id.startsWith('rotate')) return;
+  if (lastSnap) updateHud(lastSnap);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
@@ -1349,15 +1360,22 @@ function houseAt(mx, my) {
 addEventListener('mouseup', (e) => {
   if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
-  if (!e.shiftKey) selected.clear();
   if (drag.moved) {
     const x0 = Math.min(drag.x, e.clientX), x1 = Math.max(drag.x, e.clientX), y0 = Math.min(drag.y, e.clientY), y1 = Math.max(drag.y, e.clientY);
-    for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && !UNITS[v.type].structure && !(v.flags & 512) && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
+    selection.box({ x0, x1, y0, y1 }, e);
   } else {
     const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
-    if (v) selected.add(v.id);
+    selection.click(v, e);
   }
   drag = null;
+  if (lastSnap) updateHud(lastSnap);
+});
+
+renderer.domElement.addEventListener('dblclick', (e) => {
+  if (EDIT || targeting || e.button !== 0) return;
+  const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
+  if (!v) return;
+  e.preventDefault(); selection.doubleClick(v, e);
   if (lastSnap) updateHud(lastSnap);
 });
 

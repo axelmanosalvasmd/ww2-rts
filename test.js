@@ -1085,4 +1085,104 @@ for (const f of readdirSync('maps')) {
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
+// Hotkey chords remain unique in every combination of simultaneously active contexts.
+{
+  const { bindings, match, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS } = await import('./client/keys.js');
+  for (const contexts of [['global', 'army'], ['global', 'classic'], ['global', 'targeting'],
+    ['global', 'army', 'targeting'], ['global', 'classic', 'targeting']]) {
+    const seen = new Map();
+    for (const binding of bindings.filter(b => contexts.includes(b.context))) {
+      const chord = [binding.code, binding.shift, binding.ctrl, binding.alt].join(':');
+      const previous = seen.get(chord) ?? [];
+      for (const other of previous) {
+        assert.ok((other.context === 'targeting') !== (binding.context === 'targeting'),
+          `${contexts.join('+')}: ${binding.id} collides with ${other.id}`);
+      }
+      seen.set(chord, [...previous, binding]);
+    }
+    for (const bindingsForChord of seen.values()) {
+      const first = bindingsForChord[0];
+      const expected = bindingsForChord.find(b => b.context === 'targeting') ?? first;
+      assert.equal(match({ code: first.code, shiftKey: first.shift, ctrlKey: first.ctrl, altKey: first.alt }, contexts),
+        expected.id, `${contexts.join('+')}: targeting overrides the mode binding`);
+    }
+  }
+  assert.equal(match({ code: 'Space' }, 'army'), 'alert');
+  assert.equal(match({ code: 'Space', shiftKey: true }, 'army'), 'follow', 'Shift+Space never triggers the plain Space action');
+  assert.equal(match({ code: 'KeyH', shiftKey: true }, 'army'), 'rally');
+  for (const modifier of ['shiftKey', 'ctrlKey', 'altKey', 'metaKey']) {
+    assert.equal(match({ code: 'KeyR', [modifier]: true }, 'classic'), undefined, `plain R rejects ${modifier}`);
+  }
+  assert.equal(match({ code: 'KeyA', metaKey: true }, 'army'), 'army', 'Meta selects the army like Ctrl');
+  for (const [event, action] of [
+    [{ code: 'Digit1' }, 'group:recall:1'],
+    [{ code: 'Digit1', ctrlKey: true }, 'group:set:1'],
+    [{ code: 'Digit1', metaKey: true }, 'group:set:1'],
+    [{ code: 'Digit1', shiftKey: true }, 'group:append:1'],
+    [{ code: 'Digit1', shiftKey: true, ctrlKey: true }, 'group:append:1'],
+    [{ code: 'Digit1', shiftKey: true, metaKey: true }, 'group:append:1'],
+  ]) assert.equal(match(event, 'army'), action);
+  for (const [kind, key] of Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' })) {
+    for (const context of ['army', 'classic']) assert.equal(match({ code: `Key${key}`, shiftKey: kind !== 'trench' }, context), `fort:${kind}`);
+    assert.equal(FORT_KEYS[kind], label(`fort:${kind}`));
+  }
+  assert.equal(badge('fort:sandbags'), '\u21e7Y');
+  assert.equal(badge('fort:trench'), 'T');
+  for (const [kind, key] of Object.entries(SUPPORT_KEYS)) assert.equal(match({ code: `Key${key}` }, 'classic'), `support:${kind}`);
+  for (const [kind, key] of Object.entries(BUILD_KEYS)) {
+    assert.equal(match({ code: `Key${key}` }, 'classic'), `build:${kind}`);
+    assert.equal(match({ code: `Key${key}` }, 'army'), undefined, 'Classic building chords stay mode-specific');
+  }
+  assert.equal(match({ code: 'Escape' }, 'army'), 'clear');
+  assert.equal(match({ code: 'Escape' }, 'classic'), 'clear');
+  assert.equal(match({ code: 'Escape' }, 'targeting'), 'cancelAim');
+}
+
+// Selection rules operate on own snapshot rows, including plans and dead group members.
+{
+  const { createSelection } = await import('./client/selection.js');
+  const row = (id, type = 'rifle', extra = {}) => ({ id, type, owner: 0, hp: 20, x: 150, z: 10, flags: 0, ...extra });
+  const units = new Map([
+    row(12, 'rifle', { x: 80, plan: { kind: 0 } }),
+    row(11, 'rifle', { flags: 128 }), row(10, 'rifle', { flags: 16 }), row(9, 'rifle', { flags: 1 }),
+    row(8, 'rifle', { plan: { kind: 1 } }), row(7, 'rifle', { flags: 32 }), row(6, 'rifle', { owner: 1, x: 10 }),
+    row(5, 'fighter', { x: 30, flags: 512 }), row(4, 'hq', { x: 30 }), row(3, 'engineer', { x: 20 }),
+    row(2), row(1, 'rifle', { x: 10 }),
+  ].map(v => [v.id, v]));
+  const selected = new Set(), groups = {}, centers = [];
+  const selection = createSelection({ units, selected, groups, owner: () => 0, definitions: UNITS,
+    screenOf: v => ({ x: v.x, y: v.z, front: true }), viewport: () => ({ width: 100, height: 100 }),
+    center: list => centers.push(list.map(v => v.id)) });
+  const ids = () => [...selected].sort((a, b) => a - b);
+  selection.click(units.get(1)); selection.click(units.get(3), { shiftKey: true });
+  assert.deepEqual(ids(), [1, 3], 'Shift+click adds an unselected unit');
+  selection.click(units.get(1), { shiftKey: true }); assert.deepEqual(ids(), [3], 'Shift+click removes a selected unit');
+  selection.box({ x0: 0, x1: 15, y0: 0, y1: 30 }, { shiftKey: true }); assert.deepEqual(ids(), [1, 3], 'Shift+box adds');
+  selection.box({ x0: 0, x1: 35, y0: 0, y1: 30 }); assert.deepEqual(ids(), [1, 3], 'box excludes enemy, building and grounded plane');
+  selection.doubleClick(units.get(1)); assert.deepEqual(ids(), [1, 12], 'double-click selects the type on screen');
+  selection.doubleClick(units.get(1), { ctrlKey: true }); assert.deepEqual(ids(), [1, 2, 7, 8, 9, 10, 11, 12], 'Ctrl+double-click selects the type map-wide');
+  selection.army(); assert.deepEqual(ids(), [1, 2, 3, 7, 8, 9, 10, 11, 12], 'army selection excludes buildings, enemies and grounded planes');
+  selection.type('rifle', { shiftKey: true }); assert.deepEqual(ids(), [3], 'Shift row click removes that type');
+  selection.type('engineer'); assert.deepEqual(ids(), [3], 'plain row click keeps only that type');
+  selection.army(); selection.type('engineer', { ctrlKey: true }); assert.deepEqual(ids(), [3], 'Ctrl row click keeps only that type');
+  assert.deepEqual(selection.idle().map(v => v.id), [1, 2, 3, 12], 'idle units are sorted and exclude busy flags, plans, planes and buildings');
+  selection.findIdle(); assert.deepEqual(ids(), [1]); selection.findIdle(); assert.deepEqual(ids(), [2]);
+  selection.findIdle(false, true); assert.deepEqual(ids(), [3], 'Engineers have their own idle cursor');
+  selection.findIdle(); assert.deepEqual(ids(), [3], 'army cursor continues independently');
+  assert.deepEqual(centers.at(-1), [3], 'idle cycling centers the selected unit');
+  selection.findIdle(true); assert.deepEqual(ids(), [1, 2, 3, 12], 'all idle units can be selected together');
+  selection.click(units.get(3)); selection.group(1, 'set'); selection.click(units.get(1));
+  groups[2] = [6, 999]; selection.group(1, 'append'); selection.group(1, 'append');
+  assert.deepEqual(groups[1], [3, 1], 'append preserves the old selection without duplicates');
+  assert.deepEqual(groups[2], [], 'group edits prune enemy and missing IDs');
+  selection.group(1, 'recall', 100); const count = centers.length;
+  selection.group(1, 'recall', 400); assert.equal(centers.length, count + 1, 'a second tap within 300 ms centers the group');
+  selection.group(1, 'recall', 701); assert.equal(centers.length, count + 1, 'a later tap does not center');
+  units.delete(3); selection.group(1, 'recall', 1002);
+  assert.deepEqual(groups[1], [1]); assert.deepEqual(ids(), [1], 'recall drops dead members');
+  selection.reset(); assert.deepEqual(groups, {}, 'new matches clear groups');
+  selection.findIdle(); assert.deepEqual(ids(), [1], 'new matches reset idle cursors');
+  const beforeRecall = centers.length; selection.group(1, 'set'); selection.group(1, 'recall', 1100);
+  assert.equal(centers.length, beforeRecall, 'new matches and group edits reset the double-tap timer');
+}
 console.log('all sim checks passed');
