@@ -332,6 +332,16 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
   Classic); bottom right the minimap. Nothing overlaps at 1366x768. The always-on keybinding panel is parked
   (issue #2); hotkeys show on buttons.
+- On states share one look: a brass hairline over a faint brass tint (Capture mouse pressed, the Recruit tab on, an
+  ability with autocast on, which also shows a small A). While recruit letters are live the Command Card's hairline
+  turns brass; each card's letter sits at the left end of its cost line, clear of the name and the portrait. The
+  Command Card's group names lead with a small silhouette (rifleman, MG team, tank, fighter).
+- Lobby backdrop (`client/lobby-view.js`): behind the form, the selected map's real battlefield (the match's ground,
+  relief, houses, water and trees) seen from above at about 50 degrees, the camera gliding slowly over the middle of
+  the map on two unsynchronized sweeps (140 s and 95 s) without turning or changing height. It renders at half
+  resolution on its own small renderer, shows at half strength over the dark ground, follows the Map select, and is
+  freed when a match starts. It is built in steps in idle time; Graphics Low skips it; software rendering
+  (SwiftShader) and reduced motion get one still frame.
 - Lobby: the room form on one gunmetal panel in the HUD's style; Start is the one brass button. The match report,
   tooltips, banners, alerts and the end-of-match notice (a quiet panel, no stamp) share the panel and type. The map
   editor takes the same panel, type and colors.

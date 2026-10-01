@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { setPortraitSource } from './portraits.js';
+import { createLobbyView } from './lobby-view.js';
 import { createEffects } from './fx.js';
 import { bindings, match } from './keys.js';
 import { createSelection } from './selection.js';
@@ -212,6 +213,8 @@ const MODE_INFO = {
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
 // lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
 const mapCache = new Map();
+// behind the lobby form: the selected map's battlefield, drifting slowly (client/lobby-view.js)
+const lobbyView = createLobbyView($('overlay'));
 async function previewMap(name, mode) {
   let m = mapCache.get(name);
   if (!m) {
@@ -219,6 +222,7 @@ async function previewMap(name, mode) {
     mapCache.set(name, m);
   }
   if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
+  lobbyView.show(name, m);
   const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
   const img = new ImageData(m.w, m.h);
   m.rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -333,6 +337,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m, restored = null) {
+  lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   pings.reset(); autocast.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });

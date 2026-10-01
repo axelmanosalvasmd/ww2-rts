@@ -33,6 +33,7 @@ const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need
 
 // Command Card groups, and the order of the cards inside them (types not listed go last, in table order)
 const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft'];
+const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter']; // a silhouette before each group's name
 const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak']);
 const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'engineer', 'mg', 'mortar', 'at', 'flak', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'fighter', 'attacker'];
 const groupOf = (t) => (UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
@@ -95,7 +96,7 @@ export function createHud(ctx) {
     `<span class="nm">${soft(name(t))}</span>${portrait(t, ctx.me)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
   const groupsHTML = (types, card) => GROUPS.map((_, g) => {
     const ts = types.filter((t) => groupOf(t) === g).sort((a, b) => rank(a) - rank(b));
-    return ts.length ? `<div class="grp"><div class="hd">${GROUPS[g]}</div><div class="cards">${ts.map(card).join('')}</div></div>` : '';
+    return ts.length ? `<div class="grp"><div class="hd">${icon(GROUP_ICONS[g])}${GROUPS[g]}</div><div class="cards">${ts.map(card).join('')}</div></div>` : '';
   }).join('');
   // an order or support button: icon, hotkey badge, cost or cooldown underneath
   const orderBtn = (data, ico, key, tip, sym) => `<button class="ob" ${data} title="${esc(tip)}" aria-label="${esc(tip.split(/[:(]/)[0].trim())}">` +

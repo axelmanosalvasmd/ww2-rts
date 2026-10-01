@@ -23,13 +23,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   cost line, clear of the name and the portrait; a card bought by its letter shows the pressed look for a moment.
   An ability with autocast on gets the HUD's on state (brass hairline over a faint brass tint) and a small A, instead
   of a dashed pencil border.
+- The lobby shows the selected map's real battlefield behind the room form: the camera drifts slowly over it, dimmed so
+  the form stays easy to read, and it changes with the Map select. It runs on a small low-resolution renderer of its
+  own that is freed when the match starts, is skipped on Graphics Low, and on software rendering (or with reduced
+  motion) shows a single still frame. Its world is built in steps in idle time; the biggest step, painting the ground,
+  took about 0.7 to 1.1 s on the heavily loaded test machine, and a match on that map reuses the painted ground.
+- The Command Card's group names (Infantry, Support weapons, Vehicles, Aircraft) lead with a small silhouette.
 - Status lines and hints read as plain sentences ("0 pts, 0 held", "60 MP, 20s", "Right-click cancels") instead of
   pieces joined with middle dots.
 - Checked in Conquest and Classic at 1920x1080 and 1366x768 (lobby, HQ view, selection with orders and recruit row,
   support calls, alerts, tooltip, menu, pause banner, end notice, match report, map editor): nothing overlaps, all 16
   Conquest portraits render, no console errors. The Impeccable detector (4.1.0) is clean on `client/`.
-- Left for later: the portraits show today's simple models and will look better as the models do; the Command Card's
-  group headers have no icons (the target had them); a few text glyphs remain (veterancy stars in the selection list,
+- Left for later: the portraits show today's simple models and will look better as the models do; a few text glyphs remain (veterancy stars in the selection list,
   the lobby's kick cross, the editor's check and warning marks, the star on double-VP point tags); `client/markers.js`
   still exports the old ink color, unused now; the menu button's tooltip can cover the first menu item while the
   cursor stays on the button.
