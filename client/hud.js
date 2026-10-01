@@ -6,7 +6,8 @@
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
 import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
-import { symbolSVG } from './symbols.js';
+import { symbolSVG, icon } from './symbols.js';
+import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
 import { availability, cooldownSeconds } from './availability.js';
@@ -56,36 +57,8 @@ const MARKS = [
 const FACTION_NAME = ['USA', 'Germany', 'USSR'];
 const mark = (f) => (MARKS[f] ? `<svg class="mark" viewBox="0 0 24 24" role="img"><title>${FACTION_NAME[f]}</title>${MARKS[f]}</svg>` : '');
 
-// Line icons for the support calls and the orders, in a 32 box, drawn with the current text color.
-const ICON = {
-  recon: '<circle cx="9.5" cy="20.5" r="5.5"/><circle cx="22.5" cy="20.5" r="5.5"/><path d="M14.5 20h3M5.5 16 8.5 7.5h4.5L14 15M26.5 16 23.5 7.5H19L18 15"/>',
-  artillery: '<path d="M4 27C7 9 20 6 25 19"/><path d="M20.6 17.4 25 19.6l1.6-4.6"/><path d="M25 24v5M22.5 26.5h5"/>',
-  strafe: '<path d="M16 12v17M5 19.5l11-3 11 3M11.5 28h9"/><path d="M10 3v5M16 2v6M22 3v5"/>',
-  smoke: '<path d="M9 25h15a5 5 0 0 0 .6-10A7.5 7.5 0 0 0 10.4 13 6 6 0 0 0 9 25z"/><path d="M6 9.5a3 3 0 0 1 5-2"/>',
-  bombing: '<path d="M16 9c3.4 0 5.4 4 5.4 9s-2 10-5.4 10-5.4-5-5.4-10 2-9 5.4-9z"/><path d="M12.5 3h7l-1.6 6h-3.8z"/>',
-  dive: '<path d="M4 4l11 11M9.5 15H15V9.5"/><path d="M22 14c2.6 0 4.2 3.2 4.2 7s-1.6 7.5-4.2 7.5-4.2-3.7-4.2-7.5 1.6-7 4.2-7z"/>',
-  para: '<path d="M4 14a12 10 0 0 1 24 0z"/><path d="M4 14l12 10 12-10M16 14v10"/><circle cx="16" cy="27" r="2"/>',
-  cover: '<path d="M16 3l11 4v8c0 7-5 11.5-11 14C10 26.5 5 22 5 15V7z"/><path d="M16 10v11M10 15.5l6-1.5 6 1.5M13 20h6"/>',
-  retreat: '<path d="M24 27V14a7 7 0 0 0-14 0v6"/><path d="M5.5 15.5 10 21l4.5-5.5"/>',
-  amove: '<circle cx="21" cy="11" r="6"/><path d="M21 2.5v4M21 15.5v4M12.5 11h4M25.5 11h4"/><path d="M4 28l12.5-12.5"/>',
-  stop: '<path d="M11 4h10l7 7v10l-7 7H11l-7-7V11z"/><path d="M11 16h10"/>',
-  trench: '<path d="M3 12h6v8h7v-8h7v8h6"/>',
-  sandbags: '<rect x="3.5" y="19" width="12" height="7" rx="3.5"/><rect x="16.5" y="19" width="12" height="7" rx="3.5"/><rect x="10" y="11" width="12" height="7" rx="3.5"/>',
-  wire: '<path d="M2 21h28"/><circle cx="8" cy="15.5" r="4.5"/><circle cx="16" cy="15.5" r="4.5"/><circle cx="24" cy="15.5" r="4.5"/>',
-  traps: '<path d="M6 27 22 5M10 5l16 22M4 17.5h24"/>',
-  nest: '<path d="M4.5 26a11.5 11.5 0 0 1 23 0"/><path d="M16 22V8"/><circle cx="16" cy="22.5" r="2.2"/>',
-  grenade: '<ellipse cx="15" cy="19.5" rx="7" ry="8.5"/><path d="M12 11V7.5h6V11M18 8.5l6-3.5M15 15v9M11 19.5h8"/>',
-  suppress: '<path d="M3 16h7M13 10l13-5M13 16h16M13 22l13 5"/>',
-  ap: '<path d="M10 27V14l6-10 6 10v13z"/><path d="M10 21h12"/>',
-  barrage: '<path d="M6 3v13M16 3v13M26 3v13"/><path d="M3 13.5 6 18l3-4.5M13 13.5l3 4.5 3-4.5M23 13.5l3 4.5 3-4.5"/><path d="M3 27h26"/>',
-  satchel: '<rect x="6" y="13" width="20" height="14" rx="2"/><path d="M11 13V9.5a5 5 0 0 1 10 0V13M16 18v4"/>',
-  ura: '<path d="M5 7l9 9-9 9M16 7l9 9-9 9"/>',
-  menu: '<path d="M6 9h20M6 16h20M6 23h20"/>',
-  fullscreen: '<path d="M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7"/>',
-  unknown: '<circle cx="16" cy="16" r="8"/><path d="M16 3v6M16 23v6M3 16h6M23 16h6"/>',
-};
-ICON.smokeab = ICON.smoke;
-export const icon = (k) => `<svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICON[k] ?? ICON.unknown}</svg>`;
+// The support calls and the orders draw from the same silhouette set as the units (client/symbols.js icon()).
+export { icon };
 
 // ---------- the HUD ----------
 
@@ -109,9 +82,9 @@ export function createHud(ctx) {
     const n = name(t, slot), base = UNITS[t].name, r = unitRole(t, base), role = r !== base ? r : '';
     return `${n}${n !== base ? ` (${base})` : ''}${role ? `: ${role}` : ''}${extra}`;
   };
-  // a manila Command Card card: name, map symbol, cost chip (and a second line in Classic)
+  // a Command Card card: name, portrait of the unit (client/portraits.js), cost (and a second line in Classic)
   const unitCard = (t, attr, cost, sub, tip) => `<button class="uc" ${attr} title="${esc(tip)}" aria-label="${esc(name(t))}">` +
-    `<span class="nm">${soft(name(t))}</span>${symbolSVG(t)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
+    `<span class="nm">${soft(name(t))}</span>${portrait(t, ctx.me)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
   const groupsHTML = (types, card) => GROUPS.map((_, g) => {
     const ts = types.filter((t) => groupOf(t) === g).sort((a, b) => rank(a) - rank(b));
     return ts.length ? `<div class="grp"><div class="hd">${GROUPS[g]}</div><div class="cards">${ts.map(card).join('')}</div></div>` : '';
@@ -193,7 +166,7 @@ export function createHud(ctx) {
         const why = cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '';
         if (tm.net[k].title !== why) tm.net[k].title = why;
         const out = kind === 'classic' && s.out?.[i];
-        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts · ${held(i)} held` : `${held(i)} held`) : kind === 'assault' ? '' : out ? 'Out' : `${held(i)} held`);
+        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'assault' ? '' : out ? 'Out' : `${held(i)} held`);
         tm.held[k].classList.toggle('danger', !!out);
       });
       let frac = null, u0 = '', num = '', u = '', role = '', danger = false;
@@ -249,7 +222,7 @@ export function createHud(ctx) {
       el.innerHTML = '<div class="hd" style="display:flex;align-items:center;gap:6px"><span data-selected style="min-width:0;overflow:hidden;text-overflow:ellipsis;flex:1"></span>' +
         '<button data-idle style="margin-left:auto;padding:2px 6px;font-size:13px;line-height:1.1;flex:none" title="Find the next idle unit. Shift+click selects all idle units"></button></div>' +
         `<div class="list">${grouped.map(([t, us]) => `<div class="srow" data-type="${t}" style="cursor:pointer" title="${esc(unitTip(t, us[0].owner))}. Click to keep this type; Shift+click removes it">` +
-        `${symbolSVG(t)}<span class="nm"></span><span class="ct"></span><span class="tg"><span class="hp"></span><span class="status" style="display:contents"></span></span>` +
+        `${portrait(t, us[0].owner)}<span class="nm"></span><span class="ct"></span><span class="tg"><span class="hp"></span><span class="status" style="display:contents"></span></span>` +
         `${UNITS[t].building ? '<span class="q"></span>' : ''}</div>`).join('')}</div>`;
       el.querySelector('[data-idle]').onclick = (e) => { ctx.findIdle(e.shiftKey); e.currentTarget.blur(); };
       selRows = [...el.querySelectorAll('.srow')].map((r) => {
@@ -358,12 +331,12 @@ export function createHud(ctx) {
         '<button class="cancel" data-cancel title="Cancel the building and get 75% of its cost back">Cancel<span>75% back</span></button>';
       else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span>', 'Right-click the ground: rally point') +
         groupsHTML((UNITS[bld.type].makes ?? []).filter((t) => canBuild(t, ctx.facOf(ctx.me))), (t) => {
-          const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel · ` : '';
+          const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
         });
       else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
-        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${symbolSVG(k)}<span class="cost">${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span>` +
+        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${portrait(k, ctx.me)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else card.innerHTML = '';
       const id = bld?.id;

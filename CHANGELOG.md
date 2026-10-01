@@ -5,6 +5,30 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New look for the whole interface. The paperwork style (manila cards, typewriter text, stencil numbers, map symbols)
+  made the game read like a board game, so the HUD, lobby, menu, alerts, banners, tooltips, match report, end-of-match
+  notice, map editor and the labels and badges over the battlefield now share one modern style: dark gunmetal panels
+  with thin khaki edges, one condensed typeface (Barlow Semi Condensed) and brass only on manpower, victory points and
+  the clock. Layout, hotkeys, element ids and what each panel shows are unchanged.
+- Recruit cards, train and build cards and the selection list show a small picture of each unit, rendered from its
+  real 3D model in your faction and color. They are made one per frame once the match is under way, so loading and the
+  frame rate are not affected, and they follow the models as those improve. Until a picture is ready the slot shows
+  the unit's silhouette.
+- One set of flat silhouette icons replaces the NATO map symbols and the line icons: unit types, buildings, support
+  calls, orders and the badge beside each unit's health bar on the battlefield (drawn there in the owner's color on a
+  small dark plate). Costs are plain numbers; resources get a small icon (helmet, cartridge, jerrycan).
+- The Victory or Defeat notice at the end of a match is a quiet panel that fades in, instead of a tilted rubber stamp.
+- Status lines and hints read as plain sentences ("0 pts, 0 held", "60 MP, 20s", "Right-click cancels") instead of
+  pieces joined with middle dots.
+- Checked in Conquest and Classic at 1920x1080 and 1366x768 (lobby, HQ view, selection with orders and recruit row,
+  support calls, alerts, tooltip, menu, pause banner, end notice, match report, map editor): nothing overlaps, all 16
+  Conquest portraits render, no console errors. The Impeccable detector (4.1.0) is clean on `client/`.
+- Left for later: the portraits show today's simple models and will look better as the models do; the Command Card's
+  group headers have no icons (the target had them); a few text glyphs remain (veterancy stars in the selection list,
+  the lobby's kick cross, the editor's check and warning marks, the star on double-VP point tags); `client/markers.js`
+  still exports the old ink color, unused now; the menu button's tooltip can cover the first menu item while the
+  cursor stays on the button.
+
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
   goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window

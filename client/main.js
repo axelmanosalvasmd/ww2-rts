@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
+import { setPortraitSource } from './portraits.js';
 import { createEffects } from './fx.js';
 import { bindings, match } from './keys.js';
 import { createSelection } from './selection.js';
@@ -235,9 +236,9 @@ async function previewMap(name, mode) {
     c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke();
   }
   const top = Math.max(0, ...(m.heights || []).flatMap(r => [...r].map(levelOf)));
-  $('mapInfo').innerHTML = [`<b style="color:var(--ink)">${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, `up to ${spawns.length} players`,
+  $('mapInfo').innerHTML = [`<b>${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, `up to ${spawns.length} players`,
     `${points.length} capture point${points.length === 1 ? '' : 's'}`, top >= 3 ? 'hills and cliffs' : top > 0 ? 'rolling hills' : '',
-    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (assault ? '<span style="color:#d94a3d">●</span> defend · <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
+    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (assault ? '<span style="color:#d94a3d">●</span> defend, <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
     assault && m.assaultTime ? `${Math.round(m.assaultTime / 60)} minute clock` : ''].filter(Boolean).map(t => `<div>${t}</div>`).join('');
 }
 
@@ -254,7 +255,7 @@ function renderLobby(m) {
   $('roster').innerHTML = m.players.map((p, i) => {
     const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
-      <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
+      <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(', ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
@@ -701,6 +702,19 @@ const hud = createHud({
   idleCount: () => selection.idle().length,
   findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
 });
+// portraits on the recruit cards and the selection list: the same model builders as makeUnit, rendered lazily by
+// client/portraits.js (the shadow a plane casts on the battlefield stays out of it)
+setPortraitSource({
+  key: (type, slot) => `${type}|${facOf(slot)}|${look(slot).color}`,
+  build(type, slot) {
+    const root = new THREE.Group(), v = { id: -1, type, owner: slot, root, models: [], alive: UNITS[type].models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
+    if (isAir(type)) { aviation.buildUnit(v, root, type, slot); v.shadow?.removeFromParent(); }
+    else if (type === 'airfield') aviation.buildAirfield(v, root, slot);
+    else buildModel(v, root, look(slot), facOf(slot), UNITS[type]);
+    return { root, models: v.models };
+  },
+  quiet: (draw) => { setFogMap(null); try { draw(); } finally { setFogMap(EDIT ? null : fogTex, MW, MH); } },
+});
 function buildSupportBar() { hud.buildSupport(); }
 function aimSupport(k) {
   if (explainUnavailable(available({ t: 'support', kind: k }))) return;
@@ -712,7 +726,7 @@ function updateHud(s) { drawPlans(); hud.update(s); }
 // the builder squad nearest the clicked spot puts the fortification across its approach
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
-function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); }
+function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()}. Right-click cancels`; blip(600); }
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
 // one layer for every match: grease-pencil strokes rewritten in place each snapshot (see markers.js)
 const plans = planLayer(hAt);
@@ -779,7 +793,7 @@ function setAim(kind, unit = null) {
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
   $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
-  $('hint').textContent += ' · right-click cancels';
+  $('hint').textContent += '. Right-click cancels';
 }
 function startRally() {
   if (!lastSnap) return;
@@ -965,7 +979,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
-    if (!aimCenter) { aimCenter = g; $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
+    if (!aimCenter) { aimCenter = g; $('hint').textContent = `Move the mouse to rotate, then click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
     if (kind === 'dig') {
       // Shift queues the dig behind the squad's orders (paid when it starts) and keeps the placement armed

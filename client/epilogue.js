@@ -1,7 +1,7 @@
 // The end of a match on screen. The server holds the ending for 6 s (the sim at half speed, orders refused, the fog
 // lifted for everyone) before the lobby comes back with the report. Over those seconds the client slows the picture
 // further (unit movement and effects at about a third of their speed), glides the camera to where the match was
-// decided and stamps the outcome on the screen. main.js calls snapshot() for every snapshot, frame() once per frame,
+// decided and shows the outcome on the screen. main.js calls snapshot() for every snapshot, frame() once per frame,
 // active() when it draws the fog, and reset() when a match starts or the lobby shows.
 import { audio } from './audio.js';
 
@@ -29,14 +29,15 @@ function stamp(outcome, text) {
     styled = true;
     const st = document.createElement('style');
     st.textContent = `
-      #epStamp { position: fixed; left: 50%; top: 30%; z-index: 9; pointer-events: none; padding: 14px 36px 16px; text-align: center;
-        color: var(--ink, #2b2418); background: var(--manila, #d8c69a);
-        border: 3px solid currentColor; outline: 1px solid var(--manila-edge, #a08c5f); outline-offset: 4px; box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55);
-        transform: translate(-50%, -50%) rotate(-3deg); animation: epStamp 0.45s cubic-bezier(0.25, 1, 0.5, 1) both; }
-      #epStamp.defeat { color: var(--red, #b8322a); }
-      #epStamp .word { font: 700 76px/1 var(--stencil, 'Stardos Stencil', Impact, sans-serif); letter-spacing: 0.05em; }
-      #epStamp .why { max-width: 440px; margin-top: 8px; font: 400 17px/1.3 var(--type, 'Courier Prime', 'Courier New', monospace); color: var(--ink, #2b2418); }
-      @keyframes epStamp { from { opacity: 0; transform: translate(-50%, -50%) rotate(-3deg) scale(1.7); } to { opacity: 1; transform: translate(-50%, -50%) rotate(-3deg) scale(1); } }`;
+      #epStamp { position: fixed; left: 50%; top: 30%; z-index: 9; pointer-events: none; min-width: 320px; padding: 16px 32px 18px; text-align: center;
+        color: var(--brass, #d6b25e); background: rgba(25, 28, 30, 0.92); border: 1px solid var(--line, rgba(176, 164, 122, 0.46)); border-radius: 2px;
+        transform: translate(-50%, -50%); animation: epStamp 0.5s ease-out both; }
+      #epStamp.defeat { color: var(--red-hi, #ee8a7b); border-color: rgba(200, 72, 59, 0.8); }
+      #epStamp.draw { color: var(--text, #e2dfd3); }
+      #epStamp .word { font: 600 44px/1 var(--type, sans-serif); }
+      #epStamp .why { max-width: 440px; margin-top: 8px; font: 500 16px/1.35 var(--type, sans-serif); color: var(--text, #e2dfd3); }
+      @keyframes epStamp { from { opacity: 0; } to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { #epStamp { animation: none; } }`;
     document.head.append(st);
   }
   stampEl = document.createElement('div');
