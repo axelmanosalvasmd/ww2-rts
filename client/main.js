@@ -4,6 +4,7 @@ import { createEffects } from './fx.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
+import { createAtmosphere } from './atmosphere.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -189,7 +190,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
+const lights = setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -306,6 +307,7 @@ function startGame(m) {
   const fog = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; planGroup = null; coverGroup = null; ghosts.clear();
@@ -1384,6 +1386,7 @@ function updateFog() {
 }
 
 const effects = createEffects({ scene, camera, cam, hAt, units, sound, colorOf: (slot) => look(slot).color });
+const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   // camera
@@ -1418,6 +1421,7 @@ renderer.setAnimationLoop(() => {
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   effects.update(dt);
+  atmos.update(dt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   alerts.frame();
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
@@ -1445,7 +1449,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, atmos, get me() { return me; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },

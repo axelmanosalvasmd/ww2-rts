@@ -17,10 +17,13 @@ for (const id of ['lambert', 'phong', 'toon', 'standard', 'physical']) {
 
 // The sun sits up and to the right of each player's opening view, so shadows fall toward the lower left of the screen
 // (as in the concept) whichever spawn you get. It stays put in the world when you rotate.
-const SUN_UP = 37 * Math.PI / 180, SUN_SIDE = 60 * Math.PI / 180;
+const SUN_SIDE = 60 * Math.PI / 180;
 const SUN_DIR = new THREE.Vector3(); // from the ground toward the sun
 const HAZE = 0xbcae96;
-const BOARD = 6; // board thickness below its lowest point, in meters
+export const BOARD = 6; // board thickness below its lowest point, in meters
+// The map's mood (client/atmosphere.js) sets these: sun height in degrees (read when a match starts) and how much
+// closer the haze sits (1 = the default distances).
+export const sky = { sunUp: 37, haze: 1 };
 const WOOD_TILE = 44; // meters per wood texture repeat (four planks)
 const SOIL_PROFILE = 6, SOIL_DEEP = 1.5; // the full soil profile spans 6 m; below it dark soil repeats every 1.5 m
 const SOIL_U = (SOIL_PROFILE / 0.8) * 3.17; // horizontal meters per soil repeat (texture is 3.17:1, profile = top 80%)
@@ -104,13 +107,14 @@ const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]], foot = corners.map(() => n
 const center = new THREE.Vector3(), lx = new THREE.Vector3(), ly = new THREE.Vector3();
 function aimSun(yaw) {
   const az = yaw + Math.PI - SUN_SIDE; // the camera looks along -(sin yaw, cos yaw); turn right of that by SUN_SIDE
-  SUN_DIR.set(Math.sin(az) * Math.cos(SUN_UP), Math.sin(SUN_UP), Math.cos(az) * Math.cos(SUN_UP));
+  const up = sky.sunUp * Math.PI / 180;
+  SUN_DIR.set(Math.sin(az) * Math.cos(up), Math.sin(up), Math.cos(az) * Math.cos(up));
   lx.crossVectors(new THREE.Vector3(0, 1, 0), SUN_DIR).normalize(); ly.crossVectors(SUN_DIR, lx); // shadow camera axes
 }
 aimSun(0);
 function followView(cam) {
   const dist = cam?.dist ?? 85, gy = cam?.y ?? 0;
-  scene.fog.near = dist * 0.7; scene.fog.far = dist * 4.5;
+  scene.fog.near = dist * 0.7 / sky.haze; scene.fog.far = dist * 4.5 / sky.haze;
 
   camera.updateMatrixWorld();
   center.set(0, 0, 0);
