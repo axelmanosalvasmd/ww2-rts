@@ -377,6 +377,21 @@ the HUD.
 - Fort keys are a Shift layer: T trench, Shift+Y sandbags, Shift+U wire, Shift+I traps, Shift+O nest. Plain Y/U/I/O
   keep the Classic build and support actions. `client/keys.js` is the single binding table and test.js rejects
   duplicate chords.
+- Recruit by letter (2026-10-01): outside Classic, Tab or Backquote toggles recruit mode. The Command Card cards take
+  Q W E R T / A S D F G / Z X C V B in reading order, a letter buys exactly like a click (same availability check and
+  refusal reason), and Shift+letter buys five or as many as MP, Fuel, the army limit and the type limit allow
+  (`buyCount` in `client/availability.js`). The server still gets one 'buy' per unit. The mode lasts until Tab,
+  Backquote, Esc or a right-click, and a new match starts with it off. A letter that has a card buys, so while the mode
+  is on WASD, Q/E, the orders on those keys (X stop, R retreat, F ability, G attack-move, T trench) and the support calls
+  on Z C V B are suspended, and their badges hide so the screen never shows one letter doing two things. The arrows still
+  pan, Ctrl+A, N/U/P/I and the Shift fort keys still work. A letter with no card under it keeps its usual action,
+  camera keys included (Conquest has 14 cards for 15 letters, so B still aims smoke). In Classic, a selected production
+  building's train cards answer to the same letters without a mode ('building' context, Shift buys five up to that
+  building's queue room): an HQ takes Q and W, so A S D E still pan and rotate. Classic Tab only explains this.
+  Keys.js contexts are ranked (targeting 2, recruit and building 1, the rest 0): the highest rank wins, and test.js
+  allows a repeated chord only across different ranks. Tab is preventDefaulted only in a match with the menu closed, so
+  it still moves focus in the lobby and menus. The client's queue check follows the building a card belongs to (`from`),
+  as the server does.
 - Team pings: Alt+click sends `{t:'ping', x, z}`. The server accepts 3 per 5 s per player, only inside the map, and
   relays only to humans on the sender's team. No unit ids travel with it. The ring lasts 4 s.
 - Order queue: up to 8 waiting orders per unit, and a full queue is refused with 'queueFull'. A queued dig is paid when
@@ -408,6 +423,33 @@ the HUD.
   through `setSurfaces(surface)` from main.js and fall back to plain colors in Node tests. House roofs stay separate
   meshes because `mergeMeshes` keeps one material and a roof has two. `client/fx.js` still owns every effect sound and
   `client/battle-sound.js` exports only `battleFrame`, so there is still one Volume slider and no mute button.
+
+## Edge scrolling and Capture mouse (2026-10-01)
+- Edge scrolling follows Warcraft III. The band is 3% of the window's shorter side, kept between 24 and 48 CSS px
+  (32 px at 1920x1080). Speed grows with depth, from 30% at the inner side of the band to 100% at the very edge, eases
+  in over 0.15 s (smoothstep) and adds up in corners, like holding two pan keys. It uses the keyboard pan speed, so
+  zoom and the Pan speed setting apply. Over a HUD panel only the outer quarter of the band (at least 6 px) scrolls,
+  so buttons near the edge stay usable.
+- A cursor that leaves the window keeps scrolling toward the side it left by until it comes back. Blur, a hidden tab,
+  the menu, the lobby or the replaced-seat screen stop it at once. The document `mouseleave` no longer affects it.
+- No edge scroll during the opening glide, a box drag, with the left or middle button held (middle drag rotates), or
+  for a follow that started while the cursor was already in the band (until the cursor leaves the band). A new edge
+  push ends a follow, as the pan keys do.
+- The cursor in the band is a block arrow toward the scroll direction (8 directions), set through `html[data-edge]`.
+- Capture mouse is pointer lock with a cursor the game draws. The menu setting is In fullscreen (default), Always or
+  Off, and a one-click toggle sits beside the Fullscreen button. Esc lets go, and the mouse stays free until the
+  player clicks the toggle, enters fullscreen or starts a new match. Leaving play (lobby, match end) releases it.
+- While captured, `client/pointer.js` stops each real mouse event at the window (its listeners are registered before
+  main.js's) and fires a copy at the element under the drawn cursor, so main.js, the HUD, the minimap and the menu read
+  clientX/clientY as usual. It sets `.vhover` for hover styles, makes its own click and double-click (same spot within
+  6 px, and within 500 ms or the browser's own click count) and drags range sliders. Motion is movementX/Y times a
+  ratio measured while the mouse is free, since browsers report it in different units.
+- camera.js owns all camera motion. pointer.js only reports where the cursor is (`x`, `y`, `out`, `overView`,
+  `active`, `buttons`) and draws the arrow camera.js picks each frame.
+- First-press fix: main.js used to swallow the first mousedown of the opening glide (capture phase, then
+  preventDefault and stopPropagation), so the first click or box drag of a match selected nothing. `rig.introPress`
+  now lets a left press end the glide and go on to select. Only a right press is held back, so it cannot give an
+  order. The keyboard handler still swallows the first key during the glide (left for later).
 
 ## Relief, structures and atmosphere (round 4, 2026-10-01)
 - Relief module: `client/relief.js` (`createRelief(map, grid, { texture, isRoad, gfx, low, onGeometry, material })`)

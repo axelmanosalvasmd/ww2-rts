@@ -2439,26 +2439,49 @@ for (const lookupFinished of [false, true]) {
 }
 // Hotkey chords remain unique in every combination of simultaneously active contexts.
 {
-  const { bindings, match, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS } = await import('./client/keys.js');
+  const { bindings, match, rank, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS, CARD_KEYS } = await import('./client/keys.js');
+  // Recruit mode only exists outside Classic and the building letters only in Classic, so they never meet.
   for (const contexts of [['global', 'army'], ['global', 'classic'], ['global', 'targeting'],
-    ['global', 'army', 'targeting'], ['global', 'classic', 'targeting']]) {
+    ['global', 'army', 'targeting'], ['global', 'classic', 'targeting'],
+    ['global', 'army', 'recruit'], ['global', 'army', 'recruit', 'targeting'],
+    ['global', 'classic', 'building'], ['global', 'classic', 'building', 'targeting']]) {
     const seen = new Map();
     for (const binding of bindings.filter(b => contexts.includes(b.context))) {
       const chord = [binding.code, binding.shift, binding.ctrl, binding.alt].join(':');
       const previous = seen.get(chord) ?? [];
+      // a chord may be shared only across layers (base table, card letters, targeting), never inside one
       for (const other of previous) {
-        assert.ok((other.context === 'targeting') !== (binding.context === 'targeting'),
-          `${contexts.join('+')}: ${binding.id} collides with ${other.id}`);
+        assert.notEqual(rank(other.context), rank(binding.context), `${contexts.join('+')}: ${binding.id} collides with ${other.id}`);
       }
       seen.set(chord, [...previous, binding]);
     }
     for (const bindingsForChord of seen.values()) {
       const first = bindingsForChord[0];
-      const expected = bindingsForChord.find(b => b.context === 'targeting') ?? first;
+      const expected = bindingsForChord.reduce((a, b) => (rank(b.context) > rank(a.context) ? b : a));
       assert.equal(match({ code: first.code, shiftKey: first.shift, ctrlKey: first.ctrl, altKey: first.alt }, contexts),
-        expected.id, `${contexts.join('+')}: targeting overrides the mode binding`);
+        expected.id, `${contexts.join('+')}: the top layer wins ${first.code}`);
     }
   }
+  // The card letters: Q W E R T, A S D F G, Z X C V B in reading order, Shift for five, Tab or backquote to toggle.
+  assert.equal(CARD_KEYS.join(''), 'QWERTASDFGZXCVB');
+  for (const context of ['recruit', 'building']) {
+    CARD_KEYS.forEach((key, i) => {
+      assert.equal(match({ code: `Key${key}` }, ['army', context]), `card:${i + 1}`, `${context}: ${key} buys card ${i + 1}`);
+      assert.equal(match({ code: `Key${key}`, shiftKey: true }, ['classic', context]), `cardMany:${i + 1}`);
+    });
+  }
+  assert.equal(match({ code: 'KeyW' }, 'army'), 'panForward', 'WASD pans again once recruit mode is off');
+  assert.equal(match({ code: 'KeyW' }, ['army', 'recruit']), 'card:2', 'recruit mode suspends WASD panning');
+  assert.equal(match({ code: 'ArrowUp' }, ['army', 'recruit']), 'panForward', 'arrow keys still pan in recruit mode');
+  assert.equal(match({ code: 'KeyR' }, ['army', 'recruit']), 'card:4', 'recruit mode suspends the army letters');
+  assert.equal(match({ code: 'KeyJ' }, ['classic', 'building']), 'build:depot', 'Engineer build keys sit outside the card letters');
+  for (const code of ['Tab', 'Backquote']) {
+    assert.equal(match({ code }, 'army'), 'recruitMode');
+    assert.equal(match({ code }, ['army', 'recruit']), 'recruitMode', `${code} also turns recruit mode off`);
+  }
+  assert.equal(match({ code: 'Escape' }, ['army', 'recruit']), 'recruitOff', 'Esc leaves recruit mode before clearing the selection');
+  assert.equal(match({ code: 'Escape' }, ['army', 'recruit', 'targeting']), 'cancelAim', 'Esc cancels an aim first');
+  assert.equal(match({ code: 'Tab' }, 'classic'), 'recruitMode', 'Classic answers Tab with a hint instead of moving focus');
   assert.equal(match({ code: 'Space' }, 'army'), 'alert');
   assert.equal(match({ code: 'Space', shiftKey: true }, 'army'), 'follow', 'Shift+Space never triggers the plain Space action');
   assert.equal(match({ code: 'KeyH', shiftKey: true }, 'army'), 'rally');
@@ -2536,6 +2559,34 @@ for (const lookupFinished of [false, true]) {
   selection.findIdle(); assert.deepEqual(ids(), [1], 'new matches reset idle cursors');
   const beforeRecall = centers.length; selection.group(1, 'set'); selection.group(1, 'recall', 1100);
   assert.equal(centers.length, beforeRecall, 'new matches and group edits reset the double-tap timer');
+}
+// Camera: a mouse press during the opening glide ends it and still reaches the board, so the first click or box drag
+// of a match selects (it used to be swallowed). A right-click is still dropped: its order was aimed at a moving view.
+{
+  const THREE = await import('three');
+  const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
+    .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
+    .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
+  const { rig } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const saved = { innerWidth: globalThis.innerWidth, innerHeight: globalThis.innerHeight, addEventListener: globalThis.addEventListener };
+  Object.assign(globalThis, { innerWidth: 1920, innerHeight: 1080, addEventListener: () => {} });
+  try {
+    const button = () => ({ setAttribute() {}, textContent: '' });
+    rig.init({ cam: { x: 40, z: 40, yaw: 0, dist: 60 }, camera: new THREE.PerspectiveCamera(45, 1920 / 1080, 0.5, 2000), pitch: 0.95,
+      keys: new Set(), dragging: () => null, world: () => null, units: new Map(), hAt: () => 0, bounds: () => ({ w: 160, h: 160 }),
+      groundAt: () => null, tryStore: () => null, edgeButton: button(), panButton: button() });
+    const press = (b) => {
+      const e = { button: b, stopped: false, prevented: false, stopPropagation() { this.stopped = true; }, preventDefault() { this.prevented = true; } };
+      rig.introPress(e); return e;
+    };
+    rig.startIntro(false); assert.ok(rig.intro, 'a new match opens with the glide');
+    const left = press(0);
+    assert.ok(!rig.intro, 'a press ends the glide');
+    assert.ok(!left.stopped && !left.prevented, 'the press that ends the glide still reaches the board (selects)');
+    assert.ok(!press(0).stopped, 'later presses pass untouched');
+    rig.startIntro(false); assert.ok(press(2).stopped, 'a right-click during the glide gives no order');
+    rig.startIntro(false); assert.ok(!press(1).stopped, 'a middle press during the glide still starts a rotation');
+  } finally { Object.assign(globalThis, saved); }
 }
 // Map pings: the relay rules directly, then over the shared server harness.
 {
@@ -3789,7 +3840,7 @@ console.log('all command feedback checks passed');
 
 // Availability uses real snapshots and prices, including queued units and completed buildings.
 {
-  const { availability, placementState, denySentence } = await import('./client/availability.js');
+  const { availability, buyCount, placementState, denySentence } = await import('./client/availability.js');
   const { createFeedback, setAvailability } = await import('./client/feedback.js');
   const { priceOf, popCap, placementCheck, teamSees } = await import('./shared/sim.js');
   const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
@@ -3813,6 +3864,17 @@ console.log('all command feedback checks passed');
   assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
   hq.queue = Array(5).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'The training queue is full');
+  // A card on one selected building asks that building: the server refuses a full one instead of using another.
+  {
+    const second = { ...hq, id: g.nextId++, queue: [] };
+    g.units.set(second.id, second);
+    assert.equal(check({ t: 'buy', unit: 'rifle' }).ok, true, 'any building with room will do for an unaimed buy');
+    assert.equal(check({ t: 'buy', unit: 'rifle', from: second.id }).ok, true);
+    assert.equal(check({ t: 'buy', unit: 'rifle', from: hq.id }).reason, 'The training queue is full', 'the chosen building is full');
+    assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), 'queueFull', 'the server agrees');
+    assert.equal(buyCount(snapshotFor(g, 0, []), CFG, { t: 'buy', unit: 'rifle', from: hq.id, slot: 0 }, 5), 0);
+    g.units.delete(second.id);
+  }
   hq.queue = Array(popCap(g) - [...g.units.values()].filter(v => v.owner === 0 && !UNITS[v.type].structure).length).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, `Army at its limit (${popCap(g)}/${popCap(g)})`);
   hq.queue = [];
@@ -3834,6 +3896,25 @@ console.log('all command feedback checks passed');
   rifle.type = 'rocket';
   assert.equal(check({ t: 'ability', unit: 'rocket', ids: [rifle.id] }).reason, 'Needs 25 munitions');
   rifle.type = 'rifle';
+  // Shift+letter asks for as many as the limits allow: the server takes exactly that many and refuses the next one.
+  {
+    const count = (unit, from) => buyCount(snapshotFor(g, 0, []), CFG, { t: 'buy', unit, from, slot: 0 }, 5);
+    p.mp = priceOf(g, 'rifle').mp * 3 + 1;
+    assert.equal(count('rifle', hq.id), 3, 'manpower for three');
+    for (let i = 0; i < 3; i++) assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), undefined);
+    assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), 'mp');
+    p.mp = 10000;
+    assert.equal(count('rifle', hq.id), 2, 'the queue has two places left');
+    assert.equal(count('mg'), 0, 'refused outright: no Barracks');
+    hq.queue = [];
+    const c = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1]), cp = c.players[0];
+    cp.mp = 1e6;
+    while (popOf(c, 0) < popCap(c) - 2) command(c, 0, { t: 'buy', unit: 'rifle' });
+    const n = buyCount(snapshotFor(c, 0, []), CFG, { t: 'buy', unit: 'rifle', slot: 0 }, 5);
+    assert.equal(n, 2, 'two places left under the army limit');
+    for (let i = 0; i < n; i++) assert.equal(command(c, 0, { t: 'buy', unit: 'rifle' }), undefined);
+    assert.equal(command(c, 0, { t: 'buy', unit: 'rifle' }), 'pop');
+  }
 
   const snapshot = snapshotFor(g, 0, []), map = blank(empty);
   // Terrain after initial HQ footprints is the same terrain the client receives.

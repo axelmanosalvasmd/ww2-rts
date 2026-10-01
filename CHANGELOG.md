@@ -24,6 +24,37 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   default work at 1920x1080 and 1366x768. Not seen live: a rifle squad turned off holding its grenade, and the AP round,
   satchel and Ura!; all of those, plus Suppressive Fire, smoke, barrage (friends in the blast, units out of sight) and a
   walked-away squad, are now covered by tests.
+- Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
+  "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
+  like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends
+  it. While it is on, a letter that has a card buys, so WASD, Q/E, Stop (X), Retreat (R), Ability (F), Attack-move (G),
+  Trench (T) and the Z C V support calls pause (the arrows still pan) and their badges hide; B has no card in Conquest
+  and still aims smoke. In Classic, a selected HQ or production building shows the same letters on its train cards
+  without any mode and Shift+letter queues five at that building; an HQ uses only Q and W, so A S D E still pan and
+  rotate. Classic Tab explains this. Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit
+  (12/12)").
+  - Fixed along the way: a Classic card on a selected building now greys out when that building's queue is full, even
+    if another building still has room (the server refuses a full chosen building).
+  - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
+    and the extra buys come back refused with their reason.
+- Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
+  window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
+  goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window
+  keeps scrolling until it comes back (before, leaving the window stopped it, so in a normal browser window edge
+  scrolling barely worked). Switching windows or tabs, or opening the menu, stops it at once. It stays off while you
+  box-select, rotate with the middle button or watch the opening glide, and pushing an edge ends Follow. Checked at
+  1920x1080 at the default zoom: 66 m/s at an edge, 93 m/s in a corner, the same as the pan keys.
+- Capture mouse: a new button next to Fullscreen keeps the cursor inside the game (the game draws its own cursor), so
+  edge scrolling works in a window too. The menu setting chooses In fullscreen (the default), Always or Off, and Esc
+  lets go. Selecting, box select, double-click, orders, the minimap, the recruit bar, the menu, the volume slider and
+  strike aiming all work while it is on.
+- Fixed: the first click or box drag of a match could select nothing. The opening camera glide swallowed the first
+  mouse press to end itself; now a left press ends the glide and selects as well, and a right press still only ends
+  it (so it cannot give an order). A Node test covers it. Left for later: the first key pressed during the glide is
+  still swallowed.
+- Not checked: Alt+click pings while the mouse is captured (the test browser cannot hold Alt during a click), and
+  moving a captured mouse in fullscreen (headless Chrome answers each move there with a move back).
+
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

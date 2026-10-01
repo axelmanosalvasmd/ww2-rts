@@ -16,6 +16,7 @@ import { buildStructures as buildPieces, sandbagRing, buildingModel } from './st
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
+import { createPointer } from './pointer.js';
 import { pings } from './pings.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR } from './markers.js';
 import { disposeTree } from './upkeep.js';
@@ -170,6 +171,7 @@ $('start').onclick = () => sendCmd({ t: 'start' });
 $('fullscreen').onclick = async () => {
   try {
     if (document.fullscreenElement) return document.exitFullscreen();
+    pointer.beforeFullscreen();
     await document.documentElement.requestFullscreen();
     await navigator.keyboard?.lock?.(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9']);
   } catch {}
@@ -842,7 +844,11 @@ const orders = createOrders({
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
-rig.init({ cam, camera, pitch: PITCH, keys, mouse: () => mouse, dragging: () => drag, world: () => world,
+// created before the mouse listeners below: while Capture mouse is on, its window listeners must run first
+const pointer = createPointer({ view: renderer.domElement, tryStore, captureButton: $('captureBtn'), captureNow: $('captureNow'),
+  playing: () => !EDIT && !$('hud').classList.contains('hidden') && $('overlay').classList.contains('hidden') });
+rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag, world: () => world,
+  blocked: () => !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
   units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
   // the clear band for framing: below the score and status panels, above the recruit bar
   band: () => { const t = $('top').getBoundingClientRect(), b = $('buy').getBoundingClientRect(); return { top: t.height ? t.bottom : 0, bottom: b.height ? b.top : innerHeight }; },
@@ -858,7 +864,7 @@ function cancelInput(clearKeys = true) {
   if (clearKeys) keys.clear();
   mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden');
 }
-addEventListener('mousedown', (e) => { if (rig.skipIntro()) { e.preventDefault(); e.stopPropagation(); } }, { capture: true });
+addEventListener('mousedown', rig.introPress, { capture: true });
 
 // Any shortcut that moves the camera ends follow mode (camera stream rule).
 const centerSelection = (list) => {
@@ -883,6 +889,8 @@ const actions = {
     if (hq) { selected.clear(); selected.add(hq.id); }
   },
   clear: () => selected.clear(), cancelAim,
+  recruitMode: () => classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()),
+  recruitOff: () => hud.setRecruit(false),
   army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
   idleEngineer: () => selection.findIdle(false, true),
   panForward: () => {}, panBack: () => {}, panLeft: () => {}, panRight: () => {}, rotateLeft: () => {}, rotateRight: () => {},
@@ -893,13 +901,22 @@ for (const { id } of bindings) {
   else if (kind === 'fort') actions[id] = () => startDig(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
   else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
+  else if (kind === 'card' || kind === 'cardMany') actions[id] = () => hud.pressCard(+value, kind === 'cardMany');
 }
+// In a match (not the lobby or the open menu) Tab belongs to the game: it toggles recruit mode and never moves focus.
+const inMatch = () => lobbyState?.state === 'play' && !$('hud').classList.contains('hidden') && $('menu').classList.contains('hidden');
+const keyContexts = () => [classicMode() ? 'classic' : 'army', ...(!inMatch() ? [] : hud.recruiting() ? ['recruit'] : hud.lettered() ? ['building'] : []), ...(targeting ? ['targeting'] : [])];
 addEventListener('keydown', (e) => {
   if (rig.skipIntro()) { e.preventDefault(); return; }
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   keys.add(e.code);
   if (EDIT) return;
-  const id = match(e, [classicMode() ? 'classic' : 'army', ...(targeting ? ['targeting'] : [])]);
+  if (e.code === 'Tab' && inMatch()) e.preventDefault();
+  const contexts = keyContexts();
+  let id = match(e, contexts);
+  if (id === 'recruitMode' && !inMatch()) return;
+  // a letter with no card under it (a Classic HQ has two, Conquest has 14 of the 15) keeps its usual meaning, camera keys included
+  if (id?.startsWith('card') && !hud.hasCard(+id.split(':')[1])) id = match(e, contexts.filter((c) => c !== 'building' && c !== 'recruit'));
   // Shortcuts that share camera codes must not also pan.
   if (id && !id.startsWith('pan') && !id.startsWith('rotate')) keys.delete(e.code);
   if (!id || !actions[id]) return;
@@ -1210,7 +1227,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
