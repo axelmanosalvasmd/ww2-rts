@@ -9,7 +9,7 @@
 // Baked geometry is cached per look, so the second rifle squad of a color reuses the first one's geometry.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
-import { gunModel, GUN_SLOTS } from './models/guns.js'; // the crew-served weapons: machine guns, mortars, AT guns, flak
+import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
 // unit-sized shapes, scaled per part
 const GEO = {
@@ -272,7 +272,7 @@ export function buildModel(v, root, f, fac, def) {
   if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     v.body = new THREE.Group();
-    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(part(GEO.box, skin('sandbag', 0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
+    v.body.add(part(sandbagRing(), skin('sandbag', 0x9c8a60))); // two staggered courses of rounded bags with a gap for the entrance
     v.body.add(part(gunModel('flakpos', fac, f).geo, 0xffffff)); // the twin gun on its pedestal
     root.add(bake(v.body, key, true)); v.models.push(root);
   } else if (building && BUILDINGS.has(type)) {
