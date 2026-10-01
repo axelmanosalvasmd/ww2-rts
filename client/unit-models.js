@@ -16,6 +16,7 @@ import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier } from './models/infantry.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
+import { isWheeled, wheeledModel } from './models/wheeled.js';
 
 // unit-sized shapes, scaled per part (body: the corpses; client/models/infantry.js builds the soldiers)
 const GEO = {
@@ -187,47 +188,6 @@ const SLOTS = {
   conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
 };
 
-// tank silhouettes: [hull l,h,w], [turret l,h,w, x, z], barrel [length, thickness], sloped glacis
-const TANKS = {
-  tank: [
-    { hull: [3.8, 1.3, 2.3], turret: [1.6, 0.9, 1.5, -0.1, 0], gun: [2.0, 0.09] },               // M5 Stuart: tall and boxy
-    { hull: [4.0, 1.0, 2.2], turret: [1.3, 0.75, 1.2, 0.2, 0.3], gun: [1.6, 0.07] },             // Panzer II: small offset turret
-    { hull: [4.2, 1.0, 2.3], turret: [1.6, 0.8, 1.5, -0.3, 0.2], gun: [2.2, 0.09], slope: 1 },   // T-70: sloped front
-  ],
-  tiger: [null, { hull: [5.4, 1.4, 3.2], turret: [2.6, 1.1, 2.2, -0.2, 0], gun: [3.8, 0.14], brake: 1 }, null],
-  medium: [
-    { hull: [4.8, 1.5, 2.7], turret: [2.0, 1.0, 1.9, -0.1, 0], gun: [2.6, 0.11], slope: 1, cast: 1 },  // M4 Sherman: tall, rounded, cast turret
-    { hull: [5.0, 1.2, 2.7], turret: [2.3, 0.95, 1.9, -0.2, 0], gun: [3.0, 0.11] },                    // Panzer IV: boxy, long gun
-    { hull: [5.0, 1.1, 2.9], turret: [2.0, 0.9, 1.9, 0.3, 0], gun: [2.9, 0.11], slope: 1, cast: 1 },    // T-34: sloped, turret forward, cast turret
-  ],
-  // mobile flak: M16 half-track (quad MGs), Wirbelwind (flak turret on a Panzer IV), ZSU-37 (on a light tank)
-  flaktrack: [
-    { hull: [4.2, 1.1, 2.2], turret: [1.2, 0.6, 1.4, -0.8, 0], gun: [1.2, 0.07], wheels: 2, twin: 1 },
-    { hull: [5.0, 1.2, 2.7], turret: [1.8, 1.0, 1.8, -0.2, 0], gun: [1.6, 0.07], twin: 1 },
-    { hull: [4.4, 1.1, 2.4], turret: [1.8, 0.8, 1.7, -0.6, 0], gun: [2.2, 0.08], twin: 1 },
-  ],
-  armoredcar: [
-    { hull: [3.8, 1.0, 2.1], turret: [1.3, 0.6, 1.3, 0, 0], gun: [1.0, 0.06], wheels: 3 },             // M8 Greyhound: six wheels
-    { hull: [3.6, 0.9, 1.9], turret: [1.1, 0.5, 1.2, 0, 0], gun: [0.8, 0.05], wheels: 2 },             // Sd.Kfz. 222
-    { hull: [3.2, 1.1, 1.7], turret: [0.9, 0.5, 0.9, 0, 0], gun: [0.7, 0.05], wheels: 2, slope: 1 },   // BA-64: small, sloped
-  ],
-};
-// hull parts go into the returned group; the turret becomes v.turret (both baked by the caller)
-function buildTank(v, root, spec, f) {
-  const hull = f.vehicle, [hl, hh, hw] = spec.hull, y = hh / 2 + 0.5, g = new THREE.Group();
-  g.add(part(GEO.box, hull, hl, hh, hw, 0, y, 0));
-  if (spec.wheels) for (let i = 0; i < spec.wheels; i++) for (const side of [1, -1]) g.add(part(GEO.cyl, DARK, 0.45, 0.35, 0.45, (i / (spec.wheels - 1) - 0.5) * hl * 0.7, 0.45, side * hw / 2, 'rubber').rotateX(Math.PI / 2));
-  else g.add(part(GEO.box, DARK, hl + 0.2, 0.8, 0.6, 0, 0.45, hw / 2, 'track-steel'), part(GEO.box, DARK, hl + 0.2, 0.8, 0.6, 0, 0.45, -hw / 2, 'track-steel'));
-  if (spec.slope) g.add(part(GEO.box, hull, 1.2, 0.2, hw, hl / 2 - 0.2, y + 0.25, 0).rotateZ(-0.5));
-  const [tl, th, tw, tx, tz] = spec.turret, [gl, gt] = spec.gun;
-  v.turret = new THREE.Group(); v.turret.position.set(tx, y + hh / 2 + th / 2, tz);
-  v.turret.add(part(GEO.box, hull, tl, th, tw, 0, 0, 0, spec.cast ? 'cast-armor' : undefined), part(GEO.cyl, DARK, gt, gl, gt, tl / 2 + gl / 2, 0.05, 0, 'gunmetal').rotateZ(Math.PI / 2), part(GEO.box, f.color, 0.4, th + 0.02, tw + 0.02, -tl / 2 + 0.3, 0, 0));
-  if (spec.twin) v.turret.add(part(GEO.cyl, DARK, gt, gl, gt, tl / 2 + gl / 2, 0.25, 0.3, 'gunmetal').rotateZ(Math.PI / 2 - 0.6), part(GEO.cyl, DARK, gt, gl, gt, tl / 2 + gl / 2, 0.25, -0.3, 'gunmetal').rotateZ(Math.PI / 2 - 0.6));
-  if (spec.brake) v.turret.add(part(GEO.box, DARK, 0.35, 0.3, 0.35, tl / 2 + gl, 0.05, 0, 'gunmetal'));
-  root.add(g, v.turret);
-  return g;
-}
-
 // soldier posture, blended by weight: [lean (rad, + = back), height scale, shift x, shift y, weapon x, weapon y]
 // in the soldier's own units (+x forward, feet at 0). The weapon point is where muzzle flashes start
 // (client/fx.js uses about (0.7, 1.05) on a standing man); the soldier node moves so it lands there.
@@ -270,12 +230,25 @@ function levelBase(g, n) {
 // beyond this camera distance soldiers swap to the far-away model (closer on Low graphics)
 export const LOD = { high: 110, low: 80 };
 
+// Armored cars, the M16, the Panzerwerfer and the Katyusha: client/models/wheeled.js builds the hull and the traversing
+// part as two vertex-colored geometries (shared per look); baked like the tanks, so they carry their materials and grime.
+function wheeledUnit(v, root, f, fac, key) {
+  const m = wheeledModel(v.type, fac, f), hull = new THREE.Group();
+  hull.add(part(m.hull, 0xffffff));
+  v.turret = new THREE.Group(); v.turret.position.set(...m.turretAt); v.turret.add(part(m.turret, 0xffffff));
+  v.fxTip = m.tip;
+  root.add(hull, v.turret);
+  bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
+  v.models.push(root);
+}
+
 // Builds the model of unit v under root: v.models (soldiers, or the root for vehicles and structures), v.turret,
 // v.body (structures and planes; it scales up while built), v.fxTip (barrel tip for client/fx.js).
 // f is the owner's look (uniform, vehicle and player colors), fac the faction, def the unit's stats.
 export function buildModel(v, root, f, fac, def) {
   const type = v.type, key = `${type}|${fac}|${f.color}`;
   if (def.air || type === 'airfield') return; // client/aircraft.js builds these
+  if (isWheeled(type, fac)) { wheeledUnit(v, root, f, fac, key); return; }
   if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     v.body = new THREE.Group();
@@ -326,49 +299,12 @@ export function buildModel(v, root, f, fac, def) {
     const hull = buildArmorMedium(v, root, type, fac, f);
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
-  } else if (TANKS[type]) {
-    // the light tanks, the Tiger and the ZSU-37 come from client/models/armor-lightheavy.js as two painted geometries
-    const lh = lightHeavy(type, fac, f);
-    let hull;
-    if (lh) {
-      hull = new THREE.Group(); hull.add(part(lh.hull, 0xffffff));
-      v.turret = new THREE.Group(); v.turret.position.set(...lh.ring); v.turret.add(part(lh.turret, 0xffffff));
-      root.add(hull, v.turret); v.fxTip = lh.tip;
-    } else { hull = buildTank(v, root, TANKS[type][fac] ?? TANKS[type].find(Boolean), f); v.fxTip = barrelTip(v.turret); }
-    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
-    v.models.push(root);
-  } else if (type === 'rocket') {
-    const body = f.vehicle;
-    const tube = (x, y, z, len = 2.6) => part(GEO.cyl, DARK, 0.12, len, 0.12, x, y, z).rotateZ(Math.PI / 2);
-    let hull;
-    if (fac === 0) {
-      // T34 Calliope: a Sherman with a box of tubes above the turret
-      hull = buildTank(v, root, { hull: [4.4, 1.3, 2.5], turret: [1.8, 0.9, 1.6, -0.2, 0], gun: [2.0, 0.1] }, f);
-      const rack = new THREE.Group(); rack.position.set(0, 1.1, 0); rack.rotation.z = 0.25;
-      for (let i = 0; i < 12; i++) rack.add(tube(0.3, (i % 3) * 0.26, (Math.floor(i / 3) - 1.5) * 0.3, 2.8));
-      v.turret.add(rack);
-    } else if (fac === 1) {
-      // Panzerwerfer: half-track, wheels up front, tracks behind, ten tubes in two rows
-      hull = new THREE.Group(); v.turret = new THREE.Group();
-      hull.add(part(GEO.box, body, 4.4, 1.0, 2.1, 0, 1.2, 0), part(GEO.box, body, 1.4, 0.9, 2.0, 1.6, 1.9, 0));
-      for (const wz of [-1.0, 1.0]) hull.add(part(GEO.cyl, DARK, 0.45, 0.3, 0.45, 1.6, 0.45, wz, 'rubber').rotateX(Math.PI / 2), part(GEO.box, DARK, 2.8, 0.8, 0.5, -0.8, 0.45, wz, 'track-steel'));
-      v.turret.position.set(-0.8, 1.9, 0);
-      const rack = new THREE.Group(); rack.rotation.z = 0.45;
-      for (let i = 0; i < 10; i++) rack.add(tube(0, (i % 2) * 0.3, (Math.floor(i / 2) - 2) * 0.28, 1.8));
-      v.turret.add(rack);
-      root.add(hull, v.turret);
-    } else {
-      // Katyusha: truck with long launch rails
-      hull = new THREE.Group(); v.turret = new THREE.Group();
-      hull.add(part(GEO.box, body, 4.4, 0.7, 2.1, 0, 1.0, 0), part(GEO.box, body, 1.3, 1.2, 2.0, 1.6, 1.8, 0), part(GEO.box, f.color, 0.5, 0.3, 2.02, 1.6, 2.45, 0));
-      for (const wx of [-1.4, 0, 1.4]) for (const wz of [-1.05, 1.05]) hull.add(part(GEO.cyl, DARK, 0.45, 0.3, 0.45, wx, 0.45, wz, 'rubber').rotateX(Math.PI / 2));
-      v.turret.position.set(-0.8, 1.7, 0);
-      const rack = new THREE.Group(); rack.rotation.z = 0.5;
-      for (let i = 0; i < 8; i++) rack.add(part(GEO.box, DARK, 3.4, 0.08, 0.14, 0, (i % 2) * 0.24, (Math.floor(i / 2) - 1.5) * 0.3));
-      v.turret.add(rack);
-      root.add(hull, v.turret);
-    }
-    v.fxTip = barrelTip(v.turret);
+  } else if (lightHeavy(type, fac, f)) {
+    // the light tanks, the Tiger and the ZSU-37: client/models/armor-lightheavy.js, two painted geometries (cached)
+    const lh = lightHeavy(type, fac, f), hull = new THREE.Group();
+    hull.add(part(lh.hull, 0xffffff));
+    v.turret = new THREE.Group(); v.turret.position.set(...lh.ring); v.turret.add(part(lh.turret, 0xffffff));
+    root.add(hull, v.turret); v.fxTip = lh.tip;
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else {

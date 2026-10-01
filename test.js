@@ -3817,4 +3817,37 @@ console.log('all availability checks passed');
 }
 console.log('all model toolkit checks passed');
 
+// Wheeled and half-tracked models (client/models/wheeled.js): the armored cars, the M16 and the two rocket trucks are two
+// shadow-casting draws with a traversing part, stay close to the footprint of the boxes they replaced and within their
+// triangle budgets, carry their own vertex colors, and put the muzzle point where the traversing part is.
+{
+  const THREE = await import('three');
+  const { buildModel } = await import('./client/unit-models.js');
+  const { isWheeled, wheeledModel } = await import('./client/models/wheeled.js');
+  const look = { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 };
+  const cases = [['armoredcar', 0], ['armoredcar', 1], ['armoredcar', 2], ['flaktrack', 0], ['rocket', 1], ['rocket', 2]];
+  assert.ok(cases.every(([t, f]) => isWheeled(t, f)) && !isWheeled('rocket', 0) && !isWheeled('flaktrack', 1) && !isWheeled('tank', 0), 'wheeled.js builds exactly its own units');
+  for (const [type, fac] of cases) {
+    const label = `${type} (faction ${fac})`, root = new THREE.Group(), v = { type, root, models: [], turret: null };
+    buildModel(v, root, look, fac, UNITS[type]);
+    const meshes = []; root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+    assert.equal(meshes.length, 2, `${label}: a hull and a turret, two draws`);
+    assert.ok(meshes.every((m) => m.castShadow && m.geometry.attributes.color), `${label}: casts shadows, carries its own colors`);
+    assert.ok(v.turret && v.turret.children.length === 1 && v.models[0] === root, `${label}: the turret node holds the traversing part`);
+    const m = wheeledModel(type, fac, look), box = new THREE.Box3().setFromBufferAttribute(m.hull.attributes.position);
+    const tb = new THREE.Box3().setFromBufferAttribute(m.turret.attributes.position).translate(new THREE.Vector3(...m.turretAt));
+    box.union(tb);
+    const size = box.getSize(new THREE.Vector3()), tris = (m.hull.index.count + m.turret.index.count) / 3;
+    assert.ok(box.min.y > -0.05 && box.min.y < 0.05, `${label}: stands on the ground (${box.min.y})`);
+    assert.ok(size.x >= 3.4 && size.x <= 5.8 && size.z >= 1.6 && size.z <= 2.8, `${label}: footprint ${size.x.toFixed(1)} x ${size.z.toFixed(1)} stays near the old boxes`);
+    assert.ok(tris >= 1500 && tris <= 3000, `${label}: ${tris} triangles within the 3000 budget`);
+    for (const g of [m.hull, m.turret]) assert.ok(g.attributes.position.array.every(Number.isFinite) && g.attributes.normal.array.every(Number.isFinite), `${label}: finite positions and normals`);
+    assert.ok(v.fxTip.length === 3 && v.fxTip.every(Number.isFinite), `${label}: a muzzle point`);
+    const own = new THREE.Box3().setFromBufferAttribute(m.turret.attributes.position).expandByScalar(0.35);
+    assert.ok(own.containsPoint(new THREE.Vector3(...v.fxTip)), `${label}: the muzzle point sits at the end of the gun or launcher`);
+    assert.equal(wheeledModel(type, fac, look), m, `${label}: the geometry is cached per look`);
+  }
+}
+console.log('all wheeled model checks passed');
+
 await stopServerHarness(); // the last server check is done
