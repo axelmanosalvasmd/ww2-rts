@@ -5,6 +5,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed a flaky server test: the Massive snapshot-cache check sent Start before the map switch it had just asked
+  for had finished loading, so on a busy machine Start was checked against the old map's seats and dropped. The test
+  now waits for the lobby to show the new map. Left for later: the same can happen to a host who clicks Start within
+  a moment of changing the map (messages from one player are not handled strictly in order while a map loads).
 - Terrain relief, miniature structures and map moods (round 4):
   - Terrain reads as a sculpted painted model. Cliffs are warm stratified rock faces with a pale lip and a soil foot,
     1-level slopes are eased ramps painted with dry earth and a darker foot, height tints the ground (lower is greener
