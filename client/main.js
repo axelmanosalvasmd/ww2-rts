@@ -1,6 +1,15 @@
 import * as THREE from 'three';
+import { createHud } from './hud.js';
+import { createEffects } from './fx.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
-import { unitRole } from './unit-roles.js';
+import { alerts } from './alerts.js';
+import { setupLight, renderFrame } from './light.js';
+import { createGround } from './ground.js';
+import { surface, roofGeometry, roofMaterials } from './surfaces.js';
+import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, MOVE_COLOR } from './markers.js';
+import { disposeTree } from './upkeep.js';
+import { audio } from './audio.js';
+import { battleFrame } from './battle-sound.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -8,7 +17,7 @@ const FACTIONS = [
   { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka' } },
   { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik' } },
 ];
-const COLORS = [0x3d7bd9, 0xe0b23a, 0xd94a3d, 0x4cae4c, 0xa35ad8, 0xe07a2a];
+const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 let teams = [], factions = [];
 const facOf = (slot) => factions[slot] ?? slot % 3;
 const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
@@ -21,7 +30,6 @@ const isVeh = (type) => !UNITS[type].infantry;
 const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const roleText = (type) => esc(unitRole(type, UNITS[type].name));
 const $ = (id) => document.getElementById(id);
 const tryStore = (fn) => { try { return fn(); } catch { return null; } };
 
@@ -146,7 +154,7 @@ function renderLobby(m) {
   $('roster').innerHTML = m.players.map((p, i) => {
     const kick = p.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
-      <span>${esc(p.name)}${i === m.you ? ' (you)' : ''}<span class="muted">${!p.connected ? ' · offline' : ''}${i === m.host ? ' · host' : ''}</span></span>
+      <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
@@ -177,26 +185,17 @@ function renderLobby(m) {
   $('result').classList.toggle('hidden', !r);
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
-  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); }
+  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); audio.end(); }
 }
 
 // ---------- renderer / scene ----------
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa9b4b0);
-scene.fog = new THREE.Fog(0xa9b4b0, 160, 340);
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-scene.add(new THREE.HemisphereLight(0xe4ecf0, 0x4a4630, 1.4));
-const sun = new THREE.DirectionalLight(0xfff0d0, 2.4);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 500 });
-scene.add(sun, sun.target);
+setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -216,7 +215,8 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null;
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null;
+const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
 let field = null;
@@ -248,75 +248,46 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 let lastStart = null;
 function startGame(m) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
+  if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
-  if (world) scene.remove(world);
+  if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
-  sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
-  // ground: painted canvas, 8px per cell
-  const px = 8, cv = document.createElement('canvas'); cv.width = map.w * px; cv.height = map.h * px;
-  const c = cv.getContext('2d');
-  c.fillStyle = '#6c7645'; c.fillRect(0, 0, cv.width, cv.height);
-  for (let i = 0; i < 5000; i++) {
-    c.fillStyle = ['#66703f', '#737d4b', '#6d6a43', '#5f6a3c', '#7a7a50'][i % 5]; c.globalAlpha = 0.35;
-    const s = 4 + Math.random() * 18; c.fillRect(Math.random() * cv.width, Math.random() * cv.height, s, s * 0.6);
-  }
-  c.globalAlpha = 1;
-  // high ground reads at a glance: drier grass per level, contour lines where the level drops
-  const lvl = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0');
-  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
-    const L = lvl(x, y);
-    // hills dry out, hollows get dark and muddy; a contour on every edge where the ground drops
-    if (L > 0) { c.fillStyle = `rgba(190, 180, 110, ${0.16 * L})`; c.fillRect(x * px, y * px, px, px); }
-    if (L < 0) { c.fillStyle = `rgba(55, 50, 30, ${0.22 * -L})`; c.fillRect(x * px, y * px, px, px); }
-    c.fillStyle = 'rgba(45, 40, 20, 0.45)';
-    if (x > 0 && lvl(x - 1, y) < L) c.fillRect(x * px, y * px, 1.5, px);
-    if (x < map.w - 1 && lvl(x + 1, y) < L) c.fillRect((x + 1) * px - 1.5, y * px, 1.5, px);
-    if (y > 0 && lvl(x, y - 1) < L) c.fillRect(x * px, y * px, px, 1.5);
-    if (y < map.h - 1 && lvl(x, y + 1) < L) c.fillRect(x * px, (y + 1) * px - 1.5, px, 1.5);
-  }
-  const base = document.createElement('canvas'); base.width = cv.width; base.height = cv.height; base.getContext('2d').drawImage(cv, 0, 0);
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-  terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: c, base, tex, px, group: new THREE.Group() };
+  // ground: painted canvas (client/ground.js), reused across rebuilds of a same-sized map
+  const gp = createGround(map, renderer);
+  terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
   buildField(map);
-  const ground = new THREE.Mesh(terrainGeometry(), new THREE.MeshLambertMaterial({ map: tex }));
+  const ground = new THREE.Mesh(terrainGeometry(), gp.material);
   ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
   world.add(ground); groundMesh = ground;
 
-  terrain.grid.forEach((row, y) => row.forEach((_, x) => paintCell(x, y)));
+  gp.paint(terrain.grid);
   buildStructures();
 
   // capture points
   const assault = lobbyState?.mode === 'assault' || lobbyState?.mode === 'annihilation'; // no VP in either
   points = map.points.filter(p => !assault || (p.mp ?? 1) > 0).map((p) => {
     const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, hAt((p.x + 0.5) * CELL, (p.y + 0.5) * CELL), (p.y + 0.5) * CELL);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.7, depthWrite: false });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(CFG.pointRadius - 0.35, CFG.pointRadius, 64), ringMat);
-    const progMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
-    const prog = new THREE.Mesh(new THREE.RingGeometry(CFG.pointRadius - 1.6, CFG.pointRadius - 0.6, 64), progMat);
-    ring.rotation.x = prog.rotation.x = -Math.PI / 2; ring.position.y = 0.3; prog.position.y = 0.32;
-    ring.material.depthTest = prog.material.depthTest = false; ring.renderOrder = prog.renderOrder = 2; // stay visible on slopes
-    const flagMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
-    const flag = mesh(GEO.plane, flagMat, 2.2, 1.4, 1, 1.1, 7.2, 0);
-    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`)); // Classic: points pay Munitions
+    const cp = capturePoint(CFG.pointRadius, classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`); // Classic: points pay Munitions
+    g.add(cp.group, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0));
     world.add(g);
-    return { g, ringMat, prog, progMat, flagMat };
+    return { g, set: cp.set };
   });
 
   // fog of war overlay (client-side approximation; the server decides who you can actually see)
   fogGrid = { w: map.w, h: map.h };
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
-  const fog = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
-  aimMesh = null; nodeMarks = null; planGroup = null; coverGroup = null; ghosts.clear();
+  aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
 
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
@@ -330,56 +301,27 @@ function startGame(m) {
   $('overlay').classList.add('hidden');
 }
 
-function label(text) {
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
-  const c = cv.getContext('2d');
-  c.font = 'bold 34px "IBM Plex Mono", monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillStyle = 'rgba(20,20,15,0.75)'; c.fillRect(8, 6, 240, 52);
-  c.fillStyle = '#f0d98a'; c.fillText(text, 128, 33);
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  sp.scale.set(8, 2, 1); sp.position.y = 10; sp.renderOrder = 5;
-  return sp;
-}
-
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
 // stable pseudo-random per cell, so rebuilding after a change doesn't reshuffle everything
 const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 
-// ground texture for one cell: base grass, then whatever is painted on that cell
-function paintCell(x, y) {
-  const { ctx: c, base, px, grid } = terrain, ch = grid[y][x], X = x * px, Y = y * px;
-  c.drawImage(base, X, Y, px, px, X, Y, px, px);
-  if (ch === '+') {
-    const gr = c.createRadialGradient(X + px / 2, Y + px / 2, 0.5, X + px / 2, Y + px / 2, px * 0.7);
-    gr.addColorStop(0, '#3b3526'); gr.addColorStop(0.8, '#5a4f36'); gr.addColorStop(1, 'rgba(90,79,54,0)');
-    c.fillStyle = gr; c.fillRect(X, Y, px, px);
-  } else if (ch === 'B') { c.fillStyle = '#6e6048'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'R') { c.fillStyle = '#6f665a'; c.fillRect(X, Y, px, px); c.fillStyle = '#4f483f'; c.fillRect(X + 1, Y + 2, 3, 2); c.fillRect(X + 5, Y + 5, 2, 2); }
-  else if (ch === 'W' || ch === '=') {
-    c.fillStyle = '#3c5d70'; c.fillRect(X, Y, px, px);
-    c.fillStyle = 'rgba(170, 200, 210, 0.35)'; c.fillRect(X + rnd(x, y) * 5, Y + 2 + rnd(x, y, 1) * 4, 3, 1);
-  } else if (ch === 'F') { c.fillStyle = '#6a7f7a'; c.fillRect(X, Y, px, px); c.fillStyle = 'rgba(200,215,210,0.3)'; c.fillRect(X + 2, Y + 3, 4, 1); }
-  else if (ch === 'X') { c.fillStyle = '#5d5a40'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'Y') { c.fillStyle = '#5e5d4c'; c.fillRect(X, Y, px, px); }
-  else if (ch === 'T') { c.fillStyle = '#3e3222'; c.fillRect(X, Y, px, px); c.fillStyle = '#2c2418'; c.fillRect(X + 2, Y + 2, px - 4, px - 4); }
-}
-
 // all 3D terrain pieces, rebuilt from the grid whenever a cell changes
 function buildStructures() {
   const { grid, group, w } = terrain;
-  group.clear();
+  disposeTree(group, SHARED_GEOS); group.clear();
   const cells = { B: [], H: [], '#': [], '=': [], R: [], X: [], Y: [] };
   grid.forEach((row, y) => row.forEach((ch, x) => cells[ch]?.push([x, y])));
-  const inst = (list, color, fn, per = 1) => {
-    const im = new THREE.InstancedMesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xffffff }), list.length * per);
+  // kind: a textured surface from client/surfaces.js (world-planar texture, so instancing still works)
+  const inst = (list, kind, fn, per = 1) => {
+    if (!list.length) return;
+    const im = new THREE.InstancedMesh(GEO.box, surface(kind), list.length * per);
     const m4 = new THREE.Matrix4(), col = new THREE.Color();
     list.forEach((cell, i) => {
       for (let k = 0; k < per; k++) {
         const [sx, sy, sz, y, tint, base, ox = 0, oz = 0] = fn(cell, k), cx = (cell[0] + 0.5) * CELL + ox, cz = (cell[1] + 0.5) * CELL + oz;
         m4.makeScale(sx, sy, sz).setPosition(cx, y + (base ?? hAt(cx, cz) - 0.2), cz);
-        im.setMatrixAt(i * per + k, m4); im.setColorAt(i * per + k, col.set(color).multiplyScalar(tint));
+        im.setMatrixAt(i * per + k, m4); im.setColorAt(i * per + k, col.setScalar(tint));
       }
     });
     im.castShadow = im.receiveShadow = true; group.add(im);
@@ -401,34 +343,35 @@ function buildStructures() {
     h.base = Math.min(...h.cells.map(([cx, cy]) => Math.min(hAt(cx * CELL, cy * CELL), hAt((cx + 1) * CELL, cy * CELL), hAt(cx * CELL, (cy + 1) * CELL), hAt((cx + 1) * CELL, (cy + 1) * CELL))));
     houses.push(h);
   }
-  inst(cells.B, 0xb8a888, ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
+  inst(cells.B, 'plaster', ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
   for (const h of houses) {
     const xs = h.cells.map(c => c[0]), ys = h.cells.map(c => c[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
     if ((x1 - x0) * (y1 - y0) !== h.cells.length) continue; // flat roof for odd (or half-collapsed) shapes
     const along = x1 - x0 >= y1 - y0, span = (along ? y1 - y0 : x1 - x0) * CELL + 0.6, len = (along ? x1 - x0 : y1 - y0) * CELL + 0.6;
-    const shape = new THREE.Shape([new THREE.Vector2(-span / 2, 0), new THREE.Vector2(span / 2, 0), new THREE.Vector2(0, span * 0.4)]);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false }); geo.translate(0, 0, -len / 2);
-    const roof = mesh(geo, mat(0x7a3f2c), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
+    const roof = mesh(roofGeometry(span, len), roofMaterials(), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
     if (along) roof.rotation.y = Math.PI / 2;
     group.add(roof);
   }
-  inst(cells.H, 0x3f5a2a, ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
-  inst(cells['#'], 0x9a958a, ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25]);
+  inst(cells.H, 'hedge', ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
+  // '#' from the map file is a stone wall; '#' added in play (Assault, Fortify) is a sandbag wall
+  const wall = ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25], stone = ([x, y]) => lastStart.map.rows[y]?.[x] === '#';
+  inst(cells['#'].filter(stone), 'stone', wall);
+  inst(cells['#'].filter(c => !stone(c)), 'sandbag', wall);
   // rubble: a few broken chunks per cell
-  inst(cells.R, 0x8a8070, ([x, y], k) => { const s = 0.5 + rnd(x, y, k) * 0.7; return [s, s * 0.6, s, s * 0.3, 0.7 + rnd(x, y, k + 5) * 0.4, undefined, (rnd(x, y, k + 9) - 0.5) * 1.4, (rnd(x, y, k + 13) - 0.5) * 1.4]; }, 3);
+  inst(cells.R, 'rubble', ([x, y], k) => { const s = 0.5 + rnd(x, y, k) * 0.7; return [s, s * 0.6, s, s * 0.3, 0.7 + rnd(x, y, k + 5) * 0.4, undefined, (rnd(x, y, k + 9) - 0.5) * 1.4, (rnd(x, y, k + 13) - 0.5) * 1.4]; }, 3);
   // barbed wire: two posts and a criss-cross of strands per cell
-  inst(cells.X, 0x4a3c2a, ([x, y], k) => [[0.14, 1.1, 0.14, 0.55, 1, undefined, -0.6, -0.6], [0.14, 1.1, 0.14, 0.55, 1, undefined, 0.6, 0.6],
+  inst(cells.X, 'darkwood', ([x, y], k) => [[0.14, 1.1, 0.14, 0.55, 1, undefined, -0.6, -0.6], [0.14, 1.1, 0.14, 0.55, 1, undefined, 0.6, 0.6],
     [CELL, 0.05, 0.05, 0.85, 0.6], [CELL, 0.05, 0.05, 0.45, 0.6], [0.05, 0.05, CELL, 0.65, 0.6], [0.05, 0.05, CELL, 0.3, 0.6]][k], 6);
   // tank traps: two steel hedgehogs (three crossed beams each) per cell
-  inst(cells.Y, 0x4f4f4c, ([x, y], k) => { const j = k % 3, o = k < 3 ? -0.45 : 0.45, L = 1.5; return [j === 0 ? L : 0.18, j === 1 ? L : 0.18, j === 2 ? L : 0.18, 0.75, 0.9 + rnd(x, y, k) * 0.2, undefined, o, -o]; }, 6);
+  inst(cells.Y, 'steel', ([x, y], k) => { const j = k % 3, o = k < 3 ? -0.45 : 0.45, L = 1.5; return [j === 0 ? L : 0.18, j === 1 ? L : 0.18, j === 2 ? L : 0.18, 0.75, 0.9 + rnd(x, y, k) * 0.2, undefined, o, -o]; }, 6);
   // bridges: a plank deck, with rails on the sides that face the water
-  inst(cells['='], 0x7a5a3a, () => [CELL * 1.02, 0.35, CELL * 1.02, 0.35, 1]);
+  inst(cells['='], 'wood', () => [CELL * 1.02, 0.35, CELL * 1.02, 0.35, 1]);
   const rails = [];
   for (const [x, y] of cells['=']) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[y + dy]?.[x + dx] === 'W') rails.push([x, y, dx, dy]);
-  inst(rails, 0x5a4028, ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
+  inst(rails, 'darkwood', ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
   // trench parapets on every side that isn't more trench
-  const dirt = mat(0x6b5a3e);
+  const dirt = surface('earth');
   for (const [x, y] of grid.flatMap((row, y) => row.map((ch, x) => ch === 'T' && [x, y]).filter(Boolean))) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       if (grid[y + dy]?.[x + dx] === 'T') continue;
@@ -451,11 +394,10 @@ function applyCells(cells) {
   for (const [cell, ch, lv] of cells) {
     const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
     terrain.grid[y][x] = ch;
-    paintCell(x, y);
     if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
   }
-  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = terrainGeometry(); }
-  terrain.tex.needsUpdate = true;
+  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = fogMesh.geometry = terrainGeometry(); }
+  terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
   buildStructures();
   mmImage = null;
 }
@@ -465,11 +407,12 @@ function buildHQ(sp, slot) {
   const f = look(slot), R = CFG.reinforceRadius, g = new THREE.Group();
   g.position.set(sp.x, hAt(sp.x, sp.z), sp.z);
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
-  g.add(flat(new THREE.CircleGeometry(R, 48), 0.18, 0.05), flat(new THREE.RingGeometry(R - 0.5, R, 64), 0.85, 0.06));
+  const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
+  g.add(zone, hqRing(R, f.color));
   // sandbags with gaps for the exits
   for (let i = 0; i < 36; i++) {
     if (i % 9 < 2) continue;
-    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, mat(0x9c8a60), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
+    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, surface('sandbag'), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
     bag.rotation.y = -a + Math.PI / 2; g.add(bag);
   }
   // command tent + crates
@@ -478,9 +421,9 @@ function buildHQ(sp, slot) {
   if (!classicMode()) g.add(mesh(tg, mat(tent), 1, 1, 1, -4, 0, -3));
   if (!classicMode()) g.add(mesh(GEO.box, mat(0x6e5836), 1.4, 1.2, 1.4, 3, 0.6, -5), mesh(GEO.box, mat(0x6e5836), 1.4, 1.2, 1.4, 4.6, 0.6, -4.4), mesh(GEO.box, mat(0x5f4c2f), 1.2, 1, 1.2, 3.8, 1.7, -4.7));
   // tall flag you can spot from across the map
-  const flag = mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 4.5, 2.8, 1, 2.3, 13, 0);
+  const flag = mesh(GEO.plane, flagMat(f.color), 4.5, 2.8, 1, 2.3, 13, 0);
   g.add(mesh(GEO.cyl, mat(0x4a3f30), 0.12, 15, 0.12, 0, 7.5, 0), flag);
-  const tag = label(`${names[slot] ?? f.name} HQ`); tag.position.y = 17; g.add(tag);
+  const tag = label(`${names[slot] ?? f.name} HQ`, { style: 'hq', color: f.color }); tag.position.y = 17; g.add(tag);
   return g;
 }
 
@@ -520,44 +463,6 @@ function gear(man, type, i, f, dark) {
     // pack and a shovel on the back
     man.add(mesh(GEO.box, mat(f.vehicle), 0.3, 0.45, 0.5, -0.32, 0.95, 0), mesh(GEO.cyl, wood, 0.03, 1.1, 0.03, -0.4, 1.05, 0.2), mesh(GEO.box, dark, 0.06, 0.3, 0.22, -0.4, 1.65, 0.2));
   } else if ((type === 'mg' || type === 'mortar') && i > 0) man.add(mesh(GEO.box, mat(0x4a5030), 0.3, 0.25, 0.22, -0.05, 0.55, 0.32)); // ammo box
-}
-
-// Class badge: a pictogram on a dark disc ringed in the owner's color, left of the health bar.
-const badgeTex = new Map();
-function badge(type, color) {
-  const key = type + ':' + color;
-  if (badgeTex.has(key)) return badgeTex.get(key);
-  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
-  const c = cv.getContext('2d');
-  c.beginPath(); c.arc(32, 32, 28, 0, 7); c.fillStyle = '#16170f'; c.fill(); c.lineWidth = 6; c.strokeStyle = css(color); c.stroke();
-  c.strokeStyle = c.fillStyle = '#f2ecd8'; c.lineWidth = 4; c.lineCap = 'round'; c.lineJoin = 'round';
-  const L = (...p) => { c.beginPath(); c.moveTo(p[0], p[1]); for (let k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.stroke(); };
-  const dot = (x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); };
-  // tanks: hull, turret and gun; pips underneath for light / medium / heavy
-  const tank = (gun, pips) => { c.fillRect(16, 31, 32, 9); c.fillRect(25, 25, 12, 6); L(36, 28, 36 + gun, 28); c.fillRect(14, 40, 36, 4); for (let k = 0; k < pips; k++) dot(32 + (k - (pips - 1) / 2) * 8, 51, 2.8); };
-  const draw = {
-    rifle: () => { L(17, 46, 47, 18); L(27, 37, 31, 42); },
-    ranger: () => { c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 7 : 17; c.lineTo(32 + Math.cos(a) * r, 33 + Math.sin(a) * r); } c.fill(); },
-    conscript: () => { dot(22, 39, 6); dot(42, 39, 6); dot(32, 22, 6); },
-    mg: () => { L(13, 26, 51, 26); L(30, 26, 21, 46); L(30, 26, 39, 46); },
-    mortar: () => { L(17, 48, 47, 48); c.lineWidth = 7; L(26, 45, 40, 19); },
-    sniper: () => { c.beginPath(); c.arc(32, 32, 12, 0, 7); c.stroke(); L(32, 13, 32, 51); L(13, 32, 51, 32); },
-    engineer: () => { L(22, 48, 37, 25); c.lineWidth = 8; L(28, 19, 45, 30); },
-    at: () => { c.lineWidth = 5; L(16, 35, 50, 25); c.lineWidth = 4; c.beginPath(); c.arc(25, 40, 7, 0, 7); c.stroke(); },
-    armoredcar: () => { c.fillRect(14, 27, 36, 11); c.fillRect(26, 21, 12, 6); dot(20, 42, 5); dot(32, 42, 5); dot(44, 42, 5); },
-    tank: () => tank(10, 1),
-    medium: () => tank(15, 2),
-    tiger: () => tank(17, 3),
-    flak: () => { L(18, 47, 46, 47); L(26, 44, 42, 16); L(32, 44, 48, 16); },
-    flaktrack: () => { c.fillRect(12, 32, 40, 9); dot(20, 45, 5); dot(44, 45, 5); L(26, 30, 40, 12); L(31, 30, 45, 12); },
-    fighter: () => { c.fillRect(29, 12, 6, 40); c.fillRect(12, 26, 40, 7); c.fillRect(24, 46, 16, 4); },
-    attacker: () => { c.fillRect(29, 12, 6, 40); c.fillRect(10, 26, 44, 8); dot(18, 40, 3.5); dot(46, 40, 3.5); c.fillRect(24, 46, 16, 4); },
-    rocket: () => { for (let k = 0; k < 3; k++) { L(16 + k * 9, 47, 26 + k * 9, 19); dot(26 + k * 9, 19, 3.5); } },
-  }[type];
-  const tex = draw ? (draw(), new THREE.CanvasTexture(cv)) : null;
-  if (tex) tex.colorSpace = THREE.SRGBColorSpace;
-  badgeTex.set(key, tex);
-  return tex;
 }
 
 // tank silhouettes: [hull l,h,w], [turret l,h,w, x, z], barrel [length, thickness], sloped glacis
@@ -602,18 +507,10 @@ function buildTank(v, root, spec, f) {
 function makeUnit(id, type, owner) {
   const def = UNITS[type], f = look(owner), root = new THREE.Group();
   const v = { id, type, owner, root, models: [], alive: def.models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
-  const base = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity: 0.9, depthWrite: false }));
-  base.rotation.x = -Math.PI / 2; base.position.y = 0.15; base.scale.setScalar(def.radius + 0.4); base.renderOrder = 2;
-  v.sel = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color: 0xfff6c8, depthWrite: false, transparent: true }));
-  v.sel.rotation.x = -Math.PI / 2; v.sel.position.y = 0.16; v.sel.scale.setScalar(def.radius + 1); v.sel.visible = false; v.sel.renderOrder = 2;
+  // owner ring, then the selection ring (it carries the weapon range rings, and the minimum range of rocket salvos)
+  const base = ownerRing(def.radius + 0.4, f.color);
+  Object.assign(v, selectionRing(def.radius + 1, def.w ? [def.w.range, def.w.minRange].filter(Boolean) : []));
   root.add(base, v.sel); v.base = base;
-  if (def.w) {
-    // weapon range (and the minimum range of rocket salvos), shown while selected
-    const rm = new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false });
-    v.range = new THREE.Group(); v.range.visible = false;
-    for (const r of [def.w.range, def.w.minRange].filter(Boolean)) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.25, r, 96), rm); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; v.range.add(m); }
-    root.add(v.range);
-  }
   if (isAir(type)) {
     // fighter: slim, long nose; ground-attack plane: bigger, rockets and a bomb under the wings
     const big = type === 'attacker', c = mat(f.vehicle), dark = mat(0x2a2a24);
@@ -627,33 +524,33 @@ function makeUnit(id, type, owner) {
   } else if (type === 'airfield') {
     // a dirt strip, a hangar and a windsock
     v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x6a5e44), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
+    v.body.add(mesh(GEO.box, surface('earth'), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
       mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
     root.add(v.body); v.models.push(root);
   } else if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     const dark = mat(0x2a2a24);
     v.body = new THREE.Group();
-    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, mat(0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, surface('sandbag'), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
     v.body.add(mesh(GEO.cyl, dark, 0.5, 0.6, 0.5, 0, 0.3, 0), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
     root.add(v.body); v.models.push(root);
   } else if (type === 'hq') {
     // command post: sandbagged timber block with a radio mast
-    const wood = mat(0x7a6446), roof = mat(0x5a4a34);
+    const wood = surface('wood'), roof = surface('darkwood');
     v.body = new THREE.Group();
     v.body.add(mesh(GEO.box, wood, 5.4, 3, 5.4, 0, 1.5, 0), mesh(GEO.box, roof, 6, 0.4, 6, 0, 3.2, 0), mesh(GEO.box, mat(f.vehicle), 5.6, 0.5, 1.2, 0, 1.2, 2.5),
       mesh(GEO.cyl, mat(0x2a2a24), 0.06, 5, 0.06, 2, 5.6, 2), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, 0.9, 7.4, 2));
     root.add(v.body); v.models.push(root);
   } else if (type === 'barracks') {
     // long timber hut with a pitched roof
-    const wood = mat(0x8a7050), roofM = mat(f.vehicle);
+    const wood = surface('wood'), roofM = mat(f.vehicle);
     v.body = new THREE.Group();
     const shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 1.8)]), rg = new THREE.ExtrudeGeometry(shape, { depth: 5.6, bevelEnabled: false }); rg.translate(0, 0, -2.8);
-    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, mat(0x3a2e20), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
+    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, surface('darkwood'), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
     root.add(v.body); v.models.push(root);
   } else if (type === 'motorpool') {
     // open vehicle shed: posts, a flat roof, oil drums
-    const post = mat(0x5a4a34);
+    const post = surface('darkwood');
     v.body = new THREE.Group();
     for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) v.body.add(mesh(GEO.box, post, 0.35, 3.2, 0.35, x, 1.6, z));
     v.body.add(mesh(GEO.box, mat(f.vehicle), 6, 0.3, 6, 0, 3.3, 0), mesh(GEO.box, mat(0x4a4a44), 5.6, 0.1, 5.6, 0, 0.05, 0), mesh(GEO.box, post, 5.6, 1.4, 0.3, 0, 0.7, -2.7));
@@ -661,16 +558,16 @@ function makeUnit(id, type, owner) {
     root.add(v.body); v.models.push(root);
   } else if (type === 'depot') {
     // supply dump: stacked crates and fuel drums
-    const crate = mat(0x6e5836), drum = mat(f.vehicle);
+    const crate = surface('wood'), drum = mat(f.vehicle);
     v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x5a4a34), 3.8, 0.2, 3.8, 0, 0.1, 0), mesh(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), mesh(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
+    v.body.add(mesh(GEO.box, surface('darkwood'), 3.8, 0.2, 3.8, 0, 0.1, 0), mesh(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), mesh(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
       mesh(GEO.box, crate, 1.2, 1, 1.2, -0.1, 1.8, -0.9));
     for (let i = 0; i < 4; i++) v.body.add(mesh(GEO.cyl, drum, 0.4, 1.1, 0.4, -1.1 + i * 0.75, 0.65, 1));
     root.add(v.body); v.models.push(root);
   } else if (type === 'bunker') {
     const conc = mat(0x8a8a82), dark = mat(0x1e1e1a);
     root.add(mesh(GEO.box, conc, 5.2, 2.4, 5.2, 0, 1.2, 0), mesh(GEO.box, mat(0x74746c), 6, 0.5, 6, 0, 2.6, 0), mesh(GEO.box, dark, 0.3, 0.4, 3, 2.62, 1.6, 0));
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, mat(0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, surface('sandbag'), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
     root.add(mesh(GEO.cyl, mat(0x4a3f30), 0.08, 4, 0.08, -1.8, 4.6, -1.8), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, -0.9, 6, -1.8));
     v.models.push(root);
   } else if (TANKS[type]) {
@@ -736,29 +633,31 @@ function makeUnit(id, type, owner) {
   v.stars = [-0.5, 0, 0.5].map(x => { const st = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); st.scale.set(0.32, 0.32, 1); st.position.set(x, 0.42, 0.01); st.rotation.z = Math.PI / 4; st.renderOrder = 4; st.visible = false; v.bars.add(st); return st; });
   v.shield = new THREE.Mesh(GEO.shield, new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }));
   v.shield.scale.set(0.5, 0.5, 1); v.shield.position.set(1.55, 0, 0.01); v.shield.renderOrder = 4; v.shield.visible = false; v.bars.add(v.shield);
-  const icon = badge(type, f.color);
-  if (icon) { const b = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: icon, transparent: true, depthTest: false })); b.scale.set(1, 1, 1); b.position.set(-1.8, 0.05, 0.02); b.renderOrder = 5; v.bars.add(b); }
+  v.bars.add(symbolBadge(type, f.color)); // military map symbol in the owner's color, left of the bar
   world.add(root, v.bars);
   return v;
 }
 
+// the fallen soldier's own model (uniform, helmet, owner tint) on its side; it sinks into the ground at the end
 function corpse(v, man) {
-  const p = man.getWorldPosition(new THREE.Vector3());
-  const body = mesh(GEO.body, mat(0x3a372c), 1, 1, 1, p.x, hAt(p.x, p.z) + 0.3, p.z);
-  body.rotation.set(0, Math.random() * 6, Math.PI / 2);
+  const p = man.getWorldPosition(new THREE.Vector3()), body = man.clone(), y = hAt(p.x, p.z) + 0.3 * man.scale.y;
+  body.position.set(p.x, y, p.z); body.rotation.set(0, Math.random() * 6, Math.PI / 2);
   world.add(body);
-  fx.push({ obj: body, life: 25, update: () => {} });
+  fx.push({ obj: body, life: 18, max: 18, update: (k) => { body.position.y = y - Math.max(0, 1 - k / 0.3) * 0.9; } });
   man.visible = false;
 }
 
 function removeUnit(v) {
   world.remove(v.bars);
-  if (v.killed && isVeh(v.type)) {
+  if (isAir(v.type)) {
+    // a plane shot down falls out of the sky and blows up where it lands (client/fx.js); one out of sight just goes
+    if (v.killed && v.root.visible) effects.downPlane(v); else world.remove(v.root);
+  } else if (v.killed && isVeh(v.type)) {
     // leave a burnt-out wreck for a while
     v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
     v.root.children.slice(0, 2).forEach(o => (o.visible = false));
     fx.push({ obj: v.root, life: 40, update: () => {} });
-    boom(v.x, v.z, 3);
+    effects.wreck(v);
   } else {
     if (v.killed) v.models.forEach(m => m.visible && corpse(v, m));
     world.remove(v.root);
@@ -768,52 +667,12 @@ function removeUnit(v) {
 
 // ---------- effects + sound ----------
 
-function tracer(a, b, color, life) {
-  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
-  const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true }));
-  world.add(line);
-  fx.push({ obj: line, life, max: life, update: (f) => (line.material.opacity = f), dispose: () => { g.dispose(); line.material.dispose(); } });
-}
-
-function boom(x, z, size) {
-  for (const [color, grow, life] of [[0xffb040, 1, 0.35], [0x6d655a, 1.8, 1.4]]) {
-    const m = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false }));
-    m.position.set(x, hAt(x, z) + 0.5, z);
-    world.add(m);
-    fx.push({ obj: m, life, max: life, update: (f) => { m.scale.setScalar(size * grow * (1.2 - f)); m.material.opacity = f * 0.8; }, dispose: () => m.material.dispose() });
-  }
-}
-
-let audio = null, noise = null, voices = 0;
-addEventListener('pointerdown', () => {
-  if (audio) return;
-  audio = new AudioContext();
-  noise = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
-  const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-}, { once: true });
-function sound(kind, x, z) {
-  if (!audio || voices > 20) return;
-  const vol = Math.max(0, 1 - Math.hypot(x - cam.x, z - cam.z) / 160) * (kind === 'tank' || kind === 'at' || kind === 'rocket' ? 0.9 : 0.25);
-  if (vol <= 0.01) return;
-  const src = audio.createBufferSource(), filt = audio.createBiquadFilter(), gain = audio.createGain(), t = audio.currentTime;
-  const heavy = kind === 'tank' || kind === 'at', len = heavy ? 0.7 : kind === 'mg' ? 0.06 : 0.12;
-  src.buffer = noise; src.playbackRate.value = heavy ? 0.5 : 1;
-  filt.type = heavy ? 'lowpass' : 'bandpass'; filt.frequency.value = heavy ? 380 : kind === 'mg' ? 1400 : 1900;
-  gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.001, t + len);
-  src.connect(filt).connect(gain).connect(audio.destination);
-  src.start(t, Math.random() * 0.5, len); voices++; src.onended = () => voices--;
-}
-function blip(freq) {
-  if (!audio) return;
-  const o = audio.createOscillator(), gn = audio.createGain(), t = audio.currentTime;
-  o.frequency.value = freq; o.type = 'square';
-  gn.gain.setValueAtTime(0.04, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-  o.connect(gn).connect(audio.destination); o.start(t); o.stop(t + 0.08);
-}
+// sound: audio.js plays it, fx.js and battle-sound.js call it; blip() is a UI sound ('click', 'recruit' or 'error', a number means click)
+function blip(kind) { audio.ui(typeof kind === 'string' ? kind : 'click'); }
 
 function marker(x, z, color) {
-  const m = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.3, z); m.material.depthTest = false;
+  const m = clickRing(color);
+  m.position.set(x, hAt(x, z) + 0.3, z);
   world.add(m);
   fx.push({ obj: m, life: 0.6, max: 0.6, update: (f) => { m.scale.setScalar(0.5 + (1 - f) * 2); m.material.opacity = f; }, dispose: () => m.material.dispose() });
 }
@@ -834,7 +693,7 @@ function applySnapshot(s) {
     v.shield.visible = !!cl;
     if (cl) { v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; }
     // inside a building: the squad disappears into it; its bars float above the roof
-    v.base.material.color.set(flags & 1 ? 0xffffff : look(owner).color);
+    setOwnerRing(v.base, flags & 1 ? 0xffffff : look(owner).color);
     const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
     if (!isVeh(type)) while (v.alive > alive) corpse(v, v.models[--v.alive]);
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
@@ -848,35 +707,10 @@ function applySnapshot(s) {
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
   }
   for (const sh of s.shots) {
-    if (sh.k === 'throw') { const from = units.get(sh.f); if (from) lob(from, sh.x, sh.z); continue; }
-    if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
-    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing' || sh.k === 'dive' || sh.k === 'para') { plane(sh); continue; }
-    if (sh.k === 'chutes') { chutes(sh.x, sh.z); continue; }
-    if (sh.k === 'shotdown' || sh.k === 'planedown') { downed(sh); continue; }
-    if (sh.k === 'flak') { for (let i = 0; i < 5; i++) setTimeout(() => puff(sh.x + (Math.random() - 0.5) * 16, sh.z + (Math.random() - 0.5) * 16), i * 90); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'aa') { const a = units.get(sh.f), b = units.get(sh.t); if (a && b) { const st = a.root.getWorldPosition(new THREE.Vector3()); st.y += isAir(a.type) ? 0 : 1.5; tracer(st, b.root.getWorldPosition(new THREE.Vector3()), 0xffe08a, 0.08); sound('mg', a.x, a.z); } continue; }
-    if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
-    if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
-    const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank' || sh.k === 'attacker';
-    const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
-    const end = new THREE.Vector3(tx, hAt(tx, tz) + (to && isVeh(to.type) ? 1.2 : 0.8), tz);
-    if (from) {
-      const n = sh.k === 'rifle' ? Math.min(3, from.alive) : 1;
-      for (let i = 0; i < n; i++) {
-        const src = from.type === 'tank' || from.type === 'at' ? from.turret : from.models.filter(m => m.visible)[i] || from.root;
-        const start = src.getWorldPosition(new THREE.Vector3()); start.y += from.type === 'tank' ? 0.1 : 1;
-        tracer(start, end, heavy ? 0xfff0b0 : 0xffd27a, heavy ? 0.18 : 0.09);
-      }
-    }
-    if (heavy) boom(tx, tz, sh.hit ? 1.6 : 1);
-    sound(sh.k, sh.x, sh.z);
-    if (sh.kill && to) to.killed = true;
+    if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
+    if (sh.k === 'chutes') chutes(sh.x, sh.z);
   }
+  effects.snapshot(s, seen); // flashes, tracers, blasts, smoke, planes, flak and their sounds (client/fx.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
@@ -887,35 +721,13 @@ function applySnapshot(s) {
   if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
 
   s.points.forEach(([owner, capper, progress], i) => {
-    const p = points[i]; if (!p) return;
-    const oc = owner >= 0 ? look(owner).color : 0xdddddd;
-    p.ringMat.color.set(oc); p.flagMat.color.set(oc);
-    p.progMat.color.set(owner >= 0 ? oc : capper >= 0 ? look(capper).color : 0xffffff);
-    p.prog.geometry.setDrawRange(0, Math.round(progress * 64) * 6);
+    points[i]?.set(owner >= 0 ? look(owner).color : null, capper >= 0 ? look(capper).color : null, progress);
   });
-  syncSmoke(s.smokes);
   syncStrikes(s.strikes);
   applyCells(s.cells);
+  alerts.snapshot(s, lastSnap);
   lastSnap = s;
   updateHud(s);
-}
-
-const smokes = new Map();
-function syncSmoke(list) {
-  const keep = new Set();
-  for (const [x, z, r] of list) {
-    const key = x + ',' + z; keep.add(key);
-    if (smokes.has(key)) continue;
-    const cloud = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0xd8d8d0, transparent: true, opacity: 0.5, depthWrite: false });
-    for (let i = 0; i < 9; i++) {
-      const a = i * 0.7, d = i ? r * 0.55 : 0, sz = r * (0.45 + Math.random() * 0.2);
-      const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
-      cloud.add(mesh(GEO.ball, m, sz, sz * 0.7, sz, cx, sz * 0.5 + hAt(cx, cz), cz));
-    }
-    cloud.traverse(o => (o.castShadow = false));
-    world.add(cloud); smokes.set(key, cloud);
-  }
-  for (const [key, cloud] of smokes) if (!keep.has(key)) { world.remove(cloud); smokes.delete(key); }
 }
 
 // public warnings for incoming support: everyone sees where it will land
@@ -954,29 +766,6 @@ function aimShape(kind, color) {
   g.userData.mat = matl;
   return g;
 }
-// a plane crossing the map along the run, coming in from the caller's side
-function plane(sh) {
-  const p = new THREE.Group(), c = mat(0x55594a), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir);
-  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
-  p.rotation.y = -sh.dir; world.add(p);
-  const low = sh.k === 'strafe' ? 9 : sh.k === 'bombing' ? 18 : sh.k === 'dive' ? 12 : sh.k === 'para' ? 24 : 26, span = 140, life = 3;
-  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, hAt(sh.x, sh.z) + low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
-  if (sh.k === 'strafe') {
-    // guns rake the strip as it passes over
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 9 - 0.5) * SUPPORT.strafe.len;
-      setTimeout(() => { boom(sh.x + dx * a + (Math.random() - 0.5) * 3, sh.z + dz * a + (Math.random() - 0.5) * 3, 0.8); sound('mg', sh.x + dx * a, sh.z + dz * a); }, 1300 + i * 40);
-    }
-  }
-  sound('tank', sh.x, sh.z);
-}
-
-// a flak shell bursting in the sky over a spot
-function puff(x, z) {
-  const m = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x5a5a52, transparent: true, depthWrite: false }));
-  m.position.set(x, hAt(x, z) + AIR_ALT + (Math.random() - 0.5) * 6, z); world.add(m);
-  fx.push({ obj: m, life: 1.2, max: 1.2, update: (f) => { m.scale.setScalar(0.6 + (1 - f) * 2.2); m.material.opacity = f * 0.8; }, dispose: () => m.material.dispose() });
-}
 // paratroopers: a few canopies drifting down onto the drop
 function chutes(x, z) {
   for (let i = 0; i < 5; i++) {
@@ -986,220 +775,42 @@ function chutes(x, z) {
     fx.push({ obj: g, life: 3, max: 3, update: (f) => g.position.set(cx, hAt(cx, cz) + f * 22, cz) });
   }
 }
-// a plane shot down: it tips over, falls, and blows up where it hits the ground
-function downed(sh) {
-  const p = new THREE.Group(), c = mat(0x3a3a32), dir = sh.dir ?? 0, dx = Math.cos(dir), dz = Math.sin(dir);
-  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9));
-  p.rotation.y = -dir; world.add(p);
-  const life = 2.2, gy = hAt(sh.x, sh.z);
-  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f; p.position.set(sh.x + dx * t * 25, gy + AIR_ALT * f + 1, sh.z + dz * t * 25); p.rotation.z = t * 2.5; } });
-  setTimeout(() => { boom(sh.x + dx * 25, sh.z + dz * 25, 4); sound('tank', sh.x, sh.z); }, life * 1000);
-  puff(sh.x, sh.z);
-}
-
-// rocket salvo: eight streaks arcing from the launcher onto the target area
-function salvo(from, x, z, n = 8) {
-  const start = from.root.position.clone(); start.y += 2.5;
-  for (let i = 0; i < n; i++) {
-    const end = new THREE.Vector3(x + (Math.random() - 0.5) * 8, hAt(x, z), z + (Math.random() - 0.5) * 8), r = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0xffc070 }));
-    r.scale.setScalar(0.3); r.visible = false; world.add(r);
-    const life = 1.2 + i * 0.15;
-    fx.push({ obj: r, life, max: life, update: (f) => { const t = Math.min(1, (1 - f) * life / 1.2 - i * 0.15 / 1.2); r.visible = t > 0; if (t > 0) { r.position.lerpVectors(start, end, t); r.position.y += Math.sin(t * Math.PI) * 18; } }, dispose: () => r.material.dispose() });
-  }
-}
-
-// grenade in flight: a small arc from the thrower to the target
-function lob(from, x, z) {
-  const start = from.root.position.clone(), end = new THREE.Vector3(x, hAt(x, z), z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
-  n.scale.setScalar(0.25); world.add(n);
-  fx.push({ obj: n, life: 1.1, max: 1.1, update: (f) => { const t = 1 - f; n.position.lerpVectors(start, end, t); n.position.y += 1 + Math.sin(t * Math.PI) * 5; } });
-}
 
 // ---------- HUD ----------
 
-const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N', dive: 'U', para: 'P', cover: 'I' };
-const SUPPORT_TIP = { dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops a rifle squad where your side can see (counts toward pop)', cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)', recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks' };
-function buildSupportBar() {
-  $('support').innerHTML = SUPPORT_TYPES.map(k => `<button data-k="${k}" title="${SUPPORT_TIP[k]}">${SUPPORT[k].name} <kbd>${SUPPORT_KEYS[k]}</kbd><span></span></button>`).join('');
-  $('support').querySelectorAll('button').forEach(b => (b.onclick = () => aimSupport(b.dataset.k)));
-}
+// client/hud.js draws the panels; it reads the match state and calls back into these actions
+const hud = createHud({
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
+  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
+  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'),
+  dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k),
+  select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
+});
+function buildSupportBar() { hud.buildSupport(); }
 function aimSupport(k) {
   const { cur, cost } = supCost(lastSnap ?? {}, k);
   if (!lastSnap || lastSnap.sup[k] > 0 || !(lastSnap[cur] >= cost)) return;
   setAim(k); blip(700);
 }
-
-function buildBuyBar() {
-  cardKey = '';
-  if (classicMode()) { $('buy').innerHTML = ''; $('buy').classList.add('hidden'); return; } // Classic: command card instead
-  $('buy').classList.remove('hidden');
-  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${roleText(t)}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${roleText(t)}</small></button>`).join('');
-  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
-}
-
-function updateHud(s) {
-  const held = (slot) => s.points.filter(p => p[0] === slot).length;
-  if (s.mode?.kind === 'assault') {
-    const clock = `${Math.floor(s.mode.timeLeft / 60)}:${String(s.mode.timeLeft % 60).padStart(2, '0')}`, mine = teams[me] ?? me;
-    const bunkers = [...units.values()].filter(v => v.type === 'bunker');
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">Assault · ${clock}</div>
-      <div class="muted">${mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker'}</div></div>` +
-      [...new Set(teams)].map(t => {
-        const mem = names.map((_, i) => i).filter(i => teams[i] === t), def = t === s.mode.defenderTeam;
-        const hp = bunkers.filter(b => teams[b.owner] === t).reduce((a, b) => a + b.hp, 0), max = bunkers.filter(b => teams[b.owner] === t).length * UNITS.bunker.hpPer;
-        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span></div>
-          <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-          <div class="muted">${def ? 'Defending' : 'Attacking'}</div>
-          ${def ? `<div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">Bunker ${Math.ceil(hp)} / ${max}</div>` : ''}</div>`;
-      }).join('');
-  } else if (s.mode?.kind === 'annihilation') {
-    const bunkers = [...units.values()].filter(v => v.type === 'bunker');
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">Annihilation</div><div class="muted">Destroy every enemy bunker. Last side standing wins</div></div>` +
-      [...new Set(teams)].map(t => {
-        const mem = names.map((_, i) => i).filter(i => teams[i] === t), own = bunkers.filter(b => teams[b.owner] === t);
-        const hp = own.reduce((a, b) => a + b.hp, 0), max = mem.length * UNITS.bunker.hpPer;
-        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>`).join('')}
-          ${own.length ? `<div class="bar"><div style="width:${hp / max * 100}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${own.length} bunker${own.length > 1 ? 's' : ''} · ${Math.ceil(hp)} / ${max}</div>` : '<span class="tag pin">OUT</span>'}</div>`;
-      }).join('');
-  } else if (s.mode?.kind === 'classic') {
-    const hqs = [...units.values()].filter(v => v.type === 'hq');
-    const t = s.mode.timeLeft, clock = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">${s.mode.suddenDeath ? 'Sudden death' : 'Classic · ' + clock}</div><div class="muted">${s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : `Destroy every enemy HQ, Barracks and Motor Pool. Sudden death in ${clock}`}</div></div>` +
-      [...new Set(teams)].map(t => {
-        const mem = names.map((_, i) => i).filter(i => teams[i] === t), mine = hqs.filter(b => teams[b.owner] === t);
-        const hp = mine.reduce((a, b) => a + b.hp, 0), max = mine.length * UNITS.hq.hpPer, hidden = !mine.length && mem.some(i => !s.out?.[i]);
-        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span>${s.out?.[i] ? '<span class="tag pin" style="margin-left:auto">OUT</span>' : `<span class="muted" style="margin-left:auto">${held(i)}⚑</span>`}</div>
-          <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-          ${hidden ? '<div class="muted">HQ out of sight</div>' : `<div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">HQ ${Math.ceil(hp)} / ${max || UNITS.hq.hpPer}</div>`}</div>`;
-      }).join('');
-  } else
-  // one card per team: its players, then the team's combined VP (that's what wins)
-  $('scores').innerHTML = [...new Set(teams)].map(t => {
-    const mem = names.map((_, i) => i).filter(i => teams[i] === t), vp = mem.reduce((a, i) => a + s.vp[i], 0);
-    return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>
-    <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE · clock paused</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-    <div class="bar"><div style="width:${Math.min(100, vp / winVp(teams) * 100)}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${vp} / ${winVp(teams)} VP</div></div>`;
-  }).join('');
-  drawPlans();
-  const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
-  $('airPanel').innerHTML = (s.air ?? []).map(([id, st, fuel, ammo, timer]) => { const v = units.get(id); return v ? `<button data-plane="${id}" class="${selected.has(id) ? 'on' : ''}">${look(me).names[v.type] ?? UNITS[v.type].name} <span>${AIR_STATE[st]}${st === 2 ? ` ${fuel}s` : st === 4 ? ` ${timer}s` : ''}</span></button>` : ''; }).join('');
-  $('airPanel').querySelectorAll('[data-plane]').forEach(b => (b.onclick = () => { selected.clear(); selected.add(+b.dataset.plane); updateHud(lastSnap); }));
-  const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length + [...units.values()].reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
-  $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun · ${s.fuel} Fuel` : `${s.mp} MP`;
-  $('support').querySelectorAll('button').forEach(b => {
-    const k = b.dataset.k, cd = s.sup[k], { cur, cost } = supCost(s, k);
-    b.disabled = cd > 0 || !(s[cur] >= cost);
-    b.querySelector('span').textContent = cd > 0 ? `${cd}s` : `${cost} ${cur === 'mun' ? 'Mun' : 'MP'}`;
-  });
-  $('income').textContent = `+${s.inc}/s${s.upkeep ? ` (upkeep −${s.upkeep})` : ''} · ${pop}/${popCap(s)} units`;
-  if (s.mode?.kind === 'classic') drawCard(s, pop);
-  else $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= popCap(s)));
-  $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
-    const def = UNITS[v.type], tags = [v.flags & 256 ? '<span class="tag cov">HIDDEN</span>' : '', v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
-    if (def.building) return `<div class="sel"><span>${def.name}</span><span>${v.built < 1 ? `<span class="tag">BUILDING ${Math.round(v.built * 100)}%</span> ` : ''}${Math.ceil(v.hp)}hp</span></div>` +
-      (v.queue?.length ? `<div class="sel muted"><span>Training ${look(v.owner).names[v.queue[0]] ?? UNITS[v.queue[0]].name} ${Math.round(v.prog * 100)}%</span><span>${v.queue.length}/5</span></div>` : '');
-    return `<div class="sel"><span>${look(v.owner).names[v.type] ?? UNITS[v.type].name}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
-  }).join('');
-  // ability bar for the current selection
-  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  const types = PRIORITY.filter(t => sel.some(v => v.type === t)), fType = fKeyType();
-  const amove = sel.length ? `<button data-a="amove">Attack-move <kbd>G</kbd></button>` : '';
-  const dig = types.some(t => CFG.fortBuilders.includes(t)) ? Object.entries(FORTS).map(([k, f]) => `<button data-a="fort:${k}" ${lastSnap?.mp >= f.cost ? '' : 'disabled'}>${f.name} <kbd>${FORT_KEYS[k]}</kbd> ${f.cost}</button>`).join('') : '';
-  if (sel.some(v => UNITS[v.type].building)) { $('abil').innerHTML = ''; return; } // buildings use the command card
-  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + amove + dig + types.map(t => {
-    const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
-    const mun = lastSnap ? abCost(lastSnap, UNITS[t].ab) : 0, broke = mun && !(lastSnap.mun >= mun);
-    return `<button data-a="${t}" ${ready && !broke ? '' : 'disabled'}>${UNITS[t].ab.name}${t === fType ? ' <kbd>F</kbd>' : ''}${ready ? '' : ` ${cd}s`}${mun ? ` ${mun} Mun` : ''}</button>`;
-  }).join('') : '';
-  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a.startsWith('fort:') ? startDig(b.dataset.a.slice(5)) : BUILDABLE.includes(b.dataset.a) ? startBuild(b.dataset.a) : b.dataset.a === 'amove' ? setAim('amove') : useAbility(b.dataset.a))));
-}
-
-// Classic command card (bottom center): what the selection can make. A building shows the units it trains and its
-// queue; Engineers show the buildings they can put up. Rebuilt only when the selection changes (rebuilding it every
-// snapshot would eat clicks), otherwise just refreshed.
-let cardKey = '';
-const priceText = (s, t) => { const pr = priceOf(s, t); return `${pr.mp} MP` + (pr.fuel ? ` + ${pr.fuel} Fuel` : ''); };
-const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets', airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
-function drawCard(s, pop) {
-  const card = $('buy'), sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === me ? sel[0] : null, eng = !bld && builders().length > 0;
-  const name = (t) => look(me).names[t] ?? UNITS[t].name, key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : '';
-  if (key !== cardKey) {
-    cardKey = key;
-    card.classList.toggle('hidden', !key);
-    if (bld && bld.built < 1) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted">Under construction <span data-built></span></span><small class="muted">Right-click it with Engineers to help</small></div><button data-cancel><b>Cancel</b><span>75% back</span></button>`;
-    else if (bld) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted" data-queue></span><small class="muted">Right-click the ground: rally point</small></div>`
-      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${roleText(t)}"><b>${name(t)}</b><span>${priceText(s, t)} · ${UNITS[t].train}s</span><small class="muted">${roleText(t)}</small></button>`).join('');
-    else if (eng) card.innerHTML = BUILDABLE.map(k => `<button data-build="${k}"><b>${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd></b><span>${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span><small class="muted" data-note>${BUILD_ROLE[k]}</small></button>`).join('');
-    else card.innerHTML = '';
-    const id = bld?.id;
-    card.querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: id }); blip(520); }));
-    card.querySelectorAll('[data-cancel]').forEach(b => (b.onclick = () => { sendCmd({ t: 'cancel', id }); selected.clear(); blip(300); }));
-    card.querySelectorAll('[data-build]').forEach(b => (b.onclick = () => startBuild(b.dataset.build)));
-  }
-  if (bld && bld.built < 1) card.querySelector('[data-built]').textContent = Math.round(bld.built * 100) + '%';
-  if (bld && bld.built >= 1) {
-    const q = bld.queue ?? [];
-    card.querySelector('[data-queue]').textContent = q.length ? `Training ${name(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(name).join(', ')}` : '') : 'Idle';
-    card.querySelectorAll('[data-train]').forEach(b => { const pr = priceOf(s, b.dataset.train); b.disabled = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel || pop >= popCap(s) || q.length >= 5; });
-  }
-  if (eng) card.querySelectorAll('[data-build]').forEach(b => {
-    const k = b.dataset.build, need = UNITS[k].needs && !owns(UNITS[k].needs);
-    b.disabled = !canPlace(k);
-    b.querySelector('[data-note]').textContent = need ? `Needs a ${UNITS[UNITS[k].needs].name}` : BUILD_ROLE[k];
-  });
-}
+function buildBuyBar() { hud.buildCard(); }
+function updateHud(s) { drawPlans(); hud.update(s); }
 
 // the builder squad nearest the clicked spot puts the fortification across its approach
-const FORT_KEYS = { trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' };
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
 function startDig(kind) { if (diggers().length && lastSnap?.mp >= FORTS[kind].cost) { fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); } }
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
-const PLAN_LOOK = { 1: 0x9dd0ff, 2: 0xffa030, 3: 0xffffff, 4: 0xff4030, 5: 0xff4030, 6: 0xff4030, 7: 0xe8c860, 8: 0xe8c860, 9: 0x9dd0ff };
-let planGroup = null;
+// one layer for every match: grease-pencil strokes rewritten in place each snapshot (see markers.js)
+const plans = planLayer(hAt);
 function drawPlans() {
   if (!world) return;
-  if (!planGroup) { planGroup = new THREE.Group(); world.add(planGroup); }
-  planGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); });
-  planGroup.clear();
-  const at = (x, z) => ({ x, z, y: hAt(x, z) + 0.3 });
-  const flat = (geo, color, opacity) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false, side: THREE.DoubleSide })); m.renderOrder = 3; planGroup.add(m); return m; };
-  // a flat band on the ground through the points (WebGL lines are 1px, too thin to read)
-  const ribbon = (pts, width, color, opacity) => {
-    const pos = [], idx = [];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const a = pts[i], b = pts[i + 1], l = Math.hypot(b.x - a.x, b.z - a.z) || 1, ox = -(b.z - a.z) / l * width / 2, oz = (b.x - a.x) / l * width / 2, k = pos.length / 3;
-      pos.push(a.x + ox, a.y, a.z + oz, a.x - ox, a.y, a.z - oz, b.x + ox, b.y, b.z + oz, b.x - ox, b.y, b.z - oz);
-      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
-    }
-    if (!idx.length) return;
-    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx);
-    flat(geo, color, opacity);
-  };
-  const ring = (p, r, color) => { const m = flat(new THREE.RingGeometry(r - 0.4, r, 32), color, 0.85); m.rotation.x = -Math.PI / 2; m.position.set(p.x, p.y, p.z); };
-  for (const id of selected) {
-    const v = units.get(id);
-    if (!v) continue;
-    const p = v.plan, me3 = at(v.x, v.z);
-    if (v.rally) { ribbon([me3, at(v.rally.x, v.rally.z)], 0.4, 0x9dd0ff, 0.5); ring(at(v.rally.x, v.rally.z), 1.1, 0x9dd0ff); }
-    if (p?.kind) {
-      const color = PLAN_LOOK[p.kind], pts = [me3];
-      for (let i = 0; i < p.path.length; i += 2) pts.push(at(p.path[i], p.path[i + 1]));
-      // the route, then a straight leg to whatever it's set on (plain moves end at their last waypoint)
-      ribbon(pts, 0.5, color, 0.55);
-      if (p.kind > 4) ribbon([pts.at(-1), at(p.tx, p.tz)], 0.3, color, 0.4);
-      if (p.kind !== 4) ring(at(p.tx, p.tz), 1.1, color);
-    }
-    // what it's shooting at right now (ordered or picked by itself), or the enemy it was told to attack
-    const t = units.get(v.tgt) ?? (p?.kind === 4 ? { x: p.tx, z: p.tz, type: 'rifle' } : null);
-    if (t) { ribbon([me3, at(t.x, t.z)], 0.25, 0xff4030, 0.6); ring(at(t.x, t.z), UNITS[t.type].radius + 1.2, 0xff4030); }
-  }
+  if (plans.group.parent !== world) world.add(plans.group);
+  plans.draw(selected, units);
 }
 
 // Engineers put Supply Depots on resource nodes: J, then click near a node
 const builders = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'engineer' && !(v.flags & 1));
-const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' };
 const owns = (type, done = true) => [...units.values()].some(v => v.owner === me && v.type === type && (!done || v.built >= 1));
 const canPlace = (k) => lastSnap?.mp >= UNITS[k].cost && (!UNITS[k].needs || owns(UNITS[k].needs));
 function startBuild(k) { if (builders().length && canPlace(k)) { setAim(k); blip(600); } }
@@ -1241,34 +852,18 @@ function applyGhosts(list) {
   for (const [id, gv] of ghosts) if (!keep.has(id)) { world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
 function nodeMark(x, z, rate, fuel) {
-  const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.8, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: fuel ? 0xe07a30 : 0xe8c860, transparent: true, opacity: 0.6, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.y = 0.25; m.renderOrder = 2; m.material.depthTest = false;
-  g.add(m, mesh(GEO.box, mat(0x6e5836), 0.8, 0.6, 0.8, 0, 0.3, 0));
+  const g = new THREE.Group();
+  g.add(nodeSquare(fuel ? 0xe07a30 : 0xd2a849), mesh(GEO.box, surface('wood'), 0.8, 0.6, 0.8, 0, 0.3, 0));
   // what a depot here pays: the richer contested nodes are worth fighting for
-  const tag = label(fuel ? `+${rate} Fuel/s` : `+${rate} MP/s`); tag.position.y = 3; tag.scale.multiplyScalar(0.6); g.add(tag);
+  const tag = label(fuel ? `+${rate} Fuel/s` : `+${rate} MP/s`); tag.position.y = 3; g.add(tag);
   g.position.set(x, hAt(x, z), z);
   return g;
 }
 function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0]; }
 
-const VOICES = [
-  { lang: 'en-US', move: ['Yes sir!', 'Moving out!', 'On our way!', 'Roger that!'], attack: ['Engaging!', 'Give em hell!', 'Open fire!'], retreat: ['Fall back!', 'Pull back!'] },
-  { lang: 'de-DE', move: ['Jawohl!', 'Vorwärts!', 'Verstanden!'], attack: ['Feuer frei!', 'Angriff!'], retreat: ['Zurück!', 'Rückzug!'] },
-  { lang: 'ru-RU', move: ['Есть!', 'Вперёд!', 'Так точно!'], attack: ['Огонь!', 'В атаку!'], retreat: ['Отходим!', 'Назад!'] },
-];
-let muted = tryStore(() => localStorage.getItem('ww2-muted')) === '1', lastBark = 0;
-function bark(kind) {
-  if (muted || !window.speechSynthesis || performance.now() - lastBark < 2500 || me < 0) return;
-  lastBark = performance.now();
-  const v = VOICES[facOf(me)], lines = v[kind], u = new SpeechSynthesisUtterance(lines[Math.floor(Math.random() * lines.length)]);
-  u.lang = v.lang; u.rate = 1.15; u.volume = 0.7;
-  const voice = speechSynthesis.getVoices().find(x => x.lang.replace('_', '-').startsWith(v.lang.slice(0, 2)));
-  if (voice) u.voice = voice;
-  speechSynthesis.speak(u);
-}
-function setMuted(m) { muted = m; tryStore(() => localStorage.setItem('ww2-muted', m ? '1' : '0')); $('mute').textContent = m ? '🔇' : '🔊'; }
-$('mute').onclick = () => setMuted(!muted);
-setMuted(muted);
+// the player's faction voice answers orders (audio.js picks the voice and keeps lines 2.5 s apart)
+function bark(kind) { audio.voice(kind); }
+audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles mute
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // F: instant abilities fire now; grenades arm a targeting click
@@ -1319,7 +914,7 @@ function formation(sel, g) {
 function moveTo(g, attack) {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   if (!sel.length) return;
-  sendCmd({ t: attack ? 'amove' : 'move', orders: formation(sel, g) }); marker(g.x, g.z, attack ? 0xff9a40 : 0x9dff7a); blip(attack ? 500 : 660);
+  sendCmd({ t: attack ? 'amove' : 'move', orders: formation(sel, g) }); marker(g.x, g.z, attack ? 0xff9a40 : MOVE_COLOR); blip(attack ? 500 : 660);
   bark(attack ? 'attack' : 'move');
 }
 
@@ -1346,8 +941,8 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyI') aimSupport('cover');
   else if (e.code === 'KeyO') startBuild('airfield');
   else if (e.code === 'KeyY') startBuild('flakpos');
-  else if (e.code === 'KeyM') setMuted(!muted);
-  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
+  else if (e.code === 'KeyM') audio.toggleMute();
+  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) {
     cam.x = home.x; cam.z = home.z;
@@ -1391,10 +986,12 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), flatGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const rayAt = (mx, my) => ray.setFromCamera(ndc.set(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
 const groundAt = (mx, my) => {
-  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
+  rayAt(mx, my); flatGround.constant = 0;
   const hit = groundMesh && ray.intersectObject(groundMesh)[0];
-  return hit ? hit.point : ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+  return hit ? hit.point : ray.ray.intersectPlane(flatGround, new THREE.Vector3());
 };
 
 renderer.domElement.addEventListener('mousedown', (e) => {
@@ -1483,7 +1080,18 @@ let lastT = performance.now();
 
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
 const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78] };
-let mmImage = null, mmFog = null, mmTimer = 0;
+let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0;
+// the camera's view outline: corner rays against a flat plane at the ground height the camera looks at (close
+// enough at minimap scale, and far cheaper than raycasting the terrain), redone only when the camera moves
+const mmView = { key: '', pts: [] };
+function viewCorners() {
+  const key = `${cam.x}|${cam.z}|${cam.y}|${cam.yaw}|${cam.dist}|${innerWidth}|${innerHeight}`;
+  if (key !== mmView.key) {
+    mmView.key = key; flatGround.constant = -(cam.y ?? 0); camera.updateMatrixWorld();
+    mmView.pts = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => (rayAt(x, y), ray.ray.intersectPlane(flatGround, new THREE.Vector3()))).filter(Boolean);
+  }
+  return mmView.pts;
+}
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
   const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
@@ -1515,10 +1123,15 @@ function drawMinimap() {
   c.drawImage(mmImage, 0, 0, MW, MH);
   if (fogVis) {
     // one smooth image, not thousands of tiny squares (those leave a screen-door pattern)
-    if (!mmFog || mmFog.width !== fogGrid.w) { mmFog = document.createElement('canvas'); mmFog.width = fogGrid.w; mmFog.height = fogGrid.h; }
-    const fc = mmFog.getContext('2d'), img = fc.createImageData(fogGrid.w, fogGrid.h);
-    for (let i = 0; i < fogVis.length; i++) { img.data[i * 4] = img.data[i * 4 + 1] = 10; img.data[i * 4 + 3] = fogVis[i] ? 0 : 130; }
-    fc.putImageData(img, 0, 0);
+    if (!mmFog || mmFog.width !== fogGrid.w || mmFog.height !== fogGrid.h) { mmFog = document.createElement('canvas'); mmFog.width = fogGrid.w; mmFog.height = fogGrid.h; mmFogOf = null; }
+    // refilled only when updateFog made a new visibility grid (every 0.2 s), into one reused ImageData
+    if (mmFogOf !== fogVis) {
+      const fc = mmFog.getContext('2d');
+      if (mmFogImg?.width !== fogGrid.w || mmFogImg.height !== fogGrid.h) mmFogImg = fc.createImageData(fogGrid.w, fogGrid.h);
+      const img = mmFogImg;
+      for (let i = 0; i < fogVis.length; i++) { img.data[i * 4] = img.data[i * 4 + 1] = 10; img.data[i * 4 + 3] = fogVis[i] ? 0 : 130; }
+      fc.putImageData(img, 0, 0); mmFogOf = fogVis;
+    }
     c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
   }
   const col = (slot) => css(look(slot).color);
@@ -1532,8 +1145,9 @@ function drawMinimap() {
     c.beginPath(); c.arc(v.x, v.z, isVeh(v.type) ? 3.5 : 2.6, 0, Math.PI * 2); c.fillStyle = col(v.owner); c.fill();
     if (selected.has(v.id)) { c.strokeStyle = '#fff'; c.lineWidth = 1.5 / S; c.stroke(); }
   }
+  alerts.drawPings(c, S);
   // what the camera sees
-  const corners = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => groundAt(x, y)).filter(Boolean);
+  const corners = viewCorners();
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
 }
 {
@@ -1549,6 +1163,15 @@ function drawMinimap() {
   });
   addEventListener('mousemove', (e) => { if (mmDrag) { const p = at(e); cam.x = p.x; cam.z = p.z; } });
   addEventListener('mouseup', () => (mmDrag = false));
+}
+// weapon range rings only for a small selection (two units, or up to four of one type), so a big group's dashed
+// rings do not bury the fight
+function rangeRings() {
+  if (selected.size <= 2) return true;
+  if (selected.size > 4) return false;
+  let t = null;
+  for (const id of selected) { const ty = units.get(id)?.type; if (t && ty !== t) return false; t = ty; }
+  return true;
 }
 let fogTimer = 0;
 const lerpAngle = (a, b, k) => a + (Math.atan2(Math.sin(b - a), Math.cos(b - a))) * k;
@@ -1569,6 +1192,7 @@ function updateFog() {
   fogTex.needsUpdate = true;
 }
 
+const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   // camera
@@ -1585,7 +1209,7 @@ renderer.setAnimationLoop(() => {
   camera.lookAt(cam.x, cam.y, cam.z);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-dt * 10);
+  const k = 1 - Math.exp(-dt * 10), ranges = rangeRings();
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
@@ -1596,14 +1220,17 @@ renderer.setAnimationLoop(() => {
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
-    if (v.range) v.range.visible = v.sel.visible;
+    if (v.range) v.range.visible = ranges && v.sel.visible;
   }
+  battleFrame(cam, units, me);
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
+  effects.update(dt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
-  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = 0.15; drawMinimap(); }
+  alerts.frame();
+  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
@@ -1622,10 +1249,14 @@ renderer.setAnimationLoop(() => {
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
-  renderer.render(scene, camera);
+  renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
 });
 
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, get me() { return me; } };
+// the alerts list above the minimap (client/alerts.js) sees the match through these
+alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
+  pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },
+  onScreen: (x, z) => { const p = screenOf({ x, z }); return p.front && p.x >= 0 && p.x <= innerWidth && p.y >= 0 && p.y <= innerHeight; } });

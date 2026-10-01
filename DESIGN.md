@@ -238,6 +238,87 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
   Browser cost at 250+ units hasn't been measured on the friends' PCs.
 
+## Look and feel (decided 2026-10-01)
+Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
+is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
+mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
+The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
+the HUD.
+- Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
+- Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
+  particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
+- World:
+  - Ground painted from tileable textures (grass, dirt, mud, road, field) generated with gpt-image-2 and blended per
+    cell; contour lines stay. Craters and scorch marks are painted into the ground.
+  - Warm low sun, soft shadows, slightly saturated "painted miniature" colors, a light haze.
+  - A slight blur only along the far (top) edge of the screen, subtle enough that units there stay readable. Off on Low.
+  - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
+  - Unit markers: the class badge over each unit becomes the same military map symbol the HUD uses, drawn in the
+    owner's color. Health bar, cover shield and veterancy stay.
+  - Order lines and range rings drawn like grease pencil on the table (slightly rough strokes, arrowheads on routes).
+    Colors keep their meaning: blue move, orange attack-move, white retreat, red attack, yellow dig/build.
+- Player colors (grease pencil, they read on grass, the dark strip and manila): blue `#3b73d6`, red `#cc3a2e`, chalk
+  `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue against red. Gold and green are gone:
+  gold clashed with the brass accent and manila, green vanished on grass.
+- HUD (panel style "E"): a dark translucent olive-charcoal strip (`#22251b` at ~85%) holds everything; only the Command
+  Card's unit cards and the selected-unit list are manila cards (`#d8c69a`) with dark brown ink (`#2b2418`). Light text
+  on the strip `#e6dcc0`, brass `#d2a849` for big numbers, grease-pencil red `#b8322a` for danger.
+- Type: Courier Prime (typewriter) for all HUD text, Stardos Stencil only for big numbers (MP, VP, clock, HQ labels).
+  No all-caps labels, nothing under 13 px. IBM Plex Mono is gone.
+- Unit icons everywhere: period military map symbols (infantry box with an X, armor box with an oval, artillery box
+  with a dot, and so on), one symbol per unit type, full name and role in a tooltip. Faction markings next to player
+  names in the score panel: US star, German cross, Soviet star.
+- Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
+  row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
+  Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
+  Classic); bottom right the minimap. Nothing overlaps at 1366x768. The always-on keybinding panel is parked
+  (issue #2); hotkeys show on buttons.
+- Lobby: same style, the room form as a manila order card. The map editor only takes the new fonts and colors.
+- Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area), point captured /
+  lost, unit lost, enemy Air Support incoming, unit ready and building finished (Classic). One line each in a short list
+  above the minimap (newest on top, gone after ~6 s), a minimap ping and a short sound. Space jumps to the newest alert
+  while one is showing, otherwise it focuses the selection as before. No kill feed, no damage numbers.
+- Combat effects: muzzle flashes, glowing tracers, particle explosions with dust and debris, lasting scorch marks, fire
+  on wrecks, better smoke. A very small screen shake on big nearby blasts, off on Low.
+- Audio (ElevenLabs, generated 2026-10-01; raw takes and manifests in `~/.local/share/ww2-rts/audio-raw/2026-10-01/`):
+  35 sound effects (`eleven_text_to_sound_v2`, four takes each, best take picked by onset, clipping and loudness) and
+  voice lines in Eleven v4 for each faction in its own language, two voices per faction, 12 lines each (move, attack,
+  retreat, under fire, unit lost), two takes per line, directed with v4 audio tags. They replace the browser's speech
+  synthesis. One volume control covers effects, voices and alerts (mute used to silence only the voices). No music.
+- Slices, each its own commit with its changelog entry: 1 HUD (layout, panels, colors, type, symbols, and the bugs
+  below), 2 alerts, 3 world (ground, light, table edge, graphics setting), 4 combat effects, 5 audio.
+- Bugs found while looking (fixed in slice 1): at 1600x900 the orders panel covers the recruit bar; Classic's
+  "MP · Mun · Fuel" readout wraps to two lines; the lobby form spills past its card; the orders panel's HTML is rebuilt
+  on every snapshot (10 Hz), which can eat clicks; mute only silences the voices.
+- As built, slice 1 (HUD): `client/hud.js` draws every panel; main.js hands it state and actions once (`createHud`).
+  The support calls are two rows of four (aviation added Dive Bomber, Paratroopers and Fighter Cover), with the plane
+  list (`#airPanel`) under them. The Command Card has a fourth group, Aircraft. The lobby kept the two-column layout
+  from the aviation work (map preview, army size), restyled as the manila card. Hotkeys: only T digs by key, since
+  Y, U, I and O went to the air calls and air buildings; the other forts are on the orders panel.
+- As built, slice 2 (alerts): `client/alerts.js` and `client/alerts.css`, worked out client-side from two snapshots in
+  a row. "Enemy Air Support incoming" covers the aviation calls too (dive bomber, paratroopers) but not fighter cover;
+  your planes count as units for "under attack" and "lost".
+- As built, slice 3 (world): `client/light.js` (sun, sky fill, haze, the table and board edge, the far-edge blur and
+  the Graphics High / Low button), `client/ground.js` (the painted ground canvas, repainted in tiles when cells
+  change), `client/surfaces.js` (textured structure materials) and `client/markers.js` (rings, badges, order lines,
+  capture points, tags). Player colors are blue, red, chalk, orange, violet and cyan. The aviation types got map
+  symbols in `client/symbols.js` (plane, dome over armor, installation bar), since the 3D badges now use the same
+  symbols as the HUD and the old pictograms for flak and planes went away.
+- As built, slice 4 (effects): `client/fx.js` (`createEffects`) reads each snapshot's shots, strikes and smokes and
+  draws everything from one instanced billboard mesh, one scorch decal mesh and a pool of plane models. main.js only
+  calls `effects.snapshot`, `effects.update`, `effects.wreck` and `effects.downPlane`. The aviation effects that lived
+  in main.js (support planes, flak puffs, planes falling) moved into fx.js: flak and fighters firing at planes draw
+  tracers into the sky (`aa`), a flak gun firing at a passing support plane makes airbursts around that plane,
+  `shotdown` and `planedown` send the plane into a burning fall. Flak firing at ground units is ordinary direct fire.
+  The paratroop canopies (`chutes`) stay in main.js. Particle and decal counts drop on Graphics Low.
+- As built, slice 5 (audio): `client/audio.js` loads `client/audio/index.json` and the mp3s under `client/audio/sfx`
+  and `client/audio/voice/{us,de,ru}`, mixes them on sfx, voice and ui buses under one volume (`ww2-volume`, M
+  toggles mute), and places each sound by distance and pan from the camera. `client/fx.js` owns every effect sound
+  and plays it when the effect shows (whistles timed to the landing, one sound per MG or SMG burst, fire loops on
+  wrecks). `client/battle-sound.js` only moves the listener with the camera, drives the tank engine bed from moving
+  vehicles and plays dig and build foley. The Volume slider sits in the in-game menu and replaces the old mute
+  button. `tools/build-audio.mjs` rebuilds the mp3s and index from the raw takes (needs ffmpeg).
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz.

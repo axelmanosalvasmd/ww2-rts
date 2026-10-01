@@ -45,7 +45,8 @@ async function saveMap(req, res, name) {
   json(200, { ok: true });
 }
 const STATIC = { '/client/': 'client', '/shared/': 'shared', '/vendor/': 'node_modules/three/build' };
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg' };
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');

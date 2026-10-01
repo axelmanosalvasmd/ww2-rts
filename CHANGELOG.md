@@ -5,6 +5,131 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Polish (review fixes for the HUD, world and effects slices):
+  - Point and resource node income tags and the HQ sign keep the same size on screen at every zoom, so they stay
+    readable when zoomed out and no longer cover the fight when zoomed in. They fade out up close, and a point's tag
+    hides while that point is being captured. The HQ sign shows the name as typed, not in capitals.
+  - The HQ reinforce zone is a faint chalk tint inside its ring instead of a blue patch that looked like a pond.
+    Big pencil rings no longer draw a second line a meter inside the first.
+  - Range rings show only for a small selection (up to two units, or up to four of one type), so a big selection no
+    longer covers the screen in dashes.
+  - The edge of the board is deeper and lighter, so its soil layers show on both the sunny and the shaded side, and it
+    meets the table with a soft shadow instead of a jagged black line.
+  - Fallen soldiers stay as soldiers (helmet and colors) and sink into the ground, instead of turning into brown
+    capsules. Classic buildings use the wood, sandbag and earth textures of the rest of the world. Resource nodes are
+    marked with a brass pencil square.
+  - Command Card: a locked card keeps its "Needs a Barracks" note readable (dark ink with a red dot), and the cost of
+    a unit you can't afford is a solid red chip. Disabled support buttons are less faded, so their costs can be read
+    at the start of a Classic match.
+  - In Classic the "click where to build" hint sits above the Build panel instead of on top of it.
+  - Lobby: section headings are in sentence case, your own name and the host mark no longer get cut off, muted text
+    is darker, and the Add AI, Copy link, Join and Start buttons have tooltips. The support and veteran tags are
+    easier to read.
+  - Alerts sit a little higher above the minimap so they no longer touch its frame.
+  - Fixed: every dig or shell that changed the terrain left the old buildings' and roofs' GPU buffers behind, and
+    Play again kept the whole previous match on the GPU. Both are freed now. The fog of war now follows craters and
+    trenches. The minimap no longer raycasts the terrain on every redraw (it was costly while an alert was showing).
+    A machine gun shooting at a plane no longer shows flak bursts or plays the flak sound.
+  - Left for later: warmer ground and rounder hedges, smoother contour lines, a north arrow and scale bar on the
+    minimap, Graphics Low cutting shadow draw calls, patching only the dug part of the terrain instead of rebuilding
+    it, trimming the blur pass's unused GPU memory, unit names on recruit cards at 1366 and 1600 px wide, and a
+    design decision on whether the lobby title and Start button may keep the stencil font.
+- Audio (slice 5): recorded effects and voice lines, one volume control:
+  - Recorded sound effects (ElevenLabs) for every weapon, shell, grenade, bomb and rocket, the support planes, flak,
+    plane crashes, falling houses, smoke shells, digging and building, plus a quiet battlefield ambience and a short
+    sound when the match starts. Each sound plays when its effect shows, gets quieter with distance from the camera
+    and pans left or right with it. Moving tanks and vehicles swell a shared engine rumble.
+  - Burning wrecks crackle while they burn. Artillery and mortar whistles end as the round lands. A machine gun or SMG
+    burst plays once per burst, and a Tiger's gun sounds deeper. A hedge or fence being knocked down only crunches;
+    a house falling is loud.
+  - Each faction speaks its own language with recorded voice lines (Eleven v4): two voices per faction, the player's
+    slot picks one, for move, attack, retreat, under fire and unit lost. They replace the browser's speech voice.
+  - Alerts, recruiting, orders and button clicks each have a short sound.
+  - One Volume slider in the in-game menu covers effects, voices and alerts and is remembered. M mutes and restores
+    the last level. A player who had muted the old way starts muted.
+  - Fixed: the old synthesized noise bursts are gone. Mute used to silence only the voices. Machine guns no longer
+    pile up a new sound every few tenths of a second while firing.
+  - Left for later: the Armored Car's cannon uses the tank gun sound. A hedge or fence falling still throws up the
+    full dust cloud of a house (only the sound is lighter). The Fighter Cover circle is still the old flat ring. The
+    refused-order sound (`ui_error`) is recorded but nothing plays it yet. The automated browser checks confirm which
+    sounds are played, not how they sound.
+- Combat effects (slice 4): muzzle flashes, tracers, explosions, scorch, fire and smoke:
+  - Every shot has a muzzle flash at the gun and a glowing tracer to the target, with the impact landing when the
+    round arrives: dust and dirt for small arms, sparks off armor, a fireball and debris for shells and bombs.
+    Explosions are sized by the weapon (grenade, mortar, tank gun, artillery, bomb) and leave scorch marks on the
+    ground that fade after a while.
+  - Destroyed vehicles burn and smoke, then smoulder. Smoke screens are thick drifting smoke, all smoke drifts with
+    the same wind, and houses that fall down throw up a cloud of dust. Big blasts near the camera give a very small
+    screen shake (off on Graphics Low and with reduced motion).
+  - The support planes fly over and drop what they carry: recon, strafing, bombing, the dive bomber (one steep dive
+    and one bomb) and the paratroop transport.
+  - Air war: flak guns and Mobile Flak fire tracers up at planes, with black airbursts around them; when a flak gun
+    opens up on a passing support plane, the bursts walk around that plane. Fighters fire from both wings in turn and
+    the Ground-attack Plane fires rockets. A plane shot down rolls over and falls trailing fire and smoke, then
+    blows up and burns where it lands; a support plane that is shot down cancels the bombs it hadn't dropped yet.
+  - Fixed: a Flak Emplacement firing at ground units drew puffs in the sky instead of tracers to the target. A Fighter
+    or Ground-attack Plane that was killed stayed frozen in the air as a wreck for 40 s. Shots no longer make and free
+    GPU objects each time: all particles are one mesh and the planes come from a small pool.
+  - Left for later: the old synthesized battle sounds still play next to the new effect sound hooks until the audio
+    slice. If every pooled plane is in use, a support plane shot down shows only an airburst. The Fighter Cover
+    circle is still the old flat ring.
+- World look (slice 3): painted ground, warm light, a planning table and map-symbol markers:
+  - The ground is painted from real textures per cell (grass, dirt, mud, ploughed field, road, water, rubble,
+    shelled earth, trench earth) with soft edges, and keeps the contour lines; shell holes and trenches are painted
+    on. Houses, roofs, hedges, walls, sandbags, wire, tank traps, bridges and trench parapets get textured surfaces.
+    When terrain changes in play or in the editor, only the patch around it is repainted.
+  - A warm low sun over each player's opening view with a sky fill, crisp shadows that don't crawl when the camera
+    moves, and haze that scales with zoom. The board sits on a dark wooden planning table with a cut-earth edge, so
+    panning past the map edge no longer shows a grey void.
+  - Graphics High / Low in the in-game menu. High blurs the far edge of the view; Low skips the blur and uses cheaper
+    shadows and a smaller ground texture. If the frame rate stays low, the game switches to Low once and says so.
+  - Player colors are now blue, red, chalk, orange, violet and cyan, so a 1v1 is blue against red.
+  - Over each unit, its military map symbol filled in the owner's color (the same symbols as the HUD). Owner,
+    selection, range and HQ rings are hand-drawn pencil strokes: selection is a chalk ring over a dark halo, weapon
+    range is dashed chalk. Order lines are pencil strokes with arrowheads, in the same colors as before.
+  - Capture points: a dashed chalk ring while neutral, a solid ring in the owner's color once taken, and capture
+    progress as a shaded band. Flags are cloth in the owner's color. HQ names are in stencil type with a color bar.
+  - Map symbols for the aviation types, which slice 1 left blank: Fighter and Ground-attack Plane (a plane seen from
+    above, with bombs under the wings for the attacker), Mobile Flak (the air defense dome over an armor oval),
+    Airfield and Flak Emplacement (the installation bar with the plane or the dome). They show on the Command Card
+    and over the units.
+  - Fixed: a dead unit's weapon range rings could stay on the ground. Order lines no longer make and free GPU
+    objects every snapshot.
+  - Left for later: the Fighter Cover circle is still the old flat blue ring, not a pencil stroke, and it is rebuilt
+    every snapshot. The headless test browser drops to Graphics Low within seconds, so the integration screenshots
+    don't show the far-edge blur.
+- Alerts (slice 2): short lines above the minimap tell you when something needs you, each with a ping on the minimap
+  and a sound hook (the sounds arrive with the audio slice):
+  - Under attack: your units and buildings (planes too), an allied HQ or bunker, or a point of your side losing
+    ground. At most once per 20 s per area, and not while the fight is on screen. Friendly fire and Sudden Death
+    crumbling don't count.
+  - Point captured, point lost, unit lost or building destroyed (losses close together share one line, so a plane
+    shot down reads "Fighter lost").
+  - Enemy Air Support incoming near your side: strafing, bombing, recon, dive bomber and paratroopers. Artillery and
+    smoke barrages and fighter cover don't raise it.
+  - Classic: a unit out of a building's queue, a building finished.
+  - The newest line is bold; lines fade after about 6 s, four at most. Space jumps to the newest alert while one is
+    showing (otherwise it centers the selection as before); clicking a line jumps there too.
+  - Only what the server already sends you is used, so nothing under fog leaks.
+- New HUD, "sand table" look (slice 1 of the look and feel work):
+  - A dark olive strip holds the panels; the unit cards and the selection list are manila cards. Courier Prime for
+    text, Stardos Stencil for the big numbers (MP, clock, VP).
+  - Score and clock top center, with faction markings next to player names; resources, income, army size and the
+    eight support calls (two rows of icon buttons with their hotkeys) top right; your planes and what each is doing
+    listed under them (click one to select it); selection list and an icon grid of orders bottom left; the Command
+    Card bottom center; menu, voices and fullscreen in a small bar top left.
+  - Military map symbols (infantry box with an X, armor with an oval, and so on) on the Command Card, the selection
+    list and the orders. Tooltips give the full unit name and its role; hotkeys show on the buttons.
+  - Command Card groups: Infantry, Support weapons, Vehicles and Aircraft (Fighter and Ground-attack Plane).
+  - The lobby is a manila order card and keeps its two columns (Players and Invite, Battle with the map preview, mode
+    description and army size).
+  - The always-on keybinding panel is gone; the hotkeys are on the buttons.
+  - Fixed: the HUD rebuilt its buttons 10 times a second, which could eat clicks (orders, Command Card, air panel).
+    At 1600x900 the orders panel covered the recruit bar. Classic's MP / Mun / Fuel readout wrapped to two lines.
+    Engineers now get the fortification buttons too.
+  - Left for later: Fighter, Ground-attack Plane, Mobile Flak, Airfield and Flak Emplacement have no map symbol yet
+    (blank frame; slice 3 adds them). Y, U, I and O build sandbags, wire, traps and the MG nest only from the orders panel: those keys
+    were already taken by the flak emplacement, dive bomber, fighter cover and airfield, so only T digs by key.
 - Army size in the lobby (host picks): Standard (as before), Large (2.5x unit limit, 3x income) or Massive (5x unit
   limit, 6x income: MP, Munitions, Fuel and starting MP). The AI buys several units at a time in big games. With 6 AIs
   on Six Fronts, Massive peaked at about 240 units (Conquest) and 270 (Classic); the server stayed under 8 ms per tick
