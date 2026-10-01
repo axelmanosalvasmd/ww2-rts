@@ -6,16 +6,18 @@ export const TICK = 1 / 20;
 export const CFG = {
   vpToWin: 1200, mpStart: 150,
   // Assault mode: attackers must destroy every defender's command bunker before the clock runs out.
-  assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11 },
+  assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11,
+    // Annihilation: every player gets a fortified bunker; a team is out when its last bunker falls. No clock.
+    annihilationMp: 300, annihilationBase: 4.5 },
   // flat income does most of the work; points add a little and trailing players catch up
   mpBase: 4, catchupMax: 6, catchupPer: 60,
   captureTime: 8, pointRadius: 8, popCap: 12,
   retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
   // incoming accuracy/suppression multipliers; blasts only care about trenches
   coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
-  digCost: 30, digCells: 4, digTime: 3, camoRange: 12,
+  digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
-  terrainHp: { B: 400, H: 60, '#': 150, '=': 200 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W' }, crush: { H: '.', '#': 'R' },
+  terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
   fordSpeed: 0.5,
   // garrisoned squads: heavy cover, upper-floor vision, thrown out (and hurt) when the house comes down
   garrisonMul: 0.35, garrisonVision: 1.25, garrisonEvictDamage: 0.3,
@@ -34,11 +36,12 @@ export const CFG = {
     aiAttackRatio: 1.1, aiSeenWindow: 30 },
 };
 
-export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16;
+export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64;
 // T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
 // = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
 // K = footprint of a Classic building (never in map files): solid until the building falls, then rubble
-export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER, K: MOVE | SIGHT };
+export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER };
+// X barbed wire (infantry wade through slowly, tanks flatten it) · Y tank traps (stop vehicles, cover for infantry)
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
 // perModel: damage scales with living squad members. moveFire: accuracy multiplier while moving (absent = can't).
@@ -133,6 +136,27 @@ export const SUPPORT = {
   bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, dig: 1, inf: 60, veh: 150, supp: 90, terrain: 400 },
 };
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
+
+// Field fortifications infantry can build (the dig command), laid across the line the player draws.
+// The MG nest is a trench pit behind a horseshoe of sandbags that faces away from the builders.
+export const FORTS = {
+  trench: { name: 'Trench', cost: CFG.digCost, ch: 'T', n: CFG.digCells },
+  sandbags: { name: 'Sandbags', cost: 20, ch: '#', n: 4 },
+  wire: { name: 'Barbed Wire', cost: 25, ch: 'X', n: 5 },
+  traps: { name: 'Tank Traps', cost: 40, ch: 'Y', n: 4 },
+  nest: { name: 'MG Nest', cost: 60, nest: true },
+};
+const BUILDABLE_GROUND = '.+R';
+// the cells a fortification covers when centered on (x, z), running along direction a
+export function fortCells(g, f, x, z, a) {
+  const sx = Math.cos(a), sz = Math.sin(a), fx = sz, fz = -sx; // forward: away from the builders
+  const at = (along, fwd) => cellOf(g, x + (sx * along + fx * fwd) * CELL, z + (sz * along + fz * fwd) * CELL);
+  const plan = f.nest ? [[0, 0, 'T'], [-1, 1, '#'], [0, 1, '#'], [1, 1, '#'], [-1, 0, '#'], [1, 0, '#']].map(([s, w, ch]) => [at(s, w), ch])
+    : Array.from({ length: f.n }, (_, i) => [at(i - (f.n - 1) / 2, 0), f.ch]);
+  const out = [];
+  for (const [c, ch] of plan) if (c >= 0 && BUILDABLE_GROUND.includes(g.chars[c]) && !out.some(o => o[0] === c)) out.push([c, ch]);
+  return out;
+}
 const SUPPORT_SRC = new Set(Object.values(SUPPORT));
 // Classic prices support in Munitions (mun) instead of manpower
 Object.assign(SUPPORT.recon, { mun: 25 }); Object.assign(SUPPORT.artillery, { mun: 60 }); Object.assign(SUPPORT.strafe, { mun: 80 });
@@ -205,9 +229,10 @@ export function spawnSlots(nSpawns, teams, shuffle = true) {
 
 // teams[i] / factions[i] per player; default is free-for-all with factions cycling USA, Germany, USSR
 // opts.mode: 'conquest' (default, VP race), 'assault' (opts.defenderTeam defends; everyone else attacks as one team)
+// 'annihilation' (every player has a fortified bunker, last team with one standing wins)
 // or 'classic' (base building, won by Annihilation)
 export function createGame(map, names, shuffle = true, teams = names.map((_, i) => i), factions = names.map((_, i) => i % 3), opts = {}) {
-  const assault = opts.mode === 'assault';
+  const assault = opts.mode === 'assault', noVp = assault || opts.mode === 'annihilation';
   if (assault) {
     const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
@@ -229,8 +254,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
       return { slot, name, team: teams[slot], faction: factions[slot], vp: 0, mp: CFG.mpStart, inc: CFG.mpBase, sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, 0])), spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
     }),
     // vp/mp per second while held; the map can make some points worth more
-    // Assault has no VP, so points that only pay VP are left out (clients filter the same way)
-    points: map.points.filter(p => !assault || (p.mp ?? 1) > 0).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
+    // Assault and Annihilation have no VP, so points that only pay VP are left out (clients filter the same way)
+    points: map.points.filter(p => !noVp || (p.mp ?? 1) > 0).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
   g.chars = [...map.rows.join('')];
@@ -240,6 +265,10 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   if (opts.mode === 'classic') setupClassic(g);
   for (const p of g.players) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, i));
   if (assault) setupAssault(g, opts.defenderTeam, map.assaultTime);
+  if (opts.mode === 'annihilation') {
+    g.mode = { kind: 'annihilation', teams: new Set(teams).size };
+    for (const p of g.players) { p.mp = CFG.assault.annihilationMp; fortify(g, p); }
+  }
   return g;
 }
 
@@ -247,23 +276,25 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
 function setupAssault(g, defenderTeam, time) {
   const A = CFG.assault;
   g.mode = { kind: 'assault', defenderTeam, attackerTeam: g.players.find(p => p.team !== defenderTeam)?.team ?? -1, timeLeft: time ?? A.time };
-  const cx = g.w * CELL / 2, cz = g.h * CELL / 2;
   for (const p of g.players) {
     const defending = p.team === defenderTeam;
     p.mp = defending ? A.defenderMp : A.attackerMp;
-    if (!defending) continue;
-    // fortify the side of the base that faces the map center: a trench line, then sandbag walls, with gaps to move through
-    const toward = Math.atan2(cz - p.spawn.z, cx - p.spawn.x), r = A.fortRadius;
-    for (let a = -0.9; a <= 0.9; a += 0.04) for (const [rr, ch, gap] of [[r, 'T', 0.35], [r + 2, '#', 0.25]]) {
-      if (Math.abs((a / gap) % 2) > 1.6) continue; // leave gaps
-      const c = cellOf(g, p.spawn.x + Math.cos(toward + a) * rr * CELL, p.spawn.z + Math.sin(toward + a) * rr * CELL);
-      if (c >= 0 && g.chars[c] === '.') setCell(g, c, ch);
-    }
-    // the bunker sits between the HQ and the fortifications
-    const b = spawnUnit(g, p.slot, 'bunker');
-    const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 5 * CELL / 2, p.spawn.z + Math.sin(toward) * 5 * CELL / 2);
-    Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
+    if (defending) fortify(g, p);
   }
+}
+// a command bunker for player p, with a trench line and sandbag walls on the side that faces the map center
+function fortify(g, p) {
+  // a trench line, then sandbag walls, with gaps to move through
+  const toward = Math.atan2(g.h * CELL / 2 - p.spawn.z, g.w * CELL / 2 - p.spawn.x), r = CFG.assault.fortRadius;
+  for (let a = -0.9; a <= 0.9; a += 0.04) for (const [rr, ch, gap] of [[r, 'T', 0.35], [r + 2, '#', 0.25]]) {
+    if (Math.abs((a / gap) % 2) > 1.6) continue; // leave gaps
+    const c = cellOf(g, p.spawn.x + Math.cos(toward + a) * rr * CELL, p.spawn.z + Math.sin(toward + a) * rr * CELL);
+    if (c >= 0 && g.chars[c] === '.') setCell(g, c, ch);
+  }
+  // the bunker sits between the HQ and the fortifications
+  const b = spawnUnit(g, p.slot, 'bunker');
+  const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 5 * CELL / 2, p.spawn.z + Math.sin(toward) * 5 * CELL / 2);
+  Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
 }
 
 // ---------- Classic: buildings and resource nodes ----------
@@ -520,10 +551,10 @@ function noCliffs(g, a, b) {
 
 export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !g.smokes.some(s => segHits(a, b, s, s.r)) && overHills(g, a, b);
 
-function walkable(g, a, b) {
+function walkable(g, a, b, mask = MOVE) {
   // three parallel rays so wide units don't clip building corners
   const d = Math.hypot(b.x - a.x, b.z - a.z) || 1, ox = -(b.z - a.z) / d * 0.9, oz = (b.x - a.x) / d * 0.9;
-  return [-1, 0, 1].every(k => clear(g, a.x + ox * k, a.z + oz * k, b.x + ox * k, b.z + oz * k, MOVE, true)) && noCliffs(g, a, b);
+  return [-1, 0, 1].every(k => clear(g, a.x + ox * k, a.z + oz * k, b.x + ox * k, b.z + oz * k, mask, true)) && noCliffs(g, a, b);
 }
 
 function nearestFree(g, x, z) {
@@ -545,6 +576,8 @@ function nearestFree(g, x, z) {
 // A* over the grid, 8-directional, no corner cutting. Returns smoothed world waypoints.
 export function findPath(g, from, to) {
   const W = g.w, N = W * g.h, goal = nearestFree(g, to.x, to.z), start = Math.max(0, cellOf(g, from.x, from.z));
+  // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
+  const veh = UNITS[from.type] && !UNITS[from.type].infantry, block = veh ? MOVE | VBLOCK : MOVE, pull = veh ? block : MOVE | WIRE;
   const gs = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
   const gx = goal % W, gy = Math.floor(goal / W);
   const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
@@ -576,12 +609,12 @@ export function findPath(g, from, to) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= g.h) continue;
       const n = ny * W + nx;
-      if (g.flags[n] & MOVE || closed[n]) continue;
-      if (dx && dy && (g.flags[y * W + nx] & MOVE || g.flags[ny * W + x] & MOVE)) continue;
+      if (g.flags[n] & block || closed[n]) continue;
+      if (dx && dy && (g.flags[y * W + nx] & block || g.flags[ny * W + x] & block)) continue;
       const climb = level(g, n) - level(g, c);
       if (Math.abs(climb) > 1) continue; // cliff
       if (dx && dy && (Math.abs(level(g, y * W + nx) - level(g, c)) > 1 || Math.abs(level(g, ny * W + x) - level(g, c)) > 1)) continue;
-      const cost = gs[c] + (dx && dy ? 1.414 : 1) + Math.max(0, climb) * 0.5; // uphill costs a bit more
+      const cost = gs[c] + (dx && dy ? 1.414 : 1) + Math.max(0, climb) * 0.5 + (!veh && g.flags[n] & WIRE ? 4 : 0); // uphill costs a bit more, wire a lot
       if (cost < gs[n]) { gs[n] = cost; came[n] = c; push([cost + hq(n), n]); }
     }
   }
@@ -594,7 +627,7 @@ export function findPath(g, from, to) {
   let at = from;
   for (let i = 0; i < pts.length;) {
     let j = pts.length - 1;
-    while (j > i && !walkable(g, at, pts[j])) j--;
+    while (j > i && !walkable(g, at, pts[j], pull)) j--;
     out.push(pts[j]); at = pts[j]; i = j + 1;
   }
   return out;
@@ -659,16 +692,13 @@ export function command(g, slot, cmd) {
       else if (ab.id === 'smoke') { g.smokes.push({ x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
     }
   } else if (cmd.t === 'dig') {
-    // one rifle squad digs a short trench across its line of approach
+    // one squad builds a field fortification (FORTS) across its line of approach
+    const kind = cmd.kind ?? 'trench', f = Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
     const u = mine(ids[0]), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), p = g.players[slot];
-    if (!u || u.type !== 'rifle' || u.retreating || x === null || z === null || p.mp < CFG.digCost) return;
-    const a = angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2, px = Math.cos(a), pz = Math.sin(a), cells = [];
-    for (let i = 0; i < CFG.digCells; i++) {
-      const o = (i - (CFG.digCells - 1) / 2) * CELL, c = cellOf(g, x + px * o, z + pz * o);
-      if (c >= 0 && !(g.flags[c] & (MOVE | TRENCH)) && !cells.includes(c)) cells.push(c);
-    }
+    if (!f || !u || !CFG.fortBuilders.includes(u.type) || u.retreating || x === null || z === null || p.mp < f.cost) return;
+    const cells = fortCells(g, f, x, z, angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2);
     if (!cells.length) return;
-    p.mp -= CFG.digCost;
+    p.mp -= f.cost;
     Object.assign(u, { dig: { x, z, cells, t: 0 }, attackId: 0, nade: null, repath: 0 });
   } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
@@ -907,10 +937,12 @@ export function step(g) {
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
       if (dist(u, u.dig) > 3) { if (u.repath <= 0 && !u.path.length) { u.path = findPath(g, u, u.dig); u.repath = 1; } }
-      else if ((u.dig.t += dt) >= CFG.digTime) {
+      else if ((u.dig.t += dt) >= CFG.digTime * (u.type === 'engineer' ? 0.5 : 1)) {
         u.dig.t = 0;
-        const c = u.dig.cells.shift();
-        if (!(g.flags[c] & (MOVE | TRENCH))) setCell(g, c, 'T');
+        const [c, ch] = u.dig.cells.shift();
+        // ground can change while building; tank traps never go down under a vehicle
+        const under = ch === 'Y' && [...g.units.values()].some(v => !UNITS[v.type].infantry && cellOf(g, v.x, v.z) === c);
+        if (BUILDABLE_GROUND.includes(g.chars[c]) && !under) setCell(g, c, ch);
         if (!u.dig.cells.length) u.dig = null;
       }
     }
@@ -962,7 +994,7 @@ export function step(g) {
 
     // movement
     const before = { x: u.x, z: u.z };
-    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (flagsAt(g, u.x, u.z) & FORD ? CFG.fordSpeed : 1);
+    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
     let budget = speed * dt;
     while (budget > 0 && u.path.length) {
       const wp = u.path[0], d = dist(u, wp);
@@ -1141,7 +1173,7 @@ export function step(g) {
       if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * dt;
       continue;
     }
-    const base = !g.mode ? CFG.mpBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
+    const base = !g.mode ? CFG.mpBase : g.mode.kind === 'annihilation' ? CFG.assault.annihilationBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
     pl.inc = pl.away ? 0 : base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
     pl.mp += pl.inc * dt;
   }
@@ -1166,6 +1198,12 @@ export function step(g) {
     }
     const left = new Set(g.players.filter(p => !p.out).map(p => p.team));
     if (g.mode.teams > 1 && left.size <= 1) g.winner = left.size ? [...left][0] : -1; // -1 = draw
+    return;
+  }
+  if (g.mode?.kind === 'annihilation') {
+    // a team is out when its last bunker falls; the last team with one standing wins
+    const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
+    if (g.mode.teams > 1 && left.size <= 1) g.winner = left.size ? [...left][0] : -1;
     return;
   }
   if (g.mode) {

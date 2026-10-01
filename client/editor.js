@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor } from '/shared/sim.js';
 
 const TOOLS = [
-  ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
+  ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
   ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'],
   ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'],
   // spawns go in order around the map: the game seats teammates on neighbouring numbers
@@ -30,7 +30,7 @@ export async function start(api) {
     <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option><option>150</option><option>200</option></select><button id="edNew">New blank</button></div>
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
-    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="classic">Classic</option></select>
+    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select>
       players <select id="edPlayers"></select></div>
     <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
@@ -177,7 +177,7 @@ export async function start(api) {
     }
     return { cells, ch };
   }
-  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
   function highlight() {
     hl.clear();
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];

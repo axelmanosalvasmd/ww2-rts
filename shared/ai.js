@@ -47,7 +47,7 @@ export function think(g, slot, opts = {}) {
   const me = g.players[slot];
   if (me.out) return;
   const all = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure);
-  const assault = g.mode?.kind === 'assault', defending = assault && me.team === g.mode.defenderTeam, classic = g.mode?.kind === 'classic';
+  const assault = g.mode?.kind === 'assault' || g.mode?.kind === 'annihilation', defending = assault && me.team === g.mode.defenderTeam, classic = g.mode?.kind === 'classic';
   // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings
   // (Classic: only buildings its team has seen, remembered under fog; with none known, head for the enemy spawns)
   const known = classic ? knownBuildings(g, slot).filter(b => UNITS[b.type].produces && g.players[b.owner].team !== me.team) : [];

@@ -81,6 +81,13 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Bug found while testing: veterancy thresholds are multiples of unit cost, so the free bunker counted as a 3-star
   veteran. Free units never rank up now.
 
+## Annihilation mode
+- Every player gets Assault's fortified bunker (`fortify()` in sim.js, shared with Assault). No clock, no VP: a team is
+  out when its last bunker falls, last team with one wins. 300 MP start, +4.5/s base, points pay MP only.
+- The AI treats it like an attacker in Assault: it captures points and goes for the nearest enemy bunker once it has
+  6+ units. AI runs, time to finish: 1v1 Three Crossroads 4:47-26:43 (8 games), River Towns 5:41-23:45 (4),
+  Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
+
 ## Command & readability (slice after destruction)
 - Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
   Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).
@@ -241,3 +248,11 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
    Before tuning: USSR won 74% (conscripts at 60 MP were too efficient) and the German AI stalled saving for the Tiger.
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
+
+## Field fortifications
+- `FORTS` in sim.js: trench (T, 30), sandbags (#, 20), barbed wire (X, 25), tank traps (Y, 40), MG nest (6 cells, 60).
+  Built by rifle squads, conscripts and engineers (`CFG.fortBuilders`); one cell per `digTime` (3 s, engineers 1.5 s).
+- New terrain flags: WIRE (infantry speed x `wireSpeed` 0.35, +4 path cost so squads route around; tanks crush it;
+  40 hp) and VBLOCK (vehicles' paths treat it as a wall; infantry pass and get cover; 250 hp). findPath picks the
+  blocking mask from the moving unit's type.
+- Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.

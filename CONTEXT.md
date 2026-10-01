@@ -75,3 +75,23 @@ _Avoid_: stealth, invisibility
 **Point**:
 A capture location on the map. In Classic it earns Munitions rather than VP.
 _Avoid_: flag, objective
+
+## Air
+
+**Air Support**:
+An off-map strike or drop you call on a spot, announced to everyone before it arrives: recon flight, strafing run, bombing run, dive bomber, paratroopers, fighter cover (artillery and smoke barrages are support too, but not aircraft). Paid in MP, or Munitions in Classic.
+_Avoid_: call-in, airstrike (for the whole family)
+
+**Fighter Cover**:
+Air Support that intercepts the next enemy air strike over an area for a while. It never stops recon.
+
+**Paratroopers**:
+Air Support that drops a rifle squad anywhere your side can see. It counts toward the pop cap.
+
+**Flak**:
+Anti-aircraft fire, from a flak gun or a Classic flak emplacement. Each flak in range gives a chance to shoot down a passing support plane, which cancels whatever it hasn't delivered yet.
+_Avoid_: AA (in player-facing text)
+
+**Shoot-down**:
+A plane destroyed by Flak or Fighter Cover before it finishes its run.
+

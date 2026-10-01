@@ -191,7 +191,7 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const g = fresh(); g.players[0].mp = 1000;
   const r = put(g, 0, 'rifle', 20, 20);
   command(g, 0, { t: 'dig', ids: [r.id], x: 20, z: 20, dir: 0 });
-  const ys = new Set(r.dig.cells.map(c => Math.floor(c / g.w)));
+  const ys = new Set(r.dig.cells.map(([c]) => Math.floor(c / g.w)));
   assert.equal(ys.size, 1, 'dir 0 digs along one grid row');
 }
 
@@ -243,7 +243,48 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const mg = put(g, 0, 'mg', 5, 5);
   assert.equal(mg.type, 'mg');
   command(g, 0, { t: 'dig', ids: [mg.id], x: 25, z: 30 });
-  assert.equal(mg.dig, null, 'only rifle squads dig');
+  assert.equal(mg.dig, null, 'MG teams do not build');
+}
+
+// Fortifications: every kind builds its cells; wire slows infantry and tanks flatten it; tank traps stop vehicles.
+{
+  const at = (g, x, z) => g.chars[Math.floor(z / CELL) * g.w + Math.floor(x / CELL)];
+  const build = (kind, type = 'rifle') => {
+    const g = fresh(); g.players[0].mp = 5000;
+    const u = put(g, 0, 'rifle', 20, 30); u.type = type; // engineers are Classic-only, conscripts USSR-only
+    command(g, 0, { t: 'dig', ids: [u.id], kind, x: 20, z: 20, dir: 0 });
+    run(g, 40);
+    return { g, chars: [...new Set(g.cellLog.map(([, ch]) => ch))].sort().join(''), n: g.cellLog.length, u };
+  };
+  assert.deepEqual([build('sandbags').chars, build('wire').chars, build('traps').chars], ['#', 'X', 'Y']);
+  const nest = build('nest');
+  assert.equal(nest.chars, '#T', 'MG nest: a trench pit and sandbags');
+  assert.equal(nest.n, 6);
+  // the sandbag horseshoe faces away from the builders (they came from below, so the front row is above the pit)
+  assert.equal(at(nest.g, 20, 20), 'T'); assert.equal(at(nest.g, 20, 18), '#'); assert.equal(at(nest.g, 20, 22), '.');
+  assert.equal(build('wire', 'engineer').chars, 'X', 'engineers build'); assert.equal(build('wire', 'conscript').chars, 'X', 'conscripts build');
+  assert.equal(build('nope').n, 0, 'unknown kinds are ignored');
+  // wire: infantry crawls through it, a tank flattens it
+  {
+    const rows = [...empty]; for (let y = 0; y < 20; y++) rows[y] = '.'.repeat(9) + 'XX' + '.'.repeat(9);
+    const g = fresh(rows); g.players[0].mp = 5000;
+    const r = put(g, 0, 'rifle', 4, 20), t = put(g, 0, 'tank', 4, 30);
+    command(g, 0, { t: 'move', orders: [[r.id, 36, 20], [t.id, 36, 30]] });
+    const free = 32 / UNITS.rifle.speed;
+    run(g, free);
+    assert.ok(r.x < 30, `wire slows the squad (at x=${r.x.toFixed(1)} after the open-ground time)`);
+    run(g, 10);
+    assert.ok(r.x > 34, 'but it gets through');
+    assert.equal(at(g, 20, 30), '.', 'the tank flattened the wire it drove over');
+  }
+  // tank traps: a full line stops a tank's path, but not a squad's
+  {
+    const rows = [...empty]; rows[10] = 'Y'.repeat(20);
+    const g = fresh(rows); g.players[0].mp = 5000;
+    const r = put(g, 0, 'rifle', 20, 5), t = put(g, 0, 'tank', 20, 8);
+    assert.equal(findPath(g, t, { x: 20, z: 35 }).length, 0, 'no way through for the tank');
+    assert.ok(findPath(g, r, { x: 20, z: 35 }).length > 0, 'infantry walks through');
+  }
 }
 
 // Smoke barrage: clouds appear after the warning and block sight.
@@ -883,6 +924,25 @@ for (const f of readdirSync('maps')) {
   for (const s of map.spawns) for (const p of [...map.points, ...map.spawns]) {
     if (p !== s) assert.ok(findPath(g, W(s), W(p)).length, `${f}: spawn ${s.x},${s.y} can reach ${p.x},${p.y}`);
   }
+}
+
+// Annihilation: everyone gets a fortified bunker; a side is out when its last bunker falls, no clock.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 1, 1], [0, 1, 2, 0], { mode: 'annihilation' });
+  const bunkers = [...g.units.values()].filter(u => u.type === 'bunker');
+  assert.deepEqual(bunkers.map(b => b.owner).sort(), [0, 1, 2, 3], 'one bunker each');
+  assert.ok(g.cellLog.filter(([, ch]) => ch === 'T').length >= 4 * 8, 'and trenches around every base');
+  assert.ok(g.points.every(p => p.mp > 0), 'no VP-only points');
+  assert.equal(g.players[0].mp, g.players[2].mp, 'both sides start equal');
+  run(g, 20 * 60); // no clock: twenty quiet minutes later it's still on
+  assert.equal(g.winner, null);
+  bunkers.find(b => b.owner === 2).hp = 0; run(g, 0.1);
+  assert.equal(g.winner, null, 'team 1 still has a bunker');
+  bunkers.find(b => b.owner === 3).hp = 0; run(g, 0.1);
+  assert.equal(g.winner, 0, 'last side with a bunker wins');
+  const solo = createGame(map, ['a'], false, [0], [0], { mode: 'annihilation' });
+  run(solo, 1); assert.equal(solo.winner, null, 'a solo test never ends by itself');
 }
 
 // Real map loads for 3 players, all spawns start with their force.
