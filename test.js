@@ -1085,4 +1085,362 @@ for (const f of readdirSync('maps')) {
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
+// Room lifecycle checks use one fake clock for captured timers and the socket retry module.
+{
+  function fakeClock() {
+    let now = 0, nextId = 0;
+    const timers = new Map();
+    return {
+      now: () => now,
+      setTimeout(fn, ms) { const id = ++nextId; timers.set(id, { at: now + ms, fn }); return id; },
+      clearTimeout(id) { timers.delete(id); },
+      advance(ms) {
+        const until = now + ms;
+        for (;;) {
+          const due = [...timers].filter(([, timer]) => timer.at <= until).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+          if (!due) break;
+          now = due[1].at; timers.delete(due[0]); due[1].fn();
+        }
+        now = until;
+      },
+    };
+  }
+
+  const { createConnection } = await import('./client/connection.js');
+  const { roomAddress, roomToken, matchStorage } = await import('./client/room-session.js');
+  class FakeWebSocket {
+    static sockets = [];
+    constructor(url) { this.url = url; this.readyState = 0; this.sent = []; FakeWebSocket.sockets.push(this); }
+    open() { this.readyState = 1; this.onopen?.({}); }
+    send(data) { this.sent.push(JSON.parse(data)); }
+    message(data) { this.onmessage?.({ data: JSON.stringify(data) }); }
+    close() { this.readyState = 3; this.onclose?.({ code: 1006 }); }
+  }
+  {
+    const clock = fakeClock(), retry = [], connected = [], dispatched = [];
+    FakeWebSocket.sockets = [];
+    const connection = createConnection({ url: () => 'ws://test/ws', hello: () => ({ t: 'hello', token: 'seat' }), WebSocket: FakeWebSocket, clock });
+    connection.on('retry', data => retry.push(data));
+    connection.on('connected', data => connected.push(data));
+    connection.on('lobby', data => dispatched.push(data));
+    connection.start();
+    assert.equal(connection.send({ t: 'pause' }), false, 'closed sockets reject sends');
+    let socket = FakeWebSocket.sockets.at(-1);
+    socket.open();
+    assert.deepEqual(socket.sent, [{ t: 'hello', token: 'seat' }], 'every connection sends the seat hello');
+    for (const seconds of [1, 2, 4, 8, 8]) {
+      socket.close();
+      assert.deepEqual(retry.at(-1), { left: seconds, reason: 'lost' }, 'reconnect backoff is bounded');
+      const count = FakeWebSocket.sockets.length;
+      clock.advance(seconds * 1000 - 1);
+      assert.equal(FakeWebSocket.sockets.length, count, 'a retry waits its full delay');
+      if (seconds > 1) assert.equal(retry.at(-1).left, 1, 'the retry banner counts down each second');
+      clock.advance(1);
+      assert.equal(FakeWebSocket.sockets.length, count + 1, 'the retry opens a socket on time');
+      socket = FakeWebSocket.sockets.at(-1); socket.open();
+    }
+    socket.message({ t: 'lobby', you: 0 }); socket.message({ t: 'lobby', you: 0 });
+    assert.equal(connected.length, 1, 'a server answer marks the connection recovered once');
+    assert.equal(dispatched.length, 2, 'registered handlers receive messages');
+    socket.close();
+    assert.equal(retry.at(-1).left, 1, 'a server answer resets the retry delay');
+    clock.advance(1000);
+    const newer = FakeWebSocket.sockets.at(-1); newer.open();
+    socket.message({ t: 'replaced' }); socket.close();
+    assert.equal(connection.isOpen(), true, 'late events from an old socket cannot stop the new one');
+    newer.message({ t: 'lobby', you: 0 });
+    connection.stop();
+    const count = FakeWebSocket.sockets.length;
+    clock.advance(60_000);
+    assert.equal(FakeWebSocket.sockets.length, count, 'stop cancels pending retries');
+  }
+  {
+    const clock = fakeClock(), retry = [], full = [], replaced = [];
+    FakeWebSocket.sockets = [];
+    const connection = createConnection({ url: 'ws://test/ws', hello: { t: 'hello', token: 'invite' }, WebSocket: FakeWebSocket, clock });
+    connection.on('retry', data => retry.push(data)); connection.on('full', data => full.push(data)); connection.on('replaced', data => replaced.push(data));
+    connection.start();
+    const first = FakeWebSocket.sockets.at(-1); first.open(); first.message({ t: 'full', reason: 'started' });
+    assert.equal(full.at(-1).reason, 'started', 'full preserves the server reason');
+    assert.deepEqual(retry.at(-1), { left: 10, reason: 'full' }, 'an invite retries every ten seconds');
+    first.close(); clock.advance(9999);
+    assert.equal(FakeWebSocket.sockets.length, 1, 'the close after full cannot shorten the retry');
+    clock.advance(1);
+    const second = FakeWebSocket.sockets.at(-1); second.close();
+    assert.deepEqual(retry.at(-1), { left: 10, reason: 'full' }, 'transport failure keeps the invite retry interval');
+    clock.advance(10_000);
+    const third = FakeWebSocket.sockets.at(-1); third.open(); third.message({ t: 'lobby', you: 0 }); third.close();
+    assert.equal(retry.at(-1).left, 1, 'joining the room restores normal reconnect timing');
+    clock.advance(1000);
+    const fourth = FakeWebSocket.sockets.at(-1); fourth.open(); fourth.message({ t: 'replaced' });
+    assert.equal(replaced.length, 1, 'a replaced seat is reported');
+    assert.equal(connection.isOpen(), false, 'a replaced seat releases the socket');
+    const count = FakeWebSocket.sockets.length; clock.advance(60_000);
+    assert.equal(FakeWebSocket.sockets.length, count, 'a replaced tab stops retrying');
+    connection.start();
+    const reclaimed = FakeWebSocket.sockets.at(-1); reclaimed.open(); reclaimed.message({ t: 'lobby', you: 0 });
+    fourth.message({ t: 'replaced' }); fourth.close();
+    assert.equal(connection.isOpen(), true, 'Use it here starts a connection protected from old events');
+    connection.stop();
+  }
+  {
+    const storage = () => {
+      const data = new Map();
+      return { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, String(value)), removeItem: key => data.delete(key) };
+    };
+    const local = storage(), session = storage(); let generated = 0;
+    const token = (room, seat = '', mirror = session) => roomToken({ room, seat, local, session: mirror, create: () => 'token-' + ++generated });
+    assert.deepEqual(roomAddress('#ABC&seat=2'), { room: 'abc', seat: '2', hash: '#abc&seat=2' }, 'room hashes retain the seat suffix');
+    assert.deepEqual(roomAddress('#&seat=2'), { room: 'main', seat: '2', hash: '#&seat=2' }, 'the main room retains its seat suffix');
+    const first = token('abc'), second = token('abc', '2'), other = token('xyz');
+    assert.notEqual(first, second, 'two seats on one machine have separate tokens');
+    assert.notEqual(first, other, 'tokens are scoped to the room');
+    const reopened = storage();
+    assert.equal(token('abc', '', reopened), first, 'a reopened tab keeps its seat from local storage');
+    assert.equal(reopened.getItem('ww2-token:abc'), first, 'the token is mirrored into the new session');
+    assert.equal(local.getItem('ww2-token:abc:2'), second, 'a seat suffix has its own persistent key');
+    session.setItem('ww2-token:fallback', 'session-seat');
+    assert.equal(token('fallback'), 'session-seat', 'a session mirror can recover a missing local token');
+    assert.equal(local.getItem('ww2-token:fallback'), 'session-seat', 'recovered tokens restore the local mirror');
+    const saved = { matchId: 3, camera: { x: 20, z: 30, yaw: 0.5, dist: 80 }, selected: [1, 4], groups: { 1: [1], 2: [4] } };
+    const state = matchStorage(first, local, session); state.write(saved);
+    assert.deepEqual(matchStorage(first, local, reopened).read(), saved, 'camera, selection and groups survive reopening the same seat');
+    assert.equal(matchStorage(second, local, session).read(), null, 'one seat cannot inherit another seat camera');
+    local.setItem('ww2-match:' + first, '{broken');
+    assert.deepEqual(state.read(), saved, 'the session mirror recovers a damaged local match record');
+    state.clear();
+    assert.equal(state.read(), null, 'ending a match clears both saved mirrors');
+    state.write({ ...saved, selected: 'invalid', groups: null });
+    const clean = state.read();
+    assert.deepEqual(clean.selected, [], 'malformed saved selection cannot reach the game');
+    assert.deepEqual(clean.groups, {}, 'malformed saved groups cannot reach the game');
+  }
+
+  async function serverHarness() {
+    const { default: WebSocket } = await import('ws');
+    const env = { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' }; // port 0: any free port; no .edit-password file, no tailscale call
+    const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+    Object.assign(process.env, env);
+    let module;
+    try { module = await import('./server.js'); }
+    finally { for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    clearInterval(module.loop);
+    const clock = fakeClock(), originalClock = { ...module.clock }, clients = [];
+    Object.assign(module.clock, clock);
+    const settleServer = async () => {
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setTimeout(resolve, 4));
+      await new Promise(resolve => setImmediate(resolve));
+    };
+    if (!module.server.listening) await new Promise((resolve, reject) => { module.server.once('listening', resolve); module.server.once('error', reject); });
+    const waitFor = async (predicate, label) => {
+      const until = Date.now() + 2000;
+      for (;;) {
+        const result = predicate();
+        if (result) return result;
+        assert.ok(Date.now() < until, label);
+        await settleServer();
+      }
+    };
+    const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier' } = {}) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
+      const messages = [], errors = [];
+      const client = {
+        code, token, ws, messages, log: messages, errors, closed: false,
+        async send(message) { await new Promise((resolve, reject) => ws.send(JSON.stringify(message), error => error ? reject(error) : resolve())); await settleServer(); },
+        async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
+        wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
+      };
+      ws.on('message', raw => messages.push(JSON.parse(String(raw))));
+      ws.on('close', () => { client.closed = true; });
+      ws.on('error', error => errors.push(error)); clients.push(client);
+      await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+      await client.send({ t: 'hello', token, name });
+      await waitFor(() => messages.find(message => ['lobby', 'full'].includes(message.t)), 'hello is answered');
+      return client;
+    };
+    return {
+      clock, connect, settleServer, rooms: module.rooms,
+      game: code => module.rooms.get(code)?.game,
+      snapshots: client => client.messages.filter(message => message.t === 's'),
+      async tick(n = 1) { for (let i = 0; i < n; i++) module.tickRooms(); await settleServer(); },
+      async clear(code) { await Promise.all(clients.filter(client => client.code === code && !client.closed).map(client => client.close())); module.rooms.delete(code); },
+      async close() {
+        await Promise.all(clients.filter(client => !client.closed).map(client => client.close()));
+        module.rooms.clear(); Object.assign(module.clock, originalClock);
+        await new Promise(resolve => module.wss.close(() => resolve()));
+        if (module.server.listening) await new Promise(resolve => module.server.close(resolve));
+      },
+    };
+  }
+
+  async function roomLifecycleChecks(h) {
+    let caseId = 0;
+    const last = (client, type) => client.messages.findLast(message => message.t === type);
+    const check = async fn => { const code = 'r3t' + ++caseId; try { await fn(code); } finally { await h.clear(code); } };
+    const humans = async (code, names = ['Ana', 'Ben']) => {
+      const players = [];
+      for (const name of names) players.push(await h.connect(code, { token: code + name, name }));
+      return players;
+    };
+    const start = async (code, host) => {
+      const after = host.messages.length; await host.send({ t: 'start' }); await host.wait('start', () => true, after); return h.rooms.get(code);
+    };
+
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']);
+      await ana.close();
+      assert.equal(h.rooms.get(code).emptySince, 0, 'an empty room can start its grace period at fake time zero');
+      h.clock.advance(60_000); await h.tick();
+      assert.ok(h.rooms.has(code), 'an empty room survives the full one-minute grace period');
+      h.clock.advance(1); await h.tick();
+      assert.equal(h.rooms.has(code), false, 'an empty room expires after its grace period');
+    });
+    await check(async code => {
+      const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
+      await ana.close();
+      await ben.wait('lobby', message => message.host === 1 && !message.players[0].connected);
+      assert.equal(last(ben, 'lobby').host, 1, 'the next connected human inherits host controls');
+      const room = h.rooms.get(code); h.clock.advance(9999); await h.settleServer();
+      assert.equal(room.players.length, 3, 'an offline seat is held for ten seconds');
+      await cy.send({ t: 'kick', slot: 0 });
+      assert.equal(room.players.length, 3, 'only the host can kick an offline human');
+      await ben.send({ t: 'kick', slot: 0 });
+      assert.equal(room.players.length, 2, 'the host can kick an offline human');
+      await ben.wait('lobby', message => message.you === 0 && message.host === 0);
+      await ben.send({ t: 'kick', slot: 1 });
+      assert.equal(room.players.length, 2, 'a connected human cannot be kicked');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = h.rooms.get(code), player = room.players[1];
+      await ben.close(); h.clock.advance(9999); await h.settleServer();
+      assert.equal(room.players.length, 2, 'cleanup does not free a seat early');
+      const refresh = await h.connect(code, { token: ben.token, name: 'Ben' });
+      h.clock.advance(1); await h.settleServer();
+      assert.equal(room.players[1], player, 'a refresh retains the player object and cancels cleanup');
+      await refresh.close(); h.clock.advance(10_000); await h.settleServer();
+      assert.equal(room.players.length, 1, 'an unrecovered lobby seat is freed after ten seconds');
+      await ana.wait('lobby', message => message.players.length === 1);
+    });
+    await check(async code => {
+      const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
+      const room = await start(code, ana), player = room.players[1];
+      await ben.close();
+      assert.equal(room.pause?.player, player, 'a human drop pauses their match');
+      await cy.send({ t: 'handAi', slot: 1 });
+      assert.equal(player.ai, undefined, 'a non-host cannot hand an army to AI');
+      await ana.send({ t: 'handAi', slot: '1' });
+      assert.equal(player.ai, undefined, 'hand to AI requires an integer seat');
+      await ana.send({ t: 'handAi', slot: 1 });
+      assert.equal(room.players[1], player, 'hand to AI keeps the army seat');
+      assert.equal(player.ai, true); assert.equal(player.token, ''); assert.equal(player.ws, null);
+      assert.equal(room.pause, null, 'hand to AI ends that player drop pause');
+      await h.tick(); assert.equal(room.game.players[1].away, false, 'the AI army is active');
+      await cy.send({ t: 'leave' }); await cy.wait('left');
+      assert.equal(room.players[2].ai, true, 'leave uses the same AI handover');
+    });
+    await check(async code => {
+      const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
+      const room = await start(code, ana), retained = [room.players[1], room.players[2]];
+      retained[0].lastMatch = { own: 'Ben report' }; retained[1].lastMatch = { own: 'Cy report' };
+      const reports = retained.map(player => player.lastMatch);
+      await ana.close(); await ben.send({ t: 'resume' }); room.game.winner = 1; await h.tick();
+      assert.equal(room.state, 'lobby', 'natural match end returns to the lobby');
+      assert.deepEqual(room.players, retained, 'match end frees offline humans and retains player objects');
+      assert.deepEqual(room.players.map(player => player.lastMatch), reports, 'per-player reports survive seat freeing');
+      assert.deepEqual(room.result.teams, [1, 2, 0], 'result teams follow current seats before freed players');
+      assert.deepEqual(room.result.names, ['Ben', 'Cy', 'Ana'], 'result names use the same order');
+      const lobby = await ben.wait('lobby', message => message.state === 'lobby' && message.result?.winner === 1);
+      assert.equal(lobby.result.teams[lobby.you], lobby.result.winner, 'the remaining winner still sees Victory after their seat shifts');
+      const dana = await h.connect(code, { token: code + 'Dana', name: 'Dana' });
+      assert.equal(room.players[2].team, 0, 'a new seat receives an unused team');
+      assert.deepEqual(room.result.teams, [1, 2, null, 0], 'newcomers do not inherit the freed player result');
+      assert.deepEqual(last(dana, 'lobby').result.names, ['Ben', 'Cy', '', 'Ana']);
+      await cy.close(); h.clock.advance(10_000); await h.settleServer();
+      assert.deepEqual(room.result.teams, [1, null, 2, 0], 'later lobby cleanup keeps the result aligned');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = await start(code, ana), player = room.players[0], matchId = room.matchId;
+      assert.ok(Number.isSafeInteger(matchId) && matchId > 0, 'start identifies the match');
+      const replacement = await h.connect(code, { token: ana.token, name: 'Ana' });
+      await ana.wait('replaced'); await h.settleServer();
+      assert.equal(ana.closed, true, 'the replaced socket is closed after its message');
+      assert.equal(room.players[0], player, 'replacement keeps the same player object');
+      assert.equal(room.pause, null, 'replacement does not trigger a drop pause');
+      assert.equal((await replacement.wait('start')).matchId, matchId, 'same-match reconnect keeps its match id');
+      await replacement.send({ t: 'pause' });
+      const joining = await h.connect(code, { token: ben.token, name: 'Ben' }); await joining.wait('start');
+      const types = joining.messages.map(message => message.t);
+      assert.ok(types.indexOf('start') < types.indexOf('pause'), 'a reconnect gets start before the pause state');
+      assert.equal(last(joining, 'pause').reason, 'host', 'a reconnect sees the current host pause');
+      const after = replacement.messages.length; await replacement.send({ t: 'restart' });
+      const restarted = await replacement.wait('start', message => message.matchId === matchId + 1, after);
+      assert.equal(restarted.matchId, matchId + 1, 'restart increments the match counter');
+      assert.equal(room.pause, null, 'restart clears pause');
+      assert.equal(last(replacement, 'pause').paused, false, 'restart broadcasts resume');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code); await ana.send({ t: 'addAi' });
+      const room = await start(code, ana), g = room.game;
+      await ben.send({ t: 'pause' }); assert.equal(room.pause, null, 'only the host can pause');
+      await ana.send({ t: 'pause' });
+      assert.deepEqual(last(ana, 'pause'), { t: 'pause', paused: true, by: 'Ana', reason: 'host', left: 0 });
+      const before = { tick: g.tick, nextId: g.nextId, mp: g.players[0].mp, units: g.units.size };
+      await ana.send({ t: 'buy', unit: 'rifle' }); await h.tick(40);
+      assert.deepEqual({ tick: g.tick, nextId: g.nextId, mp: g.players[0].mp, units: g.units.size }, before, 'pause rejects commands and skips simulation and AI');
+      const count = h.snapshots(ana).length;
+      h.clock.advance(999); await h.tick(); assert.equal(h.snapshots(ana).length, count, 'paused snapshots wait one second');
+      h.clock.advance(1); await h.tick(); assert.equal(h.snapshots(ana).length, count + 1, 'paused matches send a snapshot once a second');
+      await h.tick(20); assert.equal(h.snapshots(ana).length, count + 1, 'paused snapshots do not repeat before time advances');
+      await ben.send({ t: 'resume' }); assert.ok(room.pause, 'only the host can resume');
+      await ana.send({ t: 'resume' }); assert.equal(room.pause, null);
+      await h.tick(); assert.equal(g.tick, before.tick + 1, 'host resume restarts simulation');
+      await ana.send({ t: 'pause' }); await ben.close(); await ana.send({ t: 'end' });
+      assert.equal(room.pause, null, 'host end clears pause');
+      assert.equal(room.state, 'lobby'); assert.equal(room.players.length, 2, 'host end frees the offline human and keeps the AI');
+      assert.equal(last(ana, 'pause').paused, false, 'host end broadcasts resume');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = await start(code, ana), g = room.game;
+      await ben.close();
+      assert.deepEqual(last(ana, 'pause'), { t: 'pause', paused: true, by: 'Ben', reason: 'drop', left: 30 });
+      h.clock.advance(6000); await h.tick(); assert.equal(last(ana, 'pause').left, 24, 'drop pause shows whole seconds remaining');
+      h.clock.advance(23_999); await h.tick(); assert.ok(room.pause, 'drop pause lasts until its deadline');
+      assert.equal(g.tick, 0, 'simulation stays stopped while waiting');
+      h.clock.advance(1); await h.tick(); assert.equal(room.pause, null, 'drop pause expires at thirty seconds');
+      assert.equal(g.tick, 1, 'the first tick after the deadline advances the match');
+      const returned = await h.connect(code, { token: ben.token, name: 'Ben' }); await returned.wait('start'); await returned.close();
+      assert.equal(room.pause, null, 'the same player cannot auto-pause twice in one match');
+      const returnedAgain = await h.connect(code, { token: ben.token, name: 'Ben' });
+      const after = ana.messages.length; await ana.send({ t: 'restart' }); await ana.wait('start', () => true, after);
+      await returnedAgain.close(); assert.equal(room.pause?.reason, 'drop', 'a new match resets the auto-pause allowance');
+      const restored = await h.connect(code, { token: ben.token, name: 'Ben' }); await restored.wait('start');
+      assert.equal(room.pause, null, 'reconnect ends a drop pause');
+      assert.equal(last(ana, 'pause').paused, false, 'reconnect broadcasts resume');
+      await ana.close(); assert.equal(room.pause?.by, 'Ana', 'each human has their own pause allowance');
+      await restored.send({ t: 'resume' }); assert.equal(room.pause, null, 'the current host can end a drop pause');
+    });
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']);
+      const { MAX_PLAYERS } = await import('./shared/sim.js');
+      for (let i = 1; i < MAX_PLAYERS; i++) await ana.send({ t: 'addAi' });
+      const full = await h.connect(code, { token: code + 'invite', name: 'Invite' });
+      assert.equal(last(full, 'full').reason, 'seats', 'a full lobby reports occupied seats');
+    });
+    await check(async code => {
+      const [ana, ben] = await humans(code); await start(code, ana);
+      const invite = await h.connect(code, { token: code + 'invite', name: 'Invite' });
+      assert.equal(last(invite, 'full').reason, 'started', 'an invite cannot claim a new seat during play');
+      await ben.close(); await ana.send({ t: 'end' });
+      const joined = await h.connect(code, { token: invite.token, name: 'Invite' });
+      assert.equal(last(joined, 'lobby').state, 'lobby', 'the invite joins after the match returns to lobby');
+      assert.equal(h.rooms.get(code).players.length, 2, 'the disconnected match seat was freed for the invite');
+    });
+    console.log(`Room lifecycle: ${caseId} scenarios passed`);
+  }
+
+  const harness = await serverHarness();
+  try { await roomLifecycleChecks(harness); }
+  finally { await harness.close(); }
+}
 console.log('all sim checks passed');

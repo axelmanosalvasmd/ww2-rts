@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
+import { audio as matchAudio } from './audio.js';
+import { createConnection } from './connection.js';
+import { roomAddress, roomToken, matchStorage } from './room-session.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -31,43 +34,106 @@ const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens t
 
 // the bare link always lands in the same room, so friends can keep one bookmark; #code picks any other room
 const MAIN_ROOM = 'main';
-let room = location.hash.slice(1).toLowerCase();
-if (!/^[a-z0-9]{3,12}$/.test(room)) { room = MAIN_ROOM; if (location.hash) history.replaceState(null, '', location.pathname + location.search); }
+const address = roomAddress(location.hash, MAIN_ROOM), { room, seat } = address;
+if (location.hash !== address.hash) history.replaceState(null, '', location.pathname + location.search + address.hash);
 const roomLink = (base) => base + (room === MAIN_ROOM ? '/' : '/#' + room);
 addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
-// per-tab token so a refresh reclaims your slot, while two tabs can still play each other
-let token = tryStore(() => sessionStorage.getItem('ww2-token'));
-if (!token) { token = Math.random().toString(36).slice(2) + Date.now().toString(36); tryStore(() => sessionStorage.setItem('ww2-token', token)); }
+// A room keeps its seat across tabs; an explicit seat suffix lets another person use this browser.
+const local = tryStore(() => localStorage), session = tryStore(() => sessionStorage);
+const token = roomToken({ room, seat, local, session, create: () => Math.random().toString(36).slice(2) + Date.now().toString(36) });
+const matchMemory = matchStorage(token, local, session);
 $('name').value = tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
 $('link').value = roomLink(location.origin);
 $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
-const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.hash = code === MAIN_ROOM ? '' : code; location.reload(); };
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.hash = roomAddress('#' + code + (seat ? '&seat=' + seat : ''), MAIN_ROOM).hash; location.reload(); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
 $('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('roomCode').value));
 $('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));
 
-let ws, me = -1, names = [], lobbyState = null, lastSnap = null, refused = false, rtt = null;
-setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
-const sendCmd = (m) => ws?.readyState === 1 && ws.send(JSON.stringify(m));
-function connect() {
-  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`);
-  ws.onopen = () => { sendCmd({ t: 'hello', name: $('name').value, token }); $('status').textContent = ''; };
-  ws.onmessage = (e) => {
-    const m = JSON.parse(e.data);
-    if (m.t === 'lobby') renderLobby(m);
-    else if (m.t === 'start') startGame(m);
-    else if (m.t === 's') applySnapshot(m);
-    else if (m.t === 'pong' && Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c);
-    else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'A match is going on in this room (or it is full). It opens again when the match ends: reload then, or make a New room.'; }
-    else if (m.t === 'left') { refused = true; $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden'); $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.'; }
-  };
-  ws.onclose = () => { if (refused) return; $('status').textContent = 'Connection lost, reconnecting...'; setTimeout(connect, 2000); };
+function positionRoomBanners() {
+  const top = $('hud').classList.contains('hidden') ? 16 : Math.ceil($('top').getBoundingClientRect().bottom + 8);
+  $('roomBanners').style.setProperty('--room-banner-top', top + 'px');
 }
-if (!EDIT) connect();
+if (typeof ResizeObserver === 'function') new ResizeObserver(positionRoomBanners).observe($('top'));
+addEventListener('resize', positionRoomBanners);
+positionRoomBanners();
+
+let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
+const connection = createConnection({
+  url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
+  hello: () => ({ t: 'hello', name: $('name').value, token }),
+});
+setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
+const sendCmd = (m) => connection.send(m);
+connection.on('lobby', renderLobby);
+connection.on('start', receiveStart);
+connection.on('s', applySnapshot);
+connection.on('pong', (m) => { if (Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c); });
+connection.on('pause', receivePause);
+connection.on('retry', ({ left, reason }) => {
+  $('connectionBanner').textContent = reason === 'full' ? `Trying this room again in ${left} s` : `Connection lost. Retrying in ${left} s`;
+  $('connectionBanner').classList.remove('hidden');
+});
+connection.on('connected', () => $('connectionBanner').classList.add('hidden'));
+connection.on('full', (m) => {
+  $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden');
+  $('start').classList.add('hidden'); $('addAi').classList.add('hidden'); // no seat yet: the next lobby message shows them again for whoever is host
+  positionRoomBanners();
+  $('lobbyMsg').textContent = m.reason === 'started' ? 'A match is running in this room. You will join when it ends.' : 'This room is full. You will join when a seat opens.';
+});
+connection.on('replaced', () => { seatActive = false; $('connectionBanner').classList.add('hidden'); $('replacedSeat').classList.remove('hidden'); });
+connection.on('left', () => {
+  seatActive = false; connection.stop(); $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden');
+  positionRoomBanners();
+  $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.';
+});
+$('useSeatHere').onclick = () => { seatActive = true; $('replacedSeat').classList.add('hidden'); connection.start(); };
+if (!EDIT) connection.start();
+
+function matchView() {
+  return lastStart && { matchId: lastStart.matchId, camera: { ...cam }, selected: [...selected], groups: Object.fromEntries(Object.entries(groups).map(([n, ids]) => [n, [...ids]])) };
+}
+function saveMatchView() {
+  if (seatActive && lobbyState?.state === 'play') matchMemory.write(matchView());
+}
+setInterval(saveMatchView, 1000);
+addEventListener('pagehide', saveMatchView);
+const normalTitle = document.title;
+let titleFlash = null;
+function stopTitleFlash() { if (titleFlash !== null) clearInterval(titleFlash); titleFlash = null; document.title = normalTitle; }
+addEventListener('focus', stopTitleFlash);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) stopTitleFlash(); });
+function receiveStart(m) {
+  const saved = m.matchId != null && lastStart?.matchId === m.matchId ? matchView() : matchMemory.read();
+  const resume = m.matchId != null && saved?.matchId === m.matchId;
+  startGame({ ...m, resume }, resume ? saved : null);
+  saveMatchView();
+  if (document.hidden && !resume) { // a new match, not the same one coming back after a drop
+    stopTitleFlash(); document.title = 'Match started';
+    titleFlash = setInterval(() => { document.title = document.title === normalTitle ? 'Match started' : normalTitle; }, 1000);
+    matchAudio.play('match_start');
+  }
+}
+function receivePause(m) {
+  paused = !!m.paused;
+  $('pauseBanner').classList.toggle('hidden', !paused);
+  if (paused) {
+    const name = typeof m.by === 'string' ? m.by : lobbyState?.players?.[m.by]?.name || names[m.by] || 'the host';
+    $('pauseBanner').textContent = m.reason === 'drop' ? `Waiting for ${name} (${Math.max(0, m.left || 0)} s)` : `Paused by ${name}`;
+  }
+  renderMatchMenu();
+}
 
 $('name').addEventListener('change', () => { tryStore(() => localStorage.setItem('ww2-name', $('name').value)); sendCmd({ t: 'name', name: $('name').value }); });
-$('copy').onclick = () => { navigator.clipboard?.writeText($('link').value); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
+$('copy').onclick = async () => {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+    await navigator.clipboard.writeText($('link').value);
+    $('copy').textContent = 'Copied';
+  } catch { $('link').focus(); $('link').select(); $('copy').textContent = 'Press Ctrl+C'; }
+  setTimeout(() => ($('copy').textContent = 'Copy'), 3000);
+};
 $('start').onclick = () => sendCmd({ t: 'start' });
 // Fullscreen + Keyboard Lock: the browser hands Ctrl+number to the game instead of switching tabs
 $('fullscreen').onclick = async () => {
@@ -79,12 +145,22 @@ $('fullscreen').onclick = async () => {
 };
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
+// army size labels come from CFG.armies, so they cannot drift from the real numbers
+$('armySel').innerHTML = Object.entries(CFG.armies).map(([key, v]) => `<option value="${esc(key)}">${esc(key[0].toUpperCase() + key.slice(1))}${v.pop === 1 && v.income === 1 ? '' : `: ${v.pop}x units, ${v.income}x income`}</option>`).join('');
 $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
-// in-game menu: the host can restart or end the match, anyone can leave (an AI takes over). Each needs a second click.
+// The host controls the match; leaving, restarting and ending need a second click.
 const menuOpen = (on) => $('menu').classList.toggle('hidden', !on);
-$('menuBtn').onclick = () => { const host = lobbyState && lobbyState.you === lobbyState.host; $('restartBtn').classList.toggle('hidden', !host); $('endBtn').classList.toggle('hidden', !host); menuOpen($('menu').classList.contains('hidden')); };
+function renderMatchMenu() {
+  const host = lobbyState && lobbyState.you === lobbyState.host;
+  for (const id of ['restartBtn', 'endBtn', 'pauseBtn']) $(id).classList.toggle('hidden', !host);
+  $('pauseBtn').textContent = paused ? 'Resume match' : 'Pause match';
+  $('offlineSeats').innerHTML = host && lobbyState.state === 'play' ? lobbyState.players.map((p, i) => !p.ai && !p.connected ? `<button data-slot="${i}">Hand ${esc(p.name)} to AI</button>` : '').join('') : '';
+  $('offlineSeats').querySelectorAll('button').forEach(b => (b.onclick = () => sendCmd({ t: 'handAi', slot: +b.dataset.slot })));
+}
+$('menuBtn').onclick = () => { renderMatchMenu(); menuOpen($('menu').classList.contains('hidden')); };
+$('pauseBtn').onclick = () => { sendCmd({ t: paused ? 'resume' : 'pause' }); menuOpen(false); };
 const confirmClick = (id, label, act) => {
   let armed = 0;
   $(id).onclick = () => { if (Date.now() - armed < 3000) { act(); menuOpen(false); $(id).textContent = label; armed = 0; return; } armed = Date.now(); $(id).textContent = 'Click again to confirm'; setTimeout(() => ($(id).textContent = label), 3000); };
@@ -136,6 +212,7 @@ async function previewMap(name, mode) {
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
+  renderMatchMenu();
   // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
@@ -144,7 +221,7 @@ function renderLobby(m) {
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   $('roster').innerHTML = m.players.map((p, i) => {
-    const kick = p.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
+    const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span>${esc(p.name)}${i === m.you ? ' (you)' : ''}<span class="muted">${!p.connected ? ' · offline' : ''}${i === m.host ? ' · host' : ''}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
@@ -177,7 +254,8 @@ function renderLobby(m) {
   $('result').classList.toggle('hidden', !r);
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
-  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); }
+  if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); }
+  positionRoomBanners();
 }
 
 // ---------- renderer / scene ----------
@@ -246,12 +324,18 @@ function terrainGeometry() {
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
-function startGame(m) {
+function startGame(m, restored = null) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  units.clear(); selected.clear();
+  for (const n of Object.keys(groups)) delete groups[n];
+  if (m.resume && restored) {
+    for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
+    for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
+  }
+  fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -321,13 +405,17 @@ function startGame(m) {
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
   home = m.spawn;
-  cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
-  cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
+  if (m.resume && restored) Object.assign(cam, restored.camera);
+  else {
+    cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
+    cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
+  }
 
   buildBuyBar();
   buildSupportBar();
   $('hud').classList.toggle('hidden', EDIT);
   $('overlay').classList.add('hidden');
+  positionRoomBanners();
 }
 
 function label(text) {

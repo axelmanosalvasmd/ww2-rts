@@ -216,6 +216,7 @@
   #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
 </style>
 <link rel="stylesheet" href="/client/alerts.css">
+<link rel="stylesheet" href="/client/connection.css">
 <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
 </head>
 <body>
@@ -239,7 +240,7 @@
         <div class="row"><label for="mapSel">Map</label><select id="mapSel"></select></div>
         <div id="mapPrev"><canvas id="mapCanvas" width="280" height="280"></canvas><div id="mapInfo" class="muted"></div></div>
         <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
-        <div class="row"><label for="armySel">Army size</label><select id="armySel" title="Unit limit and income for everyone"><option value="standard">Standard</option><option value="large">Large: 2.5x units, 2x income</option><option value="massive">Massive: 5x units, 3.5x income</option></select></div>
+        <div class="row"><label for="armySel">Army size</label><select id="armySel" title="Unit limit and income for everyone"></select></div>
         <div id="modeInfo" class="muted"></div>
         <div class="row"><select id="defSel" class="hidden"></select></div>
       </section>
@@ -250,13 +251,16 @@
   </div>
 </div>
 
+<div id="roomBanners" aria-live="polite"><div id="connectionBanner" class="hidden"></div><div id="pauseBanner" class="hidden"></div></div>
+<div id="replacedSeat" class="hidden"><div class="seatCard"><h2>Open in another tab</h2><button id="useSeatHere">Use it here</button></div></div>
+
 <div id="hud" class="hidden">
   <div id="util" class="panel">
     <button id="menuBtn" title="Menu: restart, end or leave the match" aria-label="Menu"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9h20M6 16h20M6 23h20"/></svg></button>
     <button id="mute" title="Unit voices (M)" aria-label="Unit voices">🔊</button>
     <button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7"/></svg></button>
   </div>
-  <div id="menu" class="panel hidden"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button></div>
+  <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button></div>
   <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
