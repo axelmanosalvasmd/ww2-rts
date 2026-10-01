@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed the Flak Gun card and tooltip showing "undefined": they now explain that it shoots down enemy air support.
+  Both the buy bar and Classic training cards use the unit name if a role description is missing.
 - New mode, **Annihilation**: like Assault, but every player gets a Command Bunker with its trench and sandbag ring,
   and there's no clock. A side is out when its last bunker falls; the last side standing wins. Works with any teams,
   including free-for-all. Everyone starts with 300 MP and +4.5/s; points pay manpower only (no VP). Bunkers take 5%
