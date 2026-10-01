@@ -7,8 +7,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 - AI difficulty: the host picks Easy, Normal or Hard for each AI seat in the lobby. Normal is the AI you know and stays
   the default (and still takes over a player who leaves). No level gets extra income or vision.
-  - Easy thinks every 6 s, leaves your points alone for the first 2:30, saves more before calling support and waits
-    between calls, needs a bigger army before marching on a Classic base, and skips Classic's adaptive rules.
+  - Easy thinks every 6 s, leaves your points alone for the first 2:30, keeps 250 MP spare before calling support and
+    waits 45 s between calls (in Conquest it spends the MP on units first, so it hardly calls support at all: 0.3 calls
+    a match against Normal's 4.3), needs a bigger army before marching on a Classic base, and skips Classic's adaptive
+    rules.
   - Hard thinks every second and remembers what it saw for 60 s. It attacks in pairs but not into a point it saw
     defended unless it has the edge, pulls squads back at half health, defends the Conquest points it holds, aims
     barrages at the biggest enemy group away from its own men, and focuses fire with units already in range.
@@ -16,14 +18,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     the light tank counted, so a medium-tank army got no AT guns), reinforces a squad that fell back to a Classic
     Barracks or Motor Pool instead of sending it out half empty, stops feeding units into a point where it is outnumbered
     1.5x, and defends its Classic depots when it can win the fight.
-  - Balance (default map, seats swapped, seed 1): Hard beats Normal 85% in Conquest (60 matches) and 90% in Classic
-    (40). Easy wins 22% in Conquest and 3% in Classic. Normal against the AI before this change: 58 of 60 Conquest and
-    36 of 40 Classic duels end with the same winner. Normal 3-player FFA: Conquest (90) closeness 0.58 (was 0.59), lead
-    changes 1.73 (1.76), mean 9.1 min (9.1), faction wins 36/31/23 (34/34/22); Classic (30) 25/30 decided before
-    Sudden Death (was 22/30), median 16.4 min (18.0), faction wins 10/12/8 and no draws (10/11/7, 2 draws).
+  - Review fixes: a squad that should fall back (low health, last model, or pinned and hurt) is no longer picked to
+    defend a point or depot or to meet a rush or raid. Those picks skipped the fall-back check, and Hard kept 18 such
+    squads fighting in 24 Conquest matches; now none. A hurt squad at home now waits there even with no MP to reinforce it
+    if it would fall back again as soon as it left. Hard squads at 20% used to walk out, fall back and walk out again:
+    24 times in 24 Conquest matches, now once. Focus fire no longer reads the position of a target that has gone out of
+    sight.
+  - Balance (default map, seats swapped, seed 1, after the review fixes): Hard beats Normal 92% in Conquest (60
+    matches; 82% on seed 5) and 85% in Classic (40); before the fixes 85% (88% on seed 5) and 90%. Easy wins 22% in
+    Conquest (32% on seed 5) and 3% in Classic, unchanged. Normal against the AI before this change: 33 of 60 Conquest
+    wins (that AI against itself: 35) and 17 of 40 Classic (15). Normal 3-player FFA: Conquest (90) closeness 0.55 (was
+    0.59), lead changes 1.67 (1.76), mean 8.9 min (9.1), faction wins 34/35/21 (34/34/22); Classic (30) 22/30 decided
+    before Sudden Death (was 22/30), median 17.0 min (18.0), faction wins 12/11/7 and no draws (10/11/7, 2 draws).
   - New `tools/ai-duel.mjs` runs AI-vs-AI matches on worker threads (any levels, an older AI file, per-seat tweaks).
   - Fixed a stale comment: the Classic attack-timing ratio is 1.1x, not 1.3x.
-  - Left for later: Easy is very weak in Classic (1 win in 40). Hard's focus fire is about neutral in measurement.
+  - Fixed server tests that could fail on a busy machine (the difficulty test, the faction-slot test and the draw
+    test): they read the lobby right after a change, but the server sends the update only after listing the maps, so
+    it could arrive late. They now wait for it.
+  - Left for later: Easy is very weak in Classic (1 win in 40, also with the adaptive rules on or at a 4 s beat). Hard's
+    focus fire is about neutral in measurement.
     MGs and AT guns don't hang back behind the infantry: both versions tried measured worse (see DESIGN.md).
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red

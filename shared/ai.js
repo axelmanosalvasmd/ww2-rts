@@ -178,11 +178,13 @@ export function think(g, slot, opts = {}) {
   else if (can('artillery')) call('artillery', cluster(L.cluster, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
   else if (can('strafe')) call('strafe', cluster(L.cluster, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && (classic || me.mp > 250)) call('recon', g.points.find(p => p.owner >= 0 && !allied(g, p.owner, slot)));
+  // a squad that should fall back to reinforce: low on health, down to its last model, or pinned and hurt
+  const hurt = (u) => { const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer); return frac < L.retreat || (def.models > 1 && alive(u) <= 1) || (u.supp >= 90 && frac < 0.6); };
   const busy = new Set();
   if (adapt) {
     const free = mine.filter(u => !u.retreating && !u.targetId);
     // a hurt squad is left to the normal logic, which pulls it back to reinforce
-    const send = (u, at) => { if (worth(u) < UNITS[u.type].cost * 0.4) return; busy.add(u.id); if (!u.amove || d(u.amove, at) > 6) assault_.push([u.id, at.x, at.z]); };
+    const send = (u, at) => { if (worth(u) < UNITS[u.type].cost * 0.4 || hurt(u)) return; busy.add(u.id); if (!u.amove || d(u.amove, at) > 6) assault_.push([u.id, at.x, at.z]); };
     if (rush.length) {
       // everyone home to meet it, Engineers out of the way
       const c = { x: rush.reduce((a, e) => a + e.x, 0) / rush.length, z: rush.reduce((a, e) => a + e.z, 0) / rush.length };
@@ -216,7 +218,7 @@ export function think(g, slot, opts = {}) {
     if (!foes.length) continue;
     const foeVal = foes.reduce((a, e) => a + worth(e), 0), go = [];
     let val = 0;
-    for (const u of mine.filter(u => !u.air && !u.retreating && !busy.has(u.id) && (!u.targetId || d(u, at) < 30) && d(u, at) < 70 && worth(u) >= UNITS[u.type].cost * 0.4).sort((a, b) => d(a, at) - d(b, at))) {
+    for (const u of mine.filter(u => !u.air && !u.retreating && !busy.has(u.id) && (!u.targetId || d(u, at) < 30) && d(u, at) < 70 && worth(u) >= UNITS[u.type].cost * 0.4 && !hurt(u)).sort((a, b) => d(a, at) - d(b, at))) {
       if (val >= foeVal * 1.3) break;
       go.push(u); val += worth(u);
     }
@@ -270,8 +272,10 @@ export function think(g, slot, opts = {}) {
     }
     // save hurt units instead of letting them die: retreat, get reinforced, come back (also a squad down to its last
     // model: a sniper team at 1 of 2 used to fight on until it died)
-    if (!home && (frac < L.retreat || (def.models > 1 && alive(u) <= 1) || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
-    if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
+    if (!home && hurt(u)) { retreat.push(u.id); continue; }
+    // wait for reinforcements; a squad that would fall back again as soon as it left waits even with no MP to spend
+    // (Hard units at 20% used to walk out, retreat and walk out again while the MP ran dry)
+    if (home && frac < 1 && (me.mp >= 20 || hurt(u))) continue;
     // tanks knock down houses that enemy squads are hiding in
     if (def.w.shellTerrain && !u.targetId && u.fireAt < 0) {
       const house = enemiesNear(u, 60).find(e => e.garrison >= 0 && d(u, e) < 60);
@@ -344,7 +348,7 @@ export function think(g, slot, opts = {}) {
     // (a squad running away isn't chased: they'd follow it into its own lines)
     const targets = enemies.filter(e => !e.air && !UNITS[e.type].structure && e.hp > 0 && !e.retreating), used = new Set();
     // a focus target that moved out of range or behind cover isn't chased either: back to the attack-move (or hold here)
-    const stop = mine.filter(u => !u.air && u.attackId && !retreat.includes(u.id) && (t => t && (d(u, t) > UNITS[u.type].w.range || !los(g, u, t)))(g.units.get(u.attackId)));
+    const stop = mine.filter(u => !u.air && u.attackId && !retreat.includes(u.id) && (t => t && me.visible.has(t.id) && (d(u, t) > UNITS[u.type].w.range || !los(g, u, t)))(g.units.get(u.attackId)));
     const next = (u) => u.orders?.find(o => o.t === 'amove') ?? u;
     if (stop.length) command(g, slot, { t: 'amove', orders: stop.map(u => [u.id, next(u).x, next(u).z]) });
     for (let k = 0; k < 4 && shooters.length - used.size >= 2; k++) {

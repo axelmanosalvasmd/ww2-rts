@@ -43,6 +43,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
 | AI before difficulty levels, re-measured with `tools/ai-duel.mjs` (90 matches; lead changes counted on its 10 s samples) | 59% | 1.76 | 9.1 min |
 | + AI difficulty levels, all three at Normal (same 90 seeds; slot wins 40/34/26%, were 38/38/24%) | 58% | 1.73 | 9.1 min |
+| + review fixes: hurt squads wait at home and aren't sent to defend (same 90 seeds; slot wins 38/39/23%) | 55% | 1.67 | 8.9 min |
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
@@ -426,7 +427,8 @@ the HUD.
 - Easy decides every 6 s (Normal every 2 s). It leaves enemy-held points alone for the first 2:30, keeps 250 MP in hand
   before calling support (Normal 100; in Classic, where support costs Munitions, it keeps 40 Munitions spare and Normal
   none) and waits 45 s between calls, marches on a
-  Classic base only with 10+ units (Normal 6), and skips Classic's five adaptive rules.
+  Classic base only with 10+ units (Normal 6), and skips Classic's five adaptive rules. It spends its MP on units
+  before it ever has 250 spare, so in Conquest it hardly calls support at all (0.3 calls a match, Normal 4.3).
 - Hard decides every second. It remembers what its team saw over the last 60 s in every mode (Normal only in Classic),
   so it builds AT guns and flak against tanks and planes it saw recently, not only ones in sight. It attacks a held point
   with 2 units instead of 3, but not one it saw defended in the last 30 s unless the group is worth 1.2x the defenders
@@ -447,21 +449,35 @@ the HUD.
     fight).
   - Classic: free units near a depot under attack (within 70 m, at 40%+ health) go to defend it, but only if together
     they are worth at least as much as the attackers.
+  - A squad that should fall back (low health, last model, or pinned and hurt) is never picked to defend a point or
+    depot, meet a rush or raid. Before, those picks came first and skipped the fall-back check: in 24 Conquest matches
+    Hard kept 18 such squads fighting for 4 s or more (mostly at 40-50% health, under its 50% line). Now none.
+  - A hurt squad at home waits there even when there is no MP to reinforce it, if it would fall back again as soon as
+    it left. Hard squads at 20% walked out with MP under 20, fell straight back and walked out again: 24 times in 24
+    Conquest matches against Normal, now once (the rest of the quick repeats are squads that left at 60-80% health and
+    were hit again near home, as with the AI before this change in Classic).
+  - Focus fire only checks range and line of sight to a target its team can still see (it read the position of a
+    target that had gone out of sight, a small peek through the fog).
 - Measured with `tools/ai-duel.mjs` (default map, 1v1, seats swapped every other match, all 9 faction pairs, seed 1):
 
   | Matchup | Conquest (60) | Classic (40) |
   |---|---|---|
-  | Hard vs Normal | Hard 85% (51) | Hard 90% (36) |
-  | Easy vs Normal | Easy 22% (13) | Easy 3% (1) |
-  | Normal vs the AI before this change | 33 wins (that AI against itself: 35); 58 of 60 same winner | 15 wins (against itself: 15); 36 of 40 same winner |
+  | Hard vs Normal | Hard 92% (55); seed 5: 82% (49) | Hard 85% (34) |
+  | Easy vs Normal | Easy 22% (13); seed 5: 32% (19) | Easy 3% (1) |
+  | Normal vs the AI before this change | 33 wins (that AI against itself: 35) | 17 wins (against itself: 15) |
+
+  Before the review fixes (the two bullets above about hurt squads) on the same seeds: Hard 85% (51), seed 5 88% (53),
+  and 90% (36) in Classic; Easy and Normal's Conquest numbers the same, Normal 15 Classic wins. Over both Conquest
+  seeds Hard won 104 of 120 before and after.
 
   Matches are seeded and both AIs share `Math.random`, so two identical AIs on the same seeds give the same split
   (the AI before this change won 15 of 40 Classic duels against itself for the seat listed first). Compare with that,
   not with 50%.
-- Normal vs Normal, 3-player FFA on the same seeds as before: Conquest (90) closeness 0.58 (was 0.59), lead changes
-  1.73 (1.76), length mean 9.1 and median 9.3 min (9.1, 9.4), faction wins 36/31/23 (34/34/22). Classic (30) decided
-  before Sudden Death 25/30 (was 22/30), length mean 17.7 and median 16.4 min (19.7, 18.0), faction wins 10/12/8 with
-  no draws (10/11/7 and 2 draws).
+- Normal vs Normal, 3-player FFA on the same seeds as before: Conquest (90) closeness 0.55 (was 0.59), lead changes
+  1.67 (1.76), length mean 8.9 and median 9.0 min (9.1, 9.4), faction wins 34/35/21 (34/34/22). Classic (30) decided
+  before Sudden Death 22/30 (was 22/30), length mean 18.7 and median 17.0 min (19.7, 18.0), faction wins 12/11/7 with
+  no draws (10/11/7 and 2 draws). Before the review fixes: Conquest 0.58, 1.73, 9.1 min, 36/31/23; Classic 25/30
+  decided before Sudden Death, 16.4 min median, 10/12/8.
 - Tried and dropped (all against the AI before this change, 60 Conquest or 30 Classic FFA matches):
   - Classic base attacks in waves from a rally point, with crew weapons stopping at 60% of their range behind the squads:
     about even in 1v1 (14 of 40 wins, against 15 for the AI before this change), but 3-player Classic matches dragged
@@ -474,7 +490,8 @@ the HUD.
     neutral (Hard 72% with it, 77% without; the first version, which chased targets and ignored line of sight, was 63%).
     It stays because Hard is meant to play that way.
 - Easy in Classic wins 1 in 40 against Normal (2 in 40 at a 4 s beat): without the adaptive rules it loses most fights
-  (kills 5.7 vs 31.7 per match) and leaves Munitions unused. Left for later: a Classic-only tuning if Easy turns out too
+  (kills 5.7 vs 31.7 per match) and leaves Munitions unused. After the review fixes it still wins 1 in 40, and also 1 in
+  40 with the adaptive rules turned on or at a 4 s beat, so neither of those is what holds it back. Left for later: a Classic-only tuning if Easy turns out too
   soft for new players.
 
 ## Tech

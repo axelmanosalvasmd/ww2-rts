@@ -2090,6 +2090,7 @@ for (const lookupFinished of [false, true]) {
   const h = await serverHarness(), code = 'slots';
   const p = await h.connect(code, { token: 'host', name: 'Host' });
   await p.send({ t: 'addAi' });
+  await h.waitFor(() => p.lobby().players.length === 2, 'server the AI seat is added');
   for (const slot of ['1', [1], 1.5, -1, null, true]) {
     await p.send({ t: 'faction', slot, v: 2 });
     assert.equal(p.lobby().players[1].faction, 1, 'server malformed faction slot is ignored');
@@ -2099,9 +2100,9 @@ for (const lookupFinished of [false, true]) {
     assert.equal(p.lobby().players.length, 2, 'server malformed kick slot is ignored');
   }
   await p.send({ t: 'faction', slot: 1, v: 2 });
-  assert.equal(p.lobby().players[1].faction, 2, 'server valid integer faction slot still works');
+  await h.waitFor(() => p.lobby().players[1].faction === 2, 'server valid integer faction slot still works');
   await p.send({ t: 'kick', slot: 1 });
-  assert.equal(p.lobby().players.length, 1, 'server valid integer kick slot still works');
+  await h.waitFor(() => p.lobby().players.length === 1, 'server valid integer kick slot still works');
   await h.close();
 }
 
@@ -2110,11 +2111,13 @@ for (const lookupFinished of [false, true]) {
   const h = await serverHarness(), code = 'levels';
   const host = await h.connect(code, { token: 'host', name: 'Host' }), guest = await h.connect(code, { token: 'guest', name: 'Guest' });
   await host.send({ t: 'addAi' });
+  // lobby updates are sent after an async map listing, so wait for the one a change produces
+  await h.waitFor(() => host.lobby().players.length === 3, 'server the AI seat is added');
   const level = (slot) => host.lobby().players[slot].level;
   assert.equal(level(2), 'normal', 'server new AI seat plays Normal');
   assert.equal(level(0), null, 'server human seat has no difficulty');
   await host.send({ t: 'level', slot: 2, v: 'hard' });
-  assert.equal(level(2), 'hard', 'server host sets an AI seat to Hard');
+  await h.waitFor(() => level(2) === 'hard', 'server host sets an AI seat to Hard');
   for (const v of ['brutal', 2, null, 'constructor']) await host.send({ t: 'level', slot: 2, v });
   assert.equal(level(2), 'hard', 'server unknown difficulty is ignored');
   await host.send({ t: 'level', slot: 1, v: 'easy' });
@@ -2266,7 +2269,9 @@ for (const lookupFinished of [false, true]) {
     // the next start clears the result
     const after = cal.messages.length;
     await cal.send({ t: 'start' }); await cal.wait('start', () => true, after);
-    assert.ok(room.state === 'play' && room.game && lobbies(cal).at(-1).result === null, 'a new match without the old result');
+    // the start message can arrive before the lobby update (that one waits on the map listing)
+    await h.waitFor(() => lobbies(cal).at(-1).result === null, 'the lobby drops the old result');
+    assert.ok(room.state === 'play' && room.game, 'a new match without the old result');
     await h.clear('enddraw');
   }
   await h.close();
