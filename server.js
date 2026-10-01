@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
@@ -149,13 +149,15 @@ async function startMatch(room) {
   room.result = null;
   room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
-  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
-  lobby(room);
+  const game = room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
+  // lobby() reads the map list first, so wait for it: everyone gets the lobby (playing, no old result) before the start
+  await lobby(room);
+  if (room.game !== game) return; // ended or restarted meanwhile
   room.players.forEach((_, i) => sendStart(room, i));
 }
 
 function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(room.game, i, true), names: room.game.players.map((p, k) => room.players[k]?.name ?? p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction) });
+  send(room.players[i].ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(room.game, i, true), fog: fogFor(room.game, i, true), names: room.game.players.map((p, k) => room.players[k]?.name ?? p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction) });
   if (room.pause) send(room.players[i].ws, pauseMessage(room));
 }
 

@@ -248,13 +248,10 @@ export function leafGeometry(kind) {
   return once(kind, () => kind === 'grass' ? grass(5) : kind === 'crop' ? crop(17) : kind === 'hedge' ? hedge(13) : bush(9));
 }
 
-// Fog of war on foliage darkens it, as the fog overlay darkens the ground under it, instead of greying it like the
-// walls: a grey wood would read as a cut-out.
-const FOG_MIX = 'gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.22 ), texture2D( fowMap, vFowUv ).a );';
-function foliageFog(shader) {
-  fogShader(shader);
-  shader.fragmentShader = shader.fragmentShader.replace(FOG_MIX, 'gl_FragColor.rgb *= 1.0 - 0.6 * texture2D( fowMap, vFowUv ).a;');
-}
+// Fog of war on foliage darkens it as the fog overlay darkens the ground under it: fogShader mixes toward the
+// overlay's own near-black shade in linear space, on High and Low alike, so a wood in the fog never reads as a grey
+// cut-out. The mask is the server's vision, cell by cell (client/fog.js).
+function foliageFog(shader) { fogShader(shader); }
 
 let leafMat = null, barkMat = null;
 // Alpha-tested and double-sided; both faces of a card take its crown normal. Mipmaps average leaf alpha toward
