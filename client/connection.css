@@ -4,19 +4,19 @@
   max-width: min(510px, calc(100vw - 40px)); pointer-events: none;
 }
 #roomBanners > div {
-  padding: 7px 12px; border: 1px solid #a08c5f; border-left: 3px solid #d2a849;
+  padding: 7px 12px; border: 1px solid #a08c5f;
   background: rgba(34, 37, 27, 0.94); color: #e6dcc0;
   font: 400 14px/1.35 'Courier Prime', 'Courier New', monospace;
   text-align: center; overflow-wrap: anywhere;
 }
-#roomBanners #connectionBanner { border-left-color: #b8322a; }
+#roomBanners #connectionBanner { border-color: #b8322a; }
 #replacedSeat {
   position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px;
   background: rgba(34, 37, 27, 0.92); color: #2b2418;
   font: 400 16px/1.4 'Courier Prime', 'Courier New', monospace;
 }
 #replacedSeat .seatCard {
-  width: min(400px, 100%); padding: 24px; border: 1px solid #a08c5f; border-radius: 2px;
+  width: min(400px, 100%); padding: 24px; border-radius: 2px;
   background: #d8c69a; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
 #replacedSeat h2 { margin: 0 0 16px; font: 700 20px/1.25 'Courier Prime', 'Courier New', monospace; }

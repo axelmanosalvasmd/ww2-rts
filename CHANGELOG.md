@@ -5,6 +5,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
+  under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
+  for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a
+  dark red band. The HQ sign leads with the owner's HQ map symbol instead of a color bar. The lobby loses its glowing
+  backdrop and the paper cards their gradient sheen, and the Victory or Defeat stamp settles without bouncing.
 - Miniatures (round 6):
   - Soldiers stand on small dark-green painted bases like tabletop miniatures (the base stays flat when they crouch,
     lie down or fall back), wear warmer faction uniforms (olive drab, field grey, khaki) and have a lighter crown on

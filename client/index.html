@@ -55,9 +55,9 @@
   .ed-tools button.on { border-color: var(--brass); background: rgba(210, 168, 73, 0.2); }
 
   /* ---------- lobby: the room form as a manila order card ---------- */
-  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(46, 46, 32, 0.78), rgba(12, 12, 9, 0.96)); z-index: 10; padding: 16px; }
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(18, 19, 14, 0.96); z-index: 10; padding: 16px; }
   #overlay .card { width: min(880px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 26px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; color: var(--ink);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.05)), var(--manila); border: 1px solid var(--manila-edge); border-radius: 2px; box-shadow: 0 14px 50px rgba(0, 0, 0, 0.6); scrollbar-color: var(--manila-edge) transparent; }
+    background: var(--manila); border-radius: 2px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6); scrollbar-color: var(--manila-edge) transparent; }
   #overlay h1 { margin: 0; font: 700 38px/1 var(--stencil); color: var(--ink); letter-spacing: 0.04em; }
   #overlay #result { margin: 0; font: 700 28px/1.1 var(--stencil); color: var(--red); }
   #overlay .muted { color: var(--ink-dim); }
@@ -170,7 +170,7 @@
   #selection, #abil { padding: 8px 6px 6px; }
   #selection:empty, #abil:empty { display: none; }
   #selection { min-height: 0; display: flex; flex-direction: column; }
-  #selection .list { min-height: 0; max-height: 40vh; overflow: auto; background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.04)), var(--manila); color: var(--ink); border: 1px solid var(--manila-edge); border-radius: 2px; scrollbar-color: var(--manila-edge) transparent; }
+  #selection .list { min-height: 0; max-height: 40vh; overflow: auto; background: var(--manila); color: var(--ink); border: 1px solid var(--manila-edge); border-radius: 2px; scrollbar-color: var(--manila-edge) transparent; }
   .srow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 7px; align-items: center; padding: 3px 7px; font-size: 14px; }
   .srow + .srow { border-top: 1px dashed rgba(43, 36, 24, 0.28); }
   .srow .sym { width: 28px; height: 28px; margin: -3px 0; }
@@ -195,7 +195,7 @@
   #buy .grp + .grp { border-left: 1px solid var(--edge); padding-left: 14px; }
   #buy .cards { display: flex; gap: 4px; }
   .uc { width: clamp(80px, 5.9vw, 100px); padding: 4px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.05)), var(--manila); border: 1px solid var(--manila-edge); }
+    background: var(--manila); border: 1px solid var(--manila-edge); }
   .uc:hover:not(:disabled) { background: var(--manila-hi); border-color: var(--ink); }
   /* a locked card goes flat and fades its symbol; its name, cost and the note that says why stay at full strength */
   .uc:disabled { opacity: 1; background: #c9ba95; border-color: rgba(160, 140, 95, 0.75); }
