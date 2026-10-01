@@ -48,6 +48,7 @@ $('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('
 $('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));
 
 let ws, me = -1, names = [], lobbyState = null, lastSnap = null, refused = false, rtt = null;
+let snapshotAt = 0, snapshotGap = 100;
 setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
 const sendCmd = (m) => ws?.readyState === 1 && ws.send(JSON.stringify(m));
 function connect() {
@@ -251,7 +252,7 @@ function startGame(m) {
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear(); snapshotAt = 0; snapshotGap = 100;
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -822,6 +823,9 @@ function marker(x, z, color) {
 
 function applySnapshot(s) {
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
+  const arrived = performance.now();
+  if (snapshotAt) snapshotGap += (Math.max(60, Math.min(400, arrived - snapshotAt)) - snapshotGap) * 0.2;
+  snapshotAt = arrived;
   const seen = new Set();
   for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built] of s.units) {
     seen.add(id);
@@ -1470,7 +1474,7 @@ renderer.setAnimationLoop(() => {
   camera.lookAt(cam.x, cam.y, cam.z);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-dt * 10);
+  const k = 1 - Math.exp(-dt * 1000 / snapshotGap);
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);

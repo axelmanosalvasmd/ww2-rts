@@ -6,8 +6,9 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
+import { createTickMeter, recordTick, tickStats } from './tickmeter.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 // the address friends use: PUBLIC_URL, else this machine's Tailscale HTTPS name (served by `tailscale serve`)
@@ -100,6 +101,7 @@ async function lobby(room) {
 // (re)start a match with the room's settings; everyone gets the new game
 async function startMatch(room) {
   room.state = 'play'; room.game = null; room.result = null; // claim it before the await so a double-click can't start twice
+  room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = await loadMap(room.mapName);
   room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
   lobby(room);
@@ -187,20 +189,52 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// Keep timing and interval control together so every room measures the same work.
+function timedRoomTick(room) {
+  const g = room.game, meter = room.tickMeter ??= createTickMeter({ now: Date.now() });
+  room.snapEvery ??= 2;
+  const began = process.hrtime.bigint();
+  room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
+  const stepAt = process.hrtime.bigint();
+  step(g);
+  const thinkAt = process.hrtime.bigint();
+  // AIs think every 2s, staggered so they don't all act on the same tick.
+  room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
+  const snapshotAt = process.hrtime.bigint(), sent = g.tick % room.snapEvery === 0 || g.winner !== null;
+  let snapshotBuild = 0, snapshotStringify = 0;
+  if (sent) {
+    const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
+    const recipients = [];
+    room.players.forEach((p, i) => { if (p.ws?.readyState === 1) recipients.push(i); });
+    if (recipients.length) {
+      const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
+      const cacheAt = process.hrtime.bigint(), cache = snapshotCache(g);
+      snapshotBuild += Number(process.hrtime.bigint() - cacheAt) / 1e6;
+      for (const i of recipients) {
+        const p = room.players[i], buildAt = process.hrtime.bigint(), msg = { ...snapshotFor(g, i, shots, cells, cache), online, ping };
+        snapshotBuild += Number(process.hrtime.bigint() - buildAt) / 1e6;
+        const stringifyAt = process.hrtime.bigint(), json = JSON.stringify(msg);
+        snapshotStringify += Number(process.hrtime.bigint() - stringifyAt) / 1e6;
+        p.ws.send(json);
+      }
+    }
+  }
+  const ended = process.hrtime.bigint(), now = Date.now();
+  room.snapEvery = recordTick(meter, { tick: Number(ended - began) / 1e6, step: Number(thinkAt - stepAt) / 1e6,
+    think: Number(snapshotAt - thinkAt) / 1e6, snapshot: Number(ended - snapshotAt) / 1e6, snapshotBuild, snapshotStringify, sent }, now);
+  if (process.env.WW2_TICKLOG === '1' && now >= meter.nextLog) {
+    meter.nextLog = now + 30_000;
+    const stats = tickStats(meter), costs = Object.entries(stats).map(([phase, v]) => `${phase} ${v.p50.toFixed(2)}/${v.p95.toFixed(2)} ms`).join(', ');
+    console.log(`[tick ${room.code}] p50/p95: ${costs}; snapshots every ${room.snapEvery} ticks`);
+  }
+}
+
 setInterval(() => {
   for (const room of rooms.values()) {
     if (room.emptySince && Date.now() - room.emptySince > 60_000) { rooms.delete(room.code); continue; }
     if (room.state !== 'play' || !room.game) continue; // game may still be loading its map
     const g = room.game;
-    room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
-    step(g);
-    // AIs think every 2s, staggered so they don't all act on the same tick
-    room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
-    if (g.tick % 2 === 0 || g.winner !== null) {
-      const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
-      const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-      room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
-    }
+    timedRoomTick(room);
     // match over: straight back to the lobby (map, mode and teams can change; newcomers can join), with the result
     if (g.winner !== null) { room.state = 'lobby'; room.result = { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name) }; lobby(room); }
   }

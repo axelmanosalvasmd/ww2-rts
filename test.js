@@ -1,7 +1,8 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT, UNITS } from './shared/sim.js';
+import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT, UNITS } from './shared/sim.js';
+import { SpatialGrid } from './shared/grid.js';
 import { think } from './shared/ai.js';
 import { unitRole } from './client/unit-roles.js';
 
@@ -1085,4 +1086,223 @@ for (const f of readdirSync('maps')) {
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
+// Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
+{
+  let seed = 0x519ac;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
+  const units = new Map();
+  for (let i = 0; i < 300; i++) units.set(1000 - i, { id: 1000 - i, owner: i % 3, x: i < 10 ? 16 : random() * 256 - 64, z: i < 10 ? 32 : random() * 256 - 64 });
+  units.set(0, { id: 0, owner: 2, x: 15, z: 32 });
+  units.set(1, { id: 1, owner: 2, x: 17, z: 32 });
+  const grid = new SpatialGrid(units), brute = (at, r) => [...units.values()].filter(u => Math.hypot(u.x - at.x, u.z - at.z) <= r);
+  for (let i = 0; i < 200; i++) {
+    const at = i % 5 ? { x: random() * 256 - 64, z: random() * 256 - 64 } : { x: 16, z: 32 }, r = i % 5 ? random() * 60 : 1;
+    assert.deepEqual(grid.radius(at, r), brute(at, r), 'radius query matches Map iteration');
+    const match = u => u.owner === i % 3;
+    const expected = brute(at, r).filter(match).sort((a, b) => Math.hypot(a.x - at.x, a.z - at.z) - Math.hypot(b.x - at.x, b.z - at.z))[0] ?? null;
+    assert.equal(grid.nearest(at, r, match), expected, 'nearest query keeps the first exact tie');
+  }
+  const moved = units.get(1000); moved.x = 112; moved.z = -32; grid.update(moved);
+  units.delete(999);
+  const added = { id: 4000, owner: 0, x: 112, z: -32 }; units.set(added.id, added); grid.update(added);
+  assert.deepEqual(grid.radius(moved, 0), brute(moved, 0), 'live updates include teleports and additions, and exclude removals');
+  assert.deepEqual(grid.ownedBy(0), [...units.values()].filter(u => u.owner === 0), 'owner grouping keeps insertion order after movement');
+
+  const g = fresh(); g.players.forEach(p => { p.mp = 1000; });
+  const shooter = put(g, 0, 'rifle', 20, 20), first = put(g, 1, 'rifle', 16, 20);
+  put(g, 1, 'rifle', 24, 20); step(g);
+  assert.equal(shooter.targetId, first.id, 'pickTarget keeps the first equal-score target');
+}
+
+// Live separation must discover later pairs brought into range by an earlier push.
+{
+  const g = fresh(empty, 1); g.players[0].mp = 100000; g.army = { pop: 100, income: 1 };
+  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2);
+  const expected = [...g.units.values()].map(u => ({ ...u }));
+  for (let i = 0; i < expected.length; i++) for (let j = i + 1; j < expected.length; j++) {
+    const a = expected[i], b = expected[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
+    const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+    if (d >= min || d === 0) continue;
+    const push = (min - d) / 2 * 0.5, px = dx / d * push, pz = dz / d * push;
+    a.x -= px; a.z -= pz; b.x += px; b.z += pz;
+  }
+  step(g);
+  assert.deepEqual([...g.units.values()].map(u => [u.x, u.z]), expected.map(u => [u.x, u.z]), 'dense separation preserves exact arithmetic and pair order');
+}
+
+// Mirror the server loop locally; this worktree has no shared serverHarness helper.
+{
+  const originalRandom = Math.random;
+  try {
+    let seed = 4916;
+    Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
+    const map = JSON.parse(readFileSync('maps/king-of-the-hill.json', 'utf8')), wire = value => JSON.parse(JSON.stringify(value));
+    for (const mode of ['classic', 'conquest']) {
+      const names = ['a', 'b', 'c', 'd', 'e', 'f'], g = createGame(map, names, true, [0, 0, 1, 1, 2, 2], [0, 1, 2, 0, 1, 2], { mode, army: 'massive' });
+      for (let tick = 0; tick < 1800; tick++) {
+        g.players.forEach(p => { p.away = false; }); step(g);
+        g.players.forEach((p, i) => { if ((g.tick + i * 13) % 40 === 0) think(g, i); });
+        if (g.tick % 2) continue;
+        const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
+        if (tick < 1599) continue;
+        const cache = snapshotCache(g), saved = JSON.stringify(cache.units);
+        for (let slot = 0; slot < 6; slot++) assert.deepEqual(wire(snapshotFor(g, slot, shots, cells, cache)), wire(snapshotFor(g, slot, shots, cells)), `${mode}: cached wire snapshot matches player ${slot}`);
+        assert.equal(JSON.stringify(cache.units), saved, 'player filtering never mutates shared unit rows');
+      }
+      if (mode === 'classic') assert.ok([...g.units.values()].some(u => UNITS[u.type].building), 'Classic snapshots include building rows');
+      const own = [...g.units.values()].find(u => u.owner === 0), before = snapshotFor(g, 0, []);
+      own.x += 0.2; own.hp -= 1;
+      assert.notDeepEqual(snapshotFor(g, 0, []), before, 'uncached snapshots see changes within the same tick');
+    }
+  } finally { Math.random = originalRandom; }
+}
+// Paths preserve directed cliff edges and reject separated regions without expanding A* nodes.
+{
+  const rows = empty.map(row => row.slice(0, 10) + 'B' + row.slice(11)), g = fresh(rows);
+  const before = g.pathStats?.expansions ?? 0;
+  assert.deepEqual(findPath(g, { x: 5, z: 5 }, { x: 35, z: 5 }), [], 'sealed wall has no route');
+  assert.equal(g.pathStats.expansions, before, 'different regions reject before A* expansion');
+  assert.ok(g.pathStats.regionRejected > 0);
+  assert.ok(findPath(g, { x: 21, z: 5 }, { x: 35, z: 5 }).length, 'blocked starts retain the original escape search');
+  const failed = g.pathStats.failed;
+  assert.deepEqual(findPath(g, { x: 5, z: 5 }, { x: 5, z: 5 }), [], 'a goal in the start cell needs no waypoints');
+  assert.equal(g.pathStats.failed, failed, 'a goal in the start cell does not count as a failed path');
+  const directed = createGame({ w: 2, h: 2, rows: ['..', '..'], heights: ['02', '21'], spawns: [{ x: 0, y: 0 }], points: [] }, ['a'], false);
+  assert.ok(findPath(directed, { x: 3, z: 3 }, { x: 1, z: 1 }).length, 'descending diagonal checks corners from its own level');
+  assert.deepEqual(findPath(directed, { x: 1, z: 1 }, { x: 3, z: 3 }), [], 'reverse direction has no legal cliff edge');
+}
+
+// Digging changes the vehicle movement mask; destroying the traps opens its region again.
+{
+  const rows = empty.map((row, y) => y === 10 ? row : row.slice(0, 10) + 'W' + row.slice(11)), g = fresh(rows);
+  g.players[0].mp = 5000;
+  const crew = put(g, 0, 'rifle', 19, 21), from = { x: 5, z: 21, type: 'tank' }, to = { x: 35, z: 21 };
+  assert.ok(findPath(g, from, to).length, 'vehicles cross the open gap');
+  const version = g.terrainVersion ?? 0;
+  command(g, 0, { t: 'dig', ids: [crew.id], kind: 'traps', x: 21, z: 21, dir: Math.PI / 2 });
+  run(g, CFG.digTime + 0.1);
+  assert.equal(g.chars[10 * g.w + 10], 'Y', 'digging closes the gap to vehicles');
+  assert.ok(g.terrainVersion > version, 'digging invalidates region labels');
+  const expansions = g.pathStats.expansions;
+  assert.deepEqual(findPath(g, from, to), [], 'new traps separate vehicle regions');
+  assert.deepEqual(findPath(g, from, { x: 21, z: 21 }), [], 'a trap cell itself is an unreachable vehicle goal');
+  assert.equal(g.pathStats.expansions, expansions, 'vehicle region rejection does not expand A*');
+  assert.ok(findPath(g, { ...from, type: 'rifle' }, to).length, 'infantry still cross tank traps');
+  g.nades.push({ x: 21, z: 21, t: 0, owner: 0, ab: { radius: 1, inf: 0, veh: 0, supp: 0, terrain: 1000 } });
+  step(g);
+  assert.equal(g.chars[10 * g.w + 10], '.', 'the normal blast collapses the traps');
+  assert.ok(findPath(g, from, to).length, 'collapse restores vehicle connectivity');
+}
+
+// Classic footprint placement and collapse invalidate labels that were already queried.
+{
+  const w = 40, h = 22, rows = Array.from({ length: h }, (_, y) => '.'.repeat(20) + (y >= 8 && y <= 10 ? '.' : 'W') + '.'.repeat(19));
+  const g = createGame({ w, h, rows, spawns: [{ x: 2, y: 2 }, { x: 37, y: 19 }], points: [] }, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  g.nodes = []; g.players[0].mp = 5000;
+  const crew = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  crew.x = 37; crew.z = 19;
+  const from = { x: 5, z: 19 }, to = { x: 75, z: 19 };
+  assert.ok(findPath(g, from, to).length, 'corridor begins open');
+  step(g);
+  command(g, 0, { t: 'build', ids: [crew.id], kind: 'barracks', x: 41, z: 19 });
+  const site = [...g.units.values()].find(u => u.type === 'barracks');
+  assert.ok(site, 'a building site is stamped in the corridor');
+  assert.deepEqual(findPath(g, from, to), [], 'footprint closes the only corridor');
+  command(g, 0, { t: 'stop', ids: [crew.id] });
+  site.hp = 0; step(g);
+  assert.ok(site.cells.every(c => g.chars[c] === 'R'), 'normal destruction changes the footprint to rubble');
+  assert.ok(findPath(g, from, to).length, 'collapsed footprint reopens the corridor');
+}
+
+// A blast that lowers a cliff makes a previously unreachable region walkable.
+{
+  const map = blank(empty); map.heights = empty.map(() => '0'.repeat(10) + '2' + '0'.repeat(9));
+  const g = createGame(map, ['a', 'b'], false); g.units.clear(); g.players[0].mp = 1000;
+  const from = { x: 5, z: 21 }, to = { x: 35, z: 21 };
+  assert.deepEqual(findPath(g, from, to), [], 'two-level cliff separates the map');
+  command(g, 0, { t: 'support', kind: 'dive', x: 21, z: 21 });
+  run(g, SUPPORT.dive.delay + 0.1);
+  assert.equal(g.height[10 * g.w + 10], 1, 'blast lowers the cliff by one level');
+  assert.ok(findPath(g, from, to).length, 'height changes invalidate weak regions');
+}
+
+// A small path budget serves older requests before repeated requests from earlier unit ids.
+{
+  const g = fresh(); g.players[0].mp = 5000; g.pathBudget = 1;
+  const units = [5, 12, 19, 26].map(z => put(g, 0, 'rifle', 5, z));
+  for (const u of units) { u.path = []; u.repath = 0; u.amove = { x: 35, z: u.z }; }
+  step(g);
+  assert.ok(units[0].path.length, 'first request fits the budget');
+  assert.ok(units.slice(1).every(u => !u.path.length), 'overflow waits');
+  assert.equal(g.pathStats.deferred, 3, 'each waiting requester joins once');
+  units[0].path = []; units[0].repath = 0;
+  for (let next = 1; next < units.length; next++) {
+    step(g);
+    assert.ok(units[next].path.length, `FIFO serves request ${next}`);
+    assert.equal(units[0].path.length, 0, 'new requests cannot jump the queue');
+  }
+  step(g); assert.ok(units[0].path.length, 'the repeated early unit is served after the original overflow');
+  g.pathBudget = 0;
+  command(g, 0, { t: 'move', orders: [[units[0].id, 8, 5]] });
+  assert.ok(units[0].path.length, 'human movement orders remain immediate with no step budget');
+}
+
+// Repeated failures drop the same unreachable order, and a new command gets a fresh retry count.
+{
+  const rows = empty.map(row => row.slice(0, 10) + 'B' + row.slice(11)), g = fresh(rows);
+  g.players[0].mp = 1000; g.pathRetryLimit = 3;
+  const u = put(g, 0, 'rifle', 5, 5);
+  u.amove = { x: 35, z: 5 }; u.repath = 0;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    u.repath = 0; step(g);
+    assert.equal(g.pathStats.failed, attempt, 'each retry performs one failed search');
+    assert.equal(g.pathStats.dropped, attempt === 3 ? 1 : 0, 'retry cap applies only at its limit');
+  }
+  assert.equal(u.amove, null, 'failed attack-move order is dropped');
+  const calls = g.pathStats.calls; step(g);
+  assert.equal(g.pathStats.calls, calls, 'dropped order stops searching');
+  command(g, 0, { t: 'amove', orders: [[u.id, 35, 5]] });
+  u.repath = 0; step(g);
+  assert.ok(u.amove, 'new immediate order resets its earlier failures');
+  assert.equal(g.pathStats.dropped, 1, 'fresh order gets its own retry allowance');
+}
+
+// Snapshot cadence reduces load, then recovers only after sustained spare capacity.
+{
+  const { createTickMeter, recordTick, tickStats } = await import('./tickmeter.js');
+  const meter = createTickMeter({ snapshotSize: 10 });
+  const sample = (tick) => ({ tick, step: tick / 2, think: 1, snapshot: tick / 2 - 1,
+    snapshotBuild: 2, snapshotStringify: 1, sent: true });
+  const feed = (from, to, tick) => { for (let now = from; now <= to; now += 100) recordTick(meter, sample(tick), now); };
+  assert.equal(meter.snapEvery, 2, 'rooms begin with 10 Hz snapshots');
+  feed(100, 1000, 45);
+  assert.equal(meter.snapEvery, 3, 'snapshot tick p95 above 40 ms stretches to 3 ticks');
+  feed(1100, 2000, 45);
+  assert.equal(meter.snapEvery, 4, 'continued load stretches to 4 ticks');
+  feed(2100, 3000, 12);
+  feed(3100, 12900, 12);
+  assert.equal(meter.snapEvery, 4, 'recovery waits 10 seconds below 24 ms');
+  feed(13000, 13000, 12);
+  assert.equal(meter.snapEvery, 3, 'recovery lowers cadence one step');
+  feed(13100, 22900, 12);
+  assert.equal(meter.snapEvery, 3, 'each recovery step has its own sustained wait');
+  feed(23000, 24000, 12);
+  assert.equal(meter.snapEvery, 2, 'sustained recovery restores 10 Hz');
+  assert.equal(tickStats(meter).snapshotTick.p95, 12, 'snapshot ring expires old expensive ticks');
+
+  const noisy = createTickMeter({ snapshotSize: 50 });
+  for (let now = 100; now <= 5000; now += 100) recordTick(noisy, sample(now === 4100 ? 100 : 12), now);
+  assert.equal(noisy.snapEvery, 2, 'one isolated spike does not stretch the interval');
+  assert.equal(tickStats(noisy).snapshotTick.p95, 12, 'p95 ignores an isolated outlier');
+
+  const interrupted = createTickMeter({ snapshotSize: 10 });
+  for (let now = 100; now <= 2000; now += 100) recordTick(interrupted, sample(45), now);
+  for (let now = 2100; now <= 9000; now += 100) recordTick(interrupted, sample(12), now);
+  for (let now = 9100; now <= 10000; now += 100) recordTick(interrupted, sample(30), now);
+  for (let now = 10100; now <= 20000; now += 100) recordTick(interrupted, sample(12), now);
+  assert.equal(interrupted.snapEvery, 4, 'a moderate load interrupts the recovery wait');
+  recordTick(interrupted, sample(12), 21000);
+  assert.equal(interrupted.snapEvery, 3, 'recovery starts again after interrupted low-load period');
+}
+
 console.log('all sim checks passed');
