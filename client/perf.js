@@ -12,7 +12,7 @@ if (new URLSearchParams(location.search).has('perf')) {
   box = document.createElement('div');
   box.id = 'perf';
   box.style.cssText = 'position:fixed;left:10px;top:58px;z-index:40;pointer-events:none;padding:6px 10px;white-space:pre;'
-    + 'font:13px/1.4 var(--type, "Courier Prime", monospace);color:#efe9d8;background:rgba(26,25,19,0.84);border:1px solid rgba(239,233,216,0.28)';
+    + 'font:13px/1.4 var(--type, sans-serif);color:#efe9d8;background:rgba(26,25,19,0.84);border:1px solid rgba(239,233,216,0.28)';
   document.body.append(box);
 }
 

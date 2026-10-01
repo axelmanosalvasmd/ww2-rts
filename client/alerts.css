@@ -1,26 +1,25 @@
-/* Alerts list above the minimap (client/alerts.js). Self-contained: everything here is under #alerts. */
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-
+/* Alerts list above the minimap (client/alerts.js). Self-contained: everything here is under #alerts.
+   The HUD's gunmetal panel and type; the kind reads in the text color. */
 #hud > #alerts {
   position: absolute; /* index.html places it above the minimap; alerts.js keeps it there on resize */
-  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
   max-width: min(320px, calc(100vw - 20px));
   pointer-events: none; /* only the lines take clicks, the gaps between them stay on the map */
 }
 #hud > #alerts:empty { display: none; }
 #alerts .alert {
   pointer-events: auto; cursor: pointer;
-  max-width: 100%; padding: 3px 10px 3px 8px;
-  background: rgba(34, 37, 27, 0.85); color: #e6dcc0;
-  border-radius: 2px;
-  font: 400 14px/1.35 'Courier Prime', 'Courier New', monospace;
+  max-width: 100%; padding: 3px 10px;
+  background: rgba(25, 28, 30, 0.9); color: #e2dfd3;
+  border: 1px solid rgba(176, 164, 122, 0.24); border-radius: 2px;
+  font: 500 14px/1.35 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   animation: alert-in 0.18s ease-out;
 }
-#alerts .alert:first-child { font-weight: 700; } /* the newest one, where Space goes */
-/* the kind reads in the text: light grease-pencil red for trouble, brass for a point won, chalk for the rest */
-#alerts .alert.k-attack, #alerts .alert.k-unitLost, #alerts .alert.k-pointLost, #alerts .alert.k-air { color: #f0a493; }
-#alerts .alert.k-pointWon { color: #e3c675; }
-#alerts .alert:hover { background: rgba(48, 52, 38, 0.92); }
-@keyframes alert-in { from { opacity: 0; transform: translateX(12px); } }
+#alerts .alert:first-child { font-weight: 600; border-color: rgba(176, 164, 122, 0.46); } /* the newest one, where Space goes */
+/* light signal red for trouble, brass for a point won, the plain text color for the rest */
+#alerts .alert.k-attack, #alerts .alert.k-unitLost, #alerts .alert.k-pointLost, #alerts .alert.k-air { color: #ee8a7b; }
+#alerts .alert.k-pointWon { color: #d6b25e; }
+#alerts .alert:hover, #alerts .alert.vhover { background: rgba(46, 51, 55, 0.94); border-color: rgba(214, 178, 94, 0.8); }
+@keyframes alert-in { from { opacity: 0; transform: translateX(8px); } }
 @media (prefers-reduced-motion: reduce) { #alerts .alert { animation: none; } }

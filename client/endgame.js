@@ -1,5 +1,6 @@
 // Match state uses public scores and the receiving player's snapshot only.
 import { CFG, TICK, winVp } from '/shared/sim.js';
+import { audio } from './audio.js';
 
 const RATE_WINDOW = 8, RATE_MIN = 2, NOTICE_LIFE = 6;
 const COLORS = ['Blue', 'Red', 'Chalk', 'Orange', 'Violet', 'Cyan'];
@@ -9,6 +10,7 @@ const write = (el, value) => { if (el && el.textContent !== value) el.textConten
 
 let hooks = null, strip = null, rateEl = null, bonusEl = null, noticeEl = null, outEl = null;
 let samples = [], leader = null, suddenDeath = false, lastKind = null, lastTick = null;
+let hordeOn = null;
 let notice = '', until = 0, state = { rate: '', bonus: '', notice: '', out: false };
 
 // main.js provides me() and teams(). The public snapshot method also accepts fabricated snapshots for visual QA.
@@ -35,7 +37,7 @@ function init(h) {
 }
 
 function reset() {
-  samples = []; leader = null; suddenDeath = false; lastKind = null; lastTick = null; notice = ''; until = 0;
+  samples = []; leader = null; suddenDeath = false; hordeOn = null; lastKind = null; lastTick = null; notice = ''; until = 0;
   state = { rate: '', bonus: '', notice: '', out: false };
   render();
 }
@@ -86,6 +88,12 @@ function snapshot(s) {
       // This is per player, matching the income calculation in step().
       if (bonus > 0 && !(bonusTeam === myTeam && s.online?.[me] === false)) state.bonus = `${teamName(bonusTeam)} catch-up +${bonus < 0.1 ? '<0.1' : bonus.toFixed(1)} MP/s each`;
     }
+  } else if (kind === 'horde') {
+    const on = !!s.mode.active;
+    if (hordeOn !== null && on !== hordeOn) announce(on ? `Wave ${s.mode.wave} incoming` : `Wave ${s.mode.wave} cleared. The bunker is patched up`);
+    if (hordeOn === false && on) audio.play('match_start', null, { gain: 0.7 }); // the horn for every wave
+    hordeOn = on;
+    if (on && s.mode.left <= CFG.horde.reveal) state.rate = 'The last of the wave are marked through the fog';
   } else if (kind === 'assault' && s.mode.timeLeft <= 60) {
     const left = Math.max(0, Math.ceil(s.mode.timeLeft));
     state.rate = `Assault ends in ${clock(left)}`;

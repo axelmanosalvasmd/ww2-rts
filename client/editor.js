@@ -4,7 +4,7 @@ import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAY
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
-  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'],
+  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'], ['D', 'Road'], ['M', 'Mud'], ['N', 'Mine'],
   ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'],
   // spawns go in order around the map: the game seats teammates on neighbouring numbers
   ...Array.from({ length: MAX_PLAYERS }, (_, i) => ['s' + i, 'Spawn ' + (i + 1)]),
@@ -31,7 +31,7 @@ export async function start(api) {
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
     <div id="edToolHint" class="muted"></div>
-    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
+    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option></select></div>
     <div id="edPlayersRow" class="row hidden">Players <select id="edPlayers"></select></div>
     <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
@@ -104,9 +104,10 @@ export async function start(api) {
     const unused = used.map((u, i) => (u < 0 ? i + 1 : 0)).filter(Boolean);
     $('edModeInfo').innerHTML = [
       `${spawnsFor(m, mode).length} spawns usable${unused.length ? `; spawn ${unused.join(', ')} not used here` : ''}`,
-      assault && `${defenders} defend, ${n - defenders} attack · ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey) · ${added} trench/wall cells added · clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? ` · ${cut} VP-only point(s) left out` : ''}`,
-      mode === 'classic' && `an HQ on every player's spawn · ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange) · points pay Munitions`,
+      assault && `${defenders} defend, ${n - defenders} attack, ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey), ${added} trench/wall cells added, clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? `, ${cut} VP-only point(s) left out` : ''}`,
+      mode === 'classic' && `an HQ on every player's spawn, ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange), points pay Munitions`,
       mode === 'conquest' && `first to ${g.winVp} VP`,
+      mode === 'horde' && (g.mode?.kind === 'horde' ? `one shared HQ and bunker (grey), the horde enters at ${g.mode.gates.length} spawn(s)` : 'Horde needs defend spawns and at most 5 players: this preview is Conquest'),
       'Editing is paused: pick Editing to change the map.',
     ].filter(Boolean).join('<br>');
   }
@@ -117,7 +118,7 @@ export async function start(api) {
   function check(m) {
     let err = validateMap(m);
     if (!err) {
-      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
+      const g = { w: m.w, h: m.h, flags: Uint16Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
       const bad = [];
       m.spawns.forEach((s, i) => m.points.forEach((p, j) => {
         const a = toWorld(s), b = toWorld(p);
@@ -125,7 +126,7 @@ export async function start(api) {
       }));
       err = bad.slice(0, 3).join(', ');
     }
-    $('edCheck').innerHTML = err ? `<span style="color:#e0704a">⚠ ${esc(err)}</span>` : '✓ playable';
+    $('edCheck').innerHTML = err ? `<span style="color:var(--red-hi)">⚠ ${esc(err)}</span>` : '✓ playable';
     return !err;
   }
 
@@ -187,11 +188,11 @@ export async function start(api) {
     }
     return { cells, ch };
   }
-  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble', D: 'road', M: 'mud', N: 'mines' };
   function highlight() {
     hl.clear();
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];
-    $('edSel').innerHTML = sp ? `Spawn ${picked.i + 1} · drag to move · Delete removes it (later spawns renumber)<br><label style="display:flex;gap:6px"><input type="checkbox" id="edAssaultOnly" ${sp.assault ? 'checked' : ''}> Assault only (e.g. inside the defenders' fortress; other modes skip it)</label>` : '';
+    $('edSel').innerHTML = sp ? `Spawn ${picked.i + 1}: drag to move, Delete removes it (later spawns renumber)<br><label style="display:flex;gap:6px"><input type="checkbox" id="edAssaultOnly" ${sp.assault ? 'checked' : ''}> Assault only (e.g. inside the defenders' fortress; other modes skip it)</label>` : '';
     if (sp) $('edAssaultOnly').onchange = (e) => { if (e.target.checked) sp.assault = true; else delete sp.assault; rebuild(); };
     if (!picked?.cells) return;
     const m = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.45, depthTest: false });
@@ -199,7 +200,7 @@ export async function start(api) {
       const cx = (x + 0.5 + dragOffset[0]) * CELL, cz = (y + 0.5 + dragOffset[1]) * CELL, box = new THREE.Mesh(new THREE.BoxGeometry(CELL, 0.4, CELL), m);
       box.position.set(cx, api.hAt(cx, cz) + 0.3, cz); box.renderOrder = 6; hl.add(box);
     }
-    $('edSel').textContent = `Selected ${NAMES[picked.ch] || 'structure'} (${picked.cells.length} cells) · drag to move · Delete removes · Esc deselects`;
+    $('edSel').textContent = `Selected ${NAMES[picked.ch] || 'structure'} (${picked.cells.length} cells): drag to move, Delete removes, Esc deselects`;
   }
   function commitMove() {
     const [ox, oy] = dragOffset;
@@ -300,15 +301,15 @@ export async function start(api) {
     $('edMsg').textContent = 'Running AI matches...';
     worker.onmessage = ({ data: d }) => {
       const played = d.done - d.timeouts, pct = d.wins.map(w => (played ? Math.round(w / played * 100) : 0));
-      const warn = (t) => `<br><span style="color:#e0704a">⚠ ${t}</span>`;
+      const warn = (t) => `<br><span style="color:var(--red-hi)">⚠ ${t}</span>`;
       // verdicts only at the end; fairness needs enough finished matches to beat the noise (±~10% per spawn)
       const verdict = d.done < d.n ? ''
         : d.timeouts > d.n * 0.2 ? warn('Matches too long: most hit the 30 min cap. Add capture points or raise their VP.')
         : played < 60 ? warn('Too few finished matches to judge fairness.')
         : pct.some(p => p < 60 / pct.length || p > 140 / pct.length) ? warn('Unfair: a spawn wins far more or less than its share.')
         : '<br>✓ Looks fair';
-      $('edMsg').innerHTML = `${d.done}/${d.n} matches · spawn wins ${pct.map((p, i) => `<b>${i + 1}</b>: ${p}%`).join(' ')}<br>
-        avg ${d.avgMin.toFixed(1)} min · 2nd place at ${Math.round(d.second * 100)}% of winner${d.timeouts ? ` · ${d.timeouts} timeouts` : ''}${verdict}`;
+      $('edMsg').innerHTML = `${d.done}/${d.n} matches, spawn wins ${pct.map((p, i) => `<b>${i + 1}</b>: ${p}%`).join(' ')}<br>
+        avg ${d.avgMin.toFixed(1)} min, 2nd place at ${Math.round(d.second * 100)}% of winner${d.timeouts ? `, ${d.timeouts} timeouts` : ''}${verdict}`;
     };
     worker.postMessage({ map: m, n: 90 });
   };
