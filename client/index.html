@@ -29,13 +29,27 @@
   input { font: inherit; color: var(--ink); background: #11110d; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 8px; }
   .hidden { display: none !important; }
 
-  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(40,38,28,0.7), rgba(10,10,8,0.95)); z-index: 10; padding: 16px; }
-  #overlay .card { width: min(460px, 100%); padding: 24px; display: grid; gap: 14px; }
+  /* lobby: scrolls when taller than the window; nothing inside may grow wider than the card */
+  #overlay { position: fixed; inset: 0; display: flex; overflow: auto; background: radial-gradient(ellipse at center, rgba(40,38,28,0.7), rgba(10,10,8,0.95)); z-index: 10; padding: 16px; }
+  #overlay .card { margin: auto; width: min(860px, 100%); padding: 22px 24px; display: grid; gap: 14px; }
+  #overlay .card *, #overlay .card { min-width: 0; }
   #overlay h1 { margin: 0; font-size: 34px; color: var(--accent); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .cols section { display: grid; gap: 8px; align-content: start; }
+  .sec { margin: 6px 0 0; font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--edge); padding-bottom: 4px; }
+  .cols section > .sec:first-child { margin-top: 0; }
+  #mapPrev { display: flex; gap: 12px; align-items: flex-start; }
+  #mapCanvas { width: 150px; height: 150px; flex: none; border: 1px solid var(--edge); border-radius: 3px; background: #11110d; }
+  #mapInfo { display: grid; gap: 2px; font-size: 12px; }
+  #modeInfo { font-size: 12px; }
+  #start { flex: 1; font-size: 20px; padding: 10px; background: #5e4f1c; border-color: var(--accent); color: #fff3cf; }
+  #start:hover:not(:disabled) { background: #7a6624; }
+  .row > label { flex: none; min-width: 44px; }
   .row { display: flex; gap: 8px; align-items: center; }
   .row input { flex: 1; min-width: 0; }
   #roster { display: grid; gap: 6px; }
-  .slot { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #11110d; border-radius: 3px; }
+  .slot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: #11110d; border-radius: 3px; }
+  .slot select { flex: none; }
   .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
   .muted { color: var(--dim); }
   .kick { padding: 0 6px; margin-left: 4px; }
@@ -76,28 +90,40 @@
   #hint:empty { display: none; }
   #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
 
-  @media (max-width: 760px) { #help { display: none; } #minimap { width: 140px; height: 140px; bottom: 90px; } #scores { top: 64px; } .score { width: 100px; } #buy button { min-width: 0; } }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } #help { display: none; } #minimap { width: 140px; height: 140px; bottom: 90px; } #scores { top: 64px; } .score { width: 100px; } #buy button { min-width: 0; } }
 </style>
 <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
 </head>
 <body>
 <div id="overlay">
   <div class="card panel">
-    <h1 class="stencil">Three Crossroads</h1>
-    <h2 id="result" class="stencil hidden" style="margin:0;font-size:26px"></h2>
-    <div class="muted">WW2 skirmish. Hold the points, first to 1200 victory points wins.</div>
-    <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
     <div>
-      <div class="muted">Invite link (send to your friends; it always opens this room)</div>
-      <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
-      <div class="row"><label for="roomCode">Room</label><input id="roomCode" maxlength="12" style="flex:1" title="Type a room code and press Join; leave it as main for the usual room"><button id="joinRoom">Join</button><button id="newRoom" title="A private room with a random code">New room</button></div>
+      <h1 class="stencil">Three Crossroads</h1>
+      <h2 id="result" class="stencil hidden" style="margin:4px 0 0;font-size:26px"></h2>
     </div>
-    <div id="roster"></div>
-    <div class="row"><label for="mapSel">Map</label><select id="mapSel"></select></div>
-    <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest: first to the VP goal</option><option value="assault">Assault: attack &amp; defend a base</option><option value="annihilation">Annihilation: every side has a fortified bunker, last one standing wins</option><option value="classic">Classic: build a base, destroy theirs</option></select></div>
-    <div class="row"><select id="defSel" class="hidden"></select></div>
-    <div class="row"><button id="addAi" style="flex:1">+ Add AI opponent</button><button id="start" class="stencil" style="flex:1">Start</button></div>
+    <div class="cols">
+      <section>
+        <h3 class="sec">Players</h3>
+        <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
+        <div id="roster"></div>
+        <button id="addAi">+ Add AI player</button>
+        <h3 class="sec">Invite</h3>
+        <div class="muted" style="font-size:12px">Send this link to friends. It always opens this room.</div>
+        <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
+        <div class="row"><label for="roomCode">Room</label><input id="roomCode" maxlength="12" title="Type a room code and press Join; leave it as main for the usual room"><button id="joinRoom">Join</button><button id="newRoom" title="A private room with a random code">New</button></div>
+      </section>
+      <section>
+        <h3 class="sec">Battle</h3>
+        <div class="row"><label for="mapSel">Map</label><select id="mapSel"></select></div>
+        <div id="mapPrev"><canvas id="mapCanvas" width="280" height="280"></canvas><div id="mapInfo" class="muted"></div></div>
+        <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
+        <div class="row"><label for="armySel">Army size</label><select id="armySel" title="Unit limit and income for everyone"><option value="standard">Standard</option><option value="large">Large: 2.5x units, 2x income</option><option value="massive">Massive: 5x units, 3.5x income</option></select></div>
+        <div id="modeInfo" class="muted"></div>
+        <div class="row"><select id="defSel" class="hidden"></select></div>
+      </section>
+    </div>
     <div id="lobbyMsg" class="muted"></div>
+    <div class="row"><button id="start" class="stencil">Start</button></div>
     <a href="/?edit" target="_blank" class="muted">Map editor</a>
   </div>
 </div>

@@ -81,6 +81,7 @@ $('fullscreen').onclick = async () => {
 };
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
+$('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 // in-game menu: the host can restart or end the match, anyone can leave (an AI takes over). Each needs a second click.
@@ -93,6 +94,47 @@ const confirmClick = (id, label, act) => {
 confirmClick('restartBtn', 'Restart match', () => sendCmd({ t: 'restart' }));
 confirmClick('endBtn', 'End match (back to lobby)', () => sendCmd({ t: 'end' }));
 confirmClick('leaveBtn', 'Leave game', () => sendCmd({ t: 'leave' }));
+
+const MODE_INFO = {
+  conquest: 'Capture and hold points to earn victory points. First side to the VP goal wins.',
+  assault: 'One team defends a fortified command bunker. Everyone else attacks and must destroy it before the clock runs out.',
+  annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
+  classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks and Motor Pool.',
+};
+const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
+// lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
+const mapCache = new Map();
+async function previewMap(name, mode) {
+  let m = mapCache.get(name);
+  if (!m) {
+    try { m = await (await fetch(`/maps/${encodeURIComponent(name)}`)).json(); } catch { return; }
+    mapCache.set(name, m);
+  }
+  if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
+  const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
+  const img = new ImageData(m.w, m.h);
+  m.rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + levelOf(m.heights?.[y]?.[x] ?? '0') * 0.12, i = (y * m.w + x) * 4;
+    img.data.set([r * k, g * k, b * k, 255], i);
+  }));
+  const tmp = document.createElement('canvas'); tmp.width = m.w; tmp.height = m.h; tmp.getContext('2d').putImageData(img, 0, 0);
+  c.fillStyle = '#11110d'; c.fillRect(0, 0, cv.width, cv.height);
+  c.imageSmoothingEnabled = false; c.drawImage(tmp, ox, oy, m.w * s, m.h * s);
+  const at = (p) => [ox + (p.x + 0.5) * s, oy + (p.y + 0.5) * s], assault = mode === 'assault', noVp = assault || mode === 'annihilation';
+  const points = m.points.filter(p => !noVp || (p.mp ?? 1) > 0);
+  for (const p of points) { c.beginPath(); c.arc(...at(p), Math.max(4, CFG.pointRadius / CELL * s), 0, 7); c.strokeStyle = '#f0d98a'; c.lineWidth = 2; c.stroke(); }
+  const spawns = m.spawns.map((sp, i) => [sp, i]).filter(([sp]) => assault || !sp.assault);
+  for (const [sp, i] of spawns) {
+    c.beginPath(); c.arc(...at(sp), 6, 0, 7);
+    c.fillStyle = assault && m.defend ? (m.defend.includes(i) ? '#d94a3d' : '#3d7bd9') : '#f2ecd8'; c.fill();
+    c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke();
+  }
+  const top = Math.max(0, ...(m.heights || []).flatMap(r => [...r].map(levelOf)));
+  $('mapInfo').innerHTML = [`<b style="color:var(--ink)">${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, `up to ${spawns.length} players`,
+    `${points.length} capture point${points.length === 1 ? '' : 's'}`, top >= 3 ? 'hills and cliffs' : top > 0 ? 'rolling hills' : '',
+    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (assault ? '<span style="color:#d94a3d">●</span> defend · <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
+    assault && m.assaultTime ? `${Math.round(m.assaultTime / 60)} minute clock` : ''].filter(Boolean).map(t => `<div>${t}</div>`).join('');
+}
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
@@ -112,11 +154,14 @@ function renderLobby(m) {
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
-  $('mapSel').innerHTML = (m.maps || []).map(n => `<option ${n === m.mapName ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''}>${esc(prettyMap(n))}</option>`).join('');
+  previewMap(m.mapName, m.mode || 'conquest');
   $('mapSel').disabled = !host || !lobby;
   // Assault: the host picks which team defends; everyone else attacks
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
+  $('armySel').value = m.army || 'standard'; $('armySel').disabled = !host || !lobby;
+  $('modeInfo').textContent = MODE_INFO[m.mode || 'conquest'] ?? '';
   $('defSel').classList.toggle('hidden', !assault);
   $('defSel').innerHTML = teamIds.map(t => `<option value="${t}" ${t === m.defenderTeam ? 'selected' : ''}>Team ${t + 1} defends (${m.players.filter(p => p.team === t).map(p => esc(p.name)).join(', ')})</option>`).join('');
   $('defSel').disabled = !host || !lobby;

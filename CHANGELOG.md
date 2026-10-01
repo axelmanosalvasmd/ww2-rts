@@ -26,6 +26,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   lead changes up to 1.55-1.68. Classic decided before sudden death: 85% (default), 80% (River Towns), 60% (Six Fronts,
   still the long one). In 6 Conquest matches the AIs called 19 dive bombers and 9 fighter covers (8 intercepts), and
   lost 6 planes; in Classic 17 paratrooper drops, 21 intercepts, 17 planes down.
+- Lobby redesign and fix:
+  - Fixed: the long Annihilation entry in the Mode menu made the whole lobby card wider than the window, so every row
+    ran off the right edge (and off a phone screen entirely). Nothing in the lobby can grow wider than the card now,
+    and the lobby scrolls when it is taller than the window.
+  - Two columns on wide screens (Players and Invite on the left, Battle on the right), one column on narrow ones.
+  - Map preview: a picture of the chosen map (terrain shaded by height, capture points, spawns; in Assault, red spawns
+    defend and blue attack) with its real name, size in metres, player count, hills, rivers, and the Assault clock.
+  - Short mode names in the menu with a one-line description of the chosen mode underneath.
+  - Map names read properly (Kasserine Pass, not kasserine-pass), and Start is a big gold button.
 - New mode, **Annihilation**: like Assault, but every player gets a Command Bunker with its trench and sandbag ring,
   and there's no clock. A side is out when its last bunker falls; the last side standing wins. Works with any teams,
   including free-for-all. Everyone starts with 300 MP and +4.5/s; points pay manpower only (no VP). Bunkers take 5%

@@ -19,6 +19,8 @@ export const CFG = {
   // how far a fighter looks for enemy planes; hp share at which a plane turns for home; off-map airbase distance
   // kill bounty: whoever lands the killing blow gets this share of the dead unit's (or building's) cost in MP
   bounty: 0.2,
+  // army size, picked in the lobby: multiplies the unit limit and every income (MP, Munitions, Fuel, starting MP)
+  armies: { standard: { pop: 1, income: 1 }, large: { pop: 2.5, income: 3 }, massive: { pop: 5, income: 6 } },
   air: { seeRange: 60, station: 50, rearm: 30, orbit: 18, seek: 60, bail: 0.35, offmap: 40 },
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
@@ -210,7 +212,7 @@ function payAb(g, u) {
 }
 // units a player fields plus what's queued in their buildings (planes count too)
 export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue?.length ?? 0) : 1) : 0), 0);
-export const popCap = (g) => (g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap);
+export const popCap = (g) => Math.round((g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap) * (g.army?.pop ?? 1));
 export const supCost = (g, k) => (g.mode?.kind === 'classic' ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
 // point in a len x width rectangle centered on s, long side along s.dir
@@ -307,6 +309,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     g.mode = { kind: 'annihilation', teams: new Set(teams).size };
     for (const p of g.players) { p.mp = CFG.assault.annihilationMp; fortify(g, p); }
   }
+  g.army = CFG.armies[opts.army] ?? CFG.armies.standard;
+  for (const p of g.players) p.mp *= g.army.income;
   return g;
 }
 
@@ -1326,16 +1330,16 @@ export function step(g) {
       // home depots pay MP, the contested ones by the villages pay Fuel
       const paying = g.nodes.filter(n => { const d = g.units.get(n.depot); return d && d.owner === pl.slot && d.built >= 1 && d.hp > 0; });
       const depots = paying.reduce((a, n) => a + (n.fuel ? 0 : n.rate), 0);
-      pl.fuelInc = pl.away || pl.out ? 0 : C.hqFuel + paying.reduce((a, n) => a + (n.fuel ? n.rate : 0), 0);
+      pl.fuelInc = pl.away || pl.out ? 0 : (C.hqFuel + paying.reduce((a, n) => a + (n.fuel ? n.rate : 0), 0)) * g.army.income;
       pl.fuel += pl.fuelInc * dt;
       pl.upkeep = own.reduce((a, u) => a + (UNITS[u.type].structure ? 0 : UNITS[u.type].cost * C.upkeep), 0);
-      pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, C.trickle + depots - pl.upkeep);
+      pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, (C.trickle + depots) * g.army.income - pl.upkeep);
       pl.mp += pl.inc * dt;
-      if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * dt;
+      if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * g.army.income * dt;
       continue;
     }
     const base = !g.mode ? CFG.mpBase : g.mode.kind === 'annihilation' ? CFG.assault.annihilationBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
-    pl.inc = pl.away ? 0 : base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
+    pl.inc = pl.away ? 0 : (base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer)) * g.army.income;
     pl.mp += pl.inc * dt;
   }
   if (g.mode?.kind === 'classic') {
@@ -1405,6 +1409,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
     queues: [...g.units.values()].filter(b => b.owner === slot && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),
     plans: [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).map(u => [u.id, ...planOf(g, u).map(r), ...u.path.flatMap(q => [r(q.x), r(q.z)])]),
+    army: g.army,
     mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath },
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !p.visible.has(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
