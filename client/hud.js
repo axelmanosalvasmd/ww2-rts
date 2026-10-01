@@ -9,6 +9,8 @@ import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBu
 import { symbolSVG } from './symbols.js';
 import { unitRole } from './unit-roles.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
+import { availability } from './availability.js';
+import { setAvailability, installTooltips } from './feedback.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -90,6 +92,10 @@ export const icon = (k) => `<svg class="ico" viewBox="0 0 32 32" aria-hidden="tr
 // ctx: state getters (me, teams, names, units, selected, PRIORITY) and helpers/actions from main.js:
 // look, facOf, color, classic, send, blip, retreat, stop, amove, dig, build, ability, support, fType, builders, owns, canPlace, select
 export function createHud(ctx) {
+  let snapshot = null;
+  const tooltips = installTooltips($('hud'));
+  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, ids: [...ctx.selected] });
+  const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
   const name = (t, slot = ctx.me) => ctx.look(slot).names[t] ?? UNITS[t].name;
   const pc = (i) => `var(--p${i}, ${ctx.color(i)})`;
   const selUnits = () => [...ctx.selected].map((id) => ctx.units.get(id)).filter(Boolean);
@@ -124,8 +130,8 @@ export function createHud(ctx) {
     setText($('popCount'), `${pop}/${cap} units`);
     $('popCount').classList.toggle('danger', pop >= cap);
     for (const b of $('support').children) {
-      const k = b.dataset.k, cd = s.sup?.[k] ?? 0, { cur, cost } = supCost(s, k), off = cd > 0 || !(s[cur] >= cost);
-      if (b.disabled !== off) b.disabled = off;
+      const k = b.dataset.k, cd = s.sup?.[k] ?? 0, { cur, cost } = supCost(s, k);
+      setAvailability(b, check({ t: 'support', kind: k }));
       setText(b.lastElementChild, cd > 0 ? `${cd}s` : `${cost ?? '?'} ${cur === 'mun' ? 'Mun' : 'MP'}`);
     }
   }
@@ -289,15 +295,15 @@ export function createHud(ctx) {
     const fType = ctx.fType();
     for (const b of el.querySelectorAll('button[data-a]')) {
       const a = b.dataset.a, val = b.lastElementChild;
-      let off = false, txt = '';
-      if (a.startsWith('fort:')) { const f = FORTS[a.slice(5)]; off = !(s.mp >= f.cost); txt = `${f.cost} MP`; }
+      let result = { ok: true, reason: '' }, txt = '';
+      if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (UNITS[a]) {
         const us = sel.filter((v) => v.type === a), ready = us.filter((v) => !v.cd).length, cd = Math.min(...us.map((v) => v.cd || 0));
-        const mun = abCost(s, UNITS[a].ab), broke = mun && !(s.mun >= mun);
-        off = !ready || !!broke; txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
+        const mun = abCost(s, UNITS[a].ab);
+        result = check({ t: 'ability', unit: a }); txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
         setText(b.querySelector('kbd'), a === fType ? label('ability') : '');
       }
-      if (b.disabled !== off) b.disabled = off;
+      setAvailability(b, result);
       setText(val, txt);
     }
   }
@@ -315,18 +321,18 @@ export function createHud(ctx) {
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
     card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
-    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.unit }); ctx.blip(520); }));
+    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.unit }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
   }
   function drawRecruit(s, pop, cap) {
     for (const b of $('buy').querySelectorAll('[data-unit]')) {
-      const broke = s.mp < UNITS[b.dataset.unit].cost, off = broke || pop >= cap;
-      if (b.disabled !== off) b.disabled = off;
+      const broke = s.mp < UNITS[b.dataset.unit].cost;
+      setAvailability(b, check({ t: 'buy', unit: b.dataset.unit }));
       b.classList.toggle('broke', broke);
     }
   }
   function drawClassicCard(s, pop, cap, sel) {
     const card = $('buy');
-    const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === ctx.me ? sel[0] : null, eng = !bld && ctx.builders().length > 0;
+    const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === ctx.me ? sel[0] : null, eng = !bld && sel.some((v) => v.owner === ctx.me && v.type === 'engineer');
     const key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : '';
     if (key !== cardKey) {
       cardKey = key;
@@ -345,7 +351,7 @@ export function createHud(ctx) {
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else card.innerHTML = '';
       const id = bld?.id;
-      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.train, from: id }); ctx.blip(520); }));
+      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.train, from: id }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
       card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'cancel', id }); ctx.selected.clear(); ctx.blip(300); }));
       card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.build(b.dataset.build)));
     }
@@ -354,17 +360,18 @@ export function createHud(ctx) {
       const q = bld.queue ?? [], nm = (t) => name(t);
       setText(card.querySelector('[data-queue]'), q.length ? `Training ${nm(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(nm).join(', ')}` : '') : 'Idle');
       for (const b of card.querySelectorAll('[data-train]')) {
-        const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel, off = broke || pop >= cap || q.length >= 5;
-        if (b.disabled !== off) b.disabled = off;
+        const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel;
+        setAvailability(b, check({ t: 'buy', unit: b.dataset.train, from: bld.id }));
         b.classList.toggle('broke', broke);
       }
     }
     if (eng) for (const b of card.querySelectorAll('[data-build]')) {
-      const k = b.dataset.build, need = UNITS[k].needs && !ctx.owns(UNITS[k].needs), off = !ctx.canPlace(k);
-      if (b.disabled !== off) b.disabled = off;
+      const k = b.dataset.build, need = UNITS[k].needs && !ctx.owns(UNITS[k].needs);
+      const result = check({ t: 'build', kind: k });
+      setAvailability(b, result);
       b.classList.toggle('broke', !(s.mp >= UNITS[k].cost));
       const note = b.querySelector('[data-note]');
-      setText(note, need ? `Needs a ${UNITS[UNITS[k].needs].name}` : BUILD_ROLE[k] ?? '');
+      setText(note, result.ok ? BUILD_ROLE[k] ?? '' : result.reason);
       note.classList.toggle('danger', !!need);
     }
   }
@@ -388,6 +395,7 @@ export function createHud(ctx) {
   }
 
   function update(s) {
+    snapshot = s;
     const me = ctx.me, all = [...ctx.units.values()];
     const pop = all.filter((v) => v.owner === me && !UNITS[v.type].structure).length + all.reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
     const cap = popCap(s), sel = selUnits();
@@ -397,6 +405,7 @@ export function createHud(ctx) {
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);
+    tooltips.update();
   }
 
   return { buildSupport, buildCard, update };

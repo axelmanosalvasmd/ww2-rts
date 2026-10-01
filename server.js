@@ -9,6 +9,7 @@ import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
+import { allowDeny } from './shared/command-feedback.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 export const clock = {
@@ -287,7 +288,10 @@ wss.on('connection', (ws, req) => {
       // an AI takes over your army so the match goes on for the others; you can join the lobby again afterwards
       handToAi(room, me);
       send(ws, { t: 'left' }); ws.close();
-    } else if (room.state === 'play' && room.game && !room.pause) command(room.game, slot, msg);
+    } else if (room.state === 'play' && room.game && !room.pause) {
+      const reason = command(room.game, slot, msg);
+      if (reason && allowDeny(me, clock.now())) send(ws, { t: 'deny', cmd: msg.t, reason });
+    }
   });
 
   ws.on('close', () => {
