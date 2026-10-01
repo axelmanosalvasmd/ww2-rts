@@ -10,6 +10,7 @@ import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelO
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
+import { createWeatherView } from './weather-view.js';
 import { createGround } from './ground.js';
 import { setWind } from './wind.js';
 import { surface, setFogMap } from './surfaces.js';
@@ -183,6 +184,7 @@ $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
 // army size labels come from CFG.armies, so they cannot drift from the real numbers
 $('armySel').innerHTML = Object.entries(CFG.armies).map(([key, v]) => `<option value="${esc(key)}">${esc(key[0].toUpperCase() + key.slice(1))}${v.pop === 1 && v.income === 1 ? '' : `: ${v.pop}x units, ${v.income}x income`}</option>`).join('');
 $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
+const wx = createWeatherView({ sendCmd }); // client/weather-view.js: lobby select, score strip line
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 // The host controls the match; leaving, restarting and ending need a second click.
@@ -221,6 +223,7 @@ async function previewMap(name, mode) {
     mapCache.set(name, m);
   }
   if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
+  wx.mapDefault(m, name);
   const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
   const img = new ImageData(m.w, m.h);
   m.rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -273,6 +276,7 @@ function renderLobby(m) {
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
   $('armySel').value = m.army || 'standard'; $('armySel').disabled = !host || !lobby;
+  wx.lobby(m, host && lobby);
   for (const o of $('armySel').options) if (o.value === 'endless') o.hidden = o.disabled = horde;
   const best = m.hordeBest, mins = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
   $('modeInfo').textContent = (MODE_INFO[m.mode || 'conquest'] ?? '') + (!horde ? '' : best ? ` Record here with ${n} defender${n === 1 ? '' : 's'}: wave ${best.wave} in ${mins(best.time)} (${best.names.join(', ')}).` : ` No record yet here with ${n} defender${n === 1 ? '' : 's'}.`);
@@ -389,7 +393,8 @@ function startGame(m, restored = null) {
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
-  atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather }); // mood, cloud shadows, table props, mist, weather, birds
+  wx.start(m.weather, atmos);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
@@ -417,12 +422,6 @@ let terrain = null;
 let props = null;
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
 function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state); }
-
-// the weather line under the scores: only there when it matters
-function showWeather(rain, wet) {
-  const text = rain > 0.3 ? 'Rain: vehicles slow off the road, fords deeper, sight shorter' : wet > 0.15 ? `Wet ground (${Math.round(wet * 100)}%): vehicles slow off the road` : '';
-  if ($('wx').textContent !== text) $('wx').textContent = text;
-}
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -614,7 +613,7 @@ function applySnapshot(s) {
   // flashes, tracers, blasts and smoke for the ground war and their sounds (client/fx.js); the air shots and the
   // planes' strike warnings are left out so nothing is drawn twice
   // the wind first: it carries this snapshot's smoke, dust and flames
-  if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setWeather(s.wx[0], s.wx[1]); showWeather(s.wx[0], s.wx[1]); }
+  if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setRain(s.wx[0], s.wx[1]); } // showers and wet ground (the line: wx.snapshot)
   const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL]);
   effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
@@ -639,6 +638,7 @@ function applySnapshot(s) {
   alerts.snapshot(s, lastSnap);
   lastSnap = s; drawWorks(s.works);
   updateHud(s);
+  wx.snapshot(s);
   endgame.snapshot(s);
 }
 
