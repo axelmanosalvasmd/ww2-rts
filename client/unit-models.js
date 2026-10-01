@@ -9,6 +9,7 @@
 // Baked geometry is cached per look, so the second rifle squad of a color reuses the first one's geometry.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
+import { isWheeled, wheeledModel } from './models/wheeled.js';
 
 // unit-sized shapes, scaled per part
 const GEO = {
@@ -265,12 +266,24 @@ function levelBase(g, n) {
 // beyond this camera distance soldiers swap to the far-away model (closer on Low graphics)
 export const LOD = { high: 110, low: 80 };
 
+// Armored cars, the M16, the Panzerwerfer and the Katyusha: client/models/wheeled.js builds the hull and the traversing
+// part as two vertex-colored geometries (shared per look, like the baked parts), two draws with the shared material.
+function wheeledUnit(v, root, f, fac) {
+  const m = wheeledModel(v.type, fac, f), mesh = (geometry) => { const o = new THREE.Mesh(geometry, PAINT); o.castShadow = true; return o; };
+  const hull = new THREE.Group();
+  hull.add(mesh(m.hull));
+  v.turret = new THREE.Group(); v.turret.position.set(...m.turretAt); v.turret.add(mesh(m.turret));
+  v.fxTip = m.tip;
+  root.add(hull, v.turret); v.models.push(root);
+}
+
 // Builds the model of unit v under root: v.models (soldiers, or the root for vehicles and structures), v.turret,
 // v.body (structures and planes; it scales up while built), v.fxTip (barrel tip for client/fx.js).
 // f is the owner's look (uniform, vehicle and player colors), fac the faction, def the unit's stats.
 export function buildModel(v, root, f, fac, def) {
   const type = v.type, key = `${type}|${fac}|${f.color}`;
   if (def.air || type === 'airfield') return; // client/aircraft.js builds these
+  if (isWheeled(type, fac)) { wheeledUnit(v, root, f, fac); return; }
   if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     v.body = new THREE.Group();
