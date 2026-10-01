@@ -2350,6 +2350,34 @@ for (const lookupFinished of [false, true]) {
   const beforeRecall = centers.length; selection.group(1, 'set'); selection.group(1, 'recall', 1100);
   assert.equal(centers.length, beforeRecall, 'new matches and group edits reset the double-tap timer');
 }
+// Camera: a mouse press during the opening glide ends it and still reaches the board, so the first click or box drag
+// of a match selects (it used to be swallowed). A right-click is still dropped: its order was aimed at a moving view.
+{
+  const THREE = await import('three');
+  const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
+    .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
+    .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
+  const { rig } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const saved = { innerWidth: globalThis.innerWidth, innerHeight: globalThis.innerHeight, addEventListener: globalThis.addEventListener };
+  Object.assign(globalThis, { innerWidth: 1920, innerHeight: 1080, addEventListener: () => {} });
+  try {
+    const button = () => ({ setAttribute() {}, textContent: '' });
+    rig.init({ cam: { x: 40, z: 40, yaw: 0, dist: 60 }, camera: new THREE.PerspectiveCamera(45, 1920 / 1080, 0.5, 2000), pitch: 0.95,
+      keys: new Set(), dragging: () => null, world: () => null, units: new Map(), hAt: () => 0, bounds: () => ({ w: 160, h: 160 }),
+      groundAt: () => null, tryStore: () => null, edgeButton: button(), panButton: button() });
+    const press = (b) => {
+      const e = { button: b, stopped: false, prevented: false, stopPropagation() { this.stopped = true; }, preventDefault() { this.prevented = true; } };
+      rig.introPress(e); return e;
+    };
+    rig.startIntro(false); assert.ok(rig.intro, 'a new match opens with the glide');
+    const left = press(0);
+    assert.ok(!rig.intro, 'a press ends the glide');
+    assert.ok(!left.stopped && !left.prevented, 'the press that ends the glide still reaches the board (selects)');
+    assert.ok(!press(0).stopped, 'later presses pass untouched');
+    rig.startIntro(false); assert.ok(press(2).stopped, 'a right-click during the glide gives no order');
+    rig.startIntro(false); assert.ok(!press(1).stopped, 'a middle press during the glide still starts a rotation');
+  } finally { Object.assign(globalThis, saved); }
+}
 // Map pings: the relay rules directly, then over the shared server harness.
 {
   const { mapPing } = await import('./server/map-pings.js');
