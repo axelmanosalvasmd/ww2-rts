@@ -5,6 +5,32 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Ground overlays restyled for a realistic modern look. The pencil-on-a-sand-table strokes, hatching and wobble are
+  gone. Everything drawn on the ground is now a thin, even, anti-aliased line with a hairline dark edge, so it reads on
+  bright and dark ground alike, and no glow, no bounce and no thick outlines.
+  - Order lines: a solid line for the current order, a dashed line for Shift-queued orders, a small filled arrowhead
+    at the end of each leg and a thin ring on each goal. Colors keep their meaning: blue move, orange attack-move,
+    white retreat, red attack, yellow dig and build. The rally point is a ring with a pole and pennant.
+  - Rings: the owner ring under each unit, the selection ring (a thin light ring over a faint wash), dashed weapon
+    range rings, the HQ ring, click and ping rings, and four corner brackets on a resource node. The ping ring on the
+    minimap is a plain circle now.
+  - Capture points: a thin ring over a faint wash, chalk while neutral and the owner's color once held. Progress is an
+    arc along the inside of the ring over a dim track, and a point held in full shows no arc. A contested point shows
+    a brass inner ring that fades slowly; a flip sends one brass ring outward. The flag no longer stretches on a flip.
+  - Strike zones and aiming: a thin outline, a faint wash and a small center mark for circles, a rectangle with
+    chevrons and a filled arrow for strips. Pending strikes fade gently instead of pulsing. Placement previews are
+    muted green and red.
+  - Mass entrenchment and its ghost: one outlined square per cell instead of plain squares, bold for the placement
+    preview and faint for the ghost of ordered work (trench green, wire brass). Fighter cover shows its airspace as a
+    ring with a faint wash.
+  - They follow ramps and cliffs: a new overlay layer (`client/overlay.js`) drapes every ring and line over the
+    terrain on the GPU from a height texture of the relief (redone around any cell that changes). Line width holds
+    when you zoom out and stays crisp when you zoom in. Draw calls went down: a selection ring and a strike zone are
+    one each (were two), the entrenchment preview is one instead of one per cell, and nothing is created per frame.
+  - Not looked at in a browser: the Classic resource node brackets, and a point flipping owner (the brass ring).
+  - Left for later: the cover preview (landing on its own branch), unit name and badge labels, the HUD panels and the
+    minimap, which another branch restyles.
+
 - Living ground: the board wears, burns and gets rained on, and nothing snaps at a tile edge any more.
   - Soft edges: a unit's speed is the average of the ground under its whole footprint, so a tank half on a road gets
     half the bonus. Cover behind a wall, house, hedge or vehicle is full within about 2 m and fades to nothing at

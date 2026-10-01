@@ -19,7 +19,7 @@ import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
 import { createPointer } from './pointer.js';
 import { pings } from './pings.js';
-import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR } from './markers.js';
+import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, aimMarker, cellLayer, coverRings, setTerrain, refreshTerrain, MOVE_COLOR } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
@@ -366,6 +366,7 @@ function startGame(m, restored = null) {
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
+  setTerrain(hAt, MW, MH); // rings, order lines and zones follow this ground on the GPU (client/overlay.js)
 
   buildStructures();
   water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
@@ -447,7 +448,11 @@ function applyCells(cells) {
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
   terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
-  if (shaped.length) { relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; } // the fog overlay follows the relief through onGeometry
+  if (shaped.length) {
+    relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; // the fog overlay follows the relief through onGeometry
+    const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
+    refreshTerrain(Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL);
+  }
   if (pieces) buildStructures();
 }
 
@@ -626,9 +631,9 @@ function applySnapshot(s) {
   }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
-  coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
-  coverGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); coverGroup.clear();
-  for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
+  coverGroup ??= coverRings(); // fighter cover rings, pooled (client/markers.js)
+  if (coverGroup.group.parent !== world) world.add(coverGroup.group);
+  coverGroup.set(s.covers ?? [], hAt);
   if (s.nodes && !nodeMarks) { props?.setNodes(s.nodes); nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; }); }
 
   syncStrikes(s.strikes);
@@ -669,24 +674,17 @@ function strikeShape(kind) {
 }
 // ring for area strikes, a long strip for a strafing run
 function aimShape(kind, color) {
-  const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
-  const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (kind === 'entrench') g.userData.tiles = []; // filled by entrenchPreview
-  else if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
-  else if (SUPPORT[kind]?.point) { const r = SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4; g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64))); }
-  else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally') {
-    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
-    g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
-  } else {
-    const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
-    g.add(flat(new THREE.PlaneGeometry(len, width)));
-    // arrow past the far end shows which way it runs
-    const tip = new THREE.Shape([new THREE.Vector2(len / 2 + 0.5, -2), new THREE.Vector2(len / 2 + 4, 0), new THREE.Vector2(len / 2 + 0.5, 2)]);
-    const arrow = flat(new THREE.ShapeGeometry(tip)); arrow.material = matl.clone(); arrow.material.opacity = 0.8;
-    g.add(arrow);
+  if (kind === 'entrench') { // the cells are filled in by entrenchPreview
+    const g = new THREE.Group(), cells = cellLayer();
+    g.add(cells.group); g.userData.cells = cells;
+    return g;
   }
-  g.userData.mat = matl;
-  return g;
+  if (UNITS[kind]?.building) return aimMarker({ len: UNITS[kind].size * CELL, width: UNITS[kind].size * CELL, arrow: false }, color);
+  if (SUPPORT[kind]?.point) return aimMarker({ r: SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4 }, color);
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally')
+    return aimMarker({ r: kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2 }, color);
+  const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
+  return aimMarker({ len, width }, color); // an arrow past the far end shows which way it runs
 }
 // paratroopers: a few canopies drifting down onto the drop
 function chutes(x, z) {
@@ -752,18 +750,12 @@ function entrenchSummary(segs) {
   return !segs.length ? `${ENTRENCH[entrenchKind]}: nothing can be dug there`
     : `${ENTRENCH[entrenchKind]}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? ` · ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
 }
-// a square on every cell the segments would dig (trench green, wire brass); the tiles are pooled on the group
-function paintTiles(group, segs, opacity) {
-  const w = placementView()?.game.w ?? 1, tiles = group.userData.tiles ??= [];
-  let n = 0;
-  for (const j of segs) for (const [c] of j.place.cells) {
-    let t = tiles[n];
-    if (!t) { t = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.86, CELL * 0.86), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); t.rotation.x = -Math.PI / 2; t.renderOrder = 2; tiles.push(t); group.add(t); }
-    const x = (c % w + 0.5) * CELL, z = (Math.floor(c / w) + 0.5) * CELL;
-    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(j.kind === 'wire' ? 0xd2a849 : 0x60e070); t.material.opacity = opacity;
-    n++;
-  }
-  for (let i = n; i < tiles.length; i++) tiles[i].visible = false;
+// an outlined square on every cell the segments would dig (trench green, wire brass); group.userData.cells is the
+// cell layer from client/markers.js, bold for the placement preview and faint for the ghost of ordered work
+function paintTiles(group, segs, ghost) {
+  const w = placementView()?.game.w ?? 1, cells = [];
+  for (const j of segs) for (const [c] of j.place.cells) cells.push({ x: (c % w + 0.5) * CELL, z: (Math.floor(c / w) + 0.5) * CELL, wire: j.kind === 'wire' });
+  group.userData.cells.set(cells, ghost);
 }
 // The ghost of your side's ordered entrenchments: what is still to dig, fainter than the placement preview. Redrawn
 // when the list changes. works: [project id, 1 for wire, x, z, dir] from the snapshot.
@@ -773,8 +765,11 @@ function drawWorks(list = []) {
   const key = list.join(';'), view = placementView();
   if (!world || !view || (key === worksKey && worksGroup?.parent === world)) return;
   worksKey = key;
-  if (worksGroup?.parent !== world) { worksGroup = new THREE.Group(); world.add(worksGroup); }
-  paintTiles(worksGroup, list.map(([, wire, x, z, dir]) => { const j = { kind: wire ? 'wire' : 'trench', x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), 0.26);
+  if (worksGroup?.parent !== world) {
+    worksGroup = new THREE.Group(); world.add(worksGroup);
+    worksGroup.userData.cells = cellLayer({ depthTest: true }); worksGroup.add(worksGroup.userData.cells.group);
+  }
+  paintTiles(worksGroup, list.map(([, wire, x, z, dir]) => { const j = { kind: wire ? 'wire' : 'trench', x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), true);
 }
 // the planned entrenchment under a ground click (a segment within 5 m), for sending more squads to it
 function worksAt(g) {
@@ -785,7 +780,7 @@ function worksAt(g) {
 // the placement preview, redrawn as the mouse moves
 function entrenchPreview(group, a, b) {
   const segs = entrenchSegments(a, b);
-  paintTiles(group, segs, 0.5);
+  paintTiles(group, segs, false);
   const text = `${entrenchSummary(segs)} · click ${aimCenter ? 'to dig' : 'where it starts'} · right-click cancels`;
   if (text !== entrenchHint) { entrenchHint = text; $('hint').textContent = text; }
 }
@@ -1296,7 +1291,7 @@ renderer.setAnimationLoop(() => {
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
-    if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
+    if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xf4dc90); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
     if (targeting === 'entrench') { if (aimCenter || g) entrenchPreview(aimMesh, aimCenter ?? g, g ?? aimCenter); }
     else if (aimCenter) {
@@ -1304,11 +1299,11 @@ renderer.setAnimationLoop(() => {
       if (g && Math.hypot(g.x - aimCenter.x, g.z - aimCenter.z) > 1.5) aimMesh.rotation.y = -Math.atan2(g.z - aimCenter.z, g.x - aimCenter.x);
     } else if (g && UNITS[targeting]?.building) {
       const f = footAt(targeting, g);
-      aimMesh.position.set(f.x, hAt(f.x, f.z), f.z); aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
+      aimMesh.position.set(f.x, hAt(f.x, f.z), f.z); aimMesh.userData.mat.color.set(f.ok ? 0x7acb82 : 0xdc4a3c);
     } else if (g) { aimMesh.position.set(g.x, hAt(g.x, g.z), g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
     if (targeting === 'dig' && (aimCenter || g)) {
       const at = aimCenter ?? g, dir = -aimMesh.rotation.y, f = footAt(fortKind, at, dir);
-      aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
+      aimMesh.userData.mat.color.set(f.ok ? 0x7acb82 : 0xdc4a3c);
     }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   for (const m of strikeMarks.values()) m.frame(m.t > 0, now);

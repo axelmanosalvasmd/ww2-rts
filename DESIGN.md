@@ -349,7 +349,7 @@ the HUD.
   - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
   - Unit markers: the class badge over each unit becomes the same military map symbol the HUD uses, drawn in the
     owner's color. Health bar, cover shield and veterancy stay.
-  - Order lines and range rings drawn like grease pencil on the table (slightly rough strokes, arrowheads on routes).
+  - Order lines, rings and zones: restyled 2026-10-01 to a realistic modern RTS look, see "Ground overlays" below.
     Colors keep their meaning: blue move, orange attack-move, white retreat, red attack, yellow dig/build.
 - Player colors (grease pencil, they read on grass, the dark strip and manila): blue `#3b73d6`, red `#cc3a2e`, chalk
   `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue against red. Gold and green are gone:
@@ -790,3 +790,33 @@ Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
   checks for queued grenade, satchel and barrage targets; ordinary target clicks and instant abilities check at once.
 - Hold fire applies to aircraft guns, anti-air damage and Flak interception. A plane's explicit attack permits
   firing only at that target. Jam recovery skips a waypoint only with a walkable route to the following waypoint.
+
+## Ground overlays (2026-10-01)
+The art direction moved from the sand table (rough "grease pencil" strokes, hatching, pencil dots) to a realistic
+modern PC RTS (Company of Heroes 3, Men of War II). Everything the game draws flat on the ground follows that:
+- Look: thin even lines with a hairline dark edge so they read on bright and dark ground, small filled arrowheads,
+  soft fills, owner colors kept. No glow, no bloom, no bouncing, no thick outlines. The only motion is a slow fade.
+- Order lines (`planLayer`): a solid line for the current order, a dashed line for Shift-queued orders and rally legs,
+  a filled arrowhead at the end of each leg and a thin ring on each goal. Blue move, orange attack-move, white retreat,
+  red attack, yellow dig and build. A rally point is a ring with a pole and pennant.
+- Rings: owner ring under every unit; selection ring (thin light ring over a faint wash); weapon range rings (thin,
+  dashed); HQ ring; click and ping rings (constant width while they grow); resource nodes get four corner brackets.
+- Capture points: a thin ring over a faint wash, chalk while neutral and the owner's color once held. Progress is an
+  arc along the inside of the ring over a dim track, and it is left out while a point is held in full. A contested
+  point shows a brass inner ring that fades slowly; a flip sends one brass ring outward, fading. The flag no longer
+  stretches.
+- Strike zones and aiming: a thin outline, a faint wash and a small center mark for circles; a rectangle with chevrons
+  along its run and a filled arrow past the far end for strips. Pending strikes fade gently. Placement previews turn
+  green or red (muted, not candy).
+- Entrenchment: one outlined square per cell, bold for the placement preview and faint for the ghost of ordered work
+  (trench green, wire brass). Fighter cover shows its airspace as a ring and a faint wash.
+- How it is drawn (`client/overlay.js`, used by `client/markers.js`): every overlay is flat geometry made of ribbons and
+  fills, and one patch of `MeshBasicMaterial` does the rest on the GPU. The vertex shader drapes it over the terrain
+  from a half-float height texture of the relief (1.25 m samples, redone around any cell that changes), so rings
+  and lines follow ramps and cliffs, move with their unit and cost nothing per frame. Line width is in meters but
+  never under a pixel count, so it holds zoomed out and stays crisp zoomed in. The fragment shader anti-aliases the
+  edge over one pixel, draws the dark hairline and cuts dashes with soft ends, with no textures. Order lines reuse two
+  growable buffers rewritten each snapshot; the entrenchment cells do the same. Draw calls: a unit's selection ring is
+  one (was two), a strike zone one (was two), and the entrenchment preview one instead of one per cell.
+- Not restyled here: unit name and badge labels, the HUD panels and the minimap (another branch), and the cover preview
+  (landing separately).
