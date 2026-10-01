@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Three Crossroads</title>
+<!-- inline icon: three roads meeting at a brass node on the HUD's olive strip. With a declared icon, browsers skip /favicon.ico -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%2322251b'/%3E%3Cpath d='M16 16V4M16 16l10.4 6M16 16L5.6 22' stroke='%23d2a849' stroke-width='3.2' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='16' r='4.2' fill='%23d2a849'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Stardos+Stencil:wght@400;700&display=swap" rel="stylesheet">
@@ -46,7 +48,7 @@
   /* ---------- map editor (/?edit): only takes the fonts and colors ---------- */
   #editor { position: fixed; top: 10px; left: 10px; width: 300px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; z-index: 5; font-size: 13px; }
   #editor button { padding: 6px 8px; }
-  #edBrush { flex: none; }
+  #edBrush, #edPlayers { flex: none; }
   #editor h2 { margin: 0; color: var(--brass); font-size: 22px; }
   #editor label { display: grid; gap: 3px; }
   .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
@@ -110,10 +112,13 @@
   #top { position: absolute; top: var(--gap); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none !important; }
   #top > * { pointer-events: auto; }
   #scores { max-width: calc(100vw - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px; }
+  /* the top panels are solid: world labels (+1.5 MP/s) and units must not read through them */
+  #util, #scores, #status, #econ { background: #22251b; }
   #scores > div { padding: 0 12px; min-width: 0; }
   #scores > div + div { border-left: 1px solid var(--edge); }
-  .sc-lead { flex: none; width: 150px; display: grid; align-content: center; justify-items: center; text-align: center; }
-  .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); }
+  /* hud.js sets --lead to the clock block width: wider in Assault, whose mode line is longer, and it never wraps */
+  .sc-lead { flex: none; width: var(--lead, 150px); display: grid; align-content: center; justify-items: center; text-align: center; }
+  .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); white-space: nowrap; }
   .sc-clock { font-size: 28px; line-height: 1.05; color: var(--brass); }
   .sc-team { flex: none; width: clamp(174px, calc((100vw - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
   .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 22px; }

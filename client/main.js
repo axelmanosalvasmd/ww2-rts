@@ -98,7 +98,7 @@ connection.on('lobby', renderLobby);
 connection.on('start', receiveStart);
 connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
 connection.on('ping', (m) => pings.receive(m));
-connection.on('deny', (m) => feedback.show(denySentence(m.reason)));
+connection.on('deny', (m) => feedback.show(denySentence(m.reason, m.cmd)));
 connection.on('pong', (m) => { if (Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c); });
 connection.on('pause', receivePause);
 connection.on('retry', ({ left, reason }) => {
@@ -927,7 +927,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
-    if (!aimCenter) { aimCenter = g; $('hint').textContent = 'Move the mouse to rotate · click to launch'; blip(560); return; }
+    if (!aimCenter) { aimCenter = g; $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
     if (kind === 'dig') {
       // Shift queues the dig behind the squad's orders (paid when it starts) and keeps the placement armed

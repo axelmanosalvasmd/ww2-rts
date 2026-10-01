@@ -9,7 +9,7 @@ import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBu
 import { symbolSVG } from './symbols.js';
 import { unitRole } from './unit-roles.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
-import { availability } from './availability.js';
+import { availability, cooldownSeconds } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 
 const $ = (id) => document.getElementById(id);
@@ -138,7 +138,7 @@ export function createHud(ctx) {
     for (const b of $('support').children) {
       const k = b.dataset.k, cd = s.sup?.[k] ?? 0, { cur, cost } = supCost(s, k);
       setAvailability(b, check({ t: 'support', kind: k }));
-      setText(b.lastElementChild, cd > 0 ? `${cd}s` : `${cost ?? '?'} ${cur === 'mun' ? 'Mun' : 'MP'}`);
+      setText(b.lastElementChild, cd > 0 ? `${cooldownSeconds(cd)}s` : `${cost ?? '?'} ${cur === 'mun' ? 'Mun' : 'MP'}`);
     }
   }
 
@@ -160,7 +160,7 @@ export function createHud(ctx) {
           `<div class="sc-val"><span class="u0"></span><span class="num"></span><span class="u"></span></div></div>`;
       }).join('');
       // the stylesheet sizes each team block from the team count (and the clock block, if any)
-      el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', lead ? '150px' : '0px');
+      el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', !lead ? '0px' : kind === 'assault' ? '216px' : '150px');
       score = { lead: el.querySelector('.sc-lead'), teams: [...el.querySelectorAll('.sc-team')].map((b, k) => ({
         t: tids[k], mem: members(tids[k]), role: b.querySelector('.sc-role'), bar: b.querySelector('.bar'), fill: b.querySelector('.bar > div'),
         u0: b.querySelector('.u0'), num: b.querySelector('.sc-val .num'), u: b.querySelector('.sc-val .u'),
@@ -304,7 +304,9 @@ export function createHud(ctx) {
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (UNITS[a]) {
-        const us = sel.filter((v) => v.type === a), ready = us.filter((v) => !v.cd).length, cd = Math.min(...us.map((v) => v.cd || 0));
+        // same squads the reason sentence counts: retreating squads cannot use the ability
+        const all = sel.filter((v) => v.type === a), us = all.some((v) => !(v.flags & 1)) ? all.filter((v) => !(v.flags & 1)) : all;
+        const ready = us.filter((v) => !v.cd).length, cd = cooldownSeconds(Math.min(...us.map((v) => v.cd || 0)));
         const mun = abCost(s, UNITS[a].ab);
         result = check({ t: 'ability', unit: a }); txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
         setText(b.querySelector('kbd'), a === fType ? label('ability') : '');
