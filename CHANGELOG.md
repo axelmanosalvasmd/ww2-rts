@@ -17,6 +17,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - No extra draw calls or triangles: a tank is still 2 draws, a rifle squad 5, one faction's full lineup 57.
     Graphics Low turns the textures off (models look as before and cost nothing more), and so does the moment before
     they finish loading.
+  - Fixed: the grime turned dark tracks, road wheels and tires into an orange-tan band at the lower hull (reported
+    from the medium and light tank models). The dust film and mud clumps are now greyer, never much brighter than
+    the part under them, sparser, and held at about a third on track steel, rubber and gunmetal; vehicles gather mud
+    up to 0.75 m instead of 0.9 m and track links show less rust.
   - Soldier uniforms on the current models are more muted (olive drab, field grey, Soviet khaki) and helmets take
     less of the owner's color.
   - Model building: a part can say what it is made of (`part(..., mat)`, `merge()` items with `mat`, `tag()`; names in
@@ -30,6 +34,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Left for later: the model families still have to tag their parts (faces and the infantry base as plain, cast
     turrets, tracks built without `track()`, canvas, wood); until then those parts take the default (painted armor on
     vehicles, wool on soldiers). The airfield uses the near-flat aircraft paint. Graphics Low has no texture at all.
+    Found: the room check "a new match without the old result" (a draw, then a restart) failed once in four
+    `node test.js` runs and passed on the rerun; it does not touch the models and was left as is.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

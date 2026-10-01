@@ -70,7 +70,7 @@ function part(geo, paint, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0, mat) {
 // mud (in the model's own units above its feet) the mud builds up, dust is the light grime everywhere above, most
 // the most anywhere. Planes have none (client/aircraft.js).
 export const LOOKS = {
-  vehicle: { mat: 'armor-paint', mud: 0.9, dust: 0.18, most: 0.95 },
+  vehicle: { mat: 'armor-paint', mud: 0.75, dust: 0.18, most: 0.9 },
   gun: { mat: 'armor-paint', mud: 0.6, dust: 0.14, most: 0.85 },
   soldier: { mat: 'wool', mud: 0.3, dust: 0.2, most: 0.6 },
   structure: { mat: 'armor-paint', mud: 0.6, dust: 0.1, most: 0.8 },
