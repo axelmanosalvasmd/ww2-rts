@@ -9,19 +9,12 @@
 // Baked geometry is cached per look, so the second rifle squad of a color reuses the first one's geometry.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
+import { soldier } from './models/infantry.js';
 
-// unit-sized shapes, scaled per part
+// unit-sized shapes, scaled per part (body: the corpses; client/models/infantry.js builds the soldiers)
 const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
-  body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), helmet: new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
-  plane: new THREE.PlaneGeometry(1, 1), ball: new THREE.SphereGeometry(1, 12, 8),
-  base: new THREE.CylinderGeometry(0.8, 1, 1, 16), // a soldier's round base, the narrower top makes the bevel
-};
-// the far-away soldier: the same shapes with far fewer faces
-const LOW = {
-  box: GEO.box, cyl: new THREE.CylinderGeometry(1, 1, 1, 6),
-  body: new THREE.CapsuleGeometry(0.3, 0.8, 1, 6), helmet: new THREE.SphereGeometry(0.27, 6, 2, 0, Math.PI * 2, 0, Math.PI / 2),
-  ball: new THREE.SphereGeometry(1, 6, 4), base: new THREE.CylinderGeometry(0.8, 1, 1, 8),
+  body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), plane: new THREE.PlaneGeometry(1, 1),
 };
 
 // barracks roof: a triangle pushed out along the hut
@@ -31,9 +24,7 @@ const ROOF = (() => {
   return g;
 })();
 
-const DARK = 0x2a2a24, GEAR = 0x2c2b26, WOOD = 0x5e4226, SKIN = 0xc8a07a, BASE = 0x33401f;
-// soldiers are painted like miniatures: warm, saturated uniforms per faction (olive drab, field grey, khaki)
-const UNIFORM = [0x6f7240, 0x5e6554, 0x867448];
+const DARK = 0x2a2a24, GEAR = 0x2c2b26;
 // one material for every plain-colored part; the color sits in the geometry
 export const PAINT = new THREE.MeshLambertMaterial({ vertexColors: true });
 const colors = new Map();
@@ -156,31 +147,6 @@ const SLOTS = {
   ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
   conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
 };
-
-// headgear per faction: round M1 (USA), flared Stahlhelm (Germany), tall SSh-40 (USSR); conscripts wear a pilotka cap
-// helmets get a lighter crown (light), like a dry-brushed highlight: a smaller dome poking out of the top
-function headgear(man, fac, type, c, light, G = GEO) {
-  if (type === 'conscript') { man.add(part(G.box, c, 0.38, 0.13, 0.22, 0, 1.2, 0)); return; }
-  const [sx, sy, y] = fac === 1 ? [1.05, 1, 1.28] : fac === 2 ? [1, 1.3, 1.26] : [1.12, 0.95, 1.28];
-  man.add(part(G.helmet, c, sx, sy, sx, 0, y, 0), part(G.helmet, light, sx * 0.5, sy * 0.36, sx * 0.5, 0, y + 0.27 * sy * 0.7, 0));
-  if (fac === 1) man.add(part(G.cyl, c, 0.33, 0.07, 0.33, 0, 1.25, 0));
-}
-
-// what each class carries, so squads read apart even without their badges (+x = forward)
-function gear(man, type, i, f) {
-  if (type === 'rifle' || type === 'conscript') man.add(part(GEO.box, WOOD, 1.0, 0.07, 0.07, 0.28, 0.85, 0.2).rotateZ(0.6));
-  else if (type === 'ranger' && i % 3 !== 1) man.add(part(GEO.box, GEAR, 0.6, 0.1, 0.08, 0.32, 0.82, 0.2).rotateZ(0.3)); // SMG
-  else if (type === 'sniper') {
-    man.add(part(GEO.box, 0x3c4a26, 0.75, 0.55, 0.85, -0.1, 0.95, 0)); // ghillie cape
-    if (i === 0) man.add(part(GEO.box, WOOD, 1.5, 0.06, 0.06, 0.4, 0.9, 0.2).rotateZ(0.25), part(GEO.box, GEAR, 0.35, 0.09, 0.09, 0.42, 1.0, 0.2).rotateZ(0.25)); // long rifle and scope
-  } else if (type === 'engineer') {
-    // pack and a shovel on the back
-    man.add(part(GEO.box, f.vehicle, 0.3, 0.45, 0.5, -0.32, 0.95, 0), part(GEO.cyl, WOOD, 0.03, 1.1, 0.03, -0.4, 1.05, 0.2), part(GEO.box, GEAR, 0.06, 0.3, 0.22, -0.4, 1.65, 0.2));
-  } else if ((type === 'mg' || type === 'mortar') && i > 0) man.add(part(GEO.box, 0x4a5030, 0.3, 0.25, 0.22, -0.05, 0.55, 0.32)); // ammo box
-  if (type === 'ranger' && i % 3 === 1) man.add(part(GEO.cyl, GEAR, 0.07, 1.3, 0.07, 0, 1.1, 0.25).rotateZ(1.3)); // bazooka on the shoulder
-}
-// which gear a soldier carries, for the bake cache
-const kit = (type, i) => (type === 'ranger' ? i % 3 === 1 : type === 'sniper' ? i === 0 : type === 'mg' || type === 'mortar' ? i > 0 : false);
 
 // tank silhouettes: [hull l,h,w], [turret l,h,w, x, z], barrel [length, thickness], sloped glacis
 const TANKS = {
@@ -356,18 +322,12 @@ export function buildModel(v, root, f, fac, def) {
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else {
-    const uniform = UNIFORM[fac] ?? f.uniform, tint = new THREE.Color(uniform).lerp(new THREE.Color(f.color), 0.55), scale = type === 'conscript' ? 1.25 : 1.35;
-    const helmet = tint.getHex(), light = tint.lerp(new THREE.Color(0xffffff), 0.3).getHex();
+    const scale = type === 'conscript' ? 1.25 : 1.35;
     SLOTS[type].forEach(([x, z], i) => {
-      const raw = new THREE.Group(), far = new THREE.Group();
-      // the base goes first: levelBase() finds its vertices at the start of the merged soldier
-      raw.add(part(GEO.base, BASE, 0.36, 0.07, 0.36, 0, 0.035, 0), part(GEO.body, uniform, 1, 1, 1, 0, 0.72, 0), part(GEO.ball, SKIN, 0.19, 0.19, 0.19, 0, 1.24, 0));
-      headgear(raw, fac, type, helmet, light);
-      gear(raw, type, i, f);
-      // far away: base, body, head and helmet only
-      far.add(part(LOW.base, BASE, 0.36, 0.07, 0.36, 0, 0.035, 0), part(LOW.body, uniform, 1, 1, 1, 0, 0.72, 0), part(LOW.ball, SKIN, 0.19, 0.19, 0.19, 0, 1.24, 0));
-      headgear(far, fac, type, helmet, light, LOW);
-      const hi = bakeMeshes(raw, `${key}|man|${kit(type, i)}`, false, GEO.base.attributes.position.count), lo = bakeMeshes(far, `${key}|far`, false, LOW.base.attributes.position.count);
+      // client/models/infantry.js builds the figure, near and far; the base goes first, so levelBase() finds its
+      // vertices at the start of the merged soldier
+      const s = soldier(type, fac, i, f), n = (g) => g.children[0].userData.geo.attributes.position.count;
+      const hi = bakeMeshes(s.near, `${key}|man|${s.kit}`, false, n(s.near)), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, n(s.far));
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down
       const man = new THREE.Group(), pose = new THREE.Group();
