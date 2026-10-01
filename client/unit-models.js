@@ -66,7 +66,7 @@ function part(geo, paint, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0, mat) {
 // the most anywhere. Planes have none (client/aircraft.js).
 export const LOOKS = {
   vehicle: { mat: 'armor-paint', mud: 0.75, dust: 0.18, most: 0.9 },
-  gun: { mat: 'armor-paint', mud: 0.6, dust: 0.14, most: 0.85 },
+  gun: { mat: 'armor-paint', mud: 0.22, dust: 0.12, most: 0.7 },
   soldier: { mat: 'wool', mud: 0.3, dust: 0.2, most: 0.6 },
   structure: { mat: 'armor-paint', mud: 0.6, dust: 0.1, most: 0.8 },
 };
@@ -318,14 +318,14 @@ export function buildModel(v, root, f, fac, def) {
     });
     v.squad = { w: [1, 0, 0, 0], far: false };
     // the weapon of a gun squad: one merged mesh. Guns that traverse (at, flak) are the whole of v.turret, with the muzzle in v.fxTip
+    // Each also has a cheap far version, shown with the far-away soldiers (animate swaps them).
     const gm = gunModel(type, fac, f);
-    if (gm?.pivot) {
-      v.turret = new THREE.Group(); v.turret.position.set(...gm.pivot);
-      v.turret.add(part(gm.geo, 0xffffff)); v.fxTip = gm.tip;
-      root.add(bake(v.turret, key + '|turret', true, 'gun'));
-    } else if (gm) {
-      const gun = new THREE.Group(); gun.add(part(gm.geo, 0xffffff));
-      root.add(bake(gun, key + '|gun', true, 'gun'));
+    if (gm) {
+      const near = new THREE.Group(), far = gm.far ? new THREE.Group() : null, name = gm.pivot ? '|turret' : '|gun';
+      near.add(part(gm.geo, 0xffffff)); bake(near, key + name, true, 'gun');
+      if (far) { far.add(part(gm.far, 0xffffff)); bake(far, key + name + 'far', true, 'gun'); far.visible = false; v.squad.guns = { hi: near, lo: far }; }
+      if (gm.pivot) { v.turret = new THREE.Group(); v.turret.position.set(...gm.pivot); v.turret.add(near, ...(far ? [far] : [])); v.fxTip = gm.tip; root.add(v.turret); }
+      else { const both = new THREE.Group(); both.add(near, ...(far ? [far] : [])); root.add(both); } // one child of the root, so the viewer's solo switch leaves the swap alone
     }
   }
 }
@@ -340,6 +340,7 @@ export function animate(v, dt, eye) {
   if (far !== sq.far) {
     sq.far = far;
     for (const man of v.models) { for (const m of man.userData.hi) m.visible = !far; for (const m of man.userData.lo) m.visible = far; }
+    if (sq.guns) { sq.guns.hi.visible = !far; sq.guns.lo.visible = far; }
   }
   const goal = postureOf(v.supp ?? 0, v.flags ?? 0, v.cover), w = sq.w, step = dt / POSTURE.blend;
   let moved = false;
