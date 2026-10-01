@@ -1,8 +1,9 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf, airborne } from './sim.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const SUPPORT_PLANE = (kind) => kind === 'strafe' || kind === 'bombing' || kind === 'dive' || kind === 'para';
 
 function houseNear(g, p, r) {
   let best = null, bd = Infinity;
@@ -81,7 +82,11 @@ export function think(g, slot, opts = {}) {
   const seenGarrison = [...me.visible].some(id => g.units.get(id)?.garrison >= 0);
   const seenDugIn = [...me.visible].some(id => { const e = g.units.get(id); return e && !allied(g, e.owner, slot) && (e.type === 'mg' || e.type === 'at') && inCover(g, e); });
   const tanks = count('tank') + count('medium') + count('tiger');
-  const want = seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : tanks < 1 && mine.length >= 4 ? 'tank'
+  // air: enemy planes it can see now (they're visible from far away), its own anti-air and planes
+  const enemyPlanes = [...me.visible].filter(id => g.units.get(id)?.air).length, flakN = count('flak') + count('flaktrack');
+  const airWant = enemyPlanes && flakN < Math.min(3, Math.ceil(enemyPlanes / 2)) ? (trains('flaktrack') && tanks ? 'flaktrack' : 'flak')
+    : enemyPlanes > count('fighter') && trains('fighter') ? 'fighter' : count('attacker') < 2 && mine.length >= 8 && trains('attacker') ? 'attacker' : null;
+  const want = airWant ? airWant : seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : tanks < 1 && mine.length >= 4 ? 'tank'
     : (seenDugIn || mine.length >= 6) && count('mortar') < 1 ? 'mortar' : seenInf >= 6 && count('sniper') < 1 && mine.length >= 5 ? 'sniper'
     : count('armoredcar') < 1 && mine.length >= 7 ? 'armoredcar' : tanks < 2 && mine.length >= 8 ? 'tank'
     : count('mg') * 2 < count('rifle') || (rule(1) && seenInf >= 6 && count('mg') < 3) ? 'mg' : 'rifle'; // many infantry seen: more MGs
@@ -99,7 +104,8 @@ export function think(g, slot, opts = {}) {
   if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(g, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
   if (classic && count('engineer') < (g.nodes.some(n => !n.depot) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
-  if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(g, buy).mp) command(g, slot, { t: 'buy', unit: buy });
+  // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
+  for (let k = 0; k < (g.army?.pop > 1 ? 4 : 1); k++) if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(g, buy).mp) command(g, slot, { t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
   const pointOf = (pos) => g.points.findIndex(p => d(pos, p) <= CFG.pointRadius);
@@ -122,6 +128,13 @@ export function think(g, slot, opts = {}) {
   };
   const call = (kind, at, dir) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z, dir });
   // bombs for tanks and for squads holed up in houses
+  // an enemy air strike announced near my units: put fighter cover over it (cover arrives in 2s, strikes take 3-6s)
+  const incoming = g.strikes.find(q => !q.live && !allied(g, q.owner, slot) && SUPPORT_PLANE(q.kind) && mine.some(u => d(u, q) < 25));
+  if (incoming && can('cover')) call('cover', incoming);
+  const heavy = enemies.find(e => e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'flaktrack');
+  if (heavy && can('dive')) call('dive', heavy);
+  const dropZone = g.points.find(q => q.owner >= 0 && !allied(g, q.owner, slot) && teamSees(g, me.team, q));
+  if (dropZone && mine.length >= 6 && can('para')) call('para', dropZone);
   const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
   if (bombTarget && can('bombing')) call('bombing', bombTarget);
   else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
@@ -161,7 +174,20 @@ export function think(g, slot, opts = {}) {
   const theirVal = target?.owner === undefined ? 0 : recent.filter(e => now - e.t < CFG.classic.aiSeenWindow && g.players[e.owner].team === g.players[target.owner].team).reduce((a, e) => a + e.val, 0);
   const strongEnough = !rule(3) || myVal > CFG.classic.aiAttackRatio * theirVal;
 
+  // planes: a ready ground-attack plane goes for the nearest enemy tank or gun it can see near the army; a ready fighter
+  // hunts enemy planes it can see, else covers the army. They come home on their own when fuel or ammo runs out.
+  const army = mine.filter(u => !u.air), front = army.length ? { x: army.reduce((a, u) => a + u.x, 0) / army.length, z: army.reduce((a, u) => a + u.z, 0) / army.length } : me.spawn;
+  for (const u of mine.filter(u => u.air && u.air.state === 'base')) {
+    if (u.type === 'attacker') {
+      const t = enemies.filter(e => !e.air && !UNITS[e.type].building && (!UNITS[e.type].infantry || e.type === 'at' || e.type === 'flak' || e.type === 'mortar')).sort((a, b) => d(a, front) - d(b, front))[0];
+      if (t && d(t, front) < 120) command(g, slot, { t: 'attack', ids: [u.id], target: t.id });
+    } else {
+      const e = enemies.filter(e => e.air).sort((a, b) => d(a, front) - d(b, front))[0];
+      command(g, slot, { t: 'move', orders: [[u.id, (e ?? front).x, (e ?? front).z]] });
+    }
+  }
   for (const u of mine) {
+    if (u.air) continue; // planes are flown above
     if (busy.has(u.id)) continue;
     const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = d(u, me.spawn) <= CFG.reinforceRadius;
     if (u.retreating) continue;
@@ -257,7 +283,9 @@ function buildEconomy(g, slot, engineers, needArmor) {
   const has = (t, done) => own.some(b => b.type === t && (!done || b.built >= 1));
   const hq = own.find(b => b.type === 'hq') ?? me.spawn, cx = g.w * CELL / 2, cz = g.h * CELL / 2;
   const depots = own.filter(b => b.type === 'depot').length, free = g.nodes.filter(n => !n.depot);
-  const next = depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool' : free.length ? 'depot' : null;
+  const planesNear = [...g.units.values()].some(e => e.air && airborne(e) && !allied(g, e.owner, slot) && d(e, hq) < 60);
+  const next = depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
+    : planesNear && own.filter(b => b.type === 'flakpos').length < 2 ? 'flakpos' : free.length ? 'depot' : has('motorpool', true) && !has('airfield') && depots >= 3 ? 'airfield' : null;
   const taken = new Set(engineers.map(u => u.aiNode).filter(n => n !== undefined));
   for (const u of engineers) {
     if (u.retreating || u.build) continue;
@@ -271,7 +299,7 @@ function buildEconomy(g, slot, engineers, needArmor) {
       else if (!u.path.length) command(g, slot, { t: 'move', orders: [[u.id, pick.n.x, pick.n.z]] });
     } else if (next) {
       // behind the HQ's front: a little toward the map center, off to one side
-      const a = Math.atan2(cz - hq.z, cx - hq.x) + (next === 'barracks' ? 0.9 : -0.9), spot = siteNear(g, hq.x + Math.cos(a) * 16, hq.z + Math.sin(a) * 16, UNITS[next].size);
+      const a = Math.atan2(cz - hq.z, cx - hq.x) + ({ barracks: 0.9, motorpool: -0.9, airfield: Math.PI, flakpos: (Math.random() - 0.5) * 2 }[next] ?? 0), spot = siteNear(g, hq.x + Math.cos(a) * 16, hq.z + Math.sin(a) * 16, UNITS[next].size);
       if (spot && me.mp >= UNITS[next].cost) command(g, slot, { t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
     }
   }

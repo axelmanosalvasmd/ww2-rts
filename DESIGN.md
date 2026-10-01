@@ -89,6 +89,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
 
 ## Command & readability (slice after destruction)
+- Recruitment cards and tooltips share role descriptions, including Flak's role against enemy air support.
+  A unit without role copy shows its name in both the buy bar and Classic training cards.
 - Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
   Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).
 - Attack-move: G then click, or Ctrl+right-click. Units halt to fight what's in range, then carry on.
@@ -214,6 +216,27 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   Open question: the side that's ahead gets the mortar and armored car first, so games are more one-sided.
 - Classic balance with Fuel and the new units (30 per map): 74% decided before Sudden Death (23/25/19 of 30), median 15.9
   (default), 18.1 (River Towns), 23.2 min (Six Fronts, long), faction wins 24/33/31 with 2 draws.
+
+## Aviation (2026-10-01, all modes)
+- Off-map air support adds Dive Bomber, Paratroopers and Fighter Cover (point supports, one click). Support planes
+  (recon, strafe, bombing, dive, paratroopers) can be shot down on arrival: fighter cover always (and is used up; never
+  recon), each flak in range rolls its chance (flak gun / mobile flak 35%, emplacement 45%).
+- Commandable planes fly sorties (not hovering units): base -> out -> on station (50s fuel, or ammo for the
+  ground-attack plane) -> home -> rearm 30s. One altitude, no collisions, no terrain. Base = the nearest own Airfield
+  in Classic, else an off-map airbase 40 m out past the HQ. No air cap (the user asked for strong counters instead):
+  anti-air is continuous damage per second (flak 25, mobile flak 25, emplacement 40, fighter 30, MG 5) and planes count
+  toward pop. Ground weapons can't target planes; blasts and strafing runs don't reach them.
+- Visibility: an airborne plane is visible to anyone within 60 m with no line of sight; planes see 40 m below; planes at
+  base are invisible and untouchable.
+- Kill bounty (all modes): 20% of the dead unit's cost to the enemy who landed the last hit. It nudges games toward
+  the winner of fights (Conquest closeness 0.66 -> 0.63, River Towns 0.63 -> 0.57) but adds lead changes.
+- Classic pop cap 24: the bounty made leaders bank MP at 20.
+
+## Army size (lobby setting)
+- Standard / Large / Massive: unit limit x1 / x2.5 / x5 and every income x1 / x3 / x6 (`CFG.armies`). Income has to grow
+  more than the limit, or armies never fill it (Massive at 3.5x income: 98 units with 6 AIs; at 6x: ~240 Conquest,
+  ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
+  Browser cost at 250+ units hasn't been measured on the friends' PCs.
 
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD

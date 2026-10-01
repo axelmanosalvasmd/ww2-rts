@@ -15,6 +15,13 @@ export const CFG = {
   retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
   // incoming accuracy/suppression multipliers; blasts only care about trenches
   coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
+  // planes: seen from this far with no line of sight; time on station (fuel); rearm time at base; circling radius;
+  // how far a fighter looks for enemy planes; hp share at which a plane turns for home; off-map airbase distance
+  // kill bounty: whoever lands the killing blow gets this share of the dead unit's (or building's) cost in MP
+  bounty: 0.2,
+  // army size, picked in the lobby: multiplies the unit limit and every income (MP, Munitions, Fuel, starting MP)
+  armies: { standard: { pop: 1, income: 1 }, large: { pop: 2.5, income: 3 }, massive: { pop: 5, income: 6 } },
+  air: { seeRange: 60, station: 50, rearm: 30, orbit: 18, seek: 60, bail: 0.35, offmap: 40 },
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
   terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
@@ -31,7 +38,7 @@ export const CFG = {
   // this share of its price per second, off the income (never below minInc)
   classic: { time: 1500, mpStart: 200, trickle: 3, homeRate: 2.5, contestedFuel: 1.5, hqFuel: 0.5, upkeep: 0.0008, minInc: 0.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
     // a bigger army than Conquest (the economy grows), and Sudden Death: Production Buildings lose decay x max hp per second
-    popCap: 20, decay: 0.01,
+    popCap: 24, decay: 0.01,
     // adaptive AI: attack a base only with an army worth this much more than the enemy it saw in the last window seconds
     aiAttackRatio: 1.1, aiSeenWindow: 30 },
 };
@@ -68,6 +75,26 @@ UNITS.rocket = { name: 'Rocket Launcher', cost: 250, models: 1, hpPer: 160, spee
   ab: { id: 'barrage', name: 'Rocket Barrage', cd: 45, range: 70 } };
 
 // Mortar team: lobs one shell at anything its side can see (no line of sight needed); out-ranges MGs, breaks dug-in squads.
+// Flak gun: a towed 20mm cannon. Its job is the sky (aa: shoot-down chance against passing support planes, damage per
+// second against planes on station); on the ground it shreds infantry at short range but can't hurt tanks.
+UNITS.flak = { name: 'Flak Gun', cost: 200, models: 3, hpPer: 20, speed: 2.5, radius: 1.6, vision: 36, infantry: true,
+  w: { range: 30, interval: 0.3, inf: 3, veh: 0, accInf: 0.35, accVeh: 0, supp: 6, setup: 2 },
+  aa: { range: 45, dps: 25, chance: 0.35, setup: true },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+// Planes fly sorties from an airfield (Classic) or an off-map airbase behind the HQ: out to a mission, circling it while
+// fuel lasts, home to rearm. They fly over everything at one height; only anti-air (aa) and fighters can hurt them.
+UNITS.fighter = { name: 'Fighter', cost: 280, models: 1, hpPer: 200, speed: 20, radius: 2, vision: 40, infantry: false, air: true, role: 'fighter', ammo: 60,
+  w: { range: 22, interval: 0.6, inf: 3, veh: 0, accInf: 0.3, accVeh: 0, supp: 8, moveFire: 1 },
+  aa: { range: 30, dps: 30 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+UNITS.attacker = { name: 'Ground-attack Plane', cost: 340, models: 1, hpPer: 280, speed: 15, radius: 2.4, vision: 40, infantry: false, air: true, role: 'attack', ammo: 8,
+  w: { range: 24, interval: 2.5, inf: 25, veh: 90, accInf: 0.5, accVeh: 0.6, supp: 40, moveFire: 1 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+// Mobile flak (M16 half-track / Wirbelwind / ZSU): the flak gun's fire on wheels, so armies bring their own air cover.
+UNITS.flaktrack = { name: 'Mobile Flak', cost: 260, models: 1, hpPer: 240, speed: 6, radius: 2.2, vision: 38, infantry: false,
+  w: { range: 30, interval: 0.3, inf: 3, veh: 1, accInf: 0.35, accVeh: 0.3, supp: 6, moveFire: 0.6 },
+  aa: { range: 45, dps: 25, chance: 0.35 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
 UNITS.mortar = { name: 'Mortar Team', cost: 180, models: 3, hpPer: 20, speed: 3, radius: 1.4, vision: 30, infantry: true,
   w: { range: 50, minRange: 12, interval: 8, setup: 2, inf: 24, veh: 8, accInf: 1, accVeh: 1, supp: 35,
     salvo: true, rockets: 1, spread: 3.5, blast: 3, terrain: 60, antiGarrison: 1.2, flight: 1.5, every: 0.1 },
@@ -99,6 +126,7 @@ UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, models: 7, hpPer: 
   w: { range: 24, interval: 1.8, inf: 2.2, veh: 0.3, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
   ab: { id: 'ura', name: 'Ura!', cd: 35, dur: 6, speed: 1.6 } };
 UNITS.rifle.garrisons = UNITS.mg.garrisons = true;
+UNITS.mg.aa = { range: 30, dps: 5, setup: true }; // an MG can fire at low planes too, a little
 // Assault mode's objective: an immobile concrete bunker with an MG slit. Direct fire does 25%, explosives full damage.
 UNITS.bunker = { name: 'Command Bunker', faction: -1, cost: 0, models: 1, hpPer: 3000, speed: 0, radius: 3, vision: 40, infantry: false, structure: true,
   w: { range: 36, interval: 0.4, inf: 3, veh: 0.5, accInf: 0.5, accVeh: 0.4, supp: 8 },
@@ -113,13 +141,15 @@ const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, st
 // makes = what it trains; needs = a finished building you must own first
 UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
 UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
-UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'ranger', 'conscript'] });
-UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'armoredcar', 'tank', 'medium', 'rocket', 'tiger'] });
-export const BUILDABLE = ['depot', 'barracks', 'motorpool'];
+UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'flak', 'ranger', 'conscript'] });
+UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'armoredcar', 'flaktrack', 'tank', 'medium', 'rocket', 'tiger'] });
+UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3, vision: 30, size: 3, buildTime: 40, produces: true, needs: 'motorpool', makes: ['fighter', 'attacker'] });
+UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
+export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos'];
 // Classic: seconds to train each unit at its building
-for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, mortar: 20, sniper: 20, ranger: 20, at: 22, armoredcar: 25, rocket: 30, tank: 35, medium: 40, tiger: 50 })) UNITS[t].train = s;
+for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, ranger: 20, at: 22, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, rocket: 30, tank: 35, medium: 40, tiger: 50 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
-for (const [t, mp, fuel] of [['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
+for (const [t, mp, fuel] of [['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
 export const priceOf = (g, t) => (g.mode?.kind === 'classic' ? { mp: UNITS[t].classicCost ?? UNITS[t].cost, fuel: UNITS[t].fuel ?? 0 } : { mp: UNITS[t].cost, fuel: 0 });
 export const UNIT_TYPES = Object.keys(UNITS);
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
@@ -134,7 +164,14 @@ export const SUPPORT = {
   smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, len: 36, width: 14, clouds: 5, cloud: 7, dur: 20 },
   // a stick of heavy bombs along the line: flattens houses, big craters, deadly to tanks
   bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, dig: 1, inf: 60, veh: 150, supp: 90, terrain: 400 },
+  // point supports (one click, no direction): a precise single heavy bomb, a squad dropped behind the lines,
+  // and fighters that intercept the next enemy air strike over the area (never recon)
+  dive: { name: 'Dive Bomber', cost: 180, cd: 75, delay: 5, point: true, blast: 5, dig: 1, inf: 80, veh: 400, supp: 90, terrain: 500 },
+  para: { name: 'Paratroopers', cost: 260, cd: 90, delay: 6, point: true, unit: 'rifle' },
+  cover: { name: 'Fighter Cover', cost: 120, cd: 90, delay: 2, point: true, dur: 60, radius: 40 },
 };
+// which supports arrive by plane (flak and fighter cover can shoot those down)
+for (const k of ['recon', 'strafe', 'bombing', 'dive', 'para']) SUPPORT[k].plane = true;
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
 
 // Field fortifications infantry can build (the dig command), laid across the line the player draws.
@@ -161,6 +198,7 @@ const SUPPORT_SRC = new Set(Object.values(SUPPORT));
 // Classic prices support in Munitions (mun) instead of manpower
 Object.assign(SUPPORT.recon, { mun: 25 }); Object.assign(SUPPORT.artillery, { mun: 60 }); Object.assign(SUPPORT.strafe, { mun: 80 });
 Object.assign(SUPPORT.smoke, { mun: 20 }); Object.assign(SUPPORT.bombing, { mun: 100 });
+Object.assign(SUPPORT.dive, { mun: 70 }); Object.assign(SUPPORT.para, { mun: 90 }); Object.assign(SUPPORT.cover, { mun: 40 });
 // Classic: unit abilities cost Munitions on top of their cooldown
 export const AB_MUN = { grenade: 15, suppress: 10, ap: 15, smoke: 10, satchel: 30, ura: 10, barrage: 25 };
 export const abCost = (g, ab) => (g.mode?.kind === 'classic' ? ab.mun ?? AB_MUN[ab.id] ?? 0 : 0);
@@ -172,7 +210,9 @@ function payAb(g, u) {
   p.mun -= c;
   return true;
 }
-export const popCap = (g) => (g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap);
+// units a player fields plus what's queued in their buildings (planes count too)
+export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue?.length ?? 0) : 1) : 0), 0);
+export const popCap = (g) => Math.round((g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap) * (g.army?.pop ?? 1));
 export const supCost = (g, k) => (g.mode?.kind === 'classic' ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
 // point in a len x width rectangle centered on s, long side along s.dir
@@ -269,6 +309,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     g.mode = { kind: 'annihilation', teams: new Set(teams).size };
     for (const p of g.players) { p.mp = CFG.assault.annihilationMp; fortify(g, p); }
   }
+  g.army = CFG.armies[opts.army] ?? CFG.armies.standard;
+  for (const p of g.players) p.mp *= g.army.income;
   return g;
 }
 
@@ -321,7 +363,9 @@ function train(g, b, dt) {
   if ((b.prog += dt) < UNITS[type].train) return;
   b.prog = 0; b.queue.shift();
   const to = b.rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
-  const u = spawnUnit(g, b.owner, type), c = nearestFree(g, b.x + Math.cos(a) * r, b.z + Math.sin(a) * r);
+  const u = spawnUnit(g, b.owner, type);
+  if (u.air) return;
+  const c = nearestFree(g, b.x + Math.cos(a) * r, b.z + Math.sin(a) * r);
   Object.assign(u, cellCenter(g, c), { rot: a, aim: a });
   if (b.rally) u.path = findPath(g, u, b.rally);
 }
@@ -419,8 +463,76 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     path: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
     cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null,
     garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1, sprint: 0 };
+  if (UNITS[type].air) { u.air = { state: 'base', fuel: CFG.air.station, ammo: UNITS[type].ammo, timer: 0, ang: 0, mission: null }; Object.assign(u, airBase(g, u)); }
   g.units.set(u.id, u);
   return u;
+}
+// ---------- planes ----------
+export const airborne = (u) => !!u.air && (u.air.state === 'out' || u.air.state === 'station' || u.air.state === 'home');
+// where a plane takes off and rearms: in Classic its owner's nearest finished Airfield, otherwise (or with none) an
+// off-map airbase out past its owner's HQ
+function airBase(g, u) {
+  let best = null, bd = Infinity;
+  for (const b of g.units.values()) if (b.type === 'airfield' && b.owner === u.owner && b.built >= 1 && b.hp > 0 && dist(b, u) < bd) { bd = dist(b, u); best = b; }
+  if (best) return { x: best.x, z: best.z };
+  const p = g.players[u.owner].spawn, cx = g.w * CELL / 2, cz = g.h * CELL / 2, l = Math.hypot(p.x - cx, p.z - cz) || 1;
+  return { x: p.x + (p.x - cx) / l * CFG.air.offmap, z: p.z + (p.z - cz) / l * CFG.air.offmap };
+}
+// give a plane a mission (patrol a spot, attack a target, escort a friend); a rearming plane, or one out of fuel or
+// ammo, can't go
+function sendPlane(u, m) {
+  const a = u.air;
+  if (a.state === 'rearm' || a.fuel <= 0 || a.ammo <= 0) return;
+  a.mission = m; a.state = 'out';
+}
+function stepPlane(g, u, dt) {
+  const def = UNITS[u.type], a = u.air, A = CFG.air, base = airBase(g, u);
+  u.cooldown -= dt; u.retarget -= dt; u.targetId = 0;
+  if (a.state === 'base' || a.state === 'rearm') {
+    Object.assign(u, base);
+    if (a.state === 'rearm') { u.hp = Math.min(def.hpPer, u.hp + def.hpPer * dt / A.rearm); if ((a.timer -= dt) <= 0) Object.assign(a, { state: 'base', fuel: A.station, ammo: def.ammo }); }
+    return;
+  }
+  // follow the mission's target; a lost attack target becomes a patrol where it was, a lost escort too
+  const m = a.mission, t = m?.id && g.units.get(m.id);
+  if (m && t && t.hp > 0 && (m.kind === 'escort' || g.players[u.owner].visible.has(t.id))) { m.x = t.x; m.z = t.z; }
+  else if (m && m.id) { m.kind = 'patrol'; m.id = 0; }
+  let center = m ?? base;
+  // fighters go after enemy planes they can see near the mission
+  if (def.role === 'fighter' && a.state !== 'home') {
+    let bd = A.seek;
+    for (const e of g.units.values()) if (e.air && airborne(e) && !allied(g, e.owner, u.owner) && g.players[u.owner].visible.has(e.id) && dist(e, center) < bd) { bd = dist(e, center); center = e; }
+  }
+  if (a.state === 'station') a.fuel -= dt;
+  if (a.state !== 'home' && (a.fuel <= 0 || a.ammo <= 0 || u.hp < def.hpPer * A.bail || !m)) a.state = 'home';
+  // fly: out to the mission, circle it (tighter on an attack run), home to rearm
+  const R = m?.kind === 'attack' && def.role === 'attack' ? 10 : A.orbit;
+  let goal = base;
+  if (a.state === 'out') { goal = center; if (dist(u, center) < R + 6) a.state = 'station'; }
+  if (a.state === 'station') { a.ang += def.speed / R * dt; goal = { x: center.x + Math.cos(a.ang) * R, z: center.z + Math.sin(a.ang) * R }; }
+  const d = dist(u, goal), step = Math.min(d, def.speed * dt);
+  if (d > 0.01) { u.rot = Math.atan2(goal.z - u.z, goal.x - u.x); u.x += (goal.x - u.x) / d * step; u.z += (goal.z - u.z) / d * step; }
+  if (a.state === 'home') { if (dist(u, base) < 6) Object.assign(a, { state: 'rearm', timer: A.rearm, mission: null }); return; }
+  // guns, rockets and bombs on ground targets (the attack target first)
+  const tgt = m?.kind === 'attack' && t && !allied(g, t.owner, u.owner) && canShoot(g, u, t) ? t : null;
+  if (!tgt && u.retarget <= 0) { u.attackPick = pickTarget(g, u); u.retarget = 0.5; }
+  const shoot = tgt ?? g.units.get(u.attackPick);
+  if (shoot && canShoot(g, u, shoot)) { u.targetId = shoot.id; u.aim = Math.atan2(shoot.z - u.z, shoot.x - u.x); if (u.cooldown <= 0) { fire(g, u, shoot, true); a.ammo--; } }
+}
+// anti-air: everything with aa (flak, mobile flak, emplacements, fighters, a little from MGs) damages the nearest enemy
+// plane it can see in range, every tick. Flak and MGs must be set up; buildings must be finished; fighters airborne.
+function antiAir(g, list, dt) {
+  for (const u of list) {
+    const aa = UNITS[u.type].aa;
+    if (!aa?.dps || u.hp <= 0 || (aa.setup && u.still < 2) || (u.air && !airborne(u)) || (u.built !== undefined && u.built < 1)) continue;
+    let best = null, bd = aa.range;
+    for (const t of list) if (t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && dist(u, t) <= bd && g.players[u.owner].visible.has(t.id)) { bd = dist(u, t); best = t; }
+    if (!best) continue;
+    best.hp -= aa.dps * dt; best.lastHit = u.owner;
+    u.xp += Math.min(aa.dps * dt, Math.max(0, best.hp + aa.dps * dt));
+    if ((u.aaShot = (u.aaShot ?? 0) - dt) <= 0) { u.aaShot = 0.35; g.shots.push({ f: u.id, t: best.id, fo: u.owner, to: best.owner, x: best.x, z: best.z, k: 'aa' }); }
+    if (best.hp <= 0 && !best.downed) { best.downed = true; g.shots.push({ k: 'planedown', t: best.id, to: best.owner, x: best.x, z: best.z, dir: best.rot, kill: true, pub: true }); }
+  }
 }
 
 // ---------- grid ----------
@@ -645,6 +757,7 @@ export function command(g, slot, cmd) {
     for (const o of cmd.orders.slice(0, 50)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
+      if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
       exitBuilding(g, u);
       Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null });
       u.path = findPath(g, u, { x, z });
@@ -669,12 +782,18 @@ export function command(g, slot, cmd) {
   } else if (cmd.t === 'attack') {
     const t = g.units.get(cmd.target);
     if (!t || allied(g, t.owner, slot) || !g.players[slot].visible.has(t.id)) return;
-    for (const id of ids) { const u = mine(id); if (u) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
+    for (const id of ids) { const u = mine(id); if (u?.air) { sendPlane(u, { kind: 'attack', id: t.id, x: t.x, z: t.z }); continue; } if (u) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
   } else if (cmd.t === 'stop') {
-    for (const id of ids) { const u = mine(id); if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
+    for (const id of ids) { const u = mine(id); if (u?.air) { if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
+  } else if (cmd.t === 'escort') {
+    // planes circle a friendly unit (fighters guard it from enemy planes)
+    const t = g.units.get(cmd.target);
+    if (!t || !allied(g, t.owner, slot) || UNITS[t.type].structure || t.air) return;
+    for (const id of ids) { const u = mine(id); if (u?.air) sendPlane(u, { kind: 'escort', id: t.id, x: t.x, z: t.z }); }
   } else if (cmd.t === 'retreat') {
     for (const id of ids) {
       const u = mine(id); if (!u) continue;
+      if (u.air) { if (airborne(u)) u.air.state = 'home'; continue; } // back to base
       exitBuilding(g, u);
       Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1, build: 0 });
       u.path = findPath(g, u, homeOf(g, u));
@@ -703,6 +822,7 @@ export function command(g, slot, cmd) {
   } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return;
+    if (sp.unit && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) >= popCap(g))) return;
     p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
@@ -773,7 +893,8 @@ const suppMul = (u) => (u.supp >= 90 ? { speed: 0.3, rate: 3, acc: 0.5 } : u.sup
 
 function canShoot(g, u, t) {
   const w = UNITS[u.type].w;
-  if (!t || t.hp <= 0 || allied(g, t.owner, u.owner) || dist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
+  if (!t || t.hp <= 0 || t.air || allied(g, t.owner, u.owner) || dist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
+  if (u.air) return true;
   return w.salvo ? dist(u, t) >= w.minRange : los(g, u, aimPoint(g, u, t)); // salvos arc over: spotting is enough
 }
 // a building is aimed at by its nearest footprint cell (its own walls would block a line to the middle)
@@ -830,6 +951,7 @@ function fire(g, u, t, moving) {
   for (let i = 0; i < shots; i++) if (Math.random() < acc) hits++;
   const before = t.hp;
   t.hp -= dmg * hits;
+  if (hits) t.lastHit = u.owner;
   u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating && !(t.sprint > 0)) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
   u.cooldown = w.interval * rate; u.shotAt = g.tick;
@@ -850,10 +972,11 @@ function updateVision(g) {
     for (const t of g.units.values()) {
       if (g.players[t.owner].team === p.team) continue;
       if (UNITS[t.type].structure && !UNITS[t.type].building) { vis.add(t.id); continue; }
+      if (t.air) { if (airborne(t) && own.some(u => (!u.air || airborne(u)) && dist(u, t) <= CFG.air.seeRange)) vis.add(t.id); continue; }
       const aim = t.cells ? null : t;
       // camouflage: after 3s still and 4s without firing, only seen within camoRange (recon flights still spot it)
       const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
-      if (own.some(u => { const d = dist(u, t), at = aim ?? aimPoint(g, u, t); if (hidden) return d < CFG.camoRange; return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, at)); })
+      if (own.some(u => { const d = dist(u, t), at = aim ?? aimPoint(g, u, t); if (u.air) return airborne(u) && d <= UNITS[u.type].vision && (!hidden || d < CFG.camoRange * 2); if (hidden) return d < CFG.camoRange; return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, at)); })
         || g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
     byTeam.set(p.team, p.visible = vis);
@@ -869,7 +992,28 @@ function updateVision(g) {
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
 export const knownBuildings = (g, slot) => [...(g.ghosts?.get(g.players[slot].team)?.values() ?? [])];
 
+// A support plane arriving over enemy fighter cover or flak can be shot down: fighter cover always gets it (and is used
+// up; it never touches recon), each flak gun in range rolls its chance. Whatever the plane hasn't delivered is lost:
+// a bombing run drops part of its stick first, a recon flight ends early.
+function intercepted(g, s, list) {
+  const team = g.players[s.owner].team, sp = SUPPORT[s.kind];
+  const cover = s.kind !== 'recon' && g.covers?.find(c => c.team !== team && dist(c, s) <= c.r);
+  let down = !!cover;
+  if (cover) cover.t = 0;
+  for (const u of list) {
+    const aa = UNITS[u.type].aa;
+    if (down || !aa?.chance || u.hp <= 0 || g.players[u.owner].team === team || dist(u, s) > aa.range || (aa.setup && u.still < 2) || (u.built !== undefined && u.built < 1)) continue;
+    g.shots.push({ f: u.id, fo: u.owner, x: s.x, z: s.z, k: 'flak', pub: true });
+    if (Math.random() < aa.chance) down = true;
+  }
+  if (!down) return false;
+  g.shots.push({ k: 'shotdown', x: s.x, z: s.z, dir: s.dir, kind: s.kind, by: cover ? 'fighters' : 'flak', pub: true });
+  s.left = s.kind === 'bombing' ? Math.floor(Math.random() * sp.shells) : s.kind === 'recon' ? Math.random() * s.left : 0;
+  return true;
+}
+
 function hurt(g, t, src, fall, owner) {
+  if (owner >= 0) t.lastHit = owner;
   const inf = UNITS[t.type].infantry;
   // concrete takes an explosive's demolition value (the same number that wrecks houses)
   const base = UNITS[t.type].structure ? src.terrain ?? src.veh : inf ? src.inf : src.veh;
@@ -882,7 +1026,7 @@ function hurt(g, t, src, fall, owner) {
 function blast(g, list, at, radius, src, owner) {
   for (const t of list) {
     const d = dist(t, at);
-    if (d <= radius && t.hp > 0) hurt(g, t, src, 1 - d / radius * 0.5, owner);
+    if (d <= radius && t.hp > 0 && !t.air) hurt(g, t, src, 1 - d / radius * 0.5, owner);
   }
   if (src.terrain) damageCells(g, list, at, radius, src.terrain);
 }
@@ -923,6 +1067,7 @@ export function step(g) {
   for (const u of g.units.values()) {
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
     if (def.building) { if (u.queue?.length && u.built >= 1 && !g.mode.suddenDeath) train(g, u, dt); continue; }
+    if (def.air) { stepPlane(g, u, dt); continue; }
     if (def.infantry) u.supp = Math.max(0, u.supp - 8 * dt);
     u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt;
 
@@ -1047,7 +1192,7 @@ export function step(g) {
   const list = [...g.units.values()];
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
-    if (a.garrison >= 0 || b.garrison >= 0) continue;
+    if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air) continue;
     const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
     if (d >= min || d === 0) continue;
     const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
@@ -1077,7 +1222,20 @@ export function step(g) {
   for (const s of g.strikes) {
     const sp = SUPPORT[s.kind];
     if ((s.t -= dt) > 0) continue;
-    if (!s.live) { s.live = true; if (s.kind === 'strafe' || s.kind === 'recon' || s.kind === 'bombing') g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true }); }
+    if (!s.live) {
+      s.live = true;
+      if (sp.plane) g.shots.push({ k: s.kind, x: s.x, z: s.z, dir: s.dir, fo: s.owner, pub: true });
+      if (sp.plane && intercepted(g, s, list)) continue; // shot down on the way in
+      if (s.kind === 'dive') {
+        // one heavy bomb, right on the spot
+        g.shots.push({ x: s.x, z: s.z, k: 'bomb', pub: true });
+        blast(g, list, s, sp.blast, sp, s.owner);
+        const c = cellOf(g, s.x, s.z); if (c >= 0 && g.chars[c] === '.') setCell(g, c, '+');
+        digAt(g, s, sp.dig);
+      } else if (s.kind === 'para') {
+        if (popOf(g, s.owner) < popCap(g)) { const u = spawnUnit(g, s.owner, sp.unit); Object.assign(u, cellCenter(g, nearestFree(g, s.x, s.z))); g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true }); }
+      } else if (s.kind === 'cover') (g.covers ??= []).push({ team: g.players[s.owner].team, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
+    }
     if (s.kind === 'recon') s.left -= dt;
     else if (s.kind === 'smoke') {
       for (let i = 0; i < sp.clouds; i++) {
@@ -1110,12 +1268,14 @@ export function step(g) {
     } else if (s.kind === 'strafe') {
       // everything within `width` of the run's line gets raked
       for (const t of list) {
-        if (inStrip(s, t, sp.len, sp.width) && t.hp > 0) hurt(g, t, sp, 1, s.owner);
+        if (inStrip(s, t, sp.len, sp.width) && t.hp > 0 && !t.air) hurt(g, t, sp, 1, s.owner);
       }
       s.left = 0;
     }
   }
   g.strikes = g.strikes.filter(s => !s.live || s.left > 0);
+  antiAir(g, list, dt);
+  if (g.covers) { for (const c of g.covers) c.t -= dt; g.covers = g.covers.filter(c => c.t > 0); }
   for (const p of g.players) for (const k of SUPPORT_TYPES) p.sup[k] -= dt;
   for (const s of g.smokes) s.t -= dt;
   g.smokes = g.smokes.filter(s => s.t > 0);
@@ -1125,7 +1285,7 @@ export function step(g) {
   const atBase = (u) => (bases ? bases.some(b => allied(g, b.owner, u.owner) && dist(u, b) <= CFG.reinforceRadius) : dist(u, g.players[u.owner].spawn) <= CFG.reinforceRadius);
   for (const u of list) {
     const def = UNITS[u.type], p = g.players[u.owner], full = def.models * def.hpPer;
-    if (def.structure || u.hp <= 0 || u.hp >= full || !atBase(u)) { u.reinf = 0; continue; }
+    if (def.structure || def.air || u.hp <= 0 || u.hp >= full || !atBase(u)) { u.reinf = 0; continue; }
     if (def.infantry) {
       const cost = def.cost / def.models * 0.5;
       if ((u.reinf += dt) >= CFG.reinforceEvery && p.mp >= cost) { u.reinf = 0; p.mp -= cost; u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
@@ -1135,7 +1295,12 @@ export function step(g) {
     }
   }
 
-  for (const u of list) if (u.hp <= 0) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); }
+  for (const u of list) if (u.hp <= 0) {
+    g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u);
+    // kill bounty for the enemy who finished it (no reward for friendly fire)
+    const k = u.lastHit;
+    if (k >= 0 && !allied(g, k, u.owner) && !g.players[k].out) g.players[k].mp += UNITS[u.type].cost * CFG.bounty;
+  }
 
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
   // teammates standing on it keep it theirs.
@@ -1165,16 +1330,16 @@ export function step(g) {
       // home depots pay MP, the contested ones by the villages pay Fuel
       const paying = g.nodes.filter(n => { const d = g.units.get(n.depot); return d && d.owner === pl.slot && d.built >= 1 && d.hp > 0; });
       const depots = paying.reduce((a, n) => a + (n.fuel ? 0 : n.rate), 0);
-      pl.fuelInc = pl.away || pl.out ? 0 : C.hqFuel + paying.reduce((a, n) => a + (n.fuel ? n.rate : 0), 0);
+      pl.fuelInc = pl.away || pl.out ? 0 : (C.hqFuel + paying.reduce((a, n) => a + (n.fuel ? n.rate : 0), 0)) * g.army.income;
       pl.fuel += pl.fuelInc * dt;
       pl.upkeep = own.reduce((a, u) => a + (UNITS[u.type].structure ? 0 : UNITS[u.type].cost * C.upkeep), 0);
-      pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, C.trickle + depots - pl.upkeep);
+      pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, (C.trickle + depots) * g.army.income - pl.upkeep);
       pl.mp += pl.inc * dt;
-      if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * dt;
+      if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * g.army.income * dt;
       continue;
     }
     const base = !g.mode ? CFG.mpBase : g.mode.kind === 'annihilation' ? CFG.assault.annihilationBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
-    pl.inc = pl.away ? 0 : base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer);
+    pl.inc = pl.away ? 0 : (base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer)) * g.army.income;
     pl.mp += pl.inc * dt;
   }
   if (g.mode?.kind === 'classic') {
@@ -1219,6 +1384,7 @@ export function step(g) {
 // what a unit is set on, as [kind, x, z]. kind: 0 none, 1 move, 2 attack-move, 3 retreat, 4 attack a unit,
 // 5 fire at a structure, 6 throw / plant at a spot, 7 dig, 8 build, 9 go into a house
 function planOf(g, u) {
+  if (u.air) { const m = u.air.mission; return airborne(u) && m ? [m.kind === 'attack' ? 4 : 1, m.x, m.z] : [0, 0, 0]; }
   const t = u.attackId && g.units.get(u.attackId), site = u.build && g.units.get(u.build);
   if (u.retreating) return [3, g.players[u.owner].spawn.x, g.players[u.owner].spawn.z];
   if (t) return [4, t.x, t.z];
@@ -1243,6 +1409,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
     queues: [...g.units.values()].filter(b => b.owner === slot && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),
     plans: [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).map(u => [u.id, ...planOf(g, u).map(r), ...u.path.flatMap(q => [r(q.x), r(q.z)])]),
+    army: g.army,
     mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath },
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !p.visible.has(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
@@ -1250,10 +1417,13 @@ export function snapshotFor(g, slot, shots, cells = []) {
     // 128 building a site. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0), vet(u), u.built ?? 1]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0), vet(u), u.built ?? 1]),
     smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
+    // your planes: [id, state (0 at base, 1 out, 2 on station, 3 heading home, 4 rearming), fuel s, ammo, rearm s]
+    air: [...g.units.values()].filter(u => u.owner === slot && u.air).map(u => [u.id, ['base', 'out', 'station', 'home', 'rearm'].indexOf(u.air.state), Math.ceil(u.air.fuel), u.air.ammo, Math.ceil(u.air.timer)]),
+    covers: (g.covers ?? []).filter(c => c.team === p.team).map(c => [r(c.x), r(c.z), c.r, Math.ceil(c.t)]),
     sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, Math.max(0, Math.ceil(p.sup[k]))])),
     points: g.points.map(q => [q.owner, q.capper, r(q.progress)]),
     vp: g.players.map(q => Math.floor(q.vp)),

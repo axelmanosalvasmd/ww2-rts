@@ -5,6 +5,42 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Army size in the lobby (host picks): Standard (as before), Large (2.5x unit limit, 3x income) or Massive (5x unit
+  limit, 6x income: MP, Munitions, Fuel and starting MP). The AI buys several units at a time in big games. With 6 AIs
+  on Six Fronts, Massive peaked at about 240 units (Conquest) and 270 (Classic); the server stayed under 8 ms per tick
+  on average (24 ms worst, budget 50). With 3.5x income Massive only reached 98 units: armies died as fast as they came.
+- Aviation (all modes):
+  - New air support: Dive Bomber (U, 180 MP / 70 Mun): one heavy bomb right on the spot. Paratroopers (P, 260 / 90):
+    a rifle squad dropped where your side can see (counts toward pop). Fighter Cover (I, 120 / 40): for 60s the next
+    enemy air strike over the area is shot down (never recon).
+  - Flak gun (200 MP; Barracks in Classic): each support plane flying over it has a 35% chance per gun of being shot
+    down (a bombing run drops only part of its stick, a recon flight ends early). It also shreds infantry, not tanks.
+  - Planes you command: Fighter (P-51 / Bf 109 / Yak-9, 280 MP) and Ground-attack Plane (P-47 / Stuka / Il-2, 340).
+    They fly sorties from an airbase behind your HQ (in Classic, an Airfield built by Engineers, O): right-click the
+    ground to patrol, an enemy to attack, a friendly unit to escort; R sends them home. They circle the mission for 50s
+    of fuel, then fly home and rearm in 30s. Your planes and their state are listed under the support buttons.
+  - Anti-air hurts planes every second they're in range: flak guns, Mobile Flak (M16 / Wirbelwind / ZSU, Motor Pool),
+    Flak Emplacements (Classic building, Y), enemy fighters, and a little from MG teams. Rifles and tanks can't touch
+    planes. Planes in the air are seen from 60 m with no line of sight and see 40 m below them.
+  - The AI buys flak when it sees planes, fighters to contest the sky and ground-attack planes for big armies; it calls
+    fighter cover over announced enemy strikes, dive bombers on tanks and paratroopers onto enemy points.
+- Kill bounty: finishing off an enemy unit or building pays 20% of its cost in MP (a tank 60, a rifle squad 20).
+- Classic pop cap 24 (was 20): with the bounty the leader banked ~1100 MP at the cap.
+- Balance (AI): Conquest 2nd place 63% of the winner's VP on Three Crossroads (90 matches), 57% on River Towns (60),
+  lead changes up to 1.55-1.68. Classic decided before sudden death: 85% (default), 80% (River Towns), 60% (Six Fronts,
+  still the long one). In 6 Conquest matches the AIs called 19 dive bombers and 9 fighter covers (8 intercepts), and
+  lost 6 planes; in Classic 17 paratrooper drops, 21 intercepts, 17 planes down.
+- Lobby redesign and fix:
+  - Fixed: the long Annihilation entry in the Mode menu made the whole lobby card wider than the window, so every row
+    ran off the right edge (and off a phone screen entirely). Nothing in the lobby can grow wider than the card now,
+    and the lobby scrolls when it is taller than the window.
+  - Two columns on wide screens (Players and Invite on the left, Battle on the right), one column on narrow ones.
+  - Map preview: a picture of the chosen map (terrain shaded by height, capture points, spawns; in Assault, red spawns
+    defend and blue attack) with its real name, size in metres, player count, hills, rivers, and the Assault clock.
+  - Short mode names in the menu with a one-line description of the chosen mode underneath.
+  - Map names read properly (Kasserine Pass, not kasserine-pass), and Start is a big gold button.
+- Fixed the Flak Gun card and tooltip showing "undefined": they now explain that it shoots down enemy air support.
+  Both the buy bar and Classic training cards use the unit name if a role description is missing.
 - New mode, **Annihilation**: like Assault, but every player gets a Command Bunker with its trench and sandbag ring,
   and there's no clock. A side is out when its last bunker falls; the last side standing wins. Works with any teams,
   including free-for-all. Everyone starts with 300 MP and +4.5/s; points pay manpower only (no VP). Bunkers take 5%

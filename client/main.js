@@ -1,25 +1,27 @@
 import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
+import { unitRole } from './unit-roles.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik' } },
 ];
 const COLORS = [0x3d7bd9, 0xe0b23a, 0xd94a3d, 0x4cae4c, 0xa35ad8, 0xe07a2a];
 let teams = [], factions = [];
 const facOf = (slot) => factions[slot] ?? slot % 3;
 const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
 const foe = (slot) => (teams[slot] ?? slot) !== (teams[me] ?? me);
-const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons',
-  ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint', engineer: 'Builds depots, weak rifles',
-  mortar: 'Arcing fire, out-ranges MGs', sniper: 'One shot, one kill; hides when still', armoredcar: 'Fast scout and raider', medium: 'Mainline tank' };
+// planes fly this high over the ground (one altitude for all)
+const AIR_ALT = 20;
+const isAir = (type) => !!UNITS[type]?.air;
 const classicMode = () => lobbyState?.mode === 'classic';
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const roleText = (type) => esc(unitRole(type, UNITS[type].name));
 const $ = (id) => document.getElementById(id);
 const tryStore = (fn) => { try { return fn(); } catch { return null; } };
 
@@ -77,6 +79,7 @@ $('fullscreen').onclick = async () => {
 };
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
+$('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 // in-game menu: the host can restart or end the match, anyone can leave (an AI takes over). Each needs a second click.
@@ -89,6 +92,47 @@ const confirmClick = (id, label, act) => {
 confirmClick('restartBtn', 'Restart match', () => sendCmd({ t: 'restart' }));
 confirmClick('endBtn', 'End match (back to lobby)', () => sendCmd({ t: 'end' }));
 confirmClick('leaveBtn', 'Leave game', () => sendCmd({ t: 'leave' }));
+
+const MODE_INFO = {
+  conquest: 'Capture and hold points to earn victory points. First side to the VP goal wins.',
+  assault: 'One team defends a fortified command bunker. Everyone else attacks and must destroy it before the clock runs out.',
+  annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
+  classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks and Motor Pool.',
+};
+const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
+// lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
+const mapCache = new Map();
+async function previewMap(name, mode) {
+  let m = mapCache.get(name);
+  if (!m) {
+    try { m = await (await fetch(`/maps/${encodeURIComponent(name)}`)).json(); } catch { return; }
+    mapCache.set(name, m);
+  }
+  if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
+  const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
+  const img = new ImageData(m.w, m.h);
+  m.rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + levelOf(m.heights?.[y]?.[x] ?? '0') * 0.12, i = (y * m.w + x) * 4;
+    img.data.set([r * k, g * k, b * k, 255], i);
+  }));
+  const tmp = document.createElement('canvas'); tmp.width = m.w; tmp.height = m.h; tmp.getContext('2d').putImageData(img, 0, 0);
+  c.fillStyle = '#11110d'; c.fillRect(0, 0, cv.width, cv.height);
+  c.imageSmoothingEnabled = false; c.drawImage(tmp, ox, oy, m.w * s, m.h * s);
+  const at = (p) => [ox + (p.x + 0.5) * s, oy + (p.y + 0.5) * s], assault = mode === 'assault', noVp = assault || mode === 'annihilation';
+  const points = m.points.filter(p => !noVp || (p.mp ?? 1) > 0);
+  for (const p of points) { c.beginPath(); c.arc(...at(p), Math.max(4, CFG.pointRadius / CELL * s), 0, 7); c.strokeStyle = '#f0d98a'; c.lineWidth = 2; c.stroke(); }
+  const spawns = m.spawns.map((sp, i) => [sp, i]).filter(([sp]) => assault || !sp.assault);
+  for (const [sp, i] of spawns) {
+    c.beginPath(); c.arc(...at(sp), 6, 0, 7);
+    c.fillStyle = assault && m.defend ? (m.defend.includes(i) ? '#d94a3d' : '#3d7bd9') : '#f2ecd8'; c.fill();
+    c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke();
+  }
+  const top = Math.max(0, ...(m.heights || []).flatMap(r => [...r].map(levelOf)));
+  $('mapInfo').innerHTML = [`<b style="color:var(--ink)">${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, `up to ${spawns.length} players`,
+    `${points.length} capture point${points.length === 1 ? '' : 's'}`, top >= 3 ? 'hills and cliffs' : top > 0 ? 'rolling hills' : '',
+    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (assault ? '<span style="color:#d94a3d">●</span> defend · <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
+    assault && m.assaultTime ? `${Math.round(m.assaultTime / 60)} minute clock` : ''].filter(Boolean).map(t => `<div>${t}</div>`).join('');
+}
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
@@ -108,11 +152,14 @@ function renderLobby(m) {
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
-  $('mapSel').innerHTML = (m.maps || []).map(n => `<option ${n === m.mapName ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''}>${esc(prettyMap(n))}</option>`).join('');
+  previewMap(m.mapName, m.mode || 'conquest');
   $('mapSel').disabled = !host || !lobby;
   // Assault: the host picks which team defends; everyone else attacks
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
+  $('armySel').value = m.army || 'standard'; $('armySel').disabled = !host || !lobby;
+  $('modeInfo').textContent = MODE_INFO[m.mode || 'conquest'] ?? '';
   $('defSel').classList.toggle('hidden', !assault);
   $('defSel').innerHTML = teamIds.map(t => `<option value="${t}" ${t === m.defenderTeam ? 'selected' : ''}>Team ${t + 1} defends (${m.players.filter(p => p.team === t).map(p => esc(p.name)).join(', ')})</option>`).join('');
   $('defSel').disabled = !host || !lobby;
@@ -269,7 +316,7 @@ function startGame(m) {
   world.add(fog);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
-  aimMesh = null; nodeMarks = null; planGroup = null; ghosts.clear();
+  aimMesh = null; nodeMarks = null; planGroup = null; coverGroup = null; ghosts.clear();
 
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
@@ -444,6 +491,7 @@ const SLOTS = {
   rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
   mg: [[0.2, 0], [-0.5, 0.7], [-0.5, -0.7]],
   mortar: [[0.2, 0.6], [0.2, -0.6], [-0.6, 0]],
+  flak: [[-0.6, 0.8], [-0.6, -0.8], [-1.2, 0]],
   sniper: [[0.4, 0], [-0.5, 0.6]],
   engineer: [[0.6, 0], [-0.4, 0.7], [-0.4, -0.7]],
   at: [[-0.5, 0.7], [-0.5, -0.7], [-1.2, 0.4], [-1.2, -0.4]],
@@ -500,6 +548,10 @@ function badge(type, color) {
     tank: () => tank(10, 1),
     medium: () => tank(15, 2),
     tiger: () => tank(17, 3),
+    flak: () => { L(18, 47, 46, 47); L(26, 44, 42, 16); L(32, 44, 48, 16); },
+    flaktrack: () => { c.fillRect(12, 32, 40, 9); dot(20, 45, 5); dot(44, 45, 5); L(26, 30, 40, 12); L(31, 30, 45, 12); },
+    fighter: () => { c.fillRect(29, 12, 6, 40); c.fillRect(12, 26, 40, 7); c.fillRect(24, 46, 16, 4); },
+    attacker: () => { c.fillRect(29, 12, 6, 40); c.fillRect(10, 26, 44, 8); dot(18, 40, 3.5); dot(46, 40, 3.5); c.fillRect(24, 46, 16, 4); },
     rocket: () => { for (let k = 0; k < 3; k++) { L(16 + k * 9, 47, 26 + k * 9, 19); dot(26 + k * 9, 19, 3.5); } },
   }[type];
   const tex = draw ? (draw(), new THREE.CanvasTexture(cv)) : null;
@@ -521,6 +573,12 @@ const TANKS = {
     { hull: [5.0, 1.2, 2.7], turret: [2.3, 0.95, 1.9, -0.2, 0], gun: [3.0, 0.11] },                    // Panzer IV: boxy, long gun
     { hull: [5.0, 1.1, 2.9], turret: [2.0, 0.9, 1.9, 0.3, 0], gun: [2.9, 0.11], slope: 1 },             // T-34: sloped, turret forward
   ],
+  // mobile flak: M16 half-track (quad MGs), Wirbelwind (flak turret on a Panzer IV), ZSU-37 (on a light tank)
+  flaktrack: [
+    { hull: [4.2, 1.1, 2.2], turret: [1.2, 0.6, 1.4, -0.8, 0], gun: [1.2, 0.07], wheels: 2, twin: 1 },
+    { hull: [5.0, 1.2, 2.7], turret: [1.8, 1.0, 1.8, -0.2, 0], gun: [1.6, 0.07], twin: 1 },
+    { hull: [4.4, 1.1, 2.4], turret: [1.8, 0.8, 1.7, -0.6, 0], gun: [2.2, 0.08], twin: 1 },
+  ],
   armoredcar: [
     { hull: [3.8, 1.0, 2.1], turret: [1.3, 0.6, 1.3, 0, 0], gun: [1.0, 0.06], wheels: 3 },             // M8 Greyhound: six wheels
     { hull: [3.6, 0.9, 1.9], turret: [1.1, 0.5, 1.2, 0, 0], gun: [0.8, 0.05], wheels: 2 },             // Sd.Kfz. 222
@@ -536,6 +594,7 @@ function buildTank(v, root, spec, f) {
   const [tl, th, tw, tx, tz] = spec.turret, [gl, gt] = spec.gun;
   v.turret = new THREE.Group(); v.turret.position.set(tx, y + hh / 2 + th / 2, tz);
   v.turret.add(mesh(GEO.box, hull, tl, th, tw), mesh(GEO.cyl, dark, gt, gl, gt, tl / 2 + gl / 2, 0.05, 0).rotateZ(Math.PI / 2), mesh(GEO.box, mat(f.color), 0.4, th + 0.02, tw + 0.02, -tl / 2 + 0.3, 0, 0));
+  if (spec.twin) v.turret.add(mesh(GEO.cyl, dark, spec.gun[1], spec.gun[0], spec.gun[1], tl / 2 + spec.gun[0] / 2, 0.25, 0.3).rotateZ(Math.PI / 2 - 0.6), mesh(GEO.cyl, dark, spec.gun[1], spec.gun[0], spec.gun[1], tl / 2 + spec.gun[0] / 2, 0.25, -0.3).rotateZ(Math.PI / 2 - 0.6));
   if (spec.brake) v.turret.add(mesh(GEO.box, dark, 0.35, 0.3, 0.35, tl / 2 + gl, 0.05, 0));
   root.add(v.turret);
 }
@@ -555,7 +614,30 @@ function makeUnit(id, type, owner) {
     for (const r of [def.w.range, def.w.minRange].filter(Boolean)) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.25, r, 96), rm); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; v.range.add(m); }
     root.add(v.range);
   }
-  if (type === 'hq') {
+  if (isAir(type)) {
+    // fighter: slim, long nose; ground-attack plane: bigger, rockets and a bomb under the wings
+    const big = type === 'attacker', c = mat(f.vehicle), dark = mat(0x2a2a24);
+    v.body = new THREE.Group();
+    v.body.add(mesh(GEO.box, c, big ? 7 : 6, big ? 1.1 : 0.9, big ? 1.1 : 0.9), mesh(GEO.box, c, big ? 1.8 : 1.4, 0.2, big ? 11 : 9.5, big ? 0.4 : 0.6, -0.1, 0),
+      mesh(GEO.box, c, 0.9, 0.15, 3.4, big ? -3 : -2.6, 0.1, 0), mesh(GEO.box, c, 0.9, 1.3, 0.15, big ? -3 : -2.6, 0.7, 0),
+      mesh(GEO.box, mat(f.color), 0.5, 0.22, big ? 11.2 : 9.7, big ? 0.4 : 0.6, -0.05, 0), mesh(GEO.cyl, dark, 0.15, 0.4, 0.15, big ? 3.7 : 3.2, 0, 0).rotateZ(Math.PI / 2));
+    if (big) for (const z of [-3.5, -2.5, 2.5, 3.5]) v.body.add(mesh(GEO.cyl, dark, 0.12, 1.2, 0.12, 0.6, -0.4, z).rotateZ(Math.PI / 2));
+    if (big) v.body.add(mesh(GEO.box, dark, 1.4, 0.4, 0.4, 0.3, -0.7, 0));
+    root.add(v.body); v.models.push(root);
+  } else if (type === 'airfield') {
+    // a dirt strip, a hangar and a windsock
+    v.body = new THREE.Group();
+    v.body.add(mesh(GEO.box, mat(0x6a5e44), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
+      mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
+    root.add(v.body); v.models.push(root);
+  } else if (type === 'flakpos') {
+    // a sandbagged ring with a twin gun pointing up
+    const dark = mat(0x2a2a24);
+    v.body = new THREE.Group();
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, mat(0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
+    v.body.add(mesh(GEO.cyl, dark, 0.5, 0.6, 0.5, 0, 0.3, 0), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
+    root.add(v.body); v.models.push(root);
+  } else if (type === 'hq') {
     // command post: sandbagged timber block with a radio mast
     const wood = mat(0x7a6446), roof = mat(0x5a4a34);
     v.body = new THREE.Group();
@@ -633,6 +715,7 @@ function makeUnit(id, type, owner) {
       if (type === 'ranger' && i % 3 === 1) man.add(mesh(GEO.cyl, dark, 0.07, 1.3, 0.07, 0, 1.1, 0.25).rotateZ(1.3)); // bazooka on the shoulder
       root.add(man); v.models.push(man);
     });
+    if (type === 'flak') root.add(mesh(GEO.box, mat(0x2a2a24), 1.0, 0.5, 1.0, 0.4, 0.3, 0), mesh(GEO.cyl, mat(0x2a2a24), 0.07, 2.2, 0.07, 1.0, 1.2, 0.15).rotateZ(-0.7), mesh(GEO.cyl, mat(0x2a2a24), 0.07, 2.2, 0.07, 1.0, 1.2, -0.15).rotateZ(-0.7));
     if (type === 'mortar') root.add(mesh(GEO.cyl, dark, 0.09, 1.1, 0.09, 0.7, 0.45, 0).rotateZ(-0.7), mesh(GEO.box, dark, 0.5, 0.06, 0.5, 0.45, 0.05, 0));
     if (type === 'mg') root.add(mesh(GEO.cyl, dark, 0.07, 1.4, 0.07, 1.0, 0.45, 0).rotateZ(Math.PI / 2), mesh(GEO.box, dark, 0.4, 0.4, 0.5, 0.5, 0.3, 0));
     if (type === 'at') {
@@ -771,11 +854,15 @@ function applySnapshot(s) {
     if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
     if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
-    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing') { plane(sh); continue; }
+    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing' || sh.k === 'dive' || sh.k === 'para') { plane(sh); continue; }
+    if (sh.k === 'chutes') { chutes(sh.x, sh.z); continue; }
+    if (sh.k === 'shotdown' || sh.k === 'planedown') { downed(sh); continue; }
+    if (sh.k === 'flak') { for (let i = 0; i < 5; i++) setTimeout(() => puff(sh.x + (Math.random() - 0.5) * 16, sh.z + (Math.random() - 0.5) * 16), i * 90); sound('at', sh.x, sh.z); continue; }
+    if (sh.k === 'aa') { const a = units.get(sh.f), b = units.get(sh.t); if (a && b) { const st = a.root.getWorldPosition(new THREE.Vector3()); st.y += isAir(a.type) ? 0 : 1.5; tracer(st, b.root.getWorldPosition(new THREE.Vector3()), 0xffe08a, 0.08); sound('mg', a.x, a.z); } continue; }
     if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
-    const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
+    const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank' || sh.k === 'attacker';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
     const end = new THREE.Vector3(tx, hAt(tx, tz) + (to && isVeh(to.type) ? 1.2 : 0.8), tz);
     if (from) {
@@ -794,6 +881,9 @@ function applySnapshot(s) {
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
+  coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
+  coverGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); coverGroup.clear();
+  for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
   if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
 
   s.points.forEach(([owner, capper, progress], i) => {
@@ -849,6 +939,7 @@ function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
   if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
+  else if (SUPPORT[kind]?.point) { const r = SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4; g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64))); }
   else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove') {
     const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
@@ -868,7 +959,7 @@ function plane(sh) {
   const p = new THREE.Group(), c = mat(0x55594a), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir);
   p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
   p.rotation.y = -sh.dir; world.add(p);
-  const low = sh.k === 'strafe' ? 9 : sh.k === 'bombing' ? 18 : 26, span = 140, life = 3;
+  const low = sh.k === 'strafe' ? 9 : sh.k === 'bombing' ? 18 : sh.k === 'dive' ? 12 : sh.k === 'para' ? 24 : 26, span = 140, life = 3;
   fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, hAt(sh.x, sh.z) + low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
   if (sh.k === 'strafe') {
     // guns rake the strip as it passes over
@@ -878,6 +969,32 @@ function plane(sh) {
     }
   }
   sound('tank', sh.x, sh.z);
+}
+
+// a flak shell bursting in the sky over a spot
+function puff(x, z) {
+  const m = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x5a5a52, transparent: true, depthWrite: false }));
+  m.position.set(x, hAt(x, z) + AIR_ALT + (Math.random() - 0.5) * 6, z); world.add(m);
+  fx.push({ obj: m, life: 1.2, max: 1.2, update: (f) => { m.scale.setScalar(0.6 + (1 - f) * 2.2); m.material.opacity = f * 0.8; }, dispose: () => m.material.dispose() });
+}
+// paratroopers: a few canopies drifting down onto the drop
+function chutes(x, z) {
+  for (let i = 0; i < 5; i++) {
+    const g = new THREE.Group(), cx = x + (Math.random() - 0.5) * 8, cz = z + (Math.random() - 0.5) * 8;
+    g.add(mesh(GEO.ball, mat(0xd8d2b8), 1.4, 0.6, 1.4, 0, 2, 0), mesh(GEO.box, mat(0x3c4128), 0.3, 1, 0.3, 0, 0.5, 0));
+    world.add(g);
+    fx.push({ obj: g, life: 3, max: 3, update: (f) => g.position.set(cx, hAt(cx, cz) + f * 22, cz) });
+  }
+}
+// a plane shot down: it tips over, falls, and blows up where it hits the ground
+function downed(sh) {
+  const p = new THREE.Group(), c = mat(0x3a3a32), dir = sh.dir ?? 0, dx = Math.cos(dir), dz = Math.sin(dir);
+  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9));
+  p.rotation.y = -dir; world.add(p);
+  const life = 2.2, gy = hAt(sh.x, sh.z);
+  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f; p.position.set(sh.x + dx * t * 25, gy + AIR_ALT * f + 1, sh.z + dz * t * 25); p.rotation.z = t * 2.5; } });
+  setTimeout(() => { boom(sh.x + dx * 25, sh.z + dz * 25, 4); sound('tank', sh.x, sh.z); }, life * 1000);
+  puff(sh.x, sh.z);
 }
 
 // rocket salvo: eight streaks arcing from the launcher onto the target area
@@ -900,8 +1017,8 @@ function lob(from, x, z) {
 
 // ---------- HUD ----------
 
-const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N' };
-const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks' };
+const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N', dive: 'U', para: 'P', cover: 'I' };
+const SUPPORT_TIP = { dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops a rifle squad where your side can see (counts toward pop)', cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)', recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks' };
 function buildSupportBar() {
   $('support').innerHTML = SUPPORT_TYPES.map(k => `<button data-k="${k}" title="${SUPPORT_TIP[k]}">${SUPPORT[k].name} <kbd>${SUPPORT_KEYS[k]}</kbd><span></span></button>`).join('');
   $('support').querySelectorAll('button').forEach(b => (b.onclick = () => aimSupport(b.dataset.k)));
@@ -916,7 +1033,7 @@ function buildBuyBar() {
   cardKey = '';
   if (classicMode()) { $('buy').innerHTML = ''; $('buy').classList.add('hidden'); return; } // Classic: command card instead
   $('buy').classList.remove('hidden');
-  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
+  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${roleText(t)}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${roleText(t)}</small></button>`).join('');
   $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
 }
 
@@ -964,6 +1081,9 @@ function updateHud(s) {
     <div class="bar"><div style="width:${Math.min(100, vp / winVp(teams) * 100)}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${vp} / ${winVp(teams)} VP</div></div>`;
   }).join('');
   drawPlans();
+  const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
+  $('airPanel').innerHTML = (s.air ?? []).map(([id, st, fuel, ammo, timer]) => { const v = units.get(id); return v ? `<button data-plane="${id}" class="${selected.has(id) ? 'on' : ''}">${look(me).names[v.type] ?? UNITS[v.type].name} <span>${AIR_STATE[st]}${st === 2 ? ` ${fuel}s` : st === 4 ? ` ${timer}s` : ''}</span></button>` : ''; }).join('');
+  $('airPanel').querySelectorAll('[data-plane]').forEach(b => (b.onclick = () => { selected.clear(); selected.add(+b.dataset.plane); updateHud(lastSnap); }));
   const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length + [...units.values()].reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
   $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun · ${s.fuel} Fuel` : `${s.mp} MP`;
   $('support').querySelectorAll('button').forEach(b => {
@@ -999,7 +1119,7 @@ function updateHud(s) {
 // snapshot would eat clicks), otherwise just refreshed.
 let cardKey = '';
 const priceText = (s, t) => { const pr = priceOf(s, t); return `${pr.mp} MP` + (pr.fuel ? ` + ${pr.fuel} Fuel` : ''); };
-const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets' };
+const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets', airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
 function drawCard(s, pop) {
   const card = $('buy'), sel = [...selected].map(id => units.get(id)).filter(Boolean);
   const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === me ? sel[0] : null, eng = !bld && builders().length > 0;
@@ -1009,7 +1129,7 @@ function drawCard(s, pop) {
     card.classList.toggle('hidden', !key);
     if (bld && bld.built < 1) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted">Under construction <span data-built></span></span><small class="muted">Right-click it with Engineers to help</small></div><button data-cancel><b>Cancel</b><span>75% back</span></button>`;
     else if (bld) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted" data-queue></span><small class="muted">Right-click the ground: rally point</small></div>`
-      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${ROLE[t]}"><b>${name(t)}</b><span>${priceText(s, t)} · ${UNITS[t].train}s</span><small class="muted">${ROLE[t]}</small></button>`).join('');
+      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${roleText(t)}"><b>${name(t)}</b><span>${priceText(s, t)} · ${UNITS[t].train}s</span><small class="muted">${roleText(t)}</small></button>`).join('');
     else if (eng) card.innerHTML = BUILDABLE.map(k => `<button data-build="${k}"><b>${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd></b><span>${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span><small class="muted" data-note>${BUILD_ROLE[k]}</small></button>`).join('');
     else card.innerHTML = '';
     const id = bld?.id;
@@ -1079,7 +1199,7 @@ function drawPlans() {
 
 // Engineers put Supply Depots on resource nodes: J, then click near a node
 const builders = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'engineer' && !(v.flags & 1));
-const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L' };
+const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' };
 const owns = (type, done = true) => [...units.values()].some(v => v.owner === me && v.type === type && (!done || v.built >= 1));
 const canPlace = (k) => lastSnap?.mp >= UNITS[k].cost && (!UNITS[k].needs || owns(UNITS[k].needs));
 function startBuild(k) { if (builders().length && canPlace(k)) { setAim(k); blip(600); } }
@@ -1101,7 +1221,7 @@ function nodeNear(g) {
   const [n] = free.sort((a, b) => Math.hypot(a[0] - g.x, a[1] - g.z) - Math.hypot(b[0] - g.x, b[1] - g.z));
   return n && Math.hypot(n[0] - g.x, n[1] - g.z) <= 8 ? { x: n[0], z: n[1] } : null;
 }
-let nodeMarks = null;
+let nodeMarks = null, coverGroup = null;
 // Ghosts: enemy buildings you've seen, drawn faded where they were last seen until you look again
 const ghosts = new Map();
 function applyGhosts(list) {
@@ -1221,6 +1341,11 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyF') useAbility(fKeyType());
   else if (e.code === 'KeyG' && selected.size) setAim('amove');
   else if (e.code === 'KeyN') aimSupport('bombing');
+  else if (e.code === 'KeyU') aimSupport('dive');
+  else if (e.code === 'KeyP') aimSupport('para');
+  else if (e.code === 'KeyI') aimSupport('cover');
+  else if (e.code === 'KeyO') startBuild('airfield');
+  else if (e.code === 'KeyY') startBuild('flakpos');
   else if (e.code === 'KeyM') setMuted(!muted);
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
@@ -1256,7 +1381,7 @@ document.addEventListener('mouseleave', () => (mouse.inside = false));
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 renderer.domElement.addEventListener('wheel', (e) => { cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: true });
 
-const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1, v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
+const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
 function pick(mx, my, test, r) {
   let best = null, bd = Infinity;
   for (const v of units.values()) {
@@ -1288,6 +1413,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
       if (f.ok) { sendCmd({ t: 'build', ids: builders().map(v => v.id), kind, x: f.x, z: f.z }); marker(f.x, f.z, 0xe8c860); blip(600); }
       return;
     }
+    if (SUPPORT[kind]?.point) { cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
     if (AIMED[kind]) { cancelAim(); throwAt(g, kind); return; }
     if (kind === 'amove') { cancelAim(); moveTo(g, true); return; }
     // first click: pin the center, then the mouse rotates it
@@ -1307,6 +1433,8 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (g) { for (const v of sel) sendCmd({ t: 'rally', id: v.id, x: g.x, z: g.z }); marker(g.x, g.z, 0x9dd0ff); blip(620); }
     return;
   }
+  const planes = sel.filter(v => isAir(v.type)), friend = planes.length && pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type));
+  if (friend && planes.length === sel.length) { sendCmd({ t: 'escort', ids: planes.map(v => v.id), target: friend.id }); marker(friend.x, friend.z, 0x9dd0ff); blip(600); return; }
   const ownB = pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), eng = sel.filter(v => v.type === 'engineer');
   if (ownB && eng.length && (ownB.built < 1 || ownB.hp < UNITS[ownB.type].hpPer)) { sendCmd({ t: 'assist', ids: eng.map(v => v.id), id: ownB.id }); marker(ownB.x, ownB.z, 0xe8c860); blip(600); return; }
   if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); bark('attack'); return; }
@@ -1340,9 +1468,9 @@ addEventListener('mouseup', (e) => {
   if (!e.shiftKey) selected.clear();
   if (drag.moved) {
     const x0 = Math.min(drag.x, e.clientX), x1 = Math.max(drag.x, e.clientX), y0 = Math.min(drag.y, e.clientY), y1 = Math.max(drag.y, e.clientY);
-    for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && !UNITS[v.type].structure && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
+    for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && !UNITS[v.type].structure && !(v.flags & 512) && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
   } else {
-    const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
+    const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
     if (v) selected.add(v.id);
   }
   drag = null;
@@ -1462,7 +1590,9 @@ renderer.setAnimationLoop(() => {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
     const gy = hAt(v.x, v.z);
-    v.root.position.set(v.x, gy, v.z); v.root.rotation.y = -v.rot;
+    const air = isAir(v.type), up = air ? AIR_ALT : 0;
+    v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
+    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; }
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);

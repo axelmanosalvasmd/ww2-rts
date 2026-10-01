@@ -23,6 +23,10 @@ _Avoid_: overtime, time decision
 
 ## Economy
 
+**Kill Bounty**:
+The MP paid to whoever finishes off an enemy unit or building: a share of what it cost.
+_Avoid_: reward, loot
+
 **Manpower (MP)**:
 The main currency. It buys units.
 
@@ -77,6 +81,13 @@ A capture location on the map. In Classic it earns Munitions rather than VP.
 _Avoid_: flag, objective
 
 ## Air
+
+**Sortie**:
+One trip of a commanded plane: out to its mission, circling it while fuel lasts, home to rearm.
+_Avoid_: flight (for this), run
+
+**Airfield**:
+The Classic building that trains planes and is their base. Elsewhere planes use an off-map airbase behind the HQ.
 
 **Air Support**:
 An off-map strike or drop you call on a spot, announced to everyone before it arrives: recon flight, strafing run, bombing run, dive bomber, paratroopers, fighter cover (artillery and smoke barrages are support too, but not aircraft). Paid in MP, or Munitions in Classic.

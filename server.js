@@ -92,7 +92,7 @@ async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
-    mode: room.mode, defenderTeam: room.defenderTeam, result: room.result ?? null,
+    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', result: room.result ?? null,
     players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
 }
@@ -101,7 +101,7 @@ async function lobby(room) {
 async function startMatch(room) {
   room.state = 'play'; room.game = null; room.result = null; // claim it before the await so a double-click can't start twice
   room.map = await loadMap(room.mapName);
-  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam });
+  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
   lobby(room);
   room.players.forEach((_, i) => sendStart(room, i));
 }
@@ -154,6 +154,8 @@ wss.on('connection', (ws, req) => {
       if (p && (slot === hostOf(room) ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
     } else if (msg.t === 'mode' && slot === hostOf(room) && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic'].includes(msg.v)) {
       room.mode = msg.v; lobby(room);
+    } else if (msg.t === 'army' && slot === hostOf(room) && room.state !== 'play' && ['standard', 'large', 'massive'].includes(msg.v)) {
+      room.army = msg.v; lobby(room);
     } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
       room.defenderTeam = msg.v; lobby(room);
     } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= seats(room) && assaultReady(room)) {
