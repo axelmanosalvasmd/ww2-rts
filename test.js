@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT, UNITS } from './shared/sim.js';
 import { think } from './shared/ai.js';
+import { unitRole } from './client/unit-roles.js';
+
+// Recruitment descriptions stay readable when the roster gains a unit without role copy.
+{
+  assert.equal(unitRole('flak', 'Flak Gun'), 'Shoots down enemy air support', 'Flak has a role description');
+  assert.equal(unitRole('rifle', 'Rifle Squad'), 'Captures, all-round', 'existing role copy is preserved');
+  assert.equal(unitRole('fieldgun', 'Field Gun'), 'Field Gun', 'missing roles use the unit name');
+  assert.equal(unitRole('fieldgun'), 'Unit', 'missing names still produce readable text');
+  assert.equal(unitRole('toString', 'Field Gun'), 'Field Gun', 'inherited properties are not role descriptions');
+  for (const [type, def] of Object.entries(UNITS).filter(([, def]) => !def.structure)) {
+    const role = unitRole(type, def.name);
+    assert.equal(typeof role, 'string', `${type}: role is text`);
+    assert.ok(role.trim() && role !== 'undefined', `${type}: role is readable`);
+  }
+}
 
 const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x: 1, y: 1 }, { x: 18, y: 1 }, { x: 1, y: 18 }], points: [{ x: 10, y: 10 }] });
 const empty = Array(20).fill('.'.repeat(20));

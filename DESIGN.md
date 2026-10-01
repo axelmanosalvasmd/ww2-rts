@@ -89,6 +89,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
 
 ## Command & readability (slice after destruction)
+- Recruitment cards and tooltips share role descriptions, including Flak's role against enemy air support.
+  A unit without role copy shows its name in both the buy bar and Classic training cards.
 - Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
   Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).
 - Attack-move: G then click, or Ctrl+right-click. Units halt to fight what's in range, then carry on.
