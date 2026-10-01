@@ -54,15 +54,6 @@ function parts() {
   };
   return api;
 }
-const merge = (list) => {
-  if (globalThis.__tris) {
-    const by = new Map();
-    for (const it of list) { const t = (it.geo.index ? it.geo.index.count : it.geo.attributes.position.count) / 3, e = by.get(it.geo) ?? { t, n: 0 }; e.n++; by.set(it.geo, e); }
-    console.log([...by.values()].sort((a, b) => b.t * b.n - a.t * a.n).slice(0, 10).map((e) => `${e.t}x${e.n}`).join(' '));
-  }
-  return G.merge(list);
-};
-
 // Wheels: a dark tire with shoulders around a painted hub, axle along z, outer face at +z. side -1 mirrors it.
 function tireGeo(R, w, seg) {
   return once(`tire|${R}|${w}|${seg}`, () => {
@@ -228,7 +219,7 @@ function m8(P, fac) {
   t.add(G.chamferBox(0.34, 0.26, 0.5, 0.04), P.mid, -0.9, 0.36, 0); // turret bustle stowage
 
   return {
-    hull: finish(merge(h.list), { height: 1.0 }), turret: finish(merge(t.list), { floor: 0, height: 0.6, dark: 0.74 }),
+    hull: finish(G.merge(h.list), { height: 1.0 }), turret: finish(G.merge(t.list), { floor: 0, height: 0.6, dark: 0.74 }),
     turretAt: [0.05, 1.4, 0], tip: [2.6, 0.32, 0],
   };
 }
@@ -293,7 +284,7 @@ function sdkfz222(P, fac) {
   t.box(P.owner, 0.2, 0.02, 0.26, -0.5, 0.305, 0);
 
   return {
-    hull: finish(merge(h.list), { height: 1.0 }), turret: finish(merge(t.list), { floor: 0, height: 0.5, dark: 0.78 }),
+    hull: finish(G.merge(h.list), { height: 1.0 }), turret: finish(G.merge(t.list), { floor: 0, height: 0.5, dark: 0.78 }),
     turretAt: [-0.1, 1.5, 0], tip: [1.9, 0.3, 0],
   };
 }
@@ -342,7 +333,7 @@ function ba64(P, fac) {
   t.mat(insignia(P, fac, 0.16), P.white, place([0.08, 0.585, 0], [0, 1, 0], [1, 0, 0]));
 
   return {
-    hull: finish(merge(h.list), { height: 1.0 }), turret: finish(merge(t.list), { floor: 0, height: 0.56, dark: 0.74 }),
+    hull: finish(G.merge(h.list), { height: 1.0 }), turret: finish(G.merge(t.list), { floor: 0, height: 0.56, dark: 0.74 }),
     turretAt: [-0.45, 1.56, 0], tip: [1.55, 0.32, 0],
   };
 }
@@ -419,14 +410,15 @@ function m16(P, fac) {
   for (const s of [1, -1]) {
     t.box(P.dark, 0.44, 0.32, 0.32, -0.05, 0.52, s * 0.62); t.box(P.dark, 0.44, 0.32, 0.32, -0.05, 0.86, s * 0.62); t.box(P.tan, 0.38, 0.3, 0.3, -0.05, 1.2, s * 0.62);
     for (const [z, dy] of [[0.2, 0.07], [0.42, -0.07]]) {
-      t.rod(P.gun, 0.034, L, 0.45 + (c * L) / 2, y0 + dy * c + (sn * L) / 2, s * z, 0, 0, el);
-      t.add(CYL8, P.steel, 0.45 + c * (L + 0.04), y0 + dy * c + sn * (L + 0.04), s * z, 0, 0, el - Math.PI / 2, 0.055, 0.1, 0.055);
+      t.rod(P.gun, 0.044, L, 0.45 + (c * L) / 2, y0 + dy * c + (sn * L) / 2, s * z, 0, 0, el);
+      t.add(CYL8, P.steel, 0.45 + c * (L + 0.04), y0 + dy * c + sn * (L + 0.04), s * z, 0, 0, el - Math.PI / 2, 0.07, 0.12, 0.07);
+      t.add(CYL8, P.steel, 0.45 + c * 0.1, y0 + dy * c + sn * 0.1, s * z, 0, 0, el - Math.PI / 2, 0.075, 0.2, 0.075);
     }
   }
   t.box(P.steel, 0.3, 0.2, 0.7, 0.38, y0, 0);
   t.box(P.owner, 0.2, 0.02, 0.5, -0.15, 1.14, 0);
   return {
-    hull: finish(merge(h.list), { height: 1.0 }), turret: finish(merge(t.list), { floor: 0, height: 0.7, dark: 0.74 }),
+    hull: finish(G.merge(h.list), { height: 1.0 }), turret: finish(G.merge(t.list), { floor: 0, height: 0.7, dark: 0.74 }),
     turretAt: [-1.25, 0.74, 0], tip: [0.45 + c * (L + 0.12), y0 + sn * (L + 0.12), 0],
   };
 }
@@ -491,7 +483,7 @@ function panzerwerfer(P, fac) {
   for (const it of bundle.list) t.mat(it.geo, it.color, G.xf(hinge[0], hinge[1], 0, 0, 0, el).multiply(G.xf(start, 0, 0)).multiply(it.matrix));
   t.box(P.owner, 0.5, 0.02, 0.4, 0, 0.125, 0);
   return {
-    hull: finish(merge(h.list), { height: 1.0 }), turret: finish(merge(t.list), { floor: 0, height: 0.9, dark: 0.74 }),
+    hull: finish(G.merge(h.list), { height: 1.0 }), turret: finish(G.merge(t.list), { floor: 0, height: 0.9, dark: 0.74 }),
     turretAt: [-1.1, 1.03, 0], tip: [hinge[0] + c * (start + len), hinge[1] + sn * (start + len), 0],
   };
 }
@@ -551,7 +543,7 @@ function katyusha(P, fac) {
   for (const it of rails.list) t.mat(it.geo, it.color, G.xf(H[0], H[1], 0, 0, 0, el).multiply(it.matrix));
   t.box(P.owner, 0.5, 0.02, 0.4, 0, 0.125, 0);
   return {
-    hull: finish(merge(h.list), { height: 1.0 }), turret: finish(merge(t.list), { floor: 0, height: 0.7, dark: 0.74 }),
+    hull: finish(G.merge(h.list), { height: 1.0 }), turret: finish(G.merge(t.list), { floor: 0, height: 0.7, dark: 0.74 }),
     turretAt: [-1.3, 1.04, 0], tip: [H[0] + c * RL, H[1] + sn * RL, 0],
   };
 }
