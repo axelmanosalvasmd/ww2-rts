@@ -1,5 +1,6 @@
 // Pure game logic. The server runs it; the client imports the tables for rendering.
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
+import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
 
 export const CELL = 2;
 export const TICK = 1 / 20;
@@ -531,7 +532,7 @@ function antiAir(g, list, dt) {
     best.hp -= aa.dps * dt; best.lastHit = u.owner;
     u.xp += Math.min(aa.dps * dt, Math.max(0, best.hp + aa.dps * dt));
     if ((u.aaShot = (u.aaShot ?? 0) - dt) <= 0) { u.aaShot = 0.35; g.shots.push({ f: u.id, t: best.id, fo: u.owner, to: best.owner, x: best.x, z: best.z, k: 'aa' }); }
-    if (best.hp <= 0 && !best.downed) { best.downed = true; g.shots.push({ k: 'planedown', t: best.id, to: best.owner, x: best.x, z: best.z, dir: best.rot, kill: true, pub: true }); }
+    if (best.hp <= 0 && !best.downed) { best.downed = true; tally(g, u.owner, 'planesDowned'); g.shots.push({ k: 'planedown', t: best.id, to: best.owner, x: best.x, z: best.z, dir: best.rot, kill: true, pub: true }); }
   }
 }
 
@@ -931,7 +932,7 @@ export function command(g, slot, cmd) {
     if (!place.ok) return place.reason;
     if (cmd.queue === true) return enqueueOrder(u, { t: 'dig', ids: [u.id], kind, x, z, dir }) ? undefined : 'queueFull';
     const cells = place.cells;
-    p.mp -= f.cost;
+    p.mp -= f.cost; tally(g, slot, 'mpSpent', f.cost);
     exitBuilding(g, u);
     Object.assign(u, { orders: [], dig: { x, z, cells, t: 0 }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
   } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
@@ -939,6 +940,7 @@ export function command(g, slot, cmd) {
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return x === null || z === null ? 'blocked' : p.sup[cmd.kind] > 0 ? 'cooldown' : cur;
     if (sp.unit && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) >= popCap(g))) return !teamSees(g, p.team, { x, z }) ? 'unseen' : 'pop';
     p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
+    tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
   } else if (cmd.t === 'build' && g.mode?.kind === 'classic' && !g.mode.suddenDeath && BUILDABLE.includes(cmd.kind)) {
@@ -952,7 +954,7 @@ export function command(g, slot, cmd) {
     const place = placementCheck(g, { kind: cmd.kind, x, z }, at => teamSees(g, p.team, at));
     if (!place.ok) return place.reason;
     const { c, node } = place;
-    p.mp -= def.cost;
+    p.mp -= def.cost; tally(g, slot, 'mpSpent', def.cost);
     const site = placeBuilding(g, slot, cmd.kind, c, false);
     if (node) node.depot = site.id;
     for (const u of crew) {
@@ -976,7 +978,7 @@ export function command(g, slot, cmd) {
     // tear down your own unfinished site for 75% back
     const b = g.units.get(cmd.id);
     if (!b || b.owner !== slot || !UNITS[b.type].building || b.built >= 1) return 'unseen';
-    g.players[slot].mp += UNITS[b.type].cost * 0.75;
+    g.players[slot].mp += UNITS[b.type].cost * 0.75; tally(g, slot, 'mpSpent', -UNITS[b.type].cost * 0.75);
     g.units.delete(b.id);
     for (const c of b.cells) setCell(g, c, '.');
     for (const n of g.nodes ?? []) if (n.depot === b.id) n.depot = 0;
@@ -1005,13 +1007,13 @@ export function command(g, slot, cmd) {
     const have = own.filter(u => u.type === cmd.unit).length + queued.filter(t => t === cmd.unit).length;
     const price = priceOf(g, cmd.unit);
     if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop >= popCap(g) || have >= (def.max ?? Infinity)) return p.mp < price.mp ? 'mp' : price.fuel && !(p.fuel >= price.fuel) ? 'fuel' : pop >= popCap(g) ? 'pop' : 'max';
-    if (!classic) { p.mp -= price.mp; sendToRally(g, spawnUnit(g, slot, cmd.unit)); return; }
+    if (!classic) { p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); sendToRally(g, spawnUnit(g, slot, cmd.unit)); return; }
     // queue it at the building asked for, else the one with the shortest queue
     if (g.mode.suddenDeath) return 'suddenDeath';
     const makers = own.filter(b => b.built >= 1 && UNITS[b.type].makes?.includes(cmd.unit) && b.queue.length < 5);
     const b = makers.find(m => m.id === cmd.from) ?? makers.sort((a, c) => a.queue.length - c.queue.length)[0];
     if (!b) return own.some(m => m.built >= 1 && UNITS[m.type].makes?.includes(cmd.unit)) ? 'queueFull' : 'needs';
-    p.mp -= price.mp; p.fuel -= price.fuel; b.queue.push(cmd.unit);
+    p.mp -= price.mp; p.fuel -= price.fuel; b.queue.push(cmd.unit); tally(g, slot, 'mpSpent', price.mp);
   } else return cmd.t === 'build' && g.mode?.suddenDeath ? 'suddenDeath' : 'blocked';
 }
 
@@ -1126,15 +1128,16 @@ export const knownBuildings = (g, slot) => [...(g.ghosts?.get(g.players[slot].te
 function intercepted(g, s, list) {
   const team = g.players[s.owner].team, sp = SUPPORT[s.kind];
   const cover = s.kind !== 'recon' && g.covers?.find(c => c.team !== team && dist(c, s) <= c.r);
-  let down = !!cover;
+  let down = !!cover, by = cover ? cover.owner : -1;
   if (cover) cover.t = 0;
   for (const u of list) {
     const aa = UNITS[u.type].aa;
     if (down || !aa?.chance || u.hp <= 0 || g.players[u.owner].team === team || dist(u, s) > aa.range || (aa.setup && u.still < 2) || (u.built !== undefined && u.built < 1)) continue;
     g.shots.push({ f: u.id, fo: u.owner, x: s.x, z: s.z, k: 'flak', pub: true });
-    if (Math.random() < aa.chance) down = true;
+    if (Math.random() < aa.chance) { down = true; by = u.owner; }
   }
   if (!down) return false;
+  tally(g, by, 'planesDowned');
   g.shots.push({ k: 'shotdown', x: s.x, z: s.z, dir: s.dir, kind: s.kind, by: cover ? 'fighters' : 'flak', pub: true });
   s.left = s.kind === 'bombing' ? Math.floor(Math.random() * sp.shells) : s.kind === 'recon' ? Math.random() * s.left : 0;
   return true;
@@ -1185,10 +1188,11 @@ function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
   if (TERRAIN[into] & MOVE) for (const u of list) if (u.hp > 0 && cellOf(g, u.x, u.z) === c) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); }
 }
 
+// After a winner the sim keeps running (the server's closing hold shows the last seconds) without win checks or story.
 export function step(g) {
-  if (g.winner !== null) return;
   const dt = TICK;
   g.tick++;
+  if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure);
   if (g.tick % 4 === 1) updateVision(g);
 
   const crews = new Map(); // construction site id -> engineers working on it this tick
@@ -1217,7 +1221,7 @@ export function step(g) {
         // ground can change while building; tank traps never go down under a vehicle
         const under = ch === 'Y' && [...g.units.values()].some(v => !UNITS[v.type].infantry && cellOf(g, v.x, v.z) === c);
         if (BUILDABLE_GROUND.includes(g.chars[c]) && !under) setCell(g, c, ch);
-        if (!u.dig.cells.length) u.dig = null;
+        if (!u.dig.cells.length) { u.dig = null; tally(g, u.owner, 'built'); }
       }
     }
 
@@ -1314,6 +1318,7 @@ export function step(g) {
     if (g.mode.suddenDeath) continue; // construction stops
     const rate = crew / (def.buildTime ?? 1) * dt;
     s.built = Math.min(1, s.built + rate);
+    if (s.built >= 1) tally(g, s.owner, 'built');
     s.hp = Math.min(def.hpPer, s.hp + def.hpPer * 0.75 * rate);
   }
 
@@ -1363,7 +1368,7 @@ export function step(g) {
         digAt(g, s, sp.dig);
       } else if (s.kind === 'para') {
         if (popOf(g, s.owner) < popCap(g)) { const u = spawnUnit(g, s.owner, sp.unit); Object.assign(u, cellCenter(g, nearestFree(g, s.x, s.z))); g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true }); }
-      } else if (s.kind === 'cover') (g.covers ??= []).push({ team: g.players[s.owner].team, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
+      } else if (s.kind === 'cover') (g.covers ??= []).push({ team: g.players[s.owner].team, owner: s.owner, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
     }
     if (s.kind === 'recon') s.left -= dt;
     else if (s.kind === 'smoke') {
@@ -1417,10 +1422,10 @@ export function step(g) {
     if (def.structure || def.air || u.hp <= 0 || u.hp >= full || !atBase(u)) { u.reinf = 0; continue; }
     if (def.infantry) {
       const cost = def.cost / def.models * 0.5;
-      if ((u.reinf += dt) >= CFG.reinforceEvery && p.mp >= cost) { u.reinf = 0; p.mp -= cost; u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
+      if ((u.reinf += dt) >= CFG.reinforceEvery && p.mp >= cost) { u.reinf = 0; p.mp -= cost; tally(g, u.owner, 'mpSpent', cost); u.hp = Math.min(full, (alive(u) + 1) * def.hpPer); }
     } else {
       const hp = Math.min(full - u.hp, 18 * dt), cost = hp * 0.5;
-      if (p.mp >= cost) { u.hp += hp; p.mp -= cost; u.reinf = 1; }
+      if (p.mp >= cost) { u.hp += hp; p.mp -= cost; u.reinf = 1; tally(g, u.owner, 'mpSpent', cost); }
     }
   }
 
@@ -1429,6 +1434,7 @@ export function step(g) {
     // kill bounty for the enemy who finished it (no reward for friendly fire)
     const k = u.lastHit;
     if (k >= 0 && !allied(g, k, u.owner) && !g.players[k].out) g.players[k].mp += UNITS[u.type].cost * CFG.bounty;
+    died(g, u, UNITS[u.type], k >= 0 && !allied(g, k, u.owner) ? k : -1);
   }
 
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
@@ -1442,7 +1448,7 @@ export function step(g) {
     else {
       if (!allied(g, p.capper, s)) { p.capper = s; p.progress = 0; }
       p.progress += rate;
-      if (p.progress >= 1) { p.owner = s; p.progress = 1; }
+      if (p.progress >= 1) { p.owner = s; p.progress = 1; captured(g, p, s); }
     }
   }
 
@@ -1452,7 +1458,7 @@ export function step(g) {
   for (const pl of g.players) {
     const held = g.points.filter(p => p.owner === pl.slot);
     // away = disconnected (set by the server): their clock stops so a dropout doesn't decide the match
-    if (!g.mode) pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1);
+    if (!g.mode && g.winner === null) pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1); // frozen once decided
     if (g.mode?.kind === 'classic') {
       // no catch-up: MP from the HQ trickle and finished depots, Munitions from every point the team holds
       const C = CFG.classic, own = list.filter(u => u.owner === pl.slot && u.hp > 0);
@@ -1473,11 +1479,11 @@ export function step(g) {
   }
   if (g.mode?.kind === 'classic') {
     // Annihilation: no Production Building (a site of one counts) = out, and everything you own goes with you
-    g.mode.timeLeft -= dt;
+    if (g.winner === null) g.mode.timeLeft -= dt; // the clock stops once decided
     // Sudden Death: production and construction stop, and every Production Building crumbles
     if (g.mode.timeLeft <= 0 && !g.mode.suddenDeath) { g.mode.suddenDeath = true; for (const b of list) if (b.queue) b.queue = []; }
     if (g.mode.suddenDeath) for (const b of list) if (UNITS[b.type].produces && b.hp > 0) b.hp -= UNITS[b.type].hpPer * CFG.classic.decay * dt;
-    for (const b of list) if (UNITS[b.type].building && b.hp <= 0 && g.units.has(b.id)) { g.units.delete(b.id); wreckBuilding(g, b); }
+    for (const b of list) if (UNITS[b.type].building && b.hp <= 0 && g.units.has(b.id)) { g.units.delete(b.id); wreckBuilding(g, b); died(g, b, UNITS[b.type], -1); }
     for (const pl of g.players) {
       if (pl.out || [...g.units.values()].some(u => u.owner === pl.slot && UNITS[u.type].produces)) continue;
       pl.out = true;
@@ -1491,23 +1497,35 @@ export function step(g) {
       }
     }
     const left = new Set(g.players.filter(p => !p.out).map(p => p.team));
-    if (g.mode.teams > 1 && left.size <= 1) g.winner = left.size ? [...left][0] : -1; // -1 = draw
+    if (g.winner === null && g.mode.teams > 1 && left.size <= 1) finish(g, left.size ? [...left][0] : -1, 'hq', g.fallen?.hq); // -1 = draw
     return;
   }
   if (g.mode?.kind === 'annihilation') {
     // a team is out when its last bunker falls; the last team with one standing wins
     const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
-    if (g.mode.teams > 1 && left.size <= 1) g.winner = left.size ? [...left][0] : -1;
+    if (g.winner === null && g.mode.teams > 1 && left.size <= 1) finish(g, left.size ? [...left][0] : -1, 'bunkers', g.fallen?.bunker);
     return;
   }
   if (g.mode) {
     // assault: the attackers win when the last bunker falls, the defenders when the clock runs out
+    if (g.winner !== null) return; // the clock stops once decided
     g.mode.timeLeft -= dt;
-    if (![...g.units.values()].some(u => UNITS[u.type].structure && u.hp > 0)) g.winner = g.mode.attackerTeam;
-    else if (g.mode.timeLeft <= 0) g.winner = g.mode.defenderTeam;
+    if (![...g.units.values()].some(u => UNITS[u.type].structure && u.hp > 0)) finish(g, g.mode.attackerTeam, 'structures', g.fallen?.structure);
+    else if (g.mode.timeLeft <= 0) finish(g, g.mode.defenderTeam, 'timer');
     return;
   }
-  for (const pl of g.players) if (teamVp(pl.team) >= g.winVp && g.winner === null) g.winner = pl.team; // winner = team id
+  for (const pl of g.players) if (teamVp(pl.team) >= g.winVp && g.winner === null) finish(g, pl.team, 'vp', lastCapture(g, pl.team)); // winner = team id
+}
+
+const isStructure = (u) => !!UNITS[u.type].structure;
+// The match is decided: the winning team id (-1 for a draw), why ('hq', 'bunkers', 'structures', 'timer' or 'vp'; a
+// draw is always 'draw') and the decisive spot (else the map center). From here the fog is lifted for everyone
+// (snapshotFor) and nothing more counts toward the story.
+export function finish(g, winner, reason, at) {
+  if (g.winner !== null) return;
+  sample(g, isStructure);
+  const c = at ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 };
+  Object.assign(g, { winner, endReason: winner === -1 ? 'draw' : reason, endAt: { x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10 }, endTick: g.tick, reveal: true });
 }
 
 // what a unit is set on, as [kind, x, z]. kind: 0 none, 1 move, 2 attack-move, 3 retreat, 4 attack a unit,
@@ -1530,9 +1548,9 @@ function planOf(g, u) {
 // What one player is allowed to know: own units + enemies they can see. Fog is enforced here.
 export function snapshotFor(g, slot, shots, cells = []) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
-  const seen = (id) => allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
+  const seen = (id) => (g.reveal && g.units.has(id)) || allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
   return {
-    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
+    t: 's', tick: g.tick, winner: g.winner, end: g.winner === null ? undefined : { reason: g.endReason, x: g.endAt.x, z: g.endAt.z }, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
     nodes: g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: g.players.map(q => !!q.out),
     // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
@@ -1544,7 +1562,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
     army: g.army,
     mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath },
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
-    ghosts: g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !p.visible.has(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
+    ghosts: g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
     // 128 building a site. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
@@ -1560,6 +1578,6 @@ export function snapshotFor(g, slot, shots, cells = []) {
     points: g.points.map(q => [q.owner, q.capper, r(q.progress)]),
     vp: g.players.map(q => Math.floor(q.vp)),
     cells,
-    shots: shots.filter(s => s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || p.visible.has(s.f) || p.visible.has(s.t)),
+    shots: shots.filter(s => g.reveal || s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || p.visible.has(s.f) || p.visible.has(s.t)),
   };
 }

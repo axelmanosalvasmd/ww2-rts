@@ -1084,6 +1084,263 @@ for (const f of readdirSync('maps')) {
   assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
+  assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
+  assert.ok(g.timeline.length >= secs / 10, 'and samples it every 10 s');
+}
+
+// The end of a match (shared/story.js, finish() in sim.js, holdEnding() in server.js): every win records why and where,
+// the story counts what each player did, and the server holds the ending for 6 s before the lobby shows the result.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const near = (a, b) => Math.abs(a.x - b.x) < 0.11 && Math.abs(a.z - b.z) < 0.11;
+  // Conquest: VP; the decisive spot is the point the winners took last
+  const g = fresh(Array(60).fill('.'.repeat(60))); g.players[0].mp = g.players[1].mp = 1000;
+  const pt = g.points[0], mp0 = g.players[0].mp, r = put(g, 0, 'rifle', pt.x, pt.z), e = put(g, 1, 'rifle', 110, 110);
+  assert.equal(g.story[0].mpSpent, mp0 - g.players[0].mp, 'the story counts manpower spent');
+  run(g, CFG.captureTime + 1);
+  assert.equal(pt.owner, 0); assert.equal(g.story[0].captures, 1, 'and captures');
+  assert.ok(!snapshotFor(g, 0, []).units.some(u => u[0] === e.id), 'fog holds while the match is on');
+  assert.equal(snapshotFor(g, 0, []).end, undefined, 'no end data before the winner');
+  assert.equal(g.timeline[0].t, 0); assert.equal(g.timeline[0].vp.length, 2, 'the timeline starts at 0 s with VP per team');
+  g.players[0].vp = g.winVp - 0.01; run(g, 1);
+  assert.equal(g.winner, 0); assert.equal(g.endReason, 'vp');
+  assert.ok(near(g.endAt, pt), 'a VP win ends on the point the winners took last');
+  const snap = snapshotFor(g, 0, []);
+  assert.deepEqual(snap.end, { reason: 'vp', x: g.endAt.x, z: g.endAt.z });
+  assert.ok(snap.units.some(u => u[0] === e.id) && snap.units.length === g.units.size, 'once decided, everyone sees everything');
+  // after the winner the sim runs on (the server's hold) but orders, the story and the timeline stop
+  const samples = g.timeline.length, ids = g.nextId;
+  command(g, 1, { t: 'buy', unit: 'rifle' }); command(g, 1, { t: 'move', orders: [[e.id, 30, 30]] });
+  assert.equal(g.nextId, ids, 'no buying after the end'); assert.equal(e.path.length, 0, 'no orders after the end');
+  r.hp = 0; run(g, 11);
+  assert.ok(!g.units.has(r.id), 'the sim still runs after the end');
+  assert.equal(g.story[0].losses, 0, 'nothing counts after the end');
+  assert.equal(g.timeline.length, samples, 'and the timeline stops');
+  assert.equal(g.winner, 0, 'the winner never changes');
+
+  // Assault: the last structure falling, or the clock
+  const as = () => createGame(map, ['att', 'def'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 1 });
+  const a = as(), structs = [...a.units.values()].filter(u => UNITS[u.type].structure), last = structs.at(-1);
+  structs.slice(0, -1).forEach(s => (s.hp = 0)); run(a, 0.1);
+  assert.equal(a.winner, null, 'a structure still stands');
+  last.hp = 0; run(a, 0.1);
+  assert.equal(a.winner, 0); assert.equal(a.endReason, 'structures');
+  assert.ok(near(a.endAt, last), 'it ends where the last structure fell');
+  const t = as(); t.mode.timeLeft = 0.01; run(t, 0.1);
+  assert.equal(t.winner, 1); assert.equal(t.endReason, 'timer');
+  assert.deepEqual(t.endAt, { x: t.w * CELL / 2, z: t.h * CELL / 2 }, 'a timer win ends over the middle of the map');
+
+  // Annihilation: the last bunker; all of them at once is a draw
+  const an = () => createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 1, 1], [0, 1, 2, 0], { mode: 'annihilation' });
+  const n = an(), bunker = (gg, o) => [...gg.units.values()].find(u => u.type === 'bunker' && u.owner === o);
+  bunker(n, 2).hp = 0; run(n, 0.1);
+  const b3 = bunker(n, 3); b3.hp = 0; run(n, 0.1);
+  assert.equal(n.winner, 0); assert.equal(n.endReason, 'bunkers'); assert.ok(near(n.endAt, b3), 'it ends at the last bunker');
+  assert.equal(n.story[0].losses + n.story[1].losses, 0); assert.equal(n.story[2].losses + n.story[3].losses, 2, 'bunkers count as losses');
+  const d = an(); for (const u of d.units.values()) if (u.type === 'bunker') u.hp = 0;
+  run(d, 0.1);
+  assert.equal(d.winner, -1); assert.equal(d.endReason, 'draw', 'every bunker down together: a draw');
+  assert.ok(d.timeline.at(-1).points && d.timeline.at(-1).structures.every(v => v === 0), 'the timeline counts points and structures');
+
+  // Classic: the last Production Building
+  const c = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), hq = [...c.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  hq.hp = 0; run(c, 0.1);
+  assert.equal(c.winner, 0); assert.equal(c.endReason, 'hq'); assert.ok(near(c.endAt, hq), 'it ends at the fallen HQ');
+
+  // the counters: kills and losses, support calls, planes downed, field works
+  const k = fresh(); k.players[0].mp = k.players[1].mp = 1000;
+  put(k, 0, 'rifle', 5, 5); const victim = put(k, 1, 'rifle', 15, 5); victim.hp = 1;
+  run(k, 5);
+  assert.ok(!k.units.has(victim.id)); assert.equal(k.story[0].kills, 1); assert.equal(k.story[1].losses, 1);
+  assert.equal(k.story[0].losses + k.story[1].kills, 0, 'kills and losses go to the right players');
+  const fc = fresh(); fc.players[0].mp = fc.players[1].mp = 2000;
+  put(fc, 1, 'tank', 30, 30); run(fc, 0.2);
+  command(fc, 1, { t: 'support', kind: 'cover', x: 30, z: 30 }); run(fc, SUPPORT.cover.delay + 0.2);
+  command(fc, 0, { t: 'support', kind: 'dive', x: 30, z: 30 }); run(fc, SUPPORT.dive.delay + 0.5);
+  assert.deepEqual(fc.story.map(s => s.supportCalls), [1, 1], 'support calls');
+  assert.equal(fc.story[1].planesDowned, 1, 'fighter cover downing a dive bomber');
+  assert.equal(fc.story[1].mpSpent, UNITS.tank.cost + SUPPORT.cover.cost);
+  const dg = fresh(); dg.players[0].mp = 1000;
+  const digger = put(dg, 0, 'rifle', 20, 20);
+  command(dg, 0, { t: 'dig', ids: [digger.id], x: 20, z: 20 }); run(dg, CFG.digTime * CFG.digCells + 5);
+  assert.equal(digger.dig, null); assert.equal(dg.story[0].built, 1, 'a finished trench counts as built');
+}
+
+// Server tests share one in-process server.js on a free port (PORT=0). Its tick loop is stopped: tests call tick().
+// Every serverHarness() call gets a fresh fake clock for timers, pauses and denial limits, and its own clients.
+// close() ends that block's clients and rooms; stopServerHarness() at the end of the file closes the server.
+function fakeClock() {
+  let now = 0, nextId = 0;
+  const timers = new Map();
+  return {
+    now: () => now,
+    setTimeout(fn, ms) { const id = ++nextId; timers.set(id, { at: now + ms, fn }); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    advance(ms) {
+      const until = now + ms;
+      for (;;) {
+        const due = [...timers].filter(([, timer]) => timer.at <= until).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+        if (!due) break;
+        now = due[1].at; timers.delete(due[0]); due[1].fn();
+      }
+      now = until;
+    },
+  };
+}
+let serverModule = null;
+async function serverHarness() {
+  serverModule ??= (async () => {
+    const env = { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' }; // no .edit-password file, no tailscale call
+    const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+    Object.assign(process.env, env);
+    let module;
+    try { module = await import('./server.js'); }
+    finally { for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    clearInterval(module.loop);
+    if (!module.server.listening) await new Promise((resolve, reject) => { module.server.once('listening', resolve); module.server.once('error', reject); });
+    return { module, originalClock: { ...module.clock } };
+  })();
+  const { module } = await serverModule;
+  const { default: WebSocket } = await import('ws');
+  const clock = fakeClock(), clients = [];
+  Object.assign(module.clock, clock);
+  const settleServer = async () => {
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setTimeout(resolve, 4));
+    await new Promise(resolve => setImmediate(resolve));
+  };
+  const waitFor = async (predicate, label) => {
+    const until = Date.now() + 2000;
+    for (;;) {
+      const result = predicate();
+      if (result) return result;
+      assert.ok(Date.now() < until, label);
+      await settleServer();
+    }
+  };
+  const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier' } = {}) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
+    const messages = [], errors = [];
+    const client = {
+      code, token, ws, messages, log: messages, errors, closed: false,
+      async send(message) { await new Promise((resolve, reject) => ws.send(JSON.stringify(message), error => error ? reject(error) : resolve())); await settleServer(); },
+      async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
+      wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
+    };
+    ws.on('message', raw => messages.push(JSON.parse(String(raw))));
+    ws.on('close', () => { client.closed = true; });
+    ws.on('error', error => errors.push(error)); clients.push(client);
+    await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+    await client.send({ t: 'hello', token, name });
+    await waitFor(() => messages.find(message => ['lobby', 'full'].includes(message.t)), 'hello is answered');
+    return client;
+  };
+  return {
+    clock, connect, settleServer, waitFor, rooms: module.rooms,
+    game: code => module.rooms.get(code)?.game,
+    snapshots: client => client.messages.filter(message => message.t === 's'),
+    async tick(n = 1) { for (let i = 0; i < n; i++) module.tickRooms(); await settleServer(); },
+    async clear(code) { await Promise.all(clients.filter(client => client.code === code && !client.closed).map(client => client.close())); module.rooms.delete(code); },
+    async close() {
+      await Promise.all(clients.filter(client => !client.closed).map(client => client.close()));
+      for (const code of new Set(clients.map(client => client.code))) module.rooms.delete(code);
+    },
+  };
+}
+async function stopServerHarness() {
+  if (!serverModule) return;
+  const { module, originalClock } = await serverModule;
+  for (const ws of module.wss.clients) ws.terminate();
+  module.rooms.clear(); Object.assign(module.clock, originalClock);
+  await new Promise(resolve => module.wss.close(() => resolve()));
+  if (module.server.listening) await new Promise(resolve => module.server.close(resolve));
+}
+
+// The server's side of the end, in-process: the 6 s hold (half speed, orders refused, AIs idle, fog lifted), then the
+// lobby with the result and each player's own outcome. Real WebSocket clients against the shared server harness.
+{
+  const h = await serverHarness();
+  const lobbies = (c) => c.messages.filter(m => m.t === 'lobby');
+  const ticksUntil = async (fn, what, max = 2000) => { for (let i = 0; !fn(); i++) { assert.ok(i < max, 'timed out: ' + what); await h.tick(); } };
+  const setUp = async (code, names) => {
+    const people = [];
+    for (const nm of names) people.push(await h.connect(code, { token: code + nm, name: nm }));
+    const room = h.rooms.get(code), host = people[0], ai = names.length;
+    await host.send({ t: 'addAi' }); assert.equal(room.players.length, ai + 1, 'AI added');
+    await host.send({ t: 'team', slot: ai, v: 1 }); await host.send({ t: 'mode', v: 'annihilation' });
+    assert.ok(room.mode === 'annihilation' && room.players[ai].team === 1, 'settings');
+    await host.send({ t: 'start' }); await host.wait('start');
+    await ticksUntil(() => h.snapshots(host).length, 'match started');
+    return { room, g: room.game, people };
+  };
+  const decided = (room) => ticksUntil(() => room.game.winner !== null, 'a winner');
+  const backInLobby = (room, c) => ticksUntil(() => room.state === 'lobby' && lobbies(c).at(-1)?.result?.story, 'the lobby result', 400);
+
+  // win and loss: Ann (team 0) against Ben and an AI (team 1)
+  {
+    const { room, g, people: [ann, ben] } = await setUp('endwin', ['Ann', 'Ben']);
+    // count the AI's thinking: think() first reads its player's out flag
+    let thinks = 0;
+    Object.defineProperty(g.players[2], 'out', { get() { if (/\/ai\.js:/.test(new Error().stack)) thinks++; return undefined; }, set() {}, configurable: true });
+    await ticksUntil(() => thinks > 0, 'the AI thinks during the match');
+    const mine = () => [...g.units.values()].filter(u => u.owner === 0).length, before = mine();
+    await ann.send({ t: 'buy', unit: 'rifle' }); assert.equal(mine(), before + 1, 'orders work during the match');
+    await h.tick(3);
+    const seenByAnn = new Set(h.snapshots(ann).flatMap(s => s.units.map(u => u[0])));
+    const hidden = [...g.units.values()].find(u => g.players[u.owner].team === 1 && !UNITS[u.type].structure && !seenByAnn.has(u.id));
+    assert.ok(hidden, 'an enemy unit Ann never saw: the fog holds while the match is on');
+    assert.ok([...h.snapshots(ann), ...h.snapshots(ben)].every(s => s.end === undefined && s.winner === null && !('story' in s) && !('timeline' in s)), 'no end data while the match is on');
+    assert.equal(lobbies(ann).at(-1).result, null, 'no result while the match is on');
+    const nSnaps = h.snapshots(ann).length;
+    for (const u of g.units.values()) if (u.type === 'bunker' && g.players[u.owner].team === 1) u.hp = 0;
+    await decided(room);
+    const winTick = g.tick, thought = thinks, ids = g.nextId, benUnit = [...g.units.values()].find(u => u.owner === 1 && !UNITS[u.type].structure);
+    assert.equal(g.winner, 0); assert.equal(g.endReason, 'bunkers');
+    // the hold: orders refused, everything in sight
+    await ben.send({ t: 'buy', unit: 'rifle' }); await ben.send({ t: 'move', orders: [[benUnit.id, 5, 5]] });
+    await h.tick(6);
+    assert.equal(room.state, 'play', 'the match holds before the lobby');
+    assert.equal(g.nextId, ids, 'no buying during the hold');
+    assert.ok(!benUnit.path.length || Math.hypot(benUnit.path.at(-1).x - 5, benUnit.path.at(-1).z - 5) > 1, 'no orders during the hold');
+    assert.equal(snapshotFor(g, 0, []).units.length, g.units.size, 'full vision during the hold');
+    await backInLobby(room, ann);
+    assert.equal(thinks, thought, 'the AI stops thinking during the hold');
+    assert.equal(g.tick - winTick, 60, 'the hold runs the sim at half speed: 60 steps in 6 s');
+    const held = h.snapshots(ann).slice(nSnaps);
+    assert.ok(held.length >= 55 && held.every(s => s.winner === 0 && s.end.reason === 'bunkers'), 'snapshots carry the end through the hold');
+    assert.ok(held.some(s => s.units.some(u => u[0] === hidden.id)), 'the fog lifts for everyone');
+    const ra = lobbies(ann).at(-1).result, rb = lobbies(ben).at(-1).result;
+    assert.equal(ra.reason, 'bunkers'); assert.deepEqual(ra.at, g.endAt); assert.equal(ra.story.length, 3); assert.ok(ra.timeline.length >= 2);
+    assert.ok(ra.story[1].losses + ra.story[2].losses >= 2, 'the bunkers are in the story');
+    assert.deepEqual(ra.you, { outcome: 'victory', team: 0 }); assert.deepEqual(rb.you, { outcome: 'defeat', team: 1 });
+    assert.deepEqual(room.players[2].lastMatch, { outcome: 'defeat', team: 1 }, 'the AI lost too');
+    // a seat freed after the match takes its row of the story with it
+    await ben.close(); h.clock.advance(10_000);
+    await h.waitFor(() => lobbies(ann).at(-1).players.length === 2, 'the offline seat is freed');
+    const after = lobbies(ann).at(-1).result;
+    assert.deepEqual([after.names[0], after.names[1], after.names[2]], ['Ann', room.players[1].name, 'Ben'], 'the freed seat moves to the end');
+    assert.deepEqual(after.story[2], ra.story[1], 'its story row moves with it');
+    assert.deepEqual(after.story[1], ra.story[2], 'and the AI keeps its own row');
+    await h.clear('endwin');
+  }
+  // a draw: Cal against an AI, every bunker down on the same tick
+  {
+    const { room, g, people: [cal] } = await setUp('enddraw', ['Cal']);
+    for (const u of g.units.values()) if (u.type === 'bunker') u.hp = 0;
+    await decided(room);
+    assert.equal(g.winner, -1);
+    await backInLobby(room, cal);
+    const res = lobbies(cal).at(-1).result;
+    assert.equal(res.winner, -1); assert.equal(res.reason, 'draw');
+    assert.deepEqual(res.you, { outcome: 'draw', team: 0 }); assert.deepEqual(room.players[1].lastMatch, { outcome: 'draw', team: 1 });
+    // the next start clears the result
+    const after = cal.messages.length;
+    await cal.send({ t: 'start' }); await cal.wait('start', () => true, after);
+    assert.ok(room.state === 'play' && room.game && lobbies(cal).at(-1).result === null, 'a new match without the old result');
+    await h.clear('enddraw');
+  }
+  await h.close();
+  console.log('match end: hold, fog lift, result and story checked over the server');
 }
 // Hotkey chords remain unique in every combination of simultaneously active contexts.
 {
@@ -1185,10 +1442,8 @@ for (const f of readdirSync('maps')) {
   const beforeRecall = centers.length; selection.group(1, 'set'); selection.group(1, 'recall', 1100);
   assert.equal(centers.length, beforeRecall, 'new matches and group edits reset the double-tap timer');
 }
-// This is the first server harness. It starts a short-lived server and always closes it.
+// Map pings: the relay rules directly, then over the shared server harness.
 {
-  const { spawn } = await import('node:child_process');
-  const { WebSocket } = await import('ws');
   const { mapPing } = await import('./server/map-pings.js');
   const sent = [], player = { team: 0, ws: { readyState: 1 } };
   const ally = { team: 0, ws: { readyState: 1 } }, enemy = { team: 1, ws: { readyState: 1 } };
@@ -1218,115 +1473,45 @@ for (const f of readdirSync('maps')) {
   mapPing(room, player, 0, { x: 5, z: 5 }, relay);
   assert.equal(sent.length, 0, 'map pings require a running match');
 
-  const serverHarness = async () => {
-    const port = 40000 + Math.floor(Math.random() * 20000), code = 'ping' + Math.random().toString(36).slice(2, 9);
-    const child = spawn(process.execPath, ['server.js'], {
-      cwd: import.meta.dirname,
-      env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', PUBLIC_URL: `http://127.0.0.1:${port}`, EDIT_PASSWORD: 'ping-test' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const clients = []; let output = '', errors = '', childError = null;
-    child.stdout.on('data', data => { output += data; });
-    child.stderr.on('data', data => { errors += data; });
-    child.on('error', error => { childError = error; });
-    const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-    const waitFor = async (predicate, label) => {
-      const end = Date.now() + 2000;
-      while (!predicate()) {
-        if (childError) throw childError;
-        if (child.exitCode !== null) {
-          const error = new Error(`server stopped: ${errors}`);
-          if (errors.includes('listen EPERM:')) error.code = 'LISTEN_EPERM';
-          throw error;
-        }
-        if (Date.now() >= end) throw new Error(`timed out waiting for ${label}: ${errors}`);
-        await pause(10);
-      }
-    };
-    const send = (client, msg) => client.ws.send(JSON.stringify(msg));
-    const pings = client => client.messages.filter(msg => msg.t === 'ping');
-    const clear = () => clients.forEach(client => { client.messages.length = 0; });
-    try {
-      await waitFor(() => output.includes('ww2-rts on http://'), 'server startup');
-      for (let slot = 0; slot < 3; slot++) {
-        const client = { ws: new WebSocket(`ws://127.0.0.1:${port}/ws?room=${code}`), messages: [], error: null };
-        clients.push(client);
-        client.ws.on('message', raw => client.messages.push(JSON.parse(raw)));
-        client.ws.on('error', error => { client.error = error; });
-        await waitFor(() => { if (client.error) throw client.error; return client.ws.readyState === 1; }, 'socket open');
-        send(client, { t: 'hello', name: `Player ${slot}`, token: `${code}${slot}` });
-        await waitFor(() => client.messages.some(msg => msg.t === 'lobby' && msg.you === slot), 'player join');
-      }
-      send(clients[0], { t: 'team', slot: 1, v: 0 });
-      send(clients[0], { t: 'team', slot: 2, v: 1 });
-      await waitFor(() => clients[0].messages.some(msg => msg.t === 'lobby' && msg.players.length === 3 &&
-        msg.players.map(p => p.team).join(',') === '0,0,1'), 'teams');
-      send(clients[0], { t: 'start' });
-      await waitFor(() => clients.every(client => client.messages.some(msg => msg.t === 'start')), 'match start');
-      const map = clients[0].messages.find(msg => msg.t === 'start').map;
-      clear();
-      send(clients[0], { t: 'ping', x: 12.3, z: 45.6 });
-      await waitFor(() => pings(clients[0]).length === 1 && pings(clients[1]).length === 1, 'team ping');
-      await pause(400);
-      assert.deepEqual(pings(clients[1]), [{ t: 'ping', from: 0, x: 12.3, z: 45.6 }], 'the teammate receives the ping');
-      assert.deepEqual(pings(clients[0]), pings(clients[1]), 'the sender receives the same relay');
-      assert.equal(pings(clients[2]).length, 0, 'the other team receives no ping');
-      clear();
-      for (const coordinates of [
-        { x: -5, z: 5 }, { x: 1e9, z: 5 }, { x: 'abc', z: 5 }, { x: 5, z: null },
-        { x: 5 }, { x: NaN, z: 5 }, { x: 5, z: map.h * CELL + 1 }, { z: 5 },
-      ]) send(clients[0], { t: 'ping', ...coordinates });
-      await pause(200);
-      assert.ok(clients.every(client => pings(client).length === 0), 'invalid coordinates are silently dropped');
-      clear();
-      for (let i = 0; i < 4; i++) send(clients[1], { t: 'ping', x: 20 + i, z: 30 });
-      await waitFor(() => pings(clients[0]).length >= 3, 'three accepted pings');
-      await pause(200);
-      assert.deepEqual(pings(clients[0]).map(msg => msg.x), [20, 21, 22], 'the fourth ping inside five seconds is dropped');
-      assert.deepEqual(pings(clients[1]), pings(clients[0]), 'the sender sees only accepted pings');
-      assert.equal(pings(clients[2]).length, 0, 'rate-limited pings stay within the team');
-      clear();
-      send(clients[0], { t: 'ping', c: 123, rtt: 5 });
-      await waitFor(() => clients[0].messages.some(msg => msg.t === 'pong' && msg.c === 123), 'latency pong');
-      await pause(100);
-      assert.ok(clients.every(client => pings(client).length === 0), 'latency pings are never relayed');
-    } finally {
-      clients.forEach(client => client.ws.terminate());
-      if (child.pid && child.exitCode === null && child.signalCode === null) {
-        await new Promise(resolve => {
-          const timeout = setTimeout(() => child.kill('SIGKILL'), 1000);
-          child.once('exit', () => { clearTimeout(timeout); resolve(); });
-          child.kill();
-        });
-      }
-    }
-  };
-  try { await serverHarness(); }
-  catch (error) {
-    if (error.code !== 'LISTEN_EPERM') throw error;
-    console.log('Server socket checks skipped: sandbox denied listen (EPERM). Direct map ping checks passed.');
-  }
+  // the same rules over the shared server harness: real sockets, the real message handler
+  const h = await serverHarness(), code = 'pings', clients = [];
+  for (let slot = 0; slot < 3; slot++) clients.push(await h.connect(code, { token: `${code}${slot}`, name: `Player ${slot}` }));
+  await clients[0].send({ t: 'team', slot: 1, v: 0 });
+  await clients[0].send({ t: 'team', slot: 2, v: 1 });
+  assert.equal(h.rooms.get(code).players.map(p => p.team).join(','), '0,0,1', 'teams');
+  await clients[0].send({ t: 'start' });
+  for (const client of clients) await client.wait('start');
+  const map = clients[0].messages.find(msg => msg.t === 'start').map;
+  const pings = client => client.messages.filter(msg => msg.t === 'ping');
+  const clear = () => clients.forEach(client => { client.messages.length = 0; });
+  clear();
+  await clients[0].send({ t: 'ping', x: 12.3, z: 45.6 });
+  await h.waitFor(() => pings(clients[0]).length === 1 && pings(clients[1]).length === 1, 'team ping');
+  await h.settleServer();
+  assert.deepEqual(pings(clients[1]), [{ t: 'ping', from: 0, x: 12.3, z: 45.6 }], 'the teammate receives the ping');
+  assert.deepEqual(pings(clients[0]), pings(clients[1]), 'the sender receives the same relay');
+  assert.equal(pings(clients[2]).length, 0, 'the other team receives no ping');
+  clear();
+  for (const coordinates of [
+    { x: -5, z: 5 }, { x: 1e9, z: 5 }, { x: 'abc', z: 5 }, { x: 5, z: null },
+    { x: 5 }, { x: NaN, z: 5 }, { x: 5, z: map.h * CELL + 1 }, { z: 5 },
+  ]) await clients[0].send({ t: 'ping', ...coordinates });
+  assert.ok(clients.every(client => pings(client).length === 0), 'invalid coordinates are silently dropped');
+  clear();
+  for (let i = 0; i < 4; i++) await clients[1].send({ t: 'ping', x: 20 + i, z: 30 });
+  await h.waitFor(() => pings(clients[0]).length >= 3, 'three accepted pings');
+  await h.settleServer();
+  assert.deepEqual(pings(clients[0]).map(msg => msg.x), [20, 21, 22], 'the fourth ping inside five seconds is dropped');
+  assert.deepEqual(pings(clients[1]), pings(clients[0]), 'the sender sees only accepted pings');
+  assert.equal(pings(clients[2]).length, 0, 'rate-limited pings stay within the team');
+  clear();
+  await clients[0].send({ t: 'ping', c: 123, rtt: 5 });
+  await clients[0].wait('pong', msg => msg.c === 123);
+  assert.ok(clients.every(client => pings(client).length === 0), 'latency pings are never relayed');
+  await h.close();
 }
 // Room lifecycle checks use one fake clock for captured timers and the socket retry module.
 {
-  function fakeClock() {
-    let now = 0, nextId = 0;
-    const timers = new Map();
-    return {
-      now: () => now,
-      setTimeout(fn, ms) { const id = ++nextId; timers.set(id, { at: now + ms, fn }); return id; },
-      clearTimeout(id) { timers.delete(id); },
-      advance(ms) {
-        const until = now + ms;
-        for (;;) {
-          const due = [...timers].filter(([, timer]) => timer.at <= until).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
-          if (!due) break;
-          now = due[1].at; timers.delete(due[0]); due[1].fn();
-        }
-        now = until;
-      },
-    };
-  }
 
   const { createConnection } = await import('./client/connection.js');
   const { roomAddress, roomToken, matchStorage } = await import('./client/room-session.js');
@@ -1438,64 +1623,6 @@ for (const f of readdirSync('maps')) {
     assert.deepEqual(clean.groups, {}, 'malformed saved groups cannot reach the game');
   }
 
-  async function serverHarness() {
-    const { default: WebSocket } = await import('ws');
-    const env = { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' }; // port 0: any free port; no .edit-password file, no tailscale call
-    const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
-    Object.assign(process.env, env);
-    let module;
-    try { module = await import('./server.js'); }
-    finally { for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value; }
-    clearInterval(module.loop);
-    const clock = fakeClock(), originalClock = { ...module.clock }, clients = [];
-    Object.assign(module.clock, clock);
-    const settleServer = async () => {
-      await new Promise(resolve => setImmediate(resolve));
-      await new Promise(resolve => setTimeout(resolve, 4));
-      await new Promise(resolve => setImmediate(resolve));
-    };
-    if (!module.server.listening) await new Promise((resolve, reject) => { module.server.once('listening', resolve); module.server.once('error', reject); });
-    const waitFor = async (predicate, label) => {
-      const until = Date.now() + 2000;
-      for (;;) {
-        const result = predicate();
-        if (result) return result;
-        assert.ok(Date.now() < until, label);
-        await settleServer();
-      }
-    };
-    const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier' } = {}) => {
-      const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
-      const messages = [], errors = [];
-      const client = {
-        code, token, ws, messages, log: messages, errors, closed: false,
-        async send(message) { await new Promise((resolve, reject) => ws.send(JSON.stringify(message), error => error ? reject(error) : resolve())); await settleServer(); },
-        async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
-        wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
-      };
-      ws.on('message', raw => messages.push(JSON.parse(String(raw))));
-      ws.on('close', () => { client.closed = true; });
-      ws.on('error', error => errors.push(error)); clients.push(client);
-      await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
-      await client.send({ t: 'hello', token, name });
-      await waitFor(() => messages.find(message => ['lobby', 'full'].includes(message.t)), 'hello is answered');
-      return client;
-    };
-    return {
-      clock, connect, settleServer, rooms: module.rooms,
-      game: code => module.rooms.get(code)?.game,
-      snapshots: client => client.messages.filter(message => message.t === 's'),
-      async tick(n = 1) { for (let i = 0; i < n; i++) module.tickRooms(); await settleServer(); },
-      async clear(code) { await Promise.all(clients.filter(client => client.code === code && !client.closed).map(client => client.close())); module.rooms.delete(code); },
-      async close() {
-        await Promise.all(clients.filter(client => !client.closed).map(client => client.close()));
-        module.rooms.clear(); Object.assign(module.clock, originalClock);
-        await new Promise(resolve => module.wss.close(() => resolve()));
-        if (module.server.listening) await new Promise(resolve => module.server.close(resolve));
-      },
-    };
-  }
-
   async function roomLifecycleChecks(h) {
     let caseId = 0;
     const last = (client, type) => client.messages.findLast(message => message.t === type);
@@ -1564,12 +1691,13 @@ for (const f of readdirSync('maps')) {
     await check(async code => {
       const [ana, ben, cy] = await humans(code, ['Ana', 'Ben', 'Cy']);
       const room = await start(code, ana), retained = [room.players[1], room.players[2]];
-      retained[0].lastMatch = { own: 'Ben report' }; retained[1].lastMatch = { own: 'Cy report' };
-      const reports = retained.map(player => player.lastMatch);
-      await ana.close(); await ben.send({ t: 'resume' }); room.game.winner = 1; await h.tick();
+      const { finish } = await import('./shared/sim.js');
+      await ana.close(); await ben.send({ t: 'resume' }); finish(room.game, 1, 'vp');
+      for (let i = 0; i < 200 && room.state === 'play'; i++) await h.tick(); // the 6 s closing hold, then the lobby
       assert.equal(room.state, 'lobby', 'natural match end returns to the lobby');
       assert.deepEqual(room.players, retained, 'match end frees offline humans and retains player objects');
-      assert.deepEqual(room.players.map(player => player.lastMatch), reports, 'per-player reports survive seat freeing');
+      assert.deepEqual(room.players.map(player => player.lastMatch), [{ outcome: 'victory', team: 1 }, { outcome: 'defeat', team: 2 }], 'per-player reports survive seat freeing');
+      assert.equal(room.result.story.length, 3, 'the story keeps a row per seat');
       assert.deepEqual(room.result.teams, [1, 2, 0], 'result teams follow current seats before freed players');
       assert.deepEqual(room.result.names, ['Ben', 'Cy', 'Ana'], 'result names use the same order');
       const lobby = await ben.wait('lobby', message => message.state === 'lobby' && message.result?.winner === 1);
@@ -2005,7 +2133,6 @@ console.log('all sim checks passed');
 // the same per-player throttle used by the server, with a deterministic clock.
 {
   const { placementCheck, popCap, teamSees } = await import('./shared/sim.js');
-  const { allowDeny } = await import('./shared/command-feedback.js');
   const g = fresh();
   g.players[0].mp = 0;
   assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), 'mp');
@@ -2104,25 +2231,27 @@ console.log('all sim checks passed');
   assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'a rejected fort in fog masks its terrain');
   assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], kind: 'trench', x: fortEngineer.x, z: fortEngineer.z, dir: 0 }), 'blocked', 'a rejected visible fort reports blocked');
 
-  const serverHarness = (player, game = g) => {
-    const replies = [];
-    return { replies, receive(msg, now) {
-      const reason = command(game, 0, msg);
-      if (reason && allowDeny(player, now)) replies.push({ t: 'deny', cmd: msg.t, reason });
-    } };
-  };
-  const first = serverHarness({}), second = serverHarness({});
-  for (let i = 0; i < 20; i++) first.receive({ t: 'buy', unit: 'rifle' }, 100);
-  assert.equal(first.replies.length, 4, 'at most four denials per player in one second');
-  assert.deepEqual(first.replies[0], { t: 'deny', cmd: 'buy', reason: 'pop' });
-  second.receive({ t: 'buy', unit: 'rifle' }, 100);
-  assert.equal(second.replies.length, 1, 'another player has a separate allowance');
-  first.receive({ t: 'buy', unit: 'rifle' }, 1099);
-  assert.equal(first.replies.length, 4, 'burst allowance does not reset at a wall-clock boundary');
-  first.receive({ t: 'buy', unit: 'rifle' }, 1100);
-  assert.equal(first.replies.length, 5, 'allowance returns after one full second');
-  first.receive({ t: 'stop', ids: [a.id] }, 1100);
-  assert.equal(first.replies.length, 5, 'only a denial adds a reply');
+  // the throttle through the shared server harness: refused orders come back as deny messages, at most four a second
+  const h = await serverHarness(), code = 'denies';
+  const ana = await h.connect(code, { token: code + 'a', name: 'Ana' }), ben = await h.connect(code, { token: code + 'b', name: 'Ben' });
+  await ana.send({ t: 'start' }); await ana.wait('start'); await ben.wait('start');
+  const live = h.game(code), denies = client => client.messages.filter(msg => msg.t === 'deny');
+  live.players[0].mp = 0; live.players[1].mp = 0;
+  h.clock.advance(100);
+  for (let i = 0; i < 20; i++) await ana.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ana).length, 4, 'at most four denials per player in one second');
+  assert.deepEqual(denies(ana)[0], { t: 'deny', cmd: 'buy', reason: 'mp' });
+  await ben.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ben).length, 1, 'another player has a separate allowance');
+  h.clock.advance(999); await ana.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ana).length, 4, 'burst allowance does not reset at a wall-clock boundary');
+  h.clock.advance(1); await ana.send({ t: 'buy', unit: 'rifle' });
+  assert.equal(denies(ana).length, 5, 'allowance returns after one full second');
+  live.players[0].mp = 10000; await ana.send({ t: 'buy', unit: 'rifle' });
+  const mine = [...live.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  await ana.send({ t: 'stop', ids: [mine.id] });
+  assert.equal(denies(ana).length, 5, 'only a denial adds a reply');
+  await h.close();
 }
 console.log('all command feedback checks passed');
 
@@ -2210,3 +2339,5 @@ console.log('all command feedback checks passed');
   } finally { globalThis.setTimeout = oldSet; globalThis.clearTimeout = oldClear; }
 }
 console.log('all availability checks passed');
+
+await stopServerHarness(); // the last server check is done

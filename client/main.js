@@ -12,6 +12,8 @@ import { pings } from './pings.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, MOVE_COLOR } from './markers.js';
 import { audio } from './audio.js';
 import { battleShots, battleFrame, battleGone } from './battle-sound.js';
+import { epilogue } from './epilogue.js';
+import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
 
@@ -264,7 +266,8 @@ function renderLobby(m) {
   $('result').classList.toggle('hidden', !r);
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
-  if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); }
+  renderReport(r, $('report'), { colors: COLORS.map(css), me: m.you }); // the chart and table under it (client/report.js)
+  if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
   positionRoomBanners();
 }
 
@@ -346,7 +349,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear(); epilogue.reset();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -908,6 +911,9 @@ function applySnapshot(s) {
   syncSmoke(s.smokes);
   syncStrikes(s.strikes);
   applyCells(s.cells);
+  const ending = !epilogue.active();
+  epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
+  if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
   alerts.snapshot(s, lastSnap);
   lastSnap = s;
   updateHud(s);
@@ -1005,7 +1011,7 @@ function downed(sh) {
   p.rotation.y = -dir; world.add(p);
   const life = 2.2, gy = hAt(sh.x, sh.z);
   fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f; p.position.set(sh.x + dx * t * 25, gy + AIR_ALT * f + 1, sh.z + dz * t * 25); p.rotation.z = t * 2.5; } });
-  setTimeout(() => { boom(sh.x + dx * 25, sh.z + dz * 25, 4); }, life * 1000);
+  setTimeout(() => { boom(sh.x + dx * 25, sh.z + dz * 25, 4); audio.play('vehicle_destroyed', { x: sh.x + dx * 25, z: sh.z + dz * 25 }); }, life * 1000);
   puff(sh.x, sh.z);
 }
 
@@ -1118,9 +1124,11 @@ function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x
 // the player's faction voice answers orders (audio.js picks the voice and keeps lines 2.5 s apart)
 function bark(kind) { audio.voice(kind); }
 audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles mute
-const muteIcon = () => { $('mute').textContent = audio.volume > 0 ? '🔊' : '🔇'; };
+// the speaker button in the corner mutes too, and shows when the sound is off
+const muteIcon = () => ($('mute').textContent = audio.volume > 0 ? '🔊' : '🔇');
 function toggleMute() { audio.toggleMute(); muteIcon(); }
 $('mute').onclick = toggleMute;
+$('volume').addEventListener('input', muteIcon);
 muteIcon();
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
@@ -1474,6 +1482,7 @@ function updateFog() {
       for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w - 1, cx + r); x++)
         if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) vis[y * w + x] = 1;
   }
+  if (epilogue.active()) vis.fill(1); // the match is decided: the fog lifts
   // DataTexture row 0 is the far (z = max) edge of the plane
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = ((h - 1 - y) * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = 10; d[i + 3] = vis[y * w + x] ? 0 : 120; }
   fogTex.needsUpdate = true;
@@ -1481,11 +1490,12 @@ function updateFog() {
 
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there
   // camera
   rig.update(dt);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-dt * 10);
+  const k = 1 - Math.exp(-sdt * 10);
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
@@ -1500,7 +1510,7 @@ renderer.setAnimationLoop(() => {
   }
   battleFrame(cam, units, me);
   for (let i = fx.length - 1; i >= 0; i--) {
-    const e = fx[i]; e.life -= dt;
+    const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
@@ -1532,7 +1542,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, get groundMesh() { return groundMesh; }, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, get groundMesh() { return groundMesh; }, get me() { return me; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

@@ -10,6 +10,7 @@ import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, M
 import { think } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
+import { storyResult } from './shared/story.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 export const clock = {
@@ -103,7 +104,9 @@ async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
-    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', result: room.result ?? null,
+    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard',
+    // a finished match's result carries this player's own outcome (you); a match the host ended has none
+    result: room.result ? { ...room.result, you: room.result.story ? p.lastMatch ?? null : null } : null,
     players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
 }
@@ -176,13 +179,18 @@ function handToAi(room, player) {
   lobby(room);
 }
 
+// the result's per-slot lists follow the seats when seats are freed or added (the report's rows stay with their player)
+const SLOT_LISTS = [['teams', null], ['names', ''], ['story', null]];
+
 function retainSeats(room, retained) {
   const removed = room.players.filter(p => !retained.includes(p));
   if (room.result?.teams && removed.length) {
     const count = room.players.length;
     const order = [...retained, ...removed].map(p => room.players.indexOf(p));
-    room.result.teams = [...order.map(i => room.result.teams[i]), ...room.result.teams.slice(count)];
-    room.result.names = [...order.map(i => room.result.names[i]), ...room.result.names.slice(count)];
+    for (const [key] of SLOT_LISTS) {
+      const list = room.result[key];
+      if (Array.isArray(list)) room.result[key] = [...order.map(i => list[i]), ...list.slice(count)];
+    }
   }
   removed.forEach(p => clock.clearTimeout(p.cleanupTimer));
   room.players = retained;
@@ -194,8 +202,7 @@ function freeOfflineSeats(room) {
 
 function addSeat(room, player) {
   if (room.result?.teams) {
-    room.result.teams.splice(room.players.length, 0, null);
-    room.result.names.splice(room.players.length, 0, '');
+    for (const [key, empty] of SLOT_LISTS) if (Array.isArray(room.result[key])) room.result[key].splice(room.players.length, 0, empty);
   }
   room.players.push(player);
 }
@@ -305,6 +312,28 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// The end of a match. Once the sim has a winner the room stays in play for 6 s: the sim runs at half speed (a step every
+// other tick, a snapshot after each), orders are refused (command() ignores them once there is a winner), the AIs stop
+// thinking and the fog is lifted (snapshotFor shows everything while g.reveal is set). Then back to the lobby (map, mode
+// and teams can change; newcomers can join) with the result: why and where it ended, the story, and each player's own
+// outcome in p.lastMatch (lobby() sends it as result.you). True while it has the room: the tick loop skips the rest.
+const HOLD_TICKS = Math.round(6 / TICK);
+function holdEnding(room) {
+  const g = room.game;
+  if (g.winner === null) return false;
+  g.held = (g.held ?? 0) + 1;
+  if (g.held % 2 === 0) {
+    step(g);
+    const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
+    const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
+    room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
+  }
+  if (g.held < HOLD_TICKS) return true;
+  room.players.forEach((p, i) => (p.lastMatch = { outcome: g.winner === -1 ? 'draw' : g.winner === g.players[i].team ? 'victory' : 'defeat', team: g.players[i].team }));
+  finishMatch(room, { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name), ...storyResult(g) });
+  return true;
+}
+
 export function tickRooms() {
   for (const room of rooms.values()) {
     if (room.emptySince != null && clock.now() - room.emptySince > 60_000) { rooms.delete(room.code); continue; }
@@ -312,6 +341,7 @@ export function tickRooms() {
     if (pauseTick(room)) continue;
     const g = room.game;
     room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
+    if (holdEnding(room)) continue;
     step(g);
     // AIs think every 2s, staggered so they don't all act on the same tick
     room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
@@ -320,8 +350,6 @@ export function tickRooms() {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
       room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
     }
-    // match over: straight back to the lobby (map, mode and teams can change; newcomers can join), with the result
-    if (g.winner !== null) finishMatch(room, { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name) });
   }
 }
 export const loop = setInterval(tickRooms, TICK * 1000);

@@ -37,6 +37,12 @@ export function battleShots(s, units, mapW) {
       case 'strafe': audio.play('plane_flyby', at); audio.play('strafe', at, { delay: 1.3 }); break; // guns open up as it passes (plane() in main.js)
       case 'recon': audio.play('plane_flyby', at, { gain: 0.8 }); break;
       case 'bombing': audio.play('bomber', at); break;
+      // aviation (merged after this module was written): dive bombers and transports fly over, flak bursts, AA guns chatter;
+      // a downed plane's crash is played by downed() in main.js and parachutes make no sound
+      case 'dive': case 'para': audio.play('plane_flyby', at); break;
+      case 'flak': audio.play('flak', at); break;
+      case 'aa': if (from) audio.play('mg', from, { gain: 0.8 }); break;
+      case 'chutes': case 'shotdown': case 'planedown': break;
       case 'salvo': {
         const pos = from ?? at, mortar = from ? from.type === 'mortar' : sh.n === 1;
         if (!mortar) { audio.play('rockets', pos); break; }
