@@ -20,8 +20,9 @@ export function loadTexture(name, onReady) {
   if (t.ready) onReady(t.tex); else t.waiting.push(onReady);
 }
 
-// Fog of war on 3D pieces: the overlay mesh only covers the ground, so walls and roofs sample the same fog texture
-// (alpha 0 seen, about 0.47 fogged) and mix toward the overlay's color. One set of uniforms, shared by every material.
+// Fog of war on 3D pieces: the overlay mesh only covers the ground, so walls, roofs and props sample the same fog
+// texture (client/fog.js: alpha 0 seen, about 0.47 explored, about 0.73 never seen) and mix toward the overlay's
+// color. One set of uniforms, shared by every material.
 const noFog = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 noFog.needsUpdate = true;
 const FOW = { fowMap: { value: noFog }, fowSize: { value: new THREE.Vector2(1, 1) } };

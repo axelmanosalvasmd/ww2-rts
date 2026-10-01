@@ -1607,6 +1607,119 @@ const referenceVision = g => {
   }
 }
 
+// The fog mask a team is sent is its vision and nothing more: updateVision's rule at every cell centre (the public los
+// and plain Math.hypot here), the live recon corridors and the cells under the enemy ground units the team sees. The
+// packed keyframe and deltas rebuild it on each client. Units standing still keep their cells between passes, so the
+// check runs again after a hedge, a smoke cloud and a raised patch of ground appear inside one unit's view.
+const fogSees = (g, u, at) => {
+  const def = UNITS[u.type], d = Math.hypot(u.x - at.x, u.z - at.z);
+  if (u.air) return d <= def.vision;
+  const range = def.vision * (1 + CFG.highGroundVision * massiveInternals.levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1);
+  return d < 6 || (!!def.building && d <= def.vision) || (d <= range && los(g, u, at));
+};
+const fogEyes = (g, team) => [...g.units.values()].filter(u => g.players[u.owner].team === team && (!u.air || massiveInternals.airborne(u)));
+const cellAt = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+const underSeen = (g, team) => [...g.players.find(p => p.team === team).visible].flatMap(id => {
+  const t = g.units.get(id);
+  return !t || t.air ? [] : t.cells ? [...t.cells] : [Math.floor(t.z / CELL) * g.w + Math.floor(t.x / CELL)];
+});
+const reconOver = (g, team, at) => g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === team && massiveInternals.inStrip(s, at, SUPPORT.recon.len, SUPPORT.recon.width));
+const referenceFog = (g, team) => {
+  const vis = new Uint8Array(g.w * g.h);
+  for (const u of fogEyes(g, team)) {
+    const R = Math.max(6, UNITS[u.type].vision * 2) + CELL; // the high-ground and garrison range stays under twice the vision
+    for (let y = Math.max(0, Math.floor((u.z - R) / CELL)); y <= Math.min(g.h - 1, Math.floor((u.z + R) / CELL)); y++)
+      for (let x = Math.max(0, Math.floor((u.x - R) / CELL)); x <= Math.min(g.w - 1, Math.floor((u.x + R) / CELL)); x++)
+        if (!vis[y * g.w + x] && fogSees(g, u, cellAt(g, y * g.w + x))) vis[y * g.w + x] = 1;
+  }
+  for (let c = 0; c < vis.length; c++) if (!vis[c] && reconOver(g, team, cellAt(g, c))) vis[c] = 1;
+  for (const c of underSeen(g, team)) vis[c] = 1;
+  return vis;
+};
+{
+  const { updateVision, setCell, airborne } = massiveInternals, g = massiveFixture(), n = g.w * g.h;
+  const teams = [...new Set(g.players.map(p => p.team))], ever = new Map(teams.map(t => [t, new Uint8Array(n)]));
+  const flip = (str, into) => { sim.unpackRuns(str, (start, count) => { for (let c = start; c < start + count; c++) into[c] ^= 1; }); return into; };
+  let clients = null;
+  const pass = (label) => {
+    g.tick += 4;
+    updateVision(g);
+    const masks = new Map();
+    for (const team of teams) {
+      const want = referenceFog(g, team), f = sim.teamFog(g, team);
+      const extra = [], missing = [];
+      for (let c = 0; c < n; c++) if (f.vis[c] !== want[c]) (f.vis[c] ? extra : missing).push(c);
+      assert.equal(extra.length, 0, `${label}: team ${team}'s fog mask has no cell the team can't see (${extra.length} cells, first ${extra[0]})`);
+      assert.equal(missing.length, 0, `${label}: team ${team}'s fog mask has every cell the team sees (${missing.length} cells missing, first ${missing[0]})`);
+      assert.ok(underSeen(g, team).every(c => f.vis[c]), `${label}: every enemy ground unit team ${team} sees stands on clear ground`);
+      const e = ever.get(team);
+      for (let c = 0; c < n; c++) e[c] |= want[c];
+      assert.deepEqual(f.explored, e, `${label}: team ${team} has explored every cell it has seen`);
+      masks.set(team, f.vis.slice()); // teamFog reuses its buffers on later passes
+    }
+    if (!clients) {
+      // match start: each player gets the whole mask and the explored cells
+      clients = g.players.map((p, slot) => {
+        const key = sim.fogFor(g, slot, true);
+        assert.deepEqual(flip(key.e, new Uint8Array(n)), sim.teamFog(g, p.team).explored, `player ${slot}'s first fog carries the explored cells`);
+        return flip(key.v, new Uint8Array(n));
+      });
+    } else g.players.forEach((p, slot) => { const delta = sim.fogFor(g, slot); if (delta !== undefined) flip(delta, clients[slot]); });
+    g.players.forEach((p, slot) => {
+      assert.deepEqual(clients[slot], masks.get(p.team), `${label}: player ${slot}'s client rebuilds its team's mask`);
+      assert.equal(sim.fogFor(g, slot), undefined, `${label}: nothing more to send player ${slot} until the view changes`);
+    });
+    return masks;
+  };
+  const start = pass('start');
+  assert.ok(teams.every(t => start.get(t).some(v => v) && start.get(t).some(v => !v)), 'every team sees part of the map');
+  pass('standing'); pass('still standing'); // the second pass keeps the standing units' cells, the third reuses them
+  const moved = new Set();
+  for (const u of g.units.values()) {
+    if (u.air) { u.air.state = ['base', 'out', 'station', 'home', 'rearm'][(u.id + 1) % 5]; continue; }
+    if (u.id % 3 || UNITS[u.type].structure || UNITS[u.type].building) continue;
+    u.x += 3; u.z -= 1; moved.add(u.id);
+  }
+  const after = pass('moved');
+  assert.ok(teams.some(t => after.get(t).some((v, c) => v !== start.get(t)[c])), 'moving units changes the fog');
+  pass('standing after the move');
+
+  // one cell a single standing ground unit sees, well past 6 m and outside the recon corridor, and the cell halfway
+  // along its sight line, away from the map edge and from every unit
+  const team = 0, mask = sim.teamFog(g, team).vis, eyes = fogEyes(g, team), under = new Set(underSeen(g, team));
+  const occupied = new Set([...g.units.values()].flatMap(t => t.cells ? [...t.cells] : [Math.floor(t.z / CELL) * g.w + Math.floor(t.x / CELL)]));
+  const near = m => [-g.w - 1, -g.w, -g.w + 1, -1, 0, 1, g.w - 1, g.w, g.w + 1].map(k => m + k);
+  let pick = null;
+  for (let c = 0; c < n && !pick; c++) {
+    const at = cellAt(g, c);
+    if (!mask[c] || under.has(c) || reconOver(g, team, at)) continue;
+    const by = eyes.filter(u => fogSees(g, u, at));
+    if (by.length !== 1) continue;
+    const u = by[0], d = Math.hypot(u.x - at.x, u.z - at.z);
+    if (u.air || moved.has(u.id) || UNITS[u.type].building || d < 12 || massiveInternals.levelAt(g, u.x, u.z) > 2 || g.height[c] > 2) continue;
+    const mx = (u.x + at.x) / 2, mz = (u.z + at.z) / 2, x = Math.floor(mx / CELL), y = Math.floor(mz / CELL), m = y * g.w + x;
+    if (mx % CELL && mz % CELL && x > 0 && y > 0 && x < g.w - 1 && y < g.h - 1 && g.chars[m] === '.' && near(m).every(k => !occupied.has(k))) pick = { c, m };
+  }
+  assert.ok(pick, 'the fixture has a cell only one standing unit sees');
+  const { c, m } = pick, char = g.chars[m];
+  setCell(g, m, 'H');
+  assert.equal(pass('hedge').get(team)[c], 0, 'a new hedge hides the ground behind it from a unit that stood still');
+  setCell(g, m, char);
+  assert.equal(pass('hedge gone').get(team)[c], 1, 'the ground shows again once the hedge is gone');
+  g.smokes.push({ ...cellAt(g, c), r: 1.5, t: 10 });
+  assert.equal(pass('smoke').get(team)[c], 0, 'smoke over a cell hides it');
+  g.smokes.length = 0;
+  assert.equal(pass('smoke gone').get(team)[c], 1, 'the cell shows again once the smoke clears');
+  const patch = near(m), levels = patch.map(k => g.height[k]);
+  for (const k of patch) g.height[k] = CFG.maxLevel;
+  g.terrainVersion++;
+  assert.equal(pass('raised ground').get(team)[c], 0, 'raised ground in the way hides the cell');
+  patch.forEach((k, i) => { g.height[k] = levels[i]; });
+  g.terrainVersion++;
+  assert.equal(pass('ground back').get(team)[c], 1, 'the cell shows again once the ground is back');
+  assert.ok(g.units.size === 300 && [...g.units.values()].some(u => u.air && airborne(u)), 'airborne planes took part');
+}
+
 // Reference before the cheap separation gates. Pair order and floating-point pushes are unchanged.
 const referenceSeparation = `
   const list = [...g.units.values()];
@@ -3210,9 +3323,10 @@ for (const lookupFinished of [false, true]) {
   const same = (g, label) => {
     const shots = g.shots, cells = g.newCells, cache = snapshotCache(g), saved = JSON.stringify(cache.units), out = [];
     for (let slot = 0; slot < g.players.length; slot++) {
-      // terrain is each player's own memory (terrainFor, outside the cache): the first build takes the pending cells
+      // terrain and fog are each player's own memory (terrainFor and fogFor, outside the cache): the first build takes
+      // the pending cells and the fog change
       const cached = wire(snapshotFor(g, slot, shots, cells, cache)), plain = wire(snapshotFor(g, slot, shots, cells));
-      assert.deepEqual({ ...cached, cells: undefined }, { ...plain, cells: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
+      assert.deepEqual({ ...cached, cells: undefined, fog: undefined }, { ...plain, cells: undefined, fog: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
       out.push(cached);
     }
     assert.equal(JSON.stringify(cache.units), saved, 'player filtering never mutates shared unit rows');

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
+import { fogged } from './surfaces.js';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
 
 const KINDS = ['deciduous', 'poplar', 'pine', 'bush', 'rocks', 'fence', 'haystack', 'supplies'];
@@ -245,7 +246,7 @@ function geometry(kind) {
 export function createProps({ map, grid, hAt, parent }) {
   const cached = candidates(map), group = new THREE.Group(), meshes = new Map();
   group.name = 'painted-props'; parent.add(group);
-  const material = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
+  const material = fogged(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true })); // darkens in the fog of war
   for (const kind of KINDS) {
     // Deciduous trees can become pines when live elevation favours that species.
     const capacity = cached.filter(c => c.kind === kind || (kind === 'pine' && c.kind === 'deciduous')).length;

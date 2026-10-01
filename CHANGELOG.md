@@ -5,6 +5,29 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fog of war now shows exactly what your team sees:
+  - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
+    (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn
+    clear while the team saw nothing there, 0.7% was seen but drawn fogged, and 29 of 477 enemy units the server
+    showed stood on fogged ground (on Bocage, all of them).
+  - The server now sends each player only its own team's seen cells: the whole mask at match start and on
+    reconnect, then only the cells that changed, as short run-length strings. On a six-player Massive game (Six
+    Fronts, Conquest) a snapshot grows from 1920 to 2022 bytes on average (+102, about 5%). Working out the masks
+    raises the server's cost for one round of six snapshots from 0.77 to 3.75 ms on average (p95 2.8 to 10.7 ms).
+  - The ground has three looks: seen (clear), explored (dimmed) and never seen (dark). A cell fades to its new look
+    within a quarter second, and only the changed part of each texture row goes to the graphics card (about 1 KB a
+    frame instead of the whole 90 KB texture). Trees, rocks and other props now darken in the fog like houses and
+    walls already did, and water darkens under the same overlay.
+  - Every unit a snapshot shows stands on clear ground: in a replay of 1334 snapshots, 0 of 21108 shown ground
+    units stood on fog and the client's seen cells matched the server's every time, and in a live 2v1 match on
+    Bocage 0 of 13588 shown ground units over 1465 snapshots stood on fog. A new server test checks each
+    team's mask against a cell-by-cell vision check on the 300-unit Massive fixture, including after a hedge, smoke
+    and raised ground appear in a standing unit's view.
+  - Left for later: terrain changes (craters, trenches) still reach every client, even in the fog. Enemy planes
+    still show over fog (by design), and a camouflaged sniper can stand unseen on clear ground. The fog edge can
+    trail a moving unit by up to about half a second (five vision passes a second plus the fade). In Annihilation the
+    ground under the always-visible enemy bunkers is clear. Buildings and props in the fog fade toward a lighter grey
+    than the ground. The new test adds about 3 seconds to `node test.js`.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

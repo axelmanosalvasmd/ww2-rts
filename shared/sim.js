@@ -673,13 +673,14 @@ export const levelChar = (n) => (n < 0 ? String.fromCharCode(96 - n) : String(n)
 const level = (g, c) => (g.height && c >= 0 ? g.height[c] : 0);
 export const levelAt = (g, x, z) => level(g, cellOf(g, x, z));
 // hills block sight: sample the line between two eyes and compare with the ground under it
-function overHills(g, a, b) {
+const overHills = (g, a, b) => hillsClear(g, a.x, a.z, b.x, b.z);
+function hillsClear(g, ax, az, bx, bz) {
   if (!g.height) return true;
-  const L = CFG.levelHeight, ya = levelAt(g, a.x, a.z) * L + CFG.eye, yb = levelAt(g, b.x, b.z) * L + CFG.eye;
-  const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / (CELL / 2));
+  const L = CFG.levelHeight, ya = levelAt(g, ax, az) * L + CFG.eye, yb = levelAt(g, bx, bz) * L + CFG.eye;
+  const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / (CELL / 2));
   for (let i = 1; i < n; i++) {
     const t = i / n;
-    if (levelAt(g, a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t) * L > ya + (yb - ya) * t) return false;
+    if (levelAt(g, ax + (bx - ax) * t, az + (bz - az) * t) * L > ya + (yb - ya) * t) return false;
   }
   return true;
 }
@@ -1280,6 +1281,7 @@ function fire(g, u, t, moving) {
 }
 
 function updateVision(g) {
+  g.visionTick = g.tick; // the fog masks (teamFog) follow this pass
   // shared vision: the whole team sees what any member sees (computed once per team)
   const byTeam = new Map(), ownByTeam = new Map(), list = [...g.units.values()];
   for (const u of list) {
@@ -1338,6 +1340,234 @@ function updateVision(g) {
 }
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
 export const knownBuildings = (g, slot) => [...(g.ghosts?.get(g.players[slot].team)?.values() ?? [])];
+
+// ---------- fog of war: the ground a team sees ----------
+// updateVision's rule applied to every cell centre: anything within 6 m, a building's or an airborne plane's whole
+// vision circle, a live recon corridor, otherwise the high-ground and garrison range with line of sight. The cells
+// under the enemy ground units the team sees count too, so nothing a snapshot shows stands on fogged ground (planes
+// fly over it: an enemy plane is seen up to CFG.air.seeRange away). The shortcuts below skip only work that cannot
+// change the answer.
+const FOG_BLOCK = 3; // 8 x 8 cell blocks for the highest-ground lookup and the change stamps
+function fogTerrain(g) {
+  const version = g.terrainVersion ?? 0, old = g.fogTerrain;
+  if (old?.version === version) return old;
+  const w = g.w, h = g.h, W = w + 1, n = w * h, sat = new Int32Array(W * (h + 1)), sight = new Uint8Array(n);
+  // sight blockers summed over every box from the corner: any box's count in four reads
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) { const c = y * w + x; row += sight[c] = g.flags[c] & SIGHT ? 1 : 0; sat[(y + 1) * W + x + 1] = sat[y * W + x + 1] + row; }
+  }
+  const bw = (w >> FOG_BLOCK) + 1, blocks = bw * ((h >> FOG_BLOCK) + 1), top = new Int8Array(blocks).fill(CFG.minLevel);
+  const height = g.height?.slice() ?? null, stamp = old?.stamp ?? new Uint32Array(blocks);
+  for (let c = 0; c < n; c++) {
+    const b = (Math.floor(c / w) >> FOG_BLOCK) * bw + ((c % w) >> FOG_BLOCK), level = height ? height[c] : 0;
+    if (level > top[b]) top[b] = level;
+    // the blocks where sight changed: sources looking over them work their cells out again
+    if (old && (sight[c] !== old.sight[c] || level !== (old.height ? old.height[c] : 0))) stamp[b] = version;
+  }
+  return (g.fogTerrain = { version, sat, W, top, bw, sight, height, stamp });
+}
+const blockMax = (f, list, x0, y0, x1, y1) => {
+  let top = -Infinity;
+  for (let by = y0 >> FOG_BLOCK; by <= y1 >> FOG_BLOCK; by++) for (let bx = x0 >> FOG_BLOCK; bx <= x1 >> FOG_BLOCK; bx++) top = Math.max(top, list[by * f.bw + bx]);
+  return top;
+};
+// sight blockers in the box between two cells, from the summed table
+const sightIn = (f, ax, ay, bx, by) => {
+  const S = f.sat, W = f.W, x0 = ax < bx ? ax : bx, x1 = ax < bx ? bx : ax, y0 = ay < by ? ay : by, y1 = ay < by ? by : ay;
+  return S[(y1 + 1) * W + x1 + 1] - S[y0 * W + x1 + 1] - S[(y1 + 1) * W + x0] + S[y0 * W + x0];
+};
+// los(g, source, cell centre) with numbers only, and the smokes already narrowed down to the source's reach
+function fogLos(g, f, sx, sz, ux, uy, x, y, la, srcTop, smokes) {
+  const px = (x + 0.5) * CELL, pz = (y + 0.5) * CELL, w = g.w, start = f.sight[uy * w + ux], end = f.sight[y * w + x];
+  // The grid walk only visits cells inside the box between its ends, and skips its first and last cell. A long
+  // diagonal's box is wide, so the two halves' boxes get a second look (unless the midpoint sits on a cell edge).
+  if (sightIn(f, ux, uy, x, y) - start - end > 0) {
+    const mx = (sx + px) / 2, mz = (sz + pz) / 2, mcx = Math.floor(mx / CELL), mcy = Math.floor(mz / CELL);
+    if (mx % CELL === 0 || mz % CELL === 0 || sightIn(f, ux, uy, mcx, mcy) - start > 0 || sightIn(f, mcx, mcy, x, y) - end > 0) {
+      // clear(g, sx, sz, px, pz, SIGHT, false), unrolled
+      const flags = g.flags, h = g.h, dx = px - sx, dz = pz - sz, stepX = Math.sign(dx), stepY = Math.sign(dz);
+      const tdx = dx ? CELL / Math.abs(dx) : Infinity, tdy = dz ? CELL / Math.abs(dz) : Infinity;
+      let cx = ux, cy = uy;
+      let tx = dx ? (stepX > 0 ? (cx + 1) * CELL - sx : sx - cx * CELL) / Math.abs(dx) : Infinity;
+      let ty = dz ? (stepY > 0 ? (cy + 1) * CELL - sz : sz - cy * CELL) / Math.abs(dz) : Infinity;
+      for (let k = w + h; k > 0 && !(cx === x && cy === y); k--) {
+        if (tx < ty) { tx += tdx; cx += stepX; } else { ty += tdy; cy += stepY; }
+        if (cx === x && cy === y) break;
+        if (cx < 0 || cy < 0 || cx >= w || cy >= h || flags[cy * w + cx] & SIGHT) return false;
+      }
+    }
+  }
+  const x0 = ux < x ? ux : x, x1 = ux < x ? x : ux, y0 = uy < y ? uy : y, y1 = uy < y ? y : uy;
+  if (smokes.length) {
+    // segHits, unrolled
+    const dx = px - sx, dz = pz - sz, l2 = dx * dx + dz * dz || 1;
+    for (const s of smokes) {
+      const t = Math.max(0, Math.min(1, ((s.x - sx) * dx + (s.z - sz) * dz) / l2));
+      if (Math.hypot(sx + dx * t - s.x, sz + dz * t - s.z) < s.r) return false;
+    }
+  }
+  const height = g.height;
+  if (!height) return true;
+  // no ground in the box above the lower eye's own level: the hills can't block
+  const lb = height[y * w + x], low = la < lb ? la : lb;
+  if (srcTop <= low || blockMax(f, f.top, x0, y0, x1, y1) <= low) return true;
+  // hillsClear's samples, read straight from the height grid (both ends are on the map, so every sample is)
+  const L = CFG.levelHeight, ya = la * L + CFG.eye, yb = lb * L + CFG.eye, dx = px - sx, dz = pz - sz;
+  const n = Math.ceil(Math.hypot(dx, dz) / (CELL / 2));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (height[Math.floor((sz + dz * t) / CELL) * w + Math.floor((sx + dx * t) / CELL)] * L > ya + (yb - ya) * t) return false;
+  }
+  return true;
+}
+// Math.hypot(dx, dz) <= r (or < r when strict), from the squared distance except within a hair of the edge
+const within = (q, dx, dz, r, strict) => {
+  const r2 = r * r;
+  if (q < r2 * (1 - 1e-9)) return true;
+  if (q > r2 * (1 + 1e-9)) return false;
+  const d = Math.hypot(dx, dz);
+  return strict ? d < r : d <= r;
+};
+const visionRange = (g, u, def) => def.vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1);
+const fogReach = (g, u, def) => (u.air ? def.vision : Math.max(6, visionRange(g, u, def), def.building ? def.vision : 0));
+const NO_SMOKE = [];
+const smokesNear = (g, u, reach) => (g.smokes.length ? g.smokes.filter(s => Math.hypot(s.x - u.x, s.z - u.z) < reach + s.r) : NO_SMOKE);
+// Marks what one source sees. With `list`, every cell of its circle is worked out and the seen ones are pushed there
+// (kept while the source stands still); without, cells the team already sees are skipped.
+function fogSource(g, f, vis, u, list) {
+  const def = UNITS[u.type], w = g.w, h = g.h, air = !!u.air, building = !!def.building, vision = def.vision, sx = u.x, sz = u.z;
+  const range = visionRange(g, u, def), R = fogReach(g, u, def);
+  const x0 = Math.max(0, Math.floor((sx - R) / CELL)), x1 = Math.min(w - 1, Math.floor((sx + R) / CELL));
+  const y0 = Math.max(0, Math.floor((sz - R) / CELL)), y1 = Math.min(h - 1, Math.floor((sz + R) / CELL));
+  const ux = Math.floor(sx / CELL), uy = Math.floor(sz / CELL), inside = ux >= 0 && uy >= 0 && ux < w && uy < h;
+  const la = levelAt(g, sx, sz), srcTop = g.height && x0 <= x1 && y0 <= y1 ? blockMax(f, f.top, x0, y0, x1, y1) : CFG.minLevel;
+  const smokes = smokesNear(g, u, R);
+  for (let y = y0; y <= y1; y++) {
+    // only the stretch of the row that can be within R (one spare cell each side)
+    const pz = (y + 0.5) * CELL, dz = sz - pz, span = Math.sqrt(Math.max(0, R * R - dz * dz));
+    const xa = Math.max(x0, Math.floor((sx - span) / CELL) - 1), xb = Math.min(x1, Math.floor((sx + span) / CELL) + 1);
+    for (let x = xa; x <= xb; x++) {
+      const c = y * w + x;
+      if (vis[c] && !list) continue;
+      const px = (x + 0.5) * CELL, dx = sx - px, q = dx * dx + dz * dz;
+      if (air ? within(q, dx, dz, vision) : within(q, dx, dz, 6, true) || (building && within(q, dx, dz, vision))
+        || (within(q, dx, dz, range) && (inside ? fogLos(g, f, sx, sz, ux, uy, x, y, la, srcTop, smokes) : los(g, u, { x: px, z: pz })))) {
+        vis[c] = 1;
+        list?.push(c);
+      }
+    }
+  }
+  return { box: [x0, y0, Math.max(x0, x1), Math.max(y0, y1)], smokes, reach: R };
+}
+const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+// one cell per byte into vis (all zeros coming in), 1 = this team sees it right now
+function teamCells(g, team, vis) {
+  const w = g.w, h = g.h, f = fogTerrain(g), kept = g.fogSources ??= new Map(), moving = [];
+  for (const id of kept.keys()) if (!g.units.has(id)) kept.delete(id);
+  // A ground source standing still since the last pass keeps its seen cells until sight changes in its box (a
+  // terrain edit or a smoke cloud coming or going). Moving ones skip the cells the team already sees.
+  for (const u of g.units.values()) {
+    if (g.players[u.owner].team !== team || (u.air && !airborne(u))) continue;
+    if (u.air) { moving.push(u); continue; }
+    const e = kept.get(u.id);
+    if (!e || e.x !== u.x || e.z !== u.z || e.garrison !== u.garrison) { kept.set(u.id, { x: u.x, z: u.z, garrison: u.garrison, cells: null }); moving.push(u); continue; }
+    if (e.cells && blockMax(f, f.stamp, e.box[0], e.box[1], e.box[2], e.box[3]) <= e.version && sameList(e.smokes, smokesNear(g, u, e.reach))) {
+      for (const c of e.cells) vis[c] = 1;
+      continue;
+    }
+    const cells = [], { box, smokes, reach } = fogSource(g, f, vis, u, cells);
+    Object.assign(e, { cells: Int32Array.from(cells), version: f.version, box, smokes, reach });
+  }
+  for (const u of moving) fogSource(g, f, vis, u, null);
+  const { len, width } = SUPPORT.recon, reach = Math.hypot(len, width) / 2;
+  for (const s of g.strikes) {
+    if (!s.live || s.kind !== 'recon' || g.players[s.owner].team !== team) continue;
+    for (let y = Math.max(0, Math.floor((s.z - reach) / CELL)); y <= Math.min(h - 1, Math.floor((s.z + reach) / CELL)); y++)
+      for (let x = Math.max(0, Math.floor((s.x - reach) / CELL)); x <= Math.min(w - 1, Math.floor((s.x + reach) / CELL)); x++)
+        if (!vis[y * w + x] && inStrip(s, { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL }, len, width)) vis[y * w + x] = 1;
+  }
+  const seen = g.players.find(p => p.team === team)?.visible ?? [];
+  for (const id of seen) {
+    const t = g.units.get(id);
+    if (!t || t.air) continue;
+    if (t.cells) for (const c of t.cells) vis[c] = 1;
+    else { const c = cellOf(g, t.x, t.z); if (c >= 0) vis[c] = 1; }
+  }
+  return vis;
+}
+// A team's fog: `vis` (seen now) and `explored` (ever seen), one byte per cell. Worked out once per vision pass, the
+// first time a snapshot asks; `version` goes up only when `vis` changes. `deltas` maps an older version to the packed
+// change from it to now (fogFor), starting with the step from the version before.
+export function teamFog(g, team) {
+  const all = g.fog ??= new Map(), key = g.visionTick ?? -1, n = g.w * g.h;
+  let f = all.get(team);
+  if (!f) all.set(team, f = { key: null, version: 0, vis: new Uint8Array(n), next: new Uint8Array(n), explored: new Uint8Array(n), deltas: new Map() });
+  if (f.key === key) return f;
+  const vis = teamCells(g, team, f.next.fill(0)), old = f.vis, explored = f.explored, codes = [];
+  f.key = key;
+  // one sweep: the cells that flipped since the last version (packed as packRuns does) and the explored ones
+  let last = 0, on = false;
+  for (let c = 0; c < n; c++) {
+    const v = vis[c];
+    if ((v !== old[c]) !== on) { putRun(codes, c - last); last = c; on = !on; }
+    explored[c] |= v;
+  }
+  if (on) putRun(codes, n - last);
+  if (codes.length) {
+    // the two buffers swap, so a pass allocates nothing
+    f.next = old; f.vis = vis; f.deltas.clear();
+    f.deltas.set(f.version++, runString(codes));
+  }
+  return f;
+}
+// Run lengths of the cells where a differs from b (or from all zeros): same, different, same, ... with the trailing
+// "same" left off. Each length is a little-endian base-32 varint in URL-safe base64 digits (32 and up: more follows).
+const RUN_DIGITS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const RUN_VALUE = new Int8Array(128).fill(-1);
+for (let i = 0; i < 64; i++) RUN_VALUE[RUN_DIGITS.charCodeAt(i)] = i;
+function putRun(codes, v) {
+  while (v >= 32) { codes.push(RUN_DIGITS.charCodeAt(32 | (v & 31))); v = Math.floor(v / 32); }
+  codes.push(RUN_DIGITS.charCodeAt(v));
+}
+function runString(codes) {
+  let out = '';
+  for (let i = 0; i < codes.length; i += 8192) out += String.fromCharCode(...codes.slice(i, i + 8192));
+  return out;
+}
+export function packRuns(a, b) {
+  const n = a.length, codes = [];
+  let last = 0, on = false;
+  if (b) { for (let i = 0; i < n; i++) if ((a[i] !== b[i]) !== on) { putRun(codes, i - last); last = i; on = !on; } }
+  else for (let i = 0; i < n; i++) if ((a[i] !== 0) !== on) { putRun(codes, i - last); last = i; on = !on; }
+  if (on) putRun(codes, n - last);
+  return runString(codes);
+}
+// calls run(start, count) for each run of differing cells in a packRuns string
+export function unpackRuns(str, run) {
+  let i = 0, c = 0, on = false;
+  while (i < str.length) {
+    let v = 0, scale = 1, d;
+    do { d = RUN_VALUE[str.charCodeAt(i++)]; if (d < 0) throw new Error('bad fog run'); v += (d & 31) * scale; scale *= 32; } while (d & 32 && i < str.length);
+    if (on && v) run(c, v);
+    c += v; on = !on;
+  }
+}
+// What one player is sent of its team's fog. full (match start and reconnect): { v: seen now, e: ever seen }, both
+// packed against all zeros. Otherwise only when the team's view changed: the cells that flipped since this player's
+// last fog, as one packRuns string. Teammates on the same base share one packing.
+export function fogFor(g, slot, full = false) {
+  const p = g.players[slot], f = teamFog(g, p.team), mine = p.fog ??= { version: 0, base: new Uint8Array(f.vis.length) };
+  if (full) {
+    mine.version = f.version; mine.base.set(f.vis);
+    return { v: packRuns(f.vis), e: packRuns(f.explored) };
+  }
+  if (mine.version === f.version) return undefined;
+  let delta = f.deltas.get(mine.version);
+  if (delta === undefined) f.deltas.set(mine.version, delta = packRuns(f.vis, mine.base));
+  mine.version = f.version; mine.base.set(f.vis);
+  return delta;
+}
 
 // A support plane arriving over enemy fighter cover or flak can be shot down: fighter cover always gets it (and is used
 // up; it never touches recon), each flak gun in range rolls its chance. Whatever the plane hasn't delivered is lost:
@@ -1899,6 +2129,8 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     vp: cache ? cache.vp : g.players.map(q => Math.floor(q.vp)),
     // Terrain comes from each player's own memory (terrainFor), so the cells argument is unused.
     cells: terrainFor(g, slot),
+    // the cells this player's team started or stopped seeing since its last fog (fogFor), only when there are any
+    fog: fogFor(g, slot),
     // A shot names only the units this player can see.
     shots: shots.filter(s => g.reveal || s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || seen(s.f) || seen(s.t))
       .map(s => {
