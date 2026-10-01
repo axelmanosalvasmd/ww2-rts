@@ -5,6 +5,170 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Terrain relief, miniature structures and map moods (round 4):
+  - Terrain reads as a sculpted painted model. Cliffs are warm stratified rock faces with a pale lip and a soil foot,
+    1-level slopes are eased ramps painted with dry earth and a darker foot, height tints the ground (lower is greener
+    and damper, higher is drier), roads sink slightly, and river and canal beds are carved below the water line with
+    sloping banks. Cell centres keep their exact simulation heights, so units still stand on the visible ground. On
+    the round 4 branch, terrain triangles on Hill 112 went from 17.6k to 37k, Kasserine Pass dropped from 64k to 29k
+    and flat maps shrank 10x or more. The fog of war overlay follows craters and darkens the rock faces, a crater
+    rebuild takes about 4 ms, and Graphics Low uses a simpler shader and a coarser mesh.
+  - Map structures are miniature models. Houses have roof overhangs, ridge tiles, chimneys and inset windows and
+    doors, and each map gets a church with a tower and some barns. Wrecked houses are broken walls on rubble, stone
+    walls have capstones, hedgerows are bocage earth banks with shrubs, and bridges have railings and piers. Sandbags
+    are rounded and stacked, tank traps are steel hedgehogs, wire is concertina on posts, trenches have revetments
+    and duckboards, and MG nests are easy to read. The HQ, Barracks, Motor Pool, Supply Depot and Command Bunker each
+    have their own shape. Map structures darken under fog of war, and footprints and cover are unchanged. On the round
+    4 branch the default map's whole-map view went from 463 to 200 draw calls and from 47.3k to 105.1k triangles.
+  - Each map has a mood. Most keep the warm afternoon. Pegasus Bridge and The Polder get a low dawn sun with mist over
+    the river, Bocage and Monte Cassino are overcast with softer shadows, the Ardennes gets falling snow, and
+    Kasserine Pass gets blowing dust. Faint cloud shadows drift across the board. The planning table now has a folded
+    field map, a ruler, a pencil, an "HQ 1944" coffee mug, an open brass compass, map pins with paper flags, and a
+    desk lamp casting a warm pool of light at one corner. On High, a few birds circle above the board. Graphics Low
+    turns off the clouds, weather and birds. No gameplay changes.
+  - Merged with rounds 1 to 3: the relief mesh replaces the round 3 smoothed height field. Units, scenery props, the
+    camera, the minimap shading, the HQ and the water all read the same ground height. Props refresh after the relief
+    reshapes a crater and still keep off every structure cell. The water surface takes the relief's height so it sits
+    in the carved beds, and bridges keep their deck height. The fog overlay shares the relief's live geometry, so it
+    follows craters too. Structures darken in the fog through the `setFogMap` hook in the round 1 surfaces module,
+    which main.js calls once the fog texture exists. The round 3 one-draw unit models stay, and the five base
+    buildings and the HQ sandbag ring now come from the round 4 models.
+  - Integration fixes: with the relief ground, every match crashed at start because the atmosphere read the size of
+    the old flat ground plane, and the board edge, table shadow and contact shadow disappeared. Both now read the
+    relief mesh (its bounds, and height as the up axis), and the cut-earth board edge follows the relief height along
+    all four sides, including where a cliff meets the edge.
+  - Left for later:
+    - The birds fly about 30 m above the board, so they only show when they pass under the view. Cloud shadows
+      darken only the ground and table, not units, structures or trees. Snow maps have falling snow but no snow lying
+      on the ground. The desk lamp's arm and shade are mostly off-screen, so players mainly see its shadow and pool.
+    - Cloud shadows reuse the full ground mesh (about 12.8k triangles on the default map, more on big maps).
+    - Triangle count about doubled with the new structures (about 212k on Monte Cassino XL at the whole-map view).
+      Low drops duckboards, half the shrubs and small-part shadows but keeps the house detail. Instanced meshes have
+      bounds that cover the whole map, so close-up views do not cull triangles (a village view still draws about 99k).
+      The fog overlay draws the terrain a second time.
+    - The base-building models use the shared unit material and do not darken in the fog the way terrain pieces do
+      (the server already hides enemy units outside vision).
+    - The church roof is the terracotta texture with a slate tint. Bridge railings are thin and hard to see from the
+      default camera. Destruction of the new structures in a long live match was not watched end to end.
+    - Cliffs are a heightfield with no overhangs, and painted contour lines still draw a thin dark line where a cliff
+      meets the plateau.
+    - Capture point, HQ and structure anchors only refresh when the world is rebuilt, so a crater under an existing
+      flag base does not re-seat it.
+    - Rendering was checked only with the headless browser's software renderer, so there are no real GPU timings.
+
+- Rooms, controls, match endings and performance (round 3):
+  - Keys and selection: Shift+Y, Shift+U, Shift+I and Shift+O now place sandbags, wire, tank traps and an MG nest (T
+    still digs a trench), and the fort buttons show the Shift key. Shift+click adds or removes a squad. Double-click
+    selects every squad of that type on screen, and Ctrl+double-click selects them on the whole map. Ctrl+A selects
+    the army. The selection list groups squads by type with a count and total health. Period cycles idle squads, Comma
+    cycles idle Engineers, and an Idle chip does the same. Control groups forget dead units, reset each match, add
+    units with Shift+number, and center the camera on a double tap.
+  - Camera and pings: the mouse wheel zooms toward the cursor, middle-drag rotates the view, and Shift+Space follows
+    the selected unit. The menu has Edge scroll on/off and Pan speed. A match opens with a 2.5 s glide down to your
+    HQ, which any key or click skips. Alt+click on the map or minimap pings your teammates with a chalk ring for 4 s
+    and an alert line, and Space jumps to it (3 pings per 5 s). Picking the ground under the cursor is faster and
+    exact on hills.
+  - Rooms: if a player drops mid-match, the game waits up to 30 s for them (once per player per match), and the host
+    can pause and resume. The host role passes to the next connected player. A refresh keeps your seat, camera,
+    selection and groups, and &seat=2 gives a second player a seat on the same computer. The host can remove an
+    offline player in the lobby or hand their army to an AI. An invite opened mid-match joins by itself when the match
+    ends, and the reconnect banner counts down 1, 2, 4, then 8 s. The Large and Massive army labels now show the real
+    numbers.
+  - Command feedback: orders that cannot happen now say why. Recruit cards, support calls, forts, Classic builds and
+    abilities grey out with a reason (Needs 120 MP, Cooldown 23 s, Army at its limit) and can still be clicked to show
+    it. An order the server refuses plays an error sound and shows one plain sentence for 2 s, for example 'Not enough
+    manpower'. A blocked or uneven footprint shows red and placement stays armed.
+  - Order queue and rally: hold Shift while right-clicking (or on the minimap) to chain up to 8 orders. Moves,
+    attack-moves, attacks, houses, trenches and Engineer builds run in turn and show as dashed pencil lines. A ninth
+    order is refused with the error sound. Outside Classic, the Rally button or Shift+H sets a rally point that newly
+    bought ground troops walk to. Minimap right-click now attacks, garrisons and assists like a click in the world.
+  - Match endings: when a match is decided, the action slows to half speed, the camera glides to where it was won or
+    lost, and a Victory, Defeat or Draw stamp says why. The battle stays on screen for 6 s with orders closed and the
+    fog lifted. The lobby then shows a match report: a chart of the victory point race (or points held), a legend in
+    words, and each player's kills, losses, builds, captures, manpower spent, support calls and planes downed.
+  - Battlefield readability: contested points pulse red and brass, and only when your team can see both sides on the
+    point. A captured point flips with a short flourish. Buildings smoke below two thirds health and burn below one
+    third. A strip under the scores shows the time to victory at the current rate, the catch-up bonus, the last minute
+    of an Assault and Sudden Death. Eliminated players see an 'out' banner, Assault and Annihilation totals no longer
+    shrink as structures fall, and the Classic rules list the Airfield.
+  - Unit rendering: big battles draw far fewer objects with the same look. Each soldier, hull, turret and building is
+    one draw, soldiers beyond 110 m (80 m on Low) use a simple model, scenery is merged, and corpses share one pooled
+    mesh (200 at most). Measured on the stream branch, draw calls in a Massive Classic 3v3 at 70 s fell 78 to 86% (885
+    to about 150 in the own-army view). Suppressed squads crouch at 50 and go prone at 90, retreating squads lean
+    forward, '?perf' shows an fps and draw-call box, and Low renders at 0.75 resolution.
+  - Server performance: six-player Massive matches run smoother. On the stream branch, benchmark p95 tick time fell
+    from 26.1 ms to 7.8 ms in Classic and from 8.2 ms to 3.4 ms in Conquest, with identical match results. A room that
+    still falls behind sends updates every 3 or 4 ticks instead of 2, and units still glide smoothly. The pause and
+    the end hold also use the shared snapshot cache.
+  - Merged with rounds 1 and 2: the planes and the Airfield keep their round 2 models (client/aircraft.js) while
+    soldiers, vehicles, guns and structures use the new one-draw models, and Classic buildings keep the round 1 wood
+    and sandbag textures. Explosions and battle sounds still come from the round 1 effects layer, with the one Volume
+    slider (M still mutes). The round 2 fog, command and start-race fixes and the round 3 server speedups both stay,
+    with one copy of each guard, and all server tests now run on one in-process server.
+  - Left for later:
+    - Rejoining a running Classic match (reload) draws the Conquest command tent and crates at every HQ. The server
+      sends 'start' before the async lobby() message, so classicMode() is false when buildHQ runs. This is the same in
+      base c21777f and master. See /tmp/ww2-shots/stage-r3/rejoin-high.png.
+    - After a reload mid-match, cratered ground near the HQ shows as gray-blue blocks instead of the dark scorch seen
+      in live play. The cause is not traced; the start message's cell levels and the rebuild path are unchanged from
+      the base. See /tmp/ww2-shots/stage-r3/low-home.png.
+    - An unsaved default name (SoldierNN) is re-rolled on every load, so a reload renames your seat and HQ label
+      mid-match. This predates round 3.
+    - The 'queueFull' sentence reads 'The training queue is full' but now also covers a full order queue.
+    - The client blocks arming a fort when MP is short; only a Shift-queued dig skips that check, even though queued
+      digs are paid when they start.
+    - Outside Classic, a rally message that carries building ids is ignored.
+    - The lobby result header uses r.teams[me] rather than r.you.
+    - The away flag in tickRooms and the online list in timedRoomTick still use !!p.ws, while pauseTick and holdEnding
+      use connected(p).
+    - On a resume, startGame may replay match_start or restart the ambience.
+    - From the streams: blast-area scans and server timer drift under sustained overload (sim-server-perf); greyed
+      Barracks-only units on the Classic HQ card (command-feedback); no static controls list in the menu yet
+      (keys-and-selection); saveMap may drop assaultTime and the per-spawn assault flag (plan).
+    - Fallen soldiers are plain dark bodies again (the pooled corpses, one draw for up to 200) instead of the round 1
+      soldier copies in helmet and colors; a pooled body in soldier shape and colors would bring that look back.
+    - House roofs are not merged into one draw, since a roof uses two materials (plaster gable and tiles) and
+      mergeMeshes keeps one.
+
+- Scenery, water and planes (round 2):
+  - Map symbols now cover every aviation unit (fighter, ground-attack plane, mobile flak, flak emplacement, airfield)
+    and all eight support calls, and an unknown unit type shows an empty frame with a "?" instead of a blank one.
+  - Open ground is dressed with painted scenery props: round trees, poplar rows, pines on high ground, bushes along
+    hedges, rocks, fences, haystacks and crates beside houses. They are purely visual, keep clear of spawns, points,
+    paths and resource nodes, stay put when terrain changes, and Low graphics shows half of them.
+  - Rivers, fords and bridges get a flowing water surface: blue-green, darker in deep water, pebbled at fords, with
+    foam at the banks and around bridge spans. Fog of war still darkens it, it rebuilds when a bridge collapses, and
+    Low graphics freezes the animation.
+  - Planes are now per-faction painted miniatures (P-51, P-47, B-25; Bf 109, Ju 87, He 111; Yak-9, Il-2, Pe-2) with
+    spinning propellers, a ground shadow, banking in turns, damage smoke, dark flak bursts and a spiral-down
+    shoot-down that ends in a fireball, and the Classic airfield gets a runway, arched hangar, control tower and
+    windsock.
+  - The new planes use the round 1 explosions and recorded sounds: a crash plays the plane-crash sound and a fire
+    loop, a strafing run plays one gun burst, and the tracers that flak and fighters fire at planes still come from
+    the effects layer, so each plane, burst and tracer is drawn once.
+  - Left for later: support bombers no longer show bombs falling from the plane (the bomb blasts still land on
+    time), and `client/fx.js` still carries its own plane pool and falling-plane code, now unused.
+- Simulation fixes (round 2):
+  - Air support: a spent Fighter Cover ring now leaves the map instead of staying forever. Ground squads ignore an
+    attack order on a plane, one cover can no longer shoot down two strikes on the same tick, blowing a bridge no
+    longer kills planes flying over it, and a plane overhead no longer counts as cover. Parked planes no longer spot,
+    houses no longer block spotting from the air, new planes appear at the Airfield that trained them, and
+    paratroopers take a population slot and no longer drop for an eliminated army.
+  - Fog of war: shoot-downs, flak shooters and HQ collapses only reach teams that can see them, terrain updates and
+    the start of a match no longer reveal unseen building footprints, and a reconnect keeps remembered terrain.
+  - Server: commands with a bad player slot, unit, support or fortification name, or someone else's building are
+    rejected, a bad army value no longer gives NaN MP, Massive selections are no longer capped at 50 units, and
+    reconnects and map loads during the start or end of a match are handled. The AI no longer crashes when it holds
+    an allied point with no opponent left.
+  - Speed: a Massive six-army Classic match steps in 3 ms on average instead of 21 ms. Idle squads look for targets on
+    a 0.5 s timer, vision and terrain updates skip work they threw away, and AI players get no snapshots.
+  - Balance is unchanged within noise: Conquest wins 34/36/30% by faction over 300 AI matches (was 41/29/31%), and
+    Classic 47/47/44 wins over 160 matches.
+  - Left for later: the lobby still labels Large and Massive as 2x and 3.5x income while the game uses 3x and 6x; the
+    Tiger limit of 1 does not grow with army size; the server tests strip `import` lines from server.js with a
+    regex; AI anti-tank buying against medium tanks is untested; an idle squad now notices a new enemy up to 0.5 s
+    later; and AI thinking spikes in big armies were not profiled.
+
 - Polish (review fixes for the HUD, world and effects slices):
   - Point and resource node income tags and the HQ sign keep the same size on screen at every zoom, so they stay
     readable when zoomed out and no longer cover the fight when zoomed in. They fade out up close, and a point's tag

@@ -22,7 +22,7 @@ const LOOK = [
 ];
 const TILE = 4; // cells per repaint tile
 const WARP = 0.32; // how far (in cells) the blend edges wander
-const HILL = [196, 184, 112], HOLLOW = [52, 46, 30], FOAM = [184, 178, 146];
+const FOAM = [184, 178, 146];
 
 // stable pseudo-random per cell (same formula as main.js)
 const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
@@ -185,24 +185,22 @@ const tq = (m, i, j) => (tSwap[m]
 
 const wt = new Float32Array(NMAT);
 function raster(S, X0, Y0, W, H, img) {
-  const { P, w, h } = S, { prim, sec, amt, lev, key } = S.attrs, d = img.data;
+  const { P, w, h } = S, { prim, sec, amt, key } = S.attrs, d = img.data;
   useTiles(ready && tiles);
   // everything that depends only on the column, worked out once
   const cU = new Float32Array(W), cWx = new Int32Array(W), cWy = new Int32Array(W), cP0 = new Int32Array(W), cP1 = new Int32Array(W), cPt = new Float32Array(W);
-  const cB = new Int32Array(W), cG0 = new Int32Array(W), cG1 = new Int32Array(W), cGs = new Float32Array(W);
+  const cB = new Int32Array(W);
   for (let c = 0; c < W; c++) {
-    const u = (X0 + c + 0.5) / P, px = u * 6 + 57, gx = Math.min(w - 1, Math.max(0, u - 0.5));
+    const u = (X0 + c + 0.5) / P, px = u * 6 + 57;
     cU[c] = u; cWx[c] = ((u * 16 + 1101) | 0) & NM; cWy[c] = ((u * 16 + 311) | 0) & NM;
     cP0[c] = Math.floor(px) & NM; cP1[c] = (Math.floor(px) + 1) & NM; cPt[c] = px - Math.floor(px);
     cB[c] = ((u * 2.3 + 900) | 0) & NM;
-    cG0[c] = Math.floor(gx); cG1[c] = Math.min(w - 1, cG0[c] + 1); cGs[c] = gx - cG0[c];
   }
   let o = 0;
   for (let j = Y0; j < Y0 + H; j++) {
-    const v = (j + 0.5) / P, py = v * 6 + 213, gy = Math.min(h - 1, Math.max(0, v - 0.5));
+    const v = (j + 0.5) / P, py = v * 6 + 213;
     const rWx = (((v * 16 + 37) | 0) & NM) << 9, rWy = (((v * 16 + 1211) | 0) & NM) << 9, rB = (((v * 2.3 + 431) | 0) & NM) << 9;
     const rP0 = (Math.floor(py) & NM) << 9, rP1 = ((Math.floor(py) + 1) & NM) << 9, rPt = py - Math.floor(py);
-    const g0 = Math.floor(gy), rG0 = g0 * w, rG1 = Math.min(h - 1, g0 + 1) * w, rGs = gy - g0;
     for (let c = 0; c < W; c++, o += 4) {
       const i = X0 + c, u = cU[c];
       // the four nearest cell centers, looked up at a warped position
@@ -254,11 +252,6 @@ function raster(S, X0, Y0, W, H, img) {
       // broad light and dark sweeps, so the repeat of the textures doesn't show
       const br = 1 + 0.08 * NA[rB | cB[c]];
       r *= br; g *= br; bl *= br;
-      // hills dry out, hollows get dark (level blended between cell centers, no warp, so it lines up with the contours)
-      const g0c = cG0[c], g1c = cG1[c], sx = cGs[c];
-      const L = (lev[rG0 + g0c] * (1 - sx) + lev[rG0 + g1c] * sx) * (1 - rGs) + (lev[rG1 + g0c] * (1 - sx) + lev[rG1 + g1c] * sx) * rGs;
-      if (L > 0) { const kk = Math.min(0.5, 0.11 * L); r += (HILL[0] - r) * kk; g += (HILL[1] - g) * kk; bl += (HILL[2] - bl) * kk; }
-      else if (L < 0) { const kk = Math.min(0.6, 0.2 * -L); r += (HOLLOW[0] - r) * kk; g += (HOLLOW[1] - g) * kk; bl += (HOLLOW[2] - bl) * kk; }
       // a pale line where water meets land
       if (wWater > 0.06 && wWater < 0.94) {
         let kk = 1 - Math.abs(wWater - 0.5) * 2.2;
@@ -435,5 +428,6 @@ export function createGround(map, renderer) {
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
-  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid) => paint(S, grid), loading };
+  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid) => paint(S, grid),
+    isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading };
 }

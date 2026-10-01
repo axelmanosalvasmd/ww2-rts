@@ -1,0 +1,188 @@
+import * as THREE from 'three';
+import { CELL } from '/shared/sim.js';
+
+const raycaster = new THREE.Raycaster(), cursor = new THREE.Vector2();
+const flat = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), d = new THREE.Vector3(), hit = new THREE.Vector3();
+const EPS = 1e-7;
+
+// Visit crossed cells in order so even a narrow peak gets its two mesh triangles tested.
+export function groundAt(camera, hAt, mx, my, w, h, mapW, mapH) {
+  cursor.set(mx / w * 2 - 1, 1 - my / h * 2);
+  raycaster.setFromCamera(cursor, camera);
+  const ray = raycaster.ray, o = ray.origin, direction = ray.direction;
+  if (direction.y < -1e-6 && Number.isFinite(mapW) && Number.isFinite(mapH)) {
+    let lo = Math.max(0, (10.01 - o.y) / direction.y), hi = Math.min(2000, (-5.01 - o.y) / direction.y);
+    for (let axis = 0; axis < 2; axis++) {
+      const origin = axis ? o.z : o.x, axisDir = axis ? direction.z : direction.x, size = axis ? mapH : mapW;
+      if (Math.abs(axisDir) < 1e-9) { if (origin < 0 || origin > size) hi = -1; }
+      else {
+        const a = -origin / axisDir, b = (size - origin) / axisDir;
+        lo = Math.max(lo, Math.min(a, b)); hi = Math.min(hi, Math.max(a, b));
+      }
+    }
+    if (lo <= hi) {
+      const columns = Math.ceil(mapW / CELL), rows = Math.ceil(mapH / CELL);
+      let ix = Math.min(columns - 1, Math.max(0, Math.floor((o.x + direction.x * (lo + EPS)) / CELL)));
+      let iz = Math.min(rows - 1, Math.max(0, Math.floor((o.z + direction.z * (lo + EPS)) / CELL)));
+      const sx = Math.sign(direction.x), sz = Math.sign(direction.z);
+      const dx = sx ? CELL / Math.abs(direction.x) : Infinity, dz = sz ? CELL / Math.abs(direction.z) : Infinity;
+      let nextX = sx ? ((sx > 0 ? ix + 1 : ix) * CELL - o.x) / direction.x : Infinity;
+      let nextZ = sz ? ((sz > 0 ? iz + 1 : iz) * CELL - o.z) / direction.z : Infinity;
+      for (let t = lo; t <= hi && ix >= 0 && ix < columns && iz >= 0 && iz < rows;) {
+        const end = Math.min(hi, nextX, nextZ), x = ix * CELL, z = iz * CELL;
+        a.set(x, hAt(x, z), z); b.set(x, hAt(x, z + CELL), z + CELL);
+        c.set(x + CELL, hAt(x + CELL, z + CELL), z + CELL); d.set(x + CELL, hAt(x + CELL, z), z);
+        const max = Math.max(a.y, b.y, c.y, d.y);
+        if (o.y + ray.direction.y * end <= max + EPS) {
+          // PlaneGeometry uses (a, b, d) and (b, c, d) after its world rotation.
+          const first = ray.intersectTriangle(a, b, d, true, hit);
+          if (first && o.distanceTo(first) >= t - EPS && o.distanceTo(first) <= end + EPS) return first.clone();
+          const second = ray.intersectTriangle(b, c, d, true, hit);
+          if (second && o.distanceTo(second) >= t - EPS && o.distanceTo(second) <= end + EPS) return second.clone();
+        }
+        if (end >= hi) break;
+        if (nextX <= nextZ) { ix += sx; nextX += dx; }
+        if (nextZ <= end + EPS) { iz += sz; nextZ += dz; }
+        t = end;
+      }
+    }
+  }
+  return ray.intersectPlane(flat, new THREE.Vector3());
+}
+
+const PAN = [0.6, 1, 1.6], SPEEDS = ['Slow', 'Normal', 'Fast'];
+const PAN_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
+let hooks, followed = null, middle = null, anchor = null, intro = null;
+let edge = true, speed = 1, cornerKey = null, cornerPoints = [];
+
+function pose() {
+  const { cam, camera, pitch } = hooks, hd = cam.dist * Math.cos(pitch);
+  camera.position.set(cam.x + Math.sin(cam.yaw) * hd, (cam.y ?? 0) + cam.dist * Math.sin(pitch), cam.z + Math.cos(cam.yaw) * hd);
+  camera.lookAt(cam.x, cam.y ?? 0, cam.z);
+  camera.updateMatrixWorld();
+}
+function clamp() {
+  const { cam } = hooks, { w, h } = hooks.bounds();
+  cam.x = Math.min(w || 160, Math.max(0, cam.x)); cam.z = Math.min(h || 160, Math.max(0, cam.z));
+}
+function solveAnchor() {
+  if (!anchor) return;
+  const { cam, camera } = hooks;
+  pose();
+  cursor.set(anchor.mx / innerWidth * 2 - 1, 1 - anchor.my / innerHeight * 2);
+  raycaster.setFromCamera(cursor, camera);
+  const { origin, direction } = raycaster.ray;
+  if (Math.abs(direction.y) < 1e-6) return;
+  // Translate the ray through the anchor at its ground height, including the camera's height glide.
+  const t = (anchor.point.y - origin.y) / direction.y;
+  cam.x += anchor.point.x - (origin.x + direction.x * t);
+  cam.z += anchor.point.z - (origin.z + direction.z * t);
+  clamp(); pose();
+}
+
+function showFollow() {
+  const v = followed == null ? null : hooks.units.get(followed), chip = hooks.chip;
+  if (!chip) return;
+  const changed = chip.classList.contains('hidden') === !!v;
+  chip.classList.toggle('hidden', !v);
+  const text = v ? `Following ${hooks.unitName(v)}` : '';
+  if (chip.textContent !== text) chip.textContent = text;
+  const top = hooks.top;
+  if (v && top && changed) chip.style.top = Math.ceil(top.getBoundingClientRect().bottom + 8) + 'px';
+}
+function cancelFollow() { followed = null; anchor = null; showFollow(); }
+function follow(id) {
+  if (followed != null) { cancelFollow(); return; }
+  if (id == null || !hooks.units.has(id)) return;
+  followed = id; anchor = null; showFollow();
+}
+function preferences() {
+  hooks.edgeButton.textContent = `Edge scroll: ${edge ? 'On' : 'Off'}`;
+  hooks.edgeButton.setAttribute('aria-pressed', String(edge));
+  hooks.panButton.textContent = `Pan speed: ${SPEEDS[speed]}`;
+}
+function init(h) {
+  hooks = h;
+  edge = hooks.tryStore(() => localStorage.getItem('ww2-edge')) !== '0';
+  const saved = hooks.tryStore(() => localStorage.getItem('ww2-pan'));
+  speed = /^[012]$/.test(saved ?? '') ? +saved : 1;
+  hooks.edgeButton.onclick = () => { edge = !edge; hooks.tryStore(() => localStorage.setItem('ww2-edge', edge ? '1' : '0')); preferences(); };
+  hooks.panButton.onclick = () => { speed = (speed + 1) % 3; hooks.tryStore(() => localStorage.setItem('ww2-pan', String(speed))); preferences(); };
+  preferences();
+  addEventListener('resize', () => { if (followed != null && hooks.top && hooks.chip) hooks.chip.style.top = Math.ceil(hooks.top.getBoundingClientRect().bottom + 8) + 'px'; });
+}
+function skipIntro() {
+  if (!intro) return false;
+  Object.assign(hooks.cam, intro.to); intro = null; pose(); return true;
+}
+function startIntro(skip) {
+  cancelFollow(); middle = null; intro = null; cornerKey = null;
+  const { cam } = hooks;
+  cam.y = hooks.hAt(cam.x, cam.z);
+  if (!skip) {
+    const { w, h } = hooks.bounds(), to = { ...cam };
+    intro = { to, from: { x: w / 2, z: h / 2, y: hooks.hAt(w / 2, h / 2), dist: Math.max(180, w, h) }, age: 0 };
+    Object.assign(cam, intro.from);
+  }
+  pose();
+}
+function wheel(e) {
+  e.preventDefault();
+  if (skipIntro()) return;
+  const { cam } = hooks;
+  pose();
+  const point = hooks.groundAt(e.clientX, e.clientY);
+  cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+  // Following holds the unit at the center while zoom changes its viewing distance.
+  anchor = point && followed == null ? { point, mx: e.clientX, my: e.clientY, left: 0.4 } : null;
+  pose(); solveAnchor();
+}
+function beginMiddle(e) { middle = { x: e.clientX }; anchor = null; e.preventDefault(); }
+function moveMiddle(e) {
+  if (!middle) return;
+  if (!(e.buttons & 4)) { middle = null; return; }
+  hooks.cam.yaw -= (e.clientX - middle.x) * 0.006; middle.x = e.clientX; anchor = null;
+}
+function stopDrag() { middle = null; anchor = null; }
+function update(dt) {
+  if (!hooks) return;
+  const { cam, keys } = hooks;
+  if (intro) {
+    intro.age = Math.min(2.5, intro.age + dt);
+    const t = intro.age / 2.5, eased = t * t * (3 - 2 * t);
+    for (const k of ['x', 'y', 'z', 'dist']) cam[k] = intro.from[k] + (intro.to[k] - intro.from[k]) * eased;
+    if (t === 1) skipIntro(); else pose();
+    return;
+  }
+  const mouse = hooks.mouse(), dragging = hooks.dragging() || middle;
+  let fw = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  let rt = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  if (edge && mouse.inside && !dragging && hooks.world()) {
+    if (mouse.x < 8) rt = -1; if (mouse.x > innerWidth - 8) rt = 1;
+    if (mouse.y < 8) fw = 1; if (mouse.y > innerHeight - 8) fw = -1;
+  }
+  if (PAN_KEYS.some(k => keys.has(k)) || fw || rt) cancelFollow();
+  if (followed != null) {
+    const v = hooks.units.get(followed);
+    if (v) { cam.x = v.x; cam.z = v.z; anchor = null; } else cancelFollow();
+  }
+  const pan = cam.dist * 1.1 * dt * PAN[speed], s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
+  cam.x += (-s * fw + c * rt) * pan; cam.z += (-c * fw - s * rt) * pan; clamp();
+  cam.yaw += ((keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0)) * 1.6 * dt;
+  cam.y = (cam.y ?? 0) + (hooks.hAt(cam.x, cam.z) - (cam.y ?? 0)) * Math.min(1, dt * 4);
+  pose();
+  if (anchor) { solveAnchor(); anchor.left -= dt; if (anchor.left <= 0) anchor = null; }
+  showFollow();
+}
+function corners(terrain) {
+  const { cam } = hooks, key = [cam.x, cam.y, cam.z, cam.yaw, cam.dist, innerWidth, innerHeight, terrain];
+  if (!cornerKey || key.some((v, i) => v !== cornerKey[i])) {
+    cornerKey = key;
+    cornerPoints = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => hooks.groundAt(x, y)).filter(Boolean);
+  }
+  return cornerPoints;
+}
+
+export const rig = { init, update, pose, wheel, follow, cancelFollow, startIntro, skipIntro, beginMiddle, moveMiddle, stopDrag, corners,
+  get following() { return followed; }, get intro() { return !!intro; } };

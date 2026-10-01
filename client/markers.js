@@ -276,21 +276,39 @@ export function capturePoint(radius, text) {
   const flag = new THREE.Mesh(flagGeo, flagMat(NEUTRAL_FLAG));
   flag.scale.set(2.2, 1.4, 1); flag.position.set(1.1, 7.2, 0); flag.castShadow = true;
   const tag = label(text);
-  group.add(ring, prog, flag, tag);
+  const brass = ringMesh(radius + 0.2, 0.65, pencilMat(0xd2a849, { depthTest: false }).clone(), 0.34);
+  const danger = ringMesh(radius - 0.5, 0.85, pencilMat(0xb8322a, { depthTest: false }).clone(), 0.35);
+  brass.visible = danger.visible = false;
+  group.add(ring, prog, flag, brass, danger, tag);
+  let contested = false;
   const swap = (o, m) => { if (o.material !== m) o.material = m; };
   // the tag steps aside while the point is being taken or drained, so it does not sit over the fight for it
   let last = -1, busyUntil = 0;
   return {
     group,
     // owner and capper are player colors, or null
-    set(owner, capper, progress) {
+    set(owner, capper, progress, contest = false) {
       const now = performance.now();
       if (last >= 0 && progress !== last) busyUntil = now + 2500;
       last = progress; tag.visible = now >= busyUntil;
+      contested = !!contest;
+      group.userData.contested = contested;
       swap(ring, owner != null ? pencilMat(owner, { opacity: 0.9, depthTest: false }) : pencilMat(NEUTRAL_RING, { dashed: true, opacity: 0.7, depthTest: false }));
       swap(flag, flagMat(owner ?? NEUTRAL_FLAG));
       swap(prog, pencilMat(owner ?? capper ?? 0xffffff, { opacity: 0.45, depthTest: false }));
       prog.geometry.setDrawRange(0, Math.round(progress * PROG_SEGS) * 6);
+    },
+    frame(time, flip = 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(time * Math.PI * 3), flourish = Math.sin(flip * Math.PI);
+      danger.visible = contested;
+      danger.material.opacity = 0.45 + 0.5 * pulse;
+      danger.scale.setScalar(1 + 0.025 * pulse);
+      brass.visible = contested || flip > 0;
+      brass.material.opacity = contested ? 0.9 - 0.45 * pulse : 1 - flip;
+      brass.scale.setScalar(flip > 0 ? 1 + 0.25 * flip : 1 + 0.025 * (1 - pulse));
+      ring.scale.setScalar(1 + 0.12 * flourish);
+      flag.scale.set(2.2, 1.4 * (1 + 0.22 * flourish), 1);
+      group.userData.flipping = flip > 0;
     },
   };
 }
@@ -431,8 +449,20 @@ export function planLayer(hAt) {
     arrow(batch, n, 1.5);
   }
 
-  function draw(selected, units) {
+  // a small flag sketched on the ground, with its pole rooted at the rally point
+  function flag(x, z) {
+    color(MOVE_COLOR, 0.95);
+    P.length = 4; P[0] = x; P[1] = z; P[2] = x; P[3] = z - 3.6;
+    stroke(solid, 2, 0.42, 0.06);
+    P.length = 8;
+    P[0] = x; P[1] = z - 3.6; P[2] = x + 2.4; P[3] = z - 2.8;
+    P[4] = x; P[5] = z - 2; P[6] = x; P[7] = z - 3.6;
+    stroke(solid, 4, 0.42, 0.06);
+  }
+
+  function draw(selected, units, rally = null) {
     solid.n = dashed.n = 0;
+    if (rally) flag(rally.x, rally.z);
     for (const id of selected) {
       const v = units.get(id);
       if (!v) continue;
@@ -441,7 +471,7 @@ export function planLayer(hAt) {
         color(MOVE_COLOR, 0.75);
         P.length = 4; P[0] = v.x; P[1] = v.z; P[2] = v.rally.x; P[3] = v.rally.z;
         leg(dashed, 2, fromR + 1, 1.5, 0.42);
-        color(MOVE_COLOR, 0.9); loop(solid, v.rally.x, v.rally.z, 1.1, 0.4);
+        flag(v.rally.x, v.rally.z);
       }
       // what it is shooting at right now (ordered or picked by itself), or the enemy it was told to attack
       const t = units.get(v.tgt) ?? (p?.kind === 4 ? { x: p.tx, z: p.tz, type: 'rifle' } : null);
@@ -463,6 +493,16 @@ export function planLayer(hAt) {
           color(hex, 0.75); leg(dashed, 2, 0, 1.5, 0.42);
         } else leg(solid, n, fromR, p.kind === 4 ? (onOrder ? tr : 2.7) + 0.3 : 1.5, 0.55);
         if (p.kind !== 4) { color(hex, 0.9); loop(solid, p.tx, p.tz, 1.1, 0.4); }
+      }
+      let qx = p?.kind ? p.tx : v.x, qz = p?.kind ? p.tz : v.z;
+      let qr = p?.kind ? 1.1 : fromR;
+      for (const order of v.orders ?? []) {
+        const hex = PLAN_COLORS[order.kind] ?? MOVE_COLOR;
+        color(hex, 0.7);
+        P.length = 4; P[0] = qx; P[1] = qz; P[2] = order.x; P[3] = order.z;
+        leg(dashed, 2, qr, 1.5, 0.42);
+        color(hex, 0.85); loop(solid, order.x, order.z, 1.1, 0.4);
+        qx = order.x; qz = order.z; qr = 1.1;
       }
       if (t) {
         if (!onOrder) {

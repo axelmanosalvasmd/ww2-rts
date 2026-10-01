@@ -1,11 +1,12 @@
 // Textured materials for the 3D terrain pieces: house walls and roofs, hedges, stone walls, sandbags, rubble, bridges,
 // wire posts and tank traps. Boxes take their texture coordinates from world position (top faces from x/z, walls from
-// the side), so a texture keeps its real size on any box scale and the instanced meshes stay instanced.
+// the side), so a texture keeps its real size on any box scale and the instanced meshes stay instanced. Every material
+// here also darkens itself where the fog of war is, the same way the fog overlay darkens the ground.
 import * as THREE from 'three';
 
 const loader = new THREE.TextureLoader();
 const textures = new Map(); // file name -> { tex, ready, waiting: [fn] }
-function texture(name, onReady) {
+export function loadTexture(name, onReady) {
   let t = textures.get(name);
   if (!t) {
     t = { tex: null, ready: false, waiting: [] };
@@ -18,6 +19,35 @@ function texture(name, onReady) {
   }
   if (t.ready) onReady(t.tex); else t.waiting.push(onReady);
 }
+
+// Fog of war on 3D pieces: the overlay mesh only covers the ground, so walls and roofs sample the same fog texture
+// (alpha 0 seen, about 0.47 fogged) and mix toward the overlay's color. One set of uniforms, shared by every material.
+const noFog = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+noFog.needsUpdate = true;
+const FOW = { fowMap: { value: noFog }, fowSize: { value: new THREE.Vector2(1, 1) } };
+// tex: the fog DataTexture (row 0 = the far edge, like the overlay) or null for none; w, h: map size in metres
+export function setFogMap(tex, w, h) { FOW.fowMap.value = tex ?? noFog; FOW.fowSize.value.set(w || 1, h || 1); }
+// patch a Lambert shader; call from any onBeforeCompile
+export function fogShader(shader) {
+  shader.uniforms.fowMap = FOW.fowMap;
+  shader.uniforms.fowSize = FOW.fowSize;
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nuniform vec2 fowSize;\nvarying vec2 vFowUv;')
+    .replace('#include <project_vertex>', `#include <project_vertex>
+	vec4 fowP = vec4( transformed, 1.0 );
+	#ifdef USE_INSTANCING
+		fowP = instanceMatrix * fowP;
+	#endif
+	fowP = modelMatrix * fowP;
+	vFowUv = vec2( fowP.x / fowSize.x, 1.0 - fowP.z / fowSize.y );`);
+  // 0.22 is the overlay's color (10 / 255, linear) after the sRGB output conversion
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nuniform sampler2D fowMap;\nvarying vec2 vFowUv;')
+    .replace('#include <fog_fragment>', 'gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.22 ), texture2D( fowMap, vFowUv ).a );\n#include <fog_fragment>');
+}
+function fogOnly(shader) { fogShader(shader); }
+// a plain (untextured) material that still goes dark in the fog of war
+export function fogged(material) { material.onBeforeCompile = fogOnly; return material; }
 
 // size: metres per texture repeat. flat: the color before the texture arrives (the old untextured look).
 // tint: linear color multiplier once textured. top: extra tint on faces that point up (flat roofs, wall tops).
@@ -35,6 +65,7 @@ const SURF = {
 
 // world-planar texture coordinates; one shared function, so every surface shares one shader program
 function planar(shader) {
+  fogShader(shader);
   shader.uniforms.uvScale = this.userData.uvScale;
   shader.uniforms.topTint = this.userData.topTint;
   shader.vertexShader = shader.vertexShader
@@ -66,32 +97,10 @@ export function surface(key) {
   m.userData.uvScale = { value: 1 / s.size };
   m.userData.topTint = { value: new THREE.Color(1, 1, 1) };
   m.onBeforeCompile = planar;
-  texture(s.tex, (tex) => {
+  loadTexture(s.tex, (tex) => {
     m.map = tex; m.color.setRGB(...s.tint); m.userData.topTint.value.setRGB(...s.top);
     m.needsUpdate = true;
   });
   cache.set(key, m);
   return m;
-}
-
-// gable roof: a triangle (span wide, 0.4 * span high) pushed len along z and centered. The caps are plaster; the
-// slopes carry roof tiles, rows along the ridge, counted up from the eave.
-const TAN = 0.8, SIN = TAN / Math.hypot(1, TAN), TILE_M = 1.6;
-export function roofGeometry(span, len) {
-  const shape = new THREE.Shape([new THREE.Vector2(-span / 2, 0), new THREE.Vector2(span / 2, 0), new THREE.Vector2(0, span * TAN / 2)]);
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false });
-  geo.translate(0, 0, -len / 2);
-  const pos = geo.attributes.position, uv = geo.attributes.uv, side = geo.groups.find(g => g.materialIndex === 1);
-  for (let i = side.start; i < side.start + side.count; i++) uv.setXY(i, pos.getZ(i) / TILE_M, pos.getY(i) / SIN / TILE_M);
-  uv.needsUpdate = true;
-  return geo;
-}
-
-let roofTiles = null;
-export function roofMaterials() {
-  if (!roofTiles) {
-    const m = roofTiles = new THREE.MeshLambertMaterial({ color: 0x7a3f2c });
-    texture('roof', (tex) => { m.map = tex; m.color.setRGB(0.85, 0.85, 0.85); m.needsUpdate = true; });
-  }
-  return [surface('plaster'), roofTiles];
 }

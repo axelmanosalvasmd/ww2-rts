@@ -1,15 +1,37 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { createEffects } from './fx.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
+import { bindings, match } from './keys.js';
+import { createSelection } from './selection.js';
+import { createOrders } from './orders.js';
+import { availability, denySentence, placementState } from './availability.js';
+import { createFeedback } from './feedback.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
+import { createAtmosphere } from './atmosphere.js';
 import { createGround } from './ground.js';
-import { surface, roofGeometry, roofMaterials } from './surfaces.js';
+import { surface, setFogMap } from './surfaces.js';
+import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
+import { createRelief } from './relief.js';
+import { gfx } from './gfx.js';
+import { rig, groundAt as marchGround } from './camera.js';
+import { pings } from './pings.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, MOVE_COLOR } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
+import { createProps } from './props.js';
+import { createWater } from './water.js';
+import { createAviation } from './aircraft.js';
+import { epilogue } from './epilogue.js';
+import { createObjectives } from './objectives.js';
+import { endgame } from './endgame.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings } from './unit-models.js';
+import { perf, renderScale } from './perf.js';
+import { renderReport } from './report.js';
+import { createConnection } from './connection.js';
+import { roomAddress, roomToken, matchStorage } from './room-session.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -39,43 +61,108 @@ const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens t
 
 // the bare link always lands in the same room, so friends can keep one bookmark; #code picks any other room
 const MAIN_ROOM = 'main';
-let room = location.hash.slice(1).toLowerCase();
-if (!/^[a-z0-9]{3,12}$/.test(room)) { room = MAIN_ROOM; if (location.hash) history.replaceState(null, '', location.pathname + location.search); }
+const address = roomAddress(location.hash, MAIN_ROOM), { room, seat } = address;
+if (location.hash !== address.hash) history.replaceState(null, '', location.pathname + location.search + address.hash);
 const roomLink = (base) => base + (room === MAIN_ROOM ? '/' : '/#' + room);
 addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
-// per-tab token so a refresh reclaims your slot, while two tabs can still play each other
-let token = tryStore(() => sessionStorage.getItem('ww2-token'));
-if (!token) { token = Math.random().toString(36).slice(2) + Date.now().toString(36); tryStore(() => sessionStorage.setItem('ww2-token', token)); }
+// A room keeps its seat across tabs; an explicit seat suffix lets another person use this browser.
+const local = tryStore(() => localStorage), session = tryStore(() => sessionStorage);
+const token = roomToken({ room, seat, local, session, create: () => Math.random().toString(36).slice(2) + Date.now().toString(36) });
+const matchMemory = matchStorage(token, local, session);
 $('name').value = tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
 $('link').value = roomLink(location.origin);
 $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
-const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.hash = code === MAIN_ROOM ? '' : code; location.reload(); };
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.hash = roomAddress('#' + code + (seat ? '&seat=' + seat : ''), MAIN_ROOM).hash; location.reload(); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
 $('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('roomCode').value));
 $('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));
 
-let ws, me = -1, names = [], lobbyState = null, lastSnap = null, refused = false, rtt = null;
-setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
-const sendCmd = (m) => ws?.readyState === 1 && ws.send(JSON.stringify(m));
-function connect() {
-  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`);
-  ws.onopen = () => { sendCmd({ t: 'hello', name: $('name').value, token }); $('status').textContent = ''; };
-  ws.onmessage = (e) => {
-    const m = JSON.parse(e.data);
-    if (m.t === 'lobby') renderLobby(m);
-    else if (m.t === 'start') startGame(m);
-    else if (m.t === 's') applySnapshot(m);
-    else if (m.t === 'pong' && Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c);
-    else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'A match is going on in this room (or it is full). It opens again when the match ends: reload then, or make a New room.'; }
-    else if (m.t === 'left') { refused = true; $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden'); $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.'; }
-  };
-  ws.onclose = () => { if (refused) return; $('status').textContent = 'Connection lost, reconnecting...'; setTimeout(connect, 2000); };
+function positionRoomBanners() {
+  const top = $('hud').classList.contains('hidden') ? 16 : Math.ceil($('top').getBoundingClientRect().bottom + 8);
+  $('roomBanners').style.setProperty('--room-banner-top', top + 'px');
 }
-if (!EDIT) connect();
+if (typeof ResizeObserver === 'function') new ResizeObserver(positionRoomBanners).observe($('top'));
+addEventListener('resize', positionRoomBanners);
+positionRoomBanners();
+
+let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
+let snapshotAt = 0, snapshotGap = 100;
+const connection = createConnection({
+  url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
+  hello: () => ({ t: 'hello', name: $('name').value, token }),
+});
+setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
+const sendCmd = (m) => connection.send(m);
+connection.on('lobby', renderLobby);
+connection.on('start', receiveStart);
+connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
+connection.on('ping', (m) => pings.receive(m));
+connection.on('deny', (m) => feedback.show(denySentence(m.reason)));
+connection.on('pong', (m) => { if (Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c); });
+connection.on('pause', receivePause);
+connection.on('retry', ({ left, reason }) => {
+  $('connectionBanner').textContent = reason === 'full' ? `Trying this room again in ${left} s` : `Connection lost. Retrying in ${left} s`;
+  $('connectionBanner').classList.remove('hidden');
+});
+connection.on('connected', () => $('connectionBanner').classList.add('hidden'));
+connection.on('full', (m) => {
+  $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden');
+  $('start').classList.add('hidden'); $('addAi').classList.add('hidden'); // no seat yet: the next lobby message shows them again for whoever is host
+  positionRoomBanners();
+  $('lobbyMsg').textContent = m.reason === 'started' ? 'A match is running in this room. You will join when it ends.' : 'This room is full. You will join when a seat opens.';
+});
+connection.on('replaced', () => { seatActive = false; $('connectionBanner').classList.add('hidden'); $('replacedSeat').classList.remove('hidden'); });
+connection.on('left', () => {
+  seatActive = false; connection.stop(); $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden');
+  positionRoomBanners();
+  $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.';
+});
+$('useSeatHere').onclick = () => { seatActive = true; $('replacedSeat').classList.add('hidden'); connection.start(); };
+if (!EDIT) connection.start();
+
+function matchView() {
+  return lastStart && { matchId: lastStart.matchId, camera: { ...cam }, selected: [...selected], groups: Object.fromEntries(Object.entries(groups).map(([n, ids]) => [n, [...ids]])) };
+}
+function saveMatchView() {
+  if (seatActive && lobbyState?.state === 'play') matchMemory.write(matchView());
+}
+setInterval(saveMatchView, 1000);
+addEventListener('pagehide', saveMatchView);
+const normalTitle = document.title;
+let titleFlash = null;
+function stopTitleFlash() { if (titleFlash !== null) clearInterval(titleFlash); titleFlash = null; document.title = normalTitle; }
+addEventListener('focus', stopTitleFlash);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) stopTitleFlash(); });
+function receiveStart(m) {
+  const saved = m.matchId != null && lastStart?.matchId === m.matchId ? matchView() : matchMemory.read();
+  const resume = m.matchId != null && saved?.matchId === m.matchId;
+  startGame({ ...m, resume }, resume ? saved : null);
+  saveMatchView();
+  if (document.hidden && !resume) { // a new match, not the same one coming back after a drop
+    stopTitleFlash(); document.title = 'Match started';
+    titleFlash = setInterval(() => { document.title = document.title === normalTitle ? 'Match started' : normalTitle; }, 1000);
+  }
+}
+function receivePause(m) {
+  paused = !!m.paused;
+  $('pauseBanner').classList.toggle('hidden', !paused);
+  if (paused) {
+    const name = typeof m.by === 'string' ? m.by : lobbyState?.players?.[m.by]?.name || names[m.by] || 'the host';
+    $('pauseBanner').textContent = m.reason === 'drop' ? `Waiting for ${name} (${Math.max(0, m.left || 0)} s)` : `Paused by ${name}`;
+  }
+  renderMatchMenu();
+}
 
 $('name').addEventListener('change', () => { tryStore(() => localStorage.setItem('ww2-name', $('name').value)); sendCmd({ t: 'name', name: $('name').value }); });
-$('copy').onclick = () => { navigator.clipboard?.writeText($('link').value); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy'), 1200); };
+$('copy').onclick = async () => {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+    await navigator.clipboard.writeText($('link').value);
+    $('copy').textContent = 'Copied';
+  } catch { $('link').focus(); $('link').select(); $('copy').textContent = 'Press Ctrl+C'; }
+  setTimeout(() => ($('copy').textContent = 'Copy'), 3000);
+};
 $('start').onclick = () => sendCmd({ t: 'start' });
 // Fullscreen + Keyboard Lock: the browser hands Ctrl+number to the game instead of switching tabs
 $('fullscreen').onclick = async () => {
@@ -87,12 +174,22 @@ $('fullscreen').onclick = async () => {
 };
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
+// army size labels come from CFG.armies, so they cannot drift from the real numbers
+$('armySel').innerHTML = Object.entries(CFG.armies).map(([key, v]) => `<option value="${esc(key)}">${esc(key[0].toUpperCase() + key.slice(1))}${v.pop === 1 && v.income === 1 ? '' : `: ${v.pop}x units, ${v.income}x income`}</option>`).join('');
 $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
-// in-game menu: the host can restart or end the match, anyone can leave (an AI takes over). Each needs a second click.
+// The host controls the match; leaving, restarting and ending need a second click.
 const menuOpen = (on) => $('menu').classList.toggle('hidden', !on);
-$('menuBtn').onclick = () => { const host = lobbyState && lobbyState.you === lobbyState.host; $('restartBtn').classList.toggle('hidden', !host); $('endBtn').classList.toggle('hidden', !host); menuOpen($('menu').classList.contains('hidden')); };
+function renderMatchMenu() {
+  const host = lobbyState && lobbyState.you === lobbyState.host;
+  for (const id of ['restartBtn', 'endBtn', 'pauseBtn']) $(id).classList.toggle('hidden', !host);
+  $('pauseBtn').textContent = paused ? 'Resume match' : 'Pause match';
+  $('offlineSeats').innerHTML = host && lobbyState.state === 'play' ? lobbyState.players.map((p, i) => !p.ai && !p.connected ? `<button data-slot="${i}">Hand ${esc(p.name)} to AI</button>` : '').join('') : '';
+  $('offlineSeats').querySelectorAll('button').forEach(b => (b.onclick = () => sendCmd({ t: 'handAi', slot: +b.dataset.slot })));
+}
+$('menuBtn').onclick = () => { renderMatchMenu(); menuOpen($('menu').classList.contains('hidden')); };
+$('pauseBtn').onclick = () => { sendCmd({ t: paused ? 'resume' : 'pause' }); menuOpen(false); };
 const confirmClick = (id, label, act) => {
   let armed = 0;
   $(id).onclick = () => { if (Date.now() - armed < 3000) { act(); menuOpen(false); $(id).textContent = label; armed = 0; return; } armed = Date.now(); $(id).textContent = 'Click again to confirm'; setTimeout(() => ($(id).textContent = label), 3000); };
@@ -105,7 +202,7 @@ const MODE_INFO = {
   conquest: 'Capture and hold points to earn victory points. First side to the VP goal wins.',
   assault: 'One team defends a fortified command bunker. Everyone else attacks and must destroy it before the clock runs out.',
   annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
-  classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks and Motor Pool.',
+  classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks, Motor Pool and Airfield.',
 };
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
 // lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
@@ -144,6 +241,7 @@ async function previewMap(name, mode) {
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
+  renderMatchMenu();
   // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
@@ -152,7 +250,7 @@ function renderLobby(m) {
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   $('roster').innerHTML = m.players.map((p, i) => {
-    const kick = p.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
+    const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
@@ -185,17 +283,21 @@ function renderLobby(m) {
   $('result').classList.toggle('hidden', !r);
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
-  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); audio.end(); }
+  renderReport(r, $('report'), { colors: COLORS.map(css), me: m.you }); // the chart and table under it (client/report.js)
+  if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
+  positionRoomBanners();
 }
 
 // ---------- renderer / scene ----------
 
+setSurfaces(surface); // structure models take the textured wood and sandbag (client/surfaces.js)
+setBuildings(buildingModel); // HQ, barracks, motor pool, depot and command bunker: one merged model each (client/structures.js)
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderScale(renderer); // pixel ratio per graphics level (client/perf.js); shadows are set in client/light.js
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
+const lights = setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -215,44 +317,30 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null;
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null, water = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
-// Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
-let field = null;
-function buildField(map) {
-  const w = map.w, h = map.h, lv = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0') * CFG.levelHeight;
-  const vert = new Float32Array((w + 1) * (h + 1));
-  for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) {
-    let sum = 0, n = 0;
-    for (const [cx, cy] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]]) if (cx >= 0 && cy >= 0 && cx < w && cy < h) { sum += lv(cx, cy); n++; }
-    vert[y * (w + 1) + x] = sum / n;
-  }
-  field = { w, h, vert };
-}
-function hAt(x, z) {
-  if (!field) return 0;
-  const fx = Math.min(field.w, Math.max(0, x / CELL)), fz = Math.min(field.h, Math.max(0, z / CELL));
-  const x0 = Math.min(field.w - 1, Math.floor(fx)), z0 = Math.min(field.h - 1, Math.floor(fz)), tx = fx - x0, tz = fz - z0, W = field.w + 1, v = field.vert;
-  return (v[z0 * W + x0] * (1 - tx) + v[z0 * W + x0 + 1] * tx) * (1 - tz) + (v[(z0 + 1) * W + x0] * (1 - tx) + v[(z0 + 1) * W + x0 + 1] * tx) * tz;
-}
-// a flat plane bent over the height field (row 0 of vertices = map row 0)
-function terrainGeometry() {
-  const geo = new THREE.PlaneGeometry(MW, MH, field.w, field.h), pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) pos.setZ(i, field.vert[i]);
-  geo.computeVertexNormals();
-  return geo;
-}
+// Ground height and the board surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
+let relief = null;
+function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
-function startGame(m) {
+function startGame(m, restored = null) {
+  pings.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
+  relief?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear();
+  units.clear(); selected.clear(); selection.reset();
+  if (m.resume && restored) {
+    for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
+    for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
+  }
+  fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
   // ground: painted canvas (client/ground.js), reused across rebuilds of a same-sized map
@@ -260,13 +348,17 @@ function startGame(m) {
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
-  buildField(map);
-  const ground = new THREE.Mesh(terrainGeometry(), gp.material);
-  ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
+  gp.paint(terrain.grid);
+  // the fog overlay shares the relief's live geometry, which a crater replaces
+  relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
+    onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
+  const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
 
-  gp.paint(terrain.grid);
   buildStructures();
+  water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
+
+  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
 
   // capture points
   const assault = lobbyState?.mode === 'assault' || lobbyState?.mode === 'annihilation'; // no VP in either
@@ -275,16 +367,18 @@ function startGame(m) {
     const cp = capturePoint(CFG.pointRadius, classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`); // Classic: points pay Munitions
     g.add(cp.group, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0));
     world.add(g);
-    return { g, set: cp.set };
+    return { g, set: cp.set, frame: cp.frame };
   });
 
   // fog of war overlay (client-side approximation; the server decides who you can actually see)
   fogGrid = { w: map.w, h: map.h };
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
+  setFogMap(EDIT ? null : fogTex, MW, MH); // walls and roofs darken in the fog too
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
+  fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
@@ -292,94 +386,25 @@ function startGame(m) {
   // camera: behind my spawn, looking at the map center
   const sx = m.spawn.x, sz = m.spawn.z;
   home = m.spawn;
-  cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
-  cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
+  if (m.resume && restored) Object.assign(cam, restored.camera);
+  else {
+    cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
+    cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
+  }
+  rig.startIntro(EDIT || m.resume === true);
 
   buildBuyBar();
   buildSupportBar();
   $('hud').classList.toggle('hidden', EDIT);
   $('overlay').classList.add('hidden');
+  positionRoomBanners();
 }
 
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
-// stable pseudo-random per cell, so rebuilding after a change doesn't reshuffle everything
-const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
-
-// all 3D terrain pieces, rebuilt from the grid whenever a cell changes
-function buildStructures() {
-  const { grid, group, w } = terrain;
-  disposeTree(group, SHARED_GEOS); group.clear();
-  const cells = { B: [], H: [], '#': [], '=': [], R: [], X: [], Y: [] };
-  grid.forEach((row, y) => row.forEach((ch, x) => cells[ch]?.push([x, y])));
-  // kind: a textured surface from client/surfaces.js (world-planar texture, so instancing still works)
-  const inst = (list, kind, fn, per = 1) => {
-    if (!list.length) return;
-    const im = new THREE.InstancedMesh(GEO.box, surface(kind), list.length * per);
-    const m4 = new THREE.Matrix4(), col = new THREE.Color();
-    list.forEach((cell, i) => {
-      for (let k = 0; k < per; k++) {
-        const [sx, sy, sz, y, tint, base, ox = 0, oz = 0] = fn(cell, k), cx = (cell[0] + 0.5) * CELL + ox, cz = (cell[1] + 0.5) * CELL + oz;
-        m4.makeScale(sx, sy, sz).setPosition(cx, y + (base ?? hAt(cx, cz) - 0.2), cz);
-        im.setMatrixAt(i * per + k, m4); im.setColorAt(i * per + k, col.setScalar(tint));
-      }
-    });
-    im.castShadow = im.receiveShadow = true; group.add(im);
-  };
-  // houses: flood-fill into components, one floor level + roof each
-  const comp = new Map(), houses = [];
-  for (const [x, y] of cells.B) {
-    if (comp.has(y * w + x)) continue;
-    const h = { cells: [], height: 4 + rnd(x, y, 2) * 3, tint: 0.8 + rnd(x, y, 3) * 0.35 }, q = [[x, y]];
-    comp.set(y * w + x, h);
-    while (q.length) {
-      const [cx, cy] = q.pop(); h.cells.push([cx, cy]);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = cx + dx, ny = cy + dy;
-        if (grid[ny]?.[nx] === 'B' && !comp.has(ny * w + nx)) { comp.set(ny * w + nx, h); q.push([nx, ny]); }
-      }
-    }
-    // the lowest corner, so nothing floats on a slope
-    h.base = Math.min(...h.cells.map(([cx, cy]) => Math.min(hAt(cx * CELL, cy * CELL), hAt((cx + 1) * CELL, cy * CELL), hAt(cx * CELL, (cy + 1) * CELL), hAt((cx + 1) * CELL, (cy + 1) * CELL))));
-    houses.push(h);
-  }
-  inst(cells.B, 'plaster', ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
-  for (const h of houses) {
-    const xs = h.cells.map(c => c[0]), ys = h.cells.map(c => c[1]);
-    const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
-    if ((x1 - x0) * (y1 - y0) !== h.cells.length) continue; // flat roof for odd (or half-collapsed) shapes
-    const along = x1 - x0 >= y1 - y0, span = (along ? y1 - y0 : x1 - x0) * CELL + 0.6, len = (along ? x1 - x0 : y1 - y0) * CELL + 0.6;
-    const roof = mesh(roofGeometry(span, len), roofMaterials(), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
-    if (along) roof.rotation.y = Math.PI / 2;
-    group.add(roof);
-  }
-  inst(cells.H, 'hedge', ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
-  // '#' from the map file is a stone wall; '#' added in play (Assault, Fortify) is a sandbag wall
-  const wall = ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25], stone = ([x, y]) => lastStart.map.rows[y]?.[x] === '#';
-  inst(cells['#'].filter(stone), 'stone', wall);
-  inst(cells['#'].filter(c => !stone(c)), 'sandbag', wall);
-  // rubble: a few broken chunks per cell
-  inst(cells.R, 'rubble', ([x, y], k) => { const s = 0.5 + rnd(x, y, k) * 0.7; return [s, s * 0.6, s, s * 0.3, 0.7 + rnd(x, y, k + 5) * 0.4, undefined, (rnd(x, y, k + 9) - 0.5) * 1.4, (rnd(x, y, k + 13) - 0.5) * 1.4]; }, 3);
-  // barbed wire: two posts and a criss-cross of strands per cell
-  inst(cells.X, 'darkwood', ([x, y], k) => [[0.14, 1.1, 0.14, 0.55, 1, undefined, -0.6, -0.6], [0.14, 1.1, 0.14, 0.55, 1, undefined, 0.6, 0.6],
-    [CELL, 0.05, 0.05, 0.85, 0.6], [CELL, 0.05, 0.05, 0.45, 0.6], [0.05, 0.05, CELL, 0.65, 0.6], [0.05, 0.05, CELL, 0.3, 0.6]][k], 6);
-  // tank traps: two steel hedgehogs (three crossed beams each) per cell
-  inst(cells.Y, 'steel', ([x, y], k) => { const j = k % 3, o = k < 3 ? -0.45 : 0.45, L = 1.5; return [j === 0 ? L : 0.18, j === 1 ? L : 0.18, j === 2 ? L : 0.18, 0.75, 0.9 + rnd(x, y, k) * 0.2, undefined, o, -o]; }, 6);
-  // bridges: a plank deck, with rails on the sides that face the water
-  inst(cells['='], 'wood', () => [CELL * 1.02, 0.35, CELL * 1.02, 0.35, 1]);
-  const rails = [];
-  for (const [x, y] of cells['=']) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[y + dy]?.[x + dx] === 'W') rails.push([x, y, dx, dy]);
-  inst(rails, 'darkwood', ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
-  // trench parapets on every side that isn't more trench
-  const dirt = surface('earth');
-  for (const [x, y] of grid.flatMap((row, y) => row.map((ch, x) => ch === 'T' && [x, y]).filter(Boolean))) {
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      if (grid[y + dy]?.[x + dx] === 'T') continue;
-      const cx = (x + 0.5 + dx * 0.55) * CELL, cz = (y + 0.5 + dy * 0.55) * CELL;
-      group.add(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17 + hAt(cx, cz), cz));
-    }
-  }
-}
+let props = null;
+// all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
+function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt); }
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -390,15 +415,16 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
-  let dug = false;
   for (const [cell, ch, lv] of cells) {
     const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
     terrain.grid[y][x] = ch;
-    if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
+    if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = fogMesh.geometry = terrainGeometry(); }
   terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
+  relief.update(cells); // reshapes the cells around the change; the fog overlay follows through onGeometry
   buildStructures();
+  props?.refresh();
+  water?.changed(cells);
   mmImage = null;
 }
 
@@ -409,12 +435,7 @@ function buildHQ(sp, slot) {
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
   const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
   g.add(zone, hqRing(R, f.color));
-  // sandbags with gaps for the exits
-  for (let i = 0; i < 36; i++) {
-    if (i % 9 < 2) continue;
-    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, surface('sandbag'), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
-    bag.rotation.y = -a + Math.PI / 2; g.add(bag);
-  }
+  g.add(sandbagRing(R + 0.8)); // sandbags with gaps for the exits (client/structures.js)
   // command tent + crates
   const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
   const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
@@ -429,81 +450,6 @@ function buildHQ(sp, slot) {
 
 // ---------- units ----------
 
-// Formation slots in local space (+x = forward). Gun crews stand behind the gun.
-const SLOTS = {
-  rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
-  mg: [[0.2, 0], [-0.5, 0.7], [-0.5, -0.7]],
-  mortar: [[0.2, 0.6], [0.2, -0.6], [-0.6, 0]],
-  flak: [[-0.6, 0.8], [-0.6, -0.8], [-1.2, 0]],
-  sniper: [[0.4, 0], [-0.5, 0.6]],
-  engineer: [[0.6, 0], [-0.4, 0.7], [-0.4, -0.7]],
-  at: [[-0.5, 0.7], [-0.5, -0.7], [-1.2, 0.4], [-1.2, -0.4]],
-  ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
-  conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
-};
-
-// headgear per faction: round M1 (USA), flared Stahlhelm (Germany), tall SSh-40 (USSR); conscripts wear a pilotka cap
-function headgear(man, owner, type, m) {
-  if (type === 'conscript') { man.add(mesh(GEO.box, m, 0.38, 0.13, 0.22, 0, 1.2, 0)); return; }
-  const fac = facOf(owner);
-  if (fac === 1) man.add(mesh(GEO.helmet, m, 1.05, 1, 1.05, 0, 1.28, 0), mesh(GEO.cyl, m, 0.33, 0.07, 0.33, 0, 1.25, 0));
-  else if (fac === 2) man.add(mesh(GEO.helmet, m, 1, 1.3, 1, 0, 1.26, 0));
-  else man.add(mesh(GEO.helmet, m, 1.12, 0.95, 1.12, 0, 1.28, 0));
-}
-
-// what each class carries, so squads read apart even without their badges (+x = forward)
-function gear(man, type, i, f, dark) {
-  const wood = mat(0x5e4226);
-  if (type === 'rifle' || type === 'conscript') man.add(mesh(GEO.box, wood, 1.0, 0.07, 0.07, 0.28, 0.85, 0.2).rotateZ(0.6));
-  else if (type === 'ranger' && i % 3 !== 1) man.add(mesh(GEO.box, dark, 0.6, 0.1, 0.08, 0.32, 0.82, 0.2).rotateZ(0.3)); // SMG
-  else if (type === 'sniper') {
-    man.add(mesh(GEO.box, mat(0x3c4a26), 0.75, 0.55, 0.85, -0.1, 0.95, 0)); // ghillie cape
-    if (i === 0) man.add(mesh(GEO.box, wood, 1.5, 0.06, 0.06, 0.4, 0.9, 0.2).rotateZ(0.25), mesh(GEO.box, dark, 0.35, 0.09, 0.09, 0.42, 1.0, 0.2).rotateZ(0.25)); // long rifle and scope
-  } else if (type === 'engineer') {
-    // pack and a shovel on the back
-    man.add(mesh(GEO.box, mat(f.vehicle), 0.3, 0.45, 0.5, -0.32, 0.95, 0), mesh(GEO.cyl, wood, 0.03, 1.1, 0.03, -0.4, 1.05, 0.2), mesh(GEO.box, dark, 0.06, 0.3, 0.22, -0.4, 1.65, 0.2));
-  } else if ((type === 'mg' || type === 'mortar') && i > 0) man.add(mesh(GEO.box, mat(0x4a5030), 0.3, 0.25, 0.22, -0.05, 0.55, 0.32)); // ammo box
-}
-
-// tank silhouettes: [hull l,h,w], [turret l,h,w, x, z], barrel [length, thickness], sloped glacis
-const TANKS = {
-  tank: [
-    { hull: [3.8, 1.3, 2.3], turret: [1.6, 0.9, 1.5, -0.1, 0], gun: [2.0, 0.09] },               // M5 Stuart: tall and boxy
-    { hull: [4.0, 1.0, 2.2], turret: [1.3, 0.75, 1.2, 0.2, 0.3], gun: [1.6, 0.07] },             // Panzer II: small offset turret
-    { hull: [4.2, 1.0, 2.3], turret: [1.6, 0.8, 1.5, -0.3, 0.2], gun: [2.2, 0.09], slope: 1 },   // T-70: sloped front
-  ],
-  tiger: [null, { hull: [5.4, 1.4, 3.2], turret: [2.6, 1.1, 2.2, -0.2, 0], gun: [3.8, 0.14], brake: 1 }, null],
-  medium: [
-    { hull: [4.8, 1.5, 2.7], turret: [2.0, 1.0, 1.9, -0.1, 0], gun: [2.6, 0.11], slope: 1 },           // M4 Sherman: tall, rounded
-    { hull: [5.0, 1.2, 2.7], turret: [2.3, 0.95, 1.9, -0.2, 0], gun: [3.0, 0.11] },                    // Panzer IV: boxy, long gun
-    { hull: [5.0, 1.1, 2.9], turret: [2.0, 0.9, 1.9, 0.3, 0], gun: [2.9, 0.11], slope: 1 },             // T-34: sloped, turret forward
-  ],
-  // mobile flak: M16 half-track (quad MGs), Wirbelwind (flak turret on a Panzer IV), ZSU-37 (on a light tank)
-  flaktrack: [
-    { hull: [4.2, 1.1, 2.2], turret: [1.2, 0.6, 1.4, -0.8, 0], gun: [1.2, 0.07], wheels: 2, twin: 1 },
-    { hull: [5.0, 1.2, 2.7], turret: [1.8, 1.0, 1.8, -0.2, 0], gun: [1.6, 0.07], twin: 1 },
-    { hull: [4.4, 1.1, 2.4], turret: [1.8, 0.8, 1.7, -0.6, 0], gun: [2.2, 0.08], twin: 1 },
-  ],
-  armoredcar: [
-    { hull: [3.8, 1.0, 2.1], turret: [1.3, 0.6, 1.3, 0, 0], gun: [1.0, 0.06], wheels: 3 },             // M8 Greyhound: six wheels
-    { hull: [3.6, 0.9, 1.9], turret: [1.1, 0.5, 1.2, 0, 0], gun: [0.8, 0.05], wheels: 2 },             // Sd.Kfz. 222
-    { hull: [3.2, 1.1, 1.7], turret: [0.9, 0.5, 0.9, 0, 0], gun: [0.7, 0.05], wheels: 2, slope: 1 },   // BA-64: small, sloped
-  ],
-};
-function buildTank(v, root, spec, f) {
-  const hull = mat(f.vehicle), dark = mat(0x2a2a24), [hl, hh, hw] = spec.hull, y = hh / 2 + 0.5;
-  root.add(mesh(GEO.box, hull, hl, hh, hw, 0, y, 0));
-  if (spec.wheels) for (let i = 0; i < spec.wheels; i++) for (const side of [1, -1]) root.add(mesh(GEO.cyl, dark, 0.45, 0.35, 0.45, (i / (spec.wheels - 1) - 0.5) * hl * 0.7, 0.45, side * hw / 2).rotateX(Math.PI / 2));
-  else root.add(mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, hw / 2), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, -hw / 2));
-  if (spec.slope) root.add(mesh(GEO.box, hull, 1.2, 0.2, hw, hl / 2 - 0.2, y + 0.25, 0).rotateZ(-0.5));
-  const [tl, th, tw, tx, tz] = spec.turret, [gl, gt] = spec.gun;
-  v.turret = new THREE.Group(); v.turret.position.set(tx, y + hh / 2 + th / 2, tz);
-  v.turret.add(mesh(GEO.box, hull, tl, th, tw), mesh(GEO.cyl, dark, gt, gl, gt, tl / 2 + gl / 2, 0.05, 0).rotateZ(Math.PI / 2), mesh(GEO.box, mat(f.color), 0.4, th + 0.02, tw + 0.02, -tl / 2 + 0.3, 0, 0));
-  if (spec.twin) v.turret.add(mesh(GEO.cyl, dark, spec.gun[1], spec.gun[0], spec.gun[1], tl / 2 + spec.gun[0] / 2, 0.25, 0.3).rotateZ(Math.PI / 2 - 0.6), mesh(GEO.cyl, dark, spec.gun[1], spec.gun[0], spec.gun[1], tl / 2 + spec.gun[0] / 2, 0.25, -0.3).rotateZ(Math.PI / 2 - 0.6));
-  if (spec.brake) v.turret.add(mesh(GEO.box, dark, 0.35, 0.3, 0.35, tl / 2 + gl, 0.05, 0));
-  root.add(v.turret);
-}
-
 function makeUnit(id, type, owner) {
   const def = UNITS[type], f = look(owner), root = new THREE.Group();
   const v = { id, type, owner, root, models: [], alive: def.models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
@@ -511,117 +457,9 @@ function makeUnit(id, type, owner) {
   const base = ownerRing(def.radius + 0.4, f.color);
   Object.assign(v, selectionRing(def.radius + 1, def.w ? [def.w.range, def.w.minRange].filter(Boolean) : []));
   root.add(base, v.sel); v.base = base;
-  if (isAir(type)) {
-    // fighter: slim, long nose; ground-attack plane: bigger, rockets and a bomb under the wings
-    const big = type === 'attacker', c = mat(f.vehicle), dark = mat(0x2a2a24);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, c, big ? 7 : 6, big ? 1.1 : 0.9, big ? 1.1 : 0.9), mesh(GEO.box, c, big ? 1.8 : 1.4, 0.2, big ? 11 : 9.5, big ? 0.4 : 0.6, -0.1, 0),
-      mesh(GEO.box, c, 0.9, 0.15, 3.4, big ? -3 : -2.6, 0.1, 0), mesh(GEO.box, c, 0.9, 1.3, 0.15, big ? -3 : -2.6, 0.7, 0),
-      mesh(GEO.box, mat(f.color), 0.5, 0.22, big ? 11.2 : 9.7, big ? 0.4 : 0.6, -0.05, 0), mesh(GEO.cyl, dark, 0.15, 0.4, 0.15, big ? 3.7 : 3.2, 0, 0).rotateZ(Math.PI / 2));
-    if (big) for (const z of [-3.5, -2.5, 2.5, 3.5]) v.body.add(mesh(GEO.cyl, dark, 0.12, 1.2, 0.12, 0.6, -0.4, z).rotateZ(Math.PI / 2));
-    if (big) v.body.add(mesh(GEO.box, dark, 1.4, 0.4, 0.4, 0.3, -0.7, 0));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'airfield') {
-    // a dirt strip, a hangar and a windsock
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, surface('earth'), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
-      mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'flakpos') {
-    // a sandbagged ring with a twin gun pointing up
-    const dark = mat(0x2a2a24);
-    v.body = new THREE.Group();
-    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, surface('sandbag'), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
-    v.body.add(mesh(GEO.cyl, dark, 0.5, 0.6, 0.5, 0, 0.3, 0), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'hq') {
-    // command post: sandbagged timber block with a radio mast
-    const wood = surface('wood'), roof = surface('darkwood');
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, wood, 5.4, 3, 5.4, 0, 1.5, 0), mesh(GEO.box, roof, 6, 0.4, 6, 0, 3.2, 0), mesh(GEO.box, mat(f.vehicle), 5.6, 0.5, 1.2, 0, 1.2, 2.5),
-      mesh(GEO.cyl, mat(0x2a2a24), 0.06, 5, 0.06, 2, 5.6, 2), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, 0.9, 7.4, 2));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'barracks') {
-    // long timber hut with a pitched roof
-    const wood = surface('wood'), roofM = mat(f.vehicle);
-    v.body = new THREE.Group();
-    const shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 1.8)]), rg = new THREE.ExtrudeGeometry(shape, { depth: 5.6, bevelEnabled: false }); rg.translate(0, 0, -2.8);
-    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, surface('darkwood'), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'motorpool') {
-    // open vehicle shed: posts, a flat roof, oil drums
-    const post = surface('darkwood');
-    v.body = new THREE.Group();
-    for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) v.body.add(mesh(GEO.box, post, 0.35, 3.2, 0.35, x, 1.6, z));
-    v.body.add(mesh(GEO.box, mat(f.vehicle), 6, 0.3, 6, 0, 3.3, 0), mesh(GEO.box, mat(0x4a4a44), 5.6, 0.1, 5.6, 0, 0.05, 0), mesh(GEO.box, post, 5.6, 1.4, 0.3, 0, 0.7, -2.7));
-    for (let i = 0; i < 3; i++) v.body.add(mesh(GEO.cyl, mat(0x3a4a30), 0.4, 1.1, 0.4, 2.2, 0.55, -1.6 + i * 0.85));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'depot') {
-    // supply dump: stacked crates and fuel drums
-    const crate = surface('wood'), drum = mat(f.vehicle);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, surface('darkwood'), 3.8, 0.2, 3.8, 0, 0.1, 0), mesh(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), mesh(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
-      mesh(GEO.box, crate, 1.2, 1, 1.2, -0.1, 1.8, -0.9));
-    for (let i = 0; i < 4; i++) v.body.add(mesh(GEO.cyl, drum, 0.4, 1.1, 0.4, -1.1 + i * 0.75, 0.65, 1));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'bunker') {
-    const conc = mat(0x8a8a82), dark = mat(0x1e1e1a);
-    root.add(mesh(GEO.box, conc, 5.2, 2.4, 5.2, 0, 1.2, 0), mesh(GEO.box, mat(0x74746c), 6, 0.5, 6, 0, 2.6, 0), mesh(GEO.box, dark, 0.3, 0.4, 3, 2.62, 1.6, 0));
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, surface('sandbag'), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
-    root.add(mesh(GEO.cyl, mat(0x4a3f30), 0.08, 4, 0.08, -1.8, 4.6, -1.8), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, -0.9, 6, -1.8));
-    v.models.push(root);
-  } else if (TANKS[type]) {
-    buildTank(v, root, TANKS[type][facOf(owner)] ?? TANKS[type].find(Boolean), f);
-    v.models.push(root);
-  } else if (type === 'rocket') {
-    const body = mat(f.vehicle), dark = mat(0x2a2a24);
-    v.turret = new THREE.Group();
-    const tube = (x, y, z, len = 2.6) => mesh(GEO.cyl, dark, 0.12, len, 0.12, x, y, z).rotateZ(Math.PI / 2);
-    if (facOf(owner) === 0) {
-      // T34 Calliope: a Sherman with a box of tubes above the turret
-      buildTank(v, root, { hull: [4.4, 1.3, 2.5], turret: [1.8, 0.9, 1.6, -0.2, 0], gun: [2.0, 0.1] }, f);
-      const rack = new THREE.Group(); rack.position.set(0, 1.1, 0); rack.rotation.z = 0.25;
-      for (let i = 0; i < 12; i++) rack.add(tube(0.3, (i % 3) * 0.26, (Math.floor(i / 3) - 1.5) * 0.3, 2.8));
-      v.turret.add(rack);
-    } else if (facOf(owner) === 1) {
-      // Panzerwerfer: half-track, wheels up front, tracks behind, ten tubes in two rows
-      root.add(mesh(GEO.box, body, 4.4, 1.0, 2.1, 0, 1.2, 0), mesh(GEO.box, body, 1.4, 0.9, 2.0, 1.6, 1.9, 0));
-      for (const wz of [-1.0, 1.0]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, 1.6, 0.45, wz).rotateX(Math.PI / 2), mesh(GEO.box, dark, 2.8, 0.8, 0.5, -0.8, 0.45, wz));
-      v.turret.position.set(-0.8, 1.9, 0);
-      const rack = new THREE.Group(); rack.rotation.z = 0.45;
-      for (let i = 0; i < 10; i++) rack.add(tube(0, (i % 2) * 0.3, (Math.floor(i / 2) - 2) * 0.28, 1.8));
-      v.turret.add(rack);
-    } else {
-      // Katyusha: truck with long launch rails
-      root.add(mesh(GEO.box, body, 4.4, 0.7, 2.1, 0, 1.0, 0), mesh(GEO.box, body, 1.3, 1.2, 2.0, 1.6, 1.8, 0), mesh(GEO.box, mat(f.color), 0.5, 0.3, 2.02, 1.6, 2.45, 0));
-      for (const wx of [-1.4, 0, 1.4]) for (const wz of [-1.05, 1.05]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, wx, 0.45, wz).rotateX(Math.PI / 2));
-      v.turret.position.set(-0.8, 1.7, 0);
-      const rack = new THREE.Group(); rack.rotation.z = 0.5;
-      for (let i = 0; i < 8; i++) rack.add(mesh(GEO.box, dark, 3.4, 0.08, 0.14, 0, (i % 2) * 0.24, (Math.floor(i / 2) - 1.5) * 0.3));
-      v.turret.add(rack);
-    }
-    root.add(v.turret);
-    v.models.push(root);
-  } else {
-    const helmet = mat(new THREE.Color(f.uniform).lerp(new THREE.Color(f.color), 0.55).getHex()), dark = mat(0x2c2b26);
-    SLOTS[type].forEach(([x, z], i) => {
-      const man = new THREE.Group(); man.position.set(x * 1.3, 0, z * 1.3); man.scale.setScalar(type === 'conscript' ? 1.25 : 1.35);
-      man.add(mesh(GEO.body, mat(f.uniform), 1, 1, 1, 0, 0.72, 0), mesh(GEO.ball, mat(0xc8a07a), 0.19, 0.19, 0.19, 0, 1.24, 0));
-      headgear(man, owner, type, helmet);
-      gear(man, type, i, f, dark);
-      if (type === 'ranger' && i % 3 === 1) man.add(mesh(GEO.cyl, dark, 0.07, 1.3, 0.07, 0, 1.1, 0.25).rotateZ(1.3)); // bazooka on the shoulder
-      root.add(man); v.models.push(man);
-    });
-    if (type === 'flak') root.add(mesh(GEO.box, mat(0x2a2a24), 1.0, 0.5, 1.0, 0.4, 0.3, 0), mesh(GEO.cyl, mat(0x2a2a24), 0.07, 2.2, 0.07, 1.0, 1.2, 0.15).rotateZ(-0.7), mesh(GEO.cyl, mat(0x2a2a24), 0.07, 2.2, 0.07, 1.0, 1.2, -0.15).rotateZ(-0.7));
-    if (type === 'mortar') root.add(mesh(GEO.cyl, dark, 0.09, 1.1, 0.09, 0.7, 0.45, 0).rotateZ(-0.7), mesh(GEO.box, dark, 0.5, 0.06, 0.5, 0.45, 0.05, 0));
-    if (type === 'mg') root.add(mesh(GEO.cyl, dark, 0.07, 1.4, 0.07, 1.0, 0.45, 0).rotateZ(Math.PI / 2), mesh(GEO.box, dark, 0.4, 0.4, 0.5, 0.5, 0.3, 0));
-    if (type === 'at') {
-      v.turret = new THREE.Group(); v.turret.position.set(0.6, 0, 0);
-      v.turret.add(mesh(GEO.box, mat(f.vehicle), 0.12, 1.1, 1.6, 0.3, 0.9, 0), mesh(GEO.cyl, dark, 0.08, 2.6, 0.08, 1.5, 0.95, 0).rotateZ(Math.PI / 2),
-        mesh(GEO.cyl, dark, 0.45, 0.2, 0.45, 0, 0.45, 0.8).rotateX(Math.PI / 2), mesh(GEO.cyl, dark, 0.45, 0.2, 0.45, 0, 0.45, -0.8).rotateX(Math.PI / 2));
-      root.add(v.turret);
-    }
-  }
+  if (isAir(type)) aviation.buildUnit(v, root, type, owner);   // per-faction plane, propellers, shadow (client/aircraft.js)
+  else if (type === 'airfield') aviation.buildAirfield(v, root, owner);
+  else buildModel(v, root, f, facOf(owner), def); // soldiers, vehicles, guns and structures, merged per part (client/unit-models.js)
   // billboarded health + suppression bars
   v.bars = new THREE.Group(); v.bars.position.y = barY(type);
   const bg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
@@ -638,20 +476,19 @@ function makeUnit(id, type, owner) {
   return v;
 }
 
-// the fallen soldier's own model (uniform, helmet, owner tint) on its side; it sinks into the ground at the end
+// pooled and capped; the oldest fade out (client/unit-models.js)
+const bodies = createBodies();
 function corpse(v, man) {
-  const p = man.getWorldPosition(new THREE.Vector3()), body = man.clone(), y = hAt(p.x, p.z) + 0.3 * man.scale.y;
-  body.position.set(p.x, y, p.z); body.rotation.set(0, Math.random() * 6, Math.PI / 2);
-  world.add(body);
-  fx.push({ obj: body, life: 18, max: 18, update: (k) => { body.position.y = y - Math.max(0, 1 - k / 0.3) * 0.9; } });
+  const p = man.getWorldPosition(new THREE.Vector3());
+  bodies.add(world, p.x, hAt(p.x, p.z) + 0.3, p.z);
   man.visible = false;
 }
 
 function removeUnit(v) {
   world.remove(v.bars);
   if (isAir(v.type)) {
-    // a plane shot down falls out of the sky and blows up where it lands (client/fx.js); one out of sight just goes
-    if (v.killed && v.root.visible) effects.downPlane(v); else world.remove(v.root);
+    // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
+    aviation.release(v); world.remove(v.root);
   } else if (v.killed && isVeh(v.type)) {
     // leave a burnt-out wreck for a while
     v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
@@ -677,16 +514,30 @@ function marker(x, z, color) {
   fx.push({ obj: m, life: 0.6, max: 0.6, update: (f) => { m.scale.setScalar(0.5 + (1 - f) * 2); m.material.opacity = f; }, dispose: () => m.material.dispose() });
 }
 
+// planes, airfields, flak bursts and shoot-downs (client/aircraft.js)
+// effects is made further down; explode and play only run once a match is on
+const aviation = createAviation({ hAt, UNITS, SUPPORT, units, altitude: AIR_ALT, world: () => world, facOf, colorOf: (slot) => look(slot).color, vehicleOf: (slot) => look(slot).vehicle, me: () => me,
+  explode: (x, z, size, opts) => effects.explode(x, z, size, opts), play: (name, x, z, opts) => audio.play(name, { x, z }, opts), flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
+// shots aircraft.js draws instead of fx.js; a support plane's value is the engine sound it comes in with
+const SUPPORT_PLANES = { strafe: 'plane_flyby', recon: 'plane_flyby', dive: 'plane_flyby', bombing: 'bomber', para: 'bomber' };
+// ('flak' with a target or a hit flag is a flak gun firing at the ground, which stays with fx.js)
+const AIR_SHOTS = new Set([...Object.keys(SUPPORT_PLANES), 'chutes', 'shotdown', 'planedown', 'flak', 'aa']);
+const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== undefined || sh.hit !== undefined));
+
 // ---------- snapshots ----------
 
 function applySnapshot(s) {
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
+  const arrived = performance.now();
+  if (snapshotAt) snapshotGap += (Math.max(60, Math.min(400, arrived - snapshotAt)) - snapshotGap) * 0.2;
+  snapshotAt = arrived;
   const seen = new Set();
   for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built] of s.units) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1 });
+    Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
+    if (owner !== me) { v.rally = null; v.queue = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
@@ -708,26 +559,45 @@ function applySnapshot(s) {
   }
   for (const sh of s.shots) {
     if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
-    if (sh.k === 'chutes') chutes(sh.x, sh.z);
+    if (!airShot(sh)) continue;
+    // planes, parachutes, flak and shoot-downs are drawn by client/aircraft.js; their sounds go through client/audio.js
+    const at = { x: sh.x, z: sh.z };
+    if (SUPPORT_PLANES[sh.k]) { aviation.supportPlane(sh); audio.play(SUPPORT_PLANES[sh.k], at); }
+    else if (sh.k === 'chutes') chutes(sh.x, sh.z);
+    else if (sh.k === 'shotdown' || sh.k === 'planedown') { aviation.shotDown(sh); audio.play('flak', at); }
+    else if (sh.k === 'flak') { aviation.flak(sh); audio.play('flak', at); }
+    else if (sh.k === 'aa') {
+      const a = seen.has(sh.f) ? units.get(sh.f) : null, b = seen.has(sh.t) ? units.get(sh.t) : null;
+      if (a && b) aviation.aaBurst(a, b);
+      effects.aaFire(sh, a, b); // the guns' tracers and their sound (client/fx.js); aircraft.js draws the bursts
+    }
   }
-  effects.snapshot(s, seen); // flashes, tracers, blasts, smoke, planes, flak and their sounds (client/fx.js)
+  // flashes, tracers, blasts and smoke for the ground war and their sounds (client/fx.js); the air shots and the
+  // planes' strike warnings are left out so nothing is drawn twice
+  effects.snapshot({ ...s, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
+  objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
+  for (const [id, n, ...points] of s.orders ?? []) {
+    const v = units.get(id); if (v?.owner !== me) continue;
+    for (let i = 0; i < n && i * 3 + 2 < points.length; i++) v.orders.push({ kind: points[i * 3], x: points[i * 3 + 1], z: points[i * 3 + 2] });
+  }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
   coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
   coverGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); coverGroup.clear();
   for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
-  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
+  if (s.nodes && !nodeMarks) { props?.setNodes(s.nodes); nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; }); }
 
-  s.points.forEach(([owner, capper, progress], i) => {
-    points[i]?.set(owner >= 0 ? look(owner).color : null, capper >= 0 ? look(capper).color : null, progress);
-  });
   syncStrikes(s.strikes);
   applyCells(s.cells);
+  const ending = !epilogue.active();
+  epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
+  if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
   alerts.snapshot(s, lastSnap);
   lastSnap = s;
   updateHud(s);
+  endgame.snapshot(s);
 }
 
 // public warnings for incoming support: everyone sees where it will land
@@ -752,7 +622,7 @@ function aimShape(kind, color) {
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
   if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
   else if (SUPPORT[kind]?.point) { const r = SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4; g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64))); }
-  else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove') {
+  else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally') {
     const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
   } else {
@@ -779,18 +649,29 @@ function chutes(x, z) {
 // ---------- HUD ----------
 
 // client/hud.js draws the panels; it reads the match state and calls back into these actions
+const feedback = createFeedback($('hint'), () => blip('error'));
+const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, ids: [...selected] });
+const explainUnavailable = (result) => { if (!result.ok) feedback.show(result.reason); return !result.ok; };
+let placementCache = null;
+function placementView() {
+  if (!terrain || !lastSnap || !lastStart) return null;
+  if (placementCache?.snapshot !== lastSnap) placementCache = { snapshot: lastSnap, ...placementState(lastSnap, lastStart.map, terrain.grid, teams) };
+  return placementCache;
+}
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
-  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'),
+  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
-  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k),
+  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
+  selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
+  idleCount: () => selection.idle().length,
+  findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
 });
 function buildSupportBar() { hud.buildSupport(); }
 function aimSupport(k) {
-  const { cur, cost } = supCost(lastSnap ?? {}, k);
-  if (!lastSnap || lastSnap.sup[k] > 0 || !(lastSnap[cur] >= cost)) return;
+  if (explainUnavailable(available({ t: 'support', kind: k }))) return;
   setAim(k); blip(700);
 }
 function buildBuyBar() { hud.buildCard(); }
@@ -799,38 +680,29 @@ function updateHud(s) { drawPlans(); hud.update(s); }
 // the builder squad nearest the clicked spot puts the fortification across its approach
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
-function startDig(kind) { if (diggers().length && lastSnap?.mp >= FORTS[kind].cost) { fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); } }
+function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); }
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
 // one layer for every match: grease-pencil strokes rewritten in place each snapshot (see markers.js)
 const plans = planLayer(hAt);
 function drawPlans() {
   if (!world) return;
   if (plans.group.parent !== world) world.add(plans.group);
-  plans.draw(selected, units);
+  const rally = lastSnap?.rally;
+  plans.draw(selected, units, rally ? { x: rally[0], z: rally[1] } : null);
 }
 
 // Engineers put Supply Depots on resource nodes: J, then click near a node
 const builders = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'engineer' && !(v.flags & 1));
 const owns = (type, done = true) => [...units.values()].some(v => v.owner === me && v.type === type && (!done || v.built >= 1));
-const canPlace = (k) => lastSnap?.mp >= UNITS[k].cost && (!UNITS[k].needs || owns(UNITS[k].needs));
-function startBuild(k) { if (builders().length && canPlace(k)) { setAim(k); blip(600); } }
-// where a building would go for a cursor spot: grid-snapped center, and whether the ground looks clear
-// (the server has the final say, including whether your side can see the spot)
-function footAt(k, g) {
-  const n = UNITS[k].size, cx = Math.round(g.x / CELL - n / 2), cy = Math.round(g.z / CELL - n / 2);
-  const nodes = (lastSnap?.nodes ?? []).map(([x, z]) => [Math.floor(x / CELL) - 1, Math.floor(z / CELL) - 1]);
-  let ok = !!terrain;
-  for (let y = cy; y < cy + n && ok; y++) for (let x = cx; x < cx + n && ok; x++) {
-    const ch = terrain.grid[y]?.[x];
-    ok = ch !== undefined && !(TERRAIN[ch] & MOVE) && !'WF=K'.includes(ch) && !nodes.some(([nx, ny]) => x >= nx && x <= nx + 1 && y >= ny && y <= ny + 1);
-  }
-  return { x: (cx + n / 2) * CELL, z: (cy + n / 2) * CELL, ok };
+function canPlace(k, at, dir) {
+  if (!available({ t: 'build', kind: k }).ok) return false;
+  return !at || footAt(k, at, dir).ok;
 }
-// the free node nearest a spot (within 8 m), or null. A node is taken when a depot stands on it.
-function nodeNear(g) {
-  const free = (lastSnap?.nodes ?? []).filter(([x, z]) => ![...units.values()].some(v => v.type === 'depot' && Math.hypot(v.x - x, v.z - z) < 1));
-  const [n] = free.sort((a, b) => Math.hypot(a[0] - g.x, a[1] - g.z) - Math.hypot(b[0] - g.x, b[1] - g.z));
-  return n && Math.hypot(n[0] - g.x, n[1] - g.z) <= 8 ? { x: n[0], z: n[1] } : null;
+function startBuild(k) { if (explainUnavailable(available({ t: 'build', kind: k }))) return; if (canPlace(k)) { setAim(k); blip(600); } }
+// Shared footprint, terrain, level and sight checks. The server decides again on arrival.
+function footAt(k, at, dir) {
+  const view = placementView();
+  return view ? { x: at.x, z: at.z, ...placementCheck(view.game, { kind: k, x: at.x, z: at.z, dir }, (spot) => view.sees(me, spot)) } : { x: at.x, z: at.z, ok: false, reason: 'notVisible' };
 }
 let nodeMarks = null, coverGroup = null;
 // Ghosts: enemy buildings you've seen, drawn faded where they were last seen until you look again
@@ -864,16 +736,30 @@ function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x
 // the player's faction voice answers orders (audio.js picks the voice and keeps lines 2.5 s apart)
 function bark(kind) { audio.voice(kind); }
 audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles mute
+function toggleMute() { audio.toggleMute(); } // the M key (client/keys.js); the slider follows
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
-let targeting = null, aimCenter = null, aimMesh = null, home = null;
-function cancelAim() { targeting = null; aimCenter = null; $('hint').textContent = ''; }
-function setAim(kind) {
-  targeting = kind; aimCenter = null;
-  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
+let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
+function cancelAim() { feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
+function setAim(kind, unit = null) {
+  feedback.reset();
+  targeting = kind; aimedUnit = unit; aimCenter = null;
+  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
   $('hint').textContent += ' · right-click cancels';
+}
+function startRally() {
+  if (!lastSnap) return;
+  if (classicMode() && ![...selected].some(id => { const v = units.get(id); return v?.owner === me && UNITS[v.type].makes?.length; })) {
+    $('hint').textContent = 'Select a Production Building to set its rally'; return;
+  }
+  setAim('rally'); blip(620);
+}
+function rallyAt(g) {
+  const ids = classicMode() ? [...selected].filter(id => { const v = units.get(id); return v?.owner === me && UNITS[v.type].makes?.length; }) : [];
+  sendCmd({ t: 'rally', ...(ids.length ? { ids } : {}), x: g.x, z: g.z });
+  marker(g.x, g.z, 0x9dd0ff); blip(620); cancelAim();
 }
 // direction before the second click: planes fly out from home, trenches run across the squad's approach
 function defaultDir(kind, at) {
@@ -884,19 +770,21 @@ function defaultDir(kind, at) {
 const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'mortar', 'at', 'armoredcar', 'tank', 'medium', 'tiger', 'rocket'];
 function fKeyType() {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  return PRIORITY.find(t => sel.some(v => v.type === t && !v.cd)) ?? null;
+  return PRIORITY.find(t => sel.some(v => v.type === t) && available({ t: 'ability', unit: t }).ok) ?? PRIORITY.find(t => sel.some(v => v.type === t)) ?? null;
 }
 const AIMED = { grenade: 'rifle', barrage: 'rocket', satchel: 'ranger' }; // abilities that need a spot clicked
 function useAbility(type) {
   if (!type) return;
-  const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && v.type === type);
+  if (explainUnavailable(available({ t: 'ability', unit: type }))) return;
+  const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && !(v.flags & 1) && v.type === type);
   if (!ready.length) return;
   const id = UNITS[type].ab.id;
-  if (AIMED[id]) setAim(id);
+  if (AIMED[id]) setAim(id, type);
   else { sendCmd({ t: 'ability', ids: ready.map(v => v.id) }); blip(880); }
 }
-function throwAt(g, kind) {
-  const who = [...selected].map(id => units.get(id)).filter(v => v && UNITS[v.type].ab.id === kind && !v.cd);
+function throwAt(g, kind, type) {
+  if (explainUnavailable(available({ t: 'ability', unit: type }))) return;
+  const who = [...selected].map(id => units.get(id)).filter(v => v && v.type === type && UNITS[v.type].ab.id === kind && !v.cd && !(v.flags & 1));
   if (!who.length) return;
   who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(760);
@@ -911,70 +799,96 @@ function formation(sel, g) {
     return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
   });
 }
-function moveTo(g, attack) {
-  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  if (!sel.length) return;
-  sendCmd({ t: attack ? 'amove' : 'move', orders: formation(sel, g) }); marker(g.x, g.z, attack ? 0xff9a40 : MOVE_COLOR); blip(attack ? 500 : 660);
-  bark(attack ? 'attack' : 'move');
-}
+const orders = createOrders({
+  units, selected, get me() { return me; }, defs: UNITS, formation, send: sendCmd, moveColor: MOVE_COLOR,
+  feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); },
+});
 
 // ---------- camera + input ----------
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
+rig.init({ cam, camera, pitch: PITCH, keys, mouse: () => mouse, dragging: () => drag, world: () => world,
+  units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
+  chip: $('following'), top: $('top'), edgeButton: $('edgeBtn'), panButton: $('panBtn'),
+  unitName: (v) => look(v.owner).names[v.type] ?? UNITS[v.type].name });
+function followSelected() {
+  if (rig.following != null) { rig.cancelFollow(); return; }
+  let v = [...selected].map(id => units.get(id)).find(Boolean);
+  if (!v && lastSnap?.out?.[me]) v = (mouse.inside && pick(mouse.x, mouse.y, () => true)) || pick(innerWidth / 2, innerHeight / 2, () => true, Infinity);
+  if (v) rig.follow(v.id);
+}
+function cancelInput(clearKeys = true) {
+  if (clearKeys) keys.clear();
+  mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden');
+}
+addEventListener('mousedown', (e) => { if (rig.skipIntro()) { e.preventDefault(); e.stopPropagation(); } }, { capture: true });
 
-addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  keys.add(e.code);
-  if (EDIT) return;
-  const n = /^Digit([1-9])$/.exec(e.code)?.[1];
-  // Ctrl+number sets a group (Shift+number too: in a plain browser tab Ctrl+1-8 switches tabs and pages can't stop it)
-  if (n && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); groups[n] = [...selected]; blip(990); }
-  else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
-  else if (e.code === 'KeyX') { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }
-  else if (e.code === 'KeyR') retreat();
-  else if (e.code === 'KeyF') useAbility(fKeyType());
-  else if (e.code === 'KeyG' && selected.size) setAim('amove');
-  else if (e.code === 'KeyN') aimSupport('bombing');
-  else if (e.code === 'KeyU') aimSupport('dive');
-  else if (e.code === 'KeyP') aimSupport('para');
-  else if (e.code === 'KeyI') aimSupport('cover');
-  else if (e.code === 'KeyO') startBuild('airfield');
-  else if (e.code === 'KeyY') startBuild('flakpos');
-  else if (e.code === 'KeyM') audio.toggleMute();
-  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
-  else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
-  else if (e.code === 'KeyH' && home) {
+// Any shortcut that moves the camera ends follow mode (camera stream rule).
+const centerSelection = (list) => {
+  if (!list.length) return;
+  rig.cancelFollow();
+  cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
+  cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
+};
+const selection = createSelection({ units, selected, groups, owner: () => me, definitions: UNITS,
+  screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
+const actions = {
+  stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
+  retreat, ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
+  mute: toggleMute,
+  alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
+  follow: followSelected, rally: startRally,
+  home: () => {
+    if (!home) return;
+    rig.cancelFollow();
     cam.x = home.x; cam.z = home.z;
     const hq = classicMode() && [...units.values()].find(v => v.owner === me && v.type === 'hq');
-    if (hq) { selected.clear(); selected.add(hq.id); if (lastSnap) updateHud(lastSnap); }
-  }
-  else if (e.code === 'KeyZ') aimSupport('recon');
-  else if (e.code === 'KeyC') aimSupport('artillery');
-  else if (e.code === 'KeyV') aimSupport('strafe');
-  else if (e.code === 'KeyB') aimSupport('smoke');
-  else if (e.code === 'KeyT') startDig('trench');
-  else if (e.code === 'KeyY') startDig('sandbags');
-  else if (e.code === 'KeyU') startDig('wire');
-  else if (e.code === 'KeyI') startDig('traps');
-  else if (e.code === 'KeyO') startDig('nest');
-  else if (e.code === 'KeyJ') startBuild('depot');
-  else if (e.code === 'KeyK') startBuild('barracks');
-  else if (e.code === 'KeyL') startBuild('motorpool');
+    if (hq) { selected.clear(); selected.add(hq.id); }
+  },
+  clear: () => selected.clear(), cancelAim,
+  army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
+  idleEngineer: () => selection.findIdle(false, true),
+  panForward: () => {}, panBack: () => {}, panLeft: () => {}, panRight: () => {}, rotateLeft: () => {}, rotateRight: () => {},
+};
+for (const { id } of bindings) {
+  const [kind, value, number] = id.split(':');
+  if (kind === 'support') actions[id] = () => aimSupport(value);
+  else if (kind === 'fort') actions[id] = () => startDig(value);
+  else if (kind === 'build') actions[id] = () => startBuild(value);
+  else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
+}
+addEventListener('keydown', (e) => {
+  if (rig.skipIntro()) { e.preventDefault(); return; }
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+  keys.add(e.code);
+  if (EDIT) return;
+  const id = match(e, [classicMode() ? 'classic' : 'army', ...(targeting ? ['targeting'] : [])]);
+  // Shortcuts that share camera codes must not also pan.
+  if (id && !id.startsWith('pan') && !id.startsWith('rotate')) keys.delete(e.code);
+  if (!id || !actions[id]) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  actions[id]();
+  if (id.startsWith('pan') || id.startsWith('rotate')) return;
+  if (lastSnap) updateHud(lastSnap);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
+addEventListener('blur', cancelInput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) cancelInput(); });
 addEventListener('mousemove', (e) => {
-  mouse = { x: e.clientX, y: e.clientY, inside: true };
+  mouse = { x: e.clientX, y: e.clientY, inside: !document.hidden };
+  rig.moveMiddle(e);
+  if (drag && !(e.buttons & 1)) { drag = null; $('box').classList.add('hidden'); }
   if (drag && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
-    drag.moved = true;
+    drag.moved = true; rig.cancelFollow();
     Object.assign($('box').style, { left: Math.min(drag.x, e.clientX) + 'px', top: Math.min(drag.y, e.clientY) + 'px', width: Math.abs(e.clientX - drag.x) + 'px', height: Math.abs(e.clientY - drag.y) + 'px' });
     $('box').classList.remove('hidden');
   }
 });
-document.addEventListener('mouseleave', () => (mouse.inside = false));
+document.addEventListener('mouseleave', () => cancelInput(false));
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
-renderer.domElement.addEventListener('wheel', (e) => { cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: true });
+renderer.domElement.addEventListener('wheel', (e) => rig.wheel(e), { passive: false });
 
 const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
 function pick(mx, my, test, r) {
@@ -986,68 +900,56 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
-const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), flatGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-const rayAt = (mx, my) => ray.setFromCamera(ndc.set(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
-const groundAt = (mx, my) => {
-  rayAt(mx, my); flatGround.constant = 0;
-  const hit = groundMesh && ray.intersectObject(groundMesh)[0];
-  return hit ? hit.point : ray.ray.intersectPlane(flatGround, new THREE.Vector3());
-};
+const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160);
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;
+  if (e.button === 1) { rig.beginMiddle(e); return; }
+  if (e.button === 0 && e.altKey && !targeting && !rig.intro) {
+    e.preventDefault(); const g = groundAt(e.clientX, e.clientY); if (g) pings.send(g.x, g.z); return;
+  }
   if (targeting) {
-    const kind = targeting, g = e.button === 0 && groundAt(e.clientX, e.clientY);
-    if (!g) { cancelAim(); return; }
-    if (kind === 'depot') {
-      const n = nodeNear(g); cancelAim();
-      if (n) { sendCmd({ t: 'build', ids: builders().map(v => v.id), kind: 'depot', x: n.x, z: n.z }); marker(n.x, n.z, 0xe8c860); blip(600); }
-      return;
-    }
+    if (e.button === 2) { cancelAim(); return; }
+    if (e.button !== 0) return;
+    const kind = targeting, g = groundAt(e.clientX, e.clientY);
+    if (!g) { feedback.show(denySentence('blocked')); return; }
+    if (kind === 'rally') { rallyAt(g); return; }
     if (UNITS[kind]?.building) {
+      if (explainUnavailable(available({ t: 'build', kind }))) return;
       const f = footAt(kind, g);
-      if (!e.shiftKey) cancelAim(); // Shift-click keeps placing
-      if (f.ok) { sendCmd({ t: 'build', ids: builders().map(v => v.id), kind, x: f.x, z: f.z }); marker(f.x, f.z, 0xe8c860); blip(600); }
+      if (!canPlace(kind, g) || !f.ok) { feedback.show(denySentence(f.reason)); return; }
+      if (!e.shiftKey) cancelAim();
+      sendCmd({ t: 'build', ids: builders().map(v => v.id), kind, x: f.x, z: f.z, queue: e.shiftKey });
+      marker(f.x, f.z, 0xe8c860); blip(600);
       return;
     }
-    if (SUPPORT[kind]?.point) { cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
-    if (AIMED[kind]) { cancelAim(); throwAt(g, kind); return; }
-    if (kind === 'amove') { cancelAim(); moveTo(g, true); return; }
+    if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
+    if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
+    if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; $('hint').textContent = 'Move the mouse to rotate · click to launch'; blip(560); return; }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
-    cancelAim();
-    if (kind === 'dig') { const v = nearestDigger(c); if (v) { sendCmd({ t: 'dig', ids: [v.id], kind: fortKind, x: c.x, z: c.z, dir }); marker(c.x, c.z, 0xc8a060); blip(600); } }
-    else { sendCmd({ t: 'support', kind, x: c.x, z: c.z, dir }); blip(520); }
+    if (kind === 'dig') {
+      // Shift queues the dig behind the squad's orders (paid when it starts) and keeps the placement armed
+      if (explainUnavailable(available({ t: 'dig', kind: fortKind, queue: e.shiftKey }))) return;
+      const f = footAt(fortKind, c, dir);
+      if (!f.ok) { feedback.show(denySentence(f.reason)); return; }
+      const v = nearestDigger(c);
+      if (e.shiftKey) setAim('dig'); else cancelAim();
+      if (v) { sendCmd({ t: 'dig', ids: [v.id], kind: fortKind, x: c.x, z: c.z, dir, queue: e.shiftKey }); marker(c.x, c.z, 0xc8a060); blip(600); }
+    } else {
+      if (explainUnavailable(available({ t: 'support', kind }))) return;
+      cancelAim(); sendCmd({ t: 'support', kind, x: c.x, z: c.z, dir }); blip(520);
+    }
     return;
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
-  const enemy = pick(e.clientX, e.clientY, v => foe(v.owner));
-  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  if (sel.length && sel.every(v => UNITS[v.type].building)) {
-    const g = groundAt(e.clientX, e.clientY);
-    if (g) { for (const v of sel) sendCmd({ t: 'rally', id: v.id, x: g.x, z: g.z }); marker(g.x, g.z, 0x9dd0ff); blip(620); }
-    return;
-  }
-  const planes = sel.filter(v => isAir(v.type)), friend = planes.length && pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type));
-  if (friend && planes.length === sel.length) { sendCmd({ t: 'escort', ids: planes.map(v => v.id), target: friend.id }); marker(friend.x, friend.z, 0x9dd0ff); blip(600); return; }
-  const ownB = pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), eng = sel.filter(v => v.type === 'engineer');
-  if (ownB && eng.length && (ownB.built < 1 || ownB.hp < UNITS[ownB.type].hpPer)) { sendCmd({ t: 'assist', ids: eng.map(v => v.id), id: ownB.id }); marker(ownB.x, ownB.z, 0xe8c860); blip(600); return; }
-  if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); bark('attack'); return; }
-  // a house: squads go inside, tanks and rocket trucks shell it, anything else walks up to it
-  const house = houseAt(e.clientX, e.clientY);
-  if (house) {
-    const inf = sel.filter(v => UNITS[v.type].garrisons).map(v => v.id), guns = sel.filter(v => UNITS[v.type].w.shellTerrain || UNITS[v.type].w.salvo).map(v => v.id);
-    if (inf.length) sendCmd({ t: 'garrison', ids: inf, x: house.x, z: house.z });
-    if (guns.length) sendCmd({ t: 'fireat', ids: guns, x: house.x, z: house.z });
-    const rest = sel.filter(v => !inf.includes(v.id) && !guns.includes(v.id));
-    if (rest.length) sendCmd({ t: 'move', orders: formation(rest, house) });
-    marker(house.x, house.z, guns.length && !inf.length ? 0xff4030 : 0x9dd0ff); blip(560);
-    return;
-  }
-  const g = groundAt(e.clientX, e.clientY); if (!g) return;
-  moveTo(g, e.ctrlKey); // Ctrl + right-click = attack-move
+  orders.dispatch({
+    ground: groundAt(e.clientX, e.clientY), enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
+    friend: pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
+    building: pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), house: houseAt(e.clientX, e.clientY),
+  }, e);
 });
 
 // the house under the cursor (walls and roofs count), as the center of its cell
@@ -1060,17 +962,25 @@ function houseAt(mx, my) {
   return terrain.grid[y]?.[x] === 'B' ? { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL } : null;
 }
 addEventListener('mouseup', (e) => {
+  if (e.button === 1) rig.stopDrag();
   if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
-  if (!e.shiftKey) selected.clear();
   if (drag.moved) {
     const x0 = Math.min(drag.x, e.clientX), x1 = Math.max(drag.x, e.clientX), y0 = Math.min(drag.y, e.clientY), y1 = Math.max(drag.y, e.clientY);
-    for (const v of units.values()) { const s = screenOf(v); if (v.owner === me && !UNITS[v.type].structure && !(v.flags & 512) && s.front && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) selected.add(v.id); }
+    selection.box({ x0, x1, y0, y1 }, e);
   } else {
     const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
-    if (v) selected.add(v.id);
+    selection.click(v, e);
   }
   drag = null;
+  if (lastSnap) updateHud(lastSnap);
+});
+
+renderer.domElement.addEventListener('dblclick', (e) => {
+  if (EDIT || targeting || e.button !== 0) return;
+  const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
+  if (!v) return;
+  e.preventDefault(); selection.doubleClick(v, e);
   if (lastSnap) updateHud(lastSnap);
 });
 
@@ -1081,22 +991,11 @@ let lastT = performance.now();
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
 const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78] };
 let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0;
-// the camera's view outline: corner rays against a flat plane at the ground height the camera looks at (close
-// enough at minimap scale, and far cheaper than raycasting the terrain), redone only when the camera moves
-const mmView = { key: '', pts: [] };
-function viewCorners() {
-  const key = `${cam.x}|${cam.z}|${cam.y}|${cam.yaw}|${cam.dist}|${innerWidth}|${innerHeight}`;
-  if (key !== mmView.key) {
-    mmView.key = key; flatGround.constant = -(cam.y ?? 0); camera.updateMatrixWorld();
-    mmView.pts = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => (rayAt(x, y), ray.ray.intersectPlane(flatGround, new THREE.Vector3()))).filter(Boolean);
-  }
-  return mmView.pts;
-}
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
   const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
   terrain.grid.forEach((row, y) => row.forEach((ch, x) => {
-    const lv = field ? field.vert[y * (w + 1) + x] / CFG.levelHeight : 0, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
+    const lv = hAt((x + 0.5) * CELL, (y + 0.5) * CELL) / CFG.levelHeight, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
     img.data[i] = r * k; img.data[i + 1] = g * k; img.data[i + 2] = b * k; img.data[i + 3] = 255;
   }));
   x2.putImageData(img, 0, 0);
@@ -1109,6 +1008,16 @@ function mmBasis() {
 function mmToWorld(px, py) {
   const { W, S, r, f } = mmBasis(), a = (px - W / 2) / S, b = -(py - W / 2) / S;
   return { x: MW / 2 + r.x * a + f.x * b, z: MH / 2 + r.z * a + f.z * b };
+}
+function minimapCursor(g) {
+  const near = test => [...units.values()].filter(v => test(v) && Math.hypot(v.x - g.x, v.z - g.z) < 5 / mmBasis().S)
+    .sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0];
+  const x = Math.floor(g.x / CELL), z = Math.floor(g.z / CELL);
+  return {
+    ground: g, enemy: near(v => foe(v.owner)), friend: near(v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
+    building: near(v => !foe(v.owner) && UNITS[v.type].building),
+    house: terrain?.grid[z]?.[x] === 'B' ? { x: (x + 0.5) * CELL, z: (z + 0.5) * CELL } : null,
+  };
 }
 function drawMinimap() {
   const cv = $('minimap'), c = cv.getContext('2d');
@@ -1146,8 +1055,9 @@ function drawMinimap() {
     if (selected.has(v.id)) { c.strokeStyle = '#fff'; c.lineWidth = 1.5 / S; c.stroke(); }
   }
   alerts.drawPings(c, S);
+  pings.drawMinimap(c, S);
   // what the camera sees
-  const corners = viewCorners();
+  const corners = rig.corners(relief?.geometry);
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
 }
 {
@@ -1156,12 +1066,18 @@ function drawMinimap() {
   const at = (e) => { const b = cv.getBoundingClientRect(); return mmToWorld((e.clientX - b.left) * cv.width / b.width, (e.clientY - b.top) * cv.height / b.height); };
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
   cv.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); rig.cancelFollow();
     const p = at(e);
+    if (e.button === 0 && e.altKey && !rig.intro) { e.preventDefault(); pings.send(p.x, p.z); return; }
+    if (targeting === 'rally') { if (e.button === 0) rallyAt(p); else if (e.button === 2) cancelAim(); return; }
+    if (targeting && e.button === 2) { cancelAim(); return; }
     if (e.button === 0) { mmDrag = true; cam.x = p.x; cam.z = p.z; }
-    else if (e.button === 2 && selected.size) moveTo(p, e.ctrlKey);
+    else if (e.button === 2 && selected.size && lastSnap) orders.dispatch(minimapCursor(p), e);
   });
-  addEventListener('mousemove', (e) => { if (mmDrag) { const p = at(e); cam.x = p.x; cam.z = p.z; } });
+  addEventListener('mousemove', (e) => { if (mmDrag && !(e.buttons & 1)) mmDrag = false; if (mmDrag) { rig.cancelFollow(); const p = at(e); cam.x = p.x; cam.z = p.z; } });
+  addEventListener('blur', () => (mmDrag = false));
+  document.addEventListener('mouseleave', () => (mmDrag = false));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) mmDrag = false; });
   addEventListener('mouseup', () => (mmDrag = false));
 }
 // weapon range rings only for a small selection (two units, or up to four of one type), so a big group's dashed
@@ -1187,50 +1103,52 @@ function updateFog() {
       for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w - 1, cx + r); x++)
         if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) vis[y * w + x] = 1;
   }
+  if (epilogue.active()) vis.fill(1); // the match is decided: the fog lifts
   // DataTexture row 0 is the far (z = max) edge of the plane
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = ((h - 1 - y) * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = 10; d[i + 3] = vis[y * w + x] ? 0 : 120; }
   fogTex.needsUpdate = true;
 }
 
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
+const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
+objectives.init();
+const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
+endgame.init({ me: () => me, teams: () => teams });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there
+  water?.tick(now);
   // camera
-  const pan = cam.dist * 1.1 * dt, f = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) }, r = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) };
-  let fw = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  let rt = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-  if (mouse.inside && !drag && world) { if (mouse.x < 8) rt = -1; if (mouse.x > innerWidth - 8) rt = 1; if (mouse.y < 8) fw = 1; if (mouse.y > innerHeight - 8) fw = -1; }
-  cam.x = Math.min(MW || 160, Math.max(0, cam.x + (f.x * fw + r.x * rt) * pan));
-  cam.z = Math.min(MH || 160, Math.max(0, cam.z + (f.z * fw + r.z * rt) * pan));
-  cam.yaw += ((keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0)) * 1.6 * dt;
-  const hd = cam.dist * Math.cos(PITCH);
-  cam.y = (cam.y ?? 0) + (hAt(cam.x, cam.z) - (cam.y ?? 0)) * Math.min(1, dt * 4); // glide over hills
-  camera.position.set(cam.x + Math.sin(cam.yaw) * hd, cam.y + cam.dist * Math.sin(PITCH), cam.z + Math.cos(cam.yaw) * hd);
-  camera.lookAt(cam.x, cam.y, cam.z);
+  rig.update(dt);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-dt * 10), ranges = rangeRings();
+  const k = 1 - Math.exp(-sdt * 1000 / snapshotGap), ranges = rangeRings();
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
     const gy = hAt(v.x, v.z);
     const air = isAir(v.type), up = air ? AIR_ALT : 0;
     v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
-    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; }
+    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; aviation.tick(v, dt); }
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = ranges && v.sel.visible;
+    animate(v, sdt, camera.position); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
   }
   battleFrame(cam, units, me);
+  bodies.update(sdt);
   for (let i = fx.length - 1; i >= 0; i--) {
-    const e = fx[i]; e.life -= dt;
+    const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
-  effects.update(dt);
+  objectives.frame(sdt); effects.update(sdt); atmos.update(sdt);
+  aviation.update(sdt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   alerts.frame();
-  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
+  pings.frame();
+  endgame.frame();
+  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
@@ -1238,25 +1156,29 @@ renderer.setAnimationLoop(() => {
     if (aimCenter) {
       aimMesh.position.set(aimCenter.x, hAt(aimCenter.x, aimCenter.z), aimCenter.z);
       if (g && Math.hypot(g.x - aimCenter.x, g.z - aimCenter.z) > 1.5) aimMesh.rotation.y = -Math.atan2(g.z - aimCenter.z, g.x - aimCenter.x);
-    } else if (g && targeting === 'depot') {
-      const n = nodeNear(g), at = n ?? g;
-      aimMesh.position.set(at.x, hAt(at.x, at.z), at.z); aimMesh.userData.mat.color.set(n ? 0x60e070 : 0xe04030);
     } else if (g && UNITS[targeting]?.building) {
       const f = footAt(targeting, g);
       aimMesh.position.set(f.x, hAt(f.x, f.z), f.z); aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
     } else if (g) { aimMesh.position.set(g.x, hAt(g.x, g.z), g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
+    if (targeting === 'dig' && (aimCenter || g)) {
+      const at = aimCenter ?? g, dir = -aimMesh.rotation.y, f = footAt(fortKind, at, dir);
+      aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
+    }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
   renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
+  perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });
 
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
-  pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },
+  resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
   onScreen: (x, z) => { const p = screenOf({ x, z }); return p.front && p.x >= 0 && p.x <= innerWidth && p.y >= 0 && p.y <= innerHeight; } });
+
+pings.init({ scene, hAt, send: sendCmd, playerName: (slot) => names[slot] ?? 'An ally' });

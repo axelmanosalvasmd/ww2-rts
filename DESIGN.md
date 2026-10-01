@@ -318,10 +318,108 @@ the HUD.
   wrecks). `client/battle-sound.js` only moves the listener with the camera, drives the tank engine bed from moving
   vehicles and plays dig and build foley. The Volume slider sits in the in-game menu and replaces the old mute
   button. `tools/build-audio.mjs` rebuilds the mp3s and index from the raw takes (needs ffmpeg).
+- As built, round 2 (props): `client/props.js` (`createProps({ map, grid, hAt, parent })`) places painted scenery
+  from integer hash seeds, so every browser and late joiner sees the same trees, poplar rows, pines, bushes, rocks,
+  fences, haystacks and crates. One InstancedMesh per kind, kept clear of spawns, points, the paths between points and
+  resource nodes (`setNodes`); `refresh()` after terrain changes, and Graphics Low shows half of them.
+- As built, round 2 (water): `client/water.js` (`createWater(grid, map)`) is one see-through mesh over river, ford and
+  bridge cells, painted from a mask texture (shoreline, depth guess, fords, bridges) with a per-vertex flow
+  direction. It draws first in the see-through pass and writes no depth, so fog of war, smoke and effects draw over
+  it. `changed(cells)` rebuilds it after a bridge or bank change, `tick(now)` animates it, Graphics Low freezes it.
+- As built, round 2 (aviation visuals): `client/aircraft.js` (`createAviation`) builds each faction's fighter,
+  ground-attack plane and bomber as one merged vertex-colored mesh plus propellers, and draws plane units (bank,
+  shadow, damage smoke), the Classic airfield, support planes crossing the map, flak bursts and shoot-downs. main.js
+  sends it the air shots (`strafe`, `recon`, `bombing`, `dive`, `para`, `shotdown`, `planedown`, `flak` at a support
+  plane, `aa`) and keeps those shots and the support planes' strike warnings out of `effects.snapshot`, so `client/fx.js`
+  draws only the ground war plus the anti-air tracers (`effects.aaFire`). Paratroop canopies stay in main.js. Crashes
+  and strafing hits use `effects.explode`, and every air sound plays through `client/audio.js`.
+
+## Rooms, controls and match flow (round 3, 2026-10-01)
+- Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,
+  at most once per player per match (reset in startMatch). While paused, sim, AI and commands are off, and a filtered
+  snapshot plus the pause message go out about once a second.
+- Host and seats: the host is the first connected human, falling back to the first human. A lobby disconnect frees the
+  seat after 10 s, and offline humans lose their seats when a match returns to the lobby. Tokens are per room plus an
+  optional seat suffix, and a start with a matching matchId is a resume.
+- Fort keys are a Shift layer: T trench, Shift+Y sandbags, Shift+U wire, Shift+I traps, Shift+O nest. Plain Y/U/I/O
+  keep the Classic build and support actions. `client/keys.js` is the single binding table and test.js rejects
+  duplicate chords.
+- Team pings: Alt+click sends `{t:'ping', x, z}`. The server accepts 3 per 5 s per player, only inside the map, and
+  relays only to humans on the sender's team. No unit ids travel with it. The ring lasts 4 s.
+- Order queue: up to 8 waiting orders per unit, and a full queue is refused with 'queueFull'. A queued dig is paid when
+  it starts. Any non-queued order, stop or retreat clears the queue. 'orders' and 'rally' go only to their owner.
+- Rally outside Classic is one personal point per player set with `{t:'rally', x, z}` on a passable cell. It applies to
+  ground units bought with 'buy', and Classic keeps per-building rallies.
+- Epilogue: `finish(g, winner, reason, at)` is the only way a winner is set. It sets `g.reveal` (fog lifted for all) and
+  `endAt`. The server holds 120 ticks (6 s), stepping every other tick (half speed) with orders refused and AIs idle,
+  then returns to the lobby with the result and story.
+- Contested points are flagged per receiver: 1 only when the on-point units that player can see belong to two or more
+  teams, so the flag never reveals a hidden enemy.
+- Damage ladder: finished structures smoke at 0.66 hp or below and burn at 0.33 or below. Posture: crouch at
+  suppression 50, prone at 90 (crouch at most in a trench), and lean when retreating. LOD: simple soldier model beyond
+  110 m (80 m on Low) with 4 m hysteresis. Corpses are capped at 200 and live 25 s.
+- Adaptive snapshot interval: rooms start at every 2 ticks (10 Hz) and stretch to 3, then 4, when the snapshot-tick p95
+  over 50 samples exceeds 40 ms. They recover one step after 10 s under 24 ms. The client smooths units over the
+  measured gap (60 to 400 ms).
+- Snapshot cache: `snapshotCache(g)` is built once per send and passed as the fifth argument to `snapshotFor`. Without
+  it, `snapshotFor` reads live state. Owner orders and the mode row with Assault total and Annihilation bunkers are
+  cached. Rally, contested and the fog lift stay per player.
+- As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
+  fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
+  gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign
+  buildings, and it returns the round 3 reason strings. Cover checks use the spatial grid (`shared/grid.js`), so code
+  that moves a unit directly calls `updateGrid`. The server keeps the round 2 start guard (`room.starting`) and builds
+  snapshots only for sockets that are open (`readyState` 1).
+- As merged on the client: `client/unit-models.js` builds soldiers, vehicles, guns and structures, and
+  `client/aircraft.js` keeps the planes and the Airfield. Structure parts take the round 1 wood and sandbag textures
+  through `setSurfaces(surface)` from main.js and fall back to plain colors in Node tests. House roofs stay separate
+  meshes because `mergeMeshes` keeps one material and a roof has two. `client/fx.js` still owns every effect sound and
+  `client/battle-sound.js` exports only `battleFrame`, so there is still one Volume slider and no mute button.
+
+## Relief, structures and atmosphere (round 4, 2026-10-01)
+- Relief module: `client/relief.js` (`createRelief(map, grid, { texture, isRoad, gfx, low, onGeometry, material })`)
+  builds the board surface from the sim's cell levels and returns `{ mesh, geometry, hAt, update(cells), stats,
+  dispose }`. The geometry is in world space (y up, x and z from 0 to the map size) with a fixed bounding box, and its
+  UVs match the ground canvas and the fog texture (`v = 1 - z / MH`). `hAt(x, z)` is the one ground height for units,
+  props, water, the camera, the minimap and picking (the mesh raycasts by marching against `hAt`). `update(cells)`
+  rebuilds only the cells around a change (about 4 ms per crater) and calls `onGeometry` when the geometry is
+  replaced, so the fog overlay shares it. Each cell is split into up to 4 x 4 quads (`S = 4`); flat cells merge into
+  row runs of up to 32 cells. It imports `../shared/sim.js` by relative path, so test.js runs it in Node.
+- Cliff and slope rules: cell centres keep their exact sim height (`level x CFG.levelHeight`). A step of two or more
+  levels between connected cells is a cliff: the sides get separate vertices and a vertical rock strip between them,
+  painted as warm strata with a pale lip and a soil foot. A one-level step is an eased ramp (smoothstep) between the two
+  cell centres, steepest at the boundary, painted with dry earth on the steep part. Cliffs are a heightfield, so there are no overhangs. Roads
+  sink 0.1 m with a shallow centre fan, and building cells are never sunk. Water cells are carved below the frozen
+  water line of their body (`client/water-levels.js`): fords 0.15 m so they stay wadeable, channels 0.42 m at the
+  bank row and 0.38 m deeper per row inward, with sloping banks. Bridge cells keep their deck height.
+- Low path: the relief material compiles with `RELIEF_LOW`, which drops the noise patches, strata detail, cracks and
+  paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
+  5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
+  and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
+  on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
+- Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
+  sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
+  It never changes gameplay cells. The five base buildings are one merged, vertex-colored model per type and team
+  (`buildingModel`). Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
+  `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
+- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
+  drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
+  birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
+  ground darkens it too.
+- As merged with rounds 1 to 3: main.js keeps `relief` and `hAt` delegates to it. The round 3 smoothed height field
+  (`buildField`, `terrainGeometry`) and its house, roof and parapet builder are gone; `applyCells` now paints the
+  ground, calls `relief.update(cells)`, rebuilds the structures, refreshes the props and updates the water.
+  `createWater(grid, map, hAt)` takes the relief height. `client/ground.js` returns `isRoad` for the relief's road
+  sink. `client/unit-models.js` keeps the round 3 one-draw units and Node tests keep its box buildings; main.js
+  injects `buildingModel` through `setBuildings`, and the command bunker keeps no `v.body` because it is never built.
+  The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
+  box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
+  step) along the four sides so the cut-earth skirt follows cliffs at the edge.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
-- Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz.
+- Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
+  ticks while a room falls behind, see round 3 above).
   Clients send commands and smooth toward the latest snapshot.
 - All command validation lives in `command()` in `shared/sim.js`.
 - Map = grid of cells (2 m). `B` building, `H` hedgerow, `#` wall, `+` crater. LOS, pathing (A*), and cover all read the grid.

@@ -1,6 +1,7 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
 import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf, airborne } from './sim.js';
+import { gridFor, rebuildGrid } from './grid.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const SUPPORT_PLANE = (kind) => kind === 'strafe' || kind === 'bombing' || kind === 'dive' || kind === 'para';
@@ -45,9 +46,10 @@ const worth = (u) => UNITS[u.type].cost * u.hp / (UNITS[u.type].models * UNITS[u
 // opts.adaptive = false plays the plain scripted Classic AI; opts.rules = [1..5] turns on only those adaptive rules
 // (both for measuring the rules against the scripted AI)
 export function think(g, slot, opts = {}) {
+  const grid = rebuildGrid(g);
   const me = g.players[slot];
   if (me.out) return;
-  const all = [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure);
+  const all = grid.ownedBy(slot).filter(u => !UNITS[u.type].structure);
   const assault = g.mode?.kind === 'assault' || g.mode?.kind === 'annihilation', defending = assault && me.team === g.mode.defenderTeam, classic = g.mode?.kind === 'classic';
   // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings
   // (Classic: only buildings its team has seen, remembered under fog; with none known, head for the enemy spawns)
@@ -66,14 +68,14 @@ export function think(g, slot, opts = {}) {
     for (const [id, e] of mem.seen) if (now - e.t > 60) mem.seen.delete(id);
   }
   const recent = [...mem.seen.values()];
-  const ownB = classic ? [...g.units.values()].filter(b => b.owner === slot && UNITS[b.type].building) : [];
+  const ownB = classic ? grid.ownedBy(slot).filter(b => UNITS[b.type].building) : [];
   // rule 2, rush defense: enemy fighters at my buildings in the first 4 minutes
   const rush = rule(2) && now < 240 ? recent.filter(e => now - e.t < 5 && ownB.some(b => d(b, e) < 35)) : [];
   // rule 1, counters: tanks seen lately push the Motor Pool (for AT guns) up the build order
   const seenArmor = recent.filter(e => e.type === 'tank' || e.type === 'tiger').length, seenInf = recent.filter(e => UNITS[e.type].infantry).length;
   const reserve = classic ? (rush.length ? 0 : 1) * buildEconomy(g, slot, all.filter(u => u.type === 'engineer'), rule(1) && seenArmor > 0) : 0;
   // Classic: only what my finished buildings can train
-  const trains = (t) => !classic || [...g.units.values()].some(b => b.owner === slot && b.built >= 1 && UNITS[b.type].makes?.includes(t));
+  const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
   const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
   const seenTanks = Math.max([...me.visible].filter(id => g.units.get(id)?.type === 'tank').length, rule(1) ? seenArmor : 0);
 
@@ -117,12 +119,14 @@ export function think(g, slot, opts = {}) {
 
   const orders = [], assault_ = [], retreat = [], pending = g.points.map(() => []), heading = [...load];
   const enemies = [...me.visible].map(id => g.units.get(id)).filter(Boolean);
+  const enemyOrder = new Map(enemies.map((u, i) => [u.id, i]));
+  const enemiesNear = (at, r) => grid.radius(at, r).filter(u => enemyOrder.has(u.id)).sort((a, b) => enemyOrder.get(a.id) - enemyOrder.get(b.id));
 
   // off-map support, keeping 100 MP back so reinforcing never stalls
   const can = (k) => { const { cur, cost } = supCost(g, k); return me.sup[k] <= 0 && me[cur] >= cost + (cur === 'mp' ? 100 : 0); };
   const cluster = (min, r, test = () => true) => {
     for (const e of enemies) {
-      const near = enemies.filter(o => test(o) && d(o, e) <= r);
+      const near = enemiesNear(e, r).filter(o => test(o) && d(o, e) <= r);
       if (near.length >= min) return { x: near.reduce((a, o) => a + o.x, 0) / near.length, z: near.reduce((a, o) => a + o.z, 0) / near.length };
     }
   };
@@ -197,24 +201,24 @@ export function think(g, slot, opts = {}) {
     if (u.cd <= 0) {
       if (def.ab.id === 'grenade') {
         // lob it at a dug-in MG or AT gun, or any squad sitting in cover
-        const t = enemies.find(e => UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(g, e)));
+        const t = enemiesNear(u, def.ab.range + 4).find(e => UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(g, e)));
         if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z });
       } else if (def.ab.id === 'suppress' && target) command(g, slot, { t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'ap' && target?.type === 'tank') command(g, slot, { t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'smoke' && frac < 0.5 && !home) command(g, slot, { t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'satchel') {
         // demolish a house the enemy is holding, or plant it on a tank
-        const t = enemies.find(e => (e.garrison >= 0 || !UNITS[e.type].infantry) && d(u, e) <= 20);
+        const t = enemiesNear(u, 20).find(e => (e.garrison >= 0 || !UNITS[e.type].infantry) && d(u, e) <= 20);
         if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z });
-      } else if (def.ab.id === 'ura' && (u.supp >= 50 || (u.amove && enemies.some(e => d(u, e) < 30)))) command(g, slot, { t: 'ability', ids: [u.id] });
-      else if (def.ab.id === 'barrage') { const t = enemies.find(e => e.garrison >= 0 && d(u, e) <= def.ab.range); if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
+      } else if (def.ab.id === 'ura' && (u.supp >= 50 || (u.amove && enemiesNear(u, 30).some(e => d(u, e) < 30)))) command(g, slot, { t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'barrage') { const t = enemiesNear(u, def.ab.range).find(e => e.garrison >= 0 && d(u, e) <= def.ab.range); if (t) command(g, slot, { t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
     }
     // save hurt units instead of letting them die: retreat, get reinforced, come back
     if (!home && (frac < 0.35 || (u.supp >= 90 && frac < 0.6))) { retreat.push(u.id); continue; }
     if (home && frac < 1 && me.mp >= 20) continue; // wait for reinforcements
     // tanks knock down houses that enemy squads are hiding in
     if (def.w.shellTerrain && !u.targetId && u.fireAt < 0) {
-      const house = enemies.find(e => e.garrison >= 0 && d(u, e) < 60);
+      const house = enemiesNear(u, 60).find(e => e.garrison >= 0 && d(u, e) < 60);
       if (house) { command(g, slot, { t: 'fireat', ids: [u.id], x: house.x, z: house.z }); continue; }
     }
     if (u.path.length || u.attackId || u.nade || u.dig || u.enter >= 0 || u.fireAt >= 0) continue;
@@ -230,7 +234,9 @@ export function think(g, slot, opts = {}) {
         if (house) { command(g, slot, { t: 'garrison', ids: [u.id], x: house.x, z: house.z }); if (u.enter >= 0) continue; }
         if (u.garrison < 0 && u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
           // dig a line between the point and the closest enemy HQ
-          const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0].spawn, l = d(foe, p) || 1;
+          const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
+          if (!foe) continue;
+          const l = d(foe, p) || 1;
           command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 });
         }
         continue;
@@ -279,11 +285,11 @@ const worthOf = (n) => (n.fuel ? 2.5 : n.rate);
 // Classic build order for idle Engineers: two depots, a Barracks, a Motor Pool, then the remaining nodes.
 // Damaged buildings get repaired and unfinished sites get help first. Returns the MP to keep for the next building.
 function buildEconomy(g, slot, engineers, needArmor) {
-  const me = g.players[slot], own = [...g.units.values()].filter(b => b.owner === slot && UNITS[b.type].building);
+  const me = g.players[slot], own = gridFor(g).ownedBy(slot).filter(b => UNITS[b.type].building);
   const has = (t, done) => own.some(b => b.type === t && (!done || b.built >= 1));
   const hq = own.find(b => b.type === 'hq') ?? me.spawn, cx = g.w * CELL / 2, cz = g.h * CELL / 2;
   const depots = own.filter(b => b.type === 'depot').length, free = g.nodes.filter(n => !n.depot);
-  const planesNear = [...g.units.values()].some(e => e.air && airborne(e) && !allied(g, e.owner, slot) && d(e, hq) < 60);
+  const planesNear = gridFor(g).radius(hq, 60).some(e => me.visible.has(e.id) && e.air && airborne(e) && !allied(g, e.owner, slot) && d(e, hq) < 60);
   const next = depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
     : planesNear && own.filter(b => b.type === 'flakpos').length < 2 ? 'flakpos' : free.length ? 'depot' : has('motorpool', true) && !has('airfield') && depots >= 3 ? 'airfield' : null;
   const taken = new Set(engineers.map(u => u.aiNode).filter(n => n !== undefined));

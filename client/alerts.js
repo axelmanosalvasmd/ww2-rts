@@ -21,7 +21,7 @@ const NOT_AIR = new Set(['artillery', 'smoke', 'cover']);
 
 // left rule and ping color per kind: grease-pencil red for danger, brass for a point won, chalk for ready
 const RED = '#b8322a', BRASS = '#d2a849', CHALK = '#e6dcc0';
-const COLOR = { attack: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK };
+const COLOR = { attack: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK };
 
 const now = () => performance.now() / 1000;
 const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) <= r;
@@ -54,6 +54,7 @@ function init(h) {
 function reset() {
   lines.forEach(a => a.el?.remove());
   lines = []; quiet = []; lastSound = {};
+  hooks?.resetPings?.();
 }
 
 // sit just above the minimap, wherever the HUD puts it
@@ -82,7 +83,7 @@ function push(kind, text, x, z, n = 1) {
   box?.prepend(el);
   while (lines.length > MAX_LINES) lines.pop().el.remove();
   place();
-  sound(kind);
+  if (kind !== 'ping') sound(kind);
   return a;
 }
 
@@ -210,6 +211,7 @@ function drawPings(c, S) {
   const t = now();
   c.save();
   for (const a of lines) {
+    if (a.kind === 'ping') continue;
     const age = t - a.born, fade = Math.max(0, Math.min(1, (LIFE - age) / FADE));
     const ring = (rpx, alpha) => {
       c.globalAlpha = fade * alpha;
@@ -229,4 +231,4 @@ const newest = () => (lines[0] ? { x: lines[0].x, z: lines[0].z } : null);
 const pinging = () => lines.length > 0;
 
 // `lines` (the texts showing, newest first) is for poking at it from devtools via window.__game.alerts
-export const alerts = { init, reset, snapshot, frame, drawPings, newest, pinging, get lines() { return lines.map(a => a.text); } };
+export const alerts = { init, reset, snapshot, frame, drawPings, newest, pinging, push: (kind, x, z, text) => push(kind, text, x, z), get lines() { return lines.map(a => a.text); } };
