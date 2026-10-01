@@ -87,7 +87,7 @@ function camoFaces(geo, list, scale) {
 
 // ---------------------------------------------------------------- factions
 
-const SKIN = 0x9d7864, HAIR = 0x352a20, STEEL = 0x2e2e2b, BRASS = 0xa8843f, OLIVE = 0x4c5232;
+const SKIN = 0x8d7364, HAIR = 0x352a20, STEEL = 0x2e2e2b, BRASS = 0xa8843f, OLIVE = 0x4c5232;
 // faction cloth and kit: tunic, trousers, boots, the lower-leg wrap (US canvas leggings, Soviet puttees; null:
 // German jackboots) and how far up the shin it reaches, webbing, bags, helmet, rifle wood and the weapon models
 const FACTIONS = [
@@ -105,10 +105,10 @@ const FACTIONS = [
 const CAMO = [[0x5f6046, 0x4a4d34, 0x6b6648], [0x6b6a4a, 0x4e5636, 0x7a6a4c, 0x3e4430], [0x6b6e4a, 0x3f4a2e, 0x8a8562]];
 
 // Which job each man of a squad has (and so which figure he is): the squad leader, riflemen in two stances, the
-// rangers' bazooka, the sniper and his spotter, and the crews at their guns.
+// rangers' bazooka, the sniper and his spotter, and the crews at their guns. B and C are the same job in another stance.
 export function soldierKit(type, i) {
   switch (type) {
-    case 'rifle': case 'conscript': return i === 0 ? 'leader' : i % 2 ? 'rifle' : 'rifleB';
+    case 'rifle': case 'conscript': return i === 0 ? 'leader' : ['rifle', 'rifleB', 'rifleC'][(i - 1) % 3];
     case 'ranger': return i % 3 === 1 ? 'bazooka' : i % 2 ? 'smg' : 'smgB';
     case 'sniper': return i === 0 ? 'sniper' : 'spotter';
     case 'engineer': return i % 2 ? 'engineerB' : 'engineer';
@@ -152,7 +152,7 @@ const STANCES = {
   kneel: { root: [-0.02, 0.37, 0], tilt: 0.05, legs: [{ ankle: [0.27, A, -0.12], toe: [0.98, 0, -0.15], pole: [1, 1.2, -0.1] }, { knee: [-0.03, 0.05, 0.1], ankle: [-0.33, 0.15, 0.11], toe: [0.5, -0.87, 0] }] },
   sit: { root: [-0.06, 0.13, 0], tilt: -0.12, legs: [{ ankle: [0.42, A, -0.17], toe: [0.9, 0.3, -0.2], pole: [0.3, 1, -0.3] }, { ankle: [0.36, A, 0.2], toe: [0.9, 0.3, 0.3], pole: [0.3, 1, 0.4] }] },
   run: { root: [0, 0.63, 0], tilt: 0.15, legs: [{ ankle: [0.25, 0.1, -0.08], toe: [0.95, -0.3, -0.05], pole: [1, 0.3, 0] }, { ankle: [-0.3, 0.21, 0.09], toe: [0.2, -0.98, 0], pole: [1, -0.4, 0] }] },
-  prone: { root: [-0.33, 0.11, 0], tilt: 1.44, legs: [{ ankle: [-0.95, 0.075, -0.17], toe: [-0.25, -0.95, -0.2], pole: [0, -1, 0] }, { ankle: [-0.94, 0.075, 0.13], toe: [-0.25, -0.95, 0.2], pole: [0, -1, 0] }] },
+  prone: { root: [-0.33, 0.11, 0], tilt: 1.44, legs: [{ ankle: [-0.95, 0.075, -0.22], toe: [-0.3, -0.9, -0.3], pole: [0, -1, 0] }, { ankle: [-0.87, 0.08, 0.33], toe: [-0.2, -0.9, 0.4], pole: [0.1, -0.5, 1] }] },
 };
 
 // The body for a pose spec: B puts the pelvis in place (F: the whole man's own turn and shift), M(t) adds t of the
@@ -298,7 +298,7 @@ function item(kind, F, far) {
 
 // Where a pose puts the muzzle flash, relative to standing: unit-models.js moves the soldier node by this in each
 // posture (stand, crouch, prone, retreat) so client/fx.js HAND lands on the muzzle the rig aims there.
-export const AIM_SHIFT = [[0, 0], [0.05, -0.33], [0.28, -0.8], [-0.25, 0.15]];
+export const AIM_SHIFT = [[0, 0], [0.05, -0.33], [0.28, -0.84], [-0.25, 0.15]];
 const HAND = { rifle: [0.72, 1.1, 0.2], conscript: [0.72, 1.1, 0.2], engineer: [0.6, 1.0, 0.2], ranger: [0.62, 0.9, 0.2], sniper: [1.13, 1.08, 0.2] };
 const BAZ = [0.63, 0.93, 0.25];
 const flash = (type, k, h = HAND[type] ?? HAND.rifle) => v3(h[0] + AIM_SHIFT[k][0], h[1] + AIM_SHIFT[k][1], h[2]);
@@ -317,23 +317,29 @@ const MOUTH = v3(0.633, 0.644, -0.819);
 // A pose spec for job in posture k (0 stand, 1 crouch, 2 prone, 3 retreat): stance, spine lean and turn, the man's
 // own yaw, the weapon and how it is held, where the hands go and what is carried.
 function spec(ctx, k) {
-  const { type, job, fac } = ctx, B = job.endsWith('B'), base = B ? job.slice(0, -1) : job;
+  const { type, job, fac } = ctx, v = /[BC]$/.test(job) ? job.at(-1) : '', B = v === 'B', C = v === 'C', base = v ? job.slice(0, -1) : job;
   const run = { stance: 'run', turn: 0.1, lean: 0.12 };
-  const prone = { stance: 'prone', turn: -0.1, lean: -0.42 };
+  // lying down: chest propped up; aiming, the body lies angled off to the left of the line of fire so the rifle
+  // crosses in front of the chest over the left elbow
+  const prone = { stance: 'prone', turn: -0.1, lean: -0.42 }, proneAim = { stance: 'prone', turn: -0.05, lean: -0.3, yaw: C ? -0.16 : -0.28 };
   switch (base) {
     case 'rifle': case 'leader': case 'sniper': case 'engineer': {
       const kind = base === 'leader' ? 'smg' : base === 'sniper' ? 'scoped' : base === 'engineer' ? 'carbine' : 'rifle';
       const target = flash(type, k), aim = { kind, hold: 'aim', target };
-      if (k === 0) return { stance: base === 'leader' || base === 'sniper' || B ? 'brace' : 'stride', turn: B ? -0.82 : -0.68, lean: B ? 0.1 : 0.05, gun: { ...aim, psi: B ? 0.04 : 0 } };
-      if (k === 1) return { stance: 'kneel', turn: -0.55, lean: 0.14, gun: aim };
-      if (k === 2) return { ...prone, gun: { ...aim, psi: 0.04 } };
+      if (k === 0) {
+        if (C) return { stance: 'stand', turn: -0.6, lean: -0.03, gun: { ...aim, psi: -0.03 } };
+        return { stance: base === 'leader' || base === 'sniper' || B ? 'brace' : 'stride', turn: B ? -0.82 : -0.68, lean: B ? 0.1 : 0.05, gun: { ...aim, psi: B ? 0.04 : 0 } };
+      }
+      if (k === 1) return { stance: 'kneel', turn: C ? -0.45 : -0.55, lean: C ? 0.22 : 0.14, gun: aim };
+      if (k === 2) return { ...proneAim, gun: aim };
       return { ...run, gun: { kind, hold: 'port' } };
     }
     case 'smg': {
       const target = flash('ranger', k);
       if (k === 0) return { stance: B ? 'brace' : 'stride', turn: -0.3, lean: 0.1, gun: { kind: 'smg', hold: 'under', target, psi: B ? 0.06 : 0 } };
       if (k === 1) return { stance: 'kneel', turn: -0.35, lean: 0.12, gun: { kind: 'smg', hold: 'under', target } };
-      if (k === 2) return { ...prone, gun: { kind: 'smg', hold: 'aim', target, psi: 0.04 } };
+      // the ranger's flash point lies down lower than a rifleman's: the muzzle stays a hand above the ground
+      if (k === 2) return { ...proneAim, gun: { kind: 'smg', hold: 'aim', target: target.add(v3(0, 0.1, 0)) } };
       return { ...run, gun: { kind: 'smg', hold: 'port' } };
     }
     case 'bazooka': {
@@ -347,7 +353,7 @@ function spec(ctx, k) {
       const gun = { kind: 'carbine', hold: 'aim' };
       if (k === 0) return { stance: 'stand', turn: -0.5, lean: 0.06, gun: { ...gun, target: v3(0.45, 0.78, 0.12), psi: 0.35 } };
       if (k === 1) return { stance: 'kneel', turn: -0.55, lean: 0.14, gun: { ...gun, target: v3(0.75, 0.76, 0.2) } };
-      if (k === 2) return { ...prone, gun: { ...gun, target: v3(1.0, 0.3, 0.2), psi: 0.04 } };
+      if (k === 2) return { ...proneAim, gun: { ...gun, target: v3(1.0, 0.26, 0.2) } };
       return { ...run, gun: { kind: 'carbine', hold: 'port' } };
     }
     case 'spotter': {
@@ -359,7 +365,7 @@ function spec(ctx, k) {
     }
     case 'ammo':
       if (k === 0) return { stance: 'stand', turn: 0.05, sling: true, carry: 'can' };
-      if (k === 1) return { stance: 'kneel', turn: 0.15, lean: 0.1, sling: true, carry: 'can', down: true };
+      if (k === 1) return { stance: 'kneel', turn: 0.15, lean: 0.55, sling: true, carry: 'can', down: true };
       if (k === 2) return { ...prone, turn: 0, sling: true, carry: 'can', down: true };
       return { ...run, sling: true, carry: 'can' };
     case 'shell': {
@@ -382,7 +388,7 @@ function spec(ctx, k) {
     case 'feeder': {
       if (k === 3) return { ...run, sling: true, carry: 'can', belt: 'can' };
       const g = MG[fac] ?? MG[0], feed = V(g.feed), R = feed.clone().add(v3(-0.1, -0.03, 0.12)), L = feed.clone().add(v3(-0.02, 0, 0.05));
-      return { ...(k === 2 ? { ...prone, lean: -0.6 } : { stance: 'kneel', lean: 0.25, turn: -0.2 }), yaw: 0.8, sling: true, carry: 'can', down: true, belt: 'feed', hands: { R, L }, approach: k === 2 ? 0.34 : 0.3 };
+      return { ...(k === 2 ? { ...prone, lean: -0.6 } : { stance: 'kneel', lean: 0.7, turn: -0.2 }), yaw: 0.8, sling: true, carry: 'can', down: true, belt: 'feed', hands: { R, L }, approach: k === 2 ? 0.34 : 0.24 };
     }
     case 'loader': {
       if (k === 3) return { ...run, sling: true, carry: 'bomb' };
@@ -435,9 +441,10 @@ function solve(ctx, k) {
   // hands: on the weapon, on the gun, on the binoculars, or free
   let hR, hL, pR = rot([-0.3, -0.5, 1]), pL = rot([0, -1, -0.4]), gaze = facing.clone();
   if (W && hold !== 'carry') {
-    hR = V([...info.grip, 0]).applyMatrix4(W); hL = V([...info.fore, 0]).applyMatrix4(W);
+    // lying down the left hand slides back along the fore-end so the elbow can rest on the ground
+    hR = V([...info.grip, 0]).applyMatrix4(W); hL = v3(info.fore[0] - (prone && hold === 'aim' ? 0.09 : 0), info.fore[1], 0).applyMatrix4(W);
     gaze = v3(1, 0, 0).transformDirection(W);
-    if (hold === 'aim') { pR = rot([-0.1, -0.35, 1]); pL = rot([0.1, -1, -0.3]); }
+    if (hold === 'aim') { pR = prone ? V([0, -1, 0.5]) : rot([-0.1, -0.35, 1]); pL = prone ? V([0.3, -1, -0.3]) : rot([0.1, -1, -0.3]); }
     if (hold === 'port') { gaze = facing.clone().add(v3(0, -0.1, 0)); pR = rot([-0.4, -0.6, 1]); pL = rot([-0.2, -1, -0.6]); }
     if (hold === 'under') { pR = rot([-1, -0.3, 0.6]); pL = rot([0, -1, -0.6]); }
     if (hold === 'shoulder') { pR = rot([0, -1, 0.6]); pL = rot([0, -1, -0.5]); }
@@ -485,7 +492,7 @@ function solve(ctx, k) {
     }
   } else if (s.carry && s.down) {
     // set down on the ground beside him
-    const g = (prone ? v3(0.45, 0, 0.32) : v3(0.18, 0, 0.3)).applyMatrix4(M0), m = chain(M0.clone().setPosition(g), RY(prone ? 0.3 : 0.6));
+    const g = (prone ? v3(0.45, 0, 0.32) : v3(0.25, 0, 0.23)).applyMatrix4(M0), m = chain(M0.clone().setPosition(g), RY(prone ? 0.3 : 0.6));
     const lift = { can: T(0, 0.155, 0), round: chain(T(0, 0.03, 0), RY(0.4)), clip: chain(T(0, 0.075, 0), RZ(Math.PI / 2)), bomb: chain(T(0, 0.032, 0), RZ(Math.PI / 2)), binos: T(0, 0.02, 0) }[s.carry];
     things.push({ kind: s.carry, m: chain(m, lift) });
     if (!s.hands) {
@@ -520,15 +527,14 @@ function solve(ctx, k) {
 const HEAD_ROWS = [[-0.09, 0.035, 0.04, 0.035], [-0.072, 0.068, 0.05, 0.052], [-0.045, 0.076, 0.066, 0.058], [-0.018, 0.076, 0.076, 0.061],
   [0.005, 0.074, 0.08, 0.062], [0.03, 0.076, 0.08, 0.062], [0.06, 0.064, 0.072, 0.054], [0.083, 0.038, 0.045, 0.034]];
 const HEAD_COLS = [0, 28, 75, 130, 180, -130, -75, -28].map((d) => (d * Math.PI) / 180);
-function headGeo(hair) {
-  // face relief by (row, column angle): nose, its bridge, eye sockets, brow, chin, ears
+function headGeo(hair, brim) {
+  // face relief by (row, column angle): nose, its bridge, eye sockets, brow, mouth, chin, jaw, ears
   const bump = (i, c) => {
-    if (i === 3 && c === 0) return 0.02;
-    if (i === 4 && c === 0) return 0.007;
-    if (i === 4 && c === 28) return -0.01;
-    if (i === 5 && c < 30) return 0.004;
-    if (i === 1 && c === 0) return 0.006;
-    if ((i === 3 || i === 4) && c === 75) return 0.006;
+    if (i === 3) return c === 0 ? 0.028 : c === 28 ? 0.004 : c === 75 ? 0.01 : 0;
+    if (i === 4) return c === 0 ? 0.008 : c === 28 ? -0.012 : c === 75 ? 0.01 : 0;
+    if (i === 5 && c < 30) return 0.007;
+    if (i === 2 && c === 0) return -0.004;
+    if (i === 1) return c === 0 ? 0.012 : c === 28 ? 0.004 : 0;
     return 0;
   };
   const deg = (j) => Math.round(Math.abs(HEAD_COLS[j]) * (180 / Math.PI));
@@ -540,13 +546,14 @@ function headGeo(hair) {
   const color = (i, j) => {
     const c = deg(j);
     if (hair && ((c >= 130 && i >= 2) || (c >= 75 && i >= 5) || i >= 7)) return hairC;
-    let k = 1;
-    if (i === 4 && c === 28) k = 0.62; // eye sockets
-    else if (i === 3 && c === 0) k = 1.06; // nose
-    else if (i === 2 && c === 0) k = 0.82; // mouth
-    else if (i === 1 && c <= 75) k = 0.86; // jaw
-    else if (i === 0) k = 0.72; // under the chin
-    else if (i === 5 && c < 30) k = 1.04; // brow
+    // shading baked in: deep eye sockets, the mouth line, the jaw and chin underside; under a helmet the brim
+    // shades the brow and eyes (the soldiers cast no shadows of their own)
+    const front = c <= 75, k = i === 0 ? 0.58
+      : i === 1 ? (c <= 28 ? 0.84 : 0.78)
+      : i === 2 ? (c === 0 ? 0.68 : c === 28 ? 0.9 : 1)
+      : i === 3 ? (c === 0 ? 1.04 : c === 28 ? 0.9 : 1)
+      : i === 4 ? (c === 0 ? (brim ? 0.66 : 0.9) : c === 28 ? (brim ? 0.38 : 0.5) : front ? 0.82 : 1)
+      : i === 5 && front ? (brim ? 0.5 : 1.02) : 1;
     return skin.clone().multiplyScalar(k);
   };
   return gridGeo(rows, { color, top: { p: v3(-0.004, 0.093, 0), c: hair ? hairC : skin } });
@@ -571,10 +578,10 @@ function helmetGeo(kind, segs, color) {
 }
 // the Soviet pilotka: a folded side cap, a band around the head and a ridge along the top
 function pilotkaGeo() {
-  const n = 8, a = (j) => (j / n) * TAU;
-  const rows = [Array.from({ length: n }, (_, j) => v3(Math.cos(a(j)) * 0.088, 0.04, -Math.sin(a(j)) * 0.074)),
-    Array.from({ length: n }, (_, j) => v3(Math.cos(a(j)) * 0.084, 0.09 - 0.012 * Math.abs(Math.cos(a(j))), -Math.sin(a(j)) * 0.014))];
-  return gridGeo(rows, { color: (i) => (i ? WHITE : shade(0xffffff, 0.85)) });
+  const n = 8, a = (j) => (j / n) * TAU, ring = (y, dy, x, z) => Array.from({ length: n }, (_, j) => v3(Math.cos(a(j)) * x, y - dy * Math.abs(Math.cos(a(j))), -Math.sin(a(j)) * z));
+  // the turned-up flap around the head, the crown over it, the folded ridge on top
+  const rows = [ring(0.028, -0.006, 0.086, 0.071), ring(0.068, 0, 0.085, 0.054), ring(0.112, 0.014, 0.08, 0.01)];
+  return gridGeo(rows, { color: (i) => (i ? WHITE : shade(0xffffff, 0.8)) });
 }
 // a band around the torso from y0 to y1 (the belt)
 function band(body, y0, y1, out, cols = 10) {
@@ -604,7 +611,7 @@ function nearParts(r, ctx) {
   if (fac === 0) for (const s of [1, -1]) add(strap(b, [[0.82, 0.42 * s], [0.95, 0.4 * s], [1.05, 0.45 * s], [1.115, 0.75 * s], [1.15, 1.4 * s], [1.1, 2.2 * s], [1.0, 2.6 * s], [0.82, 2.72 * s]], 0.032), F.web, null, F.webMat);
   if (fac === 1) for (const s of [1, -1]) add(strap(b, [[0.82, 0.5 * s], [0.96, 0.42 * s], [1.06, 0.45 * s], [1.12, 0.8 * s], [1.15, 1.4 * s], [1.1, 2.4 * s], [1.0, 2.95 * s]], 0.03), F.web, null, F.webMat);
   // pouches on the belt front, then each faction's bags
-  const crew = !['rifle', 'leader', 'smg', 'sniper', 'engineer', 'bazooka'].includes(job.replace(/B$/, ''));
+  const crew = !['rifle', 'leader', 'smg', 'sniper', 'engineer', 'bazooka'].includes(job.replace(/[BC]$/, ''));
   for (const s of [1, -1]) add(box(0.034, 0.058, fac === 1 ? 0.11 : 0.1), fac === 1 ? 0x2a2724 : F.web, onTorso(b, 0.805, 0.5 * s, 0.026), F.webMat);
   if (fac === 0) {
     add(new THREE.CylinderGeometry(0.034, 0.034, 0.1, 6), 0x5d6147, chain(onTorso(b, 0.74, -2.1, 0.03), SC(0.65, 1, 1)), 'canvas'); // canteen
@@ -626,7 +633,7 @@ function nearParts(r, ctx) {
     if (fac === 1) {
       add(box(0.06, 0.12, 0.16), 0x5a5440, onTorso(b, 0.76, 1.9, 0.03), 'canvas'); // satchel charge
       add(new THREE.CylinderGeometry(0.012, 0.012, 0.26, 4, 1, true), 0x6b5236, chain(onTorso(b, 0.84, 0.9, 0.02), RX(0.5)), 'wood'); // stick grenade
-      add(new THREE.CylinderGeometry(0.03, 0.03, 0.07, 5), 0x4f5549, chain(onTorso(b, 0.84, 0.9, 0.02), RX(0.5), T(0, 0.15, 0)), 'armor-paint');
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.07, 4), 0x4f5549, chain(onTorso(b, 0.84, 0.9, 0.02), RX(0.5), T(0, 0.15, 0)), 'armor-paint');
     } else {
       add(box(0.07, 0.2, 0.18), F.bag, onTorso(b, 0.96, Math.PI, 0.03), 'canvas'); // pack
       add(box(0.012, 0.15, 0.13), 0x3b3a34, onTorso(b, 0.86, Math.PI, 0.075), 'gunmetal'); // shovel blade
@@ -635,8 +642,8 @@ function nearParts(r, ctx) {
   }
   // head, then the helmet or cap
   const H = r.H, cap = type === 'conscript' && job !== 'leader';
-  add(headGeo(cap || (sniper && fac === 2)), null, chain(H, SC(0.93, 1, 0.93)), 'plain');
-  if (cap) add(pilotkaGeo(), 0x7a7456, chain(H, T(0.004, 0, 0), RX(0.2)), 'wool');
+  add(headGeo(cap || (sniper && fac === 2), !cap), null, chain(H, SC(0.93, 1, 0.93)), 'plain');
+  if (cap) add(pilotkaGeo(), 0x77714f, chain(H, T(0.004, 0, 0), RX(0.15)), 'wool');
   else {
     const kind = sniper && fac === 2 ? 'hood' : F.helmet, Hd = HELMETS[kind];
     const net = fac === 0 ? (i, j, p) => shade(Hd.color, 0.82 + 0.18 * hash(p.x * 40, p.y * 40, p.z * 40)) : (i, j, p) => shade(Hd.color, 0.93 + 0.07 * hash(p.x * 30, p.y * 30, p.z * 30));
@@ -661,7 +668,7 @@ function nearParts(r, ctx) {
     add(tube([a.sho.clone().addScaledVector(upper, -0.02), a.elbow, a.elbow.clone().addScaledVector(fore, 0.12), wrist],
       [0.054, 0.045, 0.042, 0.034], 6, pole), F.tunic, null, 'wool');
     if (side === 0) add(tube([0.36, 0.56].map((t) => a.sho.clone().lerp(a.elbow, t)), [0.053, 0.05], 6, pole), ctx.owner, null, 'canvas');
-    add(box(0.072, 0.05, 0.042), SKIN, chain(basis(a.hand, fore, pole), T(-0.004, 0, 0)), 'plain');
+    add(extrudeProfile([[-0.04, -0.018], [0.018, -0.026], [0.036, -0.002], [0.02, 0.024], [-0.04, 0.018]], 0.04), shade(SKIN, 0.9), basis(a.hand, fore, pole), 'plain');
   });
   // the weapon in the hands or on the back, then what he carries
   if (r.W) for (const p of r.info.parts) add(p.geo, p.color, r.W.clone().multiply(p.m), p.mat);
