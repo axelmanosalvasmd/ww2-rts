@@ -5,6 +5,37 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Textured units (toward a realistic look instead of painted toys):
+  - Soldiers, tanks, wheeled vehicles, guns and planes now show real surface detail: worn and chipped paint on armor,
+    scratched gunmetal, rusty track links, rubber tires, wool uniforms, wood and canvas, plus a dust film and dried mud
+    that build up toward the ground on hulls, wheels, tracks and boots. Faction paint, markings and owner colors keep
+    their hue; the texture adds the wear, and paint is a little faded so nothing looks candy-colored.
+  - Twelve seamless textures generated with gpt-image-2 (painted armor, cast armor, gunmetal, track steel, rubber,
+    wood, canvas, wool, leather, aluminum, aircraft paint, mud; 512 px, about 1.1 MB in all) in
+    `client/textures/models/`, packed into one texture array and mapped from three sides in each model's own space,
+    so nothing swims when a turret turns or a squad lies down.
+  - No extra draw calls or triangles: a tank is still 2 draws, a rifle squad 5, one faction's full lineup 57.
+    Graphics Low turns the textures off (models look as before and cost nothing more), and so does the moment before
+    they finish loading.
+  - Fixed: the grime turned dark tracks, road wheels and tires into an orange-tan band at the lower hull (reported
+    from the medium and light tank models). The dust film and mud clumps are now greyer, never much brighter than
+    the part under them, sparser, and held at about a third on track steel, rubber and gunmetal; vehicles gather mud
+    up to 0.75 m instead of 0.9 m and track links show less rust.
+  - Soldier uniforms on the current models are more muted (olive drab, field grey, Soviet khaki) and helmets take
+    less of the owner's color.
+  - Model building: a part can say what it is made of (`part(..., mat)`, `merge()` items with `mat`, `tag()`; names in
+    `MATS` in `client/models/geom.js`), see DESIGN.md. Toolkit wheels tag their tires as rubber and tracks their links
+    as track steel. Model viewer: `&tex=0` shows a unit without textures; the header says whether they are on.
+  - Measured in headless Chrome, which only has SwiftShader (software rendering, so texture filtering is far slower
+    than on a real GPU): a dense 42-unit battle at 1280x720 keeps 205 draw calls and 200,906 triangles and takes
+    about 2.9 s per frame with textures against 1.45 s without (2x; the first version was 2.6x before the shader
+    skipped faint triplanar sides, reads the mud layer only where mud clumps can show and skips far-off pixels).
+    Frame rate on real graphics cards is not measured yet.
+  - Left for later: the model families still have to tag their parts (faces and the infantry base as plain, cast
+    turrets, tracks built without `track()`, canvas, wood); until then those parts take the default (painted armor on
+    vehicles, wool on soldiers). The airfield uses the near-flat aircraft paint. Graphics Low has no texture at all.
+    Found: the room check "a new match without the old result" (a draw, then a restart) failed once in four
+    `node test.js` runs and passed on the rerun; it does not touch the models and was left as is.
 - New look for the whole interface. The paperwork style (manila cards, typewriter text, stencil numbers, map symbols)
   made the game read like a board game, so the HUD, lobby, menu, alerts, banners, tooltips, match report, end-of-match
   notice, map editor and the labels and badges over the battlefield now share one modern style: dark gunmetal panels
@@ -437,6 +468,31 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a
   dark red band. The HQ sign leads with the owner's HQ map symbol instead of a color bar. The lobby loses its glowing
   backdrop and the paper cards their gradient sheen, and the Victory or Defeat stamp settles without bouncing.
+- Model toolkit (no visible change yet):
+  - New `client/models/geom.js` for building more detailed miniatures: rounded and chamfered boxes, lofted hulls,
+    lathed shapes (barrels with muzzle brakes, US, German and Soviet helmets, wheels, radial engines, bombs,
+    spinners), extruded outlines, spoked and disc wheels, road wheel sets, tank tracks with grousers and horns,
+    bent tubes, mirroring, a vertex-colored merge, painted markings (US star, Balkenkreuz, roundel) and baked shading
+    that darkens toward the ground. Every closed shape is checked in `node test.js` for outward faces, no gaps and
+    the right volume.
+  - Sizes to budget with: a full track with five road wheels, sprocket and idler is about 9,400 vertices, a wheel
+    about 790, a radial engine about 2,100, a helmet a few hundred.
+  - Model building: a part painted with the shared material now multiplies its paint color by the shape's own vertex
+    colors when the shape has them, so wheels, tracks and markings keep their tire, link and insignia colors (paint
+    them white to show the colors as built). Existing models have no vertex colors of their own and look the same.
+- Model viewer (developer tool, no gameplay change):
+  - `/client/viewer.html?type=medium&fac=0` builds one unit through the game's own model code (the same calls as
+    `makeUnit` in main.js, faction looks and player colors included) and shows it under the game's warm sun and
+    shadows from the front, left side, top, three-quarter front and back, plus the in-game camera (42° FOV, pitch
+    0.95, distance 40) at true 1920x1080 scale. A header gives the unit name and its draw calls and triangles in the
+    game view, shadow pass included; squads add a row with one soldier close up and the far soldier model's counts.
+    Options: `&color=`, `&posture=0..3`, `&bg=`, `&aim=`, `&far=1`, `&grid=0`. `&all=1` lines up every type one
+    faction can field, each labeled with its own draw calls and triangles (22 types, about 57 to 62 calls in all).
+  - `tools/model-shots.sh <port> <outdir> [types] [facs]` screenshots the viewer with agent-browser into
+    `<outdir>/<type>-<fac>.png`, and puts each next to `/tmp/ww2-models/refs/<type>-<fac>.png` when that reference
+    exists. It starts no server.
+  - Found: at the distance-40 zoom a plane flying at 20 m is about 15 m from the camera, so it draws about 2.6 times
+    larger than ground units and overflows a 640 px wide view. Left as is.
 - Miniatures (round 6):
   - Soldiers stand on small dark-green painted bases like tabletop miniatures (the base stays flat when they crouch,
     lie down or fall back), wear warmer faction uniforms (olive drab, field grey, khaki) and have a lighter crown on

@@ -34,6 +34,7 @@ import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
 import { buildModel, animate, createBodies, setSurfaces, setBuildings } from './unit-models.js';
+import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
@@ -311,6 +312,7 @@ function renderLobby(m) {
 
 setSurfaces(surface); // structure models take the textured wood and sandbag (client/surfaces.js)
 setBuildings(buildingModel); // HQ, barracks, motor pool, depot and command bunker: one merged model each (client/structures.js)
+loadModelTextures(); // surface detail for soldiers, vehicles, guns and planes; they draw plain until it arrives (client/model-textures.js)
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.localClippingEnabled = true; // the HQ's ring and disc are cut at the board edge (buildHQ)
 renderScale(renderer); // pixel ratio per graphics level (client/perf.js); shadows are set in client/light.js
