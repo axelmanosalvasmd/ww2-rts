@@ -227,16 +227,34 @@ export function capturePoint(radius, text) {
   prog.position.y = 0.32; prog.renderOrder = 2; prog.geometry.setDrawRange(0, 0);
   const flag = new THREE.Mesh(flagGeo, flagMat(NEUTRAL_FLAG));
   flag.scale.set(2.2, 1.4, 1); flag.position.set(1.1, 7.2, 0); flag.castShadow = true;
-  group.add(ring, prog, flag, label(text));
+  const brass = ringMesh(radius + 0.2, 0.65, pencilMat(0xd2a849, { depthTest: false }).clone(), 0.34);
+  const danger = ringMesh(radius - 0.5, 0.85, pencilMat(0xb8322a, { depthTest: false }).clone(), 0.35);
+  brass.visible = danger.visible = false;
+  group.add(ring, prog, flag, brass, danger, label(text));
+  let contested = false;
   const swap = (o, m) => { if (o.material !== m) o.material = m; };
   return {
     group,
     // owner and capper are player colors, or null
-    set(owner, capper, progress) {
+    set(owner, capper, progress, contest = false) {
+      contested = !!contest;
+      group.userData.contested = contested;
       swap(ring, owner != null ? pencilMat(owner, { opacity: 0.9, depthTest: false }) : pencilMat(NEUTRAL_RING, { dashed: true, opacity: 0.7, depthTest: false }));
       swap(flag, flagMat(owner ?? NEUTRAL_FLAG));
       swap(prog, pencilMat(owner ?? capper ?? 0xffffff, { opacity: 0.45, depthTest: false }));
       prog.geometry.setDrawRange(0, Math.round(progress * PROG_SEGS) * 6);
+    },
+    frame(time, flip = 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(time * Math.PI * 3), flourish = Math.sin(flip * Math.PI);
+      danger.visible = contested;
+      danger.material.opacity = 0.45 + 0.5 * pulse;
+      danger.scale.setScalar(1 + 0.025 * pulse);
+      brass.visible = contested || flip > 0;
+      brass.material.opacity = contested ? 0.9 - 0.45 * pulse : 1 - flip;
+      brass.scale.setScalar(flip > 0 ? 1 + 0.25 * flip : 1 + 0.025 * (1 - pulse));
+      ring.scale.setScalar(1 + 0.12 * flourish);
+      flag.scale.set(2.2, 1.4 * (1 + 0.22 * flourish), 1);
+      group.userData.flipping = flip > 0;
     },
   };
 }

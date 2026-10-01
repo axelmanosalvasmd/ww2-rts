@@ -1,0 +1,7 @@
+#objective-banner {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 3;
+  max-width: min(620px, calc(100vw - 660px)); padding: 6px 12px;
+  background: rgba(34, 37, 27, 0.9); color: #e6dcc0; border: 1px solid #b8322a;
+  font: 14px/1.35 'Courier Prime', monospace; text-align: center; pointer-events: none;
+}
+#objective-banner[hidden] { display: none; }
