@@ -5,6 +5,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Polish (round 5):
+  - Your HQ is framed between the top panels and the recruit bar at match start, on H and after the opening glide,
+    and fully zoomed out the whole board fits on screen, centered with a small table margin. HQ rings and sandbags no
+    longer hang past the board edge, and enemy strike warnings are a red pencil outline with light hatching instead
+    of a magenta smear.
+  - Hills cast shadows on High graphics and have darker, softer shading at the foot of slopes and cliffs, so terraces
+    read from above. The ground is warmer (khaki and ochre instead of olive green), grass and dirt blend with soft,
+    noisy edges instead of square steps, and house walls are clean painted plaster without rust-colored blotches.
+  - Support planes stay inside the camera view (recon and bomber flights no longer slide off the top of the screen),
+    bombers visibly drop their bombs, the few birds fly low enough to be seen on High, and cloud shadows also cross
+    the table.
+  - Clearer text: a full order queue says "This unit already has 8 queued orders" (production keeps the training
+    queue message), the second step of a fort dig says "click to place", cooldown numbers match between messages and
+    buttons, the Assault scoreboard label stays on one line, the top panels are solid so map labels no longer show
+    through, the map editor's Preview menu and tool hint are fixed, and the game has a tab icon.
+  - Left for later: the dive bomber's bomb still lands before the plane reaches its target; hill tops are only a
+    little lighter than the ground around them; the relief shadow's GPU cost was not measured on real laptops; and
+    one match-end server test ("a new match without the old result") failed once in six runs while the machine was
+    under heavy load, not yet explained.
 - Fixed a flaky server test: the Massive snapshot-cache check sent Start before the map switch it had just asked
   for had finished loading, so on a busy machine Start was checked against the old map's seats and dropped. The test
   now waits for the lobby to show the new map. Left for later: the same can happen to a host who clicks Start within
