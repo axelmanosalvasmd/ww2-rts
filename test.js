@@ -1675,6 +1675,54 @@ const referenceNearCover = (g, u) => {
   }
 }
 
+// The cover preview (client/cover-preview.js) reads cover with the sim's own rules: what each cell gives, which house
+// cells a squad can garrison, and directional cover from walls and vehicles toward a shooter.
+{
+  const preview = await import('./client/cover-preview.js');
+  const real = await simCopy(readFileSync('shared/sim.js', 'utf8') + '\nexport { behindCover, entryCell };');
+  const rows = [...empty];
+  rows[3] = '...#....H....R......'; rows[5] = '....BBB...TTT..+....'; rows[6] = '....BBB.....Y...X...';
+  rows[7] = '....BB....F=....##..'; rows[9] = '..H.H....WWW........'; rows[12] = '.........#.#........';
+  const g = fresh(rows); g.players[0].mp = 5000;
+  g.chars[14 * 20 + 15] = 'K'; g.flags[14 * 20 + 15] = sim.TERRAIN.K; // a Classic building's footprint (never in map files)
+  const at = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h ? '' : g.chars[y * g.w + x]);
+  const tank = put(g, 0, 'tank', 25, 25), dead = put(g, 0, 'tank', 31, 11), plane = put(g, 0, 'fighter', 13, 29);
+  dead.hp = 0;
+  for (const u of [tank, dead, plane]) updateGrid(g, u);
+  const veh = [...g.units.values()].filter(v => !UNITS[v.type].air && !UNITS[v.type].infantry && v.hp > 0).flatMap(v => [v.x, v.z]);
+  // the ground's own cover, as coverMul sees a squad standing on the cell
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const ch = at(x, y), sq = { type: 'rifle', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL }, kind = preview.cellCover(at, x, y);
+    if (ch === 'B' || g.flags[y * g.w + x] & sim.MOVE) continue;
+    const want = inTrench(g, sq) ? preview.HEAVY : sim.inCover(g, sq) ? preview.LIGHT : preview.OPEN;
+    assert.equal(kind, want, `cover preview kind for ${ch} at ${x},${y}`);
+  }
+  assert.equal(preview.cellCover(at, 9, 9), preview.NONE, 'no marks on the river');
+  // garrison: every house cell entryCell can hand out, and nothing else, is heavy cover
+  const edges = new Set();
+  for (let c; (c = real.entryCell(g, 5 * g.w + 4, { x: 0, z: 0 }, edges)) >= 0;) edges.add(c);
+  for (let c = 0; c < g.chars.length; c++) if (g.chars[c] === 'B') {
+    const x = c % g.w, y = Math.floor(c / g.w);
+    assert.equal(preview.cellCover(at, x, y) === preview.HEAVY, edges.has(c), `house cell ${x},${y} garrison edge`);
+    assert.equal(preview.cellCover(at, x, y, false), preview.NONE, 'squads that cannot garrison get no house marks');
+  }
+  assert.ok(edges.size >= 6 && edges.size < 11, `house edges found (${edges.size})`);
+  // directional cover from each open cell toward shooters all round
+  let covered = 0, checked = 0;
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (preview.cellCover(at, x, y) !== preview.OPEN) continue;
+    const t = { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL };
+    for (let k = 0; k < 24; k++) {
+      const from = { x: t.x + Math.cos(k * Math.PI / 12 + 0.05) * 20, z: t.z + Math.sin(k * Math.PI / 12 + 0.05) * 20 };
+      const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
+      const mine = preview.solidToward(at, t.x, t.z, ca, sa) || preview.vehicleToward(veh, veh.length / 2, t.x, t.z, ca, sa);
+      assert.equal(mine, real.behindCover(g, t, from), `directional cover at ${x},${y} toward ${k * 15}°`);
+      covered += mine; checked++;
+    }
+  }
+  assert.ok(covered > 100 && covered < checked / 4, `directional cover is the exception, not the rule (${covered}/${checked})`);
+}
+
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
   const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));

@@ -5,6 +5,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Cover preview: with infantry selected, the ground around the cursor (about 6 m) shows the cover a squad would get on
+  each spot, drawn in grease pencil on the table. A green cross-hatched ring is heavy cover (trench, the MG nest's
+  pit, a house edge your squad can garrison), a brass hatched ring is light cover (hedge, wall, sandbags, crater,
+  rubble, tank traps) and a small red dot is open ground. Brass chevrons point at the side a spot is covered from (a
+  house, wall, hedge or rubble right beside it, or a vehicle or gun within 4 m). With an enemy in sight, open spots
+  are judged against the nearest one: a brass ring and a chevron if something stands between you, a red dot if not.
+  A right-click move flashes the same marks at the destination. Marks only show on ground your side has seen, and
+  only enemies you can see count. It stays on with Low graphics (a smaller circle) and has a menu switch, "Cover
+  preview: On / Off". The marks follow the game's own cover rules; no gameplay change.
+  - Left for later: wrecks give no cover in the game (dead vehicles are removed), so they get no marks. The cover
+    shield over a unit still uses green for light cover and cyan for trenches, while the preview uses green for heavy
+    and brass for light. The game also counts an enemy vehicle within 4 m as cover against its own fire, and the
+    preview shows that as it is.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

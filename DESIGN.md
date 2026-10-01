@@ -103,6 +103,13 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   Inside: 35% incoming accuracy, +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.
 - Tanks shell a house on right-click (fire-at), and every tank round damages the structure it lands on.
 - Directional cover: a house, wall, rubble, hedge or vehicle within ~2 m on the shooter's side = 50% cover from that shooter.
+- Cover preview (Company of Heroes style): with infantry selected (AT guns, flak, mortars and snipers count), the
+  cells within about 6 m of the cursor are marked heavy (trench, the MG nest's pit, a house edge a selected squad can
+  garrison), light (hedge, wall, sandbags, crater, rubble, tank traps) or open, plus chevrons on the sides with
+  directional cover. With a visible enemy, open cells are judged against the nearest one that fires straight (salvo
+  weapons ignore cover). Shown when no targeting mode is active (or attack-move) and during a right-button move; a
+  right-click move flashes the marks at the destination. Only cells your side sees or has seen; menu switch to turn it
+  off. Wrecks give no cover in the sim, so they are not marked.
 - Veterancy: damage dealt of 1/2.5/5x the unit's cost = 1-3 stars (+10% accuracy, -8% damage, -15% suppression each).
 - Rocket launcher (250 MP; T34 Calliope / Panzerwerfer / Katyusha): 8-rocket salvo up to 70 m on anything its side can
   see, no line of sight needed, +50% vs garrisons, 20s reload. F = Rocket Barrage on any clicked spot.
@@ -333,6 +340,17 @@ the HUD.
   plane, `aa`) and keeps those shots and the support planes' strike warnings out of `effects.snapshot`, so `client/fx.js`
   draws only the ground war plus the anti-air tracers (`effects.aaFire`). Paratroop canopies stay in main.js. Crashes
   and strafing hits use `effects.explode`, and every air sound plays through `client/audio.js`.
+- As built, cover preview: `client/cover-preview.js` (`createCoverPreview`) mirrors the sim's cover rules (`coverMul`,
+  `behindCover`, `entryCell`) and test.js checks them against sim.js on a fixture map. Grease pencil on the table, no
+  glow: chalk green `#b2de92` heavy (thick ring, cross-hatched), brass `#e2b850` light (thinner ring, one-way hatch),
+  grease red `#c63a2c` open (a small dot), brass chevrons for directional cover. Each mark is a small grid draped over
+  `hAt`, fading over the outer 45% of the circle and turned a little at random so the field reads hand drawn. Marks on
+  house, hedge, wall, trap and rubble cells draw through the models, the rest are depth tested, and all sit under the
+  fog overlay. One mesh and one preallocated BufferGeometry (cursor and flash regions, partial uploads) are rewritten
+  only when the cursor's cell, the nearest enemy's cell, nearby vehicles, the terrain or the scouted cells change;
+  a rewrite costs about 0.1 ms and an idle frame about 4 microseconds, with no allocation per frame. Low graphics uses
+  a 5.2 m circle and 4 vertices per mark (High 6.5 m and 9). The setting is `ww2-cover` in localStorage. main.js only
+  creates it and calls `start`, `dirty` (terrain changed), `frame` and `flash` (move order).
 
 ## Rooms, controls and match flow (round 3, 2026-10-01)
 - Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,

@@ -32,6 +32,7 @@ import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
+import { createCoverPreview } from './cover-preview.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -383,6 +384,7 @@ function startGame(m, restored = null) {
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
+  coverPreview.start();
 
   buildBuyBar();
   buildSupportBar();
@@ -427,6 +429,7 @@ function applyCells(cells) {
   buildStructures();
   props?.refresh();
   water?.changed(cells);
+  coverPreview.dirty();
   mmImage = null;
 }
 
@@ -831,7 +834,7 @@ function formation(sel, g) {
 }
 const orders = createOrders({
   units, selected, get me() { return me; }, defs: UNITS, formation, send: sendCmd, moveColor: MOVE_COLOR,
-  feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); },
+  feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); if (at.id === undefined) coverPreview.flash(at.x, at.z); },
 });
 
 // ---------- camera + input ----------
@@ -1145,6 +1148,9 @@ const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) 
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
 objectives.init();
 const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
+// cover around the cursor while infantry is selected (client/cover-preview.js)
+const coverPreview = createCoverPreview({ scene, camera, canvas: renderer.domElement, units, selected, hAt, groundAt, gfx, foe,
+  me: () => me, mouse: () => mouse, targeting: () => targeting, grid: () => terrain?.grid, fog: () => fogVis });
 endgame.init({ me: () => me, teams: () => teams });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
@@ -1197,6 +1203,7 @@ renderer.setAnimationLoop(() => {
       aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
     }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
+  coverPreview.frame(dt);
   for (const m of strikeMarks.values()) m.frame(m.t > 0, now);
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
   renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
@@ -1206,7 +1213,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, coverPreview, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
