@@ -109,7 +109,7 @@ export function viewFor(g, slot, memory = {}, cache) {
   // snapshotFor consumes terrain updates. Keep those writes in AI memory, away from the live player.
   const players = [...g.players];
   players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()) };
-  const projection = { ...g, players };
+  const projection = { ...g, players, skipFog: true }; // no fog masks: the AI plans from units and terrain, not from what a client draws
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, [], [], cache);
   updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h);

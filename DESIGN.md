@@ -628,8 +628,10 @@ the HUD.
   A hedgerow stretch is a shaded lumpy core inside leaf cards that run along the hedge, so neighbours close into one
   wall. It never changes gameplay cells. The five base buildings are one merged model per type and team
   (`buildingModel`), textured through the detail map above. `hqCamp(f, tent)` builds the HQ's tent, crates, table and
-  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
-  `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
+  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces, props and
+  foliage darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in `client/surfaces.js`, which samples
+  the `client/fog.js` texture (see Fog of war below). It imports `/shared/sim.js` by absolute path, so it is browser
+  only.
 - Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
   drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
   birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
@@ -643,6 +645,34 @@ the HUD.
   The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
   box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
   step) along the four sides so the cut-earth skirt follows cliffs at the edge.
+
+## Fog of war (2026-10-01)
+- The server decides what each team sees, cell by cell, and the client only draws it. The old client drew its own
+  vision circles and disagreed with the server on 6.4% of the map's cells (a quarter of the cells either side called
+  seen), with 29 of 477 shown enemies standing on fogged ground.
+- `teamFog(g, team)` in `shared/sim.js` applies updateVision's rule at every cell centre: within 6 m, a building's or
+  an airborne plane's whole vision circle, a live recon corridor, otherwise the high-ground and garrison range with
+  line of sight. The range comes from `visionRange`, the same function updateVision uses (high ground, garrison and,
+  since the living-ground terrain, rain), so the two can't drift apart. The cells under the enemy ground units the
+  team sees count too (a building's whole footprint), so nothing a snapshot shows stands on fogged ground; that also
+  covers a dusty target seen from farther away, and the Horde stragglers revealed through the fog. It runs once per
+  vision pass (`g.visionTick`, every 4 ticks), the first time a snapshot asks. Units standing still keep their cells
+  until sight changes in their box (terrain edits, smoke) or their range changes (rain). Enemy planes are still shown
+  over fog (they are seen up to `CFG.air.seeRange` away).
+- Wire: `fogFor(g, slot, full)`. The start message carries `{ v, e }` (seen now and ever seen); each snapshot's `fog`
+  is the cells that flipped since that player's last fog, or nothing when the view did not change. Both use
+  `packRuns`: alternating run lengths as base-32 varints in URL-safe base64 digits. Teammates on the same base share
+  one packing. A six-player Massive snapshot went from 1920 to 2022 bytes on average.
+- Client: `client/fog.js` keeps seen, explored and the target look per cell: clear (seen, or under a unit the snapshot
+  shows), dimmed (explored) or dark (never seen). Cells fade to a new look within 0.25 s, and only the changed span of
+  each texture row is uploaded (`addUpdateRange`, after the first full upload). The ground overlay, structures, props
+  and the minimap read it, and so does the realistic scenery's foliage (bark, leaves, grass, wheat), through the same
+  `fogShader`; water darkens under the overlay. The match-end lift clears it.
+- Fog on 3D pieces (`fogShader` in `client/surfaces.js`) mixes toward the overlay's own colour (10 / 255) right after
+  `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
+  in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
+  (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
+- Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

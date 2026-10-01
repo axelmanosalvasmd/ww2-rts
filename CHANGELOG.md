@@ -23,6 +23,45 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   building site in one turn (the second order is rejected normally), and the shared auto-targeting of rocket salvos still
   counts hidden neighbours of a visible target, for players and AI alike.
 
+- Fog of war now shows exactly what your team sees:
+  - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
+    (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn
+    clear while the team saw nothing there, 0.7% was seen but drawn fogged, and 29 of 477 enemy units the server
+    showed stood on fogged ground (on Bocage, all of them).
+  - The server now sends each player only its own team's seen cells: the whole mask at match start and on
+    reconnect, then only the cells that changed, as short run-length strings. On a six-player Massive game (Six
+    Fronts, Conquest) a snapshot grows from 1920 to 2022 bytes on average (+102, about 5%). Working out the masks
+    raises the server's cost for one round of six snapshots from 0.77 to 3.75 ms on average (p95 2.8 to 10.7 ms).
+  - The ground has three looks: seen (clear), explored (dimmed) and never seen (dark). A cell fades to its new look
+    within a quarter second, and only the changed part of each texture row goes to the graphics card (about 1 KB a
+    frame instead of the whole 90 KB texture). Trees, rocks and other props now darken in the fog like houses and
+    walls already did, and water darkens under the same overlay.
+  - Every unit a snapshot shows stands on clear ground: in a replay of 1334 snapshots, 0 of 21108 shown ground
+    units stood on fog and the client's seen cells matched the server's every time, and in a live 2v1 match on
+    Bocage 0 of 13588 shown ground units over 1465 snapshots stood on fog. A new server test checks each
+    team's mask against a cell-by-cell vision check on the 300-unit Massive fixture, including after a hedge, smoke
+    and raised ground appear in a standing unit's view.
+  - Review fix: houses, walls, hedges and props in the fog now darken like the ground. On High graphics they faded
+    toward a mid grey, so hedge rows and trees showed as pale shapes on dark ground. The fog mix ran after the colour
+    conversion, which High does in a later pass, so it used a grey meant for Low. It now mixes toward the overlay's own
+    colour before conversion, and both graphics levels match the ground.
+  - Review checks: a live reconnect on Bocage kept every explored cell and the changed-cells stream stayed in step
+    afterwards (0 of 15818 shown ground units outside the server's mask over 1274 snapshots). Replays of Classic
+    (Default, Bocage) and Annihilation (Hill 112) had 0 mismatches between the client's seen cells and the server's
+    mask, and every building footprint matched cell by cell (7340 building rows on Bocage alone). Client fog work on a
+    six-player Massive game costs 0.16 ms per snapshot and 0.009 ms per frame on average, about 3 KB of texture upload
+    a frame.
+  - Merged with the realistic scenery: the new trees, bushes, hedgerow leaves, grass and wheat darken from the same
+    server mask, with the same mix as the ground. Their own darkening rule (a multiply written against the old grey
+    mix) no longer matched anything, so `client/foliage.js` now uses the shared fog shader as it is.
+  - Merged with the living ground: rain now shortens sight by up to 20%, and the drawn fog follows it. The fog and the
+    server's vision read one range function, and units standing still recompute their seen cells when a shower
+    comes or goes. A new test pass checks that rain shrinks the mask and that it comes back when the rain stops.
+  - Left for later: terrain changes (craters, trenches) still reach every client, even in the fog. Enemy planes
+    still show over fog (by design), and a camouflaged sniper can stand unseen on clear ground. The fog edge can
+    trail a moving unit by up to about half a second (five vision passes a second plus the fade). In Annihilation the
+    ground under the always-visible enemy bunkers is clear, and in Horde the last few attackers shown through the fog
+    get a clear cell under them the same way. The new test adds about 3 seconds to `node test.js`.
 - Living ground: the board wears, burns and gets rained on, and nothing snaps at a tile edge any more.
   - Soft edges: a unit's speed is the average of the ground under its whole footprint, so a tank half on a road gets
     half the bonus. Cover behind a wall, house, hedge or vehicle is full within about 2 m and fades to nothing at
