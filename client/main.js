@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { unitRole } from './unit-roles.js';
+import { createProps } from './props.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -290,6 +291,8 @@ function startGame(m) {
   terrain.grid.forEach((row, y) => row.forEach((_, x) => paintCell(x, y)));
   buildStructures();
 
+  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
+
   // capture points
   const assault = lobbyState?.mode === 'assault' || lobbyState?.mode === 'annihilation'; // no VP in either
   points = map.points.filter(p => !assault || (p.mp ?? 1) > 0).map((p) => {
@@ -344,6 +347,7 @@ function label(text) {
 
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
+let props = null;
 // stable pseudo-random per cell, so rebuilding after a change doesn't reshuffle everything
 const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 
@@ -457,6 +461,7 @@ function applyCells(cells) {
   if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = terrainGeometry(); }
   terrain.tex.needsUpdate = true;
   buildStructures();
+  props?.refresh();
   mmImage = null;
 }
 
@@ -884,7 +889,7 @@ function applySnapshot(s) {
   coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
   coverGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); coverGroup.clear();
   for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
-  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
+  if (s.nodes && !nodeMarks) { props?.setNodes(s.nodes); nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; }); }
 
   s.points.forEach(([owner, capper, progress], i) => {
     const p = points[i]; if (!p) return;
