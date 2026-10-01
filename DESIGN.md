@@ -501,18 +501,32 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   gives the same final-state hash with and without this change in Clear weather. (Checked before the living ground
   was merged; the merge keeps every Clear, Fog and Mud shower roll where the living ground put it.)
 
+## Infantry model refinement (2026-10-01)
+
+- Adopted the useful draft face relief, chin and eye shading, shaped hands, folded pilotka, and stride/brace/standing
+  rifle variants. Wider webbing, belt buckles, larger pouches and bags, helmet chin straps, and a six-sided greatcoat
+  roll distinguish faction kit. Eight torso columns pay for this detail within the 900-triangle near budget.
+- Dedicated prone morphs remain the pose source. Aiming bodies lie at an angle to their weapons with the fore-hand
+  closer to the receiver and elbows near the ground. Crew feeders lean toward the belt when kneeling; prone legs
+  extend behind the hips with slight splay. Suppression thresholds and game rules are unchanged.
+- Far figures use an extra head ring and helmet crown ring. Owner tint stays on the upper left arm and is subdued
+  so a white owner color does not resemble bare sleeves. Maximums across all infantry kits and factions: 884 near,
+  145 far triangles, one mesh and draw per soldier. Medic teams retain their two engineer-based figures and poses.
+  Dedicated medic kit is left for later: the existing alias still shows a carbine on an unarmed medic.
+- Checked reference sheets and viewer standing, prone crew, and far conscript views, including the game-distance
+  cell. Shared shadow-side lighting is handled separately; infantry still use the existing soldier material.
+
 ## Look and feel (decided 2026-10-01)
-Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
-is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
-mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
-The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
-the HUD. Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
+Art direction: a grounded military RTS. The sand-table framing was dropped on 2026-10-01 at the user's request.
+The world target is `docs/concepts/f-grounded.jpg`: natural muted ground, present shadows and land continuing beyond
+the playable map. The HUD target remains `docs/concepts/g-hud-gunmetal.jpg`, and models stay procedural.
+Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
 lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
 still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
 - Model textures (`client/model-textures.js`): units are textured so they read as weathered real equipment, not
   painted toys. Twelve seamless layers generated with gpt-image-2 (`client/textures/models/`, 512 px: painted armor,
   cast armor, gunmetal, track steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint, mud) sit in one
-  texture array. The shared materials (PAINT, the plane body and blades) sample each fragment's layer with triplanar
+  texture array. The shared materials (PAINT, VEHICLE_PAINT, the plane body and blades) sample each fragment's layer with triplanar
   mapping in the model's own space (after the posture morphs, so nothing swims on a turning turret or a prone
   soldier). The texture's light and dark scale the vertex color, so faction paint, markings and the owner color keep
   their hue; paint is faded a little and mottled with broad blotches, and some layers (track steel, wood, leather)
@@ -521,6 +535,15 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
   textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade, and
   film: how much grime it holds) is in `LAYERS` at the top of the module. Grime is greyed and never much brighter than
   the part under it, so dark tracks, tires and gunmetal stay dark instead of turning into an orange band.
+- Vehicle shade (2026-10-01): Neutral tone mapping subtracts most neutral light at low brightness and leaves the
+  blue sky tint on dark grey paint. Vehicle meshes use their own shared Lambert material with a textured-albedo
+  bounce fill, strongest away from the sun. The world light and soldier/gun materials stay as before. The fill adds
+  no draws or texture samples. German and Soviet light-tank paints are warm grey and olive; the Sd.Kfz. 222's dark
+  paint shades are warm grey. Stuart sponsons add a lower rivet row, T-70 sides have weld seams, Tiger wheels have
+  wider rubber rims and distinct inner/outer depth, and ZSU shields sit below the barrel with a visible breech,
+  recoil rail and case tray. Counts (hull + turret): Stuart 2,976/3,000, Panzer II 2,974/3,000, T-70 2,818/3,000,
+  Tiger 4,907/5,000, ZSU-37 2,954/3,000. All armor models remain two draws; tests check budgets, normals and muzzle
+  points. Panzer IV before/after viewer captures on the Apple M3 Max confirm readable rear plates at 3,908 tris.
 - Tagging what a part is made of: `part(geo, paint, sx, sy, sz, x, y, z, mat)` in `client/unit-models.js`,
   `{ geo, color, matrix, mat }` items in `geom.merge()`, or `tag(geo, mat)`. `mat` is a name from `MATS` in
   `client/models/geom.js` or `'plain'` (no texture: faces, glass, the soldier's base). A shape's own tags win over the
@@ -528,10 +551,10 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
   take the model's default from `LOOKS` (painted armor on vehicles and guns, wool on soldiers, aircraft paint on
   planes); near-black colorless paint becomes gunmetal. A mesh drawn with PAINT without going through `mergeParts`
   gets the default material and no grime: put its geometry in `part(geo, 0xffffff)` and bake it instead.
-was the paperwork around it until 2026-10-01 (see below). Concepts in `docs/concepts/`: `e-mix-acetate.jpg` was the
-target, `a-sand-table.jpg` the world mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage),
-`before-conquest.jpg` where we started. The concept images show richer models than ours; the models stay procedural,
-so the look comes from paint, light and the HUD.
+- German splinter paint on the Ju 87, He 111 and Ju 52 uses weighted, jittered Voronoi cells with an oblong raked
+  layout. The varied seeds make angular patches uneven in size; the shader scale is 0.7 on the Stuka and He 111, and
+  0.8 on the corrugated Ju 52. The aircraft check counts every propeller blade and blur disc against the 3,500
+  triangle fighter and attacker budgets: Ju 87 3,494, P-47 3,409.
 
 The HUD's paperwork style (manila cards, typewriter text, stencil numbers, grease-pencil map symbols) was dropped on
 2026-10-01 because it read as a board game. The HUD is now a modern PC military RTS interface: gunmetal panels, one
@@ -542,17 +565,17 @@ gradients or inner glows, outlined or shadowed text and icons, cartoon or satura
 card frames, coin or gem currency icons, red notification dots, oversized tap-sized targets, bouncy or pop-in motion
 or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body text, real hover and keyboard focus.
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
-- Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
+- Graphics setting (menu): High / Low, saved per browser. Low uses cheaper shadows and fewer
   particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
 - World:
   - Ground painted from tileable textures (grass, dirt, mud, road, field) generated with gpt-image-2 and blended per
     cell; contour lines stay. Craters and scorch marks are painted into the ground.
-  - Warm low sun, soft shadows, slightly saturated "painted miniature" colors, a light haze.
-  - A slight blur only along the far (top) edge of the screen, subtle enough that units there stay readable. Off on Low.
-  - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
+  - Natural muted colors, warm afternoon sun, sky fill, soft shadows and distance haze. No tilt-shift blur.
+  - Beyond the map edge: continuous ground and water. The apron follows relief, cliffs and craters at the boundary;
+    its first 14 m ease to 20% darker and 25% greyer ground to mark the playable area without a hard line.
   - Unit markers: the badge left of each unit's health bar is the unit's silhouette from the HUD's icon set, drawn
     in the owner's color on a small gunmetal plate edged in that color. Health bar, cover shield and veterancy stay.
-  - Order lines and range rings drawn like grease pencil on the table (slightly rough strokes, arrowheads on routes).
+  - Order lines and range rings drawn with slightly rough strokes on the ground (slightly rough strokes, arrowheads on routes).
     Colors keep their meaning: blue move, orange attack-move, white retreat, red attack, yellow dig/build.
 - Player colors (they carry meaning, so the HUD redesign kept them; they read on grass and on the gunmetal panels):
   blue `#3b73d6`, red `#cc3a2e`, chalk `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue
@@ -1025,16 +1048,15 @@ House corners (asked for during slice 2):
   could be shot at all: a house cell on that line also blocks the line of sight. So houses gave cover only from inside.
 - Now a house or building cell (`WALLS`: B, K) in any of the 8 cells around the squad counts when it lies within 60
   degrees of the shooter (cosine above 0.5). Same multiplier as other directional cover (`coverMul` 0.5), no new number.
-- `seekCover` adds 3 m to a rank 2 spot that cannot see the threat, so corners win over blind spots behind the wall.
+- `spotNear` adds 3 m to a rank 2 spot that cannot see the threat, so corners win over blind spots behind the wall.
 
 Slice 3, stances and the rest (`STANCES`, `retreatUnit`, `claim`/`retarget`, the hull-turn block in `step`):
 - Three independent booleans on the unit (`holdFire`, `holdPos`, `autoRetreat`) set by the `stance` command, instead
   of one enum: the interview's "hold fire" and "hold position" are both wanted at once on an ambush gun. Sent as flag
   bits 2048/4096/8192, masked for everyone but the owner.
-- Units never chased on their own in this game (auto-targeting only picks what is in range), so Hold position has one
-  job: switching off auto-cover. It does not stop an explicit order, Take cover included.
+- Hold position blocks automatic cover shifts, idle spacing, move-end settling and vehicle pull-back. It does not stop an explicit order, Take Cover included.
 - Auto-retreat threshold `CFG.autoRetreat` 0.35 is the number the AI already used for pulling squads back.
-- Hull turn: `CFG.hullTurn` 1.2 rad/s, only while not moving. A shooter counts when its `w.veh` is 20 or more (the
+- Hull turn: `CFG.behavior.hullTurn` 1.5 rad/s, only while not moving. A shooter counts when its `w.veh` is 20 or more (the
   same line that separates guns from small arms against buildings) and it is not a plane.
 - Spread fire: `g.claims` is rebuilt every tick from current targets (team and target -> expected volley damage) and
   kept current as units switch. `pickTarget` multiplies a target's score by max(1, others' claims / target hp). Below
@@ -1105,3 +1127,244 @@ Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
   switch). Horde is left out: a wave would cut every point and the mode's balance was measured without it.
   Known fog leak, accepted: "cut off" tells the owner that an enemy stands somewhere on the road.
 - Open question: a cut point pays nothing at all. Half pay may be kinder if people find it too swingy.
+
+## Combat effects, realistic (2026-10-01)
+The art direction moved from the sand table to a realistic modern PC RTS (Company of Heroes 3, Men of War II, Gates of
+Hell), and nothing may look like a mobile game: no cartoon starbursts, no saturated stylized fire, no glow halos, no big
+screen shake. `client/fx.js` keeps its API and its one-draw-call design; what it draws changed.
+- Textures: one atlas, `client/textures/fx-atlas.webp` (2048 px, 8 x 8 cells of 256 px), built by
+  `tools/build-fx-atlas.mjs` from nine gpt-image-2 pictures with alpha (raw in `~/.local/share/ww2-rts/fx-raw/2026-10-01/`):
+  billowing smoke, thin wisps, a 16-frame flame, a 15-frame fireball that cools into smoke (the sheet's first frame,
+  a starburst, is dropped), dirt plumes, dust kicks, debris (soil, brick, stone, concrete, wood, scorched metal) and
+  side-view muzzle flashes, plus a drawn glow, tracer, spark and ember. Smoke, dust, dirt and debris cells store a
+  surface normal and a detail value instead of color, so the game lights them; the generator's red fringe around fire
+  is cut out. `client/textures/fx-crater.webp` is a shell crater seen from above, multiplied into the ground (2x, so
+  the rim can brighten and the burnt center darkens).
+- Light: lit particles read the scene's sun and hemisphere light (light.js and atmosphere.js keep owning them) at the
+  same Lambert scale as the world: a soft terminator, sky from above, ground bounce from below, darker low down, and a
+  bright rim on thin edges when the sun is behind the smoke. Glowing sprites shine where the picture is hot and are lit
+  like smoke where it has cooled.
+- Soft edges: every sprite fades out over half its size (a fifth for sprites standing on the ground) above the terrain
+  height under it, refreshed as it drifts. No depth texture is needed, so light.js's render path is untouched. Sprites
+  can still cut into units and walls, as before.
+- Sorting: one draw call, back to front each frame with a 4-pass radix sort of 16-bit depth and 12-bit index keys (no
+  allocation). Glowing sprites sort 1.5 m nearer so flames show through the foot of their own smoke.
+- Explosion sizes (about the blast radius in m): grenade 2, satchel 3.2, mortar bomb 2.6, rocket 3, 37 mm 1.5, 57 mm
+  2.4, 75 mm 2.6, Panzer IV gun 3, 88 mm 3.4, barrage shell 4.2, bomb 6, vehicle death 3.2 (x1.15 medium, x1.3 Tiger),
+  plane crash 3.6. Each has a brief flash, 1 to 3 fireballs, a dirt plume and clods that fall and bounce, a ring of dust,
+  smoke held back 0.1 to 0.4 s that rises and drifts for 5 to 13 s, and a crater; from 4 up a column keeps rising for
+  2 to 3 s. Mortar and rocket impacts (both `rocket` shots) are told apart by the salvo they belong to. Strafing hits
+  are spurts of dirt, not explosions.
+- Guns: a side-view flash along the barrel. MGs show a tracer every round, rifles and SMGs a faint one on about half
+  their shots, snipers on 60%. Tank and AT guns blow a ring of dust off the ground and leave gun smoke; bazookas have a
+  back-blast. A shell that hits a vehicle bursts on its near face, not inside the hull.
+- Impacts: dust kicks on the ground, brick and stone chips with pale dust on walls, sparks on armor.
+- Fire: wrecks burn with looping flipbook flames for 20 s (structures 8 s), then smolder; the smoke is black while the
+  fuel burns and browner as it smolders, and leans downwind. The spreading fire (`snapshot.fires`, which main.js now
+  passes with the cell type): grass in low flames, hedges in a wall of flame with dark smoke, houses in tall flames at
+  windows and roof. A fire that goes out leaves a burn mark (darkening only); a house leaves rubble. The smoke cloud the
+  server lights over a burning hedge or house draws as grey-black rising smoke, a smoke shell's cloud as white smoke that
+  hangs and rolls; both block sight the same.
+- Air: aircraft.js no longer has its own puff pool. Flak bursts (a flash and black puffs that hang), damage smoke, flame
+  puffs, strafing hits and crash fires go through `effects.air`, so they are lit and sorted with everything else.
+- Wind: everything drifts on `client/wind.js`, the server's wind.
+- Budget: 4096 particles on High, 1600 on Low. Low emits about half, makes smoke and dust 15% smaller (screens keep
+  their size so they still hide what they should), keeps 24 craters instead of 64 and skips flipbook frame blending.
+
+- Integration: current halftrack MG, traversing flak muzzle and mortar tube positions are preserved. aircraft.js owns all support-plane models, crashes and bomb releases. Removed the obsolete support-plane pool from fx.js, retaining artillery warning whistles and the unit-fall API.
+- Low collapse dust uses five puffs distributed over a full circle, preserving the outward burst with fewer particles.
+- Burning woods retain their new terrain behavior and draw rising flames with dark smoke, rather than falling back to low grass fire.
+- Local browser QA: staged grenade, bomb, collapse, flak, damage smoke, crash fire and screen smoke rendered on High (156 particles) and Low (69), with finite instance buffers and no browser errors. Actual aircraft shoot-downs reached a burning ground crash on both settings. Saturation stops at 4096/1600 particles and reset clears both live and rendered counts. Combined hardware frame times remain an integration check.
+
+## World edge and light (2026-10-01)
+
+`client/apron.js` continues the map's tinted ground tiles beyond every edge. Boundary columns at half-metre spacing
+retain cliff heights and follow later crater deformation, including edges that started flat. Fields fade to grass,
+rivers retain low beds and `client/water.js` continues water 900 m beyond wet boundary cells and corners. The apron
+reaches 1250 m; the camera far plane is 2200 m. The playable map, pathfinding and scenery bounds stay unchanged.
+
+The map and apron fog overlays sit flush with terrain using a depth offset. `client/surfaces.js` shares the live
+server vision texture with the apron: boundary vision carries 6 m outward and eases to the never-seen alpha (185/255)
+by 32 m. This uses the current fog system rather than the old branch's shader-color replacement. The editor hides
+both overlays. Cloud shade, rain-wet ground, mud and lying snow continue over the apron so weather does not stop at
+the map boundary. Rain showers, wind, weather transitions and server sight effects retain their current behavior.
+
+`client/moods.js` holds sun, sky fill, haze, exposure, shadows and weather modifiers. `setMood()` applies the light.
+The default afternoon has sun intensity 3.5, sky fill 0.74 and exposure 0.9 with ACES filmic tone mapping. The URL
+`?mood=golden` selects a low golden sun. Snow selects winter light; rain and mud select overcast light; other weather
+uses the map mood. The wooden table, cut earth border, desk props, lamp pool, saturation boost and far-edge blur are
+removed. Balance values did not change.
+
+Validation: `node test.js` and `node test-world.js` passed. Browser checks covered default ground, island sea with
+server fog on High and Low, River Towns with every weather type, Twin Valleys cliffs and golden light. All 1804
+cliff boundary vertices matched the terrain height exactly. A crater on a previously flat edge moved nine boundary
+vertices with a maximum seam error below 0.000001 m. Combined-scene GPU measurements are recorded in `docs/issue-batch-verification.md`.
+
+## Ground overlays and cover preview (2026-10-01)
+- `client/overlay.js` draws ribbon geometry with a shared terrain-height texture. Its shader keeps line width above
+  a screen pixel minimum, softens the edges and cuts dashes. Relief changes refresh the height texture. Rings,
+  routes, capture points, strike zones and fortification cells share it. Formation drag previews use the same Batch
+  shader and retain their existing slot layout and facing rules. Order lines and cell previews reuse buffers.
+- With infantry selected, `client/cover-preview.js` marks explored cells within 6.5 m of the cursor (5.2 m on Low).
+  Green shields mean heavy cover, yellow light cover and red open ground. A small yellow direction cue points toward
+  solid cover or a vehicle hull. Move orders flash the destination for 1.6 s. The menu switch persists in `ww2-cover`.
+- The cover preview mirrors cell flags, garrison entry cells and `coverBehind > 0.4`. Woods retain light cover,
+  wreck cells count as solid, and visible wreck hulls count like vehicles. The server's explored cells prevent marks
+  on unscouted ground and preserve them through rejoining. Terrain changes and nearby hull changes invalidate marks.
+- Preview shields use `Builder` and `makeOverlay`, with four fixed regions for cursor/flash and ground/model marks.
+  Ground marks depth test, while marks inside houses, walls, woods and wrecks remain visible through their models.
+  Unit shields match the same green/yellow colors. Ghost cells preserve each current fortification kind's color.
+- Protection categories remain approximate: house types, terrain damage, woods and crater depth affect actual strength.
+  The client knows wall damage stages rather than health, leaving an uncertain part of stage 1 at the 2.9 m boundary.
+  No cover values or gameplay rules changed. Tests compare the preview with the simulation and check fog/rejoin,
+  destination flashes, disabled state and valid overlay buffers. Exact position hashes refresh distance and bearing
+  changes within a terrain cell.
+
+## Unit behavior reconciliation (2026-10-01, sources f4693aa, 826d32c, 6ab05ad)
+
+- `react` is the single incoming-fire response. Crewed weapons stay put. A squad chooses strictly better cover within 4 m when it can answer, or 10 m when it cannot. Idle squads keep 3 m spacing. A hurt vehicle that cannot answer can reverse 10 m, except while holding a capture point.
+- `spotNear` serves plain move settling, incoming-fire shifts, idle spacing and Take Cover. It reserves allied units' distant path ends as well as occupied positions, ignores unseen enemy positions, and keeps a squad inside a capture circle it starts in. Take Cover can fall back to one squad per cell when 3 m spacing has no available cover.
+- Crowded move destinations first search for equal or better shelter within 6 m. A covered click stays covered if no equally sheltered free spot exists. An open click may use open ground when no covered spot is available. Facing formations keep their explicit layout.
+- Planning uses graded terrain cover and permanent wrecks, excluding live vehicles. Actual shot protection still includes vehicles. This preserves woods, house types, medics, halftracks, mines, supply lines and match weather from current master. Riders do not reserve ground spots, and an automatic response cannot interrupt boarding.
+- Target scores combine weapon role, expected damage, incoming-fire threat (2.5x), current-target hysteresis (30% improvement required), and the existing team volley claims. All automatic changes maintain claims. Salvo cluster scores count only visible, dismounted squads, so hidden nearby enemies cannot change target selection. Hold fire also blocks a rally walker's automatic return fire.
+- A stopped vehicle faces a visible target that threatens armor, then recent anti-tank fire, then its visible target. Only non-air weapons with vehicle damage at least 20 mark its threat. Threat memory lasts 5 s, longer than an AT gun's reload. Short backward combat moves reverse at half speed.
+- A waiting order interrupts an automatic cover, spacing or pull-back move. A new recruit's rally walk finishes first.
+- `clear` and the fog ray walker stop advancing an axis once it reaches the destination cell. This fixes exact-border endpoints without ignoring walls along the segment. Regression checks include mixed-sign diagonals and a blocker beyond the endpoint.
+- The editor's terrain-only `findPath` call has no players. Optional player access leaves mine avoidance active in matches and makes editor route validation work.
+
+## Formation facing (2026-10-01, source 24b038c)
+
+Right-click at a destination, drag toward the desired facing, and release. A plain click sends its move on release. Ctrl-drag and G then left-drag attack-move; Shift queues a leg with its own facing. Other right-click actions, including boarding a halftrack, dispatch immediately. Escape, lost focus and a cancelled gesture clear the preview.
+
+`shared/formation.js` is shared by preview and simulation. Slots have at least 3 m between infantry and 5 m between vehicles; a longer drag widens a rank up to three times its natural width. More than ten units form ranks. The server validates and wraps an optional finite `face` angle into (-PI, PI]. Each queued leg stores its own angle. Infantry and guns face on arrival; a hull turns at the behavior turn speed. Combat aiming takes priority, followed by remembered anti-tank fire, then the ordered facing. Accepted replacement orders and Retreat clear it. Preview geometry follows terrain height and reuses one buffer. A live two-human-seat server check on port 3811 sent a PI/2 facing to seven units, including a tank: all seven reported rotation 1.6 (0.029 rad from the requested angle, within snapshot rounding), with no refused orders.
+
+Remaining limits: queued plan lines do not draw facing, AI orders do not set facing, later ranks sort by lateral position, and the minimap has no facing drag. An automatic cover shift still cancels the formation facing.
+
+## Behavior balance investigation (2026-10-01)
+
+`tools/balance.mjs` uses deterministic per-match random streams, the server's two-tick AI observation beat, and a single worker for diagnostic runs. The seeds for `--seed 1` start at 100003, matching the source benchmark. Tile-cover hit percentage counts only COVER or TRENCH under infantry that were hit. It is not a complete protection rate: directional shelter and vehicle shielding count in the separate graded-shelter measure. Neither percentage measures time spent exposed. The runner also samples every living, dismounted, ungarrisoned infantry squad every 5 s, moving or stopped, to report approximate unit time on cover or trench tiles separately from hit location.
+
+A two-match runtime pilot took 91 s with one worker on the busy host. It is too small to establish balance. The isolated diagnostic matrix changes capture-circle restrictions, cover spacing, live-vehicle planning, and the target score's cover penalty one at a time against the reconciled branch and current master. The full paired 300 Conquest and 120 Classic samples requested in issue #17 are recorded below; no faction costs, weapons or health were retuned from a small sample.
+
+Diagnostic Conquest results: default map, standard army, three adaptive AI seats, seeds 100003 through 100014, one worker. These frozen diagnostic builds precede the final visible-neighbor salvo fix. Each variant changes one suspect from the reconciled feature build. Runtime varied with other work on the host and is not a speed comparison.
+
+| Build (12 matches each) | Hits on cover tiles | Hits with graded shelter | Crowded idle squads | Rear vehicle hits | Closeness | USA/GER/USSR wins | Runtime |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Master 41eefe8 | 49.2% | 51% | 41.1% | 15.2% | 0.53 | 5/2/5 | 489 s |
+| Reconciled feature | 33.8% | 35.8% | 10.8% | 14.4% | 0.52 | 7/2/3 | 151 s |
+| No capture-circle constraint | 34.7% | 36.2% | 13.7% | 10.9% | 0.50 | 5/5/2 | 77 s |
+| One squad per cell, no 3 m gap | 36.4% | 38.7% | 42.2% | 16.2% | 0.38 | 4/3/5 | 76 s |
+| Live vehicles count for planning | 34.7% | 37% | 11.6% | 13.2% | 0.54 | 7/2/3 | 115 s |
+| No cover penalty in target score | 41% | 42.7% | 13.4% | 11.8% | 0.41 | 4/1/7 | 133 s |
+| Keep shelter when spacing | 33% | 35% | 10.4% | 12% | 0.42 | 4/2/6 | 192 s |
+
+The target-score cover penalty accounts for the largest observed shift in hit location: removing it raises cover-tile hit share from 33.8% to 41.0%. The three original suspects each change it by at most 2.6 percentage points here. Removing spacing also restores crowding, from 10.8% to 42.2%, so it is not a useful fix. The shelter-preserving fallback fixes a specific move-destination bug, but its aggregate hit share remains 33.0%. These small samples do not establish causality for all of the remaining difference, faction balance, or overall protection. Keep the target-role rules and spacing, and use independent occupancy samples to interpret the hit metric.
+
+Final reviewed code, including the visible-neighbor salvo fix, versus master: six Conquest matches each, seeds 100003 through 100008, same map/army/AI settings. The cover-time estimate counts five-second samples of dismounted, ungarrisoned infantry, including moving squads.
+
+| Build | Unit time on cover tiles | Hits on cover tiles | Crowded idle squads | Rear vehicle hits | Closeness | USA/GER/USSR wins | Runtime |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Master 41eefe8 | 25.4% (8941 samples) | 45.4% | 42.1% | 16.0% | 0.42 | 3/0/3 | 74 s |
+| Final reviewed feature | 25.0% (8859 samples) | 32.2% | 11.5% | 13.0% | 0.43 | 3/1/2 | 56 s |
+
+Occupancy is closely matched in this small pair while hit location shifts substantially. That is consistent with enemies preferring exposed infantry. It does not establish equal damage taken or settle faction balance; the larger paired Conquest and Classic comparison is recorded below. No defense orders were removed to change these numbers.
+
+### Full paired comparison
+
+Completed the issue #17 gate: 300 Conquest and 120 Classic matches per build on Three Crossroads, three adaptive AI seats, standard starting armies, shuffled spawns. Both builds use seeds 100003 through 100302 for Conquest and 100003 through 100122 for Classic. Each batch used two workers, with at most four workers across concurrent batches. Master is `41eefe8`; the final frozen build combines the reconciled unit behavior, formation simulation and integrated AI planner. The final sim SHA-256 is `d7013427a04ee4189d9f4a4b73226870ee575bbe716be736c2f52ad0045bb61e`; AI SHA-256 is `1614db36fd3086d579fcbeb3d46694e66a9719151734dc0a279f03f84760e16f`. All ten shared/map/package digests still matched the integration source when the completed results were checked.
+
+| Measure | Master Conquest | Integrated Conquest | Master Classic | Integrated Classic |
+| --- | --- | --- | --- | --- |
+| Matches | 300 | 300 | 120 | 120 |
+| Draws | 0 | 0 | 0 | 2 |
+| USA/GER/USSR wins | 102/91/107 | 98/101/101 | 41/39/40 | 30/43/45 |
+| Mean / median length (min) | 8.23 / 7.72 | 8.45 / 8.46 | 20.80 / 20.01 | 21.40 / 20.91 |
+| 2nd-place VP / winner | 0.46 | 0.5 | n/a | n/a |
+| Lead changes / match | 0.86 | 1.01 | n/a | n/a |
+| Decided before Sudden Death | n/a | n/a | 76/120 (63.3%) | 74/120 (61.7%) |
+| Sampled infantry time on cover tiles | 27.3% | 25.8% | 32.3% | 32.1% |
+| Infantry occupancy samples | 458095 | 464877 | 744051 | 762203 |
+| Infantry hits on cover tiles | 46.5% | 35.6% | 35.6% | 31.7% |
+| Infantry hits with graded shelter | 48.2% | 37.7% | 41.1% | 37.4% |
+| Crowded idle squads | 44.5% | 11.7% | 47.9% | 35.3% |
+| Rear / front vehicle hits | 19.3% / 51.4% | 13.7% / 67% | 8.2% / 74.9% | 4.2% / 89.1% |
+| AT shots on vehicles | 15.8% | 16.5% | 3.7% | 4.1% |
+| MG shots on infantry | 91.3% | 90% | 45.2% | 54.9% |
+| Kills / match | 10.9 | 11.8 | 72.3 | 70.4 |
+| Measured wall runtime, 2 workers | 504 s | 637 s | 1476 s | 897 s |
+
+All 840 matches ended normally: 838 had winners and two integrated Classic matches ended in Sudden Death draws at 26.67 min (seeds 100037 and 100115). Neither mode hit its runner cap (40 min Conquest, 60 min Classic). Runtime measures include concurrent host work and do not establish a performance difference. Faction wins in Conquest are 34.0/30.3/35.7% on master and 32.7/33.7/33.7% in the integrated build. Classic wins are 34.2/32.5/33.3% versus 25.0/35.8/37.5%. These samples measure the combined behavior and AI changes; they do not isolate either change's causal effect or establish exact faction equality.
+
+The cover occupancy estimate and the hit-location shares answer different questions. The Conquest cover-time estimate falls 1.5 percentage points while hits on cover tiles fall 10.9 points. The diagnostic target-score variant shows that target choice can move hit share substantially. The final comparison does not directly measure damage saved by cover, so the lower hit share alone does not show weaker cover protection. No defense orders, unit prices, health or weapon stats were removed or tuned to obtain these measurements.
+
+
+## AI difficulty (2026-10-01, issue 27)
+
+The lobby host chooses Easy, Normal or Hard independently for each AI seat. New seats,
+human handovers and the Horde itself default to Normal. The server accepts only a valid
+level on an AI seat while the room is in the lobby; humans and guests cannot change it.
+
+All levels have the same resources, recruitment costs and delivered fog observations.
+Planning receives only the detached view and acts through the seat-bound command handle.
+Sightings come from the delivered view, including when the planner is given an older view
+between snapshots. Hidden armies, private timers, terrain, mines, economy and enemy
+queues cannot enter difficulty decisions.
+
+- Easy decides every 6 seconds, disables Classic adaptive rules, keeps 250 manpower
+  (40 munitions in Classic) before support, waits 45 seconds between calls, leaves
+  enemy-held points alone for 150 seconds and needs ten units before attacking a base.
+- Normal decides every 2 seconds and keeps the existing three-unit attack groups and
+  six-unit base attacks. It retains Classic adaptation, weather caution, medics, mine
+  work, supply reconnection and the Horde rules.
+- Hard decides every second and remembers delivered sightings for 60 seconds. It buys
+  counters from remembered armor and recent aircraft, attacks held points in pairs
+  with at least 1.2 times the observed value, falls back below half health and defends
+  held points. Barrage clusters use visible enemies and avoid nearby friendly ground
+  units. Focus fire uses only visible targets and line of sight on remembered terrain.
+- Every level recognizes light and medium tanks and Tigers, withdraws multi-model
+  squads at their last model, waits for reinforcement at completed allied production
+  buildings in Classic, and refuses held-point attacks below two-thirds of the defenders'
+  observed value. A hurt squad waiting at base stays there when manpower runs out.
+
+`tools/ai-balance.mjs` retains its three-faction default and accepts two difficulty seats,
+`--rotate` and an alternate AI module for same-simulation comparisons. Duels swap seats
+every other match and cycle all nine faction pairs, using seed 1 and the default map.
+The server's two-tick observation delivery and each difficulty's decision interval are
+reproduced. Balance results are recorded below.
+
+Review regressions cover a second focus order preserving an already queued attack-move,
+cancelling a visible target that starts retreating, and immediate reconnection of an
+allied cut point during Easy's opening grace period. The integrated behavior change also
+fixes the grid-ray endpoint case for exact terrain-cell corners.
+
+
+Balance pilots on the reviewed source, seed 1, 18 matches per row:
+
+| Mode | Seats | Wins | Draws | Timeouts |
+| --- | --- | --- | --- | --- |
+| Conquest | Hard / Normal | 14 / 4 | 0 | 0 |
+| Conquest | Easy / Normal | 2 / 16 | 0 | 0 |
+| Conquest | Normal / current master | 9 / 9 | 0 | 0 |
+| Classic | Hard / Normal | 11 / 7 | 0 | 0 |
+| Classic | Easy / Normal | 3 / 15 | 0 | 0 |
+| Classic | Normal / current master | 6 / 12 | 0 | 0 |
+
+These small pilots do not reproduce the older 60-match Conquest or 40-match Classic
+samples. Per-match seeds, outcomes and simulation lengths are saved in
+`docs/ai-difficulty-balance.json`. The current-master comparison uses the AI from
+`41eefe8`. Both controllers used the same `41eefe8` simulation, map and observation delivery.
+
+## Individual infantry movement (2026-10-01)
+
+- Each squad remains one server unit. Its rendered men follow the authoritative center in world space, with different stride phases, response times and turning rates. A small separation pass keeps shoulders apart during corners. Visual offsets stay within the formation's footprint and a 0.65 m allowance.
+- Leg IK builds eight marching frames and four frames each for moving aim, crouch walking and prone crawling. Their weights follow each man's actual travel, with a planted foot during walking. Idle returns to the existing standing, kneeling or prone pose. The first three posture morphs retain their original indices.
+- Moving fire blends toward an aiming gait over 0.3 s. Weapon tips use the same morph weights and pose transform as the geometry, so muzzle flashes stay attached while aiming, carrying or changing posture. Retreat still carries the weapon.
+- Hidden, newly visible and transported squads reset their visual followers. Trench seating stays fixed, and leaving a destroyed trench restores the home slots. Men sample local ground height outside trenches. Health still controls the visible men and their corpse positions.
+- Near and far figures retain one draw per soldier. Gait weights, pose values and muzzle vectors are reused per man. Across all factions and kits, 180 cached near/far geometries add 36.47 MiB of baked morph attributes, with an estimated 48.63 MiB of extra GPU morph textures. A standalone 100-squad (1,500-men) animation benchmark measured 4.57 ms median and 53.67 ms p95 wall time over 300 frames during concurrent test runs. The combined Massive-match GPU measurements are recorded in `docs/issue-batch-verification.md`.
+- The model viewer's `motion=1` mode walks, stops and turns a squad. `posture=1` and `posture=2` check low movement, and the lower row shows an individual soldier.
+
+### Troop selection (2026-10-01)
+
+Click and box selection use projected bounds of each visible model mesh, squad centers and health bars. Posture bounds blend with the rendered morph weights, and near-plane intersections are clipped before projection. Selection and owner rings never count as troop geometry. Garrisoned squads use their roof bars. A box selects a squad when it overlaps any displayed mesh bounds, with 6 px of click forgiveness around those bounds; houses and scenery never block troop selection. Troops take priority over production buildings on a click. Double-click uses the same visible targets and excludes dead squads, passengers and parked aircraft. Release distance also detects a box drag when a mousemove event was missed. Saved groups retain living passenger and parked-aircraft IDs but skip them during recall until they become selectable again. This changes input targeting only, with no balance changes.
+
+Full raw results and source manifests: [behavior balance evidence](docs/behavior-balance-2026-10-01.md). Combined browser checks and GPU measurements: [verification](docs/issue-batch-verification.md).

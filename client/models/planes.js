@@ -409,17 +409,18 @@ float camoNoise( vec2 p ) {
 	float a = camoHash( i ), b = camoHash( i + vec2( 1.0, 0.0 ) ), c = camoHash( i + vec2( 0.0, 1.0 ) ), d = camoHash( i + vec2( 1.0, 1.0 ) );
 	return mix( mix( a, b, u.x ), mix( c, d, u.x ), u.y );
 }
-// Splinter: jittered cells, each one colour or the other, so the patches are irregular polygons with straight
-// edges (the edge between two cells is the line halfway between their seeds). Positive in the first colour.
+// Splinter: jittered, weighted cells, each one colour or the other. The seed offsets and per-cell radius variation
+// break the repeated grid into uneven polygons while keeping the characteristic straight, angular boundaries.
+// Positive in the first colour.
 float camoSplinter( vec2 p ) {
 	vec2 i = floor( p ), f = fract( p );
 	float da = 8.0, db = 8.0;
 	for ( int y = -1; y <= 1; y ++ ) for ( int x = -1; x <= 1; x ++ ) {
-		vec2 g = vec2( float( x ), float( y ) ), o = 0.15 + 0.7 * camoHash2( i + g ), r = g + o - f;
-		float d = dot( r, r );
+		vec2 g = vec2( float( x ), float( y ) ), o = 0.08 + 0.84 * camoHash2( i + g ), r = g + o - f;
+		float d = dot( r, r ) + 0.32 * ( camoHash( i + g + 71.3 ) - 0.5 );
 		if ( camoHash( i + g + 17.3 ) < 0.5 ) da = min( da, d ); else db = min( db, d );
 	}
-	return sqrt( db ) - sqrt( da );
+	return db - da;
 }
 // 1 on thin lines every period along u (hw their half width, w the screen-space change of u), fading out with distance
 float camoLine( float u, float period, float hw, float w ) {
@@ -436,10 +437,9 @@ const CAMO_MAIN = /* glsl */ `
 		float q = cp.z + 0.8 * cp.y, lz = abs( cp.z ) + 0.5 * cp.y, cu = cp.y + abs( cp.z );
 		float wx = fwidth( cp.x ), wl = fwidth( lz ), wu = fwidth( cu ), f = 1.0;
 		if ( k > 4.5 || ( k > 0.5 && k < 1.5 ) ) {
-			// splinter on long, raked cells, the cells' edges bent a little so no two patches repeat
+			// angular splinter polygons on long, raked cells; jittered seeds keep their sizes and edges varied
 			vec2 r = vec2( 0.86 * cp.x + 0.5 * q, - 0.5 * cp.x + 0.86 * q ) / s;
-			r *= vec2( 0.62, 1.0 );
-			r += 0.12 * vec2( camoNoise( 0.9 * r + 4.1 ), camoNoise( 0.9 * r + 9.7 ) );
+			r *= vec2( 0.48, 0.82 );
 			f = camoSplinter( r );
 		} else if ( k > 1.5 && k < 2.5 ) {
 			f = sin( ( 0.75 * cp.x - 0.66 * q ) * 1.15 / s + 2.6 * camoNoise( vec2( 0.33 * cp.x / s + 3.1, 0.33 * q / s ) ) + 1.2 * camoNoise( vec2( 1.1 * cp.x / s, 1.1 * q / s + 5.0 ) ) );
@@ -846,7 +846,7 @@ function bf109(K) {
 // canopy stepped down to the rear gunner, the tall square fin, big chin radiator, a big bomb on its swing crutch
 // (belly: aircraft.js adds no second one), RLM 70/71 splinter, a black-green spinner.
 function ju87(K) {
-  K.paint = owned(K, livery(splinter(RLM70, RLM71, 1.5), RLM65, -0.25), [-3.0, -2.65], [{ x1: 2.9, y: 0.16, spread: 1.6, h: 0.12 }]);
+  K.paint = owned(K, livery(splinter(RLM70, RLM71, 0.7), RLM65, -0.25), [-3.0, -2.65], [{ x1: 2.9, y: 0.16, spread: 1.6, h: 0.12 }]);
   const fus = K.hull([[-4.45, 0.04, 0.14, 0.42], [-4.0, 0.22, 0.52, 0.38], [-3.0, 0.44, 0.82, 0.28], [-1.8, 0.66, 1.06, 0.18], [-0.6, 0.86, 1.22, 0.1], [0.6, 0.94, 1.3, 0.06], [1.8, 0.94, 1.3, 0.02], [2.9, 0.88, 1.18, 0.0], [3.7, 0.78, 0.98, 0.02], [4.2, 0.66, 0.72, 0.06]], { seg: 16, cuts: [-3.0, -2.65], angles: [PI + 0.253, TAU - 0.253] });
   K.canopy(fus, [[2.05, 0.3, 0.04], [1.9, 0.6, 0.32], [1.6, 0.66, 0.44], [0.5, 0.68, 0.46], [0.25, 0.62, 0.34], [-0.6, 0.56, 0.32], [-0.95, 0.2, 0.08], [-1.1, 0.04, 0.0]], { p: 2.8, frames: [1.75, 1.35, 0.95, 0.55, 0.3, -0.1, -0.5], bars: [0.85, PI - 0.85], seg: 10 });
   const top = fus.top(-0.8);
@@ -884,7 +884,7 @@ function ju87(K) {
 // glazed bathtub gondola under it with a gun to the rear, an elliptical wing with rounded tips, inline engines with
 // spiral spinners, a dorsal gun position, a broad rounded fin, splinter camouflage.
 function he111(K) {
-  const base = livery(splinter(RLM70, RLM71, 1.8), RLM65, -0.3), frameX = [4.75, 5.2, 5.6, 5.95, 6.25, 6.48], bars = [0.5, PI / 2, PI - 0.5, PI + 0.6, TAU - 0.6], dark = C(RLM70);
+  const base = livery(splinter(RLM70, RLM71, 0.7), RLM65, -0.3), frameX = [4.75, 5.2, 5.6, 5.95, 6.25, 6.48], bars = [0.5, PI / 2, PI - 0.5, PI + 0.6, TAU - 0.6], dark = C(RLM70);
   const glazed = (p, i) => p.x > 5.2 || (p.x > 4.3 && Math.sin(i.t) > -0.15);
   K.paint = owned(K, (p, n, i) => {
     if (i.tag === 'fus' && glazed(p, i)) return frameX.some((x) => Math.abs(p.x - x) < 0.02) || bars.some((a) => Math.abs(i.t - a) < 0.025) ? dark.clone() : glass(n);
@@ -918,7 +918,7 @@ function he111(K) {
 // cockpit standing up behind the nose engine, the thick wing with the Junkers flap strip, fixed gear on struts,
 // splinter camouflage on corrugated skin.
 function ju52(K) {
-  K.paint = owned(K, livery(corrugated(RLM70, RLM71, 1.9), corrugated(RLM65, RLM65, 1.9), -0.45), [-3.6, -3.1]);
+  K.paint = owned(K, livery(corrugated(RLM70, RLM71, 0.8), corrugated(RLM65, RLM65, 0.8), -0.45), [-3.6, -3.1]);
   const fus = K.hull([[-6.3, 0.12, 0.22, 0.62, 3], [-5.4, 0.42, 0.66, 0.5, 4], [-3.6, 0.88, 1.18, 0.32, 5], [-1.4, 1.22, 1.6, 0.18, 5.5], [1.0, 1.3, 1.72, 0.14, 6], [3.6, 1.3, 1.72, 0.14, 6], [4.6, 1.24, 1.6, 0.1, 5], [5.3, 1.04, 1.18, -0.02, 3.5], [5.7, 0.9, 0.9, -0.06, 2.4]], { seg: 20, cuts: [-3.6, -3.1], angles: [PI + 0.467, TAU - 0.467] });
   // the cockpit: a framed glass house rising from the nose to a little above the cabin roof
   K.canopy(fus, [[5.42, 0.6, -0.04], [5.25, 0.96, 0.2], [5.0, 1.12, 0.26], [4.65, 1.16, 0.2], [4.3, 1.14, 0.1], [4.0, 1.0, 0.0]], { p: 3.2, frames: [5.12, 4.82, 4.45], bars: [PI / 2, 0.75, PI - 0.75], seg: 12, sink: 0.35, fw: 0.04, bw: 0.06 });

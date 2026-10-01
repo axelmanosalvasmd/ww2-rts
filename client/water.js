@@ -1,7 +1,8 @@
-// Water: one see-through mesh over river (W), ford (F) and bridge (=) cells, painted like varnished resin on a terrain
-// model. It draws before every other see-through thing and writes no depth, so the fog of war overlay, smoke and
-// effects all still draw on top of it. A mask texture (4 texels per cell) holds the soft shoreline, a depth guess,
-// the fords and the bridges; a per-vertex flow direction drives the slow drift. gfx.low freezes it (no animation).
+// Water: one see-through mesh over river (W), ford (F) and bridge (=) cells, glossy, with a slow drift. Water that
+// reaches the map edge carries on past it (client/apron.js keeps the bed low there). It draws before every other
+// see-through thing and writes no depth, so the fog of war overlay, smoke and effects all still draw on top of it.
+// A mask texture (4 texels per cell) holds the soft shoreline, a depth guess, the fords and the bridges; a per-vertex
+// flow direction drives the slow drift. gfx.low freezes it (no animation).
 import * as THREE from 'three';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
 import { WET, WATER_LIFT, createWaterLevels } from './water-levels.js';
@@ -9,6 +10,7 @@ import { gfx } from './gfx.js';
 
 const SUB = 4; // mask texels per cell
 const LIFT = WATER_LIFT; // the surface sits this far above a flat bank
+const EDGE_REACH = 900; // metres water carries on past the map edge where it leaves the map
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // Separable box blur, run 3 times (close to a Gaussian). Edges repeat, so water that reaches the map edge stays full.
@@ -163,7 +165,7 @@ float roughnessFactor = mix(roughness, 0.95, wFoam);
 const FRAG_NORMAL = /* glsl */`
 normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 `;
-// a little sky sheen, stronger at grazing angles, so the resin reads as glossy under any sun angle
+// a little sky sheen, stronger at grazing angles, so the surface reads as glossy under any sun angle
 const FRAG_SHEEN = /* glsl */`
 float wFres = 1.0 - clamp(dot(wN, normalize(cameraPosition - vWPos)), 0.0, 1.0);
 totalEmissiveRadiance += uSky * (0.015 + 0.25 * wFres * wFres * wFres) * (1.0 - wFoam);
@@ -303,10 +305,51 @@ export function createWater(grid, map, groundHeight) {
       const a = y * W1 + x, b = a + 1, c = a + W1, d = c + 1;
       index.push(a, c, b, b, c, d);
     }
+
+    // Water that reaches the map edge keeps going: a strip out from each edge cell that carries water, and a block past
+    // each corner. The mask texture repeats its edge texels outward, so the shore and the flow carry on unchanged (the
+    // apron, client/apron.js, keeps the bed low there).
+    const extraPos = [], extraFlow = [], outer = new Map();
+    const vertexAt = (x, y, z, fx, fz) => { extraPos.push(x, y, z); extraFlow.push(fx, fz); return verts + extraPos.length / 3 - 1; };
+    const outerOf = (v, ox, oz) => {
+      const key = `${v}:${ox}:${oz}`;
+      if (!outer.has(key)) outer.set(key, vertexAt(pos[v * 3] + ox * EDGE_REACH, pos[v * 3 + 1], pos[v * 3 + 2] + oz * EDGE_REACH, flow[v * 2], flow[v * 2 + 1]));
+      return outer.get(key);
+    };
+    const at = (v) => [pos[v * 3], pos[v * 3 + 2]];
+    // four vertices around a quad, in order; the first triangle must face up
+    const quad = (p, q, r, s) => {
+      const [px, pz] = p < verts ? at(p) : [extraPos[(p - verts) * 3], extraPos[(p - verts) * 3 + 2]];
+      const [qx, qz] = q < verts ? at(q) : [extraPos[(q - verts) * 3], extraPos[(q - verts) * 3 + 2]];
+      const [rx, rz] = r < verts ? at(r) : [extraPos[(r - verts) * 3], extraPos[(r - verts) * 3 + 2]];
+      const flip = (qz - pz) * (rx - px) - (qx - px) * (rz - pz) < 0; // (q - p) x (r - p) points down: wind the other way
+      if (flip) index.push(p, r, q, p, s, r); else index.push(p, q, r, p, r, s);
+    };
+    const edgeCell = (x, y) => !Number.isNaN(wl[y * w + x]);
+    for (let x = 0; x < w; x++) {
+      if (edgeCell(x, 0)) quad(x, x + 1, outerOf(x + 1, 0, -1), outerOf(x, 0, -1));
+      const s = h * W1 + x;
+      if (edgeCell(x, h - 1)) quad(s, s + 1, outerOf(s + 1, 0, 1), outerOf(s, 0, 1));
+    }
+    for (let y = 0; y < h; y++) {
+      const v = y * W1;
+      if (edgeCell(0, y)) quad(v, v + W1, outerOf(v + W1, -1, 0), outerOf(v, -1, 0));
+      if (edgeCell(w - 1, y)) quad(v + w, v + w + W1, outerOf(v + w + W1, 1, 0), outerOf(v + w, 1, 0));
+    }
+    for (const [cx, cy, ox, oz] of [[0, 0, -1, -1], [w - 1, 0, 1, -1], [w - 1, h - 1, 1, 1], [0, h - 1, -1, 1]]) {
+      if (!edgeCell(cx, cy)) continue;
+      const v = (oz < 0 ? 0 : h) * W1 + (ox < 0 ? 0 : w), [x, z] = at(v), y = pos[v * 3 + 1], f = [flow[v * 2], flow[v * 2 + 1]];
+      quad(v, vertexAt(x + ox * EDGE_REACH, y, z, ...f), vertexAt(x + ox * EDGE_REACH, y, z + oz * EDGE_REACH, ...f), vertexAt(x, y, z + oz * EDGE_REACH, ...f));
+    }
+    const allPos = new Float32Array(pos.length + extraPos.length), allNor = new Float32Array(nor.length + extraPos.length), allFlow = new Float32Array(flow.length + extraFlow.length);
+    allPos.set(pos); allPos.set(extraPos, pos.length);
+    allNor.set(nor);
+    for (let i = nor.length + 1; i < allNor.length; i += 3) allNor[i] = 1;
+    allFlow.set(flow); allFlow.set(extraFlow, flow.length);
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-    geo.setAttribute('flow', new THREE.BufferAttribute(flow, 2));
+    geo.setAttribute('position', new THREE.BufferAttribute(allPos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(allNor, 3));
+    geo.setAttribute('flow', new THREE.BufferAttribute(allFlow, 2));
     geo.setIndex(index);
     geo.computeBoundingSphere();
     mesh.geometry.dispose();

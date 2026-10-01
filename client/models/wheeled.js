@@ -24,9 +24,9 @@ const shade = (c, k, kb = 1) => { const s = c.clone().multiplyScalar(k); s.b *= 
 // The factory paints, picked against the game's warm sun and blue shade: US olive drab, German panzer grey (the
 // armored cars) and dunkelgelb (the late rocket half-track, with olive and red-brown patches), Soviet 4BO green.
 // The textures fade and mottle them further, so they are a little richer here than they end up on screen.
-const SCHEME = { od: 0x575f3e, grey: 0x4f5356, green: 0x505e3a, gelb: 0x857c5c };
+const SCHEME = { od: 0x575f3e, grey: 0x585752, green: 0x505e3a, gelb: 0x857c5c };
 function paints(look, scheme) {
-  const base = col(SCHEME[scheme] ?? look.vehicle), kb = scheme === 'grey' ? 1 : 0.95; // grey keeps its blue in shadow
+  const base = col(SCHEME[scheme] ?? look.vehicle), kb = scheme === 'grey' ? 0.93 : 0.95; // warm the dark shades against the sky fill
   return {
     base, mid: shade(base, 0.84, kb), dark: shade(base, 0.66, kb * kb), deep: shade(base, 0.42, kb * kb), light: shade(base, 1.12),
     owner: col(look.color, 'plain'),

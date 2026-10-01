@@ -15,6 +15,7 @@ import { gfx } from './gfx.js';
 import { modelMaterial } from './model-textures.js';
 import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier, AIM_SHIFT } from './models/infantry.js';
+import { moveSquad, gaitWeights } from './squad-motion.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
@@ -37,6 +38,19 @@ const DARK = 0x2a2a24;
 // one material for every plain-colored part; the color sits in the geometry, the texture detail comes from what each
 // vertex is made of (painted armor where a mesh built outside mergeParts does not say)
 export const PAINT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'armor-paint', grime: true });
+// Neutral tone mapping removes most of the low, neutral sky fill. Keep shaded vehicle paint readable with a
+// diffuse-colored bounce fill, strongest away from the sun. It follows the textured paint, including dark tires.
+const vehiclePaint = new THREE.MeshLambertMaterial({ vertexColors: true });
+vehiclePaint.onBeforeCompile = (shader) => {
+  shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  #if NUM_DIR_LIGHTS > 0
+    totalEmissiveRadiance += diffuseColor.rgb * (0.08 + 0.45 * (1.0 - max(dot(normal, directionalLights[0].direction), 0.0)));
+  #else
+    totalEmissiveRadiance += diffuseColor.rgb * 0.3;
+  #endif`);
+};
+vehiclePaint.customProgramCacheKey = () => 'vehicle-bounce-fill';
+export const VEHICLE_PAINT = modelMaterial(vehiclePaint, { mat: 'armor-paint', grime: true });
 const colors = new Map();
 const colorOf = (hex) => colors.get(hex) || colors.set(hex, new THREE.Color(hex)).get(hex);
 const cloths = new Map();
@@ -155,12 +169,12 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
     group.traverse((o) => {
       const d = o.userData;
       if (!d.geo) return;
-      const material = d.paint.isMaterial ? d.paint : PAINT;
+      const material = d.paint.isMaterial ? d.paint : look === 'vehicle' ? VEHICLE_PAINT : PAINT;
       if (!buckets.has(material)) buckets.set(material, []);
-      buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT ? colorOf(d.paint) : null, mat: d.mat });
+      buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT || material === VEHICLE_PAINT ? colorOf(d.paint) : null, mat: d.mat });
     });
-    list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT, look, group.position.y) }));
-    if (poses) poseMorphs(list[0].geometry, poses);
+    list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT || material === VEHICLE_PAINT, look, group.position.y) }));
+    if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle);
     baked.set(key, list);
   }
   return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; return m; });
@@ -209,10 +223,11 @@ export const postureOf = (supp, flags, cover) => (flags & 1 ? 3 : supp >= POSTUR
 // The posture morph targets: poses holds the figure's kneeling, prone and running builds ({position, normal}, the
 // same vertices as the standing one). Each is stored undone by its pose's lean, squash and shift, which animate()
 // applies to the whole body, so the two cancel at full weight.
-function poseMorphs(g, poses) {
-  const n = g.attributes.position.count, pos = [], nor = [];
-  for (let k = 1; k < POSES.length; k++) {
-    const [lean, sy, tx, ty] = POSES[k], c = Math.cos(lean), s = Math.sin(lean), P = poses[k - 1].position, N = poses[k - 1].normal;
+function poseMorphs(g, poses, gait = [], muzzle) {
+  const n = g.attributes.position.count, pos = [], nor = [], tips = muzzle ? [muzzle.clone()] : null;
+  const frames = [...poses.map((p, i) => ({ ...p, posture: i + 1 })), ...gait];
+  for (const frame of frames) {
+    const k = frame.posture, [lean, sy, tx, ty] = POSES[k], c = Math.cos(lean), s = Math.sin(lean), P = frame.position, N = frame.normal;
     if (P.count !== n) throw new Error(`posture ${k}: ${P.count} vertices, not ${n}`);
     const p = new THREE.BufferAttribute(new Float32Array(n * 3), 3), q = new THREE.BufferAttribute(new Float32Array(n * 3), 3);
     for (let i = 0; i < n; i++) {
@@ -222,7 +237,12 @@ function poseMorphs(g, poses) {
       q.setXYZ(i, mx / len, my / len, N.getZ(i) / len);
     }
     pos.push(p); nor.push(q);
+    if (tips) {
+      const tip = frame.muzzle ?? muzzle, x = tip.x - tx, y = tip.y - ty;
+      tips.push(new THREE.Vector3(x * c + y * s, (y * c - x * s) / sy, tip.z));
+    }
   }
+  g.userData.muzzles = tips;
   g.morphAttributes.position = pos; g.morphAttributes.normal = nor;
   g.computeBoundingSphere();
 }
@@ -312,17 +332,17 @@ export function buildModel(v, root, f, fac, def) {
     SLOTS[type].forEach(([x, z], i) => {
       // client/models/infantry.js builds the figure, near and far, with its kneeling, prone and running builds in
       // userData.poses for the posture morph targets
-      const s = soldier(figure, fac, i, f), poses = (g) => g.children[0].userData.geo.userData.poses;
+      const s = soldier(figure, fac, i, f), poses = (g) => g.children[0].userData.geo.userData;
       const hi = bakeMeshes(s.near, `${key}|man|${s.kit}`, false, poses(s.near), 'soldier'), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, poses(s.far), 'soldier');
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down
       const man = new THREE.Group(), pose = new THREE.Group();
       man.position.set(x * 1.3, 0, z * 1.3); man.scale.setScalar(scale);
       pose.add(...hi, ...lo); man.add(pose);
-      man.userData = { slot: [x * 1.3, z * 1.3], pose, hi, lo };
+      man.userData = { slot: [x * 1.3, z * 1.3], pose, hi, lo, meshes: [...hi, ...lo], index: i };
       root.add(man); v.models.push(man);
     });
-    v.squad = { w: [1, 0, 0, 0], far: false };
+    v.squad = { w: [1, 0, 0, 0], far: false, moveFire: def.w?.moveFire !== undefined };
     // the weapon of a gun squad: one merged mesh. Guns that traverse (at, flak) are the whole of v.turret, with the muzzle in v.fxTip
     // Each also has a cheap far version, shown with the far-away soldiers (animate swaps them).
     const gm = gunModel(type, fac, f);
@@ -338,7 +358,7 @@ export function buildModel(v, root, f, fac, def) {
 
 // Per frame for each unit: soldiers blend toward the posture the snapshot asks for (over POSTURE.blend seconds) and
 // swap to the far-away model beyond the LOD distance. eye is the camera position.
-export function animate(v, dt, eye) {
+export function animate(v, dt, eye, groundAt) {
   const sq = v.squad;
   if (!sq) return;
   const lim = gfx.low ? LOD.low : LOD.high, dx = eye.x - v.x, dy = eye.y - v.root.position.y, dz = eye.z - v.z, d2 = dx * dx + dy * dy + dz * dz;
@@ -349,23 +369,45 @@ export function animate(v, dt, eye) {
     if (sq.guns) { sq.guns.hi.visible = !far; sq.guns.lo.visible = far; }
   }
   const goal = postureOf(v.supp ?? 0, v.flags ?? 0, v.cover), w = sq.w, step = dt / POSTURE.blend;
-  let moved = false;
   for (let i = 0; i < 4; i++) {
     const d = (i === goal ? 1 : 0) - w[i];
-    if (d) { w[i] += Math.max(-step, Math.min(step, d)); moved = true; }
+    if (d) { w[i] += Math.max(-step, Math.min(step, d)); }
   }
-  if (!moved && goal === 0) return; // standing: the height applySnapshot sets is right
-  const p = [0, 0, 0, 0, 0, 0];
-  let sum = 0;
-  for (let i = 0; i < 4; i++) if (w[i]) { sum += w[i]; for (let k = 0; k < 6; k++) p[k] += w[i] * POSES[i][k]; }
-  for (let k = 0; k < 6; k++) p[k] /= sum;
-  const ox = p[4] - HAND[0], oy = p[5] - HAND[1], sink = v.cover === 2 ? -0.6 : 0;
+  const aimGoal = sq.moveFire && v.tgt && !(v.flags & 1) ? 1 : 0;
+  const aimBlend = sq.aimBlend ?? 0;
+  sq.aimBlend = aimBlend + Math.max(-step, Math.min(step, aimGoal - aimBlend));
+  moveSquad(v, dt);
+  const sum = w.reduce((a, b) => a + b, 0);
+  const sink = v.cover === 2 ? -0.6 : 0;
   for (const man of v.models) {
-    const u = man.userData, s = man.scale.x;
-    man.position.set(u.slot[0] + ox * s, sink + oy * s, u.slot[1]);
-    u.pose.rotation.z = p[0]; u.pose.scale.y = p[1]; u.pose.position.set(p[2] - ox, p[3] - oy, 0);
-    for (const m of u.hi) for (let k = 0; k < 3; k++) m.morphTargetInfluences[k] = w[k + 1] / sum; // the posture builds
-    for (const m of u.lo) for (let k = 0; k < 3; k++) m.morphTargetInfluences[k] = w[k + 1] / sum;
+    const u = man.userData, s = man.scale.x, motion = u.motion;
+    const blend = motion.blend;
+    const aim = sq.aimBlend * blend * w[0] / sum;
+    const upright = blend * (w[0] + w[3]) / sum - aim, crouch = blend * w[1] / sum, crawl = blend * w[2] / sum;
+    const gait = u.gait ??= new Float64Array(20), pw = u.postureWeights ??= new Float64Array(4), mp = u.poseValues ??= new Float64Array(6);
+    gait.fill(0); mp.fill(0);
+    gaitWeights(motion.phase, upright, 8, gait, 0); gaitWeights(motion.phase, aim, 4, gait, 8);
+    gaitWeights(motion.phase, crouch, 4, gait, 12); gaitWeights(motion.phase, crawl, 4, gait, 16);
+    for (let i = 0; i < 4; i++) pw[i] = w[i] / sum * (1 - blend);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 6; j++) mp[j] += pw[i] * POSES[i][j];
+    for (let j = 0; j < 6; j++) mp[j] += upright * POSES[3][j] + aim * POSES[0][j] + crouch * POSES[1][j] + crawl * POSES[2][j];
+    const ox = mp[4] - HAND[0], oy = mp[5] - HAND[1];
+    const tips = u.hi[0].geometry.userData.muzzles;
+    if (tips) {
+      const tip = u.muzzle ??= new THREE.Vector3();
+      tip.copy(tips[0]).multiplyScalar(pw[0]);
+      for (let j = 0; j < tips.length - 1; j++) tip.addScaledVector(tips[j + 1], j < 3 ? pw[j + 1] : gait[j - 3]);
+      const c = Math.cos(mp[0]), sn = Math.sin(mp[0]), x = tip.x, y = tip.y * mp[1];
+      tip.set(x * c - y * sn + mp[2] - ox, x * sn + y * c + mp[3] - oy, tip.z);
+    }
+    const floor = groundAt && !v.trench ? groundAt(motion.x, motion.z) - v.root.position.y : 0;
+    man.position.set(motion.localX + ox * s, floor + sink + oy * s, motion.localZ);
+    man.rotation.y = motion.localYaw;
+    u.pose.rotation.z = mp[0]; u.pose.scale.y = mp[1]; u.pose.position.set(mp[2] - ox, mp[3] - oy, 0);
+    for (const m of u.meshes) {
+      for (let j = 0; j < 3; j++) m.morphTargetInfluences[j] = pw[j + 1];
+      for (let j = 0; j < gait.length; j++) m.morphTargetInfluences[j + 3] = gait[j];
+    }
   }
 }
 
