@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
+import { setupLight, renderFrame } from './light.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -137,19 +138,10 @@ function renderLobby(m) {
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa9b4b0);
-scene.fog = new THREE.Fog(0xa9b4b0, 160, 340);
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-scene.add(new THREE.HemisphereLight(0xe4ecf0, 0x4a4630, 1.4));
-const sun = new THREE.DirectionalLight(0xfff0d0, 2.4);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 500 });
-scene.add(sun, sun.target);
+setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -206,7 +198,6 @@ function startGame(m) {
   world = new THREE.Group(); scene.add(world);
   units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
-  sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
   // ground: painted canvas, 8px per cell
   const px = 8, cv = document.createElement('canvas'); cv.width = map.w * px; cv.height = map.h * px;
@@ -1492,7 +1483,7 @@ renderer.setAnimationLoop(() => {
   const pulse = 0.25 + 0.2 * Math.sin(now / 120);
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
-  renderer.render(scene, camera);
+  renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
 });
 
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
