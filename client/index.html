@@ -188,6 +188,10 @@
   .vet { color: #6b4708; font-size: 13px; letter-spacing: 1px; }
   #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
   #abil .ob { width: auto; }
+  /* autocast on: a dashed pencil border and a small A at the right edge, under the hotkey and clear of the cost text
+     along the bottom (Classic shows "15 Mun" there, which fills the button) */
+  #abil .ob.auto { border: 1px dashed var(--brass); }
+  #abil .ob.auto::after { content: 'A'; position: absolute; top: 20px; right: 3px; font: 700 11px/1 var(--type); color: var(--brass); }
 
   /* bottom center: the Command Card, between the bottom-left column and the minimap */
   #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(100vw - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;

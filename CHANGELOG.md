@@ -5,6 +5,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Autocast, Warcraft 3 style: right-click an ability button to let the selected units of that type use it on their
+  own. Rifles throw grenades at infantry in cover, trenches or houses within 18 m, MGs fire Suppressive Fire at squads
+  advancing on them, AT guns load an AP round against vehicles, tanks pop smoke when badly hurt under anti-tank fire,
+  rocket trucks and mortars barrage crowds or dug-in enemies, Rangers plant a satchel on a house or bunker they were
+  told to attack once they are within 20 m of it (they stop to shoot at 26 m, so this is for close fights), and
+  Conscripts shout Ura! when pinned on the move. Units only act on what their side can see, pay
+  the same cooldowns and Munitions as a click, never override an ability you ordered, and never fire while retreating.
+  It starts on where abilities are free and off in Classic, where they cost Munitions. A button with autocast on has a
+  dashed brass border and a small A under its hotkey (clear of the Munitions cost in Classic), and the game remembers your choice per
+  unit type for new units.
+  Balance (300 paired AI-vs-AI Conquest matches, on vs off): 2nd place VP vs winner 0.57 both, lead changes 2.24 vs
+  2.23, length 9.1 vs 9.0 min, about 98 vs 88 abilities used per match; faction wins 35/36/29% vs 39/31/30% (probably
+  noise). The Tiger rear-armor test now turns autocast off so the AT gun's AP round does not skew it.
+  Checked live: an MG fired Suppressive Fire by itself, a rifle squad threw a grenade by itself at enemy squads
+  holding a capture point, and an MG turned off stayed off in the next match. Seen live in review: a rocket truck barraged
+  by itself and a tank popped smoke at 90 hp, enemy units never show the flag, and the switch, its memory and the Classic
+  default work at 1920x1080 and 1366x768. Not seen live: a rifle squad turned off holding its grenade, and the AP round,
+  satchel and Ura!; all of those, plus Suppressive Fire, smoke, barrage (friends in the blast, units out of sight) and a
+  walked-away squad, are now covered by tests.
 - Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
   "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
   like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends

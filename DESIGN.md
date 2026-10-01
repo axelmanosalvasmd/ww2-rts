@@ -99,6 +99,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   orange attack-move, white retreat, red attack, yellow dig/build. The server sends these plans for your own units
   only, so nothing leaks through the fog.
 - F fires one ability: the first ready type in rifle > MG > AT > tank > rocket order; others are click-only in the bar.
+  Right-clicking an ability button turns autocast on or off (see Autocast below).
 - Garrison: right-click a house with rifles/MGs. One squad per house cell (edge cells, so they can shoot out).
   Inside: 35% incoming accuracy, +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.
 - Tanks shell a house on right-click (fire-at), and every tank round damages the structure it lands on.
@@ -110,6 +111,38 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   lowers a 3x3 patch one level, each artillery shell one cell (never more than one below a neighbour, so no
   inescapable pits).
 - Balance: garrisons alone dropped 2nd place to 55%; with rockets it's back to 63% (default) / 61% (River Towns).
+
+## Autocast (2026-10-01, all modes)
+- Warcraft 3 style: each unit with an ability has an autocast switch (`u.auto`), set with `{t:'autocast', ids, on}`.
+  The server accepts it for your own units that have an ability and ignores the rest of the list.
+- Default: on where the ability is free (Conquest, Assault, Annihilation), off in Classic, where abilities cost
+  Munitions, so a squad never spends the stockpile without being told to. The AI never turns it on in Classic.
+- The server checks every 0.5 s (10 ticks), staggered by unit id. A unit with autocast on, its cooldown ready, no
+  ability order in flight and not retreating looks for a reason, using only what its side can see:
+  - Grenade: the nearest enemy infantry in cover, in a trench or in a house within 18 m (never from inside a house).
+  - Suppressive fire: the MG is set up (not moving) and an enemy squad in range and sight is advancing towards it.
+  - AP round: the AT gun is shooting at a vehicle.
+  - Tank smoke: the tank is below half health and took an anti-tank hit in the last 3 s.
+  - Rocket or mortar barrage: a spot with 3+ visible enemies in one blast area, or anyone dug in (house, trench,
+    bunker); the most crowded or dug-in spot wins.
+  - Satchel: the house or bunker the Ranger squad was ordered to attack, once within 20 m. An attack order stops the
+    squad at its weapon range (26 m), so this fires in close fights, not when Rangers are sent at a house from afar.
+    Open question: raise the reach to 26 m so a Ranger sent at a house or bunker always runs in and plants it
+    (it would also send Rangers into a bunker's machine gun for little damage), then re-run the balance check.
+  - Ura!: the squad is pinned (suppression 50+) while moving.
+  Aimed abilities (grenade, barrage, satchel) skip spots where the blast would also hit a friendly unit.
+- It goes through the same ability command as a player's click, so cooldowns, Munitions and the usual checks apply.
+  An autocast grenade or barrage in range goes off without stopping the unit's current orders; a satchel charge walks
+  up first and the squad stays where it planted it. A player's own ability order is never replaced while it is in flight.
+- The flag reaches the owner only (snapshot flag 1024, stripped for everyone else). The HUD marks an ability button
+  whose selected units all have autocast on with a dashed brass border and a small A, and the tooltip says
+  "Right-click: autocast on/off". Right-clicking toggles it for the selected units of that type: on unless all are on.
+- The client remembers each player's last choice per unit type, separately for Classic and the free modes (local
+  storage), and applies it to new units of that type as they arrive.
+- Balance (300 paired AI-vs-AI Conquest matches, default map, 3 AIs, autocast on vs forced off): 2nd place VP vs winner
+  0.57 both, lead changes 2.24 vs 2.23, length 9.1 vs 9.0 min (median 9.1 vs 9.2), about 98 vs 88 ability uses per match,
+  25.2 vs 25.3 units killed. Faction wins USA/GER/USSR 35/36/29% vs 39/31/30%: Germany up and USA down about 4 points,
+  roughly 1.5 to 2 standard deviations, so probably noise. Classic is unchanged because autocast starts off there.
 
 ## Classic mode (decided and built 2026-09-30, all 5 slices)
 Base building as a third lobby mode next to Conquest and Assault. Terms are defined in CONTEXT.md.

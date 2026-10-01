@@ -7,6 +7,7 @@ import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { think } from './shared/ai.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief } from './client/relief.js';
+import { createAutocast } from './client/autocast.js';
 
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
@@ -668,7 +669,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   g.players[1].slot = 1;
   command(g, 1, { t: 'buy', unit: 'tiger' });
   const tg = [...g.units.values()].at(-1); tg.x = 20; tg.z = 20; tg.rot = 0; // facing +x
-  const at = put(g, 0, 'at', 40, 20); at.still = 5;
+  const at = put(g, 0, 'at', 40, 20); at.still = 5; at.auto = false; // plain rounds: no autocast AP round
   const orig = Math.random; Math.random = () => 0;
   run(g, 0.2); const front = 900 - tg.hp;
   tg.hp = 900; at.x = 1; at.cooldown = 0; run(g, 0.2); const rear = 900 - tg.hp;
@@ -992,6 +993,192 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const c = createGame(map, ['a', 'b'], false), r2 = [...c.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   command(c, 0, { t: 'ability', ids: [r2.id], x: r2.x + 5, z: r2.z }); run(c, 0.2);
   assert.ok(r2.cd > 0, 'free in Conquest');
+}
+
+// Autocast (Warcraft 3 style): right-click an ability and the unit uses it by itself. On by default where abilities are
+// free, off where they cost Munitions. It goes through the ability command (cost, cooldown) and sees only what its side sees.
+{
+  const cover = [...empty]; cover[10] = '.'.repeat(10) + '+' + '.'.repeat(9); // sandbags at x 20-22, z 20-22
+  const setup = (rows) => {
+    const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+    const r = put(g, 0, 'rifle', 10, 21), e = put(g, 1, 'rifle', 21, 21); // 11 m apart: grenade range is 18
+    e.auto = false;
+    return { g, r, e };
+  };
+  // grenades r throws in secs (both rifle squads kept at full strength so the duel never ends first)
+  const throws = (g, r, secs) => {
+    let n = 0;
+    for (let i = 0; i < secs * 20; i++) { const cd = r.cd; for (const u of g.units.values()) u.hp = 100; step(g); if (r.cd > cd + 1) n++; }
+    return n;
+  };
+
+  // the command: your own units that have an ability, and a real on/off
+  {
+    const { g, r, e } = setup(empty), flak = put(g, 0, 'flak', 4, 4);
+    assert.equal(r.auto, true, 'free abilities autocast by default');
+    assert.equal(flak.auto, false, 'nothing to autocast without an ability');
+    assert.equal(command(g, 0, { t: 'autocast', ids: [r.id], on: 'yes' }), 'blocked', 'on must be true or false');
+    assert.equal(command(g, 0, { t: 'autocast', ids: [e.id, flak.id], on: true }), 'needs', 'enemy units and units without an ability are refused');
+    assert.equal(e.auto, false, "an enemy's autocast is not yours to change");
+    assert.equal(command(g, 0, { t: 'autocast', ids: [r.id, flak.id], on: false }), undefined);
+    assert.equal(r.auto, false, 'autocast turned off');
+  }
+
+  // a grenade at the squad in cover, once per cooldown; nothing while autocast is off
+  {
+    const { g, r, e } = setup(cover);
+    let thrown = null;
+    for (let i = 0; i < 20 && !thrown; i++) { step(g); thrown = g.nades.find(n => n.owner === 0); }
+    assert.ok(thrown && Math.hypot(thrown.x - e.x, thrown.z - e.z) < 2, 'autocast grenade thrown at the squad in cover');
+    assert.ok(throws(g, r, 10) === 0 && r.cd > 0, 'one throw per cooldown');
+    r.cd = 0; r.auto = false;
+    assert.equal(throws(g, r, 3), 0, 'autocast off: no grenade');
+    r.auto = true;
+    assert.equal(throws(g, r, 1), 1, 'autocast on again: the cooldown was all that held it');
+  }
+
+  // not at a squad its side cannot see (a house in between)
+  {
+    const rows = cover.map((row, z) => (z >= 8 && z <= 12 ? row.slice(0, 7) + 'B' + row.slice(8) : row));
+    const { g, r, e } = setup(rows);
+    run(g, 3);
+    assert.equal(g.players[0].visible.has(e.id), false, 'the house hides the squad');
+    assert.ok(r.cd <= 0 && !r.nade, 'no grenade at what it cannot see');
+  }
+
+  // a retreating squad never autocasts, and a player's own ability order is never replaced
+  {
+    const { g, r } = setup(cover);
+    g.players[0].spawn = { x: 3, z: 39 };
+    command(g, 0, { t: 'retreat', ids: [r.id] });
+    assert.equal(throws(g, r, 1.5), 0, 'no autocast while retreating');
+    assert.ok(r.retreating, 'still on the way home');
+    const o = setup(cover);
+    command(o.g, 0, { t: 'ability', ids: [o.r.id], x: 35, z: 39 }); // 31 m: out of range, so the squad walks first
+    run(o.g, 1);
+    assert.ok(o.r.nade?.x === 35 && !o.r.nade.auto, "the player's grenade order stands");
+  }
+
+  // Classic: off by default, and an autocast grenade waits for Munitions, then pays for itself
+  {
+    const g = createGame(blank(cover), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), p = g.players[0];
+    const of = (slot) => [...g.units.values()].find(u => u.owner === slot && u.type === 'rifle');
+    const r = of(0), e = of(1);
+    for (const u of [...g.units.values()]) if (u.type === 'engineer') g.units.delete(u.id);
+    assert.equal(r.auto, false, 'abilities that cost Munitions start with autocast off');
+    r.x = 10; r.z = 21; e.x = 21; e.z = 21; r.auto = true; p.mun = 0;
+    run(g, 2);
+    assert.ok(r.cd <= 0 && !r.nade, 'no Munitions, no grenade');
+    p.mun = 20;
+    run(g, 1);
+    assert.ok(r.cd > 25 && Math.abs(p.mun - 5) < 1, `autocast grenade paid 15 Munitions (${p.mun})`);
+  }
+
+  // the snapshot tells only the owner (flag 1024), cached or not
+  {
+    const { g, r } = setup(empty);
+    run(g, 0.5);
+    const flagOf = (s) => s.units.find(row => row[0] === r.id)[12] & sim.AUTO_FLAG;
+    const cache = snapshotCache(g);
+    assert.ok(flagOf(snapshotFor(g, 0, [])) && flagOf(snapshotFor(g, 0, [], [], cache)), 'the owner sees autocast on');
+    assert.equal(flagOf(snapshotFor(g, 1, [])), 0, 'the enemy does not');
+    assert.equal(flagOf(snapshotFor(g, 1, [], [], snapshotCache(g))), 0, 'the enemy does not (cached)');
+  }
+
+  // the client remembers the choice per unit type (Classic apart) and gives it to new units once
+  {
+    const sent = [], store = new Map(), storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+    const ac = createAutocast({ storage, send: (c) => sent.push(c) }), A = sim.AUTO_FLAG;
+    const row = (id, type, owner, flags) => { const x = Array(15).fill(0); x[0] = id; x[1] = type; x[2] = owner; x[12] = flags; return x; };
+    assert.equal(ac.toggle('rifle', [{ id: 1, flags: A }, { id: 2, flags: 0 }], false), true, 'mixed selection: turn it on for all');
+    assert.equal(ac.toggle('rifle', [{ id: 1, flags: A }, { id: 2, flags: A }], false), false, 'all on: turn it off');
+    assert.deepEqual(sent.at(-1), { t: 'autocast', ids: [1, 2], on: false });
+    sent.length = 0;
+    ac.adopt([row(5, 'rifle', 0, A), row(6, 'rifle', 0, 0), row(7, 'mg', 0, A), row(8, 'rifle', 1, A)], 0, false);
+    assert.deepEqual(sent, [{ t: 'autocast', ids: [5], on: false }], 'a new rifle squad takes the remembered choice; other types and enemies are left alone');
+    ac.adopt([row(5, 'rifle', 0, A)], 0, false);
+    assert.equal(sent.length, 1, 'once per unit, so turning one back on by hand sticks');
+    const again = createAutocast({ storage, send: (c) => sent.push(c) });
+    again.adopt([row(9, 'rifle', 0, A)], 0, true);
+    assert.equal(sent.length, 1, 'Classic keeps its own memory');
+    again.adopt([row(10, 'rifle', 0, A)], 0, false);
+    assert.deepEqual(sent.at(-1), { t: 'autocast', ids: [10], on: false }, 'remembered across matches');
+  }
+}
+
+// Autocast, the other abilities: each has its own reason to fire (the cooldown starting is the sign), judged from what the
+// unit's side can see. Enemies here have autocast off and never shoot, so only the unit under test acts.
+{
+  const wide = Array(20).fill('.'.repeat(60));
+  const rich = (g) => { g.players.forEach(p => (p.mp = 5000)); return g; };
+  const setup = (n = 2) => rich(fresh(wide, n));
+  const within = (g, secs, done) => { for (let i = 0; i < secs * 20; i++) { step(g); if (done()) return true; } return false; };
+  const foe = (g, type, x, z) => { const u = put(g, 1, type, x, z); u.auto = false; u.cooldown = 1e9; return u; };
+  const crowd = (g, xs) => xs.forEach(x => foe(g, 'rifle', x, 21 + (x % 2)));
+
+  // Suppressive Fire: for a squad advancing on the MG, not one walking away
+  {
+    const g = setup(), mg = put(g, 0, 'mg', 20, 21), e = foe(g, 'rifle', 45, 21); mg.still = 5; // set up
+    command(g, 1, { t: 'move', orders: [[e.id, 22, 21]] });
+    assert.ok(within(g, 2, () => mg.cd > 0 && mg.buff > 0), 'the MG suppresses a squad coming at it');
+    const h = setup(), mg2 = put(h, 0, 'mg', 20, 21), away = foe(h, 'rifle', 40, 21); mg2.still = 5;
+    command(h, 1, { t: 'move', orders: [[away.id, 58, 21]] });
+    assert.ok(!within(h, 3, () => mg2.cd > 0), 'no Suppressive Fire at a squad walking away');
+  }
+  // AP round: for a vehicle it is shooting at, not for infantry
+  {
+    const g = setup(), at = put(g, 0, 'at', 20, 21); at.still = 5; foe(g, 'tank', 50, 21);
+    assert.ok(within(g, 2, () => at.cd > 0), 'the AT gun loads AP against a tank');
+    const h = setup(), at2 = put(h, 0, 'at', 20, 21); at2.still = 5; foe(h, 'rifle', 40, 21);
+    assert.ok(!within(h, 2, () => at2.cd > 0), 'no AP round against infantry');
+  }
+  // smoke: only a badly hurt tank that was just hit by anti-tank fire
+  {
+    const smokeAfter = (hp, hit) => {
+      const g = setup(), tk = put(g, 0, 'tank', 20, 21); tk.hp = hp; if (hit) tk.atHit = g.tick;
+      return within(g, 1, () => g.smokes.length > 0 && tk.cd > 0);
+    };
+    assert.equal(smokeAfter(100, true), true, 'a hurt tank under anti-tank fire pops smoke');
+    assert.equal(smokeAfter(300, true), false, 'a healthy tank does not');
+    assert.equal(smokeAfter(100, false), false, 'a hurt tank nobody is hitting does not');
+  }
+  // barrage: a crowd it can see, never over its own troops, never at what its side cannot see
+  {
+    const spotter = (g, x) => { put(g, 0, 'rifle', x, 21).auto = false; };
+    for (const type of ['rocket', 'mortar']) {
+      const g = setup(), gun = put(g, 0, type, 20, 21); gun.still = 5; crowd(g, [46, 47, 48]); spotter(g, 30);
+      assert.ok(within(g, 2, () => gun.cd > 0), `${type}: a crowd of three it can see gets a barrage`);
+    }
+    const near = setup(), r1 = put(near, 0, 'rocket', 20, 21); crowd(near, [50, 51, 52]); spotter(near, 45);
+    assert.ok(!within(near, 2, () => r1.cd > 0), 'a friendly squad inside the blast stops it');
+    const hidden = setup(), r2 = put(hidden, 0, 'rocket', 20, 21); crowd(hidden, [55, 56, 57]);
+    assert.ok(!within(hidden, 2, () => r2.cd > 0) && hidden.players[0].visible.size === 0, 'a crowd its side cannot see is left alone');
+    const two = setup(), r3 = put(two, 0, 'rocket', 20, 21); crowd(two, [50, 51]); spotter(two, 30);
+    assert.ok(!within(two, 2, () => r3.cd > 0), 'two in the open are not worth a barrage');
+  }
+  // Ura!: a pinned squad on the move, not one standing still
+  {
+    const g = setup(3), cs = put(g, 2, 'conscript', 20, 21); cs.supp = 70;
+    command(g, 2, { t: 'move', orders: [[cs.id, 50, 21]] });
+    assert.ok(within(g, 1, () => cs.sprint > 0), 'pinned conscripts on the move shout Ura!');
+    const h = setup(3), idle = put(h, 2, 'conscript', 20, 21);
+    assert.ok(!within(h, 1.5, () => { idle.supp = 70; return idle.sprint > 0; }), 'pinned but standing still: no Ura!');
+  }
+  // satchel: Rangers ordered to attack a squad in a house walk up and plant it once within 20 m (they stop to shoot at 26 m)
+  {
+    const rows = wide.map((row, z) => (z === 9 || z === 10 ? row.slice(0, 30) + 'BB' + row.slice(32) : row));
+    const planted = (auto) => {
+      const g = rich(fresh(rows)), e = foe(g, 'rifle', 75, 20);
+      command(g, 1, { t: 'garrison', ids: [e.id], x: 63, z: 20 });
+      assert.ok(within(g, 20, () => e.garrison >= 0), 'the squad took the house');
+      const rg = put(g, 0, 'ranger', 82, 20); rg.auto = auto;
+      run(g, 0.5);
+      assert.equal(command(g, 0, { t: 'attack', ids: [rg.id], target: e.id }), undefined);
+      return within(g, 10, () => rg.cd > 0);
+    };
+    assert.equal(planted(true), true, 'the Rangers plant a satchel on the house they were told to attack');
+    assert.equal(planted(false), false, 'with autocast off they only shoot');
+  }
 }
 
 // Fuel (Classic): contested depots and the HQ pay Fuel; vehicles need it. New units: camouflaged sniper, mortar barrage.
