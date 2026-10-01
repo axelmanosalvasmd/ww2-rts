@@ -243,7 +243,9 @@ Art direction: **sand table**. The battlefield reads as a painted terrain model 
 is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
 mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
 The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
-the HUD.
+the HUD. Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
+lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
+still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
 - Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
   particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.

@@ -59,7 +59,8 @@ function part(geo, paint, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) {
 }
 
 // Concatenate the parts' attributes into one geometry: transforms baked in, normals through the normal matrix,
-// indices offset by the vertices before them. Colors per vertex when the parts share PAINT.
+// indices offset by the vertices before them. Colors per vertex when the parts share PAINT (the part's color times
+// the shape's own vertex colors when it has them).
 export function mergeParts(parts, withColor) {
   let nv = 0, ni = 0;
   for (const p of parts) { const n = p.geo.attributes.position.count; nv += n; ni += p.geo.index ? p.geo.index.count : n; }
@@ -69,11 +70,14 @@ export function mergeParts(parts, withColor) {
   let vo = 0, io = 0;
   for (const p of parts) {
     const P = p.geo.attributes.position, N = p.geo.attributes.normal, U = p.geo.attributes.uv, I = p.geo.index;
+    // a shape that brings its own vertex colors (client/models/geom.js wheels, tracks, markings) is tinted by the paint
+    const G = col ? p.geo.attributes.color : null;
     nm.getNormalMatrix(p.matrix);
     for (let i = 0; i < P.count; i++) {
       t.fromBufferAttribute(P, i).applyMatrix4(p.matrix).toArray(pos, (vo + i) * 3);
       t.fromBufferAttribute(N, i).applyMatrix3(nm).normalize().toArray(nor, (vo + i) * 3);
       if (col) p.color.toArray(col, (vo + i) * 3);
+      if (G) { const o = (vo + i) * 3; col[o] *= G.getX(i); col[o + 1] *= G.getY(i); col[o + 2] *= G.getZ(i); }
       if (uvs) { uvs[(vo + i) * 2] = U.getX(i); uvs[(vo + i) * 2 + 1] = U.getY(i); }
     }
     const flip = p.matrix.determinant() < 0, n = I ? I.count : P.count;

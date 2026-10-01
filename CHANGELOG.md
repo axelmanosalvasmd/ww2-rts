@@ -10,6 +10,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a
   dark red band. The HQ sign leads with the owner's HQ map symbol instead of a color bar. The lobby loses its glowing
   backdrop and the paper cards their gradient sheen, and the Victory or Defeat stamp settles without bouncing.
+- Model toolkit (no visible change yet):
+  - New `client/models/geom.js` for building more detailed miniatures: rounded and chamfered boxes, lofted hulls,
+    lathed shapes (barrels with muzzle brakes, US, German and Soviet helmets, wheels, radial engines, bombs,
+    spinners), extruded outlines, spoked and disc wheels, road wheel sets, tank tracks with grousers and horns,
+    bent tubes, mirroring, a vertex-colored merge, painted markings (US star, Balkenkreuz, roundel) and baked shading
+    that darkens toward the ground. Every closed shape is checked in `node test.js` for outward faces, no gaps and
+    the right volume.
+  - Sizes to budget with: a full track with five road wheels, sprocket and idler is about 9,400 vertices, a wheel
+    about 790, a radial engine about 2,100, a helmet a few hundred.
+  - Model building: a part painted with the shared material now multiplies its paint color by the shape's own vertex
+    colors when the shape has them, so wheels, tracks and markings keep their tire, link and insignia colors (paint
+    them white to show the colors as built). Existing models have no vertex colors of their own and look the same.
 - Miniatures (round 6):
   - Soldiers stand on small dark-green painted bases like tabletop miniatures (the base stays flat when they crouch,
     lie down or fall back), wear warmer faction uniforms (olive drab, field grey, khaki) and have a lighter crown on
