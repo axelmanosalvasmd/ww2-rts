@@ -5,6 +5,26 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Formation facing (Company of Heroes style). Press the right mouse button where the units should go, drag the way
+  they should face and release. While you drag, every selected unit shows a slot box with a chevron at its front, a
+  line joins the slots and an arrow shows the facing. The units line up across the facing, spaced by their size, and a
+  longer drag widens the line (up to 3x its natural width). On arrival infantry squads and guns face that way (a gun
+  is set up facing it) and vehicles turn the hull so the front armor points there; a unit with a target keeps aiming at
+  it and turns back to the ordered facing afterwards.
+  - A plain right-click is the same as before, but is sent when you release the button. Shift-drag queues the facing
+    (each leg of a Shift path keeps its own). Ctrl-drag, or G and then a left-button drag, is an attack-move with a
+    facing. Retreat, Stop, an attack or any new order drops the facing. Escape cancels a drag; dragging back to where
+    you pressed makes it a plain click.
+  - Server: `move` and `amove` take an optional `face` angle. A value that is not a finite number refuses the whole
+    order, a finite one is wrapped into -PI to PI. The player's own spots are kept exactly (no cover nudge, no row
+    layout), only a spot another friendly unit holds shifts.
+  - Checked live in a Conquest match against the AI: 7 units (3 rifle squads, 2 MG teams, an AT gun and a Stuart) sent
+    with a drag all ended on rot 1.4 for a drag of 1.41 rad, the attack-move drag on 2.8 for 2.77, and a Shift-queued
+    second leg on -2.5 for -2.51; a plain click left every unit on its own travel direction. 9 new test blocks in
+    `test.js` ("Formation facing ...").
+  - Left for later: second and later ranks (more than 10 units) are filled by left to right position, not by depth;
+    queued plan lines do not draw their facing; the AI gives no facing orders; a squad shot in the open still steps into
+    cover and loses its facing.
 - Smarter units meet unit control (merge of the unit behavior work with PR #11). Both built the same two things, so
   one of each remains: an idle squad under fire moves to cover by the unit behavior rules (facing the fire, spread from
   other squads), and a stopped vehicle turns its front to its target or the gun that shot it at 1.5 rad/s. Kept from

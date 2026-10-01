@@ -8,6 +8,8 @@ import { think } from './shared/ai.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
+import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
+import { createOrders } from './client/orders.js';
 
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
@@ -2357,6 +2359,269 @@ for (const type of ['rifle', 'tank']) {
   assert.ok(!g.players[0].visible.has(e.id));
   command(g, 0, { t: 'move', orders: [[u.id, 76, 50]] });
   assert.ok(Math.hypot(u.path.at(-1).x - 76, u.path.at(-1).z - 50) < 0.5, 'the squad heads for the exact spot');
+}
+
+// Formation facing validation.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const a = put(g, 0, 'rifle', 10, 20), b = put(g, 0, 'tank', 10, 35);
+  assert.equal(a.face, null, 'new units have no ordered facing');
+  command(g, 0, { t: 'move', orders: [[a.id, 30, 20], [b.id, 30, 35]] });
+  command(g, 0, { t: 'move', orders: [[a.id, 50, 20], [b.id, 50, 35]], queue: true });
+  for (const face of [NaN, Infinity, '1', {}, null]) for (const t of ['move', 'amove']) for (const queue of [false, true]) {
+    const before = structuredClone([...g.units.values()]);
+    assert.equal(command(g, 0, { t, orders: [[a.id, 60, 20], [b.id, 60, 35]], face, queue }), 'blocked', 'invalid facing refuses the whole command');
+    assert.deepEqual([...g.units.values()], before, 'invalid facing leaves every unit untouched');
+    assert.equal(normalizeFace(face), null, 'invalid facing has no normalized angle');
+  }
+  for (const face of [7, -7]) {
+    assert.equal(command(g, 0, { t: 'move', orders: [[a.id, 30, 20], [b.id, 30, 35]], face }), undefined);
+    const expected = Math.atan2(Math.sin(face), Math.cos(face));
+    for (const u of [a, b]) {
+      assert.equal(u.face.a, expected, 'finite facing is normalized');
+      assert.ok(u.face.a > -Math.PI && u.face.a <= Math.PI, 'stored facing is inside the angle range');
+    }
+  }
+  command(g, 0, { t: 'move', orders: [[a.id, 30, 20], [b.id, 30, 35]] });
+  assert.equal(a.face, null, 'a move without facing leaves infantry with no facing');
+  assert.equal(b.face, null, 'a move without facing leaves vehicles with no facing');
+  const plane = put(g, 0, 'attacker', 20, 50);
+  command(g, 0, { t: 'move', orders: [[plane.id, 60, 50]], face: 7 });
+  assert.equal(plane.face, null, 'aircraft ignore the ordered facing');
+  assert.deepEqual(plane.air.mission, { kind: 'patrol', x: 60, z: 50 }, 'aircraft keep the patrol order');
+  const row = snapshotFor(g, 0, []).units.find(v => v[0] === a.id);
+  assert.equal(row.length, 15, 'facing does not add a unit snapshot field');
+  assert.deepEqual(snapshotFor(g, 0, [], [], snapshotCache(g)).units, snapshotFor(g, 0, []).units, 'facing keeps cached and uncached unit snapshots equal');
+}
+
+// Formation facing arrival and hull turning.
+{
+  const face = Math.PI / 2;
+  for (const type of ['rifle', 'mg', 'tank']) {
+    const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+    const u = put(g, 0, type, 10, 20); u.rot = 0;
+    command(g, 0, { t: 'move', orders: [[u.id, 30, 20]], face });
+    let movingRot = u.rot, ticks = 0;
+    while (u.path.length && ticks++ < 400) { movingRot = u.rot; step(g); }
+    assert.ok(!u.path.length && Math.hypot(u.x - 30, u.z - 20) < 0.5, `${type}: reaches the facing destination`);
+    step(g);
+    assert.deepEqual(u.face, { a: face, x: 30, z: 20 }, `${type}: keeps the ordered end spot`);
+    if (type === 'tank') {
+      assert.ok(Math.abs(normalizeFace(u.rot - face)) > 0.5, 'the hull does not turn to its facing instantly');
+      assert.ok(Math.abs(normalizeFace(u.rot - movingRot)) <= CFG.behavior.hullTurn / 20 + 1e-9, 'the hull turns at the configured speed on arrival');
+      run(g, Math.PI / CFG.behavior.hullTurn + 1);
+      assert.ok(Math.abs(normalizeFace(u.rot - face)) < 1e-9, 'the hull finishes turning within its turn time');
+    } else assert.equal(u.rot, face, `${type}: faces the order on arrival`);
+    assert.equal(u.aim, u.rot, `${type}: an idle unit aims along its facing`);
+    if (type === 'mg') { run(g, UNITS.mg.w.setup); assert.ok(u.still >= UNITS.mg.w.setup, 'an arrived MG crew sets up while holding its facing'); }
+  }
+}
+
+// Formation facing target and incoming fire priority.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = g.players[1].mp = 10000;
+  const tank = put(g, 0, 'tank', 40, 20); tank.cooldown = 1e9;
+  command(g, 0, { t: 'move', orders: [[tank.id, 40, 20]], face: 0 });
+  const enemy = put(g, 1, 'tank', 40, 45); enemy.holdFire = true;
+  run(g, 2);
+  assert.equal(tank.targetId, enemy.id, 'a tank still acquires a target while holding a facing');
+  assert.ok(Math.abs(normalizeFace(tank.rot - Math.PI / 2)) < 1e-9, 'the target takes priority over ordered facing');
+  Object.assign(tank, { hitAt: g.tick, hitFrom: { x: 5, z: 20 } });
+  run(g, 0.2);
+  assert.ok(Math.abs(normalizeFace(tank.rot - Math.PI / 2)) < 1e-9, 'the target also takes priority over incoming fire');
+  g.units.delete(enemy.id);
+  run(g, 0.2);
+  assert.ok(tank.rot > Math.PI / 2, 'recent incoming fire takes priority after the target disappears');
+  assert.equal(tank.face.a, 0, 'combat preserves the ordered facing');
+  run(g, CFG.behavior.threatTime + Math.PI / CFG.behavior.hullTurn + 1);
+  assert.ok(Math.abs(normalizeFace(tank.rot)) < 1e-9, 'the tank returns to its facing after combat and incoming fire end');
+}
+
+// Formation facing exact spots and crowding.
+{
+  const rows = Array(40).fill('.'.repeat(40)); rows[10] = '.'.repeat(20) + '#' + '.'.repeat(19); rows[15] = rows[10];
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const a = put(g, 0, 'rifle', 10, 21), b = put(g, 0, 'rifle', 10, 31);
+  command(g, 0, { t: 'move', orders: [[a.id, 37, 21], [b.id, 37, 31]], face: 0 });
+  assert.deepEqual(a.path.at(-1), { x: 37, z: 21 }, 'a facing spot near a wall keeps its exact position');
+  assert.deepEqual(b.path.at(-1), { x: 37, z: 31 }, 'distinct facing spots keep their layout');
+  run(g, 10);
+  assert.ok(Math.hypot(a.x - 37, a.z - 21) < 0.5 && Math.hypot(b.x - 37, b.z - 31) < 0.5, 'infantry arrive at the supplied facing spots');
+  const plain = fresh(rows); plain.players[0].mp = 10000;
+  const squad = put(plain, 0, 'rifle', 10, 21);
+  command(plain, 0, { t: 'move', orders: [[squad.id, 37, 21]] });
+  assert.notDeepEqual(squad.path.at(-1), { x: 37, z: 21 }, 'a plain move still finds nearby cover');
+  run(plain, 10);
+  assert.ok(sim.inCover(plain, squad) || squad.x > 37, 'a plain move still settles at the wall');
+  const crowded = fresh(rows); crowded.players[0].mp = 10000;
+  const held = put(crowded, 0, 'rifle', 37, 21), incoming = put(crowded, 0, 'rifle', 10, 21);
+  command(crowded, 0, { t: 'move', orders: [[incoming.id, 37, 21]], face: 0 });
+  const end = incoming.path.at(-1);
+  assert.ok(Math.hypot(end.x - held.x, end.z - held.z) >= CFG.behavior.spacing, 'an occupied facing spot shifts to a free one');
+  assert.deepEqual(incoming.face, { a: 0, ...end }, 'facing records the free end spot after crowding');
+}
+
+// Formation facing shared spots and pure layout.
+{
+  const rifleSize = slotSize(UNITS.rifle), tankSize = slotSize(UNITS.tank), face = 0.7, at = { x: 100, z: 100 };
+  assert.ok(tankSize > rifleSize, 'a tank takes more frontage than a rifle squad');
+  assert.equal(slotSize({ radius: 0, infantry: true }), CFG.behavior.spacing, 'small infantry keep the infantry spacing minimum');
+  assert.equal(slotSize({ radius: 0, infantry: false }), CFG.behavior.vehicleSpacing, 'small vehicles keep the vehicle spacing minimum');
+  const items = [{ id: 1, x: 15, z: 20, size: rifleSize }, { id: 2, x: 5, z: 5, size: tankSize }, { id: 3, x: 10, z: 10, size: rifleSize }], saved = structuredClone(items);
+  const natural = items.reduce((n, u) => n + u.size, 0), sizeById = new Map(items.map(u => [u.id, u.size]));
+  const width = spots => { const p = spots[0], q = spots.at(-1); return Math.hypot(q[1] - p[1], q[2] - p[2]) + (sizeById.get(p[0]) + sizeById.get(q[0])) / 2; };
+  const spots = facingSpots(items, at, face, 0), f = { x: Math.cos(face), z: Math.sin(face) };
+  assert.deepEqual(facingSpots(items, at, face, 0), spots, 'the same input gives the same facing spots');
+  assert.deepEqual(items, saved, 'formation layout leaves the input unchanged');
+  for (let i = 1; i < spots.length; i++) {
+    const p = spots[i - 1], q = spots[i], dx = q[1] - p[1], dz = q[2] - p[2];
+    assert.ok(Math.abs(dx * f.x + dz * f.z) < 1e-9, 'the formation line is perpendicular to its facing');
+    assert.ok(Math.hypot(dx, dz) >= (sizeById.get(p[0]) + sizeById.get(q[0])) / 2 - 1e-9, 'mixed unit slots do not overlap');
+    const a = items.find(u => u.id === p[0]), b = items.find(u => u.id === q[0]);
+    assert.ok(-a.x * f.z + a.z * f.x <= -b.x * f.z + b.z * f.x, 'units keep their left to right order');
+  }
+  assert.ok(Math.abs(width(spots) - natural) < 1e-9, 'a short drag keeps the natural frontage');
+  assert.ok(Math.abs(width(facingSpots(items, at, face, 2 * natural)) - 2 * natural) < 1e-9, 'a longer drag widens the frontage');
+  assert.ok(Math.abs(width(facingSpots(items, at, face, 10 * natural)) - 3 * natural) < 1e-9, 'frontage stops widening at three times its natural width');
+  const many = Array.from({ length: 23 }, (_, i) => ({ id: i, x: 0, z: i * 10, size: i % 3 === 0 ? tankSize : rifleSize }));
+  const ranks = new Map();
+  for (const spot of facingSpots(many, at, 0, 0)) { const depth = spot[1] - at.x; if (!ranks.has(depth)) ranks.set(depth, []); ranks.get(depth).push(spot); }
+  const depths = [...ranks.keys()].sort((a, b) => b - a);
+  assert.equal(depths.length, 3, 'more than ten units form several ranks');
+  assert.equal(depths[0], 0, 'the first rank centers on the press point');
+  assert.ok(depths.slice(1).every(d => d < 0) && [...ranks.values()].every(rank => rank.length <= 10), 'later ranks stand behind the front rank and hold at most ten units');
+  for (let i = 1; i < depths.length; i++) assert.ok(depths[i - 1] - depths[i] > Math.max(...ranks.get(depths[i - 1]).map(s => many[s[0]].size)), 'ranks leave the deepest slot above them clear');
+  const g = fresh(Array(60).fill('.'.repeat(60))); g.players[0].mp = 10000;
+  const squads = Array.from({ length: 4 }, (_, i) => put(g, 0, 'rifle', 10, 15 + i * 6));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60, 50]), face: 0 });
+  const ends = squads.map(u => u.path.at(-1)).sort((a, b) => a.z - b.z);
+  assert.ok(ends.every(p => Math.abs(p.x - 60) < 1e-9), 'units sharing a facing spot line up perpendicular to the facing');
+  for (let i = 1; i < ends.length; i++) assert.ok(ends[i].z - ends[i - 1].z >= rifleSize - 1e-9, 'shared facing spots keep a full slot between neighbours');
+}
+
+// Formation facing queued orders.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 10, 20), face = 1.1;
+  command(g, 0, { t: 'move', orders: [[u.id, 30, 20]] });
+  command(g, 0, { t: 'move', orders: [[u.id, 50, 20]], face, queue: true });
+  assert.equal(u.face, null, 'a queued facing does not change the first leg');
+  assert.equal(u.orders[0].face, normalizeFace(face), 'the waiting move stores its facing');
+  run(g, 1);
+  assert.ok(u.x < 30 && u.path.length && u.face === null, 'the first leg continues without a facing');
+  let ticks = 0; while (u.orders.length && ticks++ < 400) step(g);
+  assert.deepEqual(u.path.at(-1), { x: 50, z: 20 }, 'the queued move starts its second leg');
+  assert.equal(u.face.a, normalizeFace(face), 'queue replay restores the facing');
+  run(g, 10);
+  assert.ok(!u.path.length && Math.hypot(u.x - 50, u.z - 20) < 0.5, 'the queued facing move reaches its spot');
+  assert.equal(u.rot, normalizeFace(face), 'the second leg finishes with the queued facing');
+  command(g, 0, { t: 'move', orders: [[u.id, 30, 20]], face: Math.PI / 2 });
+  command(g, 0, { t: 'move', orders: [[u.id, 10, 20]], queue: true });
+  assert.equal(u.face.a, Math.PI / 2, 'queueing a plain move keeps the current facing until replay');
+  ticks = 0; while (u.orders.length && ticks++ < 400) step(g);
+  assert.equal(u.face, null, 'a queued move without facing clears the previous facing on replay');
+  run(g, 10);
+  assert.ok(Math.hypot(u.x - 10, u.z - 20) < 0.5 && u.face === null, 'the queued plain move finishes without an old facing');
+  const group = fresh(Array(60).fill('.'.repeat(60))); group.players[0].mp = 10000;
+  const squads = Array.from({ length: 3 }, (_, i) => put(group, 0, 'rifle', 10, 20 + i * 7));
+  command(group, 0, { t: 'move', orders: squads.map((u, i) => [u.id, 30, 20 + i * 7]), face: 0.4 });
+  const current = structuredClone(squads.map(u => [u.path, u.face]));
+  command(group, 0, { t: 'move', orders: squads.map(u => [u.id, 60, 45]), face: 0, queue: true });
+  assert.deepEqual(squads.map(u => [u.path, u.face]), current, 'queueing a shared facing spot keeps the current moves and facings');
+  const waiting = squads.map(u => ({ id: u.id, x: u.orders[0].x, z: u.orders[0].z })).sort((a, b) => a.z - b.z);
+  assert.ok(waiting.every(p => p.x === 60), 'queued shared facing spots form a perpendicular line');
+  for (let i = 1; i < waiting.length; i++) assert.ok(waiting[i].z - waiting[i - 1].z >= slotSize(UNITS.rifle), 'queued shared facing spots keep distinct slots');
+  run(group, 20);
+  for (const p of waiting) {
+    const squad = group.units.get(p.id);
+    assert.ok(!squad.path.length && Math.hypot(squad.x - p.x, squad.z - p.z) < 0.5, 'a queued formation reaches its stored slot');
+    assert.equal(squad.rot, 0, 'a queued formation finishes with its stored facing');
+  }
+}
+
+// Formation facing attack-move arrival.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 10, 20), face = -1.2;
+  command(g, 0, { t: 'amove', orders: [[u.id, 40, 20]], face });
+  run(g, 12);
+  assert.ok(!u.path.length && !u.amove && Math.hypot(u.x - 40, u.z - 20) < 0.5, 'an attack-move with facing completes its move');
+  assert.equal(u.rot, normalizeFace(face), 'an attack-move applies facing after arrival');
+}
+
+// Formation facing retreat and replacement orders.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = g.players[1].mp = 10000;
+  const u = put(g, 0, 'rifle', 40, 20), face = Math.PI / 2;
+  g.players[0].spawn = { x: 3, z: 20 };
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face }); step(g);
+  assert.equal(u.rot, face, 'the squad first holds its ordered facing');
+  command(g, 0, { t: 'retreat', ids: [u.id] });
+  assert.equal(u.face, null, 'retreat drops the ordered facing');
+  run(g, 0.5);
+  assert.ok(u.retreating && Math.cos(u.rot) < -0.9 && u.face === null, 'a retreating squad runs home without turning to its old facing');
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face }); step(g);
+  command(g, 0, { t: 'move', orders: [[u.id, 50, 20]] });
+  assert.equal(u.face, null, 'a plain move drops the old facing');
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face }); step(g);
+  command(g, 0, { t: 'stop', ids: [u.id] });
+  assert.equal(u.face, null, 'Stop drops the old facing');
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face });
+  const enemy = put(g, 1, 'rifle', 55, 20); enemy.holdFire = true; u.cooldown = 1e9;
+  run(g, 0.3);
+  assert.equal(command(g, 0, { t: 'attack', ids: [u.id], target: enemy.id }), undefined);
+  assert.equal(u.face, null, 'an attack order drops the old facing');
+}
+
+// Formation facing client dispatch.
+{
+  const ground = { x: 35, z: 25 }, face = 0.8, reach = 22;
+  const make = (types = ['rifle', 'tank']) => {
+    const units = new Map(types.map((type, i) => [i + 1, { id: i + 1, owner: 0, type, x: 10, z: 10 + i * 8 }])), sent = [], calls = [], feedback = [];
+    const ctx = { selected: new Set(units.keys()), units, me: 0, defs: UNITS, diggers: ['rifle', 'conscript', 'engineer'], moveColor: 0x6fa8f0,
+      formation: (...args) => { calls.push(args); return args[0].map((u, i) => [u.id, args[1].x, args[1].z + i * 8]); }, send: cmd => sent.push(cmd), feedback: (...args) => feedback.push(args) };
+    return { ctx, sent, calls, feedback, orders: createOrders(ctx) };
+  };
+  const plain = make();
+  assert.equal(plain.orders.wouldMove({ ground }), true, 'plain ground clicks can start a facing gesture');
+  plain.orders.dispatch({ ground }, {});
+  const ordinary = { t: 'move', orders: [[1, 35, 25], [2, 35, 33]], queue: false };
+  assert.equal(JSON.stringify(plain.sent[0]), JSON.stringify(ordinary), 'a plain click sends the same command bytes');
+  assert.equal(plain.calls[0].length, 2, 'a plain click keeps the original formation call');
+  assert.deepEqual(plain.feedback[0], [ground, plain.ctx.moveColor, 660, 'move'], 'a plain click keeps its feedback');
+  const shift = make(); shift.orders.dispatch({ ground }, { shiftKey: true });
+  assert.equal(JSON.stringify(shift.sent[0]), JSON.stringify({ ...ordinary, queue: true }), 'a plain Shift click keeps the same queued command bytes');
+  const faced = make(); faced.orders.dispatch({ ground }, { shiftKey: true }, { face, reach });
+  assert.deepEqual(faced.sent[0], { ...ordinary, face, queue: true }, 'facing moves include the angle and queue flag');
+  assert.deepEqual(faced.calls[0], [[...faced.ctx.units.values()], ground, face, reach], 'facing dispatch gives the angle and reach to formation');
+  for (const [event, options] of [[{ ctrlKey: true }, { face, reach }], [{}, { attack: true, face, reach }]]) {
+    const a = make(); a.orders.dispatch({ ground }, event, options);
+    assert.equal(a.sent[0].t, 'amove', 'Ctrl and attack mode produce attack-move');
+    assert.equal(a.sent[0].face, face, 'attack-move dispatch includes facing');
+  }
+  const invalid = make(); invalid.orders.dispatch({ ground }, {}, { face: NaN, reach });
+  assert.deepEqual(invalid.sent[0], ordinary, 'a non-finite client facing leaves a plain move');
+  const cases = [
+    { types: ['rifle'], cursor: { ground, enemy: { id: 9, x: 40, z: 25 } }, t: 'attack' },
+    { types: ['rifle'], cursor: { ground, house: { x: 31, z: 21 } }, t: 'garrison' },
+    { types: ['fighter'], cursor: { ground, friend: { id: 9, x: 40, z: 25 } }, t: 'escort' },
+    { types: ['engineer'], cursor: { ground, building: { id: 9, type: 'barracks', built: 0, hp: 1, x: 40, z: 25 } }, t: 'assist' },
+    { types: ['rifle'], cursor: { ground, works: 9 }, t: 'entrench' },
+    { types: ['barracks'], cursor: { ground }, t: 'rally' }
+  ];
+  for (const { types, cursor, t } of cases) {
+    const a = make(types);
+    assert.equal(a.orders.wouldMove(cursor), false, `${t}: the special order dispatches without a facing gesture`);
+    a.orders.dispatch(cursor, {}, { face, reach });
+    assert.equal(a.sent[0].t, t, `${t}: keeps its order kind`);
+    assert.ok(!Object.hasOwn(a.sent[0], 'face'), `${t}: ignores facing`);
+    assert.equal(a.calls.length, 0, `${t}: does not request a facing formation`);
+  }
+  const mixed = make(['rifle', 'barracks']); mixed.orders.dispatch({ ground }, { shiftKey: true }, { face, reach });
+  assert.equal(mixed.sent[0].t, 'orders', 'troops and a production building keep their command group');
+  assert.equal(mixed.sent[0].queue, true, 'a grouped facing dispatch queues both orders');
+  assert.equal(mixed.sent[0].commands[0].face, face, 'a grouped ground move includes its facing');
+  assert.ok(!Object.hasOwn(mixed.sent[0].commands[1], 'face'), 'the grouped rally ignores facing');
 }
 
 // A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)

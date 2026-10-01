@@ -4,6 +4,8 @@ import { createEffects } from './fx.js';
 import { bindings, match } from './keys.js';
 import { createSelection } from './selection.js';
 import { createOrders } from './orders.js';
+import { createFormationPreview } from './formation-preview.js';
+import { facingSpots, slotSize } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
@@ -18,7 +20,7 @@ import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
 import { createPointer } from './pointer.js';
 import { pings } from './pings.js';
-import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR } from './markers.js';
+import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR, PLAN_COLORS } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
@@ -336,6 +338,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m, restored = null) {
+  clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
@@ -343,6 +346,7 @@ function startGame(m, restored = null) {
   relief?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
+  world.add(formationPreview.group);
   units.clear(); selected.clear(); selection.reset();
   if (m.resume && restored) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
@@ -842,8 +846,9 @@ function takeCover(queue = false) { if (!selected.size || explainUnavailable(ava
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
 let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
-function cancelAim() { feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
+function cancelAim() { clearFacing(); feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind, unit = null) {
+  clearFacing();
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
   $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
@@ -890,7 +895,9 @@ function throwAt(g, kind, type, queue = false) {
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z, queue }); marker(g.x, g.z, 0xffa030); blip(760);
 }
 // rows perpendicular to the direction of travel
-function formation(sel, g) {
+function formation(sel, g, face, reach) {
+  if (Number.isFinite(face)) return facingSpots(sel.map(v => ({ id: v.id, x: v.x, z: v.z, size: slotSize(UNITS[v.type]) })), g, face, reach)
+    .map(([id, x, z]) => [id, Math.min(MW - 1, Math.max(1, x)), Math.min(MH - 1, Math.max(1, z))]);
   const cx = sel.reduce((a, v) => a + v.x, 0) / sel.length, cz = sel.reduce((a, v) => a + v.z, 0) / sel.length;
   const len = Math.hypot(g.x - cx, g.z - cz) || 1, dx = (g.x - cx) / len, dz = (g.z - cz) / len, cols = Math.ceil(Math.sqrt(sel.length)), gap = 5;
   sel.sort((a, b) => (a.x - cx) * -dz + (a.z - cz) * dx - ((b.x - cx) * -dz + (b.z - cz) * dx));
@@ -903,15 +910,40 @@ const orders = createOrders({
   units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, send: sendCmd, moveColor: MOVE_COLOR,
   feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); },
 });
+const formationPreview = createFormationPreview({ THREE, hAt });
 
 // ---------- camera + input ----------
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
-let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
+let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null;
+function clearFacing() { facingGesture = null; formationPreview.hide(); }
+function beginFacing(cursor, e, attack = false) {
+  clearFacing();
+  facingGesture = { button: e.button, ground: cursor.ground, cursor, x: e.clientX, y: e.clientY, attack, ctrl: !!e.ctrlKey, event: { shiftKey: !!e.shiftKey, ctrlKey: !!e.ctrlKey } };
+  mouse = { x: e.clientX, y: e.clientY, inside: true };
+}
+function updateFacing(mx, my) {
+  const f = facingGesture;
+  if (!f) return;
+  // dragging back to the press point drops the facing: releasing there is a plain click again
+  const g = Math.hypot(mx - f.x, my - f.y) < 12 ? null : groundAt(mx, my);
+  const dx = g ? g.x - f.ground.x : 0, dz = g ? g.z - f.ground.z : 0, reach = Math.hypot(dx, dz);
+  if (!g || reach < 2) { if (g || Math.hypot(mx - f.x, my - f.y) < 12) { delete f.face; delete f.reach; } return; }
+  f.face = Math.atan2(dz, dx); f.reach = reach;
+}
+function showFacing() {
+  const f = facingGesture;
+  if (!f || !Number.isFinite(f.face) || !world) { formationPreview.hide(); return; }
+  const troops = [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure);
+  if (!troops.length) { clearFacing(); return; }
+  if (formationPreview.group.parent !== world) world.add(formationPreview.group);
+  formationPreview.show(formation(troops, f.ground, f.face, f.reach), troops.map(v => ({ id: v.id, radius: UNITS[v.type].radius })), f.face,
+    { x: f.ground.x, z: f.ground.z, reach: f.reach }, f.attack || f.event.ctrlKey || f.ctrl ? PLAN_COLORS[2] : MOVE_COLOR);
+}
 // created before the mouse listeners below: while Capture mouse is on, its window listeners must run first
 const pointer = createPointer({ view: renderer.domElement, tryStore, captureButton: $('captureBtn'), captureNow: $('captureNow'),
   playing: () => !EDIT && !$('hud').classList.contains('hidden') && $('overlay').classList.contains('hidden') });
-rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag, world: () => world,
+rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag || facingGesture, world: () => world,
   blocked: () => !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
   units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
   // the clear band for framing: below the score and status panels, above the recruit bar
@@ -926,7 +958,7 @@ function followSelected() {
 }
 function cancelInput(clearKeys = true) {
   if (clearKeys) keys.clear();
-  mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden');
+  mouse.inside = false; drag = null; clearFacing(); rig.stopDrag(); $('box').classList.add('hidden');
 }
 addEventListener('mousedown', rig.introPress, { capture: true });
 
@@ -973,6 +1005,7 @@ for (const { id } of bindings) {
 const inMatch = () => lobbyState?.state === 'play' && !$('hud').classList.contains('hidden') && $('menu').classList.contains('hidden');
 const keyContexts = () => [classicMode() ? 'classic' : 'army', ...(!inMatch() ? [] : hud.recruiting() ? ['recruit'] : hud.lettered() ? ['building'] : []), ...(targeting ? ['targeting'] : [])];
 addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') clearFacing();
   if (rig.skipIntro()) { e.preventDefault(); return; }
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   keys.add(e.code);
@@ -998,6 +1031,10 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) cance
 addEventListener('mousemove', (e) => {
   mouse = { x: e.clientX, y: e.clientY, inside: !document.hidden };
   rig.moveMiddle(e);
+  if (facingGesture) {
+    if (!(e.buttons & (facingGesture.button === 2 ? 2 : 1))) clearFacing();
+    else { facingGesture.ctrl = !!e.ctrlKey; updateFacing(e.clientX, e.clientY); }
+  }
   if (drag && !(e.buttons & 1)) { drag = null; $('box').classList.add('hidden'); }
   if (drag && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
     drag.moved = true; rig.cancelFollow();
@@ -1023,6 +1060,7 @@ const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerH
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;
+  if (facingGesture) clearFacing();
   if (e.button === 1) { rig.beginMiddle(e); return; }
   if (e.button === 0 && e.altKey && !targeting && !rig.intro) {
     e.preventDefault(); const g = groundAt(e.clientX, e.clientY); if (g) pings.send(g.x, g.z); return;
@@ -1044,7 +1082,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     }
     if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type, queue: e.shiftKey }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
-    if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
+    if (kind === 'amove') { beginFacing({ ground: g }, e, true); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     if (kind === 'entrench') {
@@ -1073,12 +1111,14 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
-  orders.dispatch({
-    ground: groundAt(e.clientX, e.clientY), enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
+  const ground = groundAt(e.clientX, e.clientY), cursor = {
+    ground, enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
     friend: pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
     building: pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), house: houseAt(e.clientX, e.clientY),
-    works: worksAt(groundAt(e.clientX, e.clientY)),
-  }, e);
+    works: worksAt(ground),
+  };
+  if (!rig.intro && orders.wouldMove(cursor)) beginFacing(cursor, e);
+  else orders.dispatch(cursor, e);
 });
 
 // the house under the cursor (walls and roofs count), as the center of its cell
@@ -1092,6 +1132,15 @@ function houseAt(mx, my) {
 }
 addEventListener('mouseup', (e) => {
   if (e.button === 1) rig.stopDrag();
+  if (!EDIT && facingGesture?.button === e.button) {
+    updateFacing(e.clientX, e.clientY);
+    const f = facingGesture, facing = Number.isFinite(f.face);
+    clearFacing();
+    if (f.attack) cancelAim();
+    orders.dispatch(f.cursor, facing ? { shiftKey: f.event.shiftKey || !!e.shiftKey, ctrlKey: f.event.ctrlKey || !!e.ctrlKey } : f.event,
+      facing ? { face: f.face, reach: f.reach, attack: f.attack || f.event.ctrlKey || !!e.ctrlKey } : f.attack ? { attack: true } : {});
+    return;
+  }
   if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
   if (drag.moved) {
@@ -1279,7 +1328,8 @@ renderer.setAnimationLoop(() => {
   endgame.frame();
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
-  if (targeting && world) {
+  if (facingGesture) { updateFacing(mouse.x, mouse.y); showFacing(); }
+  if (targeting && world && !Number.isFinite(facingGesture?.face)) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
     if (targeting === 'entrench') { if (aimCenter || g) entrenchPreview(aimMesh, aimCenter ?? g, g ?? aimCenter); }
@@ -1304,7 +1354,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

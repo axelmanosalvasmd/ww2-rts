@@ -2,6 +2,7 @@
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
 import { gridFor, rebuildGrid, updateGrid } from './grid.js';
+import { normalizeFace, slotSize, facingSpots } from './formation.js';
 
 export const CELL = 2;
 export const TICK = 1 / 20;
@@ -609,7 +610,7 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     rot: 0, aim: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
     path: [], orders: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
     cd: 0, buff: 0, ap: false, nade: null, retreating: false, reinf: 0, dig: null,
-    garrison: -1, enter: -1, amove: null, xp: 0, fireAt: -1, sprint: 0,
+    garrison: -1, enter: -1, amove: null, face: null, xp: 0, fireAt: -1, sprint: 0,
     // incoming fire: who shot last, on which tick, and from where; drift = why a path was not ordered (rally, cover,
     // space, back); reverse = the path end a vehicle backs up to; react = seconds until it next looks for cover
     hitBy: 0, hitAt: -1e9, hitFrom: null, drift: false, reverse: null, react: 0,
@@ -1191,7 +1192,7 @@ function takeDigJob(g, u) {
 export const STANCES = ['holdFire', 'holdPos', 'autoRetreat'];
 const stanceBits = (u) => (u.holdFire ? 2048 : 0) | (u.holdPos ? 4096 : 0) | (u.autoRetreat ? 8192 : 0);
 function retreatUnit(g, u) {
-  u.orders = []; u.entrench = null;
+  u.orders = []; u.entrench = null; u.face = null;
   if (u.air) { if (airborne(u)) u.air.state = 'home'; return; } // back to base
   exitBuilding(g, u);
   Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1, build: 0 });
@@ -1262,22 +1263,34 @@ export function command(g, slot, cmd, auto = false) {
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
+    const face = cmd.face === undefined ? null : normalizeFace(cmd.face);
+    if (cmd.face !== undefined && face === null) return 'blocked';
     let moved = false, full = false;
-    const go = [];
+    const go = [], requests = [];
     for (const o of cmd.orders.slice(0, limit)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
-      if (cmd.queue === true) { if (enqueueOrder(u, { t: cmd.t, orders: [[u.id, x, z]], x, z })) moved = true; else full = true; continue; }
+      requests.push([u, x, z]);
+    }
+    if (cmd.queue === true && face !== null) {
+      // A shared queued destination must be spread now because waiting orders replay one unit at a time.
+      const groups = new Map();
+      for (const o of requests) if (!o[0].air) { const k = o[1] + ',' + o[2]; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); }
+      for (const group of groups.values()) if (group.length > 1) spreadFacing(g, group, face);
+    }
+    for (const [u, x, z] of requests) {
+      if (cmd.queue === true) { if (enqueueOrder(u, { t: cmd.t, orders: [[u.id, x, z]], x, z, ...(face === null ? {} : { face }) })) moved = true; else full = true; continue; }
       moved = true;
-      u.orders = []; u.entrench = null;
+      u.orders = []; u.entrench = null; u.face = null;
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
       go.push([u, x, z]);
     }
-    // each unit gets its own end spot (infantry in cover nearby), see endSpots
-    for (const [u, x, z] of endSpots(g, go)) {
+    // A facing order keeps its formation spots. Plain moves still settle infantry into nearby cover.
+    for (const [u, x, z] of endSpots(g, go, face)) {
       const engaged = !!u.targetId || g.tick - u.hitAt <= CFG.behavior.threatTime / TICK;
       exitBuilding(g, u);
       Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null, drift: false });
+      u.face = face === null ? null : { a: face, x, z };
       u.path = findPath(g, u, { x, z });
       reverseIfShort(g, u, engaged);
     }
@@ -1321,7 +1334,7 @@ export function command(g, slot, cmd, auto = false) {
       const u = mine(id); if (!u || (t.air && !u.air)) continue;
       if (cmd.queue === true) { if (enqueueOrder(u, { t: 'attack', ids: [u.id], target: t.id, x: t.x, z: t.z })) ordered = true; continue; }
       ordered = true;
-      u.orders = []; u.entrench = null;
+      u.orders = []; u.entrench = null; u.face = null;
       if (u.air) { sendPlane(u, { kind: 'attack', id: t.id, x: t.x, z: t.z }); continue; }
       if (!canShoot(g, u, t)) exitBuilding(g, u);
       Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [] });
@@ -1329,7 +1342,7 @@ export function command(g, slot, cmd, auto = false) {
     if (!ordered) return 'queueFull';
   } else if (cmd.t === 'stop') {
     if (!ids.some(mine)) return 'needs';
-    for (const id of ids) { const u = mine(id); if (u?.air) { u.orders = []; if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { orders: [], entrench: null, path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
+    for (const id of ids) { const u = mine(id); if (u?.air) { u.orders = []; if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { orders: [], entrench: null, face: null, path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
   } else if (cmd.t === 'escort') {
     // planes circle a friendly unit (fighters guard it from enemy planes)
     const t = g.units.get(cmd.target);
@@ -1698,14 +1711,34 @@ function threatFor(g, u, at) {
   const d = dist(u, at);
   return d > 0.5 ? { x: at.x + (at.x - u.x) / d * 20, z: at.z + (at.z - u.z) / d * 20 } : null;
 }
+// ---------- formation facing (DESIGN.md "Formation facing") ----------
+// u.face = { a, x, z } is the facing a unit was ordered to hold at its end spot (x, z). It holds while the unit has no
+// other job and stays on the spot: a retreat, a stop, an attack, a new move or any other order drops it, and so does
+// ending a walk more than 3 m from the spot.
+// Units sent to one spot with a facing line up across it, spaced by size (shared/formation.js).
+function spreadFacing(g, group, face) {
+  const [, x, z] = group[0], spots = new Map(facingSpots(group.map(([u]) => ({ id: u.id, x: u.x, z: u.z, size: slotSize(UNITS[u.type]) })), { x, z }, face, 0).map(([id, sx, sz]) => [id, [sx, sz]]));
+  for (const o of group) { const [sx, sz] = spots.get(o[0].id); o[1] = num(sx, g.w * CELL); o[2] = num(sz, g.h * CELL); }
+}
+function keepFacing(u) {
+  const f = u.face;
+  if (f && (u.attackId || u.retreating || u.dig || u.entrench || u.build || u.nade || u.enter >= 0 || u.fireAt >= 0 || u.drift
+    || (u.path.length ? dist(u.path.at(-1), f) > 3 : !u.amove && dist(u, f) > 3))) u.face = null;
+}
+// A stopped unit with no target turns to its ordered facing: vehicles gradually (hull), infantry and crewed guns at once.
+function holdFacing(u, def, hull, dt) {
+  if (u.amove) return;
+  if (hull) turnHull(u, u.face.a, dt); else if (def.infantry) u.rot = u.face.a;
+}
 // One move order for several units: those sent to the same spot spread into rows across the line of travel, then each
 // gets its own end spot. Infantry ending in the open settle into the nearest cover that faces the threat within
 // coverSeek; nobody takes a spot another unit holds or is heading to (they shift to the nearest free one).
-function endSpots(g, go) {
+function endSpots(g, go, face = null) {
   const B = CFG.behavior, skip = new Set(go.map(([u]) => u.id)), claimed = [], groups = new Map();
-  for (const o of go) { const k = Math.round(o[1]) + ',' + Math.round(o[2]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); }
+  for (const o of go) { const k = face === null ? Math.round(o[1]) + ',' + Math.round(o[2]) : o[1] + ',' + o[2]; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); }
   for (const group of groups.values()) {
     if (group.length < 2) continue;
+    if (face !== null) { spreadFacing(g, group, face); continue; }
     const n = group.length, cx = group.reduce((a, [u]) => a + u.x, 0) / n, cz = group.reduce((a, [u]) => a + u.z, 0) / n, [, gx, gz] = group[0];
     const len = Math.hypot(gx - cx, gz - cz) || 1, dx = (gx - cx) / len, dz = (gz - cz) / len, cols = Math.ceil(Math.sqrt(n));
     group.sort((a, b) => (a[0].x - cx) * -dz + (a[0].z - cz) * dx - ((b[0].x - cx) * -dz + (b[0].z - cz) * dx));
@@ -1728,7 +1761,7 @@ function endSpots(g, go) {
   return go.map(([u, x, z]) => {
     let at = { x, z };
     const held = claimed.concat(heldSpots(g, skip, at, B.coverSeek, u.owner)), crowded = p => held.some(h => dist(h, p) < spaceFor(u));
-    if (UNITS[u.type].infantry) {
+    if (face === null && UNITS[u.type].infantry) {
       const from = threatFor(g, u, at);
       if (!shelterAt(g, at, from) || crowded(at)) at = spotNear(g, u, at, B.coverSeek, held, from, true) ?? at;
     }
@@ -2106,6 +2139,7 @@ export function step(g) {
     // give up if blocked by friends crowding the destination
     if (u.retreating && !u.path.length) u.retreating = false;
     if (u.path.length && moved < speed * dt * 0.3) { u.stuck += dt; if (u.stuck > 1) { u.path = []; u.stuck = 0; if (u.amove) u.amove = null; } } else u.stuck = 0;
+    keepFacing(u);
 
     // targeting + firing
     if (u.retreating) { u.targetId = 0; u.aim = u.rot; continue; }
@@ -2123,7 +2157,7 @@ export function step(g) {
     if (u.holdFire && !u.attackId) u.targetId = 0; // holding fire: only an attack order shoots
     else if (!u.attackId && (u.retarget <= 0 || (u.targetId && !canShoot(g, u, g.units.get(u.targetId))))) { retarget(g, u); u.retarget = 0.5; }
     const t = g.units.get(u.targetId);
-    // a stationary vehicle keeps its front to what it is shooting at, or else turns it to the latest incoming fire
+    // A stopped vehicle faces its target first, recent incoming fire next, then the ordered facing.
     const hull = !def.infantry && !def.structure && !moving;
     if (t && canShoot(g, u, t)) {
       u.aim = Math.atan2(t.z - u.z, t.x - u.x);
@@ -2134,6 +2168,7 @@ export function step(g) {
     } else {
       u.targetId = 0;
       if (hull && u.hitFrom && g.tick - u.hitAt <= CFG.behavior.threatTime / TICK) turnHull(u, Math.atan2(u.hitFrom.z - u.z, u.hitFrom.x - u.x), dt);
+      else if (u.face && !moving) holdFacing(u, def, hull, dt);
       u.aim = u.rot;
     }
   }

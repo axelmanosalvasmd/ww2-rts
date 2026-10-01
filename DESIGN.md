@@ -666,6 +666,57 @@ Review fixes (the same day, before release). Four faults in the first version, e
   (60, 40) to (78, 32) is false while the reverse is true. Moving units almost never sit on exact borders; the
   crossfire test uses x.3 positions to stay clear of it.
 
+## Formation facing (2026-10-01, all modes)
+Company of Heroes style: press the right button at the destination, drag the way the units should face, release. A
+plain right-click is unchanged. Everything below is the "formation facing" block of `shared/sim.js`,
+`shared/formation.js` (layout, shared by the client preview and the sim) and `client/formation-preview.js`.
+
+Orders:
+- `move` and `amove` take an optional `face`: a world angle like `rot` (`atan2(dz, dx)`). Absent means today's order.
+  A value that is not a finite number refuses the whole command (`blocked`, no unit touched); a finite one is
+  normalised into (-PI, PI] (`normalizeFace`). Planes ignore it. A queued order (Shift) stores it and puts it back
+  when it starts, so each leg of a Shift path can end in its own facing.
+- The client sends one spot per unit (the line below); the sim keeps those spots exactly. A facing order skips the
+  unit behavior cover nudge (the player placed the line on purpose) and the group row layout; only the crowding rule
+  stays, so a spot another friendly unit holds shifts to the nearest free one. Units an API client sends to one spot
+  with a facing line up across the facing instead of across the line of travel.
+- Retreat, Stop, an attack, a plain move and every other job (garrison, dig, build, an aimed ability, Take cover)
+  drop the facing, and so does ending a walk more than 3 m from the ordered spot. Instant abilities (smoke, Ura!) and
+  autocast keep it.
+
+The line (`facingSpots`): units stand side by side across the facing, each taking `slotSize` of frontage (its diameter
+plus 1.5 m, at least 3 m for infantry and 5 m for vehicles, the unit behavior spacing). The line is centered on the
+press point and the units keep their left to right order (sorted by where they are now) so paths do not cross. A
+longer drag widens the line: its width is the drag length, never narrower than the units need and never wider than 3x
+that. More than 10 units form ranks of at most 10 behind the front one, 1.5 m clear of the deepest slot above.
+
+On arrival:
+- Infantry squads and crewed guns (MG, AT, mortar, flak) turn to the facing at once (the client smooths it), so a
+  gun is set up facing it. Vehicles turn the hull at the unit behavior hull speed, so the front armor points that
+  way. A unit with a target keeps aiming at it, a vehicle under recent fire turns to the gun, and either returns to
+  the ordered facing when the fight is over.
+- Nothing about a facing is in the snapshot; the hull and `rot` already show it.
+
+Client:
+- The right press on plain ground starts a gesture and the order goes out on release (a plain click is sent on
+  release too, from the press point). Dragging at least 12 screen px and 2 m shows the preview and sets the facing;
+  dragging back to the press point cancels the facing. Shift or Ctrl held at the press or the release queue or
+  attack-move; Escape, a lost button or blur drops the gesture. The A-move targeting click (G) works the same way with
+  the left button. Special right-clicks (enemy, house, escort, assist, entrench join) and the minimap send at once.
+- Preview (`createFormationPreview`): flat 0.26 m ribbons draped on the ground, one buffer for the drag. Each unit gets
+  a hollow slot box sized by its radius with a small chevron at the front edge, a line joins the slots, and one longer
+  arrow from the press point shows the facing. Blue for a move, orange for an attack-move (the plan colors).
+- Edge scrolling is paused while the gesture is held.
+
+Decided against, for now:
+- Cover nudge and rows on facing orders (above): the line you drew is the line you get.
+- A facing does not stop a squad from stepping into cover when it is shot in the open (unit behavior wins; the squad
+  loses the facing when it moves). Crewed weapons never moved, so they keep theirs.
+- No facing for planes, buildings' rally points or minimap clicks.
+
+Left for later: ranks are filled by left to right position, not by depth, so a second rank is a mix; the plan lines of
+a queued order do not draw its facing; the AI does not give facing orders.
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
