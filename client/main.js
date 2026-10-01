@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { unitRole } from './unit-roles.js';
 import { createProps } from './props.js';
+import { createWater } from './water.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -217,7 +218,7 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null;
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, water = null;
 
 // Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
 let field = null;
@@ -290,6 +291,7 @@ function startGame(m) {
 
   terrain.grid.forEach((row, y) => row.forEach((_, x) => paintCell(x, y)));
   buildStructures();
+  water?.dispose(); water = createWater(terrain.grid, map); if (water) world.add(water.mesh);
 
   props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
 
@@ -462,6 +464,7 @@ function applyCells(cells) {
   terrain.tex.needsUpdate = true;
   buildStructures();
   props?.refresh();
+  water?.changed(cells);
   mmImage = null;
 }
 
@@ -1576,6 +1579,7 @@ function updateFog() {
 
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  water?.tick(now);
   // camera
   const pan = cam.dist * 1.1 * dt, f = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) }, r = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) };
   let fw = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
@@ -1633,4 +1637,4 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; }, get water() { return water; } };
