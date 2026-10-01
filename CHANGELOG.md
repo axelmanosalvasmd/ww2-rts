@@ -5,6 +5,30 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Four new units in every mode:
+  - Mortar team (Barracks in Classic): lobs shells at anything your side can see, out-ranges MGs; Mortar Barrage ability.
+  - Sniper (Barracks): one shot, one kill at long range. Hides when it keeps still and stops firing (only seen up close
+    or by a recon flight); firing gives it away. Your own shows a HIDDEN tag.
+  - Armored car (Motor Pool): the fastest unit. Scouts, raids, hunts snipers and mortars; weak against tanks.
+  - Medium tank (Motor Pool): Sherman, Panzer IV or T-34, between the light tank and the Tiger.
+- Classic: Fuel, a third currency for vehicles. Depots on the contested nodes by the villages now pay Fuel (orange
+  marker, "+1.5 Fuel/s") instead of MP, and the HQ trickles a little. Vehicles cost less MP plus Fuel (light tank
+  200 MP + 60 Fuel). Home depots pay more MP (2.5/s) and the HQ trickle went up to 3/s. HQ, Barracks and Motor Pool have
+  25% less health.
+- The AI uses the new units and buys infantry when it can't make what it wants (it used to save forever).
+- Balance: Conquest games got more one-sided (2nd place 54% of the winner's VP, was 62%) but factions are the most even
+  yet; Classic decides 74% of games before sudden death, median 16-23 min. Details in DESIGN.md.
+- Assault: the Command Bunker now takes only 5% damage from off-map support (artillery, bombing runs, strafing).
+  It has to be taken on the ground: satchels, rockets, tanks and infantry. The AI attacker no longer calls its
+  strikes on the bunker; it uses them on the defenders instead. AI 1v1 assault, attacker wins out of 20 after the
+  change: Three Crossroads 15, River Towns 12, Pegasus Bridge 7, Seawall 7, Stalingrad Factory 7, Bocage 4,
+  Hill 112 3, Monte Cassino 1. Bocage and Monte Cassino were 11/20 before, so they now favour the defender
+  strongly.
+- Assault no longer shows capture points that only pay VP (Assault has no VP): the center of Three Crossroads and
+  River Towns is gone in Assault. Every remaining point is labelled with the manpower it pays, not "2x VP".
+  Balance is unchanged by this (AI 1v1 assault, attacker wins with/without the change: Three Crossroads 16/20 vs
+  16/20, River Towns 15/20 vs 13/20). Found and left for later: that's well above the 50% / 61% logged when Assault
+  shipped, so something since then has shifted Assault toward the attacker.
 - Classic economy: depots on the contested nodes by the villages pay 2.5 MP/s, the safe home nodes 1.5. Each node shows
   what it pays. Fielded units cost upkeep (0.08% of their price per second: a rifle 0.08 MP/s, a tank 0.24), shown next
   to your income. The AI walks further for a richer node.
@@ -59,10 +83,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     by long bridges and fords).
   - Every map passes a new test: valid, and every spawn can walk to every point and every other spawn.
   - AI checks: every conquest map finishes with all points taken in under 3.5 minutes. Assault 1v1, attacker wins:
-    Bocage 6/10, Monte Cassino 7/10, Stalingrad Factory 4/10, Pegasus Bridge and Seawall about 35/40 each.
-    Found and left for later: on those last two, bombing runs do most of the damage to the bunker, and giving the
-    defender more income didn't change the result. It needs a look at Assault balance itself (bomb damage to the
-    bunker, or the AI defender's spending), not the maps.
+    Pegasus Bridge 7/20, Bocage 11/20, Seawall 4/20, Monte Cassino 11/20, Stalingrad Factory 7/20.
+  - Assault capture points sit on the defenders' side or in the middle, so the attackers have to take ground to earn
+    more than their base income. The first version put most points next to the attackers (on Pegasus Bridge, 4 MP/s
+    of free income for the attacker against 1.5 for the defender), and attackers won about 35/40 there and on
+    Seawall. Moving them swung every assault map hard toward the defender (Monte Cassino 1/20), so each map got one
+    or two contested points back.
+  - Seawall was rebuilt with the cliff closer to the defenders' town. The AI defender only holds ground within 70 m
+    of its base: with the cliff far away the attackers took both ramp tops in the first minute and won 20/20.
 - Bombs and artillery now dig the ground. Each blast lowers the ground one level (a real dip that changes
   sight lines and gives low ground): a bomb digs a 3x3 patch, an artillery shell a single cell. Repeated hits on
   the same spot deepen the middle into a bowl, but a cell never ends up more than one level below its

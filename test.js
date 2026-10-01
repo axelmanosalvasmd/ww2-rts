@@ -537,7 +537,9 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const mk = () => createGame(map, ['att', 'def'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 1 });
   const g = mk();
   const bunkers = [...g.units.values()].filter(u => u.type === 'bunker');
-  assert.equal(bunkers.length, 1, 'one bunker'); assert.equal(bunkers[0].owner, 1, 'owned by the defender');
+  assert.equal(bunkers.length, 1, 'one bunker');
+  assert.equal(g.points.length, map.points.filter(p => (p.mp ?? 1) > 0).length, 'VP-only points are left out of assault');
+  assert.ok(g.points.every(p => p.mp > 0)); assert.equal(bunkers[0].owner, 1, 'owned by the defender');
   assert.equal(vet(bunkers[0]), 0, 'a free unit is not a born veteran');
   assert.ok(g.cellLog.filter(([, ch]) => ch === 'T').length >= 8 && g.cellLog.some(([, ch]) => ch === '#'), 'trenches and walls around the base');
   assert.ok(g.players[0].mp > g.players[1].mp, 'attacker starts richer');
@@ -555,15 +557,25 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const h0 = b.hp; step(g); const shell = h0 - b.hp;
   Math.random = orig;
   assert.ok(shell > 0 && shell <= 45 * 0.25 + 0.01, `tank shell does 25% (${shell})`);
+  // off-map support barely touches it: a full bombing run and a barrage dead on target do under 5%
+  {
+    const g2 = mk(), b2 = [...g2.units.values()].find(u => u.type === 'bunker');
+    g2.players[0].mp = 5000;
+    command(g2, 0, { t: 'support', kind: 'bombing', x: b2.x, z: b2.z, dir: 0 });
+    command(g2, 0, { t: 'support', kind: 'artillery', x: b2.x, z: b2.z, dir: 0 });
+    const orig2 = Math.random; Math.random = () => 0.5;
+    run(g2, 12);
+    Math.random = orig2;
+    assert.ok(b2.hp < 3000 && b2.hp > 3000 * 0.95, `support strikes barely scratch the bunker (${Math.round(3000 - b2.hp)} dmg)`);
+  }
   // clock runs out: defender wins
   g.mode.timeLeft = 0.01; run(g, 0.1);
   assert.equal(g.winner, 1, 'defender holds');
   // bunker destroyed: attacker wins
   const g2 = mk(), b2 = [...g2.units.values()].find(u => u.type === 'bunker');
-  g2.players[0].mp = 5000; const o2 = Math.random; Math.random = () => 0.5;
-  command(g2, 0, { t: 'support', kind: 'bombing', x: b2.x, z: b2.z, dir: 0 });
-  for (let i = 0; i < 8 && g2.winner === null; i++) { g2.players[0].sup.bombing = 0; g2.players[0].mp = 5000; command(g2, 0, { t: 'support', kind: 'bombing', x: b2.x, z: b2.z, dir: 0 }); run(g2, 9); }
-  Math.random = o2;
+  b2.hp = 1; g2.players[0].mp = 5000;
+  command(g2, 0, { t: 'support', kind: 'artillery', x: b2.x, z: b2.z, dir: 0 }); // any hit finishes it
+  run(g2, SUPPORT.artillery.delay + 5);
   assert.equal(g2.winner, 0, 'attacker wins when the bunker falls');
 }
 
@@ -622,7 +634,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   run(g, 0.2);
   const upkeep = [...g.units.values()].filter(u => u.owner === 0 && !u.cells).reduce((a, u) => a + UNITS[u.type].cost * CFG.classic.upkeep, 0);
   assert.ok(Math.abs(p.inc - (CFG.classic.trickle + node.rate - upkeep)) < 1e-9, `finished depot adds its node's rate, minus upkeep (${p.inc})`);
-  assert.ok(g.nodes.some(n => n.rate === CFG.classic.contestedRate) && g.nodes.some(n => n.rate === CFG.classic.homeRate), 'home and richer contested nodes');
+  assert.ok(g.nodes.some(n => n.fuel) && g.nodes.some(n => !n.fuel && n.rate === CFG.classic.homeRate), 'home MP nodes and contested Fuel nodes');
   assert.ok(upkeep > 0 && p.upkeep === upkeep, 'fielded units cost upkeep');
   // supports cost Munitions, not MP
   const mp = p.mp; p.mun = 100;
@@ -745,6 +757,66 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const c = createGame(map, ['a', 'b'], false), r2 = [...c.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   command(c, 0, { t: 'ability', ids: [r2.id], x: r2.x + 5, z: r2.z }); run(c, 0.2);
   assert.ok(r2.cd > 0, 'free in Conquest');
+}
+
+// Fuel (Classic): contested depots and the HQ pay Fuel; vehicles need it. New units: camouflaged sniper, mortar barrage.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), p = g.players[0];
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  run(g, 5);
+  assert.ok(Math.abs(p.fuel - CFG.classic.hqFuel * 5) < 0.05, `HQ trickles Fuel (${p.fuel})`);
+  // a Motor Pool that can train vehicles
+  const c = g.units.size;
+  const mp = { id: 0 }; p.mp = 5000;
+  const bar = [...g.units.values()].find(u => u.type === 'hq' && u.owner === 0);
+  for (const t of ['barracks', 'motorpool']) {
+    const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+    eng.x = hq.x; eng.z = hq.z + 10;
+    command(g, 0, { t: 'build', ids: [eng.id], kind: t, x: hq.x + (t === 'barracks' ? -8 : 8), z: hq.z + 16 });
+    const b = [...g.units.values()].find(u => u.type === t && u.owner === 0);
+    assert.ok(b, t + ' placed'); b.built = 1; b.hp = UNITS[t].hpPer;
+  }
+  const pool = [...g.units.values()].find(u => u.type === 'motorpool' && u.owner === 0);
+  p.fuel = 10;
+  command(g, 0, { t: 'buy', unit: 'tank', from: pool.id });
+  assert.equal(pool.queue.length, 0, 'no tank without Fuel');
+  p.fuel = 100; const mp0 = p.mp;
+  command(g, 0, { t: 'buy', unit: 'tank', from: pool.id });
+  assert.deepEqual(pool.queue, ['tank'], 'tank queued'); assert.equal(p.fuel, 100 - UNITS.tank.fuel); assert.equal(p.mp, mp0 - UNITS.tank.classicCost, 'cheaper in MP');
+  // a depot on a contested node pays Fuel, not MP
+  const fn = g.nodes.find(n => n.fuel), eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  // stand next to the node on open ground (village nodes have houses around them)
+  const open = [[4, 0], [-4, 0], [0, 4], [0, -4], [4, 4], [-4, -4]].map(([dx, dz]) => ({ x: fn.x + dx, z: fn.z + dz })).find(q => g.chars[Math.floor(q.z / CELL) * g.w + Math.floor(q.x / CELL)] === '.');
+  eng.x = open.x; eng.z = open.z; run(g, 0.3);
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'depot', x: fn.x, z: fn.z });
+  const dep = g.units.get(fn.depot); dep.built = 1; run(g, 0.2);
+  assert.ok(Math.abs(p.fuelInc - (CFG.classic.hqFuel + CFG.classic.contestedFuel)) < 1e-9, `contested depot pays Fuel (${p.fuelInc})`);
+}
+{
+  // sniper: seen while it shoots or moves, hidden from afar once it keeps still and quiet
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+  const sn = put(g, 0, 'sniper', 10, 10), spot = put(g, 1, 'rifle', 40, 10);
+  spot.retarget = 999; spot.targetId = 0; spot.attackId = 0;
+  sn.cooldown = 1e9; // holds fire (firing gives it away, checked below)
+  run(g, 0.3);
+  const seen = () => g.players[1].visible.has(sn.id);
+  assert.equal(seen(), true, 'a fresh sniper is visible');
+  run(g, 4);
+  assert.equal(seen(), false, 'still and quiet: camouflaged at 30 m');
+  spot.x = 18; run(g, 0.3);
+  assert.equal(seen(), true, 'but seen up close');
+  spot.x = 40; run(g, 0.3); assert.equal(seen(), false, 'hidden again from afar');
+  sn.cooldown = 0; run(g, 0.5);
+  assert.equal(seen(), true, 'firing gives it away');
+  // mortar barrage: 4 shells on the spot, no line of sight needed
+  const m = fresh(); m.players[0].mp = 1000;
+  const mo = put(m, 0, 'mortar', 10, 10);
+  command(m, 0, { t: 'ability', ids: [mo.id], x: 50, z: 10 });
+  run(m, 0.1);
+  assert.equal(m.salvos[0]?.left, 4, 'mortar barrage is 4 shells');
+  // the new units are in Conquest too
+  for (const t of ['mortar', 'sniper', 'armoredcar', 'medium']) { const q = fresh(); q.players[0].mp = 1000; command(q, 0, { t: 'buy', unit: t }); assert.equal(q.units.size, 1, t + ' buyable in Conquest'); }
 }
 
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.

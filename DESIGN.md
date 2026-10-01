@@ -24,7 +24,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   Teams share vision, can't target each other, hold each other's points, and win on combined VP; the goal scales
   with average team size (3v3 plays to 3600) so team games last about as long as a 1v1.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
-  rifle squad, MG team, AT gun, light tank. Squads are one sim entity with N models.
+  rifle squad, MG team, AT gun, light tank, plus (2026-09-30) mortar team, sniper, armored car, medium tank.
+  Squads are one sim entity with N models.
 - Combat: cover cells halve incoming accuracy and suppression. The suppression meter slows and then pins infantry.
   Tanks take double damage from the rear. Grid line of sight. Fog of war is enforced by the server.
 
@@ -45,6 +46,9 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of
   trenches and sandbag walls facing the map center. Direct fire does 25% to it; explosives use their demolition value
   (bomb 400, satchel 600, rocket 120, shell 90), so every destruction tool is a way in.
+- Off-map support does 5% of its demolition value to the bunker (`CFG.assault.supportMul`): a bombing run used to be
+  the main way to kill it. The AI attacker stops aiming strikes at it. Attacker wins /20 after: Three Crossroads 15,
+  River Towns 12, Pegasus 7, Seawall 7, Stalingrad 7, Bocage 4 (was 11), Hill 112 3, Monte Cassino 1 (was 11).
 - Attackers win when every bunker is down; defenders win when the 15:00 clock runs out. No VP; points give manpower.
 - Attackers start with 320 MP and +5/s, defenders 250 and +3.5/s. 90 AI 1v1 assaults per map, attacker wins:
   50% (default), 61% (River Towns). 3v3 on Six Fronts runs (3 bunkers).
@@ -53,9 +57,13 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Map pack (`tools/genmap-pack.js`): 5 assault maps with `defend`, 5 point-symmetric 2-side conquest maps (drawn with
   a mirroring canvas, so every cell has its twin through the center) and 2 six-player rotational maps.
   Cliffs are 2+ level steps; ramps are single-level cells cut through them. Hedges block sight, not movement.
-  AI 1v1 assault, attacker wins: Bocage 6/10, Monte Cassino 7/10, Stalingrad 4/10, Pegasus ~35/40, Seawall ~35/40
-  (runs swing 7-10/10 between identical configs). Defender income didn't move Pegasus/Seawall: bombs do most of the
-  bunker damage. Crossroads Village 1v1 by spawn: 15/9 over 24 (mirrored, so likely noise).
+  Crossroads Village 1v1 by spawn: 15/9 over 24 (mirrored, so likely noise).
+- Assault map balance is mostly about where the points are, not how much they pay. With points next to the attackers'
+  spawn they won ~35/40 (Pegasus, Seawall); raising the defender's income changed nothing, while moving the points to
+  the defender's side swung it to 1-4/20. Rule used: the defender's points and the key terrain (cliff tops, ramp tops)
+  inside the AI defender's 70 m home range; a few contested points in the middle; small ones near the attackers.
+  AI 1v1 assault, attacker wins (20 each): Pegasus 7, Bocage 11, Seawall 4, Monte Cassino 11, Stalingrad 7.
+  Seawall: cliff at row 56 (ramp tops outside the defender's range) 20/20, at row 30 1-2/20, at row 42 4/20 (kept).
 - Hill 112 (80x110, `tools/genmap.js`): defenders on a level-4 plateau, attackers at level 0. On the upper slope
   the flanks are a 2-level cliff, so the climb funnels through a central ramp or narrow paths at the map edges.
   The AI defender only holds points within 70 m of home, which here is just the summit, so the summit's MP
@@ -91,22 +99,27 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   is eliminated, and the last team standing wins. No VP.
 - Sudden Death at 25:00: production and construction stop, and Production Buildings lose ~1% max hp/s (depots exempt).
   Repair is slower than decay. Last building standing wins; if the last ones fall in the same tick, it's a draw.
-- Economy: MP comes from an HQ trickle of 2/s plus the node rate of each Supply Depot: 1.5/s on home nodes, 2.5/s on
-  the contested ones by the villages (so they're worth fighting for). Upkeep: each fielded unit costs 0.08% of its price
-  per second off the income (min 0.5/s). Doubling upkeep only lengthened games (20.2 min median) without curbing the
-  leader's MP banking at the pop cap, so it stays gentle; banking needs something to spend on. Depots only go on Resource Nodes (one each).
+- Economy, three currencies, one source each: home depots pay MP (2.5/s each, plus an HQ trickle of 3/s), the contested
+  depots by the villages pay Fuel (1.5/s, plus an HQ trickle of 0.5/s), points pay Munitions. Fuel buys vehicles, which
+  cost less MP in Classic: armored car 160 MP + 25 Fuel, light tank 200 + 60, rocket truck 170 + 50, medium tank
+  260 + 90, Tiger 420 + 150. Upkeep: each fielded unit costs 0.08% of its price per second off the MP income (min 0.5/s).
+  History: contested depots paid 2.5 MP/s before Fuel. Upkeep alone (even doubled) didn't stop the leader banking MP at
+  the pop cap; Fuel and the new units did (winners end with ~450 MP instead of 1500-2500). Depots only go on Resource Nodes (one each).
   No catch-up. Start: HQ, 1 Engineer, 1 rifle squad, 200 MP. Pop cap 20 in Classic (buildings excluded, queued units
   count): at 12 the leader sat at the cap banking thousands of MP and games stalled.
 - Resource Nodes: generated per match: 2 home nodes per spawn (~12 cells out, toward the flanks) and 1 beside each point
   with mp > 0. None at the center. (Hand-placed nodes in the map file wait for the editor Node tool.)
 - Munitions: a second currency, Classic only, earned from held points at 1.5 x the point's vp (center 3/s, village 1.5/s),
   full rate for every teammate. It pays for off-map support and unit abilities (abilities keep their cooldowns).
-- Buildings: HQ (4000 hp; Engineers, rifles; unique, can't be rebuilt), Supply Depot (60 MP, 600 hp), Barracks
-  (150 MP, 2000 hp; MG, faction infantry), Motor Pool (200 MP, 2500 hp; tanks, AT, rockets, Tiger; needs a Barracks).
+- Buildings: HQ (3000 hp; Engineers, rifles; unique, can't be rebuilt), Supply Depot (60 MP, 600 hp), Barracks
+  (150 MP, 1500 hp; MG, mortar, sniper, faction infantry), Motor Pool (200 MP, 1900 hp; AT gun, armored car, light and
+  medium tank, rocket truck, Tiger; needs a Barracks). Hp went down 25% with the new units: armies hold fewer tanks
+  (the base killers), and at the old hp only 53% of games were decided before Sudden Death.
   One tier; no upgrades or research. Barracks and Motor Pool can't cover a resource node.
 - Buildings are timber, not bunker concrete: guns with 20+ anti-tank damage hit them fully, small arms do 25% of their
   anti-infantry damage. With the bunker rule (25% of anti-tank damage) a rifle hit did 0.1 and armies shot at bases forever.
-- Training times: Engineer 12s, rifle 15, conscript 12, MG 18, Ranger 20, AT 22, rocket 30, tank 35, Tiger 50.
+- Training times: Engineer 12s, rifle 15, conscript 12, MG 18, mortar 20, sniper 20, Ranger 20, AT 22, armored car 25,
+  rocket 30, tank 35, medium tank 40, Tiger 50.
 - Buildings are stamped grid cells (3x3, depot 2x2): they block movement and sight, give cover and wreck to rubble.
   Hp lives on the building. Placement: any clear flat cells your side can see.
   Enemy buildings show as last-seen Ghosts under fog.
@@ -161,6 +174,26 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Slices: 1 tracer · 2 production · 3 Sudden Death, elimination, Ghosts, ally support · 4 abilities cost Munitions
   · 5 adaptive AI: all built. Deferred: editor Node tool, hand-made Classic maps, AI difficulty levels (the lever would be
   aiAttackRatio plus a reaction delay).
+
+## New units (2026-09-30, all modes)
+- Mortar team (180 MP): one arcing shell every 8s at up to 50 m (min 12) on anything its side can see, no line of sight
+  needed (the rocket truck's salvo with one shell). Mortar Barrage: 4 shells on a spot (Classic: 15 Munitions).
+- Sniper (160 MP): shooter + spotter, 55 m, one shot kills one soldier (25 damage) every 5s, must stand still. Camouflage:
+  after 3s still and 4s without firing it is only seen within 12 m (or by a recon flight). The server decides, so it is
+  fog-fair; the owner sees a HIDDEN tag.
+- Armored car (220 MP): fastest unit (9 m/s), 170 hp, light gun + MG that fire on the move, weak vs tanks. No transport.
+- Medium tank (380 MP): 600 hp, 80 anti-tank damage, the mainline tank between the light tank and the Tiger.
+- Looks per faction: Sherman / Panzer IV / T-34, M8 Greyhound / Sd.Kfz. 222 / BA-64.
+- AI: a mortar against dug-in MGs and AT guns (or once its army is 6+), a sniper against 6+ infantry seen, an armored car
+  once the army is 7+ (it leads depot raids), medium tanks when affordable. It falls back to infantry when it can't make
+  what it wants (before, it saved for an unaffordable unit forever).
+- Conquest balance (150 AI matches, default map): 2nd place VP / winner 0.62 -> 0.54, lead changes 1.57 -> 1.17, length
+  9.5 -> 8.5 min, faction wins 45/63/42 -> 44/59/47. Taking out either the mortar or the armored car alone puts closeness
+  back at 0.63 but USSR wins collapse (9 of 60). Weaker versions of both (mortar every 8s for 24, armored car 170 hp)
+  didn't change closeness (0.53) and gave the most even factions so far (30/29/31 of 90). Kept the weaker versions.
+  Open question: the side that's ahead gets the mortar and armored car first, so games are more one-sided.
+- Classic balance with Fuel and the new units (30 per map): 74% decided before Sudden Death (23/25/19 of 30), median 15.9
+  (default), 18.1 (River Towns), 23.2 min (Six Fronts, long), faction wins 24/33/31 with 2 draws.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

@@ -1,6 +1,6 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf } from './sim.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -76,21 +76,30 @@ export function think(g, slot, opts = {}) {
   const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
   const seenTanks = Math.max([...me.visible].filter(id => g.units.get(id)?.type === 'tank').length, rule(1) ? seenArmor : 0);
 
-  // shopping: counter tanks it has seen, get one tank once the infantry is out, else 2 rifles per MG
+  // shopping: counter tanks it has seen, get one tank once the infantry is out, a mortar for dug-in enemies, a sniper
+  // against infantry crowds, an armored car to scout and raid, else 2 rifles per MG
   const seenGarrison = [...me.visible].some(id => g.units.get(id)?.garrison >= 0);
-  const want = seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : count('tank') < 1 && mine.length >= 4 ? 'tank'
+  const seenDugIn = [...me.visible].some(id => { const e = g.units.get(id); return e && !allied(g, e.owner, slot) && (e.type === 'mg' || e.type === 'at') && inCover(g, e); });
+  const tanks = count('tank') + count('medium') + count('tiger');
+  const want = seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : tanks < 1 && mine.length >= 4 ? 'tank'
+    : (seenDugIn || mine.length >= 6) && count('mortar') < 1 ? 'mortar' : seenInf >= 6 && count('sniper') < 1 && mine.length >= 5 ? 'sniper'
+    : count('armoredcar') < 1 && mine.length >= 7 ? 'armoredcar' : tanks < 2 && mine.length >= 8 ? 'tank'
     : count('mg') * 2 < count('rifle') || (rule(1) && seenInf >= 6 && count('mg') < 3) ? 'mg' : 'rifle'; // many infantry seen: more MGs
   // faction flavor: USA mixes in Rangers, Germany saves up for its Tiger, USSR fields Conscripts instead of rifles
   let buy = want;
+  // the medium tank is the mainline tank once it can be afforded; the light tank is the cheap fallback
+  const affords = (t) => { const pr = priceOf(g, t); return me.mp >= pr.mp && !(pr.fuel > (me.fuel ?? 0)); };
+  if (want === 'tank' && trains('medium') && affords('medium')) buy = 'medium';
   if (want === 'rifle' && canBuild('conscript', me.faction)) buy = 'conscript';
   if (want === 'rifle' && canBuild('ranger', me.faction) && count('ranger') < 2 && count('rifle') >= 1) buy = 'ranger';
   // Tiger only when it's affordable right now: saving up for it starved the German army
-  if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && me.mp >= UNITS.tiger.cost && (want === 'tank' || want === 'rifle')) buy = 'tiger';
+  if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && affords('tiger') && (want === 'tank' || want === 'rifle')) buy = 'tiger';
   // Classic: keep an Engineer while there are nodes to build on
-  if (!trains(buy)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
+  // Classic: no building for it, or no Fuel for a vehicle: infantry instead
+  if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(g, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
   if (classic && count('engineer') < (g.nodes.some(n => !n.depot) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
-  if (me.mp - (mine.length >= 3 ? reserve : 0) >= UNITS[buy].cost) command(g, slot, { t: 'buy', unit: buy });
+  if (me.mp - (mine.length >= 3 ? reserve : 0) >= priceOf(g, buy).mp) command(g, slot, { t: 'buy', unit: buy });
 
   // how many of my units are at or heading to each point
   const pointOf = (pos) => g.points.findIndex(p => d(pos, p) <= CFG.pointRadius);
@@ -114,9 +123,7 @@ export function think(g, slot, opts = {}) {
   const call = (kind, at, dir) => at && command(g, slot, { t: 'support', kind, x: at.x, z: at.z, dir });
   // bombs for tanks and for squads holed up in houses
   const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
-  if (bunkers.length && can('bombing')) call('bombing', bunkers[0]);
-  else if (bunkers.length && can('artillery')) call('artillery', bunkers[0]);
-  else if (bombTarget && can('bombing')) call('bombing', bombTarget);
+  if (bombTarget && can('bombing')) call('bombing', bombTarget);
   else if (can('artillery')) call('artillery', cluster(2, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && e.still > 3));
   else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && (classic || me.mp > 250)) call('recon', g.points.find(p => p.owner >= 0 && !allied(g, p.owner, slot)));
@@ -142,7 +149,8 @@ export function think(g, slot, opts = {}) {
       if (rule(4) && !mem.raid) {
         const depot = knownBuildings(g, slot).filter(b => b.type === 'depot' && g.players[b.owner].team !== me.team && !recent.some(e => now - e.t < 30 && d(e, b) < 25))
           .sort((a, b) => d(a, me.spawn) - d(b, me.spawn))[0];
-        const pick = depot && free.filter(u => !busy.has(u.id) && u.type !== 'mg' && u.type !== 'at').sort((a, b) => d(a, depot) - d(b, depot)).slice(0, 2);
+        const fast = (u) => (u.type === 'armoredcar' ? 0 : 1); // armored cars are the raiders
+        const pick = depot && free.filter(u => !busy.has(u.id) && !['mg', 'at', 'mortar', 'sniper'].includes(u.type)).sort((a, b) => fast(a) - fast(b) || d(a, depot) - d(b, depot)).slice(0, 2);
         if (pick?.length === 2) mem.raid = { id: depot.id, ids: pick.map(u => u.id), at: { x: depot.x, z: depot.z } };
       }
       if (mem.raid) for (const u of mem.raid.ids.map(id => g.units.get(id)).filter(u => u && u.owner === slot)) send(u, mem.raid.at);
@@ -240,6 +248,8 @@ export function think(g, slot, opts = {}) {
   if (assault_.length) command(g, slot, { t: 'amove', orders: assault_ });
 }
 
+// a Fuel node (tanks) is worth about as much to the AI as a 2.5 MP/s node
+const worthOf = (n) => (n.fuel ? 2.5 : n.rate);
 // Classic build order for idle Engineers: two depots, a Barracks, a Motor Pool, then the remaining nodes.
 // Damaged buildings get repaired and unfinished sites get help first. Returns the MP to keep for the next building.
 function buildEconomy(g, slot, engineers, needArmor) {
@@ -254,7 +264,7 @@ function buildEconomy(g, slot, engineers, needArmor) {
     const fix = own.filter(b => b.built < 1 || b.hp < UNITS[b.type].hpPer * 0.7).sort((a, b) => d(u, a) - d(u, b))[0];
     if (fix && d(u, fix) < 60) { command(g, slot, { t: 'assist', ids: [u.id], id: fix.id }); continue; }
     if (next === 'depot') {
-      const pick = free.map(n => ({ n, i: g.nodes.indexOf(n) })).filter(({ i }) => !taken.has(i) || u.aiNode === i).sort((a, b) => d(u, a.n) - a.n.rate * 20 - (d(u, b.n) - b.n.rate * 20))[0]; // richer nodes are worth a walk
+      const pick = free.map(n => ({ n, i: g.nodes.indexOf(n) })).filter(({ i }) => !taken.has(i) || u.aiNode === i).sort((a, b) => d(u, a.n) - worthOf(a.n) * 20 - (d(u, b.n) - worthOf(b.n) * 20))[0]; // richer nodes are worth a walk
       if (!pick) continue;
       u.aiNode = pick.i; taken.add(pick.i);
       if (me.mp >= UNITS.depot.cost && teamSees(g, me.team, pick.n)) command(g, slot, { t: 'build', ids: [u.id], kind: 'depot', x: pick.n.x, z: pick.n.z });

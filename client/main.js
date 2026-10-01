@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34' } },
 ];
 const COLORS = [0x3d7bd9, 0xe0b23a, 0xd94a3d, 0x4cae4c, 0xa35ad8, 0xe07a2a];
 let teams = [], factions = [];
@@ -13,10 +13,11 @@ const facOf = (slot) => factions[slot] ?? slot % 3;
 const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
 const foe = (slot) => (teams[slot] ?? slot) !== (teams[me] ?? me);
 const ROLE = { rifle: 'Captures, all-round', mg: 'Pins infantry, sets up', at: 'Kills tanks, sets up', tank: 'Kills infantry, weak rear', rocket: 'Rocket salvos, breaks garrisons',
-  ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint', engineer: 'Builds depots, weak rifles' };
+  ranger: 'Elite, bazookas, satchel charges', tiger: 'Heavy tank, thick front armor (max 1)', conscript: 'Cheap waves, Ura! sprint', engineer: 'Builds depots, weak rifles',
+  mortar: 'Arcing fire, out-ranges MGs', sniper: 'One shot, one kill; hides when still', armoredcar: 'Fast scout and raider', medium: 'Mainline tank' };
 const classicMode = () => lobbyState?.mode === 'classic';
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -219,7 +220,8 @@ function startGame(m) {
   buildStructures();
 
   // capture points
-  points = map.points.map((p) => {
+  const assault = lobbyState?.mode === 'assault';
+  points = map.points.filter(p => !assault || (p.mp ?? 1) > 0).map((p) => {
     const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, hAt((p.x + 0.5) * CELL, (p.y + 0.5) * CELL), (p.y + 0.5) * CELL);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.7, depthWrite: false });
     const ring = new THREE.Mesh(new THREE.RingGeometry(CFG.pointRadius - 0.35, CFG.pointRadius, 64), ringMat);
@@ -229,7 +231,7 @@ function startGame(m) {
     ring.material.depthTest = prog.material.depthTest = false; ring.renderOrder = prog.renderOrder = 2; // stay visible on slopes
     const flagMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
     const flag = mesh(GEO.plane, flagMat, 2.2, 1.4, 1, 1.1, 7.2, 0);
-    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`)); // Classic: points pay Munitions
+    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`)); // Classic: points pay Munitions
     world.add(g);
     return { g, ringMat, prog, progMat, flagMat };
   });
@@ -410,6 +412,8 @@ function buildHQ(sp, slot) {
 const SLOTS = {
   rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
   mg: [[0.2, 0], [-0.5, 0.7], [-0.5, -0.7]],
+  mortar: [[0.2, 0.6], [0.2, -0.6], [-0.6, 0]],
+  sniper: [[0.4, 0], [-0.5, 0.6]],
   engineer: [[0.6, 0], [-0.4, 0.7], [-0.4, -0.7]],
   at: [[-0.5, 0.7], [-0.5, -0.7], [-1.2, 0.4], [-1.2, -0.4]],
   ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
@@ -432,10 +436,22 @@ const TANKS = {
     { hull: [4.2, 1.0, 2.3], turret: [1.6, 0.8, 1.5, -0.3, 0.2], gun: [2.2, 0.09], slope: 1 },   // T-70: sloped front
   ],
   tiger: [null, { hull: [5.4, 1.4, 3.2], turret: [2.6, 1.1, 2.2, -0.2, 0], gun: [3.8, 0.14], brake: 1 }, null],
+  medium: [
+    { hull: [4.8, 1.5, 2.7], turret: [2.0, 1.0, 1.9, -0.1, 0], gun: [2.6, 0.11], slope: 1 },           // M4 Sherman: tall, rounded
+    { hull: [5.0, 1.2, 2.7], turret: [2.3, 0.95, 1.9, -0.2, 0], gun: [3.0, 0.11] },                    // Panzer IV: boxy, long gun
+    { hull: [5.0, 1.1, 2.9], turret: [2.0, 0.9, 1.9, 0.3, 0], gun: [2.9, 0.11], slope: 1 },             // T-34: sloped, turret forward
+  ],
+  armoredcar: [
+    { hull: [3.8, 1.0, 2.1], turret: [1.3, 0.6, 1.3, 0, 0], gun: [1.0, 0.06], wheels: 3 },             // M8 Greyhound: six wheels
+    { hull: [3.6, 0.9, 1.9], turret: [1.1, 0.5, 1.2, 0, 0], gun: [0.8, 0.05], wheels: 2 },             // Sd.Kfz. 222
+    { hull: [3.2, 1.1, 1.7], turret: [0.9, 0.5, 0.9, 0, 0], gun: [0.7, 0.05], wheels: 2, slope: 1 },   // BA-64: small, sloped
+  ],
 };
 function buildTank(v, root, spec, f) {
   const hull = mat(f.vehicle), dark = mat(0x2a2a24), [hl, hh, hw] = spec.hull, y = hh / 2 + 0.5;
-  root.add(mesh(GEO.box, hull, hl, hh, hw, 0, y, 0), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, hw / 2), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, -hw / 2));
+  root.add(mesh(GEO.box, hull, hl, hh, hw, 0, y, 0));
+  if (spec.wheels) for (let i = 0; i < spec.wheels; i++) for (const side of [1, -1]) root.add(mesh(GEO.cyl, dark, 0.45, 0.35, 0.45, (i / (spec.wheels - 1) - 0.5) * hl * 0.7, 0.45, side * hw / 2).rotateX(Math.PI / 2));
+  else root.add(mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, hw / 2), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, -hw / 2));
   if (spec.slope) root.add(mesh(GEO.box, hull, 1.2, 0.2, hw, hl / 2 - 0.2, y + 0.25, 0).rotateZ(-0.5));
   const [tl, th, tw, tx, tz] = spec.turret, [gl, gt] = spec.gun;
   v.turret = new THREE.Group(); v.turret.position.set(tx, y + hh / 2 + th / 2, tz);
@@ -536,6 +552,7 @@ function makeUnit(id, type, owner) {
       if (type === 'ranger' && i % 3 === 1) man.add(mesh(GEO.cyl, dark, 0.07, 1.3, 0.07, 0, 1.1, 0.25).rotateZ(1.3)); // bazooka on the shoulder
       root.add(man); v.models.push(man);
     });
+    if (type === 'mortar') root.add(mesh(GEO.cyl, dark, 0.09, 1.1, 0.09, 0.7, 0.45, 0).rotateZ(-0.7), mesh(GEO.box, dark, 0.5, 0.06, 0.5, 0.45, 0.05, 0));
     if (type === 'mg') root.add(mesh(GEO.cyl, dark, 0.07, 1.4, 0.07, 1.0, 0.45, 0).rotateZ(Math.PI / 2), mesh(GEO.box, dark, 0.4, 0.4, 0.5, 0.5, 0.3, 0));
     if (type === 'at') {
       v.turret = new THREE.Group(); v.turret.position.set(0.6, 0, 0);
@@ -656,6 +673,7 @@ function applySnapshot(s) {
     if (!isVeh(type)) while (v.alive > alive) corpse(v, v.models[--v.alive]);
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
     v.base.visible = !v.garr;
+    if (UNITS[type].camo) v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; }));
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
     v.hpBar.material.color.set(frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
@@ -669,7 +687,7 @@ function applySnapshot(s) {
     if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
     if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
+    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
     if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing') { plane(sh); continue; }
     if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
     if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
@@ -693,7 +711,7 @@ function applySnapshot(s) {
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
-  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate]) => { const m = nodeMark(x, z, rate); world.add(m); return m; });
+  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
 
   s.points.forEach(([owner, capper, progress], i) => {
     const p = points[i]; if (!p) return;
@@ -780,9 +798,9 @@ function plane(sh) {
 }
 
 // rocket salvo: eight streaks arcing from the launcher onto the target area
-function salvo(from, x, z) {
+function salvo(from, x, z, n = 8) {
   const start = from.root.position.clone(); start.y += 2.5;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < n; i++) {
     const end = new THREE.Vector3(x + (Math.random() - 0.5) * 8, hAt(x, z), z + (Math.random() - 0.5) * 8), r = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0xffc070 }));
     r.scale.setScalar(0.3); r.visible = false; world.add(r);
     const life = 1.2 + i * 0.15;
@@ -855,7 +873,7 @@ function updateHud(s) {
   }).join('');
   drawPlans();
   const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length + [...units.values()].reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
-  $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun` : `${s.mp} MP`;
+  $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun · ${s.fuel} Fuel` : `${s.mp} MP`;
   $('support').querySelectorAll('button').forEach(b => {
     const k = b.dataset.k, cd = s.sup[k], { cur, cost } = supCost(s, k);
     b.disabled = cd > 0 || !(s[cur] >= cost);
@@ -865,7 +883,7 @@ function updateHud(s) {
   if (s.mode?.kind === 'classic') drawCard(s, pop);
   else $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= popCap(s)));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
-    const def = UNITS[v.type], tags = [v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
+    const def = UNITS[v.type], tags = [v.flags & 256 ? '<span class="tag cov">HIDDEN</span>' : '', v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
     if (def.building) return `<div class="sel"><span>${def.name}</span><span>${v.built < 1 ? `<span class="tag">BUILDING ${Math.round(v.built * 100)}%</span> ` : ''}${Math.ceil(v.hp)}hp</span></div>` +
       (v.queue?.length ? `<div class="sel muted"><span>Training ${look(v.owner).names[v.queue[0]] ?? UNITS[v.queue[0]].name} ${Math.round(v.prog * 100)}%</span><span>${v.queue.length}/5</span></div>` : '');
     return `<div class="sel"><span>${look(v.owner).names[v.type] ?? UNITS[v.type].name}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
@@ -888,6 +906,7 @@ function updateHud(s) {
 // queue; Engineers show the buildings they can put up. Rebuilt only when the selection changes (rebuilding it every
 // snapshot would eat clicks), otherwise just refreshed.
 let cardKey = '';
+const priceText = (s, t) => { const pr = priceOf(s, t); return `${pr.mp} MP` + (pr.fuel ? ` + ${pr.fuel} Fuel` : ''); };
 const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets' };
 function drawCard(s, pop) {
   const card = $('buy'), sel = [...selected].map(id => units.get(id)).filter(Boolean);
@@ -898,7 +917,7 @@ function drawCard(s, pop) {
     card.classList.toggle('hidden', !key);
     if (bld && bld.built < 1) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted">Under construction <span data-built></span></span><small class="muted">Right-click it with Engineers to help</small></div><button data-cancel><b>Cancel</b><span>75% back</span></button>`;
     else if (bld) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted" data-queue></span><small class="muted">Right-click the ground: rally point</small></div>`
-      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${ROLE[t]}"><b>${name(t)}</b><span>${UNITS[t].cost} MP · ${UNITS[t].train}s</span><small class="muted">${ROLE[t]}</small></button>`).join('');
+      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${ROLE[t]}"><b>${name(t)}</b><span>${priceText(s, t)} · ${UNITS[t].train}s</span><small class="muted">${ROLE[t]}</small></button>`).join('');
     else if (eng) card.innerHTML = BUILDABLE.map(k => `<button data-build="${k}"><b>${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd></b><span>${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span><small class="muted" data-note>${BUILD_ROLE[k]}</small></button>`).join('');
     else card.innerHTML = '';
     const id = bld?.id;
@@ -910,7 +929,7 @@ function drawCard(s, pop) {
   if (bld && bld.built >= 1) {
     const q = bld.queue ?? [];
     card.querySelector('[data-queue]').textContent = q.length ? `Training ${name(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(name).join(', ')}` : '') : 'Idle';
-    card.querySelectorAll('[data-train]').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.train].cost || pop >= popCap(s) || q.length >= 5));
+    card.querySelectorAll('[data-train]').forEach(b => { const pr = priceOf(s, b.dataset.train); b.disabled = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel || pop >= popCap(s) || q.length >= 5; });
   }
   if (eng) card.querySelectorAll('[data-build]').forEach(b => {
     const k = b.dataset.build, need = UNITS[k].needs && !owns(UNITS[k].needs);
@@ -1007,12 +1026,12 @@ function applyGhosts(list) {
   }
   for (const [id, gv] of ghosts) if (!keep.has(id)) { world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
-function nodeMark(x, z, rate) {
-  const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.8, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: 0xe8c860, transparent: true, opacity: 0.6, depthWrite: false }));
+function nodeMark(x, z, rate, fuel) {
+  const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.8, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: fuel ? 0xe07a30 : 0xe8c860, transparent: true, opacity: 0.6, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.position.y = 0.25; m.renderOrder = 2; m.material.depthTest = false;
   g.add(m, mesh(GEO.box, mat(0x6e5836), 0.8, 0.6, 0.8, 0, 0.3, 0));
   // what a depot here pays: the richer contested nodes are worth fighting for
-  const tag = label(`+${rate} MP/s`); tag.position.y = 3; tag.scale.multiplyScalar(0.6); g.add(tag);
+  const tag = label(fuel ? `+${rate} Fuel/s` : `+${rate} MP/s`); tag.position.y = 3; tag.scale.multiplyScalar(0.6); g.add(tag);
   g.position.set(x, hAt(x, z), z);
   return g;
 }
@@ -1053,7 +1072,7 @@ function defaultDir(kind, at) {
   return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
 }
 // F fires exactly one ability: the first type in this order that has one ready (the others are click-only)
-const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'at', 'tank', 'tiger', 'rocket'];
+const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'mortar', 'at', 'armoredcar', 'tank', 'medium', 'tiger', 'rocket'];
 function fKeyType() {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   return PRIORITY.find(t => sel.some(v => v.type === t && !v.cd)) ?? null;
@@ -1068,7 +1087,7 @@ function useAbility(type) {
   else { sendCmd({ t: 'ability', ids: ready.map(v => v.id) }); blip(880); }
 }
 function throwAt(g, kind) {
-  const who = [...selected].map(id => units.get(id)).filter(v => v && v.type === AIMED[kind] && !v.cd);
+  const who = [...selected].map(id => units.get(id)).filter(v => v && UNITS[v.type].ab.id === kind && !v.cd);
   if (!who.length) return;
   who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(760);

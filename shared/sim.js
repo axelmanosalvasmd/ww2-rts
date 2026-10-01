@@ -6,14 +6,14 @@ export const TICK = 1 / 20;
 export const CFG = {
   vpToWin: 1200, mpStart: 150,
   // Assault mode: attackers must destroy every defender's command bunker before the clock runs out.
-  assault: { time: 900, directMul: 0.25, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11 },
+  assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11 },
   // flat income does most of the work; points add a little and trailing players catch up
   mpBase: 4, catchupMax: 4, catchupPer: 80,
   captureTime: 8, pointRadius: 8, popCap: 12,
   retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
   // incoming accuracy/suppression multipliers; blasts only care about trenches
   coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
-  digCost: 30, digCells: 4, digTime: 3,
+  digCost: 30, digCells: 4, digTime: 3, camoRange: 12,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
   terrainHp: { B: 400, H: 60, '#': 150, '=': 200 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W' }, crush: { H: '.', '#': 'R' },
   fordSpeed: 0.5,
@@ -27,7 +27,7 @@ export const CFG = {
   // Classic mode: build a base. MP from an HQ trickle plus Supply Depots on resource nodes, Munitions from points.
   // depots pay per node: safe home nodes less than the contested ones by the villages. upkeep: each fielded unit costs
   // this share of its price per second, off the income (never below minInc)
-  classic: { time: 1500, mpStart: 200, trickle: 2, homeRate: 1.5, contestedRate: 2.5, upkeep: 0.0008, minInc: 0.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
+  classic: { time: 1500, mpStart: 200, trickle: 3, homeRate: 2.5, contestedFuel: 1.5, hqFuel: 0.5, upkeep: 0.0008, minInc: 0.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
     // a bigger army than Conquest (the economy grows), and Sudden Death: Production Buildings lose decay x max hp per second
     popCap: 20, decay: 0.01,
     // adaptive AI: attack a base only with an army worth this much more than the enemy it saw in the last window seconds
@@ -64,6 +64,24 @@ UNITS.rocket = { name: 'Rocket Launcher', cost: 250, models: 1, hpPer: 160, spee
     salvo: true, rockets: 8, spread: 6, blast: 3.5, terrain: 120, antiGarrison: 1.5, flight: 1.2, every: 0.15 },
   ab: { id: 'barrage', name: 'Rocket Barrage', cd: 45, range: 70 } };
 
+// Mortar team: lobs one shell at anything its side can see (no line of sight needed); out-ranges MGs, breaks dug-in squads.
+UNITS.mortar = { name: 'Mortar Team', cost: 180, models: 3, hpPer: 20, speed: 3, radius: 1.4, vision: 30, infantry: true,
+  w: { range: 50, minRange: 12, interval: 8, setup: 2, inf: 24, veh: 8, accInf: 1, accVeh: 1, supp: 35,
+    salvo: true, rockets: 1, spread: 3.5, blast: 3, terrain: 60, antiGarrison: 1.2, flight: 1.5, every: 0.1 },
+  ab: { id: 'barrage', name: 'Mortar Barrage', cd: 40, range: 50, shells: 4, mun: 15 } };
+// Sniper: shooter + spotter. One shot, one soldier, at long range; must stand still. Camouflaged while it keeps still.
+UNITS.sniper = { name: 'Sniper', cost: 160, models: 2, hpPer: 20, speed: 4.2, radius: 1.2, vision: 46, infantry: true, garrisons: true, camo: true,
+  w: { range: 55, interval: 5, inf: 25, veh: 0, accInf: 0.85, accVeh: 0, supp: 30, setup: 1 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+// Armored car: the fastest thing on the map. Scouts, raids, hunts snipers and mortars; fires on the move, weak vs tanks.
+UNITS.armoredcar = { name: 'Armored Car', cost: 220, models: 1, hpPer: 170, speed: 9, radius: 2, vision: 44, infantry: false,
+  w: { range: 28, interval: 1, inf: 4, veh: 6, accInf: 0.45, accVeh: 0.4, supp: 8, moveFire: 0.7 },
+  ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
+// Medium tank (Sherman / Panzer IV / T-34): the mainline tank, between the light tank and the Tiger.
+UNITS.medium = { name: 'Medium Tank', cost: 380, models: 1, hpPer: 600, speed: 5.5, radius: 2.7, vision: 40, infantry: false, crushes: true,
+  w: { range: 38, interval: 3.5, inf: 35, veh: 80, accInf: 0.6, accVeh: 0.75, supp: 25, moveFire: 0.8, shellTerrain: 110 },
+  ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
+
 // ---------- faction units (player faction: 0 USA, 1 Germany, 2 USSR) ----------
 // USA Rangers: elite all-rounders with bazookas; satchel charge demolishes houses, walls and bridges.
 UNITS.ranger = { name: 'Ranger Squad', faction: 0, cost: 185, models: 6, hpPer: 24, speed: 5, radius: 1.6, vision: 36, infantry: true, garrisons: true,
@@ -90,13 +108,16 @@ UNITS.engineer = { name: 'Engineer Squad', classic: true, cost: 60, models: 3, h
 // Buildings: stamped size x size cells, hp on the entity. produces = counts for Annihilation.
 const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, structure: true, building: true, w: null, ab: { id: 'none', name: '', cd: 1e9 }, ...o });
 // makes = what it trains; needs = a finished building you must own first
-UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 4000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
+UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
 UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
-UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 2000, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'ranger', 'conscript'] });
-UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 2500, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'tank', 'rocket', 'tiger'] });
+UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'ranger', 'conscript'] });
+UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'armoredcar', 'tank', 'medium', 'rocket', 'tiger'] });
 export const BUILDABLE = ['depot', 'barracks', 'motorpool'];
 // Classic: seconds to train each unit at its building
-for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, ranger: 20, at: 22, rocket: 30, tank: 35, tiger: 50 })) UNITS[t].train = s;
+for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, mortar: 20, sniper: 20, ranger: 20, at: 22, armoredcar: 25, rocket: 30, tank: 35, medium: 40, tiger: 50 })) UNITS[t].train = s;
+// Classic: vehicles cost Fuel and less MP
+for (const [t, mp, fuel] of [['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
+export const priceOf = (g, t) => (g.mode?.kind === 'classic' ? { mp: UNITS[t].classicCost ?? UNITS[t].cost, fuel: UNITS[t].fuel ?? 0 } : { mp: UNITS[t].cost, fuel: 0 });
 export const UNIT_TYPES = Object.keys(UNITS);
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
 // same team (a player is always allied with itself); -1 = nobody
@@ -112,12 +133,13 @@ export const SUPPORT = {
   bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, dig: 1, inf: 60, veh: 150, supp: 90, terrain: 400 },
 };
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
+const SUPPORT_SRC = new Set(Object.values(SUPPORT));
 // Classic prices support in Munitions (mun) instead of manpower
 Object.assign(SUPPORT.recon, { mun: 25 }); Object.assign(SUPPORT.artillery, { mun: 60 }); Object.assign(SUPPORT.strafe, { mun: 80 });
 Object.assign(SUPPORT.smoke, { mun: 20 }); Object.assign(SUPPORT.bombing, { mun: 100 });
 // Classic: unit abilities cost Munitions on top of their cooldown
 export const AB_MUN = { grenade: 15, suppress: 10, ap: 15, smoke: 10, satchel: 30, ura: 10, barrage: 25 };
-export const abCost = (g, ab) => (g.mode?.kind === 'classic' ? AB_MUN[ab.id] ?? 0 : 0);
+export const abCost = (g, ab) => (g.mode?.kind === 'classic' ? ab.mun ?? AB_MUN[ab.id] ?? 0 : 0);
 // pay for an ability as it's used; false if the owner can't afford it
 function payAb(g, u) {
   const c = abCost(g, UNITS[u.type].ab), p = g.players[u.owner];
@@ -202,7 +224,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
       return { slot, name, team: teams[slot], faction: factions[slot], vp: 0, mp: CFG.mpStart, inc: CFG.mpBase, sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, 0])), spawn: { x: (s.x + 0.5) * CELL, z: (s.y + 0.5) * CELL }, visible: new Set() };
     }),
     // vp/mp per second while held; the map can make some points worth more
-    points: map.points.map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
+    // Assault has no VP, so points that only pay VP are left out (clients filter the same way)
+    points: map.points.filter(p => !assault || (p.mp ?? 1) > 0).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0 })),
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
   g.chars = [...map.rows.join('')];
@@ -290,7 +313,7 @@ function setupClassic(g) {
   g.mode = { kind: 'classic', timeLeft: C.time, teams: new Set(g.players.map(p => p.team)).size };
   // the HQ sits on the spawn, on ground cleared for it
   for (const p of g.players) {
-    p.mp = C.mpStart; p.mun = 0;
+    p.mp = C.mpStart; p.mun = 0; p.fuel = 0;
     const c = cellOf(g, p.spawn.x, p.spawn.z) - g.w - 1, cells = footprint(g, c, 3);
     if (!cells) continue;
     for (const k of cells) setCell(g, k, '.');
@@ -303,11 +326,11 @@ function setupClassic(g) {
     const a = Math.atan2(cz - p.spawn.z, cx - p.spawn.x);
     for (const side of [-1, 1]) want.push({ x: p.spawn.x + Math.cos(a + side * 1.2) * 24, z: p.spawn.z + Math.sin(a + side * 1.2) * 24, rate: C.homeRate });
   }
-  for (const p of g.points) if (p.mp > 0) { const a = Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2; want.push({ x: p.x + Math.cos(a) * 14, z: p.z + Math.sin(a) * 14, rate: C.contestedRate }); }
+  for (const p of g.points) if (p.mp > 0) { const a = Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2; want.push({ x: p.x + Math.cos(a) * 14, z: p.z + Math.sin(a) * 14, rate: C.contestedFuel, fuel: true }); }
   g.nodes = [];
   for (const w of want) {
     const c = findSite(g, w.x, w.z, 2, [...avoid, ...g.nodes.map(n => [n, 10])]);
-    if (c >= 0) g.nodes.push({ c, ...footCenter(g, c, 2), depot: 0, rate: w.rate });
+    if (c >= 0) g.nodes.push({ c, ...footCenter(g, c, 2), depot: 0, rate: w.rate, fuel: !!w.fuel });
   }
 }
 // Where a unit retreats to: in Classic the nearest of its owner's finished Production Buildings, else the spawn
@@ -674,14 +697,15 @@ export function command(g, slot, cmd) {
     const queued = own.flatMap(b => b.queue ?? []);
     const pop = own.filter(u => !UNITS[u.type].structure).length + queued.length;
     const have = own.filter(u => u.type === cmd.unit).length + queued.filter(t => t === cmd.unit).length;
-    if (p.mp < def.cost || pop >= popCap(g) || have >= (def.max ?? Infinity)) return;
-    if (!classic) { p.mp -= def.cost; spawnUnit(g, slot, cmd.unit); return; }
+    const price = priceOf(g, cmd.unit);
+    if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop >= popCap(g) || have >= (def.max ?? Infinity)) return;
+    if (!classic) { p.mp -= price.mp; spawnUnit(g, slot, cmd.unit); return; }
     // queue it at the building asked for, else the one with the shortest queue
     if (g.mode.suddenDeath) return;
     const makers = own.filter(b => b.built >= 1 && UNITS[b.type].makes?.includes(cmd.unit) && b.queue.length < 5);
     const b = makers.find(m => m.id === cmd.from) ?? makers.sort((a, c) => a.queue.length - c.queue.length)[0];
     if (!b) return;
-    p.mp -= def.cost; b.queue.push(cmd.unit);
+    p.mp -= price.mp; p.fuel -= price.fuel; b.queue.push(cmd.unit);
   }
 }
 
@@ -716,10 +740,10 @@ function pickTarget(g, u) {
   return best;
 }
 
-function launchSalvo(g, u, at) {
+function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
   const w = UNITS[u.type].w;
-  g.salvos.push({ x: at.x, z: at.z, owner: u.owner, left: w.rockets, next: w.flight, w });
-  g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'salvo', pub: true });
+  g.salvos.push({ x: at.x, z: at.z, owner: u.owner, left: n, next: w.flight, w });
+  g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'salvo', n, pub: true });
 }
 
 function fire(g, u, t, moving) {
@@ -750,7 +774,7 @@ function fire(g, u, t, moving) {
   t.hp -= dmg * hits;
   u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating && !(t.sprint > 0)) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
-  u.cooldown = w.interval * rate;
+  u.cooldown = w.interval * rate; u.shotAt = g.tick;
   g.shots.push({ f: u.id, t: t.id, fo: u.owner, to: t.owner, x: t.x, z: t.z, hit: hits > 0, kill: t.hp <= 0, k: u.type });
   if (w.shellTerrain) {
     // a miss still lands somewhere near the target; either way it hits whatever structure is there
@@ -769,7 +793,9 @@ function updateVision(g) {
       if (g.players[t.owner].team === p.team) continue;
       if (UNITS[t.type].structure && !UNITS[t.type].building) { vis.add(t.id); continue; }
       const aim = t.cells ? null : t;
-      if (own.some(u => { const d = dist(u, t), at = aim ?? aimPoint(g, u, t); return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, at)); })
+      // camouflage: after 3s still and 4s without firing, only seen within camoRange (recon flights still spot it)
+      const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
+      if (own.some(u => { const d = dist(u, t), at = aim ?? aimPoint(g, u, t); if (hidden) return d < CFG.camoRange; return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, at)); })
         || g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
     byTeam.set(p.team, p.visible = vis);
@@ -789,7 +815,9 @@ function hurt(g, t, src, fall, owner) {
   const inf = UNITS[t.type].infantry;
   // concrete takes an explosive's demolition value (the same number that wrecks houses)
   const base = UNITS[t.type].structure ? src.terrain ?? src.veh : inf ? src.inf : src.veh;
-  t.hp -= base * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
+  // the bunker is built to take a bombardment: off-map strikes barely touch it, it has to be taken on the ground
+  const shrug = t.type === 'bunker' && SUPPORT_SRC.has(src) ? CFG.assault.supportMul : 1;
+  t.hp -= base * shrug * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
   if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
 }
@@ -864,7 +892,7 @@ export function step(g) {
       const ab = def.ab;
       if ((ab.id === 'barrage' || ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range && !payAb(g, u)) u.nade = null; // can't afford it any more
       else if (ab.id === 'barrage' && dist(u, u.nade) <= ab.range) {
-        launchSalvo(g, u, u.nade); u.cooldown = w.interval; u.cd = ab.cd; u.nade = null; u.path = [];
+        launchSalvo(g, u, u.nade, ab.shells); u.cooldown = w.interval; u.cd = ab.cd; u.nade = null; u.path = [];
       } else if ((ab.id === 'grenade' || ab.id === 'satchel') && dist(u, u.nade) <= ab.range) {
         g.nades.push({ x: u.nade.x, z: u.nade.z, t: ab.fuse, owner: u.owner, ab });
         g.shots.push({ f: u.id, fo: u.owner, x: u.nade.x, z: u.nade.z, k: 'throw', pub: true });
@@ -1074,7 +1102,11 @@ export function step(g) {
     if (g.mode?.kind === 'classic') {
       // no catch-up: MP from the HQ trickle and finished depots, Munitions from every point the team holds
       const C = CFG.classic, own = list.filter(u => u.owner === pl.slot && u.hp > 0);
-      const depots = g.nodes.reduce((a, n) => { const d = g.units.get(n.depot); return a + (d && d.owner === pl.slot && d.built >= 1 && d.hp > 0 ? n.rate : 0); }, 0);
+      // home depots pay MP, the contested ones by the villages pay Fuel
+      const paying = g.nodes.filter(n => { const d = g.units.get(n.depot); return d && d.owner === pl.slot && d.built >= 1 && d.hp > 0; });
+      const depots = paying.reduce((a, n) => a + (n.fuel ? 0 : n.rate), 0);
+      pl.fuelInc = pl.away || pl.out ? 0 : C.hqFuel + paying.reduce((a, n) => a + (n.fuel ? n.rate : 0), 0);
+      pl.fuel += pl.fuelInc * dt;
       pl.upkeep = own.reduce((a, u) => a + (UNITS[u.type].structure ? 0 : UNITS[u.type].cost * C.upkeep), 0);
       pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, C.trickle + depots - pl.upkeep);
       pl.mp += pl.inc * dt;
@@ -1139,8 +1171,8 @@ export function snapshotFor(g, slot, shots, cells = []) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
   const seen = (id) => allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
   return {
-    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun),
-    nodes: g.nodes?.map(n => [r(n.x), r(n.z), n.rate]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: g.players.map(q => !!q.out),
+    t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
+    nodes: g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: g.players.map(q => !!q.out),
     // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
     queues: [...g.units.values()].filter(b => b.owner === slot && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),
@@ -1152,7 +1184,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
     // 128 building a site. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
     units: [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0), vet(u), u.built ?? 1]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0), vet(u), u.built ?? 1]),
     smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),

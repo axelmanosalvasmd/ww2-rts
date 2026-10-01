@@ -64,6 +64,14 @@ _Avoid_: worker, pioneer, peasant
 Classic's second currency, earned only by holding points. It pays for off-map support and unit abilities, and only exists in Classic.
 _Avoid_: ammo, command points
 
+**Fuel**:
+Classic's third currency. It pays for vehicles (light tank, rocket truck, Tiger), which then cost less MP. It only exists in Classic.
+_Avoid_: gas, oil
+
+**Camouflage**:
+A sniper that hasn't moved or fired for a few seconds can only be seen up close (or from a recon flight). Firing gives it away for a moment.
+_Avoid_: stealth, invisibility
+
 **Point**:
 A capture location on the map. In Classic it earns Munitions rather than VP.
 _Avoid_: flag, objective
