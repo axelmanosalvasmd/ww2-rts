@@ -1,0 +1,310 @@
+{
+  "rifle-0.png": {
+    "type": "rifle",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a US Army WW2 rifleman standing at the ready",
+    "details": "M1 helmet with net, M1 Garand rifle, cartridge belt, canteen, gaiters, olive drab"
+  },
+  "rifle-1.png": {
+    "type": "rifle",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German WW2 Grenadier rifleman",
+    "details": "Stahlhelm M40, Kar98k rifle, Y-straps, mess kit, bread bag, jackboots, field grey"
+  },
+  "rifle-2.png": {
+    "type": "rifle",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet WW2 rifleman",
+    "details": "SSh-40 helmet, Mosin-Nagant with bayonet, gymnastyorka tunic, rolled greatcoat over the shoulder, khaki"
+  },
+  "squad-0.png": {
+    "type": "squad",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "US infantry squad lineup: rifleman, Ranger with Thompson, Ranger with bazooka, engineer with pack and shovel, sniper with scoped rifle",
+    "details": "side by side, front views"
+  },
+  "squad-1.png": {
+    "type": "squad",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "German infantry lineup: Grenadier, MG42 gunner, sniper in camouflage smock, Pioneer with satchel charge",
+    "details": "side by side, front views"
+  },
+  "squad-2.png": {
+    "type": "squad",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "Soviet infantry lineup: rifleman, conscript with pilotka cap and PPSh-41, sniper in camouflage suit, sapper",
+    "details": "side by side, front views"
+  },
+  "mg-0.png": {
+    "type": "mg",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a US M1919 .30 cal machine gun on tripod with a two-man crew kneeling",
+    "details": "ammo box, belt"
+  },
+  "mg-1.png": {
+    "type": "mg",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German MG 42 on a Lafette tripod with a two-man crew",
+    "details": "ammo cans, spare barrel"
+  },
+  "mg-2.png": {
+    "type": "mg",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet Maxim M1910 machine gun on its wheeled Sokolov mount with shield, two-man crew",
+    "details": "wheeled Sokolov mount with shield, two-man crew"
+  },
+  "mortar-0.png": {
+    "type": "mortar",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "an 81mm M1 mortar, GrW 34 and 82mm BM-37 mortars side by side",
+    "details": "bipods, baseplates, ammunition crates"
+  },
+  "at-0.png": {
+    "type": "at",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a US 57mm M1 anti-tank gun",
+    "details": "split trail, gun shield, two wheels, long barrel with muzzle"
+  },
+  "at-1.png": {
+    "type": "at",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German PaK 40 75mm anti-tank gun",
+    "details": "angled double shield, muzzle brake, split trail"
+  },
+  "at-2.png": {
+    "type": "at",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet 45mm 53-K anti-tank gun",
+    "details": "small shield, spoked wheels, split trail"
+  },
+  "flak-0.png": {
+    "type": "flak",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a US 40mm Bofors anti-aircraft gun on its four-outrigger carriage",
+    "details": "seats, sights, clip loader"
+  },
+  "flak-1.png": {
+    "type": "flak",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German 2cm Flak 38 on its triangular base",
+    "details": "single barrel, sights, small shield"
+  },
+  "flak-2.png": {
+    "type": "flak",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet 37mm 61-K anti-aircraft gun on its four-wheel carriage",
+    "details": "four-wheel carriage"
+  },
+  "tank-0.png": {
+    "type": "tank",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "an M5 Stuart light tank",
+    "details": "riveted boxy hull, tall turret, 37mm gun, bogie wheels, US white star"
+  },
+  "tank-1.png": {
+    "type": "tank",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a Panzer II Ausf F light tank",
+    "details": "small offset turret, 20mm gun, five road wheels, Balkenkreuz"
+  },
+  "tank-2.png": {
+    "type": "tank",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet T-70 light tank",
+    "details": "sloped hull, offset small turret, 45mm gun, red star"
+  },
+  "medium-0.png": {
+    "type": "medium",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "an M4 Sherman medium tank",
+    "details": "rounded cast turret, 75mm gun, VVSS bogies, sloped glacis, white star"
+  },
+  "medium-1.png": {
+    "type": "medium",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a Panzer IV Ausf H medium tank",
+    "details": "long 75mm gun with muzzle brake, side skirts, boxy hull, Balkenkreuz"
+  },
+  "medium-2.png": {
+    "type": "medium",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet T-34/76 medium tank",
+    "details": "sloped armor, Christie road wheels, hexagonal turret, red star"
+  },
+  "tiger-1.png": {
+    "type": "tiger",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German Tiger I heavy tank",
+    "details": "boxy hull, interleaved road wheels, 88mm gun with muzzle brake, Zimmerit optional"
+  },
+  "armoredcar-0.png": {
+    "type": "armoredcar",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "an M8 Greyhound six-wheeled armored car",
+    "details": "open-top turret, 37mm gun"
+  },
+  "armoredcar-1.png": {
+    "type": "armoredcar",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German Sd.Kfz. 222 four-wheeled armored car",
+    "details": "open turret with wire mesh screen, 20mm gun"
+  },
+  "armoredcar-2.png": {
+    "type": "armoredcar",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet BA-64 four-wheeled armored car",
+    "details": "sloped faceted hull, small turret with MG"
+  },
+  "flaktrack-0.png": {
+    "type": "flaktrack",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a US M16 half-track with quad .50 cal M45 mount",
+    "details": "front wheels, rear tracks"
+  },
+  "flaktrack-1.png": {
+    "type": "flaktrack",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German Wirbelwind flak tank on a Panzer IV chassis",
+    "details": "open nine-sided turret, quad 20mm guns"
+  },
+  "flaktrack-2.png": {
+    "type": "flaktrack",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet ZSU-37 self-propelled anti-aircraft gun",
+    "details": "open fighting compartment, 37mm gun on a light tank chassis"
+  },
+  "rocket-0.png": {
+    "type": "rocket",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a T34 Calliope rocket launcher on an M4 Sherman",
+    "details": "rack of 60 tubes above the turret"
+  },
+  "rocket-1.png": {
+    "type": "rocket",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a German Panzerwerfer 42 on a Maultier half-track",
+    "details": "ten-tube rotating launcher, armored cab"
+  },
+  "rocket-2.png": {
+    "type": "rocket",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Soviet Katyusha BM-13 on a Studebaker truck",
+    "details": "eight launch rails, cab, six wheels"
+  },
+  "fighter-0.png": {
+    "type": "fighter",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a P-51D Mustang fighter",
+    "details": "bubble canopy, belly scoop, bare metal with olive anti-glare, US star roundels"
+  },
+  "fighter-1.png": {
+    "type": "fighter",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a Bf 109 G fighter",
+    "details": "slim nose, framed canopy, grey mottle camouflage, Balkenkreuz, yellow nose band"
+  },
+  "fighter-2.png": {
+    "type": "fighter",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Yak-9 fighter",
+    "details": "green and black camouflage, teardrop canopy, red stars"
+  },
+  "attacker-0.png": {
+    "type": "attacker",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a P-47 Thunderbolt",
+    "details": "big radial engine cowling, olive drab, bombs and rockets under wings"
+  },
+  "attacker-1.png": {
+    "type": "attacker",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a Ju 87 Stuka dive bomber",
+    "details": "inverted gull wing, fixed spatted landing gear, siren, bomb on centerline"
+  },
+  "attacker-2.png": {
+    "type": "attacker",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "an Il-2 Sturmovik",
+    "details": "armored nose, rear gunner canopy, rockets under wings"
+  },
+  "bomber-0.png": {
+    "type": "bomber",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a B-25 Mitchell bomber",
+    "details": "twin engines, twin tail fins, glazed nose"
+  },
+  "bomber-1.png": {
+    "type": "bomber",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a He 111 bomber",
+    "details": "glazed greenhouse nose, twin engines, single fin"
+  },
+  "bomber-2.png": {
+    "type": "bomber",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Pe-2 bomber",
+    "details": "slim fuselage, twin engines, twin tail fins"
+  },
+  "transport-0.png": {
+    "type": "transport",
+    "faction": 0,
+    "faction_name": "USA",
+    "subject": "a C-47 Skytrain transport",
+    "details": "twin engines, round fuselage, invasion stripes"
+  },
+  "transport-1.png": {
+    "type": "transport",
+    "faction": 1,
+    "faction_name": "Germany",
+    "subject": "a Ju 52 trimotor transport",
+    "details": "corrugated metal skin, three engines"
+  },
+  "transport-2.png": {
+    "type": "transport",
+    "faction": 2,
+    "faction_name": "USSR",
+    "subject": "a Li-2 transport",
+    "details": "twin engines like a DC-3, Soviet markings"
+  }
+}

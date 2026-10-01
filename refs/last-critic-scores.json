@@ -1,0 +1,171 @@
+{
+ "wheeled": {
+  "scores": {
+   "armoredcar-0 M8 Greyhound (2,660 tris, budget 3000)": 6.5,
+   "armoredcar-1 Sd.Kfz. 222 (2,214 tris, budget 3000)": 6,
+   "armoredcar-2 BA-64 (1,960 tris, budget 3000)": 5.5,
+   "flaktrack-0 M16 Half-track (2,884 tris, budget 3000)": 5.5,
+   "rocket-1 Panzerwerfer 42 (2,974 tris, budget 3000)": 6,
+   "rocket-2 Katyusha BM-13 on Studebaker (2,916 tris, budget 3000)": 6.5,
+   "rocket-0 T34 Calliope (684 tris, old box placeholder)": 2,
+   "flaktrack-1 Wirbelwind (204 tris, old box placeholder)": 1.5,
+   "flaktrack-2 ZSU-37 (204 tris, old box placeholder)": 1.5
+  },
+  "top_fixes": [
+   "Colour of shaded faces, all three factions but worst for Germany. paints() in /home/judiazm/ww2-rts/.claude/worktrees/wf_bc94ef53-513-4/client/models/wheeled.js: the Sd.Kfz. 222 and Panzerwerfer flanks and bed (everything not lit by the sun) read saturated navy blue, and the BA-64 and Katyusha read dark teal, in the in-game cell and the three-quarter-back view. The M8 reads olive. Move the German base from 0x686c74 to a neutral-warm grey (about 0x6e6c66) and the Soviet base from 0x78887a to a warmer olive (about 0x7e8a5e). Warm the dark and deep shades by multiplying the blue channel by ~0.9, not by a single scalar, so shade stays grey-brown or olive, not blue.",
+   "Wheels, all three armored cars: raise radius about 20% (M8 0.44 to 0.52, Sd.Kfz. 222 0.47 to 0.56, BA-64 0.40 to 0.48) and lift the hulls to match, so they read as tall chunky wheeled cars like the reference sheets. Fix tireGeo(): inset only the tread band (vertices with r >= 0.9R) to about 0.9 and go to 20 segments, so the silhouette is lugged and not an octagon. The sidewall must not be dented. Keep the rubber a touch lighter, 0x34332f, so tires read in shade.",
+   "Pay for it by trimming the hub: capGeo() is 60 triangles per wheel and nearly invisible, and wheels are about half of each car (M8 1,272 of 2,660). Cut it to a 2-ring cone (about 12 tris) and drop disc recess rings on the cars. That frees about 48 tris x 21 wheels, which funds the bigger tires and the turret and gun details. Also cap the tire's inner sidewall with a thin ring so the Sd.Kfz. 222 far-rear wheel stops showing as a black claw behind the hull (it sticks out at x=-1.97 vs the hull rear at -1.8).",
+   "Katyusha launcher: make the rockets the star of the model. Increase the M-13 body radius 0.085 to about 0.12 and lengthen it to about 1.9. Seat the rockets on top or at the side of the rail web (+0.12, not -0.175) so the silver bodies read from above and the side, and let the dark fins stick out about 0.4 past the rail rear. Thicken the rails to 0.26 x 0.05 with a row of dark dots for the perforations, and thicken the A-frame tubes to 0.07/0.05. Check the 2,916-triangle count after.",
+   "Panzerwerfer proportions: shorten the hood from 1.47 m to about 0.9 m and move the cab forward, over the front axle, with a near-vertical front plate (stations at x=0.8 to 2.15 currently fall from y=1.6 to 1.44). Lengthen the bed to about 2.8 m and lower its side walls to about 0.35 m with an owner rim. Make the launcher base visible: a swing frame under the bundle. The hood and cab currently read as a truck nose and the bed as a tub.",
+   "Half-track road wheels (M16 and Panzerwerfer): roadWheel() is an 8-sided lathe that shows as stop signs. Go to 12 segments, and make up the triangles (about 32 per wheel) by deleting the inner back face and the rim band the belt hides, and by using a 3-ring profile. Both models are at 96 to 99% of the 3,000 budget, so do this swap and nothing more.",
+   "M16 stature: raise the troop body walls from y=1.54 to about 1.85, the cab sides and windshield by about 0.2, and the hood by about 0.1 (everything is about 20% too low against the wheel). Scale the M45 quad up about 25%: longer barrels (L 1.15 to 1.4), taller shield plates (0.7 to 0.95), bigger ammo chests, and a central shield. Shorten the front roller from 1.8 m wide to about 1.3 and put a short plate bumper with tow eyes above it. Upright the radiator front with louvres.",
+   "M8 hull and turret: remove the floating chamferBox fenders at y=0.95 along the flank, and use fender() arches over the front and rear wheels only. Raise the turret to TH about 0.65, with a taller coaming ring (0.14 to 0.25) and a bracketed pintle .50 on the left. Give the glacis two driver hatches and a lower pointed plate, and add tow eyes. The reference silhouette is a tall turret on a slab hull.",
+   "BA-64: reduce the roof lean (roof half-width 0.48 to about 0.58 on the cab and rear stations) so the front view is a box with a wide flat roof, not a pyramid. Shorten and steepen the nose (stations x=0.65 to 1.75). Rebuild the turret as a taller faceted dome with a long jacketed DT (barrel about 0.9, with a jacket sleeve) in a ball mount. Move the spare wheel to the side. It has 1,040 triangles spare, so this is the cheapest model to improve.",
+   "Sd.Kfz. 222 fighting compartment: tilt the four wire screens outward by about 15 degrees and fold them over the top as in the reference. Turn the tub into a sloped octagonal turret. Add a visible gun mount (shield and sight) around the 20 mm. Replace the thin two-plate fender arches with a stepped hull side and larger arches, and add the spare wheel and stowage racks on the fenders. 786 triangles are spare.",
+   "Flat hull sides carry the least detail where the game camera looks most. Add cheap, high-contrast panel detail on the biggest flat faces of the M8, Sd.Kfz. 222, M16 body and Panzerwerfer bed: 2 to 4 hatches, vision blocks, a recessed seam line (a thin dark box, 12 tris each), and tool racks. Spend triangles saved from wheels, not new ones.",
+   "Sand-yellow camouflage on the Panzerwerfer: the reference is a Dunkelgelb sand base with olive and brown patches. The model is grey with tan patches, which inverts it. At minimum, make the patches olive/brown on a sand-tinted base, or keep grey but use the darker green-grey for the patches. Low priority next to the colour fix above."
+  ]
+ },
+ "guns": {
+  "scores": {
+   "mg-0 M1919 .30 cal on tripod": 6,
+   "mg-1 MG 42 on Lafette": 6,
+   "mg-2 Maxim on Sokolov mount": 7,
+   "mortar-0 81 mm M1 mortar": 6.5,
+   "mortar-1 GrW 34 mortar": 6.5,
+   "mortar-2 82 mm BM-37 mortar": 6,
+   "at-0 57 mm M1 AT gun": 7,
+   "at-1 PaK 40": 7,
+   "at-2 45 mm 53-K AT gun": 7,
+   "flak-0 40 mm Bofors": 6.5,
+   "flak-1 Flak 38 (2 cm)": 5.5,
+   "flak-2 61-K 37 mm AA gun": 6.5,
+   "flakpos Flak emplacement (3 factions)": 5.5
+  },
+  "top_fixes": [
+   "Rebuild the belts in mg-0, mg-1 and mg-2 (belt() in /home/judiazm/ww2-rts/.claude/worktrees/wf_bc94ef53-513-5/client/models/guns.js, about line 227): the current 9 blocks of 0.056 x 0.05 x 0.022 m on a 0.011 m tube read as yellow bricks in every close-up and in the game cell. Use about 22 rounds at roughly 0.03 m, packed edge to edge on a 0.02 m dark link strip, with brass tone near #b89a4a and a slight sag.",
+   "Scale up the machine guns and mortars for gameplay (about 1.3x) and move their crew slots out in GUN_SLOTS. In the in-game cell the MG is a dark stick about 40 px long and the mortar is about 25 px and covered by a crew blob. For the mortar, put the front crew at about (0.1, +-1.2) and the rear man to the side so none sit between the camera and the tube.",
+   "Rework the Flak 38 mount (flakGun fac 1): replace the single wedge shield, which reads as a cabinet, with two thin flat plates either side of the barrel with a gap. Add two ribbed vertical magazines, a handwheel, a proper rear seat bracket and thick screw jacks with large round pads. It is the weakest model in the family (5.5).",
+   "Fix contrast and hue of the gunmetal and German paint. In palette() the black 0x6b6f75 and steel 0xa0a4a9, plus a 12 percent white mix on paint, make receivers, jackets and shields render as warm taupe next to the dark blued steel and slate grey of the references. Darken mechanisms one step (black about 0x4d5157), use steel only for edge highlights, cut the white mix to about 4 percent, and cool the German guns (PaK 40, Flak 38, MG 42 body).",
+   "Rebuild the flak position (flakposGun and sandbagRing): make the two sandbag courses concentric with the same entrance gap instead of the spiral look; desaturate the sandbag texture to buff; give each faction a distinct twin gun (US clips, German drums, Soviet shield plates); trim bag segments so the USSR variant drops from 2,152 to 2,000 triangles or less.",
+   "Mortars: delete or repaint the two mustard cylinders lying beside each mortar (not in the references, they look like firewood); make the bomb crates olive for US and USSR and wood for German, with banded bombs (yellow, black and silver, red). Change the USSR 82 mm baseplate from round spokes to the square X-ribbed plate shown in the reference. Steepen the tube to about 70 degrees. Add bipod collars and an elevating screw.",
+   "Bofors (flakGun fac 0): enlarge the cradle housings to about 0.5 m wide and 0.6 m tall, flanking the barrel, as in the reference front view, and move the seats to their outer sides. Double the jack height and spring diameter, put crosshairs in the ring sights, and make the clip a vertical stack of brass rounds. The mount currently looks spindly.",
+   "M1919 and MG 42 tripods: the M1919 legs are long thin sticks and the MG 42 legs are bright yellow-olive bars, so both read as camera tripods. Add a thick central pintle column, shorter stout legs, big foot pads, and for the Lafette a traverse bar and an elevating bracket in dark olive-bronze. Add the M1919 feed tray and rear spade grips, and a third container (long case) for the MG 42.",
+   "AT guns: add the missing cradle detail (two recoil cylinders above the barrel, breech block, left handwheel) and a slotted muzzle brake on the 57 mm. Break up the flat shield slabs with rivet rows, a center ridge on the PaK 40 shield, and a darker lower weathering band. Darken the US 57 mm paint toward olive drab.",
+   "61-K: add the heavy cradle and recoil mass behind the shields, a slotted muzzle brake, two brown seats with handwheels, and tread lugs on the four tires. It is at 1,878 triangles, so offset the additions by simplifying the frame bars or wheel segments.",
+   "Add a low-triangle far version of each gun (under 500). The far soldier model currently reuses the full gun mesh (1,076 to 1,878 triangles per gun) and the gun is the whole squad's most expensive far-distance part. Drop perforations, spokes, bolts and rounds in the far mesh.",
+   "Add panel-line and wear detail across all shields and carriages: edge rivet rows, a darker lower third and a bright chamfer lift on the large flat plates. The Maxim, PaK 40, 45 mm and 61-K shields are large unbroken slabs next to the heavily detailed references."
+  ]
+ },
+ "armor-medium": {
+  "scores": {
+   "M4 Sherman (medium, fac 0): 3,370 tris, budget 4,000 OK": 7,
+   "Panzer IV Ausf. H (medium, fac 1): 3,776 tris, budget 4,000 OK (224 spare)": 5.5,
+   "T-34 (medium, fac 2): 3,346 tris, budget 4,000 OK": 7,
+   "T34 Calliope (rocket, fac 0): 3,930 tris, budget 4,000 OK but only 70 spare": 7,
+   "Wirbelwind (flaktrack, fac 1): 3,521 tris, budget 4,000 OK": 6.5
+  },
+  "top_fixes": [
+   "Panzer IV and Wirbelwind running gear (panzerHull in client/models/armor-medium.js). Road wheels R 0.21 to about 0.235 with centre y 0.27 to about 0.29, spaced so they nearly touch. Shorten the Schuerzen from hh 0.525 to about 0.45 centred at y 1.1 so the wheels show under them. This is the worst silhouette problem: the Panzer IV reads as a slab on dots.",
+   "Panzer IV owner colour: remove the full-perimeter red rim (wall(thicken(SKIRT), 0.66 to 0.74)). It makes red horns from the front and a neon box from above. Use a thin band lower on the turret body, or only on the front and rear runs.",
+   "Wirbelwind tub: shrink radius 1.32/1.08 to about 1.15/0.95 so it sits inside the hull width. Change 9 sides to 8 with flat front and rear (S 9 to 8, adjust a0) to match the reference octagon, and move the two side crosses to the new side faces.",
+   "Wirbelwind gun mount legibility: make the tub interior about 1.0 x paint (or warm tan), the floor about 0.7 x paint, the barrels and receivers lighter gunmetal (about 0x6b6a62 against STEEL 0x45443e), and the ammo drums pale. The four guns must read against the interior at the in-game camera.",
+   "Calliope rack: raise tilt from 0.09 to about 0.4 rad (front up) with the posts and elevation arm re-aimed, and make tube mouths round (hexagon or octagon) instead of squares so it stops reading as a window grid. Budget: only 70 tris are free at 3,930, so drop rear-end mouths or go from 14 to 12 columns.",
+   "Track colour (all five): GROUSER 0x5c584f and EDGE 0x67625a turn bright orange-tan under the warm light. At game zoom the upper run is a bright comb stripe, and the front-view track ends are big brown blocks. Darken and cool both colours so the track is darker than the hull deck.",
+   "T-34 owner band: the bright cream strip across the turret front over the mantlet is the brightest thing on the model. Thin it, move it to the turret ring (h 0.1 to 0.2) and leave the front face clean. Also lower T34_BODY top from h 0.78 to about 0.62 so the turret is less tower-like.",
+   "Sherman gun and turret: barrel L 1.74 to about 1.5 and r 0.076 to about 0.095 with a bigger muzzle swell, turret about 15% taller with a wider rotor shield, per the reference's stout 75 and big cast turret. Rebuild the nose cover as a domed three-piece housing and remove the spiky front fender plates.",
+   "Underside shading: the T-34 nose and the lower hulls of the Panzer IV and Wirbelwind go near-black (finish dark 0.68, and navy on the shadow side). Raise the AO floor for the lower hull and the German grey (GREY dark 0.8 to about 0.88) so the 3/4 back views and the in-game cell keep value contrast against the ground.",
+   "Painted-miniature finish: every model is flat single-tone panels. Add per-plate tonal jitter (about +/-6%) on the skirts, hull side plates and deck hatches, a lighter dry-brush edge on top faces, and 2 or 3 stowage items per tank (bedroll or tarp, jerry cans, tow cable, tool box). Free triangle budget: Sherman about 630, T-34 about 650, Wirbelwind about 480, Panzer IV only about 224.",
+   "Triangle budgets all pass (medium limit 4,000): Sherman 3,370, Panzer IV 3,776, T-34 3,346, Calliope 3,930, Wirbelwind 3,521. Re-check the viewer stats after each fix, especially the Calliope.",
+   "Out of scope, for the lead: this worktree still shows the old box models for Panzerwerfer (rocket fac 1), Katyusha (rocket fac 2), M16 half-track (flaktrack fac 0) and ZSU-37 (flaktrack fac 2). They live on models/wheeled and models/armor-lightheavy, which are not merged here. They score about 1 to 2 against their references, so check them after those branches merge."
+  ]
+ },
+ "infantry": {
+  "scores": {
+   "rifle-0 (US Rifle Squad)": 5,
+   "rifle-1 (DE Grenadiers)": 4,
+   "rifle-2 (SU Rifle Squad)": 5,
+   "ranger-0 (US Rangers)": 5,
+   "conscript-2 (SU Conscripts)": 4,
+   "engineer-0 (US Engineers)": 4,
+   "engineer-1 (DE Pioneers)": 3,
+   "engineer-2 (SU Sappers)": 4,
+   "sniper-0 (US sniper team)": 4,
+   "sniper-1 (DE sniper team)": 3,
+   "sniper-2 (SU sniper team)": 5,
+   "mg-0/1/2 (.30 cal, MG 42, Maxim crews)": 3,
+   "mortar-0/1/2 (81mm, GrW 34, Soviet mortar crews)": 4,
+   "at-0/1/2 (57mm, PaK 40, 45mm AT crews)": 3,
+   "flak-0/1/2 (flak crews)": 3
+  },
+  "top_fixes": [
+   "Fix the prone posture. unit-models.js POSES rotates the whole standing aiming figure by PRONE_LEAN -1.49, so rifles stab into the ground and bent knees and boots point at the sky. Build a dedicated prone figure in infantry.js and bake it as the prone morph target or a swap mesh, in place of rotating the standing figure. Its legs should run straight back and slightly splayed, with the torso flat, the chest raised about 0.12 on the elbows, the head up, and the rifle level at about y 0.2 pointing along +x.",
+   "Give heads faces and seat the helmets properly. Raise the head sphere from 8x4 to 8x6. Add a nose wedge (about 0.03x0.04x0.035), a brow ridge, two ear nubs, a darker eye-socket band and a strap line from the helmet rim to the chin. Lower every helmet about 0.04 and deepen it so the rim sits at brow level and the face reads under the brim. Today the men read as bald pink mannequins.",
+   "Pose the gun crews to work their guns. MG gunner: sit him on his heels with his eye at receiver height, both hands on the rear grip and his head pitched to the sight. Feeder: hands on the belt, with an ammo can (0.28x0.18x0.12) on the ground beside him. AT: move SLOTS.at so the gunner kneels at the left of the breech with a hand on the elevation wheel, the loader stands at the right of the breech with the shell, and the others crouch at the trail. Flak: add a seated layer on the mount and a loader holding a vertical clip at the breech. Mortar loader: hold the bomb fins-down, vertical, over the muzzle at arm's length.",
+   "Make the lower-leg kit visible. Replace the lower-leg rod buried inside the trouser tube with a shape larger than the trouser end. US leggings: r 0.08 tapering to 0.072, ankle to 45% of the shin, canvas 0xb0a88a. SU puttees: r 0.076 with 2 or 3 darker spiral bands. DE jackboots: r 0.086 to 60% of the shin in near-black 0x1c1a17 with a cuff ring. End the trouser tube where the kit starts, and start the ao falloff above the kit, or floor it at 0.85, so the contrast survives.",
+   "Make the Germans read as Germans. Rebuild the Stahlhelm skirt so the sides and back drop to about -0.28R with a flare to 1.25R, keep the raised visor, and use 10 segments. Shift field grey cooler so it stays grey under the warm sun (tunic about 0x5d6668, helmet about 0x4f5650), and verify in the in-game cell that it no longer reads olive-brown.",
+   "Replace per-vertex camo with per-face patches. Convert sniper geometry to non-indexed before paintBy and choose one color per triangle from the face centroid, or subdivide the smock and cape. For the German pea-dot, use a dull tan base with small dark-brown and green dots at about 30% coverage and remove the yellow cast. For the US ghillie, replace the smooth cone cape with 10 to 14 hanging strips (thin quads 0.03x0.25) radiating from the shoulders and helmet, with jittered lengths and two burlap and green tones.",
+   "Fix the engineers. Move the shovel off the top of the pack so its blade no longer sits above the helmet at y 1.33 and reads as a radio antenna: strap it blade-down on the pack with the blade near hip height, or put it in the right hand blade-down as in the ref. Give the German Pioneer a satchel charge (box 0.2x0.12x0.1 with a strap) in the left hand and a stick grenade in the belt in place of the US-style box pack. Enlarge the hip satchel so it reads.",
+   "Smooth the limbs. Go from 5 radial sides with flat normals to 6 radial sides with smooth normals on cloth (crease about 60 degrees). Add a sleeve-cap sphere (r about 0.07) at each shoulder, and force at least 15 degrees of elbow bend on aiming arms so the forward arm no longer reads as a horizontal bar across the chest from the front.",
+   "Break up the clone squads. Vary the job per man index: alternate the rifle job between stride, brace and kneel aiming. Jitter turn by plus or minus 0.15 and head yaw per man, and give one rifleman port-arms or a reloading pose. Today four identical stride poses with parallel rifles read as copy-paste.",
+   "Rebuild the Soviet skatka as a fat round greatcoat roll. Raise the tube from radial 4 to 7 and the radius from 0.064 to about 0.08, use a lighter greatcoat color (about 0x7d7462 instead of the dark ROLL), and add two dark tie straps. Today it reads as a flat square sash.",
+   "Rebuild the pilotka as a boat-shaped side cap. Use an extruded wedge with a center crease ridge running front to back, about 0.07 tall. Seat it low on the head (bottom edge between brow and ear level), tilt it about 0.2 rad to the right, and show a band of hair below it. Today it reads as a flat beret perched on the crown.",
+   "Dome the far-LOD helmets. Every FAR_HELMET profile currently ends in a point, which makes coolie-hat cones. Add a crown ring (about [0.55, 0.9]) before the apex. Paint the owner band only on the bottom 0.04 of the rim so it stops dominating. Raise the far head from SphereGeometry(R,5,2), which reads as a diamond, to 6x3."
+  ]
+ },
+ "armor-lightheavy": {
+  "scores": {
+   "tank fac 0: M5 Stuart (2,976 tris, budget 3000)": 7,
+   "tank fac 1: Panzer II Ausf F (2,746 tris, budget 3000)": 6.5,
+   "tank fac 2: T-70 (2,592 tris, budget 3000)": 7,
+   "tiger fac 1: Tiger I (4,947 tris, budget 5000)": 7.5,
+   "flaktrack fac 0: M16 half-track, quad .50 (372 tris, no budget used)": 1.5,
+   "flaktrack fac 1: Wirbelwind (204 tris, no budget used)": 1.5,
+   "flaktrack fac 2: ZSU-37 (2,966 tris, budget 3000)": 7
+  },
+  "top_fixes": [
+   "Build the Wirbelwind (flaktrack fac 1) in client/models/armor-lightheavy.js and add it to the lightHeavy dispatcher in place of the crude box (204 tris now). Use a Panzer IV chassis: vertical glacis with a visor and ball MG, eight small road wheels in four bogie pairs, four return rollers, sprocket and idler, and fenders with stowage. On top, add a nine-sided open turret with sloped-in walls, the Flakvierling inside and four 20 mm barrels with flash hiders pointing forward. Paint it dunkelgelb with green and brown camo like the Tiger and add a Balkenkreuz. Budget about 3,800 to 4,000 triangles and give it one tip for the muzzle flash.",
+   "Build the M16 half-track (flaktrack fac 0) in the same file in place of the crude box (372 tris now). Add two large front tires with fenders, a hood with a grille and headlights, an open cab with a windshield frame and a white star on the hood. Add an armored rear body over a track run (five small bogie wheels, sprocket in front, rear idler, link band) and an M45 quad mount on a pedestal in the body. The mount has four .50 cal barrels with jackets on a cradle and a small shield, plus ammo boxes. Budget about 3,000 triangles. Change the dispatch to `[m16, wirbelwind, zsu37][fac]` for type `flaktrack`.",
+   "Lift the Panzer II paint and its tonal range. REPAINT maps 0x50565a to 0x515a64, which renders near-black, and the wheels and the track are the same dark grey. Use a mid panzer grey around 0x6a727c for the hull, a lighter edge highlight on the fender and the roof rim, black tires with a lighter steel disc, and a brown-grey track tone. Check that the 3/4-back view keeps visible panel detail.",
+   "Fix the shaded-side contrast on every vehicle. The 3/4-back views of the Stuart, T-70, Pz II and ZSU-37 are near-black navy. Raise the floor of the baked falloff in `shade()` from 0.72 to about 0.85, so low and downward faces stay readable, and warm the dark end of the paint so it does not turn teal. Check the in-game cell afterward so the vehicles do not wash out.",
+   "Reshape the Panzer II turret: widen it from about 66% to about 80% of the upper hull width, lower it by about 15%, make a larger rounded cupola at the rear, and set the 20 mm and the coax MG side by side in a rounded mantlet at the front. Replace the three-tier front with a plain vertical front plate that carries the visor and the Balkenkreuz.",
+   "Make the running gear read on the three light tanks and the ZSU-37. Give each wheel a pale-grey or black rubber ring with a lighter steel disc, and make the track belt thicker (about 0.14 instead of 0.11) with a rust-brown tint on the link edges and visible tread bars on the lower run, so it matches the chunky reference tracks. Pay for the extra track geometry from the wheel segments (10 down to 8 on the small wheels), since the Stuart, T-70 and ZSU-37 are all within 40 triangles of their 3,000 budget.",
+   "Make the owner-color band less intrusive. On the Stuart, Pz II and T-70 it is a wide saturated stripe across the turret front, so the mantlet and gun read poorly in the front view. Narrow it to about half its height and move it to the turret sides and rear, or turn it into a roof recognition panel, since the owner ring already carries the team color in the cell.",
+   "Redo the ZSU-37 gun shield and casemate. Replace the two tall flat 'rabbit ear' plates with a low curved shield around the gun. Make the casemate walls sloped inward at the front and about 15% lower. Give the 37 mm a visible recoil sleeve, cradle and bulky breech, and swap the cream stripe along the rim for a thin owner band on the sides.",
+   "Break up the Tiger's camo and give it more mass. Replace the soft blob camo with hard-edged mottled patches over a more saturated dunkelgelb, add a darker rubber ring on the wheels so the interleaved set reads apart from the tan hull, and add spare track links on the glacis and the turret side, a Notek light and a visor on the hull. Rebudget: it is at 4,947 of 5,000, so take the triangles from the overlapping wheels or the track links.",
+   "Add surface detail to the light-tank hulls: a second row of rivets and weld seams on the Stuart sponsons, a visible driver hatch hump and a rounded cast mantlet on the T-70, a muffler and bent fender ends on the Pz II. Use the flat decal polygons (the `flat()` kit), which cost only a few triangles each, since all three hulls are near the 3,000 budget.",
+   "Give the Tiger a more convincing muzzle brake: a bulbous double-baffle brake with a visible dark bore instead of two flat discs. Add vision slits and a hatch to the cupola and a weld line round the turret, since the Tiger is the family's best-reading model and has the most to gain from the last few details.",
+   "Fix the thin barrels in the in-game cell: the 37 mm, 20 mm and 45 mm barrels render as one pixel lines at distance 40. Thicken the tube radius by about 25% on the three light tanks and give each a lighter muzzle lip so the gun direction reads in the cell."
+  ]
+ },
+ "aircraft": {
+  "scores": {
+   "fighter-0 P-51D Mustang (2,739 tris, budget 3,500)": 6,
+   "fighter-1 Bf 109 G (3,287 tris, budget 3,500)": 5,
+   "fighter-2 Yak-9 (2,731 tris, budget 3,500)": 6,
+   "attacker-0 P-47D (3,505 tris, budget 3,500, over by about 5)": 6,
+   "attacker-1 Ju 87 Stuka (3,598 tris, budget 3,500, over by about 96)": 5,
+   "attacker-2 Il-2 Sturmovik (3,451 tris, budget 3,500)": 6.5,
+   "bomber-0 B-25J Mitchell (5,190 tris, budget 6,000)": 6,
+   "bomber-1 He 111 H (4,243 tris, budget 6,000)": 5,
+   "bomber-2 Pe-2 (3,972 tris, budget 6,000)": 5.5,
+   "transport-0 C-47 Skytrain (5,097 tris, budget 6,000)": 7,
+   "transport-1 Ju 52/3m (5,211 tris, budget 6,000)": 5.5,
+   "transport-2 Li-2 (4,463 tris, budget 6,000)": 6
+  },
+  "top_fixes": [
+   "Replace the German splinter camo. The splinter branch in CAMO_MAIN (client/models/planes.js ~391-395) is sin(u1)*sin(u2)*sin(u3), which gives a regular harlequin lattice with 2 to 5 m cells on the Bf 109, Ju 87, He 111 and Ju 52. Domain-warp u1..u3 with camoNoise (about +/-0.6 cell), shrink the scales (s about 0.45 to 0.6 on wings, 0.7 on fuselages) and jitter the threshold per cell so the blotches are irregular. Put the Bf 109 top on mottle (small RLM74/75 spots on RLM76, s about 0.35, planes.js ~717) so wings and fuselage share one scheme.",
+   "Add real cockpit glazing to the transports. C-47 and Li-2 have only two pale squares on a smooth bullet nose. Add a sloped 4-pane framed windshield with side panes 0.8 m behind the nose tip and a slight nose break, as in the refs. Ju 52 needs a taller framed canopy. Bombers have triangle headroom (about 800 to 2,000 under 6,000).",
+   "Fix the tail shapes. Pe-2: cut the cream D fins about 25%, taper them, and colour only the rudder and top. B-25: taller rounded trapezoid fins with a rudder split line. Ju 87: a near-rectangular fin about 1.8 m tall with about 1.9 m root chord (it is a sliver now). P-51: taller, broader fin with a dorsal fillet and square-tipped trapezoid tailplane. He 111: broad rounded fin instead of a shark fin.",
+   "Redo the propellers (aircraft.js bladesFor, planes.js prop declarations). Blades are constant-width sticks. Make paddle blades with a narrow shank, widening to about 0.28 m chord at 70% radius and a round tip. Make the B-25 4-blade (planes.js ~654, the ref has 4). Set PROP_TIPS[2] (Soviet) to yellow tips like the refs instead of 0x2a2824.",
+   "Break up the blank wings in the game cell. On the B-25, C-47, Li-2, P-47, Il-2 and Ju 52 the wings are flat olive slabs at game scale. Add dark thin decal lines for ailerons, flaps and elevator and rudder splits, cowl-flap rings on the nacelles, soot and oil streaks behind engines and exhausts, and a faint panel-line pass (camo kind 4 at low contrast) on painted planes, not only on the P-51's bare metal.",
+   "Replace the exhaust cubes (planes.js ~516-520, K.box with EXHAUST). On the P-51, Bf 109, Yak-9 and Il-2 they read as brown staples sticking out of the cowl. Use flush, half-height rounded stubs in dark charcoal with a soot streak behind. On the P-51 make them short fishtails inside the olive panel.",
+   "Fix the P-47 and Il-2 under-wing stores. P-47 tube clusters float ahead of the leading edge, with no pylon, and merge into a plank in the side view. Shorten to about 1.2 m, tuck them under the wing at about 45% chord, add pylons and nose cones, and put bombs on the inner pylons as in the ref. Il-2 rocket racks need pylons and should not project forward of the leading edge.",
+   "Rebuild the Ju 87 spats as lofted teardrops (about 16 segments) with wheel openings and the siren, and widen the fin. This also fixes the budget: the Ju 87 is at 3,598 tris and the P-47 at 3,505, against 3,500 for a single-engine plane. Trim about 100 from the Ju 87 (spat rings, exhaust cubes) and about 5 from the P-47 cowl. All other planes are within budget.",
+   "Fix the fighter and attacker proportions against the refs. Bf 109: slim the deep fuselage and belly bulge, narrow the canopy into a hump, remove the saucer-like radiator plates. Yak-9: shorten and deepen the nose with a bigger spinner. Il-2: deepen the forward fuselage about 25% and add a chin oil cooler and a wide inboard wing chord. P-51: lengthen and slim the rear fuselage and raise the canopy.",
+   "Rework the He 111 nose. It reads as a pointed ribbed blimp stuck on the front. Make it a blunt, rounded greenhouse that flows into the cockpit roof, with fewer, thinner frames, and replace the white crescent spinner spiral with a clean one- or two-segment spiral.",
+   "Lift the near-black camo and shade. VVS_BLACK on the Pe-2, Yak-9 and Il-2 reads as holes on nacelles and wing roots. Use a dark grey-green (about 0x2f3a2c) and narrow the bands. Raise the fill light on bomber and transport undersides and nacelle tops (FILL in planes.js, about 0.07+0.17 to 0.10+0.25) so they do not go black in the 3/4 back views.",
+   "Make the P-51 bare metal read as metal: warm light aluminium (about 0xc9ccce) with a stronger upper sheen instead of blue-grey, remove the blue tint on the lower body, and shrink the dark olive anti-glare panel. Fix the Ju 52 corrugation moire (the stripes alias in the 3/4 views): fade the ridge pattern out earlier (about 0.02 to 0.04 in the CAMO_MAIN fade) or widen the period."
+  ]
+ }
+}
