@@ -8,6 +8,7 @@ import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
+import { storyResult } from './shared/story.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 // the address friends use: PUBLIC_URL, else this machine's Tailscale HTTPS name (served by `tailscale serve`)
@@ -92,7 +93,9 @@ async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
-    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', result: room.result ?? null,
+    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard',
+    // a finished match's result carries this player's own outcome (you); a match the host ended has none
+    result: room.result ? { ...room.result, you: room.result.story ? p.lastMatch ?? null : null } : null,
     players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
 }
@@ -187,12 +190,37 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// The end of a match. Once the sim has a winner the room stays in play for 6 s: the sim runs at half speed (a step every
+// other tick, a snapshot after each), orders are refused (command() ignores them once there is a winner), the AIs stop
+// thinking and the fog is lifted (snapshotFor shows everything while g.reveal is set). Then back to the lobby (map, mode
+// and teams can change; newcomers can join) with the result: why and where it ended, the story, and each player's own
+// outcome in p.lastMatch (lobby() sends it as result.you). True while it has the room: the tick loop skips the rest.
+const HOLD_TICKS = Math.round(6 / TICK);
+function holdEnding(room) {
+  const g = room.game;
+  if (g.winner === null) return false;
+  g.held = (g.held ?? 0) + 1;
+  if (g.held % 2 === 0) {
+    step(g);
+    const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
+    const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
+    room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
+  }
+  if (g.held < HOLD_TICKS) return true;
+  room.state = 'lobby';
+  room.result = { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name), ...storyResult(g) };
+  room.players.forEach((p, i) => (p.lastMatch = { outcome: g.winner === -1 ? 'draw' : g.winner === g.players[i].team ? 'victory' : 'defeat', team: g.players[i].team }));
+  lobby(room);
+  return true;
+}
+
 setInterval(() => {
   for (const room of rooms.values()) {
     if (room.emptySince && Date.now() - room.emptySince > 60_000) { rooms.delete(room.code); continue; }
     if (room.state !== 'play' || !room.game) continue; // game may still be loading its map
     const g = room.game;
     room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
+    if (holdEnding(room)) continue;
     step(g);
     // AIs think every 2s, staggered so they don't all act on the same tick
     room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
@@ -201,9 +229,9 @@ setInterval(() => {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
       room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
     }
-    // match over: straight back to the lobby (map, mode and teams can change; newcomers can join), with the result
-    if (g.winner !== null) { room.state = 'lobby'; room.result = { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name) }; lobby(room); }
   }
 }, TICK * 1000);
 
 server.listen(PORT, HOST, () => console.log(`ww2-rts on http://${HOST}:${PORT}`));
+// test.js runs rooms in-process (PORT=0) through these
+export { rooms, server, wss };
