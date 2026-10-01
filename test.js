@@ -575,7 +575,9 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const g2 = mk(), b2 = [...g2.units.values()].find(u => u.type === 'bunker');
   b2.hp = 1; g2.players[0].mp = 5000;
   command(g2, 0, { t: 'support', kind: 'artillery', x: b2.x, z: b2.z, dir: 0 }); // any hit finishes it
+  const o3 = Math.random; Math.random = () => 0.5; // shells land on the aim point (random ones could all miss)
   run(g2, SUPPORT.artillery.delay + 5);
+  Math.random = o3;
   assert.equal(g2.winner, 0, 'attacker wins when the bunker falls');
 }
 
@@ -817,6 +819,22 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(m.salvos[0]?.left, 4, 'mortar barrage is 4 shells');
   // the new units are in Conquest too
   for (const t of ['mortar', 'sniper', 'armoredcar', 'medium']) { const q = fresh(); q.players[0].mp = 1000; command(q, 0, { t: 'buy', unit: t }); assert.equal(q.units.size, 1, t + ' buyable in Conquest'); }
+}
+
+// Classic resources on every shipped map: each player gets an HQ and 2 MP nodes close to home, and Fuel nodes sit
+// halfway between enemies (nobody gets a private one next to their HQ).
+for (const name of ['default', 'river-towns', 'six-fronts', 'hill-112']) {
+  const map = JSON.parse(readFileSync(`maps/${name}.json`, 'utf8'));
+  for (const n of [2, map.spawns.length]) {
+    const names = Array.from({ length: n }, (_, i) => 'p' + i), g = createGame(map, names, false, names.map((_, i) => i), names.map((_, i) => i % 3), { mode: 'classic' });
+    assert.ok(g.nodes.filter(nd => nd.fuel).length >= 2, `${name} ${n}p has Fuel nodes`);
+    for (const p of g.players) {
+      assert.ok([...g.units.values()].some(u => u.owner === p.slot && u.type === 'hq'), `${name} ${n}p: player ${p.slot} has an HQ`);
+      const d = (nd) => Math.hypot(nd.x - p.spawn.x, nd.z - p.spawn.z);
+      assert.ok(g.nodes.filter(nd => !nd.fuel && d(nd) < 40).length >= 2, `${name} ${n}p: player ${p.slot} has 2 MP nodes near home`);
+      assert.ok(g.nodes.filter(nd => nd.fuel).every(nd => d(nd) > 20), `${name} ${n}p: no Fuel node in player ${p.slot}'s backyard`);
+    }
+  }
 }
 
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.

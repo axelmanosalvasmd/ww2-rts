@@ -5,6 +5,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Conquest catch-up is stronger: trailing players get up to +6 MP/s (was 4), 1 per 60 VP behind (was 80). The new units
+  had made games one-sided (2nd place finished with 54% of the winner's VP); now 66% on Three Crossroads and 63% on
+  River Towns, more lead changes (1.58), 9.6 min games, faction wins 33/31/26 (90 AI matches). Tried and dropped: keeping
+  mortars and armored cars out of the first 4 minutes (49%, worse).
+- Classic Fuel nodes now sit halfway between neighbouring enemy HQs instead of by the villages (on several maps a
+  village Fuel node was 15-17 m from one player's HQ and 65+ m from the others). Each spot is picked so both sides walk
+  about as far to it; a 1v1 gets one on each flank. Audited every map as a 1v1 and full lobby: everyone gets an HQ and
+  2 MP nodes 21-34 m from home, every map has Fuel, nothing is unreachable. Still uneven where terrain forces detours:
+  Monte Cassino 1v1 (115 vs 164 m walk), Island Towns 6p (34-77 m). Classic balance after: 80% of games decided before
+  sudden death, median 15.8 / 16.6 / 21.4 min (90 AI matches).
+- Fixed a flaky test: the bunker-falls check fired a real random barrage at a 1 hp bunker, and sometimes every shell
+  missed.
 - Four new units in every mode:
   - Mortar team (Barracks in Classic): lobs shells at anything your side can see, out-ranges MGs; Mortar Barrage ability.
   - Sniper (Barracks): one shot, one kill at long range. Hides when it keeps still and stops firing (only seen up close

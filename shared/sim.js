@@ -8,7 +8,7 @@ export const CFG = {
   // Assault mode: attackers must destroy every defender's command bunker before the clock runs out.
   assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11 },
   // flat income does most of the work; points add a little and trailing players catch up
-  mpBase: 4, catchupMax: 4, catchupPer: 80,
+  mpBase: 4, catchupMax: 6, catchupPer: 60,
   captureTime: 8, pointRadius: 8, popCap: 12,
   retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
   // incoming accuracy/suppression multipliers; blasts only care about trenches
@@ -326,10 +326,32 @@ function setupClassic(g) {
     const a = Math.atan2(cz - p.spawn.z, cx - p.spawn.x);
     for (const side of [-1, 1]) want.push({ x: p.spawn.x + Math.cos(a + side * 1.2) * 24, z: p.spawn.z + Math.sin(a + side * 1.2) * 24, rate: C.homeRate });
   }
-  for (const p of g.points) if (p.mp > 0) { const a = Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2; want.push({ x: p.x + Math.cos(a) * 14, z: p.z + Math.sin(a) * 14, rate: C.contestedFuel, fuel: true }); }
+  // Fuel nodes halfway between neighbouring enemy HQs, so each is as far from both sides as it can be (by villages,
+  // some sat in one player's backyard). Each player pairs with its 2 nearest enemies; a 1v1 gets one on each flank.
+  const foes = (p) => g.players.filter(q => q.team !== p.team).sort((a, b) => dist(a.spawn, p.spawn) - dist(b.spawn, p.spawn));
+  const pairs = new Set();
+  for (const p of g.players) for (const q of foes(p).slice(0, 2)) pairs.add([p.slot, q.slot].sort((a, b) => a - b).join());
+  for (const key of pairs) {
+    const [a, b] = key.split(',').map(i => g.players[+i].spawn), mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
+    const l = dist(a, b) || 1, px = -(b.z - a.z) / l, pz = (b.x - a.x) / l;
+    for (const side of pairs.size === 1 ? [-1, 1] : [0]) want.push({ x: mx + px * side * 22, z: mz + pz * side * 22, rate: C.contestedFuel, fuel: true, from: [a, b] });
+  }
   g.nodes = [];
+  // walking distance from an HQ's doorstep (a straight-line midpoint can be a long climb for one side)
+  const walk = (from, to) => { const p = findPath(g, cellCenter(g, nearestFree(g, from.x, from.z)), to); let d = 0, at = from; for (const q of p) { d += dist(at, q); at = q; } return p.length ? d : Infinity; };
   for (const w of want) {
-    const c = findSite(g, w.x, w.z, 2, [...avoid, ...g.nodes.map(n => [n, 10])]);
+    const away = [...avoid, ...g.nodes.map(n => [n, 10])];
+    let c = findSite(g, w.x, w.z, 2, away);
+    if (w.from && c >= 0) {
+      // Fuel: of the spots around the midpoint, the one both HQs reach in the most equal walk
+      let best = Infinity;
+      for (let r = 0; r <= 24; r += 8) for (let k = 0; k < (r ? 8 : 1); k++) {
+        const t = findSite(g, w.x + Math.cos(k * Math.PI / 4) * r, w.z + Math.sin(k * Math.PI / 4) * r, 2, away);
+        if (t < 0) continue;
+        const at = footCenter(g, t, 2), da = walk(w.from[0], at), db = walk(w.from[1], at), score = Math.abs(da - db) + 0.1 * (da + db);
+        if (score < best) { best = score; c = t; }
+      }
+    }
     if (c >= 0) g.nodes.push({ c, ...footCenter(g, c, 2), depot: 0, rate: w.rate, fuel: !!w.fuel });
   }
 }

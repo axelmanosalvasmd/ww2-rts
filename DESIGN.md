@@ -5,7 +5,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 ## Game
 - Tactics skirmish, no base building outside Classic mode. PvP: 1v1 or 3-player FFA, joined by room link (`/#code`). The host can add AI opponents.
 - Win: first to 1200 VP. The center gives 2 VP/s and no manpower; villages give 1 VP/s + 1.5 MP/s.
-- Economy is mostly flat (4 MP/s base). Trailing players get up to +4 MP/s catch-up (1 per 80 VP behind the leader).
+- Economy is mostly flat (4 MP/s base). Trailing players get up to +6 MP/s catch-up (1 per 60 VP behind the leader;
+  was +4 per 80 until the new units made games one-sided).
 - Retreat (R): sprint home at 1.5x speed, take 25% damage, don't fire. Near spawn, squads refill a soldier every 2s for half its cost; tanks repair for MP.
 - One ability per unit (F): rifle grenade (thrown at a clicked spot, friendly fire, ignores cover), MG suppressive fire, AT gun AP round, tank smoke (blocks LOS).
 - Off-map support for manpower, announced to everyone before it lands: recon flight (60 MP, reveals 40 m for 15s),
@@ -107,8 +108,10 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   the pop cap; Fuel and the new units did (winners end with ~450 MP instead of 1500-2500). Depots only go on Resource Nodes (one each).
   No catch-up. Start: HQ, 1 Engineer, 1 rifle squad, 200 MP. Pop cap 20 in Classic (buildings excluded, queued units
   count): at 12 the leader sat at the cap banking thousands of MP and games stalled.
-- Resource Nodes: generated per match: 2 home nodes per spawn (~12 cells out, toward the flanks) and 1 beside each point
-  with mp > 0. None at the center. (Hand-placed nodes in the map file wait for the editor Node tool.)
+- Resource Nodes: generated per match: 2 home MP nodes per spawn (~12 cells out, toward the flanks) and Fuel nodes
+  halfway between neighbouring enemy HQs (each player pairs with its 2 nearest enemies; a 1v1 gets one per flank), at
+  the nearby spot both sides walk about equally far to. Village-side Fuel nodes were unfair: some sat 15-17 m from one
+  HQ. (Hand-placed nodes in the map file wait for the editor Node tool.)
 - Munitions: a second currency, Classic only, earned from held points at 1.5 x the point's vp (center 3/s, village 1.5/s),
   full rate for every teammate. It pays for off-map support and unit abilities (abilities keep their cooldowns).
 - Buildings: HQ (3000 hp; Engineers, rifles; unique, can't be rebuilt), Supply Depot (60 MP, 600 hp), Barracks
@@ -187,6 +190,8 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - AI: a mortar against dug-in MGs and AT guns (or once its army is 6+), a sniper against 6+ infantry seen, an armored car
   once the army is 7+ (it leads depot raids), medium tanks when affordable. It falls back to infantry when it can't make
   what it wants (before, it saved for an unaffordable unit forever).
+- Fix: catch-up raised to +6 MP/s, 1 per 60 VP behind: closeness 0.66 (default) / 0.63 (River Towns), lead changes
+  1.58, 9.6 min, factions 33/31/26. Locking mortar and armored car for 4 minutes made it worse (0.49).
 - Conquest balance (150 AI matches, default map): 2nd place VP / winner 0.62 -> 0.54, lead changes 1.57 -> 1.17, length
   9.5 -> 8.5 min, faction wins 45/63/42 -> 44/59/47. Taking out either the mortar or the armored car alone puts closeness
   back at 0.63 but USSR wins collapse (9 of 60). Weaker versions of both (mortar every 8s for 24, armored car 170 hp)
