@@ -215,6 +215,21 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Classic balance with Fuel and the new units (30 per map): 74% decided before Sudden Death (23/25/19 of 30), median 15.9
   (default), 18.1 (River Towns), 23.2 min (Six Fronts, long), faction wins 24/33/31 with 2 draws.
 
+## Aviation (2026-10-01, all modes)
+- Off-map air support adds Dive Bomber, Paratroopers and Fighter Cover (point supports, one click). Support planes
+  (recon, strafe, bombing, dive, paratroopers) can be shot down on arrival: fighter cover always (and is used up; never
+  recon), each flak in range rolls its chance (flak gun / mobile flak 35%, emplacement 45%).
+- Commandable planes fly sorties (not hovering units): base -> out -> on station (50s fuel, or ammo for the
+  ground-attack plane) -> home -> rearm 30s. One altitude, no collisions, no terrain. Base = the nearest own Airfield
+  in Classic, else an off-map airbase 40 m out past the HQ. No air cap (the user asked for strong counters instead):
+  anti-air is continuous damage per second (flak 25, mobile flak 25, emplacement 40, fighter 30, MG 5) and planes count
+  toward pop. Ground weapons can't target planes; blasts and strafing runs don't reach them.
+- Visibility: an airborne plane is visible to anyone within 60 m with no line of sight; planes see 40 m below; planes at
+  base are invisible and untouchable.
+- Kill bounty (all modes): 20% of the dead unit's cost to the enemy who landed the last hit. It nudges games toward
+  the winner of fights (Conquest closeness 0.66 -> 0.63, River Towns 0.63 -> 0.57) but adds lead changes.
+- Classic pop cap 24: the bounty made leaders bank MP at 20.
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz.

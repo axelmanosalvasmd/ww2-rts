@@ -902,6 +902,110 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   assert.equal(validateMap({ ...m, spawns: [{ ...m.spawns[0], assault: true }, { ...m.spawns[1], assault: true }, m.spawns[2]] }), 'needs 2+ spawns that every mode can use');
 }
 
+// Aviation: air support (dive bomber, paratroopers, fighter cover), flak shoot-downs, planes on sorties, anti-air.
+{
+  const R = Math.random;
+  // dive bomber: one heavy bomb right on the spot
+  const d = fresh(); d.players[0].mp = d.players[1].mp = 1000;
+  const tank = put(d, 1, 'tank', 30, 30); run(d, 0.2);
+  command(d, 0, { t: 'support', kind: 'dive', x: 30, z: 30 });
+  run(d, SUPPORT.dive.delay + 0.5);
+  assert.ok(tank.hp <= 0 || !d.units.has(tank.id), 'a dive bomber kills a tank it lands on');
+  // paratroopers: only where your side can see, and they arrive as a rifle squad
+  const pa = fresh(); pa.players[0].mp = 1000;
+  const eye = put(pa, 0, 'rifle', 10, 10); run(pa, 0.3);
+  command(pa, 0, { t: 'support', kind: 'para', x: 300, z: 300 });
+  assert.equal(pa.strikes.length, 0, 'no drop where nobody sees');
+  command(pa, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
+  run(pa, SUPPORT.para.delay + 0.5);
+  assert.equal([...pa.units.values()].filter(u => u.owner === 0 && u.type === 'rifle').length, 2, 'a squad dropped in');
+  // fighter cover intercepts the next enemy strike over it (but never recon)
+  const fc = fresh(); fc.players[0].mp = fc.players[1].mp = 2000;
+  const target = put(fc, 1, 'tank', 30, 30); run(fc, 0.2);
+  command(fc, 1, { t: 'support', kind: 'cover', x: 30, z: 30 }); run(fc, SUPPORT.cover.delay + 0.2);
+  command(fc, 0, { t: 'support', kind: 'recon', x: 30, z: 30, dir: 0 }); run(fc, SUPPORT.recon.delay + 0.2);
+  assert.ok(fc.strikes.some(q => q.kind === 'recon' && q.live), 'recon flies through fighter cover');
+  command(fc, 0, { t: 'support', kind: 'dive', x: 30, z: 30 }); run(fc, SUPPORT.dive.delay + 0.5);
+  assert.ok(fc.units.has(target.id) && target.hp === UNITS.tank.hpPer, 'the dive bomber was shot down: no damage');
+  assert.equal(fc.covers.length, 0, 'fighter cover is used up');
+  // flak: each gun in range rolls its chance to shoot a support plane down
+  const fk = fresh(); fk.players[0].mp = fk.players[1].mp = 2000;
+  const t2 = put(fk, 1, 'tank', 30, 30), gun = put(fk, 1, 'flak', 34, 30); run(fk, 3);
+  Math.random = () => 0; // every roll hits
+  command(fk, 0, { t: 'support', kind: 'dive', x: 30, z: 30 }); run(fk, SUPPORT.dive.delay + 0.5);
+  Math.random = R;
+  assert.equal(t2.hp, UNITS.tank.hpPer, 'flak shot the dive bomber down');
+  // flak can't hurt tanks
+  const fv = fresh(); fv.players[0].mp = fv.players[1].mp = 2000;
+  const tk = put(fv, 1, 'tank', 20, 20), fl = put(fv, 0, 'flak', 34, 20); run(fv, 6);
+  assert.equal(tk.hp, UNITS.tank.hpPer, 'flak does nothing to a tank');
+}
+{
+  // a plane's sortie: at base, out to the mission, circling, home when the fuel runs out, rearm, ready again
+  const big = Array(60).fill('.'.repeat(60)); // 120 m: room to fly
+  const g = fresh(big); g.players[0].mp = g.players[1].mp = 5000;
+  g.players[0].spawn = { x: 10, z: 10 }; g.players[1].spawn = { x: 70, z: 70 };
+  const f = put(g, 0, 'fighter', 0, 0); run(g, 0.1);
+  assert.equal(f.air.state, 'base', 'a new plane waits at its base');
+  assert.ok(snapshotFor(g, 0, []).units.find(u => u[0] === f.id)[12] & 512, 'flagged at base for its owner');
+  command(g, 0, { t: 'move', orders: [[f.id, 40, 40]] });
+  run(g, 3);
+  assert.ok(f.air.state === 'out' || f.air.state === 'station', 'took off');
+  run(g, 4);
+  assert.equal(f.air.state, 'station', 'circling the mission');
+  assert.ok(Math.hypot(f.x - 40, f.z - 40) < CFG.air.orbit + 3, 'over the spot');
+  // enemies see it from afar without line of sight, rifles can't shoot it
+  const watcher = put(g, 1, 'rifle', 40, 75); run(g, 0.3); // 35 m from the spot, the plane circles 18 m around it
+  assert.equal(g.players[1].visible.has(f.id), true, 'seen from afar, over the circle');
+  run(g, CFG.air.station + 6);
+  assert.ok(f.air.state === 'home' || f.air.state === 'rearm', 'fuel spent: heading home');
+  run(g, 6 + CFG.air.rearm);
+  assert.equal(f.air.state, 'base', 'rearmed and ready');
+  assert.equal(g.players[1].visible.has(f.id), false, 'invisible at base');
+  // ground attack: a plane on an attack mission damages its target; flak over it shoots it down
+  const ga = fresh(big); ga.players[0].mp = ga.players[1].mp = 5000;
+  ga.players[0].spawn = { x: 10, z: 10 }; ga.players[1].spawn = { x: 80, z: 80 };
+  const at = put(ga, 0, 'attacker', 0, 0), tank = put(ga, 1, 'tank', 50, 50), spot = put(ga, 0, 'rifle', 30, 50);
+  run(ga, 0.5);
+  command(ga, 0, { t: 'attack', ids: [at.id], target: tank.id });
+  run(ga, 15);
+  assert.ok(tank.hp < UNITS.tank.hpPer, `the ground-attack plane hit the tank (${tank.hp})`);
+  const fl1 = put(ga, 1, 'flak', 52, 50), fl2 = put(ga, 1, 'flak', 48, 50);
+  const mp1 = ga.players[1].mp;
+  run(ga, 20);
+  assert.ok(!ga.units.has(at.id), 'two flak guns shot the plane down');
+  assert.ok(ga.players[1].mp > mp1 + UNITS.attacker.cost * CFG.bounty * 0.9, 'and paid the kill bounty');
+}
+{
+  // Classic: an Airfield (needs a Motor Pool) trains planes, which use it as their base
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' }), p = g.players[0];
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq'), eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  p.mp = 9000; p.fuel = 500; eng.x = hq.x; eng.z = hq.z + 10;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'airfield', x: hq.x + 10, z: hq.z + 18 });
+  assert.ok(![...g.units.values()].some(u => u.type === 'airfield'), 'no Airfield without a Motor Pool');
+  for (const [t, dx] of [['barracks', -8], ['motorpool', 8], ['airfield', 26]]) {
+    command(g, 0, { t: 'build', ids: [eng.id], kind: t, x: hq.x + dx, z: hq.z + 18 });
+    const b = [...g.units.values()].find(u => u.type === t && u.owner === 0); assert.ok(b, t + ' placed'); b.built = 1; b.hp = UNITS[t].hpPer;
+  }
+  const af = [...g.units.values()].find(u => u.type === 'airfield');
+  command(g, 0, { t: 'buy', unit: 'fighter', from: af.id });
+  assert.deepEqual(af.queue, ['fighter'], 'fighter queued at the Airfield');
+  assert.equal(p.fuel, 500 - UNITS.fighter.fuel, 'planes cost Fuel in Classic');
+  run(g, UNITS.fighter.train + 1);
+  const f = [...g.units.values()].find(u => u.type === 'fighter');
+  assert.ok(f && f.air.state === 'base' && Math.hypot(f.x - af.x, f.z - af.z) < 1, 'the new fighter sits at its Airfield');
+}
+{
+  // kill bounty: 20% of the dead unit's cost to the enemy who finished it
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+  const a = put(g, 0, 'rifle', 10, 10), b = put(g, 1, 'rifle', 30, 10); b.hp = 1;
+  const mp0 = g.players[0].mp;
+  run(g, 3);
+  assert.ok(!g.units.has(b.id), 'enemy squad died');
+  assert.ok(g.players[0].mp >= mp0 + UNITS.rifle.cost * CFG.bounty - 0.01, `bounty paid (${g.players[0].mp - mp0})`);
+}
+
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.
 {
   const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;

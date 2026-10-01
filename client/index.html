@@ -51,6 +51,8 @@
   #support { display: grid; gap: 4px; margin-top: 8px; }
   #support button { display: flex; gap: 6px; justify-content: space-between; align-items: center; padding: 5px 8px; text-align: left; }
   #support button span { color: var(--accent); font-size: 12px; margin-left: auto; }
+  #airPanel button { display: flex; gap: 6px; justify-content: space-between; padding: 3px 8px; font-size: 12px; }
+  #airPanel button span { color: var(--accent); } #airPanel button.on { border-color: var(--accent); }
   #buy { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; }
   #buy button { display: grid; gap: 2px; min-width: 104px; text-align: left; }
   #buy button b { font-weight: 600; }
@@ -102,7 +104,7 @@
 
 <div id="hud" class="hidden">
   <div id="scores" class="panel"></div>
-  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="mute" title="Unit voices (M)" style="float:left;padding:2px 7px;margin-left:4px">🔊</button><button id="menuBtn" title="Menu: restart, end or leave the match" style="float:left;padding:2px 7px;margin-left:4px">☰</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div></div>
+  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="mute" title="Unit voices (M)" style="float:left;padding:2px 7px;margin-left:4px">🔊</button><button id="menuBtn" title="Menu: restart, end or leave the match" style="float:left;padding:2px 7px;margin-left:4px">☰</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div><div id="airPanel" style="display:grid;gap:3px;margin-top:6px"></div></div>
   <div id="menu" class="panel hidden" style="position:absolute;top:60px;right:10px;display:grid;gap:6px;z-index:20"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button></div>
   <div id="buy" class="panel"></div>
   <div id="lowerleft"><div id="abil"></div><div id="selection" class="panel"></div></div>
