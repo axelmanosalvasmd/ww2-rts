@@ -1,9 +1,9 @@
 // Atmosphere: a mood per map (sun height and color, sky fill, haze, river mist, falling snow or blowing dust), slow
 // cloud shadows drifting over the board and table, the planning-table props around the board, and a few birds
-// circling high above it. main.js calls createAtmosphere() once, start() from startGame and update(dt) every frame.
+// circling low over it. main.js calls createAtmosphere() once, start() from startGame and update(dt) every frame.
 //
 // Cost in draw calls: cloud shade 2 (board and table), props 1 (plus 1 in the shadow pass), lamp light pool 1,
-// river mist 1 (dawn maps), snow or dust 1 (those maps), birds 1. Graphics Low turns off the cloud shade, the weather
+// river mist 1 (dawn maps), snow or dust 1 (those maps), four birds 1. Graphics Low turns off the cloud shade, the weather
 // and the birds, keeps the props, the lamp pool and fewer mist sheets.
 //
 // Fog of war: everything over the board is transparent, writes no depth and draws before the fog overlay
@@ -565,8 +565,11 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   let hAt = () => 0, propsKey = '';
 
   const cloudMat = cloudMaterial();
+  const cloudTableMat = cloudMat.clone();
+  // the darker wood needs stronger shade; both surfaces share the same noise, drift and edge fade
+  for (const key of ['tNoise', 'drift', 'fade']) cloudTableMat.uniforms[key] = cloudMat.uniforms[key];
   const cloudBoard = new THREE.Mesh(new THREE.BufferGeometry(), cloudMat);
-  const cloudTable = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), cloudMat);
+  const cloudTable = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), cloudTableMat);
   for (const m of [cloudBoard, cloudTable]) { m.renderOrder = 0.6; m.raycast = () => {}; m.frustumCulled = false; root.add(m); }
 
   const propsMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: drawAtlas() });
@@ -585,7 +588,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   let sites = [];
 
   let weather = null;
-  const BIRDS = 7, birds = birdMesh(BIRDS);
+  const BIRDS = 4, birds = birdMesh(BIRDS);
   root.add(birds);
   let flight = [];
 
@@ -598,6 +601,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     if (scene.background?.isColor) scene.background.setHex(M.haze);
     scene.fog?.color.setHex(M.haze);
     cloudMat.uniforms.strength.value = M.clouds;
+    cloudTableMat.uniforms.strength.value = Math.min(0.44, M.clouds * 1.8);
     poolMat.opacity = M.lamp;
   }
 
@@ -637,7 +641,8 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     // board size: a PlaneGeometry's own, or the fixed bounds client/relief.js gives its geometry (x and z from 0)
     const prm = g.geometry.parameters, box = g.geometry.boundingBox;
     MW = prm ? prm.width : box.max.x; MH = prm ? prm.height : box.max.z;
-    const cell = MW / map.w, high = measureGround();
+    const cell = MW / map.w;
+    measureGround();
     moodName = moodFor(map, key); M = MOODS[moodName];
     applyMood();
 
@@ -661,11 +666,11 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
       weather = weatherPoints(M.weather); root.add(weather);
     }
 
-    // two loose flocks circling over different parts of the board, well above the planes (20 m)
+    // two pairs circling over different parts of the board, 10 to 16 m above the local ground
     const rnd = seeded(Math.round(MW * 7 + MH * 13));
     flight = Array.from({ length: BIRDS }, (_, i) => {
-      const c = i < 4 ? [0.36, 0.6] : [0.68, 0.32], r = 16 + rnd() * 14;
-      return { cx: MW * c[0], cz: MH * c[1], r, w: (i < 4 ? 1 : -1) * 5.5 / r, a0: rnd() * TAU, y: high + 26 + rnd() * 7, bob: rnd() * TAU };
+      const c = i < 2 ? [0.36, 0.6] : [0.68, 0.32], r = 20 + rnd() * 18;
+      return { cx: MW * c[0], cz: MH * c[1], r, w: (i < 2 ? 1 : -1) * 5.5 / r, a0: rnd() * TAU, y: 10 + rnd() * 6, bob: rnd() * TAU };
     });
 
     on = true; root.visible = enabled;
@@ -708,7 +713,8 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
       birds.material.uniforms.uTime.value = t;
       flight.forEach((b, i) => {
         const a = b.a0 + b.w * t, dir = Math.sign(b.w);
-        p3.set(b.cx + Math.cos(a) * b.r, b.y + Math.sin(t * 0.4 + b.bob) * 0.8, b.cz + Math.sin(a) * b.r);
+        const px = b.cx + Math.cos(a) * b.r, pz = b.cz + Math.sin(a) * b.r;
+        p3.set(px, hAt(px, pz) + b.y + Math.sin(t * 0.4 + b.bob) * 0.8, pz);
         e.set(0, Math.atan2(-Math.sin(a) * dir, Math.cos(a) * dir), 0.3 * dir);
         birds.setMatrixAt(i, m4.compose(p3, q.setFromEuler(e), s3.set(1.3, 1.3, 1.3)));
       });

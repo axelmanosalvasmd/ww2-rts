@@ -17,6 +17,30 @@ const PI = Math.PI, TAU = Math.PI * 2;
 const GLASS = 0x2f4452, DARK = 0x26241f, TIP = 0xd9b43a, WHITE = 0xece6d6, BLACK = 0x1c1b18, BLUE = 0x2a4a8f, RED = 0xc23a2a;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+let lastCamera = null;
+const rememberCamera = (renderer, scene, camera) => { if (camera.isPerspectiveCamera) lastCamera = camera; };
+const viewProjection = new THREE.Matrix4(), clipPoint = new THREE.Vector4(), heightBand = new THREE.Vector2();
+function limitHeight(value, slope) {
+  if (Math.abs(slope) < 1e-8) return value <= 0;
+  if (slope > 0) heightBand.y = Math.min(heightBand.y, -value / slope);
+  else heightBand.x = Math.max(heightBand.x, -value / slope);
+  return heightBand.x <= heightBand.y;
+}
+
+// Lower support planes into the view, keeping at least 6 m of ground clearance.
+function supportHeight(x, z, y, ground) {
+  if (!lastCamera) return y;
+  const floor = ground + 6, height = Math.max(0, y - floor);
+  viewProjection.multiplyMatrices(lastCamera.projectionMatrix, lastCamera.matrixWorldInverse);
+  clipPoint.set(x, floor, z, 1).applyMatrix4(viewProjection);
+  const m = viewProjection.elements, p = clipPoint;
+  heightBand.set(0, height);
+  if (!limitHeight(p.y - 0.6 * p.w, m[5] - 0.6 * m[7]) || !limitHeight(0.001 - p.w, -m[7])) return floor;
+  const top = heightBand.y;
+  // Keep the horizontal margin too when a lower height can reach it.
+  if (!limitHeight(p.x - 0.94 * p.w, m[4] - 0.94 * m[7]) || !limitHeight(-p.x - 0.94 * p.w, -m[4] - 0.94 * m[7])) return floor + top;
+  return floor + heightBand.y;
+}
 
 // ---------- geometry kit ----------
 
@@ -337,6 +361,19 @@ function model(fac, role, ownerColor) {
 export function createAviation(ctx) {
   const { hAt, UNITS } = ctx, alt = ctx.altitude ?? 20;
   const live = [];          // timed effects: { tick(dt) -> false when finished, kill() }
+  const bombPool = [], bombAxis = new THREE.Vector3(1, 0, 0), bombVelocity = new THREE.Vector3();
+  function takeBomb() {
+    if (!bombPool.length) for (let i = 0; i < 8; i++) {
+      const mesh = new THREE.Mesh(BOMB_GEO, BODY_MAT);
+      mesh.scale.setScalar(1.4); mesh.visible = false; mesh.userData.busy = false;
+      bombPool.push(mesh);
+    }
+    const mesh = bombPool.find((b) => !b.userData.busy);
+    if (!mesh) return null;
+    mesh.userData.busy = true; mesh.visible = true; ctx.world().add(mesh);
+    return mesh;
+  }
+  const hideBomb = (mesh) => { if (mesh) { mesh.visible = false; mesh.userData.busy = false; } };
   let puffs = null;
 
   // ----- pooled smoke -----
@@ -425,7 +462,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   function instance(fac, role, owner, opts = {}) {
     const m = model(fac, role, ctx.colorOf(owner)), body = new THREE.Group(), props = [];
     body.rotation.order = 'ZXY';
-    body.add(new THREE.Mesh(m.geo, BODY_MAT));
+    const mesh = new THREE.Mesh(m.geo, BODY_MAT); mesh.onBeforeRender = rememberCamera; body.add(mesh);
     for (const p of m.props) {
       const g = new THREE.Group(); g.position.set(p.x, p.y, p.z); g.rotation.x = Math.random() * TAU;
       g.add(new THREE.Mesh(bladeGeo.get(p.blades), BLADE_MAT), new THREE.Mesh(discGeo.get(p.blades), DISC_MAT));
@@ -506,7 +543,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   }
 
   // ----- support planes crossing the map -----
-  const LOW = { strafe: 9, bombing: 18, dive: 12, para: 24, recon: 26 }, RUN = 3, SPAN = 140;
+  const LOW = { strafe: 9, bombing: 18, dive: 12, para: 24, recon: 26 }, RUN = 3, SPAN = 140, LEAD = 1, FALL = 0.45;
   const runs = [];          // support planes in the air, so flak and shoot-down shots find them by their target spot
   const drop = (r) => { const i = runs.indexOf(r); if (i >= 0) runs.splice(i, 1); };
   function supportPlane(sh) {
@@ -515,15 +552,45 @@ gl_Position = projectionMatrix * mvPosition;`);
     const holder = new THREE.Group(); holder.add(body); holder.rotation.y = -sh.dir;
     const shadow = shadowOf(m), world = ctx.world(), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir), low = LOW[sh.k] ?? 26, gy = hAt(sh.x, sh.z), speed = SPAN / RUN;
     world.add(holder, shadow);
-    const r = { sh, flak: [], hit: null, events: [], t: 0 };
+    const bomber = sh.k === 'bombing', lead = bomber ? LEAD : 0;
+    const r = { sh, flak: [], hit: null, events: [], t: 0, lead };
+    const bombs = [];
+    if (bomber) {
+      const { len, shells, every } = ctx.SUPPORT.bombing;
+      for (let i = 0; i < shells; i++) {
+        const at = i * every, along = (i / Math.max(1, shells - 1) - 0.5) * len;
+        bombs.push({ at, release: at - FALL, x: sh.x + dx * along, z: sh.z + dz * along, mesh: null, started: at <= 0 });
+      }
+    }
+    const stopBombs = () => { for (const b of bombs) { hideBomb(b.mesh); b.mesh = null; } };
     if (sh.k === 'strafe') for (let i = 0; i < 10; i++) r.events.push({ at: 1.3 + i * 0.04, a: (i / 9 - 0.5) * ctx.SUPPORT.strafe.len });
     let dead = false;
     const e = {
       tick(dt) {
         r.t += dt;
-        const u = r.t / RUN, a = (u - 0.5) * SPAN, x = sh.x + dx * a, z = sh.z + dz * a, y = Math.max(gy, hAt(x, z)) + low + Math.abs(u - 0.5) * 30;
+        const u = (r.t + lead) / RUN, a = (u - 0.5) * SPAN, x = sh.x + dx * a, z = sh.z + dz * a, ground = hAt(x, z);
+        const y = supportHeight(x, z, Math.max(gy, ground) + low + Math.abs(u - 0.5) * 30, ground);
+        const appear = bomber ? 0.35 + 0.65 * clamp(r.t / 0.3, 0, 1) : 1;
+        holder.scale.setScalar(appear);
         holder.position.set(x, y, z); body.rotation.set(0, 0, Math.atan2(u < 0.5 ? -10 : 10, speed)); spin(props, dt);
-        place(shadow, x, hAt(x, z), z, -sh.dir, 1 + (y - hAt(x, z)) * 0.012); shadow.visible = true;
+        place(shadow, x, ground, z, -sh.dir, (1 + (y - ground) * 0.012) * appear); shadow.visible = true;
+        for (const b of bombs) {
+          if (r.t >= b.at) { hideBomb(b.mesh); b.mesh = null; b.started = true; continue; }
+          if (r.t < b.release) continue;
+          if (!b.started) {
+            b.started = true; b.mesh = takeBomb();
+            const bu = (b.release + lead) / RUN, ba = (bu - 0.5) * SPAN;
+            b.x0 = sh.x + dx * ba; b.z0 = sh.z + dz * ba;
+            const bg = hAt(b.x0, b.z0);
+            b.y0 = supportHeight(b.x0, b.z0, Math.max(gy, bg) + low + Math.abs(bu - 0.5) * 30, bg);
+            b.g = hAt(b.x, b.z); b.gravity = 2 * (b.y0 - b.g) / (FALL * FALL);
+          }
+          if (!b.mesh) continue;
+          const tau = r.t - b.release, fraction = tau / FALL;
+          b.mesh.position.set(b.x0 + (b.x - b.x0) * fraction, b.y0 - 0.5 * b.gravity * tau * tau, b.z0 + (b.z - b.z0) * fraction);
+          bombVelocity.set((b.x - b.x0) / FALL, -b.gravity * tau, (b.z - b.z0) / FALL).normalize();
+          b.mesh.quaternion.setFromUnitVectors(bombAxis, bombVelocity);
+        }
         while (r.events.length && r.events[0].at <= r.t) {
           const ev = r.events.shift(), bx = sh.x + dx * ev.a, bz = sh.z + dz * ev.a;
           if (!r.opened) { r.opened = true; ctx.play('strafe', bx, bz); } // one burst of the guns for the whole run
@@ -536,18 +603,19 @@ gl_Position = projectionMatrix * mvPosition;`);
         }
         if (r.hit !== null && r.t >= r.hit) {
           // hit: leave the run and fall, carrying on along the same line with the same slope
-          dead = true; r.events.length = 0; drop(r);
+          dead = true; r.events.length = 0; stopBombs(); drop(r);
           fall({ holder, body, shadow, m, props, x, y, z, heading: sh.dir, speed: speed * 0.75, vy: u < 0.5 ? -10 : 10 });
           burst(x + dx * 2, y + 0.5, z + dz * 2, 1.3);
           return false;
         }
-        if (u >= 1) { holder.parent?.remove(holder); shadow.parent?.remove(shadow); drop(r); return false; }
+        if (u >= 1) { stopBombs(); holder.parent?.remove(holder); shadow.parent?.remove(shadow); drop(r); return false; }
         return true;
       },
-      kill() { if (!dead) { holder.parent?.remove(holder); shadow.parent?.remove(shadow); } },
+      kill() { stopBombs(); if (!dead) { holder.parent?.remove(holder); shadow.parent?.remove(shadow); } },
     };
     runs.push(Object.assign(r, { e }));
     live.push(e);
+    e.tick(0);
   }
   const runAt = (sh, kind) => runs.find((r) => Math.hypot(r.sh.x - sh.x, r.sh.z - sh.z) < 1.5 && (!kind || r.sh.k === kind) && r.hit === null);
 
@@ -556,6 +624,8 @@ gl_Position = projectionMatrix * mvPosition;`);
     reset() {
       for (const e of live) e.kill();
       live.length = 0; runs.length = 0;
+      for (const b of bombPool) { hideBomb(b); b.parent?.remove(b); }
+      lastCamera = null;
       if (puffs) { puffs.list.length = 0; puffs.mesh.count = 0; puffs.mesh.parent?.remove(puffs.mesh); }
     },
     // per frame, after the units moved
@@ -581,7 +651,7 @@ gl_Position = projectionMatrix * mvPosition;`);
     shotDown(sh) {
       if (sh.kind) {
         const r = runAt(sh, sh.kind);
-        if (r) { r.hit = Math.max(r.t + 0.05, 1.3 + Math.random() * 0.15); return; }
+        if (r) { r.hit = Math.max(r.t + 0.05, 1.3 + Math.random() * 0.15 - r.lead); return; }
       }
       // a commandable plane: carry on from where it was
       const u = ctx.units.get(sh.t), owner = u?.owner ?? sh.to ?? ctx.me(), type = u?.type ?? 'fighter';
