@@ -3685,4 +3685,119 @@ console.log('all command feedback checks passed');
 }
 console.log('all availability checks passed');
 
+// Model toolkit (client/models/geom.js): closed shapes are watertight with outward faces and the volume they should
+// have, sizes come out as asked, merge matches mergeParts and multiplies colors, mirrorZ doubles a half, markings lie
+// flat without overlaps, and ao darkens toward the floor without touching its input.
+{
+  const THREE = await import('three');
+  const G = await import('./client/models/geom.js');
+  const { mergeParts } = await import('./client/unit-models.js');
+  const tri = (P, I, i) => [0, 1, 2].map((k) => (I ? I.getX(i + k) : i + k));
+  // signed volume; every edge used once each way; every corner normal on the outside of its face
+  const solid = (g, label) => {
+    const P = g.attributes.position, N = g.attributes.normal, I = g.index, n = I ? I.count : P.count, t = [0, 1, 2].map(() => new THREE.Vector3()), nn = new THREE.Vector3();
+    const key = (i) => [P.getX(i), P.getY(i), P.getZ(i)].map((v) => Math.round(v * 1e4)).join(), edges = new Map();
+    let vol = 0, inward = 0;
+    for (let i = 0; i < n; i += 3) {
+      const ids = tri(P, I, i);
+      ids.forEach((id, k) => t[k].fromBufferAttribute(P, id));
+      vol += t[0].dot(new THREE.Vector3().crossVectors(t[1], t[2])) / 6;
+      const face = new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0]));
+      if (face.lengthSq() < 1e-20) continue;
+      for (const id of ids) if (face.dot(nn.fromBufferAttribute(N, id)) <= 0) inward++;
+      const k = ids.map(key);
+      for (let e = 0; e < 3; e++) { const a = k[e], b = k[(e + 1) % 3]; if (a !== b) { const id = a < b ? a + '|' + b : b + '|' + a; edges.set(id, (edges.get(id) || 0) + (a < b ? 1 : -1)); } }
+    }
+    assert.equal(inward, 0, `${label}: every face points outward`);
+    assert.ok([...edges.values()].every((v) => v === 0), `${label}: watertight`);
+    assert.ok(vol > 0, `${label}: encloses a positive volume`);
+    return vol;
+  };
+  const size = (g) => { g.computeBoundingBox(); return g.boundingBox.getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(3)); };
+  const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} should be near ${b}`);
+  // area of a flat geometry, and the set of its vertex colors
+  const area = (g) => { const P = g.attributes.position, I = g.index, t = [0, 1, 2].map(() => new THREE.Vector3()); let s = 0; for (let i = 0; i < I.count; i += 3) { tri(P, I, i).forEach((id, k) => t[k].fromBufferAttribute(P, id)); s += new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0])).length() / 2; } return s; };
+  const colorsOf = (g) => { const C = g.attributes.color, s = new Set(); for (let i = 0; i < C.count; i++) s.add([C.getX(i), C.getY(i), C.getZ(i)].map((v) => v.toFixed(4)).join()); return s; };
+  const hex = (h) => new THREE.Color(h).toArray().map((v) => v.toFixed(4)).join();
+
+  // rounded box: the size asked and close to the exact rounded volume
+  const bb = G.bevelBox(1, 0.5, 2, 0.1, 4), [a, b, c, r] = [0.8, 0.3, 1.8, 0.1];
+  assert.deepEqual(size(bb), [1, 0.5, 2], 'bevelBox: outer size');
+  near(solid(bb, 'bevelBox'), a * b * c + 2 * r * (a * b + a * c + b * c) + Math.PI * r * r * (a + b + c) + (4 / 3) * Math.PI * r ** 3, 0.01, 'bevelBox volume');
+  assert.deepEqual(size(G.chamferBox(1, 0.5, 2, 0.1)), [1, 0.5, 2], 'chamferBox: outer size');
+  assert.ok(solid(G.chamferBox(1, 0.5, 2, 0.1), 'chamferBox') < 1, 'chamferBox: the corners are cut off');
+
+  // loft: an elliptic cylinder holds about pi r^2 L, a hull with a pointed nose closes, polygon rings work flat
+  near(solid(G.loft([{ x: 0, w: 1, h: 1 }, { x: 2, w: 1, h: 1 }], { segments: 32 }), 'loft cylinder'), 16 * Math.sin(Math.PI / 16) * 0.25 * 2, 1e-4, 'loft cylinder volume');
+  const hull = G.loft([{ x: 0, w: 0, h: 0 }, { x: 0.5, w: 0.6, h: 0.4 }, { x: 2, w: 0.7, h: 0.5, p: 4 }, { x: 2.5, w: 0.3, h: 0.3, y: 0.1 }]);
+  solid(hull, 'loft hull'); assert.deepEqual(size(hull), [2.5, 0.5, 0.7], 'loft: length, height and width from the rings');
+  solid(G.loft([{ x: 0, pts: [[0.5, 0], [0.4, 0.3], [-0.4, 0.3], [-0.5, 0], [-0.4, -0.2], [0.4, -0.2]] }, { x: 1, pts: [[0.6, 0], [-0.6, 0], [0.5, -0.25]] }], { normals: 'flat' }), 'loft polygons');
+
+  // lathe: either profile direction gives the same outward solid; the wrappers close up
+  const up = solid(G.lathe([[0, 0], [0.5, 0], [0.5, 1], [0, 1]], 16), 'lathe'), down = solid(G.lathe([[0, 1], [0.5, 1], [0.5, 0], [0, 0]], 16), 'lathe reversed');
+  near(up, down, 1e-9, 'lathe profile direction'); near(up, 8 * Math.sin(Math.PI / 8) * 0.25, 1e-4, 'lathe volume');
+  const gun = G.barrel(2, 0.06, { brake: true });
+  solid(gun, 'barrel with brake'); assert.equal(size(gun)[0], 2, 'barrel: breech to muzzle along +x');
+  for (const kind of ['m1', 'stahlhelm', 'ssh40']) solid(G.helmet(kind), `helmet ${kind}`);
+  solid(G.bomb(1, 0.12), 'bomb'); solid(G.spinner(0.4, 0.15), 'spinner'); solid(G.engine(0.5, 0.4), 'engine');
+
+  // extruded profile: the outline stays on the points even with a bevel, centered on z = 0
+  const side = G.extrudeProfile([[0, 0], [2, 0], [2.3, 0.4], [1.8, 0.7], [0, 0.6]], 0.2, 0.04);
+  assert.deepEqual(size(side), [2.3, 0.7, 0.2], 'extrudeProfile: silhouette and depth');
+  near(solid(side, 'extrudeProfile'), 1.385 * 0.2, 0.01, 'extrudeProfile volume');
+  near(side.boundingBox.min.z, -0.1, 1e-6, 'extrudeProfile: centered on z');
+  solid(G.extrudeProfile([[0, 0], [1, 0], [1, 1], [0, 1]], 0.2, 0.03, { holes: [[[0.3, 0.3], [0.7, 0.3], [0.7, 0.7], [0.3, 0.7]]] }), 'extrudeProfile with a hole');
+
+  // tube: a straight octagonal tube holds 2 sqrt 2 r^2 L; curves, tapers and closed loops stay closed
+  near(solid(G.tube([[0, 0, 0], [1, 0, 0]], 0.1), 'tube'), 2 * Math.SQRT2 * 0.01, 1e-6, 'tube volume');
+  solid(G.tube([[0, 0, 0], [1, 0.5, 0], [2, 0, 0.5], [3, 1, 0]], (u) => 0.06 - 0.03 * u), 'tapered tube');
+  solid(G.tube([[1, 0, 0], [0, 0, 1], [-1, 0, 0], [0, 0, -1]], 0.05, { closed: true }), 'closed tube');
+
+  // wheels and tracks: sizes, closed, and both paints in the vertex colors
+  const w = G.wheel(0.5, 0.3, { color: 0x59623d });
+  assert.deepEqual(size(w), [1, 1, 0.3], 'wheel: diameter in xy, axle along z');
+  solid(w, 'wheel'); solid(G.wheel(0.5, 0.2, { spokes: 10, tread: 12 }), 'spoked wheel');
+  assert.ok(colorsOf(w).has(hex(0x2b2a26)) && colorsOf(w).has(hex(0x59623d)), 'wheel: tire and disc colors');
+  const t = G.track(4, 0.45, 40, { wheels: 5, color: 0x3d3b35 }), ts = size(t);
+  solid(t, 'track');
+  assert.ok(ts[0] > 4 && ts[0] < 4.3 && ts[2] === 0.5, 'track: as long as asked plus the grousers, as wide as asked');
+  assert.ok(colorsOf(t).has(hex(0x3d3b35)), 'track: link color');
+  solid(G.roadWheels(5, 0.3, 0.7, 0.25), 'road wheels'); solid(G.sprocket(0.4, 10, 0.25), 'sprocket');
+
+  // mirrorZ: twice the half, symmetric across z = 0, still outward
+  const half = G.loft([{ x: 0, w: 0.4, h: 0.4, z: 0.4 }, { x: 1, w: 0.4, h: 0.4, z: 0.4 }]), both = G.mirrorZ(half);
+  near(solid(both, 'mirrorZ'), 2 * solid(half, 'half'), 1e-6, 'mirrorZ volume');
+  both.computeBoundingBox(); near(both.boundingBox.min.z, -both.boundingBox.max.z, 1e-6, 'mirrorZ: symmetric');
+
+  // merge matches mergeParts, and both multiply a part's paint with the shape's own colors
+  const parts = [{ geo: bb, matrix: G.xf(1, 2, 3, 0.3, 0.2, 0.1), color: new THREE.Color(0x6f7240) }, { geo: w, matrix: new THREE.Matrix4().makeScale(-1, 1, 1), color: new THREE.Color(0x808080) }];
+  const mine = G.merge(parts), theirs = mergeParts(parts, true);
+  for (const k of ['position', 'normal', 'color']) assert.ok(mine.attributes[k].array.every((v, i) => Math.abs(v - theirs.attributes[k].array[i]) < 1e-6), `merge: same ${k} as mergeParts`);
+  assert.deepEqual([...mine.index.array], [...theirs.index.array], 'merge: same triangles as mergeParts');
+  const grey = new THREE.Color(0x808080), tire = new THREE.Color(0x2b2a26);
+  assert.ok(colorsOf(mine).has([tire.r * grey.r, tire.g * grey.g, tire.b * grey.b].map((v) => v.toFixed(4)).join()), 'merge: paint times the shape color');
+  assert.equal(bb.attributes.color, undefined, 'merge leaves its inputs alone');
+
+  // markings: flat at the lift, facing +z, areas add up (no overlaps), the colors asked
+  const s = G.star(1, { lift: 0.02 }), S = s.attributes.position, SN = s.attributes.normal;
+  for (let i = 0; i < S.count; i++) assert.ok(Math.abs(S.getZ(i) - 0.02) < 1e-7 && SN.getZ(i) === 1,'star: flat at the lift, facing +z');
+  near(area(s), 5 * 0.382 * Math.sin(Math.PI / 5), 1e-3, 'star area');
+  const us = G.star(1, { disc: 0x2a4a8f });
+  near(area(us), 16 * Math.sin(Math.PI / 16) * 1.06 ** 2, 1e-3, 'star in a disc: the star is cut out of the disc');
+  assert.deepEqual([...colorsOf(us)].sort(), [hex(0xece6d6), hex(0x2a4a8f)].sort(), 'star in a disc: two colors');
+  near(area(G.balkenkreuz(1)), 8 * 0.2 - 4 * 0.04 + 4 * 0.12 * (2 - 0.4 - 0.12), 1e-6, 'balkenkreuz: black cross plus four white edges');
+  near(area(G.roundel(1)), 16 * Math.sin(Math.PI / 16), 1e-6, 'roundel: bands fill the disc once');
+  const top = G.merge([{ geo: G.roundel(0.5), matrix: G.place([0, 1, 0], [0, 1, 0]) }]), TP = top.attributes.position;
+  for (let i = 0; i < TP.count; i++) near(TP.getY(i), 1.01, 1e-6, 'place: a roundel lies on a roof');
+
+  // ao: darker at the floor than at the top, the input untouched
+  const lit = G.ao(bb), C = lit.attributes.color, Y = lit.attributes.position;
+  let low = 1, high = 0;
+  for (let i = 0; i < C.count; i++) { if (Y.getY(i) < -0.249) low = Math.min(low, C.getX(i)); if (Y.getY(i) > 0.249) high = Math.max(high, C.getX(i)); }
+  assert.ok(low < 0.6 && high === 1, `ao: floor ${low} darker than the top ${high}`);
+  assert.equal(bb.attributes.color, undefined, 'ao leaves its input alone');
+  assert.ok(G.ao(bb, { falloff: () => 0.5 }).attributes.color.array.every((v) => v === 0.5), 'ao: a custom falloff');
+}
+console.log('all model toolkit checks passed');
+
 await stopServerHarness(); // the last server check is done
