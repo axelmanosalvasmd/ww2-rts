@@ -18,7 +18,12 @@ const FACTIONS = [
   { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka' } },
   { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik' } },
 ];
-const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
+// planes that only fly air support (no unit type in the sim), shown with ?type=bomber or ?type=transport
+const PLANES = {
+  bomber: { air: true, name: 'Bomber (air support)', radius: 8, models: 1, names: ['B-25 Mitchell', 'He 111', 'Pe-2'] },
+  transport: { air: true, name: 'Transport (air support)', radius: 8, models: 1, names: ['C-47 Skytrain', 'Ju 52', 'Li-2'] },
+};
+const COLORS = [0x3b73d6,0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AIR_ALT = 20; // main.js: planes fly this high over the ground
 const facOf = () => fac;
 
@@ -107,7 +112,7 @@ const aviation = createAviation({
 // main.js makeUnit() without the HUD pieces (bars, stars, badge, selection ring)
 let nextId = 1;
 function makeUnit(t) {
-  const def = UNITS[t], root = new THREE.Group();
+  const def = UNITS[t] ?? PLANES[t], root = new THREE.Group();
   const v = { id: nextId++, type: t, owner: fac, root, models: [], alive: def.models, x: 0, z: 0, rot: 0, aim, turret: null };
   const base = ownerRing(def.radius + 0.4, f.color);
   root.add(base); v.base = base;
@@ -257,8 +262,8 @@ const CLOSE = [
 let views = [], rows = 2, stats = null, measured = false, labelFor = null;
 
 function singleUnit() {
-  const def = UNITS[type];
-  if (!def) throw new Error(`unknown type "${type}" (one of ${Object.keys(UNITS).join(', ')})`);
+  const def = UNITS[type] ?? PLANES[type];
+  if (!def) throw new Error(`unknown type "${type}" (one of ${[...Object.keys(UNITS), ...Object.keys(PLANES)].join(', ')})`);
   if (def.faction >= 0 && def.faction !== fac) warnings.push(`In the game only ${FACTIONS[def.faction].name} fields ${type}; this is what the model code builds for ${FACTIONS[fac].name}`);
   const v = makeUnit(type), air = !!def.air;
   pose(v); placeShadow(v);
@@ -295,7 +300,7 @@ function singleUnit() {
   });
   if (man) { rows = 3; views.push(...[CLOSE[0], CLOSE[1], CLOSE[3]].map((view) => close(view, solo, true))); }
 
-  const name = FACTIONS[fac].names[type] ?? def.name;
+  const name = FACTIONS[fac].names[type] ?? def.names?.[fac] ?? def.name;
   $('title').innerHTML = `${name}<span class="sub">${type}, ${FACTIONS[fac].name} (fac ${fac}), color ${colorHex}${slot !== null ? ` (slot ${slot})` : ''}${v.squad ? `, ${def.models} men, ${POSTURES[posture]}${farLod ? ', far model' : ''}` : ''}</span>`;
   // measured once, in the game view, before the first real frame
   const game = views.find((x) => x.game);
