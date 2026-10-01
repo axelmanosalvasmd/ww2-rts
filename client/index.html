@@ -222,6 +222,8 @@
   @container (max-width: 72px) { .uc .key { top: 15px; right: 2px; } }
   @container (max-width: 80px) { #buy.lettered .uc .sym { width: 30px; margin-right: 16px; } }
   .uc.hit { background: var(--manila-hi); border-color: var(--ink); }
+  /* a letter the cards are using: the order or support badge with the same letter hides until the cards give it back */
+  .ob kbd.quiet { visibility: hidden; }
   /* the recruit tab over the card's left edge (the Rally button sits over the right one); on, it turns manila */
   #buy .tab { position: absolute; left: 8px; bottom: calc(100% + 6px); padding: 4px 8px; font: 13px var(--type); background: var(--strip); }
   #buy .tab[aria-pressed="true"] { color: var(--ink); background: var(--manila); border-color: var(--manila-edge); }

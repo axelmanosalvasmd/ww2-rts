@@ -348,13 +348,17 @@ the HUD.
   Q W E R T / A S D F G / Z X C V B in reading order, a letter buys exactly like a click (same availability check and
   refusal reason), and Shift+letter buys five or as many as MP, Fuel, the army limit and the type limit allow
   (`buyCount` in `client/availability.js`). The server still gets one 'buy' per unit. The mode lasts until Tab,
-  Backquote, Esc or a right-click, and a new match starts with it off. While it is on, WASD, Q/E rotate and the
-  support letters under the cards are suspended; the arrows still pan and N/U/P/I still aim support. In Classic, a
-  selected production building's train cards answer to the same letters without a mode ('building' context, Shift
-  buys five up to the queue room), and a letter with no card under it keeps its usual action except the camera keys.
-  Classic Tab only explains this. Keys.js contexts are ranked (targeting 2, recruit and building 1, the rest 0): the
-  highest rank wins, and test.js allows a repeated chord only across different ranks. Tab is preventDefaulted only in
-  a match with the menu closed, so it still moves focus in the lobby and menus.
+  Backquote, Esc or a right-click, and a new match starts with it off. A letter that has a card buys, so while the mode
+  is on WASD, Q/E, the orders on those keys (X stop, R retreat, F ability, G attack-move, T trench) and the support calls
+  on Z C V B are suspended, and their badges hide so the screen never shows one letter doing two things. The arrows still
+  pan, Ctrl+A, N/U/P/I and the Shift fort keys still work. A letter with no card under it keeps its usual action,
+  camera keys included (Conquest has 14 cards for 15 letters, so B still aims smoke). In Classic, a selected production
+  building's train cards answer to the same letters without a mode ('building' context, Shift buys five up to that
+  building's queue room): an HQ takes Q and W, so A S D E still pan and rotate. Classic Tab only explains this.
+  Keys.js contexts are ranked (targeting 2, recruit and building 1, the rest 0): the highest rank wins, and test.js
+  allows a repeated chord only across different ranks. Tab is preventDefaulted only in a match with the menu closed, so
+  it still moves focus in the lobby and menus. The client's queue check follows the building a card belongs to (`from`),
+  as the server does.
 - Team pings: Alt+click sends `{t:'ping', x, z}`. The server accepts 3 per 5 s per player, only inside the map, and
   relays only to humans on the sender's team. No unit ids travel with it. The ring lasts 4 s.
 - Order queue: up to 8 waiting orders per unit, and a full queue is refused with 'queueFull'. A queued dig is paid when

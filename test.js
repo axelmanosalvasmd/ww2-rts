@@ -3649,6 +3649,17 @@ console.log('all command feedback checks passed');
   assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
   hq.queue = Array(5).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'The training queue is full');
+  // A card on one selected building asks that building: the server refuses a full one instead of using another.
+  {
+    const second = { ...hq, id: g.nextId++, queue: [] };
+    g.units.set(second.id, second);
+    assert.equal(check({ t: 'buy', unit: 'rifle' }).ok, true, 'any building with room will do for an unaimed buy');
+    assert.equal(check({ t: 'buy', unit: 'rifle', from: second.id }).ok, true);
+    assert.equal(check({ t: 'buy', unit: 'rifle', from: hq.id }).reason, 'The training queue is full', 'the chosen building is full');
+    assert.equal(command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id }), 'queueFull', 'the server agrees');
+    assert.equal(buyCount(snapshotFor(g, 0, []), CFG, { t: 'buy', unit: 'rifle', from: hq.id, slot: 0 }, 5), 0);
+    g.units.delete(second.id);
+  }
   hq.queue = Array(popCap(g) - [...g.units.values()].filter(v => v.owner === 0 && !UNITS[v.type].structure).length).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, `Army at its limit (${popCap(g)}/${popCap(g)})`);
   hq.queue = [];

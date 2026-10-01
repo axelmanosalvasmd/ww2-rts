@@ -341,12 +341,18 @@ export function createHud(ctx) {
     b._buy(many);
     return true;
   }
+  // A letter on a card belongs to the card, so the support and order badges that show the same letter go quiet.
+  function quietBadges() {
+    const used = $('buy').classList.contains('lettered') ? CARD_KEYS.slice(0, slots().length) : [];
+    for (const k of document.querySelectorAll('#support kbd, #abil kbd')) k.classList.toggle('quiet', used.includes(k.textContent));
+  }
   // Recruit mode (outside Classic): the letters show on the cards and the header tab reads "Recruiting".
   let recruiting = false;
   function setRecruit(on) {
     recruiting = !!on && !ctx.classic();
     const card = $('buy'), tab = card.querySelector('[data-recruit]');
     card.classList.toggle('lettered', recruiting);
+    quietBadges();
     if (tab) {
       tab.setAttribute('aria-pressed', String(recruiting));
       tab.innerHTML = recruiting ? `Recruiting <kbd>${label('recruitOff')}</kbd>` : `Recruit <kbd>${label('recruitMode')}</kbd>`;
@@ -465,6 +471,7 @@ export function createHud(ctx) {
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);
+    quietBadges();
     tooltips.update();
   }
 

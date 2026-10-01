@@ -49,7 +49,8 @@ export function availability(s, cfg = CFG, action = {}) {
         const type = Object.keys(UNITS).find((t) => UNITS[t].makes?.includes(action.unit));
         return no(`Needs a ${UNITS[type]?.name ?? 'Production Building'}`);
       }
-      if (!makers.some((v) => v.queue.length < 5)) return no(DENY_SENTENCES.queueFull);
+      // a card on a selected building asks that building (`from`); the server refuses a full one rather than using another
+      if (!makers.some((v) => v.queue.length < 5 && (action.from === undefined || v.id === action.from))) return no(DENY_SENTENCES.queueFull);
     }
     return yes();
   }

@@ -905,11 +905,8 @@ addEventListener('keydown', (e) => {
   const contexts = keyContexts();
   let id = match(e, contexts);
   if (id === 'recruitMode' && !inMatch()) return;
-  // a Classic building's letter with no card under it keeps its usual meaning, except the camera keys
-  if (contexts.includes('building') && id?.startsWith('card') && !hud.hasCard(+id.split(':')[1])) {
-    const base = match(e, contexts.filter((c) => c !== 'building'));
-    if (!/^(pan|rotate)/.test(base ?? 'pan')) id = base;
-  }
+  // a letter with no card under it (a Classic HQ has two, Conquest has 14 of the 15) keeps its usual meaning, camera keys included
+  if (id?.startsWith('card') && !hud.hasCard(+id.split(':')[1])) id = match(e, contexts.filter((c) => c !== 'building' && c !== 'recruit'));
   // Shortcuts that share camera codes must not also pan.
   if (id && !id.startsWith('pan') && !id.startsWith('rotate')) keys.delete(e.code);
   if (!id || !actions[id]) return;

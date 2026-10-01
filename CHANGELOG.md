@@ -8,12 +8,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
   "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
   like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends
-  it, and while it is on WASD stops panning (the arrows still pan). In Classic, a selected HQ or production building
-  shows the same letters on its train cards without any mode, Shift+letter queues five, and Tab explains this.
-  Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit (12/12)").
-  - Left for later: the client's queue-full check ignores which building you picked, so a full building's card looks
-    available and the server refuses it. With a laggy server, a Shift+letter right after a purchase can count MP the
-    server already spent, and the extra buys come back refused.
+  it. While it is on, a letter that has a card buys, so WASD, Q/E, Stop (X), Retreat (R), Ability (F), Attack-move (G),
+  Trench (T) and the Z C V support calls pause (the arrows still pan) and their badges hide; B has no card in Conquest
+  and still aims smoke. In Classic, a selected HQ or production building shows the same letters on its train cards
+  without any mode and Shift+letter queues five at that building; an HQ uses only Q and W, so A S D E still pan and
+  rotate. Classic Tab explains this. Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit
+  (12/12)").
+  - Fixed along the way: a Classic card on a selected building now greys out when that building's queue is full, even
+    if another building still has room (the server refuses a full chosen building).
+  - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
+    and the extra buys come back refused with their reason.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a
