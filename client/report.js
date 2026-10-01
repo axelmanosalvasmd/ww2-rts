@@ -95,7 +95,7 @@ export function renderReport(r, el, { colors = PALETTE, me = -1 } = {}) {
   const rows = r.names.map((name, i) => `<tr class="${r.you && i === me ? 'me' : ''}"><td><span class="rp-name" title="${esc(name)}"><span class="rp-sw" style="background:${colors[i] ?? '#888'}"></span><span>${esc(name)}</span></span></td>${
     COLUMNS.map(([k]) => `<td>${r.story[i]?.[k] ?? 0}</td>`).join('')}</tr>`).join('');
   el.innerHTML = `<details class="rp" open>
-    <summary>Match report<span class="rp-sub">decided ${DECIDED[r.reason] ?? ''} after ${clock((r.endTick ?? 0) / 20)}</span></summary>
+    <summary>Match report<span class="rp-sub">${r.horde ? `overrun on wave ${r.horde.wave}` : `decided ${DECIDED[r.reason] ?? ''}`} after ${clock((r.endTick ?? 0) / 20)}</span></summary>
     <div class="rp-top">
       <canvas role="img" aria-label="${what} over time for each side"></canvas>
       <div><div class="muted" style="margin-bottom:4px">${what} over time</div><ul class="rp-legend">${legend}</ul></div>

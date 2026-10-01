@@ -302,9 +302,10 @@ const SUPPORT_KEYS = ['recon', 'artillery', 'strafe', 'smoke', 'bombing', 'dive'
 // ---------- order and UI glyphs ----------
 
 const Z = poly([54, 16], [84, 16], [84, 23], [64.5, 37], [84, 37], [84, 44], [54, 44], [54, 37], [73.5, 23], [54, 23]);
+const GLYPH_RETREAT = band([[76, 88], [76, 46], ...arc(54, 46, 22, 22, 0, -180, 18).slice(1), [32, 58]], 11) + poly([18, 58], [46, 58], [32, 78]);
 const GLYPH_DEFS = {
   // U-turn arrow: up, over and back down to the left
-  retreat: band([[76, 88], [76, 46], ...arc(54, 46, 22, 22, 0, -180, 18).slice(1), [32, 58]], 11) + poly([18, 58], [46, 58], [32, 78]),
+  retreat: GLYPH_RETREAT,
   // crosshair ring with an arrow pointing forward inside it
   amove: circle(50, 50, 34) + circle(50, 50, 26) + [0, 90, 180, 270].map((a) => bar(at([50, 50], a, 34), at([50, 50], a, 46), 7)).join('') +
     poly([32, 46], [50, 46], [50, 38], [66, 50], [50, 62], [50, 54], [32, 54]),
@@ -340,6 +341,31 @@ const GLYPH_DEFS = {
   // smoke grenade: a canister with a cloud rising beside it
   smokeab: poly([24, 44], [40, 44], [40, 49], [44, 49], [44, 86], [20, 86], [20, 49], [24, 49]) + poly([24, 62], [40, 62], [40, 66], [24, 66]) +
     blob(68, 30, [[56, 32, 11], [69, 22, 13], [82, 32, 10], [68, 37, 10]], 44),
+  // take cover: a soldier crouched behind a low wall
+  takecover: circle(34, 38, 8) + poly([20, 84], [20, 68], [24, 55], [34, 49], [46, 51], [52, 59], [52, 84]) +
+    poly([58, 44], [92, 44], [92, 84], [58, 84]) + poly([6, 84], [94, 84], [94, 90], [6, 90]),
+  // hold fire: a gun sight crossed out (the ring leaves gaps where the slash passes)
+  holdFire: band(arc(50, 50, 26, 26, -30, 120, 16), 8) + band(arc(50, 50, 26, 26, 150, 300, 16), 8) +
+    bar(at([50, 50], -45, 44), at([50, 50], 135, 44), 9),
+  // hold position: an anchor
+  holdPos: circle(50, 17, 9) + circle(50, 17, 4.5) + star(50, 36, [[-90, 10], [90, 40], [0, 20], [180, 20]], 9) +
+    band(arc(50, 52, 32, 30, 25, 155, 16), 9) + poly([10, 58], [26, 52], [24, 68]) + poly([90, 58], [74, 52], [76, 68]),
+  // auto-retreat: the retreat arrow beside a strength gauge that is nearly empty
+  autoRetreat: place(GLYPH_RETREAT, { s: 0.74, ox: 50, oy: 50, dx: -12, dy: 4 }) +
+    poly([72, 20], [92, 20], [92, 86], [72, 86]) + poly([77, 25], [87, 25], [87, 81], [77, 81]) + poly([80, 66], [84, 66], [84, 78], [80, 78]),
+  // mass entrenchment patterns, seen from above: what the two clicks dig
+  e_line: bar([17, 50], [83, 50], 11) + bar([7, 36], [7, 64], 6) + bar([93, 36], [93, 64], 6),
+  e_zigzag: band([[6, 66], [28, 34], [50, 66], [72, 34], [94, 66]], 10),
+  e_double: bar([8, 34], [92, 34], 10) + bar([8, 66], [92, 66], 10),
+  e_arc: band(arc(50, 80, 42, 42, 195, 345, 18), 10) + circle(50, 80, 6),
+  e_ring: circle(50, 50, 38) + circle(50, 50, 28) + circle(50, 50, 6),
+  e_strongpoint: poly([24, 34], [76, 34], [76, 86], [24, 86]) + poly([33, 43], [67, 43], [67, 77], [33, 77]) +
+    bar([6, 10], [94, 10], 5) + [20, 40, 60, 80].map((x) => circle(x, 21, 5) + circle(x, 21, 2.2)).join(''),
+  // mines: a flat anti-tank mine with its pressure cap
+  mines: ellipse(50, 66, 40, 13) + poly([36, 42], [64, 42], [64, 52], [36, 52]) + poly([45, 34], [55, 34], [55, 42], [45, 42]),
+  // bridge: a deck on an arch over the water
+  bridge: poly([4, 36], [96, 36], [96, 45], [4, 45]) + band(arc(50, 86, 36, 34, 180, 360, 24), 9) +
+    poly([4, 88], [96, 88], [96, 93], [4, 93]),
   menu: [22, 45, 68].map((y) => poly([14, y], [86, y], [86, y + 10], [14, y + 10])).join(''),
   fullscreen: poly([8, 8], [38, 8], [38, 17], [17, 17], [17, 38], [8, 38]) + poly([92, 8], [92, 38], [83, 38], [83, 17], [62, 17], [62, 8]) +
     poly([8, 92], [8, 62], [17, 62], [17, 83], [38, 83], [38, 92]) + poly([92, 92], [62, 92], [62, 83], [83, 83], [83, 62], [92, 62]),

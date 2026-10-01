@@ -5,11 +5,11 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
-import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label } from './keys.js';
+import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
 import { availability, buyCount, cooldownSeconds } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 
@@ -25,7 +25,15 @@ const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shell
   dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops a rifle squad where your side can see (counts toward pop)',
   cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)' };
 const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infantry', wire: 'Slows infantry; tanks flatten it', traps: 'Stops vehicles; cover for infantry',
-  nest: 'A trench pit behind a horseshoe of sandbags' };
+  nest: 'A trench pit behind a horseshoe of sandbags', mines: 'Hidden from the enemy; goes off under the first enemy squad or vehicle',
+  bridge: 'Across a river, up to 5 cells; aim it along the crossing' };
+const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
+  double: 'Two rows, the second 6 m behind the first', arc: 'A crescent around the first click, bowed toward the second',
+  ring: 'A circle around the first click, out to the second', strongpoint: 'A trench square with barbed wire on the side of the second click' };
+// the per-unit switches: [flag bit, name, what it does]
+const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack order (snipers and guns stay hidden)'],
+  holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
+  autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
 const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
   airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
@@ -132,7 +140,7 @@ export function createHud(ctx) {
     const key = [kind, ctx.me, teams.join(), names.join('\u0001')].join('|');
     if (key !== scoreKey) {
       scoreKey = key;
-      const lead = kind === 'conquest' ? '' : '<div class="sc-lead"><div class="sc-mode"></div><div class="num sc-clock"></div></div>';
+      const lead = kind === 'conquest' ? '' : `<div class="sc-lead"><div class="sc-mode"></div><div class="num sc-clock"></div>${kind === 'horde' ? '<button class="sc-next hidden" title="Skip the break">Send next wave</button>' : ''}</div>`;
       el.innerHTML = lead + tids.map((t) => {
         const mem = members(t);
         return `<div class="sc-team">${mem.map((i) => `<div class="sc-p"><span class="swatch" style="background:${pc(i)}"></span>${mark(ctx.facOf(i))}` +
@@ -142,7 +150,8 @@ export function createHud(ctx) {
           `<div class="sc-val"><span class="u0"></span><span class="num"></span><span class="u"></span></div></div>`;
       }).join('');
       // the stylesheet sizes each team block from the team count (and the clock block, if any)
-      el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', !lead ? '0px' : kind === 'assault' ? '216px' : '150px');
+      el.style.setProperty('--n', tids.length); el.style.setProperty('--lead', !lead ? '0px' : kind === 'assault' || kind === 'horde' ? '216px' : '150px');
+      el.querySelector('.sc-next')?.addEventListener('click', () => ctx.send({ t: 'nextwave' }));
       score = { lead: el.querySelector('.sc-lead'), teams: [...el.querySelectorAll('.sc-team')].map((b, k) => ({
         t: tids[k], mem: members(tids[k]), role: b.querySelector('.sc-role'), bar: b.querySelector('.bar'), fill: b.querySelector('.bar > div'),
         u0: b.querySelector('.u0'), num: b.querySelector('.sc-val .num'), u: b.querySelector('.sc-val .u'),
@@ -153,8 +162,14 @@ export function createHud(ctx) {
     const mine = teams[ctx.me] ?? ctx.me, units = [...ctx.units.values()];
     const net = (i) => (s.online?.[i] === false ? ['danger', 'Offline'] : s.ping?.[i] === -1 ? ['', 'AI'] : s.ping?.[i] != null ? ['', `${s.ping[i]} ms`] : ['', '']);
     if (score.lead) {
-      const mode = score.lead.firstChild, clk = score.lead.lastChild;
-      if (kind === 'assault') {
+      const mode = score.lead.firstChild, clk = score.lead.children[1];
+      if (kind === 'horde') {
+        // a wave on the map: how many are left (reserve included). Between waves: the break's countdown
+        const on = !!s.mode.active;
+        setText(mode, on ? `Wave ${s.mode.wave}` : `Wave ${s.mode.wave + 1} in`); setText(clk, on ? `${s.mode.left} left` : clock(s.mode.timeLeft));
+        score.lead.title = 'Hold the bunker. The next wave comes 45 seconds after this one is dead';
+        show(score.lead.lastChild, !on && ctx.host);
+      } else if (kind === 'assault') {
         setText(mode, mine === s.mode.defenderTeam ? 'Assault: hold out' : 'Assault: take the bunker'); setText(clk, clock(s.mode.timeLeft));
         score.lead.title = mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker before the clock runs out';
       } else if (kind === 'classic') {
@@ -175,7 +190,7 @@ export function createHud(ctx) {
         const why = cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '';
         if (tm.net[k].title !== why) tm.net[k].title = why;
         const out = kind === 'classic' && s.out?.[i];
-        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'assault' ? '' : out ? 'Out' : `${held(i)} held`);
+        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'assault' || i === s.mode?.slot ? '' : out ? 'Out' : `${held(i)} held`);
         tm.held[k].classList.toggle('danger', !!out);
       });
       let frac = null, u0 = '', num = '', u = '', role = '', danger = false;
@@ -186,6 +201,10 @@ export function createHud(ctx) {
         const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => UNITS[v.type]?.structure && v.hp > 0 && teams[v.owner] === tm.t);
         role = def ? 'Defending' : 'Attacking';
         if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), total = s.mode.total ?? tm.mem.length, max = total * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Structures left'; num = `${own.length} / ${total}`; }
+      } else if (kind === 'horde') {
+        const b = units.find((v) => v.type === 'bunker' && v.hp > 0);
+        if (tm.t !== s.mode.defenderTeam) role = 'Horde';
+        else if (b) { frac = b.hp / UNITS.bunker.hpPer; u0 = 'Bunker'; num = `${Math.ceil(frac * 100)}%`; } else { u0 = 'Bunker lost'; danger = true; }
       } else if (kind === 'annihilation') {
         const own = units.filter((v) => v.type === 'bunker' && v.hp > 0 && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = (s.mode.bunkers?.[tm.t] ?? tm.mem.length) * UNITS.bunker.hpPer;
         if (own.length) { frac = hp / max; u0 = own.length > 1 ? `${own.length} bunkers` : 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; } else { u0 = 'Out'; danger = true; }
@@ -212,9 +231,10 @@ export function createHud(ctx) {
     if (v.flags & 4) t.push(['pin', 'AP round loaded']);
     if (v.supp >= 90) t.push(['pin', 'Pinned']); else if (v.supp >= 50) t.push(['sup', 'Suppressed']);
     if (!v.garr) { if (v.cover === 2) t.push(['cov', 'In trench']); else if (v.cover === 3) t.push(['cov', 'By cover']); else if (v.cover) t.push(['cov', 'In cover']); }
-    if (v.flags & 16) t.push(['', 'Digging']);
+    if (v.flags & 16) t.push(['', 'Digging']); else if (v.flags & 1024) t.push(['', 'Waiting for MP to dig']);
     if (v.flags & 32) t.push(['cov', 'Garrisoned']);
     if (v.flags & 64) t.push(['', 'Attack-move']);
+    for (const [bit, nm] of Object.values(STANCE)) if (v.flags & bit) t.push(['', nm]);
     if (UNITS[v.type].building && v.built < 1) t.push(['', `Building ${Math.round(v.built * 100)}%`]);
     return t.map(([c, s]) => `<span class="tag ${c}">${s}</span>`).join('') + (v.vet ? `<span class="vet" title="Veteran: ${v.vet} star${v.vet > 1 ? 's' : ''}">${'★'.repeat(v.vet)}</span>` : '');
   };
@@ -263,20 +283,26 @@ export function createHud(ctx) {
     const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}`;
+    const inf = sel.some((v) => UNITS[v.type].infantry);
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
         orderBtn('data-a="retreat"', 'retreat', label('retreat'), `Retreat (${label('retreat')}): run back to base, heal and reinforce there`) +
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
+        Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
+        (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
+        (dig ? ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
+          `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
         '</div>';
       el.querySelectorAll('button').forEach((b) => {
         const a = b.dataset.a;
-        b.onclick = () => {
+        b.onclick = (e) => {
           if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
+          else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
           else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
         };
         if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
@@ -288,6 +314,12 @@ export function createHud(ctx) {
       const a = b.dataset.a, val = b.lastElementChild;
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
+      else if (a === 'cover') result = check({ t: 'cover' });
+      else if (a.startsWith('st:')) {
+        const bit = STANCE[a.slice(3)][0], on = sel.filter((v) => v.flags & bit).length;
+        txt = !on ? 'Off' : on === sel.length ? 'On' : `${on}/${sel.length}`; b.classList.toggle('on', on > 0);
+      }
+      else if (a.startsWith('ent:')) { result = check({ t: 'entrench' }); txt = `${FORTS.trench.cost}/seg`; }
       else if (UNITS[a]) {
         // same squads the reason sentence counts: retreating squads cannot use the ability
         const all = sel.filter((v) => v.type === a), us = all.some((v) => !(v.flags & 1)) ? all.filter((v) => !(v.flags & 1)) : all;

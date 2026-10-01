@@ -4,7 +4,7 @@ import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAY
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
-  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'],
+  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'], ['D', 'Road'], ['M', 'Mud'], ['N', 'Mine'],
   ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'],
   // spawns go in order around the map: the game seats teammates on neighbouring numbers
   ...Array.from({ length: MAX_PLAYERS }, (_, i) => ['s' + i, 'Spawn ' + (i + 1)]),
@@ -31,7 +31,7 @@ export async function start(api) {
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
     <div id="edToolHint" class="muted"></div>
-    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
+    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option></select></div>
     <div id="edPlayersRow" class="row hidden">Players <select id="edPlayers"></select></div>
     <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
@@ -107,6 +107,7 @@ export async function start(api) {
       assault && `${defenders} defend, ${n - defenders} attack, ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey), ${added} trench/wall cells added, clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? `, ${cut} VP-only point(s) left out` : ''}`,
       mode === 'classic' && `an HQ on every player's spawn, ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange), points pay Munitions`,
       mode === 'conquest' && `first to ${g.winVp} VP`,
+      mode === 'horde' && (g.mode?.kind === 'horde' ? `one shared HQ and bunker (grey), the horde enters at ${g.mode.gates.length} spawn(s)` : 'Horde needs defend spawns and at most 5 players: this preview is Conquest'),
       'Editing is paused: pick Editing to change the map.',
     ].filter(Boolean).join('<br>');
   }
@@ -117,7 +118,7 @@ export async function start(api) {
   function check(m) {
     let err = validateMap(m);
     if (!err) {
-      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
+      const g = { w: m.w, h: m.h, flags: Uint16Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
       const bad = [];
       m.spawns.forEach((s, i) => m.points.forEach((p, j) => {
         const a = toWorld(s), b = toWorld(p);
@@ -187,7 +188,7 @@ export async function start(api) {
     }
     return { cells, ch };
   }
-  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble', D: 'road', M: 'mud', N: 'mines' };
   function highlight() {
     hl.clear();
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];
