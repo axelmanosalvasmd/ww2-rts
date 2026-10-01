@@ -8,7 +8,7 @@ import { createSelection } from './selection.js';
 import { createOrders } from './orders.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -440,6 +440,7 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
+  groundVersion++;
   // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
   // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
   const shaped = [];
@@ -754,26 +755,29 @@ function updateHud(s) { drawPlans(); hud.update(s); }
 // the builder squad nearest the clicked spot puts the fortification across its approach
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
-function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()}. Right-click cancels`; blip(600); }
+// Sandbags, wire, tank traps and mines are drawn out like a trench line: click the start, click the end.
+function startDig(kind) { if (lineFort(kind) && kind !== 'trench') return startEntrench('line', kind); if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()}. Right-click cancels`; blip(600); }
 // Mass entrenchment: two clicks give the pattern its two points, and every selected builder squad digs it.
-let entrenchKind = 'line', entrenchHint = '';
-function startEntrench(kind) { if (explainUnavailable(available({ t: 'entrench' }))) return; entrenchKind = kind; entrenchHint = ''; setAim('entrench'); $('hint').textContent = `${ENTRENCH[kind]}: click where it starts. Right-click cancels`; blip(600); }
+let entrenchKind = 'line', entrenchFort = 'trench', entrenchHint = '';
+const entrenchName = () => (entrenchFort === 'trench' ? ENTRENCH[entrenchKind] : `${FORTS[entrenchFort].name} line`);
+function startEntrench(kind, fort = 'trench') { if (explainUnavailable(available({ t: 'entrench' }))) return; entrenchKind = kind; entrenchFort = fort; entrenchHint = ''; setAim('entrench'); $('hint').textContent = `${entrenchName()}: click where it starts. Right-click cancels`; blip(600); }
 // the segments of the armed pattern that can be built, with their cells, as the server will judge them
 function entrenchSegments(a, b) {
   const crew = diggers(), view = placementView();
   if (!crew.length || !view) return [];
   const back = { x: crew.reduce((s, v) => s + v.x, 0) / crew.length, z: crew.reduce((s, v) => s + v.z, 0) / crew.length };
-  return entrenchPlan(entrenchKind, a, b, back).map(j => ({ ...j, place: placementCheck(view.game, j, (spot) => view.sees(me, spot)) })).filter(j => j.place.ok);
+  return entrenchPlan(entrenchKind, a, b, back, entrenchFort).map(j => ({ ...j, place: placementCheck(view.game, j, (spot) => view.sees(me, spot)) })).filter(j => j.place.ok);
 }
 // what the armed pattern costs, and how much of it starts right away with the squads and manpower at hand
 function entrenchSummary(segs) {
   const costs = segs.map(j => segmentCost(j.kind, j.place.cells.length)), total = costs.reduce((s, c) => s + c, 0);
   let mp = lastSnap?.mp ?? 0, now = 0;
   for (const c of costs.slice(0, diggers().length)) { if (mp < c) break; mp -= c; now++; }
-  return !segs.length ? `${ENTRENCH[entrenchKind]}: nothing can be dug there`
-    : `${ENTRENCH[entrenchKind]}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? `; ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
+  return !segs.length ? `${entrenchName()}: nothing can be built there`
+    : `${entrenchName()}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? `; ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
 }
 // a square on every cell the segments would dig (trench green, wire brass); the tiles are pooled on the group
+const TILE_COLOR = { wire: 0xd2a849, sandbags: 0xd8c79a, traps: 0xa9b0b8, mines: 0xd0604a };
 function paintTiles(group, segs, opacity) {
   const w = placementView()?.game.w ?? 1, tiles = group.userData.tiles ??= [];
   let n = 0;
@@ -781,26 +785,27 @@ function paintTiles(group, segs, opacity) {
     let t = tiles[n];
     if (!t) { t = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.86, CELL * 0.86), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); t.rotation.x = -Math.PI / 2; t.renderOrder = 2; tiles.push(t); group.add(t); }
     const x = (c % w + 0.5) * CELL, z = (Math.floor(c / w) + 0.5) * CELL;
-    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(j.kind === 'wire' ? 0xd2a849 : 0x60e070); t.material.opacity = opacity;
+    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(TILE_COLOR[j.kind] ?? 0x60e070); t.material.opacity = opacity;
     n++;
   }
   for (let i = n; i < tiles.length; i++) tiles[i].visible = false;
 }
-// The ghost of your side's ordered entrenchments: what is still to dig, fainter than the placement preview. Redrawn
-// when the list changes. works: [project id, 1 for wire, x, z, dir] from the snapshot.
-let works = [], worksKey = '', worksGroup = null;
+// The ghost of your side's ordered works: what is still to dig, including what a squad is walking to or digging now,
+// fainter than the placement preview. Redrawn when the list changes or the ground under it does.
+// works: [project id or -1, 1 for wire, x, z, dir, kind (only for works under way)] from the snapshot.
+let works = [], worksKey = '', worksGroup = null, groundVersion = 0; // groundVersion: counts terrain updates, so dug cells leave the ghost
 function drawWorks(list = []) {
   works = list;
-  const key = list.join(';'), view = placementView();
+  const key = list.join(';') + '@' + groundVersion, view = placementView();
   if (!world || !view || (key === worksKey && worksGroup?.parent === world)) return;
   worksKey = key;
   if (worksGroup?.parent !== world) { worksGroup = new THREE.Group(); world.add(worksGroup); }
-  paintTiles(worksGroup, list.map(([, wire, x, z, dir]) => { const j = { kind: wire ? 'wire' : 'trench', x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), 0.26);
+  paintTiles(worksGroup, list.map(([, wire, x, z, dir, kind]) => { const j = { kind: kind ?? (wire ? 'wire' : 'trench'), x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), 0.26);
 }
 // the planned entrenchment under a ground click (a segment within 5 m), for sending more squads to it
 function worksAt(g) {
   let best = null, bd = 5;
-  if (g) for (const [id, , x, z] of works) { const d = Math.hypot(x - g.x, z - g.z); if (d < bd) { bd = d; best = id; } }
+  if (g) for (const [id, , x, z] of works) { const d = Math.hypot(x - g.x, z - g.z); if (id >= 0 && d < bd) { bd = d; best = id; } } // -1: nothing left to hand out
   return best;
 }
 // the placement preview, redrawn as the mouse moves
@@ -1089,7 +1094,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
       const a = aimCenter, segs = entrenchSegments(a, g);
       if (!segs.length) { feedback.show(denySentence('blocked')); return; }
       cancelAim();
-      sendCmd({ t: 'entrench', ids: diggers().map(v => v.id), pattern: entrenchKind, x: a.x, z: a.z, x2: g.x, z2: g.z, queue: e.shiftKey });
+      sendCmd({ t: 'entrench', ids: diggers().map(v => v.id), pattern: entrenchKind, fort: entrenchFort, x: a.x, z: a.z, x2: g.x, z2: g.z, queue: e.shiftKey });
       marker(a.x, a.z, 0xc8a060); blip(600); bark('move');
       return;
     }

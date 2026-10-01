@@ -5,6 +5,23 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Sandbags, barbed wire, tank traps and minefields can be drawn out as one continuous line, like a trench line.
+  - Their buttons and hotkeys now take two clicks: where the line starts and where it ends. A short line is one piece
+    (as before); a long one is up to 12 pieces end to end. Every selected builder squad works on it, each piece is paid
+    for when a squad starts it, Shift on the second click queues it, and other squads can be sent to help by
+    right-clicking the ghost while pieces are left.
+  - Piece lengths and prices are unchanged: sandbags 4 cells for 20 MP, wire 5 for 25, tank traps 4 for 40, mines 4
+    for 40. The ghost shows each kind in its own colour (wire brass, sandbags tan, traps grey, mines red).
+  - The plain Trench (T), the MG nest and the bridge keep their single placement.
+  - Not checked in a browser. Computer players still place these one piece at a time.
+- Entrenchment ghost: works stay on the ground until they are dug.
+  - Bug fixed: the ghost only listed segments nobody had started. A segment vanished the moment a squad took it, so a
+    pattern with as many squads as segments showed no ghost at all, and there was nothing to right-click for help.
+    Segments a squad is walking to or digging now stay in the ghost, and their cells drop out one by one as they are dug.
+  - A single fortification (trench, sandbags, wire, tank traps, MG nest, minefield, bridge) now shows the same ghost
+    while its squad walks over and builds it. Allies see it, enemies do not.
+  - Right-click to help still joins only a pattern that has segments left to hand out. A segment that already has a
+    squad on it cannot take a second one.
 - The computer opponents no longer cheat. They plan only from what a player in their seat could know: the same
   snapshots a human receives (units seen right now, buildings and terrain remembered under fog, public announcements),
   with the same rounded numbers. Leaks closed: they knew which resource nodes already held an enemy depot (it steered

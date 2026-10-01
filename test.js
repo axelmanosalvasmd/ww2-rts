@@ -1099,8 +1099,9 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (const u of g.units.values()) u.holdFire = true; // nobody shoots: this is about digging
   command(g, 0, { ...order, ids: [first.id] }); step(g);
   const works = (slot) => snapshotFor(g, slot, []).works;
-  assert.equal(works(0).length, 4, 'the owner sees the four segments still to dig (the fifth is being dug)');
-  assert.equal(works(1).length, 4, 'an ally sees the plan too');
+  assert.equal(works(0).length, 5, 'the owner sees all five segments: four still to dig and the one being dug');
+  assert.deepEqual(works(0).map(w => w[5]), ['trench', 'trench', 'trench', 'trench', 'trench'], 'every segment names its kind');
+  assert.equal(works(1).length, 5, 'an ally sees the plan too');
   assert.equal(works(2).length, 0, 'an enemy does not');
   const id = works(0)[0][0];
   assert.equal(command(g, 0, { t: 'entrench', ids: [helper.id], join: id + 99 }), 'blocked', 'an unknown project cannot be joined');
@@ -1110,7 +1111,14 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const allyMp = g.players[1].mp; step(g);
   assert.ok(helper.dig && ally.dig, 'the helpers take segments of their own');
   assert.ok(g.players[1].mp < allyMp, 'the ally pays for the segment it digs');
-  assert.equal(works(0).length, 2, 'the ghost shrinks as segments are taken');
+  assert.equal(works(0).length, 5, 'segments stay in the ghost while squads walk to them and dig');
+  assert.equal([first, helper, ally].filter(u => u.dig?.kind === 'trench').length, 3, 'three are under way now');
+  run(g, 40);
+  assert.equal(works(0).length, 0, 'the ghost is gone when the line is dug');
+  // the other line fortifications are drawn out the same way: here 15 m of barbed wire, three pieces of five cells
+  const cells = (ch) => g.chars.filter(c => c === ch).length;
+  assert.equal(command(g, 0, { t: 'entrench', ids: [first.id, helper.id], pattern: 'line', fort: 'wire', x: 25, z: 30, x2: 55, z2: 30 }), undefined, 'a line of wire is ordered');
+  assert.deepEqual(works(0).map(w => w[5]), ['wire', 'wire', 'wire'], 'three pieces of wire in the ghost');
   run(g, 40);
   assert.equal(trenches(g), 20, 'together they finish the line');
   assert.equal(g.projects.size, 0, 'a finished project is dropped');
@@ -1126,6 +1134,16 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(q.projects.size, 1, 'a project somebody is waiting to start is kept');
   run(q, 110);
   assert.equal(trenches(q), 20, 'the queued pattern is dug after the move');
+  assert.equal(cells('X'), 15, 'the wire runs the whole line');
+  assert.equal(command(g, 0, { t: 'entrench', ids: [first.id], pattern: 'line', fort: 'traps', x: 25, z: 26, x2: 33, z2: 26 }), undefined, 'tank traps too');
+  run(g, 20); assert.equal(cells('Y'), 4);
+  for (const bad of [{ fort: 'bridge' }, { fort: 'nest' }, { fort: 'toString' }, { fort: 'wire', pattern: 'ring' }]) assert.equal(command(g, 0, { t: 'entrench', ids: [first.id], pattern: 'line', x: 25, z: 20, x2: 40, z2: 20, ...bad }), 'blocked', `not as a line: ${JSON.stringify(bad)}`);
+  // a single fortification has a ghost too, and it is not something to join
+  command(g, 0, { t: 'dig', ids: [first.id], kind: 'wire', x: 40, z: 60, dir: 0 });
+  assert.deepEqual(works(0), [[-1, 1, 40, 60, 0, 'wire']], 'one wire shows as a ghost while the squad walks to it');
+  assert.equal(works(2).length, 0, 'not to the enemy');
+  run(g, 30);
+  assert.equal(works(0).length, 0);
   assert.ok(u.z > 70 && !u.entrench, 'and the move queued behind it runs once the pattern is done');
 
   const s = fresh(big); s.players[0].mp = 10000;

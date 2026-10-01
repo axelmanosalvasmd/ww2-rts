@@ -221,6 +221,8 @@ export const FORTS = {
   // on: the ground it is built on (river); reach: the builders work from the bank; along: runs the way they walk
   bridge: { name: 'Bridge', cost: 80, ch: '=', n: 5, on: 'W', reach: 9, along: true },
 };
+// the fortifications that run in a line on open ground, so they can be drawn out as one continuous line
+export const lineFort = (kind) => typeof kind === 'string' && Object.hasOwn(FORTS, kind) && FORTS[kind].n > 0 && !FORTS[kind].on;
 const BUILDABLE_GROUND = '.+RDM'; // a trench, wire or traps across a road cut it
 // the cells a fortification covers when centered on (x, z), running along direction a
 export function fortCells(g, f, x, z, a) {
@@ -238,8 +240,9 @@ export const ENTRENCH = { line: 'Trench line', zigzag: 'Zigzag trench', double: 
 export const ENTRENCH_TYPES = Object.keys(ENTRENCH);
 // The pattern as fortification segments [{ kind, x, z, dir }], middle first. back: where the diggers are, so the works
 // face away from them (a plain click, with no second point, also runs a line across their approach).
-export function entrenchPlan(pattern, a, b, back) {
-  const SEG = CFG.digCells * CELL, len = Math.hypot(b.x - a.x, b.z - a.z), drawn = len >= 2, linear = pattern === 'line' || pattern === 'zigzag' || pattern === 'double';
+// fort: what the line patterns are made of (trench, sandbags, wire, tank traps, mines); the others are always trench.
+export function entrenchPlan(pattern, a, b, back, fort = 'trench') {
+  const SEG = FORTS[fort].n * CELL, len = Math.hypot(b.x - a.x, b.z - a.z), drawn = len >= 2, linear = pattern === 'line' || pattern === 'zigzag' || pattern === 'double';
   const away = back && Math.hypot(a.x - back.x, a.z - back.z) > 0.5 ? Math.atan2(a.z - back.z, a.x - back.x) : 0;
   const dir = drawn ? Math.atan2(b.z - a.z, b.x - a.x) : linear ? away + Math.PI / 2 : away;
   const dx = Math.cos(dir), dz = Math.sin(dir), clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), out = [];
@@ -248,12 +251,12 @@ export function entrenchPlan(pattern, a, b, back) {
     const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, L = drawn ? len : SEG;
     // the front is the side away from the diggers
     const side = back && (mx - back.x) * dz + (mz - back.z) * -dx < 0 ? -1 : 1, nx = dz * side, nz = -dx * side;
-    const row = (off) => { const n = clamp(Math.round(L / SEG), 1, 12); for (let i = 0; i < n; i++) { const t = (i - (n - 1) / 2) * SEG; seg('trench', mx + dx * t + nx * off, mz + dz * t + nz * off, dir); } };
+    const row = (off) => { const n = clamp(Math.round(L / SEG), 1, 12); for (let i = 0; i < n; i++) { const t = (i - (n - 1) / 2) * SEG; seg(fort, mx + dx * t + nx * off, mz + dz * t + nz * off, dir); } };
     if (pattern === 'zigzag') {
       // a sawtooth: each segment turns 0.6 rad off the line, alternately forward and back
       const w = SEG * Math.cos(0.6), h = SEG * Math.sin(0.6), n = clamp(Math.round(L / w), 1, 16);
       const v = (i) => ({ x: mx + dx * (i - n / 2) * w + nx * (i % 2 ? h / 2 : -h / 2), z: mz + dz * (i - n / 2) * w + nz * (i % 2 ? h / 2 : -h / 2) });
-      for (let i = 0; i < n; i++) { const p = v(i), q = v(i + 1); seg('trench', (p.x + q.x) / 2, (p.z + q.z) / 2, Math.atan2(q.z - p.z, q.x - p.x)); }
+      for (let i = 0; i < n; i++) { const p = v(i), q = v(i + 1); seg(fort, (p.x + q.x) / 2, (p.z + q.z) / 2, Math.atan2(q.z - p.z, q.x - p.x)); }
     } else { row(0); if (pattern === 'double') row(-3 * CELL); }
   } else if (pattern === 'arc' || pattern === 'ring') {
     const ring = pattern === 'ring', R = drawn ? clamp(len, ring ? 6 : 8, ring ? 24 : 30) : ring ? 10 : 12, span = ring ? Math.PI * 2 : Math.PI * 2 / 3;
@@ -1282,7 +1285,7 @@ function takeDigJob(g, u) {
   jobs.splice(k, 1);
   p.mp -= cost; tally(g, u.owner, 'mpSpent', cost);
   u.entrench.active++;
-  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0, project: u.entrench }; u.repath = 0;
+  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0, project: u.entrench, kind: job.kind, dir: job.dir }; u.repath = 0;
 }
 
 // Per-unit switches the player sets. holdFire: shoot only on an attack order. holdPos: never move unordered (no
@@ -1507,7 +1510,7 @@ export function command(g, slot, cmd, auto = false) {
     const cells = place.cells;
     p.mp -= f.cost; tally(g, slot, 'mpSpent', f.cost);
     exitBuilding(g, u);
-    Object.assign(u, { orders: [], entrench: null, dig: { x, z, cells, t: 0, reach: f.reach }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
+    Object.assign(u, { orders: [], entrench: null, dig: { x, z, cells, t: 0, reach: f.reach, kind, dir }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
   } else if (cmd.t === 'entrench') {
     // Mass entrenchment: all the selected diggers share one pattern. Nothing is paid here: each digger pays for a
     // segment as it takes it, so a pattern bigger than the purse gets dug as the manpower comes in.
@@ -1519,10 +1522,13 @@ export function command(g, slot, cmd, auto = false) {
     if (!project && (typeof cmd.pattern !== 'string' || !Object.hasOwn(ENTRENCH, cmd.pattern) || x === null || z === null)) return 'blocked';
     if (!able.length) return crew.length ? 'retreating' : 'noBuilders';
     if (cmd.queue === true && able.every(u => (u.orders?.length ?? 0) >= 8)) return 'queueFull';
+    // fort: a line of sandbags, wire, tank traps or mines instead of trench (the line patterns only)
+    const fort = cmd.fort ?? 'trench';
+    if (!project && (!lineFort(fort) || (fort !== 'trench' && !['line', 'zigzag', 'double'].includes(cmd.pattern)))) return 'blocked';
     if (project) return joinProject(g, project, able, cmd.queue === true);
     const back = { x: able.reduce((a, u) => a + u.x, 0) / able.length, z: able.reduce((a, u) => a + u.z, 0) / able.length };
     let reason = 'blocked', cheapest = Infinity;
-    const jobs = entrenchPlan(cmd.pattern, { x, z }, { x: x2, z: z2 }, back).filter(j => {
+    const jobs = entrenchPlan(cmd.pattern, { x, z }, { x: x2, z: z2 }, back, fort).filter(j => {
       const place = placementCheck(g, j, at => teamSees(g, p.team, at));
       if (place.ok) cheapest = Math.min(cheapest, segmentCost(j.kind, place.cells.length)); else if (place.reason === 'notVisible') reason = 'notVisible';
       return place.ok;
@@ -2770,7 +2776,10 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     covers: cache ? cache.teams.get(p.team).covers : (g.covers ?? []).filter(c => c.team === p.team).map(c => [r(c.x), r(c.z), c.r, Math.ceil(c.t)]),
     // segments still to dig of your side's mass entrenchments: [project id, 1 for wire, x, z, dir] (unrounded, so the
     // client lands on the same cells)
-    works: [...(g.projects?.values() ?? [])].filter(q => allied(g, q.owner, slot)).flatMap(q => q.jobs.map(j => [q.id, j.kind === 'wire' ? 1 : 0, j.x, j.z, j.dir])),
+    // (the 6th element names the kind), then the works a squad is walking to or digging right now: they stay on the
+    // ground until they are dug. Their id is the project's while it still has segments to hand out, else -1.
+    works: [...[...(g.projects?.values() ?? [])].filter(q => allied(g, q.owner, slot)).flatMap(q => q.jobs.map(j => [q.id, j.kind === 'wire' ? 1 : 0, j.x, j.z, j.dir, j.kind])),
+      ...[...g.units.values()].filter(u => u.hp > 0 && u.dig?.kind && allied(g, u.owner, slot)).map(u => [u.dig.project?.jobs.length ? u.dig.project.id : -1, u.dig.kind === 'wire' ? 1 : 0, u.dig.x, u.dig.z, u.dig.dir, u.dig.kind])],
     sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, Math.max(0, Math.ceil(p.sup[k]))])),
     points: g.points.map((q, i) => {
       // A contest is readable only when at least two teams' on-point units are already visible.
