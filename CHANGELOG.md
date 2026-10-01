@@ -5,6 +5,27 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Unit behavior merged with Unit control (PR #11), work in progress: one system per behavior instead of two.
+  - Under fire: one reaction (`react`). An idle squad moves to better cover (trench, then a cover cell, then behind
+    something solid or at a house corner): within 4 m if it can shoot back, 10 m if it can't or holds fire. Crewed
+    weapons stay put. The Take Cover order uses the same spot rule: 10 m, spaced 3 m from other squads when there is
+    room, else one squad to a cell. A squad on a capture point never leaves its circle, Take Cover included.
+  - Vehicles: a stopped vehicle faces the target it fights when that can hurt armor, else the last anti-tank fire
+    (remembered 5 s, longer than an AT gun's reload), else its target. Rifle fire and planes no longer turn a hull.
+  - Targets: job and threat scoring, spread fire (claims) and the 30% hysteresis together.
+  - Stances: Hold position stops every automatic move (cover shifts, spacing, settling after a move, vehicle pull-back);
+    Hold fire stops automatic target picks and the rally walker's return fire. Auto-retreat works as before.
+  - Review fixes (GPT-6.1 Sol): a queued order no longer runs over the next one after an automatic step, hull facing
+    no longer reads a target that went out of sight, return fire keeps the spread-fire claims right, squads sent one
+    at a time to one spot from far away now end apart, and Take Cover's fallback keeps one squad to a cell.
+  - Numbers (`tools/balance.mjs`, seeds 1, master 08d0e61 to this branch): Conquest over 120 matches, rear hits 20.8% to
+    13.9% of vehicle hits, idle squads crowded within 3 m 43% to 11%, infantry hits taken in cover 42.6% to 31.3%,
+    closeness 0.61 to 0.54, lead changes 1.05 to 1.03, length 9.7 to 9.1 min, USA/GER/USSR wins 44/43/33 to 40/43/37.
+    Classic over 60: decided before Sudden Death 37 to 47, median length 21.5 to 18.3 min, wins 22/18/20 to 13/19/28,
+    rear hits 6.8% to 5.5%, crowded squads 50% to 39%.
+  - Open: the drop in infantry hits taken in cover (a 10 m reach for squads that can shoot back only brings it to
+    33.3%) and the lower Conquest closeness are not explained yet; the Classic faction shift needs a bigger sample.
+
 - Smarter units, review fixes (found by testing the entry below before release):
   - Crossfire: a unit shot at by two enemies no longer swaps targets each time the other one lands a shot. A squad
     between two rifle squads swapped 37 times in 30 s and a tank's hull swung 37 rad back and forth; now both keep
@@ -51,6 +72,345 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Left for later: mortar, rocket and off-map shells do not count as incoming fire, so squads stay put under a
     barrage (seen in a live match). Planes still re-pick targets every half second. Classic faction wins went from
     30/36/33% to 24/47/28%; that is within chance (p = 0.25), but GER rose in both seed sets, so check it again.
+- Fog of war now shows exactly what your team sees:
+  - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
+    (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn
+    clear while the team saw nothing there, 0.7% was seen but drawn fogged, and 29 of 477 enemy units the server
+    showed stood on fogged ground (on Bocage, all of them).
+  - The server now sends each player only its own team's seen cells: the whole mask at match start and on
+    reconnect, then only the cells that changed, as short run-length strings. On a six-player Massive game (Six
+    Fronts, Conquest) a snapshot grows from 1920 to 2022 bytes on average (+102, about 5%). Working out the masks
+    raises the server's cost for one round of six snapshots from 0.77 to 3.75 ms on average (p95 2.8 to 10.7 ms).
+  - The ground has three looks: seen (clear), explored (dimmed) and never seen (dark). A cell fades to its new look
+    within a quarter second, and only the changed part of each texture row goes to the graphics card (about 1 KB a
+    frame instead of the whole 90 KB texture). Trees, rocks and other props now darken in the fog like houses and
+    walls already did, and water darkens under the same overlay.
+  - Every unit a snapshot shows stands on clear ground: in a replay of 1334 snapshots, 0 of 21108 shown ground
+    units stood on fog and the client's seen cells matched the server's every time, and in a live 2v1 match on
+    Bocage 0 of 13588 shown ground units over 1465 snapshots stood on fog. A new server test checks each
+    team's mask against a cell-by-cell vision check on the 300-unit Massive fixture, including after a hedge, smoke
+    and raised ground appear in a standing unit's view.
+  - Review fix: houses, walls, hedges and props in the fog now darken like the ground. On High graphics they faded
+    toward a mid grey, so hedge rows and trees showed as pale shapes on dark ground. The fog mix ran after the colour
+    conversion, which High does in a later pass, so it used a grey meant for Low. It now mixes toward the overlay's own
+    colour before conversion, and both graphics levels match the ground.
+  - Review checks: a live reconnect on Bocage kept every explored cell and the changed-cells stream stayed in step
+    afterwards (0 of 15818 shown ground units outside the server's mask over 1274 snapshots). Replays of Classic
+    (Default, Bocage) and Annihilation (Hill 112) had 0 mismatches between the client's seen cells and the server's
+    mask, and every building footprint matched cell by cell (7340 building rows on Bocage alone). Client fog work on a
+    six-player Massive game costs 0.16 ms per snapshot and 0.009 ms per frame on average, about 3 KB of texture upload
+    a frame.
+  - Merged with the realistic scenery: the new trees, bushes, hedgerow leaves, grass and wheat darken from the same
+    server mask, with the same mix as the ground. Their own darkening rule (a multiply written against the old grey
+    mix) no longer matched anything, so `client/foliage.js` now uses the shared fog shader as it is.
+  - Merged with the living ground: rain now shortens sight by up to 20%, and the drawn fog follows it. The fog and the
+    server's vision read one range function, and units standing still recompute their seen cells when a shower
+    comes or goes. A new test pass checks that rain shrinks the mask and that it comes back when the rain stops.
+  - Left for later: terrain changes (craters, trenches) still reach every client, even in the fog. Enemy planes
+    still show over fog (by design), and a camouflaged sniper can stand unseen on clear ground. The fog edge can
+    trail a moving unit by up to about half a second (five vision passes a second plus the fade). In Annihilation the
+    ground under the always-visible enemy bunkers is clear, and in Horde the last few attackers shown through the fog
+    get a clear cell under them the same way. The new test adds about 3 seconds to `node test.js`.
+- Living ground: the board wears, burns and gets rained on, and nothing snaps at a tile edge any more.
+  - Soft edges: a unit's speed is the average of the ground under its whole footprint, so a tank half on a road gets
+    half the bonus. Cover behind a wall, house, hedge or vehicle is full within about 2 m and fades to nothing at
+    3.8 m (it used to switch off at 2.2 m).
+  - Wear from traffic: every vehicle that drives over open ground cuts it up a little (about 10 tank passes when dry,
+    light vehicles count half). Churned ground slows vehicles by up to 30%, then turns into shallow mud, and mud that
+    keeps getting driven on gets deeper. Roads do not wear from traffic.
+  - Wear from shelling: explosions break up a road step by step (less speed bonus each time) until the cell is a
+    crater. A crater that is hit again gets deeper.
+  - Depth: every mud, ford and crater cell has its own depth. Mud runs from 70% vehicle speed (shallow) to 35% (deep),
+    a ford from 75% to 35% for everyone, and a deeper crater is better cover (from about 40% protection to 70%;
+    it was a flat 50%).
+  - Shot-up cover: walls, sandbags and hedges show two stages of damage before they fall, and protect less as they go
+    (down to half their protection when nearly gone).
+  - Slope: going uphill slows a unit in proportion to how steep the next metre is, up to 20% for infantry and 45% for
+    vehicles. Crossing a slope at an angle is faster than driving straight up it. Downhill costs nothing.
+  - Wind: each match has a wind that slowly shifts. Smoke screens drift with it (up to 1.2 m/s), so a screen laid
+    upwind covers an advance and one laid downwind blows away from it. Cloud shade, particle smoke and rain follow
+    the same wind.
+  - Dust: a vehicle moving over dry ground trails dust and is spotted from 30% further away. No dust in the wet or
+    in mud.
+  - Fire: heavy explosions (artillery, bombs, rockets, satchels) can set hedges, houses and dry grass alight. Fire
+    spreads to neighbouring cells, much faster downwind. A hedge burns for 14 s and is gone, a house burns for 25 s
+    and ends as rubble, grass burns for 5 s and does not burn twice. Infantry in a burning cell (or a burning house)
+    lose 8 hp a second and get pinned; an idle squad steps out by itself. Burning hedges and houses throw up a smoke
+    cloud that blocks sight. Units route around fire.
+  - Rain: showers come and go (the first no sooner than 3 minutes in, 1.5 to 3 minutes long, 4 to 8 minutes apart).
+    Rain cuts sight by 20%, thins smoke faster, puts fires out four times faster and stops them spreading. The ground
+    soaks over 90 s and dries over 4 minutes: wet ground slows vehicles off the road by up to 20% (40% on ground
+    below level 0), triples traffic wear, and slows fords by up to another 30%. Roads are unaffected, so they matter
+    most in the wet. A line under the scores says when it is raining or the ground is wet.
+  - Look: worn ground shows as mud creeping into the grass, broken roads as shelled earth, burnt ground as black
+    earth, deep mud and fords darker than shallow ones. Fires use the existing flame, ember and smoke effects and
+    leave a scorch mark; rain is thin streaks on the wind with a dimmer sun and heavier cloud shade (streaks are off
+    on Graphics Low, like snow). All of it uses the existing painted textures and models; nothing was replaced.
+  - Computer players get all of it through the game rules; their vehicles weigh wear, mud, roads and fire when they
+    pick a route.
+  - Balance: Conquest, 120 three-way AI matches per map, wins per spawn. Three Crossroads 42/33/25% (30/34/36% before,
+    44/33/23% the round before that: within the noise of this script). Crossroads Village 51/49%. Hill 112 30/27/13/30%
+    (27/27/15/32% before). River Towns 30/43/27% over 240 matches (43/29/28% before): the favoured spawn moved from
+    the top one to the second one, most likely because its fords drew shallower depths. Spawns are shuffled per
+    match, so no player is favoured, but the map is no fairer than it was.
+  - In an average 9-minute AI match on Three Crossroads: about 65 of 360 road cells shelled into craters, 130 fires
+    started, 170 cells burnt, 15 hedge cells lost, and only a handful of cells churned toward mud (standard armies
+    have few vehicles; River Towns, with its bridge approaches, wore about 100 cells and made 5 new mud cells).
+  - Smoke clouds now carry an id in snapshots, so a drifting cloud is the same cloud to the client.
+  - Performance: a wear or scorch change repaints only the ground tiles around it. The 3D pieces, scenery, relief and
+    water are rebuilt only when a cell's type, height or damage stage changes.
+  - Left for later: no lobby switch for weather (the rules take `weather: false`, nothing in the lobby sets it).
+    Fire does not spread through the painted crop fields any differently from grass. No rain sound. Wet ground is
+    not drawn darker. Houses do not show damage stages. Depth is random per cell, which can favour a spawn on a
+    symmetric map (see River Towns above).
+- Terrain: roads, mud, buildable bridges and mines.
+  - Roads: vehicles drive 35% faster on a road or a bridge and plan their routes along roads. Infantry are unaffected.
+    A trench, wire or tank traps can be built across a road, which cuts it.
+  - Mud: vehicles move at half speed in mud and route around it when dry ground is close. Infantry are unaffected.
+  - Bridges can be built: Shift+K (or the Bridge button with a builder squad selected), click on a river and aim along
+    the crossing. 80 MP, up to 5 river cells, built from the bank one cell every 3 s (engineers twice as fast). It is
+    an ordinary bridge afterwards: vehicles cross it and explosives drop it.
+  - Mines: Shift+J (or the Minefield button). 40 MP for 4 mines in a line. Only your team sees them. A mine goes off
+    under the first enemy squad or vehicle that steps on it (45 damage to infantry, 220 to vehicles, 3 m blast) and
+    leaves a crater. Your own side walks over them safely. Any explosion that damages terrain (artillery, bombs,
+    grenades, satchels) clears the mines it reaches.
+  - Maps: Three Crossroads, Crossroads Village, River Towns and Ardennes Crossing now have roads from each HQ to its
+    nearest points and between neighbouring points; River Towns and Ardennes Crossing have mud at the ford approaches.
+    The map editor has Road, Mud and Mine brushes. The other maps are unchanged.
+  - Balance: Conquest, 120 three-way AI matches per map, wins per spawn. Three Crossroads 44/33/23% with roads
+    (44/29/27% without, same script). River Towns 39/30/31% (43/28/29% without). No measurable change. The top spawn
+    winning about 4 in 10 is there with and without roads.
+  - Craters from shelling were already in the game (shells, bombs and rockets turn open ground into crater cover).
+    There are no woods in any branch: the trees on the board are scenery only.
+  - Computer players use both. The squad holding a captured point lays one minefield across the approach from the
+    nearest enemy HQ, 2 m outside the point, before it entrenches, and lays it again when fewer than 2 of its mines
+    are left. When a bridge
+    that was on the map gets blown, the nearest free builder squad walks to the bank and puts it back (not while
+    enemies are within 35 m of the gap). Both keep 150 MP in reserve.
+  - Balance with the AI doing this: Three Crossroads 30/34/36% per spawn over 120 matches (44/33/23% before), River
+    Towns 43/29/28% over 360 (39/30/31% before, 120 matches). Match length unchanged at about 9 minutes.
+  - Bug fixed along the way: a squad ordered to bridge a river from further than 9 m away stood still instead of
+    walking to the bank. It now walks to its own bank first.
+  - Left for later: computer players only rebuild bridges the map started with, they never bridge a new crossing.
+    Nothing detects mines short of shelling the ground. Shells do not crater roads or mud. Mines are drawn as a
+    plain dark disc.
+- Fixed entrenchment orders leaking unseen terrain or buildings: every segment needs sight when placed and when
+  it starts. Refused orders preserve the digging, full queues create no abandoned plans, and follow-up orders wait
+  for every squad's paid segment to finish. A single fortification (trench, wire, tank traps, nest) now also needs its
+  cells in sight: before, a valid one could be ordered into fog while an invalid one answered "not visible", which told
+  the player whether hidden ground was buildable.
+- Fixed Take cover letting squads leave trenches, Hold fire being ignored by aircraft and anti-air weapons, and
+  crowded units skipping required terrain corners. Full shelling queues now report a refusal, and Shift-queued
+  grenades, satchels and barrages can wait for cooldowns and munitions in the browser as they do on the server.
+- Fixed Horde starting as Conquest after a map edit removes defender spawns. Very large waves now buy at most
+  32 reserve units per tick and store at most 240, keeping the normal wave budgets and unit weights. The remaining
+  count is an upper estimate while purchases are unfinished; the final three only appear when all purchases finish.
+
+- Merging unit control with autocast: a squad on Hold fire no longer throws grenades, suppresses or barrages on its
+  own (smoke, the AP round and Ura! still go off, and a satchel still needs an attack order). The autocast flag moved
+  to snapshot bit 16384, because bit 1024 now marks a squad on a mass entrenchment for everyone.
+- Mass entrenchment, follow-up: help, ghost and queueing.
+  - The plan stays on the ground: every segment still to be dug shows as faint squares (trench green, wire brass) for
+    you and your allies, and shrinks as squads take segments. Enemies do not see it.
+  - Send more squads to help: select builder squads and right-click the planned pattern. They join it and share the
+    remaining segments. Allies can help on your pattern too; each player pays for the segments their own squads dig.
+  - Shift-queue works for more orders. Hold Shift on the second click of a pattern to queue the entrenchment behind
+    the squads' current orders (the ghost appears at once). Shift+click the Take cover button, and Shift on the click
+    of a grenade, satchel charge or rocket barrage, queue those; shelling a house with Shift held now queues as well
+    (it used to replace the orders). A queued ability is checked for cooldown and munitions when its turn comes.
+  - Orders queued behind an entrenchment (a move, say) now wait until the pattern is finished. Before, a Shift-queued
+    move took the squad off the pattern.
+  - A pattern is dropped, ghost included, when it is finished or when nobody is working on it or queued to.
+  - Retreat and Stop never queue: they always act at once and clear the queue, as before.
+  - Not seen running: the ghost and the right-click to join are tested in the rules and the snapshot, but not looked at
+    in a browser.
+
+- New mode: Horde. You and your friends (up to five, AI teammates allowed) share one HQ and defend one command bunker
+  against waves that keep growing. Nobody wins: the result is the wave the bunker fell on.
+  - Pick Horde in the lobby. It plays on the 11 maps built for Assault (the others are greyed out). Everyone is on one
+    team and starts at the same HQ behind one trench line; the horde comes from the attackers' spawns.
+  - The first wave comes after 45 seconds. The next one comes 45 seconds after the last is dead, and the host can send
+    it early with "Send next wave" at the top of the screen, which also shows the wave number and how many are left.
+    When 3 or fewer are left they show through the fog.
+  - Each wave is worth 25% more than the last (wave 1: 300 MP of units per defender) and brings new units: MGs and
+    mortars from wave 3, armored cars, light tanks and AT guns from 5, medium tanks and rockets from 8, Tigers from
+    12. From wave 6 the horde calls artillery and air strikes, from wave 10 it flies planes, so bring Flak. At most
+    60 horde units per defender are on the map at once; the rest of a big wave walks on as you kill them.
+  - The horde never retreats, never reinforces and ignores the points, which are yours to hold for manpower. You get
+    the Assault defender's income (250 MP, +3.5/s) and the Kill Bounty for every horde unit.
+  - The bunker has 3000 hp per defender and gets 10% back for every wave you clear.
+  - The lobby shows the best run for the map, team size and army size you have picked, and the result says how far
+    you got and whether it is a new record. Army size scales the horde too; Endless is not offered in Horde.
+  - Balance (AI defenders, Standard army, 3 runs per map and team size, 68 runs over all 11 maps): runs end on waves
+    8 to 15, median 12, after 22 to 36 minutes, about the same with 1, 3 or 5 defenders. Massive is harder (waves 4
+    and 8 in two runs) and is not tuned. `node tools/horde.mjs <map> <defenders> <runs>` repeats the runs.
+- Fixed: a group of units that reached the same waypoint at the same moment could push each other off it forever and
+  stand still with their orders intact (seen with horde waves, which start in a clump; it could happen in any mode).
+  A unit that makes no progress for a second now walks on to its next waypoint.
+- Found and left for later: in Horde, AI teammates do not go out to hunt a mortar that shells the bunker from range,
+  and horde vehicles with no way in (a closed ring of tank traps) wait outside until you kill them.
+
+- Unit control, part 4: the computer uses it, and a rebalance.
+  - Computer players dig in properly: the squad holding a captured point entrenches an arc of trench toward the
+    nearest enemy HQ (a strongpoint with wire when it has 600 MP or more), instead of one short trench line. Soviet
+    AIs dig too now (only rifle squads did before, and they field conscripts). A holding squad that is standing in the
+    open walks into the trench or other cover.
+  - Computer players switch auto-retreat on for their whole army, so a broken squad runs the moment it breaks instead
+    of at the AI's next decision two seconds later.
+  - The AI does not use Hold fire or Hold position: it has no ambush plan, and on its units they would only mean
+    guns that do not shoot. Auto-cover, corner cover, hull turning and spread fire apply to it as to everyone.
+  - Rebalance: Ranger Squad 185 -> 200 MP, Tiger 620 -> 560 MP (Classic Tiger price unchanged). Cover that infantry
+    find by themselves helped the infantry-heavy USA and did nothing for Germany's Tiger: after parts 1 to 4 the
+    factions stood at USA/GER/USSR 41/29/30% over 1400 three-way AI Conquest matches (700 on the default map, 700 on
+    River Towns; 38/33/29% before any of this, 1000 matches). With the two prices changed: 36/35/29% over 1400 matches
+    (default 38/34/27%, River Towns 34/35/31%).
+  - Other modes after part 4, default map, measured before the two price changes: Classic 40/33/27% (90 matches,
+    32/38/30% before, both inside the noise for 90); Annihilation 32/37/32% (60 matches), every match finished.
+  - Server cost per tick in a three-AI Conquest match went from about 65 to 75 microseconds.
+  - Not done: the planned pattern is not drawn after you order it; entrench orders cannot be shift-queued; the on-map
+    preview of a pattern was not seen running (the test browser does not render frames in the background), only the
+    buttons, hotkeys and orders were.
+
+- Unit control, part 3: stances, auto-retreat, smarter vehicles and fire.
+  - Three switches per unit in Orders, all off for new units, so nothing changes until you use them. A switch that is
+    on is ringed in brass and tagged in the selection list; click or press the key again to turn it off.
+    - Hold fire (Shift+F): the unit shoots only when you give it an attack order. A sniper stays hidden, an AT gun
+      waits for the tank you pick.
+    - Hold position (Shift+G): the unit never moves on its own, not even to cover.
+    - Auto-retreat (Shift+X): the unit runs for home by itself when it falls below 35% strength (a squad of five down
+      to its last two men), unless it is already at base. It reinforces there as usual.
+    These are independent switches rather than one three-way stance, so a gun can hold fire and hold position at once.
+    Enemies who see your unit do not see its switches.
+  - Vehicles standing still turn their hull toward the gun that last shot at them (tank guns, AT guns: anything that
+    hurts armor), or toward such a gun they are fighting, at about 70 degrees a second. Rifles and planes do not make
+    them turn. A flanked tank no longer sits with its rear to the AT gun.
+  - Spread fire: units choosing a target count what their own side already has aimed at it. A squad that is already
+    getting more than it can survive in the next volley looks further away in proportion, so a big group moves on to
+    the next enemy instead of emptying every gun into one dying squad. Attack orders are not affected.
+  - Balance (Conquest, default map, 300 three-way AI matches): USA/GER/USSR 42/33/26% (39/33/28% before parts 1 to 3),
+    average match 559 s (552 s). The AI does not use the switches yet.
+  - Shift+R is deliberately left unbound (an existing rule: R with a modifier must not retreat by accident), so
+    auto-retreat is on Shift+X.
+
+- House corners are cover: a squad standing beside a house (or a Classic building), corner cells included, takes half
+  the fire from any shooter on the house's side, within 60 degrees of the wall. It still sees and shoots past the
+  corner, which a squad hidden behind the house cannot. Fire from the open side is not reduced. The selection list
+  shows "By cover" for a squad at a corner. Squads looking for cover (on their own or on Take cover) now prefer a
+  corner they can fire from over a spot fully behind the wall. Before this, a house only protected squads inside it.
+
+- Unit control, part 2: mass entrenchment.
+  - Six new orders next to the single fortifications, for every selected builder squad at once (rifles, conscripts,
+    engineers): Trench line (Shift+T), Zigzag trench, Double line, Arc, Ring and Strongpoint. Click where it starts,
+    then where it ends: a line runs between the two clicks; an arc, a ring and a strongpoint are centered on the first
+    click and face or reach to the second. Green squares show every cell that will be dug before you commit, and the
+    hint says how many segments it is and what it costs.
+  - The squads share the work: each takes the nearest of the next segments, the middle of the pattern first, and goes
+    on to the next one when it is done. A segment is four trench cells for 30 MP, as before, and is paid when a squad
+    starts it. If you are short of manpower the squads dig what you can pay for and wait ("Waiting for MP to dig") for
+    the rest. Cells that cannot be dug (already a trench, a road) are not charged.
+  - The patterns: a zigzag puts more trench on the same frontage (no special rule against shells: a trench cell is a
+    trench cell); a double line adds a second row 6 m behind, on your squads' side; an arc is a third of a circle bowed
+    toward the second click; a ring has a 6 to 24 m radius; a strongpoint is an 8 m trench square with two runs of
+    barbed wire on the side it faces (170 MP).
+  - Any other order (move, attack, stop, retreat, a single fortification) takes a squad off the pattern for good; the
+    others carry on.
+  - Fixed along the way: a squad standing in cover blocked friends walking through it (part 1 stopped it being pushed
+    out, which also made it a wall). Friends now walk past it.
+  - Classic balance for part 1 (90 three-way AI matches, default map): USA/GER/USSR 37/38/26% (32/38/30% before).
+  - Left for later: the planned pattern is only drawn while you place it, not afterwards, and an entrench order cannot
+    be shift-queued. The computer does not use patterns yet (part 4).
+
+- Unit control, part 1: cover.
+  - Infantry look after themselves: a squad with no orders that gets shot at walks to the nearest better cover within
+    10 m (a trench first, then a cover cell such as a wall, rubble, a hedge or a shell hole, then a spot behind
+    something solid on the shooter's side) and stays there. Squads you gave an order keep following it. Crewed weapons
+    (MG, AT gun, mortar, flak) never move on their own, so a gun line stays where you set it up.
+  - New order: Take cover (Shift+C, or the button in Orders). Every selected infantry squad, crewed weapons included,
+    drops what it is doing and runs to the best cover within 10 m, judged against the nearest enemy you can see. Each
+    squad takes its own cell. Squads already in a trench or a house stay; "No cover within reach" if there is none.
+  - Squads standing in cover are no longer shoved out of it by other units crowding past.
+  - Computer players get the automatic part too (it is in the game rules, not the AI).
+  - Balance: Conquest, default map, 300 three-way AI matches with rotated factions: USA/GER/USSR won 41/36/23% (39/33/28% before this change on the same script), average match 561 s (552 s). USSR lost about 5 points, at the edge of the noise for 300 matches; left alone until the rebalance in the last part. The Classic run is recorded with part 2.
+- New army size in the lobby: Endless. Same unit limit as Massive (5x) but 20x income and starting MP instead of 6x,
+  so losses are replaced almost at once and the battle never thins out. Not balance-tested with AI runs; the unit
+  limit is unchanged, so server load should match Massive.
+- The scenery looks like real places instead of toys, everything at real size (checked against a Company of Heroes 3
+  style reference). Trees are real trees: broadleaf oaks about 12.5 m tall with 9 to 10 m crowns, spruces about 14 m,
+  Lombardy poplars about 17 m, with bark trunks and limbs and crowns of photographed leaf clusters, each tree its own
+  height, girth, heading and shade of green. Bushes and the bocage hedgerows are dense, ragged leaf masses instead of
+  green balls, meadow grass grows in tufts across open ground, and about half the ploughed fields stand in ripe wheat.
+  Rocks are weathered field stones, fences weathered post-and-rail.
+- Houses: two in five farmhouses and every church are fieldstone, the rest limewashed render with stone quoins up the
+  corners; flat Normandy clay-tile roofs replace the orange Spanish tiles; windows have depth (a shadowed reveal, a frame
+  proud of the wall, a sill, sky in the glass, plank shutters); doors get stone jambs; chimneys get clay pots. Damage
+  states and footprints are unchanged.
+- The HQ is a real camp: a canvas wall tent with sagging roof, guy lines, an open door and a stovepipe, crates, a drum,
+  jerricans and a field table with a map, a 15 m guyed flagpole, and a ring of real-size sandbags (about 0.8 m long, three
+  courses) instead of the green box and oversized bags. The barracks, motor pool, depot, command bunker and Classic HQ
+  show canvas, timber, concrete and corrugated-sheet grain.
+- New textures, generated with gpt-image-2 and made seamless: leaf, spruce and grass sprites (one atlas), bark, plaster,
+  roof tiles, canvas and burlap.
+- Cost, measured with renderer.info in the same views (before, after): Three Crossroads HQ view 119 draw calls and 195k
+  triangles, 128 and 245k; village 92 and 192k, 93 and 239k; zoomed out 154 and 202k, 158 and 273k. Bocage HQ view
+  121 and 275k, 132 and 346k; zoomed out 190 and 280k, 194 and 367k. Graphics Low hides the grass, keeps half the
+  trees and turns off tree and bush shadows (bocage HQ view 98 calls, 193k triangles). Frame rate could only be
+  measured in headless Chrome on a software renderer (SwiftShader, 0.6 to 0.9 fps before and after on a heavily loaded
+  machine), so the cost on real laptop graphics is not yet checked.
+- Trees, bushes and hedgerow leaves darken under the fog of war as the ground does (before, trees ignored the fog and
+  hedges turned grey).
+- Left for later: real laptop fps with 250+ units; wind sway in the crowns; the haystack texture (burlap stands in for
+  straw); a second broadleaf shape to break up repeats in big woods.
+
+- Autocast, Warcraft 3 style: right-click an ability button to let the selected units of that type use it on their
+  own. Rifles throw grenades at infantry in cover, trenches or houses within 18 m, MGs fire Suppressive Fire at squads
+  advancing on them, AT guns load an AP round against vehicles, tanks pop smoke when badly hurt under anti-tank fire,
+  rocket trucks and mortars barrage crowds or dug-in enemies, Rangers plant a satchel on a house or bunker they were
+  told to attack once they are within 20 m of it (they stop to shoot at 26 m, so this is for close fights), and
+  Conscripts shout Ura! when pinned on the move. Units only act on what their side can see, pay
+  the same cooldowns and Munitions as a click, never override an ability you ordered, and never fire while retreating.
+  It starts on where abilities are free and off in Classic, where they cost Munitions. A button with autocast on has a
+  dashed brass border and a small A under its hotkey (clear of the Munitions cost in Classic), and the game remembers your choice per
+  unit type for new units.
+  Balance (300 paired AI-vs-AI Conquest matches, on vs off): 2nd place VP vs winner 0.57 both, lead changes 2.24 vs
+  2.23, length 9.1 vs 9.0 min, about 98 vs 88 abilities used per match; faction wins 35/36/29% vs 39/31/30% (probably
+  noise). The Tiger rear-armor test now turns autocast off so the AT gun's AP round does not skew it.
+  Checked live: an MG fired Suppressive Fire by itself, a rifle squad threw a grenade by itself at enemy squads
+  holding a capture point, and an MG turned off stayed off in the next match. Seen live in review: a rocket truck barraged
+  by itself and a tank popped smoke at 90 hp, enemy units never show the flag, and the switch, its memory and the Classic
+  default work at 1920x1080 and 1366x768. Not seen live: a rifle squad turned off holding its grenade, and the AP round,
+  satchel and Ura!; all of those, plus Suppressive Fire, smoke, barrage (friends in the blast, units out of sight) and a
+  walked-away squad, are now covered by tests.
+- Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
+  "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
+  like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends
+  it. While it is on, a letter that has a card buys, so WASD, Q/E, Stop (X), Retreat (R), Ability (F), Attack-move (G),
+  Trench (T) and the Z C V support calls pause (the arrows still pan) and their badges hide; B has no card in Conquest
+  and still aims smoke. In Classic, a selected HQ or production building shows the same letters on its train cards
+  without any mode and Shift+letter queues five at that building; an HQ uses only Q and W, so A S D E still pan and
+  rotate. Classic Tab explains this. Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit
+  (12/12)").
+  - Fixed along the way: a Classic card on a selected building now greys out when that building's queue is full, even
+    if another building still has room (the server refuses a full chosen building).
+  - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
+    and the extra buys come back refused with their reason.
+- Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
+  window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
+  goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window
+  keeps scrolling until it comes back (before, leaving the window stopped it, so in a normal browser window edge
+  scrolling barely worked). Switching windows or tabs, or opening the menu, stops it at once. It stays off while you
+  box-select, rotate with the middle button or watch the opening glide, and pushing an edge ends Follow. Checked at
+  1920x1080 at the default zoom: 66 m/s at an edge, 93 m/s in a corner, the same as the pan keys.
+- Capture mouse: a new button next to Fullscreen keeps the cursor inside the game (the game draws its own cursor), so
+  edge scrolling works in a window too. The menu setting chooses In fullscreen (the default), Always or Off, and Esc
+  lets go. Selecting, box select, double-click, orders, the minimap, the recruit bar, the menu, the volume slider and
+  strike aiming all work while it is on.
+- Fixed: the first click or box drag of a match could select nothing. The opening camera glide swallowed the first
+  mouse press to end itself; now a left press ends the glide and selects as well, and a right press still only ends
+  it (so it cannot give an order). A Node test covers it. Left for later: the first key pressed during the glide is
+  still swallowed.
+- Not checked: Alt+click pings while the mouse is captured (the test browser cannot hold Alt during a click), and
+  moving a captured mouse in fullscreen (headless Chrome answers each move there with a move back).
+
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a
