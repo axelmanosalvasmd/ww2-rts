@@ -138,7 +138,8 @@
   .sc-val .num { font-size: 18px; line-height: 1; color: var(--brass); }
   .sc-val > span:empty { display: none; }
   #status { padding: 6px 12px; color: var(--brass); }
-  #status:empty { display: none; }
+  #status:empty, #wx:empty { display: none; }
+  #wx { padding: 6px 12px; background: #22251b; color: #a9c0cc; }
 
   /* top right: resources, income and army size, then the support calls */
   #econ { position: absolute; top: var(--gap); right: var(--gap); padding: 8px 10px 10px; display: grid; justify-items: end; gap: 2px; }
@@ -301,7 +302,7 @@
     <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4" y="5" width="24" height="22" rx="2"/><path d="M12 10v12l3-3 2.5 5 2.4-1.2-2.4-4.8H22z" fill="currentColor" stroke-width="1.2"/></svg></button>
   </div>
   <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
-  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
+  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div><div id="wx" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
       <span title="Manpower: buys units, fortifications and support"><b class="num" id="mp">0</b>MP</span>

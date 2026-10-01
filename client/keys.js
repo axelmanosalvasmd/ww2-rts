@@ -25,7 +25,7 @@ export const bindings = [
   binding('idleEngineer', 'Comma', ',', 'Select and center the next idle Engineer'),
   ...Object.entries({ recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N', dive: 'U', para: 'P', cover: 'I' })
     .map(([kind, key]) => binding(`support:${kind}`, `Key${key}`, key, `Aim ${kind} support`)),
-  ...Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' })
+  ...Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O', mines: 'J', bridge: 'K' })
     .map(([kind, key]) => binding(`fort:${kind}`, `Key${key}`, kind === 'trench' ? key : `Shift+${key}`, `Place ${kind}`, 'global', { shift: kind !== 'trench' })),
   binding('entrench:line', 'KeyT', 'Shift+T', 'All selected builders dig a trench line', 'global', { shift: true }),
   ...Object.entries({ depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' })

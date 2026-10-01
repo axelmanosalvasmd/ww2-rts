@@ -8,12 +8,14 @@ import { createFormationPreview } from './formation-preview.js';
 import { facingSpots, slotSize } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
 import { createGround } from './ground.js';
+import { setWind } from './wind.js';
 import { surface, setFogMap } from './surfaces.js';
+import { createFog } from './fog.js';
 import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel } from './structures.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
@@ -328,7 +330,7 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null, water = null;
+let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogMesh = null, water = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Ground height and the board surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
@@ -344,7 +346,7 @@ function startGame(m, restored = null) {
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   relief?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
-  if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
+  if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogOfWar?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
   world.add(formationPreview.group);
   units.clear(); selected.clear(); selection.reset();
@@ -360,8 +362,10 @@ function startGame(m, restored = null) {
   const gp = createGround(map, renderer);
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
-  for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
-  gp.paint(terrain.grid);
+  // what the server says about a cell besides its type: wear, burnt, damage stage (see startState in shared/sim.js)
+  terrain.state = Uint8Array.from(map.rows.join(''), startState);
+  for (const [cell, ch, lv, st] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
+  gp.paint(terrain.grid, terrain.state);
   // the fog overlay shares the relief's live geometry, which a crater replaces
   relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
@@ -383,12 +387,10 @@ function startGame(m, restored = null) {
     return { g, set: cp.set, frame: cp.frame };
   });
 
-  // fog of war overlay (client-side approximation; the server decides who you can actually see)
-  fogGrid = { w: map.w, h: map.h };
-  fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
-  fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
-  setFogMap(EDIT ? null : fogTex, MW, MH); // walls and roofs darken in the fog too
-  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  // fog of war overlay: the server's mask of what my team sees (client/fog.js)
+  fogOfWar = createFog(map.w, map.h, m.fog, EDIT);
+  setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
+  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
   atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
@@ -418,7 +420,13 @@ function startGame(m, restored = null) {
 let terrain = null;
 let props = null;
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt); }
+function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state); }
+
+// the weather line under the scores: only there when it matters
+function showWeather(rain, wet) {
+  const text = rain > 0.3 ? 'Rain: vehicles slow off the road, fords deeper, sight shorter' : wet > 0.15 ? `Wet ground (${Math.round(wet * 100)}%): vehicles slow off the road` : '';
+  if ($('wx').textContent !== text) $('wx').textContent = text;
+}
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -429,17 +437,21 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
-  for (const [cell, ch, lv] of cells) {
-    const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
-    terrain.grid[y][x] = ch;
+  // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
+  // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
+  const shaped = [];
+  let pieces = false;
+  for (const entry of cells) {
+    const [cell, ch, lv, st = 0] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
+    const moved = terrain.grid[y][x] !== ch || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
+    if (moved) shaped.push(entry);
+    pieces ||= moved || (terrain.state[cell] ^ st) >> 3 > 0;
+    terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
-  relief.update(cells); // reshapes the cells around the change; the fog overlay follows through onGeometry
-  buildStructures();
-  props?.refresh();
-  water?.changed(cells);
-  mmImage = null;
+  terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
+  if (shaped.length) { relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; } // the fog overlay follows the relief through onGeometry
+  if (pieces) buildStructures();
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, flagpole and flag, name.
@@ -556,6 +568,7 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 // ---------- snapshots ----------
 
 function applySnapshot(s) {
+  fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();
   if (snapshotAt) snapshotGap += (Math.max(60, Math.min(400, arrived - snapshotAt)) - snapshotGap) * 0.2;
@@ -604,7 +617,10 @@ function applySnapshot(s) {
   }
   // flashes, tracers, blasts and smoke for the ground war and their sounds (client/fx.js); the air shots and the
   // planes' strike warnings are left out so nothing is drawn twice
-  effects.snapshot({ ...s, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
+  // the wind first: it carries this snapshot's smoke, dust and flames
+  if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setWeather(s.wx[0], s.wx[1]); showWeather(s.wx[0], s.wx[1]); }
+  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL]);
+  effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
@@ -868,7 +884,7 @@ function rallyAt(g) {
 }
 // direction before the second click: planes fly out from home, trenches run across the squad's approach
 function defaultDir(kind, at) {
-  if (kind === 'dig') { const v = nearestDigger(at); return v ? Math.atan2(at.z - v.z, at.x - v.x) + Math.PI / 2 : 0; }
+  if (kind === 'dig') { const v = nearestDigger(at); return v ? Math.atan2(at.z - v.z, at.x - v.x) + (FORTS[fortKind].along ? 0 : Math.PI / 2) : 0; }
   return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
 }
 // F fires exactly one ability: the first type in this order that has one ready (the others are click-only)
@@ -1167,7 +1183,7 @@ renderer.domElement.addEventListener('dblclick', (e) => {
 let lastT = performance.now();
 
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
-const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78] };
+const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78], D: [150, 128, 100], M: [92, 80, 58], N: [120, 96, 60] };
 let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0;
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -1208,16 +1224,16 @@ function drawMinimap() {
   c.setTransform(a, b, cc, d, W / 2 - (a * MW / 2 + cc * MH / 2), W / 2 - (b * MW / 2 + d * MH / 2));
   c.imageSmoothingEnabled = true; // nearest-neighbor shimmers once the map is rotated
   c.drawImage(mmImage, 0, 0, MW, MH);
-  if (fogVis) {
+  if (fogOfWar) {
+    const { w, h } = fogOfWar;
     // one smooth image, not thousands of tiny squares (those leave a screen-door pattern)
-    if (!mmFog || mmFog.width !== fogGrid.w || mmFog.height !== fogGrid.h) { mmFog = document.createElement('canvas'); mmFog.width = fogGrid.w; mmFog.height = fogGrid.h; mmFogOf = null; }
-    // refilled only when updateFog made a new visibility grid (every 0.2 s), into one reused ImageData
-    if (mmFogOf !== fogVis) {
+    if (!mmFog || mmFog.width !== w || mmFog.height !== h) { mmFog = document.createElement('canvas'); mmFog.width = w; mmFog.height = h; mmFogOf = null; }
+    // refilled only when a cell's fog changed, into one reused ImageData
+    if (mmFogOf !== fogOfWar.version) {
       const fc = mmFog.getContext('2d');
-      if (mmFogImg?.width !== fogGrid.w || mmFogImg.height !== fogGrid.h) mmFogImg = fc.createImageData(fogGrid.w, fogGrid.h);
-      const img = mmFogImg;
-      for (let i = 0; i < fogVis.length; i++) { img.data[i * 4] = img.data[i * 4 + 1] = 10; img.data[i * 4 + 3] = fogVis[i] ? 0 : 130; }
-      fc.putImageData(img, 0, 0); mmFogOf = fogVis;
+      if (mmFogImg?.width !== w || mmFogImg.height !== h) mmFogImg = fc.createImageData(w, h);
+      fogOfWar.minimap(mmFogImg);
+      fc.putImageData(mmFogImg, 0, 0); mmFogOf = fogOfWar.version;
     }
     c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
   }
@@ -1267,25 +1283,7 @@ function rangeRings() {
   for (const id of selected) { const ty = units.get(id)?.type; if (t && ty !== t) return false; t = ty; }
   return true;
 }
-let fogTimer = 0;
 const lerpAngle = (a, b, k) => a + (Math.atan2(Math.sin(b - a), Math.cos(b - a))) * k;
-
-let fogVis = null;
-function updateFog() {
-  if (!fogTex) return;
-  const { w, h } = fogGrid, d = fogTex.image.data, vis = fogVis = new Uint8Array(w * h);
-  for (const v of units.values()) {
-    if (foe(v.owner)) continue; // allies share vision
-    const r = UNITS[v.type].vision / CELL, cx = v.x / CELL, cy = v.z / CELL;
-    for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(h - 1, cy + r); y++)
-      for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w - 1, cx + r); x++)
-        if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) vis[y * w + x] = 1;
-  }
-  if (epilogue.active()) vis.fill(1); // the match is decided: the fog lifts
-  // DataTexture row 0 is the far (z = max) edge of the plane
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = ((h - 1 - y) * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = 10; d[i + 3] = vis[y * w + x] ? 0 : 120; }
-  fogTex.needsUpdate = true;
-}
 
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
@@ -1322,7 +1320,7 @@ renderer.setAnimationLoop(() => {
   }
   objectives.frame(sdt); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
-  if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
+  fogOfWar?.frame(dt, epilogue.active()); // the match is decided: the fog lifts
   alerts.frame();
   pings.frame();
   endgame.frame();
@@ -1354,7 +1352,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

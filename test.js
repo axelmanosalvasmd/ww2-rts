@@ -2701,6 +2701,126 @@ const referenceVision = g => {
   }
 }
 
+// The fog mask a team is sent is its vision and nothing more: updateVision's rule at every cell centre (the public los
+// and plain Math.hypot here), the live recon corridors and the cells under the enemy ground units the team sees. The
+// packed keyframe and deltas rebuild it on each client. Units standing still keep their cells between passes, so the
+// check runs again after a hedge, a smoke cloud and a raised patch of ground appear inside one unit's view.
+const fogSees = (g, u, at) => {
+  const def = UNITS[u.type], d = Math.hypot(u.x - at.x, u.z - at.z);
+  if (u.air) return d <= def.vision;
+  const range = def.vision * (1 + CFG.highGroundVision * massiveInternals.levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
+  return d < 6 || (!!def.building && d <= def.vision) || (d <= range && los(g, u, at));
+};
+const fogEyes = (g, team) => [...g.units.values()].filter(u => g.players[u.owner].team === team && (!u.air || massiveInternals.airborne(u)));
+const cellAt = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+const underSeen = (g, team) => [...g.players.find(p => p.team === team).visible].flatMap(id => {
+  const t = g.units.get(id);
+  return !t || t.air ? [] : t.cells ? [...t.cells] : [Math.floor(t.z / CELL) * g.w + Math.floor(t.x / CELL)];
+});
+const reconOver = (g, team, at) => g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === team && massiveInternals.inStrip(s, at, SUPPORT.recon.len, SUPPORT.recon.width));
+const referenceFog = (g, team) => {
+  const vis = new Uint8Array(g.w * g.h);
+  for (const u of fogEyes(g, team)) {
+    const R = Math.max(6, UNITS[u.type].vision * 2) + CELL; // the high-ground and garrison range stays under twice the vision
+    for (let y = Math.max(0, Math.floor((u.z - R) / CELL)); y <= Math.min(g.h - 1, Math.floor((u.z + R) / CELL)); y++)
+      for (let x = Math.max(0, Math.floor((u.x - R) / CELL)); x <= Math.min(g.w - 1, Math.floor((u.x + R) / CELL)); x++)
+        if (!vis[y * g.w + x] && fogSees(g, u, cellAt(g, y * g.w + x))) vis[y * g.w + x] = 1;
+  }
+  for (let c = 0; c < vis.length; c++) if (!vis[c] && reconOver(g, team, cellAt(g, c))) vis[c] = 1;
+  for (const c of underSeen(g, team)) vis[c] = 1;
+  return vis;
+};
+{
+  const { updateVision, setCell, airborne } = massiveInternals, g = massiveFixture(), n = g.w * g.h;
+  const teams = [...new Set(g.players.map(p => p.team))], ever = new Map(teams.map(t => [t, new Uint8Array(n)]));
+  const flip = (str, into) => { sim.unpackRuns(str, (start, count) => { for (let c = start; c < start + count; c++) into[c] ^= 1; }); return into; };
+  let clients = null;
+  const pass = (label) => {
+    g.tick += 4;
+    updateVision(g);
+    const masks = new Map();
+    for (const team of teams) {
+      const want = referenceFog(g, team), f = sim.teamFog(g, team);
+      const extra = [], missing = [];
+      for (let c = 0; c < n; c++) if (f.vis[c] !== want[c]) (f.vis[c] ? extra : missing).push(c);
+      assert.equal(extra.length, 0, `${label}: team ${team}'s fog mask has no cell the team can't see (${extra.length} cells, first ${extra[0]})`);
+      assert.equal(missing.length, 0, `${label}: team ${team}'s fog mask has every cell the team sees (${missing.length} cells missing, first ${missing[0]})`);
+      assert.ok(underSeen(g, team).every(c => f.vis[c]), `${label}: every enemy ground unit team ${team} sees stands on clear ground`);
+      const e = ever.get(team);
+      for (let c = 0; c < n; c++) e[c] |= want[c];
+      assert.deepEqual(f.explored, e, `${label}: team ${team} has explored every cell it has seen`);
+      masks.set(team, f.vis.slice()); // teamFog reuses its buffers on later passes
+    }
+    if (!clients) {
+      // match start: each player gets the whole mask and the explored cells
+      clients = g.players.map((p, slot) => {
+        const key = sim.fogFor(g, slot, true);
+        assert.deepEqual(flip(key.e, new Uint8Array(n)), sim.teamFog(g, p.team).explored, `player ${slot}'s first fog carries the explored cells`);
+        return flip(key.v, new Uint8Array(n));
+      });
+    } else g.players.forEach((p, slot) => { const delta = sim.fogFor(g, slot); if (delta !== undefined) flip(delta, clients[slot]); });
+    g.players.forEach((p, slot) => {
+      assert.deepEqual(clients[slot], masks.get(p.team), `${label}: player ${slot}'s client rebuilds its team's mask`);
+      assert.equal(sim.fogFor(g, slot), undefined, `${label}: nothing more to send player ${slot} until the view changes`);
+    });
+    return masks;
+  };
+  const start = pass('start');
+  assert.ok(teams.every(t => start.get(t).some(v => v) && start.get(t).some(v => !v)), 'every team sees part of the map');
+  pass('standing'); pass('still standing'); // the second pass keeps the standing units' cells, the third reuses them
+  const moved = new Set();
+  for (const u of g.units.values()) {
+    if (u.air) { u.air.state = ['base', 'out', 'station', 'home', 'rearm'][(u.id + 1) % 5]; continue; }
+    if (u.id % 3 || UNITS[u.type].structure || UNITS[u.type].building) continue;
+    u.x += 3; u.z -= 1; moved.add(u.id);
+  }
+  const after = pass('moved');
+  assert.ok(teams.some(t => after.get(t).some((v, c) => v !== start.get(t)[c])), 'moving units changes the fog');
+  pass('standing after the move');
+
+  // one cell a single standing ground unit sees, well past 6 m and outside the recon corridor, and the cell halfway
+  // along its sight line, away from the map edge and from every unit
+  const team = 0, mask = sim.teamFog(g, team).vis, eyes = fogEyes(g, team), under = new Set(underSeen(g, team));
+  const occupied = new Set([...g.units.values()].flatMap(t => t.cells ? [...t.cells] : [Math.floor(t.z / CELL) * g.w + Math.floor(t.x / CELL)]));
+  const near = m => [-g.w - 1, -g.w, -g.w + 1, -1, 0, 1, g.w - 1, g.w, g.w + 1].map(k => m + k);
+  let pick = null;
+  for (let c = 0; c < n && !pick; c++) {
+    const at = cellAt(g, c);
+    if (!mask[c] || under.has(c) || reconOver(g, team, at)) continue;
+    const by = eyes.filter(u => fogSees(g, u, at));
+    if (by.length !== 1) continue;
+    const u = by[0], d = Math.hypot(u.x - at.x, u.z - at.z);
+    if (u.air || moved.has(u.id) || UNITS[u.type].building || d < 12 || massiveInternals.levelAt(g, u.x, u.z) > 2 || g.height[c] > 2) continue;
+    const mx = (u.x + at.x) / 2, mz = (u.z + at.z) / 2, x = Math.floor(mx / CELL), y = Math.floor(mz / CELL), m = y * g.w + x;
+    if (mx % CELL && mz % CELL && x > 0 && y > 0 && x < g.w - 1 && y < g.h - 1 && g.chars[m] === '.' && near(m).every(k => !occupied.has(k))) pick = { c, m };
+  }
+  assert.ok(pick, 'the fixture has a cell only one standing unit sees');
+  const { c, m } = pick, char = g.chars[m];
+  setCell(g, m, 'H');
+  assert.equal(pass('hedge').get(team)[c], 0, 'a new hedge hides the ground behind it from a unit that stood still');
+  setCell(g, m, char);
+  assert.equal(pass('hedge gone').get(team)[c], 1, 'the ground shows again once the hedge is gone');
+  g.smokes.push({ ...cellAt(g, c), r: 1.5, t: 10 });
+  assert.equal(pass('smoke').get(team)[c], 0, 'smoke over a cell hides it');
+  g.smokes.length = 0;
+  assert.equal(pass('smoke gone').get(team)[c], 1, 'the cell shows again once the smoke clears');
+  const patch = near(m), levels = patch.map(k => g.height[k]);
+  for (const k of patch) g.height[k] = CFG.maxLevel;
+  g.terrainVersion++;
+  assert.equal(pass('raised ground').get(team)[c], 0, 'raised ground in the way hides the cell');
+  patch.forEach((k, i) => { g.height[k] = levels[i]; });
+  g.terrainVersion++;
+  assert.equal(pass('ground back').get(team)[c], 1, 'the cell shows again once the ground is back');
+  // a shower shortens every unit's sight (updateVision's rule), and units that stood still through it follow
+  const dry = sim.teamFog(g, team).vis.reduce((a, v) => a + v, 0);
+  g.wx.rain = 1;
+  const wet = pass('rain').get(team).reduce((a, v) => a + v, 0);
+  assert.ok(wet < dry, `rain shrinks what the team sees (${dry} cells dry, ${wet} in rain)`);
+  g.wx.rain = 0;
+  assert.equal(pass('rain over').get(team).reduce((a, v) => a + v, 0), dry, 'the view comes back when the rain stops');
+  assert.ok(g.units.size === 300 && [...g.units.values()].some(u => u.air && airborne(u)), 'airborne planes took part');
+}
+
 // Reference before the cheap separation gates. Pair order and floating-point pushes are unchanged.
 const referenceSeparation = `
   const list = [...g.units.values()];
@@ -4358,9 +4478,10 @@ for (const lookupFinished of [false, true]) {
   const same = (g, label) => {
     const shots = g.shots, cells = g.newCells, cache = snapshotCache(g), saved = JSON.stringify(cache.units), out = [];
     for (let slot = 0; slot < g.players.length; slot++) {
-      // terrain is each player's own memory (terrainFor, outside the cache): the first build takes the pending cells
+      // terrain and fog are each player's own memory (terrainFor and fogFor, outside the cache): the first build takes
+      // the pending cells and the fog change
       const cached = wire(snapshotFor(g, slot, shots, cells, cache)), plain = wire(snapshotFor(g, slot, shots, cells));
-      assert.deepEqual({ ...cached, cells: undefined }, { ...plain, cells: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
+      assert.deepEqual({ ...cached, cells: undefined, fog: undefined }, { ...plain, cells: undefined, fog: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
       out.push(cached);
     }
     assert.equal(JSON.stringify(cache.units), saved, 'player filtering never mutates shared unit rows');
@@ -4767,6 +4888,197 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual([saved['default|1|standard'].wave, host.lobby().hordeBest.wave], [1, 1], 'the best run is saved per map, team size and army size, and shown in the lobby');
   Object.assign(module.recordFile, disk);
   await h.close();
+}
+
+// Roads and mud: vehicles drive faster along a road and crawl through mud; infantry do not care. Paths avoid mud.
+{
+  const rows = empty.map((row, y) => y >= 1 && y <= 3 ? 'D'.repeat(20) : row), g = fresh(rows), bog = fresh(Array(20).fill('M'.repeat(20))), deep = fresh(Array(20).fill('M'.repeat(20)));
+  for (const p of [g, bog, deep].flatMap(q => q.players)) p.mp = 5000;
+  bog.wear.fill(0); deep.wear.fill(1);
+  const go = (type, z, q = g) => { const u = put(q, 0, type, 3, z); command(q, 0, { t: 'move', orders: [[u.id, 37, z]] }); return u; };
+  const road = go('tank', 5), edge = go('tank', 8.2), grass = go('tank', 29), mud = go('tank', 29, bog), sunk = go('tank', 29, deep), feet = go('rifle', 13, bog), feetGrass = go('rifle', 13);
+  run(g, 2); run(bog, 2); run(deep, 2);
+  const ratio = (u) => (u.x - 3) / (grass.x - 3);
+  assert.ok(Math.abs(ratio(road) - CFG.roadSpeed) < 0.1, 'a tank on a road drives roadSpeed times faster');
+  assert.ok(ratio(edge) > 1.03 && ratio(edge) < CFG.roadSpeed - 0.1, 'a tank half on the road gets part of the bonus');
+  assert.ok(Math.abs(ratio(mud) - CFG.mudSpeed[0]) < 0.1, 'a tank in shallow mud');
+  assert.ok(Math.abs(ratio(sunk) - CFG.mudSpeed[1]) < 0.1, 'a tank in deep mud');
+  assert.ok(Math.abs(feet.x - feetGrass.x) < 0.2, 'infantry walk through mud at full speed');
+  // a mud band with one dry cell: the tank goes through the gap, the squad walks straight across
+  const band = empty.map((row, y) => y >= 7 && y <= 13 ? row.slice(0, 10) + (y === 11 ? '.' : 'M') + row.slice(11) : row), b = fresh(band);
+  b.chars.forEach((ch, c) => { if (ch === "M") b.wear[c] = 1; });
+  const wet = (path) => path.some(p => b.chars[Math.floor(p.z / CELL) * b.w + Math.floor(p.x / CELL)] === 'M');
+  const drive = findPath(b, { x: 5, z: 21, type: 'tank' }, { x: 35, z: 21 });
+  assert.ok(drive.length > 1 && !wet(drive), 'a vehicle routes around mud when dry ground is near');
+  assert.equal(findPath(b, { x: 5, z: 21, type: 'rifle' }, { x: 35, z: 21 }).length, 1, 'infantry walk straight through mud');
+  // a road two cells to the side: the vehicle swings onto it and stays on it, the squad walks straight
+  const onRoad = (path) => path.filter(p => Math.floor(p.z / CELL) >= 1 && Math.floor(p.z / CELL) <= 3).length;
+  assert.ok(onRoad(findPath(g, { x: 3, z: 9, type: 'tank' }, { x: 37, z: 9 })) > 5, 'a vehicle takes the road beside it');
+  assert.equal(onRoad(findPath(g, { x: 3, z: 9, type: 'rifle' }, { x: 37, z: 9 })), 0, 'infantry ignore the road');
+}
+
+// Bridges: a squad builds one across a river from the bank, and vehicles can then cross.
+{
+  const rows = empty.map(row => row.slice(0, 9) + 'WWW' + row.slice(12)), g = fresh(rows);
+  g.players[0].mp = 1000;
+  const crew = put(g, 0, 'rifle', 13, 21), mp = g.players[0].mp, from = { x: 5, z: 21, type: 'tank' }, to = { x: 35, z: 21 };
+  assert.deepEqual(findPath(g, from, to), [], 'the river stops vehicles');
+  assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 5, z: 21, dir: 0 }), 'blocked', 'a bridge needs a river under it');
+  assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 21, z: 21, dir: 0 }), undefined, 'a bridge is ordered across the river');
+  assert.equal(g.players[0].mp, mp - sim.FORTS.bridge.cost, 'the bridge is paid for');
+  run(g, CFG.digTime * 3 + 1);
+  assert.deepEqual([9, 10, 11].map(x => g.chars[10 * g.w + x]).join(''), '===', 'the span is built from the bank');
+  assert.ok(crew.x < 18, 'the builders stay on their bank');
+  assert.ok(findPath(g, from, to).length, 'vehicles cross the new bridge');
+}
+
+// Mines: hidden from the enemy, harmless to the side that laid them, and they go off under the first enemy.
+{
+  const g = fresh(); for (const p of g.players) p.mp = 5000;
+  const sapper = put(g, 0, 'rifle', 21, 17);
+  command(g, 0, { t: 'dig', ids: [sapper.id], kind: 'mines', x: 21, z: 21, dir: 0 });
+  run(g, CFG.digTime * 4 + 1);
+  const cells = [9, 10, 11, 12].map(x => 10 * g.w + x), laid = () => cells.filter(c => g.chars[c] === 'N').length;
+  assert.equal(laid(), 4, 'four mines are laid');
+  assert.equal(sim.terrainFor(g, 0, true).filter(([, ch]) => ch === 'N').length, 4, 'the side that laid them sees them');
+  assert.equal(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).length, 0, 'the enemy is told nothing');
+  const friend = put(g, 0, 'tank', 21, 13); command(g, 0, { t: 'move', orders: [[friend.id, 21, 29]] });
+  run(g, 4);
+  assert.equal(laid(), 4, 'friendly vehicles drive over them');
+  g.units.delete(friend.id); g.units.delete(sapper.id); // nobody for the enemy tank to shell: a stray shell would clear mines
+  const foe = put(g, 1, 'tank', 23, 13), hp = foe.hp; command(g, 1, { t: 'move', orders: [[foe.id, 23, 29]] });
+  run(g, 4);
+  assert.equal(laid(), 3, 'one mine goes off under the enemy tank');
+  assert.ok(hp - foe.hp >= CFG.mine.veh * 0.5, 'it hurts the tank (at least half the mine damage, by distance from the cell)');
+  assert.equal(g.chars[10 * g.w + 11], '+', 'and leaves a crater');
+  assert.deepEqual(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).map(([, ch]) => ch), ['+'], 'the enemy now sees the crater, not the other mines');
+  // an explosion clears the mines it reaches
+  command(g, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }); run(g, 8);
+  assert.equal(laid(), 0, 'a bomb clears the mines');
+}
+
+// Ground that wears: traffic churns open ground into mud, shelling breaks a road into craters, and clients hear of it.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  const row = 10 * g.w, state = (q, c) => sim.terrainFor(q, 0, true).find(([k]) => k === c)?.[3] ?? 0;
+  const tank = put(g, 0, 'tank', 3, 21), slow = fresh(); slow.players[0].mp = 5000; slow.wear.fill(0.5);
+  const worn = put(slow, 0, 'tank', 3, 29), ref = put(g, 0, 'tank', 3, 29);
+  for (const [q, u] of [[slow, worn], [g, ref]]) command(q, 0, { t: 'move', orders: [[u.id, 37, 29]] });
+  run(g, 2); run(slow, 2);
+  assert.ok(Math.abs((worn.x - 3) / (ref.x - 3) - (1 - CFG.churn * 0.5)) < 0.06, 'half-churned ground costs half the churn');
+  assert.ok(g.wear[14 * g.w + 3] > 0 && g.wear[14 * g.w + 3] < 0.2, 'one pass leaves a little wear');
+  g.wear.fill(0.24, row, row + g.w);
+  command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 8);
+  assert.equal(state(g, row + 5) & 3, 1, 'the wear step reaches the clients');
+  g.wear.fill(0.99, row, row + g.w);
+  command(g, 0, { t: 'move', orders: [[tank.id, 3, 21]] }); run(g, 10);
+  assert.equal(g.chars[row + 8], 'M', 'ground driven on enough turns to mud');
+  assert.ok(g.wear[row + 8] < 0.2, 'shallow mud at first');
+  assert.equal(sim.terrainFor(g, 0, true).find(([k]) => k === row + 8)[1], 'M', 'and the clients are told');
+
+  const road = fresh(empty.map((r, y) => y === 10 ? 'D'.repeat(20) : r)); road.players[1].mp = 5000;
+  command(road, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }); run(road, 8);
+  assert.equal(road.chars[row + 10], '+', 'a bomb turns the road under it into a crater');
+  assert.ok(road.chars[row + 14] === 'D' && road.wear[row + 14] === 0, 'and leaves the road out of its reach alone');
+  assert.equal(findPath(road, { x: 3, z: 21, type: 'tank' }, { x: 37, z: 21 }).length > 0, true);
+
+  // depth: fords and mud differ from cell to cell, and the client can work out a map cell's first state
+  const wet = fresh(empty.map((r, y) => y === 10 ? 'F'.repeat(20) : r));
+  const depths = [...wet.wear.slice(row, row + g.w)];
+  assert.ok(Math.max(...depths) - Math.min(...depths) > 0.2 && depths.every(d => d >= 0.2 && d <= 0.8), 'ford cells have their own depth');
+  assert.equal(sim.startState('F', row + 3), Math.min(3, Math.floor(wet.wear[row + 3] * 4)), 'startState gives a map cell its first state');
+}
+
+// Cover fades with distance and with damage; a shot-up wall tells the clients its stage.
+{
+  const rows = empty.map((r, y) => y === 10 ? r.slice(0, 10) + '#' + r.slice(11) : r), g = fresh(rows), c = 10 * g.w + 10, from = { x: 39, z: 21 };
+  const at = (d) => sim.coverBehind(g, { x: 20 - d, z: 21 }, from);
+  assert.equal(at(1), 1, 'full cover right behind the wall');
+  assert.ok(at(2.6) > 0.1 && at(2.6) < 0.9, 'partial cover a few steps back');
+  assert.equal(at(5), 0, 'none further away');
+  assert.equal(sim.coverBehind(g, { x: 23, z: 21 }, from), 0, 'none on the shooter\u2019s side');
+  g.players[0].mp = 5000;
+  const tank = put(g, 0, 'tank', 21, 35); command(g, 0, { t: 'fireat', ids: [tank.id], x: 21, z: 21 });
+  let stage = 0;
+  for (let i = 0; i < 20 * 30 && g.chars[c] === '#'; i++) { step(g); stage = Math.max(stage, (sim.terrainFor(g, 0, true).find(([k]) => k === c)?.[3] ?? 0) >> 3); if (stage && at(1) === 1) assert.fail('a damaged wall still gives full cover'); }
+  assert.ok(stage >= 1, 'the wall passes through a damaged stage before it falls');
+}
+
+// Slope: going uphill is slower in proportion to the grade.
+{
+  const heights = empty.map(() => '0'.repeat(10) + '1'.repeat(10)), hill = createGame({ ...blank(empty), heights }, ['a', 'b'], false), flat = fresh();
+  hill.units.clear(); hill.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }));
+  hill.players[0].mp = flat.players[0].mp = 5000;
+  const up = put(hill, 0, 'tank', 15, 21), level = put(flat, 0, 'tank', 15, 21), down = put(hill, 0, 'tank', 25, 29), back = put(flat, 0, 'tank', 25, 29);
+  command(hill, 0, { t: 'move', orders: [[up.id, 25, 21], [down.id, 15, 29]] }); command(flat, 0, { t: 'move', orders: [[level.id, 25, 21], [back.id, 15, 29]] });
+  run(hill, 1.2); run(flat, 1.2);
+  assert.ok(up.x < level.x - 0.5, 'a tank climbs slower than it drives on the flat');
+  assert.ok(Math.abs(down.x - back.x) < 0.3, 'and loses nothing going down');
+}
+
+// Wind, weather, dust and fire.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  g.wind = { a: 0, v: 1 }; g.smokes.push({ x: 10, z: 10, r: 5, t: 60 });
+  run(g, 5);
+  assert.ok(g.smokes[0].x > 14 && Math.abs(g.smokes[0].z - 10) < 2, 'smoke drifts downwind');
+  // rain: comes on, soaks the ground, slows vehicles off the road and shortens sight
+  const tank = put(g, 0, 'tank', 3, 21); command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 1);
+  const dry = tank.x - 3, flags = (q, u) => snapshotFor(q, 0, []).units.find(r => r[0] === u.id)[12];
+  assert.ok(flags(g, tank) & 32768, 'a tank moving on dry ground trails dust');
+  g.wx.next = 0; run(g, 40);
+  assert.equal(g.wx.rain, 1, 'the rain sets in');
+  assert.ok(g.wx.wet > 0.15 && g.wx.wet < 0.5, 'and the ground soaks slowly');
+  assert.deepEqual(snapshotFor(g, 0, []).wx.slice(0, 1), [1], 'clients are told the weather');
+  g.wx.wet = 1; g.wx.next = 1e9; Object.assign(tank, { x: 3, z: 25, path: [] });
+  command(g, 0, { t: 'move', orders: [[tank.id, 37, 25]] }); run(g, 1);
+  assert.ok(Math.abs((tank.x - 3) / dry - (1 - CFG.weather.wetGround)) < 0.06, 'wet ground slows a tank');
+  assert.ok(!(flags(g, tank) & 32768), 'no dust in the wet');
+  assert.equal(createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: false }).wx, null, 'weather can be switched off');
+
+  // fire: runs down a hedge before the wind, leaves it burnt, hurts infantry, and rain smothers it
+  const rows = empty.map((r, y) => y === 10 ? '..' + 'H'.repeat(14) + '....' : r), f = fresh(rows), row = 10 * f.w;
+  f.players[0].mp = 5000; f.wind = { a: 0, v: 1 }; f.wx = null;
+  f.fires.set(row + 2, CFG.fire.burn.H);
+  assert.deepEqual(snapshotFor(f, 0, []).fires, [row + 2], 'clients are told what burns');
+  const squad = put(f, 0, 'rifle', 7, 21), hp = squad.hp; f.fires.set(row + 3, CFG.fire.burn.H);
+  run(f, 3);
+  assert.ok(squad.hp < hp, 'infantry in the fire are hurt');
+  assert.ok(Math.floor(squad.z / CELL) !== 10 && squad.hp > 0, 'and an idle squad steps out of the hedge');
+  run(f, 120);
+  assert.equal(f.fires.size, 0, 'the fire burns out');
+  const gone = [...f.chars.slice(row + 2, row + 16)].filter(ch => ch !== 'H').length;
+  assert.ok(gone >= 12, `the fire ran down the hedge (${gone} of 14 cells)`);
+  assert.ok(f.burnt[row + 2] && (sim.terrainFor(f, 0, true).find(([k]) => k === row + 2)[3] & 4), 'burnt ground is marked for the clients');
+  const wetRows = fresh(rows); wetRows.wx.rain = 1; wetRows.wx.raining = true; wetRows.wx.next = 1e9;
+  wetRows.fires.set(row + 2, CFG.fire.burn.H); run(wetRows, 5);
+  assert.equal(wetRows.fires.size, 0, 'rain puts a fire out before it spreads');
+  assert.equal([...wetRows.chars.slice(row + 3, row + 16)].filter(ch => ch !== 'H').length, 0);
+}
+
+// Computer players lay mines in front of a point they hold and put a blown bridge back.
+{
+  const g = fresh(); g.players[0].mp = 5000; g.points[0].owner = 0; g.points[0].progress = 1;
+  const holder = put(g, 0, 'rifle', g.points[0].x, g.points[0].z);
+  for (let i = 0; i < 20 * 90; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  const laid = g.mines.size;
+  assert.ok(laid >= 3 && laid <= sim.FORTS.mines.n, 'the squad holding a point lays one minefield');
+  assert.ok([...g.mines.values()].every(by => by === 0), 'the mines are its own');
+  for (let i = 0; i < 20 * 30; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  assert.equal(g.mines.size, laid, 'and does not keep laying more');
+  assert.ok(holder.hp > 0);
+
+  const rows = empty.map((row, y) => row.slice(0, 9) + (y === 10 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
+  r.players[0].mp = 5000; r.points = [];
+  const sapper = put(r, 0, 'rifle', 5, 21), tank = { x: 5, z: 21, type: 'tank' };
+  think(r, 0); // first look: the bridge is noted
+  r.players[1].mp = 5000;
+  assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
+  for (let i = 0; i < 20 * 15 && r.chars[10 * r.w + 10] === '='; i++) step(r);
+  assert.equal(r.chars[10 * r.w + 10], 'W', 'the bridge is blown');
+  for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { if (i % 40 === 0) think(r, 0); step(r); }
+  assert.ok(findPath(r, tank, { x: 35, z: 21 }).length, 'the computer player rebuilds the bridge');
+  assert.ok(sapper.hp > 0);
 }
 
 console.log('all sim checks passed');

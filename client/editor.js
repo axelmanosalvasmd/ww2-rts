@@ -4,7 +4,7 @@ import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAY
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
-  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'],
+  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'], ['D', 'Road'], ['M', 'Mud'], ['N', 'Mine'],
   ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'],
   // spawns go in order around the map: the game seats teammates on neighbouring numbers
   ...Array.from({ length: MAX_PLAYERS }, (_, i) => ['s' + i, 'Spawn ' + (i + 1)]),
@@ -118,7 +118,7 @@ export async function start(api) {
   function check(m) {
     let err = validateMap(m);
     if (!err) {
-      const g = { w: m.w, h: m.h, flags: Uint8Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
+      const g = { w: m.w, h: m.h, flags: Uint16Array.from(m.rows.join(''), ch => TERRAIN[ch]), height: Int8Array.from(m.heights.join(''), levelOf) };
       const bad = [];
       m.spawns.forEach((s, i) => m.points.forEach((p, j) => {
         const a = toWorld(s), b = toWorld(p);
@@ -188,7 +188,7 @@ export async function start(api) {
     }
     return { cells, ch };
   }
-  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble', D: 'road', M: 'mud', N: 'mines' };
   function highlight() {
     hl.clear();
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];

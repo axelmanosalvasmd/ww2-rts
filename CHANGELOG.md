@@ -31,7 +31,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   PR #11: crewed weapons (MG, AT, mortar, flak) stay where they are under fire, Hold position stops every unordered
   move, squads with waiting orders or an entrenchment ignore fire until they finish, and the corner lean for houses.
   Target choice is the unit behavior rules plus PR #11's spread fire (a target that teammates' volleys already cover
-  looks further away). Not rebalanced: no AI-vs-AI numbers for the merged rules yet.
+  looks further away). Not rebalanced: no AI-vs-AI numbers for the merged rules yet. Merged again with the terrain and
+  fog updates (#14): cover uses the new 0-1 `coverBehind` (unit behavior's `solidToward` stays for choosing spots), and a
+  vehicle backing up moves at half the speed the ground under it allows.
 - Smarter units, review fixes (found by testing the entry below before release):
   - Crossfire: a unit shot at by two enemies no longer swaps targets each time the other one lands a shot. A squad
     between two rifle squads swapped 37 times in 30 s and a tank's hull swung 37 rad back and forth; now both keep
@@ -78,6 +80,128 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Left for later: mortar, rocket and off-map shells do not count as incoming fire, so squads stay put under a
     barrage (seen in a live match). Planes still re-pick targets every half second. Classic faction wins went from
     30/36/33% to 24/47/28%; that is within chance (p = 0.25), but GER rose in both seed sets, so check it again.
+- Fog of war now shows exactly what your team sees:
+  - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
+    (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn
+    clear while the team saw nothing there, 0.7% was seen but drawn fogged, and 29 of 477 enemy units the server
+    showed stood on fogged ground (on Bocage, all of them).
+  - The server now sends each player only its own team's seen cells: the whole mask at match start and on
+    reconnect, then only the cells that changed, as short run-length strings. On a six-player Massive game (Six
+    Fronts, Conquest) a snapshot grows from 1920 to 2022 bytes on average (+102, about 5%). Working out the masks
+    raises the server's cost for one round of six snapshots from 0.77 to 3.75 ms on average (p95 2.8 to 10.7 ms).
+  - The ground has three looks: seen (clear), explored (dimmed) and never seen (dark). A cell fades to its new look
+    within a quarter second, and only the changed part of each texture row goes to the graphics card (about 1 KB a
+    frame instead of the whole 90 KB texture). Trees, rocks and other props now darken in the fog like houses and
+    walls already did, and water darkens under the same overlay.
+  - Every unit a snapshot shows stands on clear ground: in a replay of 1334 snapshots, 0 of 21108 shown ground
+    units stood on fog and the client's seen cells matched the server's every time, and in a live 2v1 match on
+    Bocage 0 of 13588 shown ground units over 1465 snapshots stood on fog. A new server test checks each
+    team's mask against a cell-by-cell vision check on the 300-unit Massive fixture, including after a hedge, smoke
+    and raised ground appear in a standing unit's view.
+  - Review fix: houses, walls, hedges and props in the fog now darken like the ground. On High graphics they faded
+    toward a mid grey, so hedge rows and trees showed as pale shapes on dark ground. The fog mix ran after the colour
+    conversion, which High does in a later pass, so it used a grey meant for Low. It now mixes toward the overlay's own
+    colour before conversion, and both graphics levels match the ground.
+  - Review checks: a live reconnect on Bocage kept every explored cell and the changed-cells stream stayed in step
+    afterwards (0 of 15818 shown ground units outside the server's mask over 1274 snapshots). Replays of Classic
+    (Default, Bocage) and Annihilation (Hill 112) had 0 mismatches between the client's seen cells and the server's
+    mask, and every building footprint matched cell by cell (7340 building rows on Bocage alone). Client fog work on a
+    six-player Massive game costs 0.16 ms per snapshot and 0.009 ms per frame on average, about 3 KB of texture upload
+    a frame.
+  - Merged with the realistic scenery: the new trees, bushes, hedgerow leaves, grass and wheat darken from the same
+    server mask, with the same mix as the ground. Their own darkening rule (a multiply written against the old grey
+    mix) no longer matched anything, so `client/foliage.js` now uses the shared fog shader as it is.
+  - Merged with the living ground: rain now shortens sight by up to 20%, and the drawn fog follows it. The fog and the
+    server's vision read one range function, and units standing still recompute their seen cells when a shower
+    comes or goes. A new test pass checks that rain shrinks the mask and that it comes back when the rain stops.
+  - Left for later: terrain changes (craters, trenches) still reach every client, even in the fog. Enemy planes
+    still show over fog (by design), and a camouflaged sniper can stand unseen on clear ground. The fog edge can
+    trail a moving unit by up to about half a second (five vision passes a second plus the fade). In Annihilation the
+    ground under the always-visible enemy bunkers is clear, and in Horde the last few attackers shown through the fog
+    get a clear cell under them the same way. The new test adds about 3 seconds to `node test.js`.
+- Living ground: the board wears, burns and gets rained on, and nothing snaps at a tile edge any more.
+  - Soft edges: a unit's speed is the average of the ground under its whole footprint, so a tank half on a road gets
+    half the bonus. Cover behind a wall, house, hedge or vehicle is full within about 2 m and fades to nothing at
+    3.8 m (it used to switch off at 2.2 m).
+  - Wear from traffic: every vehicle that drives over open ground cuts it up a little (about 10 tank passes when dry,
+    light vehicles count half). Churned ground slows vehicles by up to 30%, then turns into shallow mud, and mud that
+    keeps getting driven on gets deeper. Roads do not wear from traffic.
+  - Wear from shelling: explosions break up a road step by step (less speed bonus each time) until the cell is a
+    crater. A crater that is hit again gets deeper.
+  - Depth: every mud, ford and crater cell has its own depth. Mud runs from 70% vehicle speed (shallow) to 35% (deep),
+    a ford from 75% to 35% for everyone, and a deeper crater is better cover (from about 40% protection to 70%;
+    it was a flat 50%).
+  - Shot-up cover: walls, sandbags and hedges show two stages of damage before they fall, and protect less as they go
+    (down to half their protection when nearly gone).
+  - Slope: going uphill slows a unit in proportion to how steep the next metre is, up to 20% for infantry and 45% for
+    vehicles. Crossing a slope at an angle is faster than driving straight up it. Downhill costs nothing.
+  - Wind: each match has a wind that slowly shifts. Smoke screens drift with it (up to 1.2 m/s), so a screen laid
+    upwind covers an advance and one laid downwind blows away from it. Cloud shade, particle smoke and rain follow
+    the same wind.
+  - Dust: a vehicle moving over dry ground trails dust and is spotted from 30% further away. No dust in the wet or
+    in mud.
+  - Fire: heavy explosions (artillery, bombs, rockets, satchels) can set hedges, houses and dry grass alight. Fire
+    spreads to neighbouring cells, much faster downwind. A hedge burns for 14 s and is gone, a house burns for 25 s
+    and ends as rubble, grass burns for 5 s and does not burn twice. Infantry in a burning cell (or a burning house)
+    lose 8 hp a second and get pinned; an idle squad steps out by itself. Burning hedges and houses throw up a smoke
+    cloud that blocks sight. Units route around fire.
+  - Rain: showers come and go (the first no sooner than 3 minutes in, 1.5 to 3 minutes long, 4 to 8 minutes apart).
+    Rain cuts sight by 20%, thins smoke faster, puts fires out four times faster and stops them spreading. The ground
+    soaks over 90 s and dries over 4 minutes: wet ground slows vehicles off the road by up to 20% (40% on ground
+    below level 0), triples traffic wear, and slows fords by up to another 30%. Roads are unaffected, so they matter
+    most in the wet. A line under the scores says when it is raining or the ground is wet.
+  - Look: worn ground shows as mud creeping into the grass, broken roads as shelled earth, burnt ground as black
+    earth, deep mud and fords darker than shallow ones. Fires use the existing flame, ember and smoke effects and
+    leave a scorch mark; rain is thin streaks on the wind with a dimmer sun and heavier cloud shade (streaks are off
+    on Graphics Low, like snow). All of it uses the existing painted textures and models; nothing was replaced.
+  - Computer players get all of it through the game rules; their vehicles weigh wear, mud, roads and fire when they
+    pick a route.
+  - Balance: Conquest, 120 three-way AI matches per map, wins per spawn. Three Crossroads 42/33/25% (30/34/36% before,
+    44/33/23% the round before that: within the noise of this script). Crossroads Village 51/49%. Hill 112 30/27/13/30%
+    (27/27/15/32% before). River Towns 30/43/27% over 240 matches (43/29/28% before): the favoured spawn moved from
+    the top one to the second one, most likely because its fords drew shallower depths. Spawns are shuffled per
+    match, so no player is favoured, but the map is no fairer than it was.
+  - In an average 9-minute AI match on Three Crossroads: about 65 of 360 road cells shelled into craters, 130 fires
+    started, 170 cells burnt, 15 hedge cells lost, and only a handful of cells churned toward mud (standard armies
+    have few vehicles; River Towns, with its bridge approaches, wore about 100 cells and made 5 new mud cells).
+  - Smoke clouds now carry an id in snapshots, so a drifting cloud is the same cloud to the client.
+  - Performance: a wear or scorch change repaints only the ground tiles around it. The 3D pieces, scenery, relief and
+    water are rebuilt only when a cell's type, height or damage stage changes.
+  - Left for later: no lobby switch for weather (the rules take `weather: false`, nothing in the lobby sets it).
+    Fire does not spread through the painted crop fields any differently from grass. No rain sound. Wet ground is
+    not drawn darker. Houses do not show damage stages. Depth is random per cell, which can favour a spawn on a
+    symmetric map (see River Towns above).
+- Terrain: roads, mud, buildable bridges and mines.
+  - Roads: vehicles drive 35% faster on a road or a bridge and plan their routes along roads. Infantry are unaffected.
+    A trench, wire or tank traps can be built across a road, which cuts it.
+  - Mud: vehicles move at half speed in mud and route around it when dry ground is close. Infantry are unaffected.
+  - Bridges can be built: Shift+K (or the Bridge button with a builder squad selected), click on a river and aim along
+    the crossing. 80 MP, up to 5 river cells, built from the bank one cell every 3 s (engineers twice as fast). It is
+    an ordinary bridge afterwards: vehicles cross it and explosives drop it.
+  - Mines: Shift+J (or the Minefield button). 40 MP for 4 mines in a line. Only your team sees them. A mine goes off
+    under the first enemy squad or vehicle that steps on it (45 damage to infantry, 220 to vehicles, 3 m blast) and
+    leaves a crater. Your own side walks over them safely. Any explosion that damages terrain (artillery, bombs,
+    grenades, satchels) clears the mines it reaches.
+  - Maps: Three Crossroads, Crossroads Village, River Towns and Ardennes Crossing now have roads from each HQ to its
+    nearest points and between neighbouring points; River Towns and Ardennes Crossing have mud at the ford approaches.
+    The map editor has Road, Mud and Mine brushes. The other maps are unchanged.
+  - Balance: Conquest, 120 three-way AI matches per map, wins per spawn. Three Crossroads 44/33/23% with roads
+    (44/29/27% without, same script). River Towns 39/30/31% (43/28/29% without). No measurable change. The top spawn
+    winning about 4 in 10 is there with and without roads.
+  - Craters from shelling were already in the game (shells, bombs and rockets turn open ground into crater cover).
+    There are no woods in any branch: the trees on the board are scenery only.
+  - Computer players use both. The squad holding a captured point lays one minefield across the approach from the
+    nearest enemy HQ, 2 m outside the point, before it entrenches, and lays it again when fewer than 2 of its mines
+    are left. When a bridge
+    that was on the map gets blown, the nearest free builder squad walks to the bank and puts it back (not while
+    enemies are within 35 m of the gap). Both keep 150 MP in reserve.
+  - Balance with the AI doing this: Three Crossroads 30/34/36% per spawn over 120 matches (44/33/23% before), River
+    Towns 43/29/28% over 360 (39/30/31% before, 120 matches). Match length unchanged at about 9 minutes.
+  - Bug fixed along the way: a squad ordered to bridge a river from further than 9 m away stood still instead of
+    walking to the bank. It now walks to its own bank first.
+  - Left for later: computer players only rebuild bridges the map started with, they never bridge a new crossing.
+    Nothing detects mines short of shelling the ground. Shells do not crater roads or mud. Mines are drawn as a
+    plain dark disc.
 - Fixed entrenchment orders leaking unseen terrain or buildings: every segment needs sight when placed and when
   it starts. Refused orders preserve the digging, full queues create no abandoned plans, and follow-up orders wait
   for every squad's paid segment to finish. A single fortification (trench, wire, tank traps, nest) now also needs its

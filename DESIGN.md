@@ -555,8 +555,10 @@ the HUD.
   A hedgerow stretch is a shaded lumpy core inside leaf cards that run along the hedge, so neighbours close into one
   wall. It never changes gameplay cells. The five base buildings are one merged model per type and team
   (`buildingModel`), textured through the detail map above. `hqCamp(f, tent)` builds the HQ's tent, crates, table and
-  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
-  `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
+  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces, props and
+  foliage darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in `client/surfaces.js`, which samples
+  the `client/fog.js` texture (see Fog of war below). It imports `/shared/sim.js` by absolute path, so it is browser
+  only.
 - Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
   drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
   birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
@@ -716,6 +718,33 @@ Decided against, for now:
 
 Left for later: ranks are filled by left to right position, not by depth, so a second rank is a mix; the plan lines of
 a queued order do not draw its facing; the AI does not give facing orders.
+## Fog of war (2026-10-01)
+- The server decides what each team sees, cell by cell, and the client only draws it. The old client drew its own
+  vision circles and disagreed with the server on 6.4% of the map's cells (a quarter of the cells either side called
+  seen), with 29 of 477 shown enemies standing on fogged ground.
+- `teamFog(g, team)` in `shared/sim.js` applies updateVision's rule at every cell centre: within 6 m, a building's or
+  an airborne plane's whole vision circle, a live recon corridor, otherwise the high-ground and garrison range with
+  line of sight. The range comes from `visionRange`, the same function updateVision uses (high ground, garrison and,
+  since the living-ground terrain, rain), so the two can't drift apart. The cells under the enemy ground units the
+  team sees count too (a building's whole footprint), so nothing a snapshot shows stands on fogged ground; that also
+  covers a dusty target seen from farther away, and the Horde stragglers revealed through the fog. It runs once per
+  vision pass (`g.visionTick`, every 4 ticks), the first time a snapshot asks. Units standing still keep their cells
+  until sight changes in their box (terrain edits, smoke) or their range changes (rain). Enemy planes are still shown
+  over fog (they are seen up to `CFG.air.seeRange` away).
+- Wire: `fogFor(g, slot, full)`. The start message carries `{ v, e }` (seen now and ever seen); each snapshot's `fog`
+  is the cells that flipped since that player's last fog, or nothing when the view did not change. Both use
+  `packRuns`: alternating run lengths as base-32 varints in URL-safe base64 digits. Teammates on the same base share
+  one packing. A six-player Massive snapshot went from 1920 to 2022 bytes on average.
+- Client: `client/fog.js` keeps seen, explored and the target look per cell: clear (seen, or under a unit the snapshot
+  shows), dimmed (explored) or dark (never seen). Cells fade to a new look within 0.25 s, and only the changed span of
+  each texture row is uploaded (`addUpdateRange`, after the first full upload). The ground overlay, structures, props
+  and the minimap read it, and so does the realistic scenery's foliage (bark, leaves, grass, wheat), through the same
+  `fogShader`; water darkens under the overlay. The match-end lift clears it.
+- Fog on 3D pieces (`fogShader` in `client/surfaces.js`) mixes toward the overlay's own colour (10 / 255) right after
+  `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
+  in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
+  (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
+- Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
@@ -759,6 +788,81 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
   40 hp) and VBLOCK (vehicles' paths treat it as a wall; infantry pass and get cover; 250 hp). findPath picks the
   blocking mask from the moving unit's type.
 - Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.
+
+## Roads, mud, bridges and mines (2026-10-01)
+- Three terrain cells: `D` road (flag ROAD), `M` mud (flag MUD), `N` mine (no flags). `=` bridge also carries ROAD.
+  The flags array is 16 bits now (MUD is 256).
+- Vehicles only: speed x `CFG.roadSpeed` (1.35) on ROAD, mud between 0.7 and 0.35 by depth (see Living ground below).
+  In `findPath` a vehicle's step costs 1 / the cell's speed, so the cost is the travel time. On a map with roads
+  (`g.roads`) the A* estimate is scaled by 1 / 1.35 to stay admissible; maps without roads pay nothing. String-pulling
+  does not cross mud and does not skip past the next road cell, so a vehicle stays on the road it chose.
+- Infantry ignore both. One rule per terrain kept the HUD free of new tooltips; revisit if roads feel dull on foot.
+- Roads and mud are buildable ground: a fortification replaces the cell, and it wrecks to open ground, not back to road.
+- Bridge and Minefield are two more `FORTS`, so the dig command, queueing, previews and the Orders buttons came free.
+  `on: 'W'` makes the bridge take river cells instead of open ground, `reach: 9` lets the squad work from the bank
+  (the usual 3 m would send it into the river), `along` aims it the way the squad walks instead of across.
+- Mines: `g.mines` maps the cell to the slot that laid it. `terrainFor` withholds an `N` cell from anyone not allied
+  with that slot, so enemy clients never receive it; when it goes off the cell becomes `+` and everyone sees that.
+  A mine painted in the editor has no owner and goes off under anyone. `terrainHp.N` is 1, so every blast with a
+  terrain value clears mines. The mine's own blast has no terrain value, so mines do not set each other off.
+- Known gap: the fire-at-structure order answers "blocked" for an empty cell and accepts a hidden mine cell, so a
+  player could probe for mines one cell at a time. Not worth a fix until someone does it.
+- `tools/roads.mjs` stamps roads and ford mud onto finished maps (spawn to nearest point, point to nearest point, ties
+  within 10% all count so symmetric maps stay symmetric). It is separate from the generators: run it again after genmap.
+- A bridge builder walks to `digGoal`: a point on the line from the span's middle to the squad, 2 m inside reach. Asking
+  the pathfinder for the middle of the river picked either bank, and the far one is unreachable. Ceiling: on a river
+  wider than the reach the nearest land to that point can be out of reach and the squad waits; build from closer.
+- AI (`shared/ai.js`): the point holder lays one minefield at point radius + 2 m toward the nearest enemy HQ before it
+  entrenches, again when fewer than 2 of its mines remain within radius + 10 m. Laid from inside the point, so the
+  squad still counts as holding it (further out, it walked off the point and the AI never sent it back).
+  `rebuildBridge` notes the map's bridge cells on the first look and sends the nearest free builder to a cell that has
+  become river, one job per look, never with a visible enemy within 35 m. It does not bridge new crossings: knowing
+  where a new bridge pays would need a path query per look, and no map needs one yet.
+- Balance (120 three-way AI matches per map, wins per spawn, with / without roads, AI not using them): Three Crossroads
+  44/33/23 vs 44/29/27, River Towns 39/30/31 vs 43/28/29. With the AI laying mines and rebuilding bridges: Three
+  Crossroads 30/34/36 (120), River Towns 43/29/28 (360).
+
+## Living ground (2026-10-01): less board, more ground
+The owner's brief: the game felt like a board game because tiles have fixed effects that switch at their edges. Keep
+the sand-table look, move the rules away from the board a little.
+- One number per cell, `g.wear` (0-1), read according to the cell's type: churn on open ground, depth for mud, fords
+  and craters, damage on a road. `groundMul(g, c, veh)` turns it into a speed; `speedMul` averages it over five points
+  of the unit's footprint (centre and four at 0.6 x radius), skipping water and walls. That average is the whole
+  "soft edges" rule for movement.
+- Traffic: `CFG.traffic` (0.05) wear per metre a tank drives, half for vehicles that do not crush, half again in mud,
+  x (1 + 3 x wetness). Open ground at wear 1 becomes `M` with wear 0, so the speed is continuous across the change
+  (0.7 either side). First tried 0.02: a standard 9-minute AI match then churned under 10 cells, invisible.
+- Shelling: `damageCells` adds hit / 200 to a road's wear (crater at 1) and hit / 500 to a crater's.
+- Starting depth comes from `cellNoise(c)`, a hash of the cell index: mud and fords 0.2-0.8, craters 0.3-0.6. Cheap
+  and stable, but it is not symmetric, so it can favour a spawn (River Towns moved from 43/29/28 to 30/43/27).
+  If that matters, mirror the hash through the map's symmetry or let map files carry depths.
+- Cover: `coverQ` scales a cover cell's protection (hp share for walls and hedges, depth for craters);
+  `coverBehind` returns 0-1 by distance to the first solid cell toward the shooter (full to 2.2 m, zero at 3.8 m)
+  times that cell's `coverQ`. `behindCover` (cover seeking, cover rank) is `coverBehind > 0.4`.
+- Slope: `heightAt` interpolates the cell levels; the grade of the next metre along the path scales speed by
+  `CFG.slope` ([0.2 infantry, 0.45 vehicles]). Levels stay whole numbers: only the movement reads them smoothly.
+- Clients learn a cell's state as a 4th element in the terrain log entry: wear in quarters (bits 0-1), burnt (bit 2),
+  damage stage (bits 3-4). `touch` logs a cell only when that byte changes, so wear costs four messages per cell
+  over its life. `startState(ch, c)` is exported so the client can draw map cells nobody has mentioned yet.
+- Wind, weather and fire roll their own dice (`g.seed`, `rng`), so they do not shift the combat rolls that some
+  tests script through Math.random. The seed is a plain number so a game can still be cloned.
+- Wind: `g.wind` { a, v } random-walks. `weather()` moves every smoke cloud by v x `CFG.windSpeed`. Smoke clouds
+  got ids because the client keyed them by position and would have re-burst a drifting cloud every snapshot.
+- Rain: `g.wx` { rain, wet, raining, next }. rain ramps over 20 s, wet follows over `soak` / `dryOut`. Effects are
+  listed in the changelog; all of them read `g.wx` where they apply, there is no weather system beyond that.
+  `createGame(..., { weather: false })` gives a game without it.
+- Fire: `g.fires` maps cell -> seconds left; `burn()` runs twice a second. Spread chance per second per neighbour:
+  hedge 0.25, house 0.03, grass 0.022, x max(0.1, 1 + 1.5 x wind along the step) x (1 - rain). Grass is tuned to
+  under one new cell per burning cell in still air, so a grass fire dies out unless the wind carries it; hedgerows
+  burn end to end. Only blasts with a terrain value of 60+ can ignite (hedge 0.3, house 0.15, grass 0.03 per cell).
+- Dust: `u.dust` is the tick a vehicle last moved on dry ground; `updateVision` multiplies the viewer's range by
+  `CFG.dustSeen` (1.3) for such a target. Unit flag 32768 tells the client to draw the trail.
+- Client: `client/wind.js` holds the wind for fx.js and atmosphere.js (it was a constant in both). ground.js maps the
+  state byte onto the existing material blend (mud share for wear, shelled earth for burnt and for broken road).
+  structures.js lowers a damaged stone wall and drops its capstones, removes sandbag courses, and thins a hedge.
+  fx.js draws fires with the existing flame, ember and wreck smoke particles and leaves the existing scorch decal.
+  atmosphere.js adds rain as a third kind of weather points (the snow system with a streak fragment) and dims the sun.
+- Balance and wear numbers: see the changelog entry.
 
 ## Unit control and unit AI (decided 2026-10-01, four slices)
 Decisions from the planning interview:
