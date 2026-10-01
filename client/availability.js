@@ -87,6 +87,20 @@ export function availability(s, cfg = CFG, action = {}) {
   return yes();
 }
 
+// How many of one unit a single Shift purchase can buy right now, up to `want`: what manpower, fuel, the army limit,
+// the unit limit and (Classic) the room in the training queues leave. 0 whenever availability() refuses the first one.
+export function buyCount(s, cfg, action, want) {
+  if (!availability(s, cfg, action).ok) return 0;
+  const def = UNITS[action.unit], price = priceOf(s, action.unit), classic = s.mode?.kind === 'classic';
+  const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
+  const pop = own.filter((v) => !UNITS[v.type].structure).length + queued.length;
+  const have = own.filter((v) => v.type === action.unit).length + queued.filter((t) => t === action.unit).length;
+  const room = own.filter((v) => v.built >= 1 && UNITS[v.type].makes?.includes(action.unit) && (action.from === undefined || v.id === action.from))
+    .reduce((n, v) => n + Math.max(0, 5 - v.queue.length), 0);
+  return Math.max(0, Math.min(want, price.mp ? Math.floor(s.mp / price.mp) : want, price.fuel ? Math.floor((s.fuel ?? 0) / price.fuel) : want,
+    popCap(s) - pop, (def.max ?? Infinity) - have, classic ? room : want));
+}
+
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.
 export function placementState(s, map, grid, teams) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s);
