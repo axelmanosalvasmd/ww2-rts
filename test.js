@@ -4435,7 +4435,7 @@ for (const lookupFinished of [false, true]) {
 // soldier as one draw, postures blend and keep the weapon above ground, and corpses stay under the cap.
 {
   const THREE = await import('three');
-  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies } = await import('./client/unit-models.js');
+  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT } = await import('./client/unit-models.js');
   const box = new THREE.BoxGeometry(1, 1, 1);
   const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
   assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
@@ -4457,6 +4457,7 @@ for (const lookupFinished of [false, true]) {
     const root = new THREE.Group(), v = { type, root, models: [], turret: null };
     buildModel(v, root, look, fac, def);
     assert.ok(v.models.length, `${type}: has a model`);
+    root.traverse((o) => { if (o.isMesh && o.material === PAINT) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
     if (v.squad) {
       assert.equal(v.models.length, def.models, `${type}: one soldier per model`);
       for (const man of v.models) {
@@ -5549,5 +5550,268 @@ console.log('all command feedback checks passed');
   } finally { globalThis.setTimeout = oldSet; globalThis.clearTimeout = oldClear; }
 }
 console.log('all availability checks passed');
+
+// Model toolkit (client/models/geom.js): closed shapes are watertight with outward faces and the volume they should
+// have, sizes come out as asked, merge matches mergeParts and multiplies colors, mirrorZ doubles a half, markings lie
+// flat without overlaps, and ao darkens toward the floor without touching its input.
+{
+  const THREE = await import('three');
+  const G = await import('./client/models/geom.js');
+  const { mergeParts } = await import('./client/unit-models.js');
+  const tri = (P, I, i) => [0, 1, 2].map((k) => (I ? I.getX(i + k) : i + k));
+  // signed volume; every edge used once each way; every corner normal on the outside of its face
+  const solid = (g, label) => {
+    const P = g.attributes.position, N = g.attributes.normal, I = g.index, n = I ? I.count : P.count, t = [0, 1, 2].map(() => new THREE.Vector3()), nn = new THREE.Vector3();
+    const key = (i) => [P.getX(i), P.getY(i), P.getZ(i)].map((v) => Math.round(v * 1e4)).join(), edges = new Map();
+    let vol = 0, inward = 0;
+    for (let i = 0; i < n; i += 3) {
+      const ids = tri(P, I, i);
+      ids.forEach((id, k) => t[k].fromBufferAttribute(P, id));
+      vol += t[0].dot(new THREE.Vector3().crossVectors(t[1], t[2])) / 6;
+      const face = new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0]));
+      if (face.lengthSq() < 1e-20) continue;
+      for (const id of ids) if (face.dot(nn.fromBufferAttribute(N, id)) <= 0) inward++;
+      const k = ids.map(key);
+      for (let e = 0; e < 3; e++) { const a = k[e], b = k[(e + 1) % 3]; if (a !== b) { const id = a < b ? a + '|' + b : b + '|' + a; edges.set(id, (edges.get(id) || 0) + (a < b ? 1 : -1)); } }
+    }
+    assert.equal(inward, 0, `${label}: every face points outward`);
+    assert.ok([...edges.values()].every((v) => v === 0), `${label}: watertight`);
+    assert.ok(vol > 0, `${label}: encloses a positive volume`);
+    return vol;
+  };
+  const size = (g) => { g.computeBoundingBox(); return g.boundingBox.getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(3)); };
+  const near = (a, b, tol, label) => assert.ok(Math.abs(a - b) <= tol, `${label}: ${a} should be near ${b}`);
+  // area of a flat geometry, and the set of its vertex colors
+  const area = (g) => { const P = g.attributes.position, I = g.index, t = [0, 1, 2].map(() => new THREE.Vector3()); let s = 0; for (let i = 0; i < I.count; i += 3) { tri(P, I, i).forEach((id, k) => t[k].fromBufferAttribute(P, id)); s += new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0])).length() / 2; } return s; };
+  const colorsOf = (g) => { const C = g.attributes.color, s = new Set(); for (let i = 0; i < C.count; i++) s.add([C.getX(i), C.getY(i), C.getZ(i)].map((v) => v.toFixed(4)).join()); return s; };
+  const hex = (h) => new THREE.Color(h).toArray().map((v) => v.toFixed(4)).join();
+
+  // rounded box: the size asked and close to the exact rounded volume
+  const bb = G.bevelBox(1, 0.5, 2, 0.1, 4), [a, b, c, r] = [0.8, 0.3, 1.8, 0.1];
+  assert.deepEqual(size(bb), [1, 0.5, 2], 'bevelBox: outer size');
+  near(solid(bb, 'bevelBox'), a * b * c + 2 * r * (a * b + a * c + b * c) + Math.PI * r * r * (a + b + c) + (4 / 3) * Math.PI * r ** 3, 0.01, 'bevelBox volume');
+  assert.deepEqual(size(G.chamferBox(1, 0.5, 2, 0.1)), [1, 0.5, 2], 'chamferBox: outer size');
+  assert.ok(solid(G.chamferBox(1, 0.5, 2, 0.1), 'chamferBox') < 1, 'chamferBox: the corners are cut off');
+
+  // loft: an elliptic cylinder holds about pi r^2 L, a hull with a pointed nose closes, polygon rings work flat
+  near(solid(G.loft([{ x: 0, w: 1, h: 1 }, { x: 2, w: 1, h: 1 }], { segments: 32 }), 'loft cylinder'), 16 * Math.sin(Math.PI / 16) * 0.25 * 2, 1e-4, 'loft cylinder volume');
+  const hull = G.loft([{ x: 0, w: 0, h: 0 }, { x: 0.5, w: 0.6, h: 0.4 }, { x: 2, w: 0.7, h: 0.5, p: 4 }, { x: 2.5, w: 0.3, h: 0.3, y: 0.1 }]);
+  solid(hull, 'loft hull'); assert.deepEqual(size(hull), [2.5, 0.5, 0.7], 'loft: length, height and width from the rings');
+  solid(G.loft([{ x: 0, pts: [[0.5, 0], [0.4, 0.3], [-0.4, 0.3], [-0.5, 0], [-0.4, -0.2], [0.4, -0.2]] }, { x: 1, pts: [[0.6, 0], [-0.6, 0], [0.5, -0.25]] }], { normals: 'flat' }), 'loft polygons');
+
+  // lathe: either profile direction gives the same outward solid; the wrappers close up
+  const up = solid(G.lathe([[0, 0], [0.5, 0], [0.5, 1], [0, 1]], 16), 'lathe'), down = solid(G.lathe([[0, 1], [0.5, 1], [0.5, 0], [0, 0]], 16), 'lathe reversed');
+  near(up, down, 1e-9, 'lathe profile direction'); near(up, 8 * Math.sin(Math.PI / 8) * 0.25, 1e-4, 'lathe volume');
+  const gun = G.barrel(2, 0.06, { brake: true });
+  solid(gun, 'barrel with brake'); assert.equal(size(gun)[0], 2, 'barrel: breech to muzzle along +x');
+  for (const kind of ['m1', 'stahlhelm', 'ssh40']) solid(G.helmet(kind), `helmet ${kind}`);
+  solid(G.bomb(1, 0.12), 'bomb'); solid(G.spinner(0.4, 0.15), 'spinner'); solid(G.engine(0.5, 0.4), 'engine');
+
+  // extruded profile: the outline stays on the points even with a bevel, centered on z = 0
+  const side = G.extrudeProfile([[0, 0], [2, 0], [2.3, 0.4], [1.8, 0.7], [0, 0.6]], 0.2, 0.04);
+  assert.deepEqual(size(side), [2.3, 0.7, 0.2], 'extrudeProfile: silhouette and depth');
+  near(solid(side, 'extrudeProfile'), 1.385 * 0.2, 0.01, 'extrudeProfile volume');
+  near(side.boundingBox.min.z, -0.1, 1e-6, 'extrudeProfile: centered on z');
+  solid(G.extrudeProfile([[0, 0], [1, 0], [1, 1], [0, 1]], 0.2, 0.03, { holes: [[[0.3, 0.3], [0.7, 0.3], [0.7, 0.7], [0.3, 0.7]]] }), 'extrudeProfile with a hole');
+
+  // tube: a straight octagonal tube holds 2 sqrt 2 r^2 L; curves, tapers and closed loops stay closed
+  near(solid(G.tube([[0, 0, 0], [1, 0, 0]], 0.1), 'tube'), 2 * Math.SQRT2 * 0.01, 1e-6, 'tube volume');
+  solid(G.tube([[0, 0, 0], [1, 0.5, 0], [2, 0, 0.5], [3, 1, 0]], (u) => 0.06 - 0.03 * u), 'tapered tube');
+  solid(G.tube([[1, 0, 0], [0, 0, 1], [-1, 0, 0], [0, 0, -1]], 0.05, { closed: true }), 'closed tube');
+
+  // wheels and tracks: sizes, closed, and both paints in the vertex colors
+  const w = G.wheel(0.5, 0.3, { color: 0x59623d });
+  assert.deepEqual(size(w), [1, 1, 0.3], 'wheel: diameter in xy, axle along z');
+  solid(w, 'wheel'); solid(G.wheel(0.5, 0.2, { spokes: 10, tread: 12 }), 'spoked wheel');
+  assert.ok(colorsOf(w).has(hex(0x2b2a26)) && colorsOf(w).has(hex(0x59623d)), 'wheel: tire and disc colors');
+  const t = G.track(4, 0.45, 40, { wheels: 5, color: 0x3d3b35 }), ts = size(t);
+  solid(t, 'track');
+  assert.ok(ts[0] > 4 && ts[0] < 4.3 && ts[2] === 0.5, 'track: as long as asked plus the grousers, as wide as asked');
+  assert.ok(colorsOf(t).has(hex(0x3d3b35)), 'track: link color');
+  solid(G.roadWheels(5, 0.3, 0.7, 0.25), 'road wheels'); solid(G.sprocket(0.4, 10, 0.25), 'sprocket');
+
+  // mirrorZ: twice the half, symmetric across z = 0, still outward
+  const half = G.loft([{ x: 0, w: 0.4, h: 0.4, z: 0.4 }, { x: 1, w: 0.4, h: 0.4, z: 0.4 }]), both = G.mirrorZ(half);
+  near(solid(both, 'mirrorZ'), 2 * solid(half, 'half'), 1e-6, 'mirrorZ volume');
+  both.computeBoundingBox(); near(both.boundingBox.min.z, -both.boundingBox.max.z, 1e-6, 'mirrorZ: symmetric');
+
+  // merge matches mergeParts, and both multiply a part's paint with the shape's own colors
+  const parts = [{ geo: bb, matrix: G.xf(1, 2, 3, 0.3, 0.2, 0.1), color: new THREE.Color(0x6f7240) }, { geo: w, matrix: new THREE.Matrix4().makeScale(-1, 1, 1), color: new THREE.Color(0x808080) }];
+  const mine = G.merge(parts), theirs = mergeParts(parts, true);
+  for (const k of ['position', 'normal', 'color']) assert.ok(mine.attributes[k].array.every((v, i) => Math.abs(v - theirs.attributes[k].array[i]) < 1e-6), `merge: same ${k} as mergeParts`);
+  assert.deepEqual([...mine.index.array], [...theirs.index.array], 'merge: same triangles as mergeParts');
+  const grey = new THREE.Color(0x808080), tire = new THREE.Color(0x2b2a26);
+  assert.ok(colorsOf(mine).has([tire.r * grey.r, tire.g * grey.g, tire.b * grey.b].map((v) => v.toFixed(4)).join()), 'merge: paint times the shape color');
+  assert.equal(bb.attributes.color, undefined, 'merge leaves its inputs alone');
+
+  // materials for the model textures: a shape's own ids win, a merge item's or part's mat fills what it left unset,
+  // crease keeps them, and mergeParts bakes the grime into the fraction without changing the id
+  const id = (name) => G.MATS.indexOf(name), idsOf = (g) => new Set([...g.attributes.matId.array].map(G.baseMat));
+  assert.throws(() => G.matId('chrome'), /unknown model material/, 'matId: a misspelled material throws');
+  assert.deepEqual(idsOf(w), new Set([id('rubber'), G.UNSET]), 'wheel: a rubber tire, the disc left to the model');
+  const onHull = G.merge([{ geo: w, mat: 'armor-paint' }, { geo: G.tag(bb, 'plain'), mat: 'wood' }]);
+  assert.deepEqual(idsOf(onHull), new Set([id('rubber'), id('armor-paint'), G.PLAIN]), 'merge: mat fills only the unset vertices');
+  assert.deepEqual(idsOf(G.crease(onHull, 40)), idsOf(onHull), 'crease keeps the material ids');
+  assert.ok(G.track(4, 0.45, 40).attributes.matId.array.every((v) => v === id('track-steel')), 'track: links are track steel');
+  const baked = mergeParts([{ geo: w, matrix: G.xf(0, 0.5), color: new THREE.Color(0xffffff) }, { geo: bb, matrix: G.xf(0, 3), color: new THREE.Color(0x2a2a24) }], true, 'vehicle');
+  const M = baked.attributes.matId, PY = baked.attributes.position, grime = (i) => (M.getX(i) - G.baseMat(M.getX(i))) * 2;
+  assert.deepEqual(idsOf(baked), new Set([id('rubber'), id('armor-paint'), id('gunmetal')]), 'mergeParts: unset takes the look default, near-black paint is gunmetal');
+  let floor = 0, roof = 1;
+  for (let i = 0; i < M.count; i++) { assert.ok(grime(i) >= 0 && grime(i) < 1, 'grime stays in its fraction'); if (PY.getY(i) < 0.1) floor = Math.max(floor, grime(i)); if (PY.getY(i) > 3) roof = Math.min(roof, grime(i)); }
+  assert.ok(floor > 0.8 && roof < 0.4, `mud at the bottom (${floor.toFixed(2)}), only dust up top (${roof.toFixed(2)})`);
+
+  // markings: flat at the lift, facing +z, areas add up (no overlaps), the colors asked
+  const s = G.star(1, { lift: 0.02 }), S = s.attributes.position, SN = s.attributes.normal;
+  for (let i = 0; i < S.count; i++) assert.ok(Math.abs(S.getZ(i) - 0.02) < 1e-7 && SN.getZ(i) === 1,'star: flat at the lift, facing +z');
+  near(area(s), 5 * 0.382 * Math.sin(Math.PI / 5), 1e-3, 'star area');
+  const us = G.star(1, { disc: 0x2a4a8f });
+  near(area(us), 16 * Math.sin(Math.PI / 16) * 1.06 ** 2, 1e-3, 'star in a disc: the star is cut out of the disc');
+  assert.deepEqual([...colorsOf(us)].sort(), [hex(0xece6d6), hex(0x2a4a8f)].sort(), 'star in a disc: two colors');
+  near(area(G.balkenkreuz(1)), 8 * 0.2 - 4 * 0.04 + 4 * 0.12 * (2 - 0.4 - 0.12), 1e-6, 'balkenkreuz: black cross plus four white edges');
+  near(area(G.roundel(1)), 16 * Math.sin(Math.PI / 16), 1e-6, 'roundel: bands fill the disc once');
+  const top = G.merge([{ geo: G.roundel(0.5), matrix: G.place([0, 1, 0], [0, 1, 0]) }]), TP = top.attributes.position;
+  for (let i = 0; i < TP.count; i++) near(TP.getY(i), 1.01, 1e-6, 'place: a roundel lies on a roof');
+
+  // ao: darker at the floor than at the top, the input untouched
+  const lit = G.ao(bb), C = lit.attributes.color, Y = lit.attributes.position;
+  let low = 1, high = 0;
+  for (let i = 0; i < C.count; i++) { if (Y.getY(i) < -0.249) low = Math.min(low, C.getX(i)); if (Y.getY(i) > 0.249) high = Math.max(high, C.getX(i)); }
+  assert.ok(low < 0.6 && high === 1, `ao: floor ${low} darker than the top ${high}`);
+  assert.equal(bb.attributes.color, undefined, 'ao leaves its input alone');
+  assert.ok(G.ao(bb, { falloff: () => 0.5 }).attributes.color.array.every((v) => v === 0.5), 'ao: a custom falloff');
+}
+console.log('all model toolkit checks passed');
+
+// Wheeled and half-tracked models (client/models/wheeled.js): the armored cars, the M16 and the two rocket trucks are two
+// shadow-casting draws with a traversing part, stay close to the footprint of the boxes they replaced and within their
+// triangle budgets, carry their own vertex colors, and put the muzzle point where the traversing part is.
+{
+  const THREE = await import('three');
+  const { buildModel } = await import('./client/unit-models.js');
+  const { isWheeled, wheeledModel } = await import('./client/models/wheeled.js');
+  const look = { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 };
+  const cases = [['armoredcar', 0], ['armoredcar', 1], ['armoredcar', 2], ['flaktrack', 0], ['rocket', 1], ['rocket', 2]];
+  assert.ok(cases.every(([t, f]) => isWheeled(t, f)) && !isWheeled('rocket', 0) && !isWheeled('flaktrack', 1) && !isWheeled('tank', 0), 'wheeled.js builds exactly its own units');
+  for (const [type, fac] of cases) {
+    const label = `${type} (faction ${fac})`, root = new THREE.Group(), v = { type, root, models: [], turret: null };
+    buildModel(v, root, look, fac, UNITS[type]);
+    const meshes = []; root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+    assert.equal(meshes.length, 2, `${label}: a hull and a turret, two draws`);
+    assert.ok(meshes.every((m) => m.castShadow && m.geometry.attributes.color), `${label}: casts shadows, carries its own colors`);
+    assert.ok(v.turret && v.turret.children.length === 1 && v.models[0] === root, `${label}: the turret node holds the traversing part`);
+    const m = wheeledModel(type, fac, look), box = new THREE.Box3().setFromBufferAttribute(m.hull.attributes.position);
+    const tb = new THREE.Box3().setFromBufferAttribute(m.turret.attributes.position).translate(new THREE.Vector3(...m.turretAt));
+    box.union(tb);
+    const size = box.getSize(new THREE.Vector3()), tris = (m.hull.index.count + m.turret.index.count) / 3;
+    assert.ok(box.min.y > -0.05 && box.min.y < 0.05, `${label}: stands on the ground (${box.min.y})`);
+    assert.ok(size.x >= 3.4 && size.x <= 5.8 && size.z >= 1.6 && size.z <= 2.8, `${label}: footprint ${size.x.toFixed(1)} x ${size.z.toFixed(1)} stays near the old boxes`);
+    assert.ok(tris >= 1500 && tris <= 3000, `${label}: ${tris} triangles within the 3000 budget`);
+    for (const g of [m.hull, m.turret]) assert.ok(g.attributes.position.array.every(Number.isFinite) && g.attributes.normal.array.every(Number.isFinite), `${label}: finite positions and normals`);
+    assert.ok(v.fxTip.length === 3 && v.fxTip.every(Number.isFinite), `${label}: a muzzle point`);
+    const own = new THREE.Box3().setFromBufferAttribute(m.turret.attributes.position).expandByScalar(0.35);
+    assert.ok(own.containsPoint(new THREE.Vector3(...v.fxTip)), `${label}: the muzzle point sits at the end of the gun or launcher`);
+    assert.equal(wheeledModel(type, fac, look), m, `${label}: the geometry is cached per look`);
+  }
+}
+console.log('all wheeled model checks passed');
+
+// Crew-served guns (client/models/guns.js): every weapon of every faction is one shadow-casting mesh inside its triangle
+// budget with faces that agree with their normals, guns that traverse carry their muzzle in v.fxTip, the muzzles sit where
+// client/fx.js starts its tracers and shells, the crew stands clear of the gun, and a cheap far version (one mesh under 500
+// triangles) takes over with the far-away soldiers.
+{
+  const THREE = await import('three');
+  const { buildModel, animate } = await import('./client/unit-models.js');
+  const { gunModel, GUN_SLOTS } = await import('./client/models/guns.js');
+  const looks = [{ uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, { uniform: 0x5c6266, vehicle: 0x50565a, color: 0xcc3a2e }, { uniform: 0x7d7250, vehicle: 0x4e5a38, color: 0xece6d6 }];
+  const nearest = (geo, p, off = [0, 0, 0], minY = -1) => {
+    const P = geo.attributes.position;
+    let best = Infinity;
+    for (let i = 0; i < P.count; i++) if (P.getY(i) >= minY) best = Math.min(best, Math.hypot(P.getX(i) + off[0] - p[0], P.getY(i) + off[1] - p[1], P.getZ(i) + off[2] - p[2]));
+    return best;
+  };
+  for (const type of ['mg', 'mortar', 'at', 'flak']) for (const fac of [0, 1, 2]) {
+    const label = `${type} (faction ${fac})`, look = looks[fac], root = new THREE.Group(), v = { type, root, models: [], turret: null, x: 0, z: 0 };
+    buildModel(v, root, look, fac, UNITS[type]);
+    // the weapon is every visible mesh under the root outside the soldiers (their nodes carry a formation slot)
+    const meshes = [];
+    for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) meshes.push(m); });
+    assert.equal(meshes.length, 1, `${label}: the gun is one draw call`);
+    assert.ok(meshes[0].castShadow, `${label}: the gun casts a shadow`);
+    const geo = meshes[0].geometry, I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, tris = I.count / 3;
+    assert.ok(tris >= 400 && tris <= 2000, `${label}: ${tris} triangles (budget 2000)`);
+    assert.ok(geo.attributes.color, `${label}: painted in vertex colors`);
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+    let inward = 0;
+    for (let i = 0; i < I.count; i += 3) {
+      a.fromBufferAttribute(P, I.getX(i)); b.fromBufferAttribute(P, I.getX(i + 1)); c.fromBufferAttribute(P, I.getX(i + 2));
+      const face = b.clone().sub(a).cross(c.clone().sub(a));
+      if (face.lengthSq() < 1e-14) continue;
+      n.fromBufferAttribute(N, I.getX(i)).add(new THREE.Vector3().fromBufferAttribute(N, I.getX(i + 1))).add(new THREE.Vector3().fromBufferAttribute(N, I.getX(i + 2)));
+      if (face.dot(n) <= 0) inward++;
+    }
+    assert.equal(inward, 0, `${label}: every face points the way its normals do`);
+    const pivot = v.turret ? v.turret.position.toArray() : [0, 0, 0];
+    if (type === 'at' || type === 'flak') {
+      assert.ok(v.turret && v.fxTip?.length === 3, `${label}: traverses with its muzzle in v.fxTip`);
+      assert.ok(nearest(geo, v.fxTip) < 0.15, `${label}: v.fxTip sits on the end of the barrel (${nearest(geo, v.fxTip).toFixed(2)} m)`);
+    } else assert.ok(!v.turret, `${label}: a static weapon`);
+    if (type === 'mg') assert.ok(nearest(geo, [1.72, 0.45, 0]) < 0.08, `${label}: the muzzle is where fx.js starts the tracers`);
+    if (type === 'mortar') assert.ok(nearest(geo, [1.1, 1.12, 0]) < 0.1, `${label}: the tube mouth is where fx.js launches the shell`);
+    for (const [sx, sz] of GUN_SLOTS[type]) assert.ok(nearest(geo, [sx * 1.3, 0.3, sz * 1.3], [pivot[0], 0, pivot[2]], 0.15) >= 0.4, `${label}: crew slot ${sx},${sz} stands clear of the gun`);
+    // far away the cheap version is the one drawn
+    const farGeo = gunModel(type, fac, look).far, farMeshes = [];
+    assert.ok(farGeo && farGeo.index.count / 3 <= 500, `${label}: a far version under 500 triangles`);
+    assert.ok(farGeo.attributes.position.array.every(Number.isFinite) && farGeo.attributes.color, `${label}: the far version is finite and painted`);
+    animate(v, 0, new THREE.Vector3(0, 160, 160));
+    for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) farMeshes.push(m); });
+    assert.ok(farMeshes.length === 1 && farMeshes[0] !== meshes[0] && farMeshes[0].geometry.index.count / 3 <= 500, `${label}: one cheap draw call far away`);
+    animate(v, 0, new THREE.Vector3(0, 8, 8));
+    const backNear = []; for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) backNear.push(m); });
+    assert.ok(backNear.length === 1 && backNear[0] === meshes[0], `${label}: the full gun is back when the camera comes close`);
+  }
+  for (const fac of [0, 1, 2]) {
+    const geo = gunModel('flakpos', fac, looks[fac]).geo;
+    for (const z of [-0.2, 0.2]) assert.ok(nearest(geo, [0.95, 2.1, z]) < 0.1, `flakpos (faction ${fac}): a barrel ends at fx.js's muzzle point`);
+    assert.ok(geo.index.count / 3 <= 2000, 'flakpos gun inside its triangle budget');
+  }
+}
+console.log('all gun model checks passed');
+
+// Aircraft (client/models/planes.js): every plane of every faction fits its triangle budget with its propellers (about
+// 60 triangles a blade and a blur disc each in client/aircraft.js), its faces agree with its normals, every vertex
+// says what it is made of, and the owner's colour stays a small marking instead of covering the paint.
+{
+  const THREE = await import('three');
+  const { plane, ROLES, PLANE_NAMES } = await import('./client/models/planes.js');
+  const { MATS, PLAIN, UNSET } = await import('./client/models/geom.js');
+  const BUDGET = { fighter: 3500, attacker: 3500, bomber: 6000, transport: 6000 }, OWN = 0xff00ff;
+  for (const fac of [0, 1, 2]) for (const role of ROLES) {
+    const p = plane(fac, role, OWN), geo = p.geo, label = PLANE_NAMES[fac][role];
+    const I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, col = geo.attributes.color, mat = geo.attributes.matId;
+    const tris = I.count / 3 + p.props.reduce((s, q) => s + q.n * 60 + 36, 0) + 2;
+    assert.ok(tris <= BUDGET[role], `${label}: ${tris} triangles with its propellers (budget ${BUDGET[role]})`);
+    assert.ok(geo.attributes.camo && geo.attributes.hinge && mat, `${label}: carries the camo, hinge and matId attributes`);
+    assert.ok(mat.array.every((m) => m === PLAIN || m === UNSET || (Number.isInteger(m) && m >= 0 && m < MATS.length)), `${label}: every matId is a material, plain or the default`);
+    // the owner's colour here is magenta, darkened a little by the ambient occlusion: no paint is anything like it
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+    const own = (k) => col.getX(k) > 0.5 && col.getZ(k) > 0.5 && col.getY(k) < 0.15 && Math.abs(col.getX(k) - col.getZ(k)) < 0.05;
+    let inward = 0, area = 0, owned = 0;
+    for (let i = 0; i < I.count; i += 3) {
+      const v = [I.getX(i), I.getX(i + 1), I.getX(i + 2)];
+      a.fromBufferAttribute(P, v[0]); b.fromBufferAttribute(P, v[1]); c.fromBufferAttribute(P, v[2]);
+      const face = b.clone().sub(a).cross(c.clone().sub(a)), s = face.length() / 2;
+      area += s;
+      if (v.every(own)) owned += s;
+      if (s < 1e-7) continue;
+      n.set(0, 0, 0);
+      for (const k of v) n.add(new THREE.Vector3().fromBufferAttribute(N, k));
+      if (face.dot(n) <= 0) inward++;
+    }
+    assert.ok(inward <= I.count / 3 * 0.002, `${label}: ${inward} faces point against their normals`);
+    assert.ok(owned > 0 && owned / area < 0.06, `${label}: the owner's colour covers ${(100 * owned / area).toFixed(1)}% of the plane`);
+  }
+}
+console.log('all aircraft model checks passed');
 
 await stopServerHarness(); // the last server check is done

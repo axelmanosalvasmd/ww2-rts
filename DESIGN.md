@@ -492,6 +492,31 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
+is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
+mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
+The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
+the HUD. Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
+lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
+still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
+- Model textures (`client/model-textures.js`): units are textured so they read as weathered real equipment, not
+  painted toys. Twelve seamless layers generated with gpt-image-2 (`client/textures/models/`, 512 px: painted armor,
+  cast armor, gunmetal, track steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint, mud) sit in one
+  texture array. The shared materials (PAINT, the plane body and blades) sample each fragment's layer with triplanar
+  mapping in the model's own space (after the posture morphs, so nothing swims on a turning turret or a prone
+  soldier). The texture's light and dark scale the vertex color, so faction paint, markings and the owner color keep
+  their hue; paint is faded a little and mottled with broad blotches, and some layers (track steel, wood, leather)
+  bring part of their own color. Grime is baked per vertex at merge time by height: a dust film everywhere and dried
+  mud clumps on lower hulls, wheels, tracks and boots (none on planes). No extra draw calls; on Low, and until the
+  textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade, and
+  film: how much grime it holds) is in `LAYERS` at the top of the module. Grime is greyed and never much brighter than
+  the part under it, so dark tracks, tires and gunmetal stay dark instead of turning into an orange band.
+- Tagging what a part is made of: `part(geo, paint, sx, sy, sz, x, y, z, mat)` in `client/unit-models.js`,
+  `{ geo, color, matrix, mat }` items in `geom.merge()`, or `tag(geo, mat)`. `mat` is a name from `MATS` in
+  `client/models/geom.js` or `'plain'` (no texture: faces, glass, the soldier's base). A shape's own tags win over the
+  item's `mat`, so a wheel keeps its rubber tire (`wheel()` and `track()` tag their tires and links). Untagged parts
+  take the model's default from `LOOKS` (painted armor on vehicles and guns, wool on soldiers, aircraft paint on
+  planes); near-black colorless paint becomes gunmetal. A mesh drawn with PAINT without going through `mergeParts`
+  gets the default material and no grime: put its geometry in `part(geo, 0xffffff)` and bake it instead.
 was the paperwork around it until 2026-10-01 (see below). Concepts in `docs/concepts/`: `e-mix-acetate.jpg` was the
 target, `a-sand-table.jpg` the world mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage),
 `before-conquest.jpg` where we started. The concept images show richer models than ours; the models stay procedural,
