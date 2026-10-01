@@ -74,10 +74,11 @@ vec3 reliefSoil = mix( vec3( 0.16, 0.115, 0.065 ), vec3( 0.14, 0.14, 0.075 ), re
 diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.32, 0.24, 0.12 ), reliefEarth );
 diffuseColor.rgb = mix( diffuseColor.rgb, reliefSoil, reliefWetEarth );
 diffuseColor.rgb *= 1.0 - 0.16 * reliefSlope * ( 1.0 - reliefRock );
-// Raised, level ground catches a little more light than the surrounding open ground.
-float reliefPlateau = smoothstep( 0.0, uReliefStep * 2.0, vReliefPosition.y )
-	* ( 1.0 - reliefSlope ) * ( 1.0 - reliefRock ) * ( 1.0 - reliefDamp );
-diffuseColor.rgb *= 1.0 + 0.06 * reliefPlateau;
+// Each raised level dries and lightens the painted ground, capped at three levels.
+float reliefLevel = clamp( vReliefPosition.y / uReliefStep, 0.0, 3.0 );
+float reliefPlateau = reliefLevel * ( 1.0 - reliefSlope ) * ( 1.0 - reliefRock )
+	* ( 1.0 - reliefFoot ) * ( 1.0 - reliefDamp );
+diffuseColor.rgb *= vec3( 1.0 ) + vec3( 0.13, 0.12, 0.10 ) * reliefPlateau;
 
 // World height locates each ramp's lowest 0.95 m and its crest without adding geometry attributes.
 float reliefPhase = mod( vReliefPosition.y, uReliefStep );
@@ -86,6 +87,12 @@ float reliefRampFoot = ( 1.0 - smoothstep( 0.12, 0.95, reliefPhase ) ) * reliefR
 float reliefRampCrest = smoothstep( uReliefStep - 0.40, uReliefStep - 0.26, reliefPhase ) * reliefRampMask;
 diffuseColor.rgb *= 1.0 - 0.27 * reliefRampFoot;
 diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * 1.10 + vec3( 0.008, 0.006, 0.003 ), reliefRampCrest );
+
+// A warm rim follows the crest's lip shoulder and ramp, leaving the pale lip intact.
+float reliefCrest = max( smoothstep( 0.20, 0.38, reliefLip )
+	* ( 1.0 - smoothstep( 0.38, 0.62, reliefLip ) ), reliefRampCrest )
+	* ( 1.0 - reliefSlope ) * ( 1.0 - reliefRock ) * ( 1.0 - reliefFoot ) * ( 1.0 - reliefDamp );
+diffuseColor.rgb *= vec3( 1.0 ) + vec3( 0.06, 0.05, 0.035 ) * reliefCrest;
 
 if ( reliefRock > 0.001 ) {
 	float reliefEdgeNoise = 0.5;
@@ -207,7 +214,7 @@ export function createReliefMaterial(texture, { low = false } = {}) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAG_NORMAL}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${FRAG_FILL}`);
   };
-  material.customProgramCacheKey = () => `relief-painted-v5-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
+  material.customProgramCacheKey = () => `relief-painted-v6-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
   material.userData.setLow = (next) => {
     if (Boolean(next) === ('RELIEF_LOW' in material.defines)) return;
     if (next) material.defines.RELIEF_LOW = '';
