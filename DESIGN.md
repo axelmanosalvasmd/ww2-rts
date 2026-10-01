@@ -89,6 +89,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
 
 ## Command & readability (slice after destruction)
+- Recruitment cards and tooltips share role descriptions, including Flak's role against enemy air support.
+  A unit without role copy shows its name in both the buy bar and Classic training cards.
 - Minimap (bottom-right), rotated with the camera: terrain, fog, points, HQs, units, strike warnings, camera view.
   Left-click/drag looks, right-click moves the selection (Ctrl = attack-move).
 - Attack-move: G then click, or Ctrl+right-click. Units halt to fight what's in range, then carry on.
@@ -229,6 +231,12 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Kill bounty (all modes): 20% of the dead unit's cost to the enemy who landed the last hit. It nudges games toward
   the winner of fights (Conquest closeness 0.66 -> 0.63, River Towns 0.63 -> 0.57) but adds lead changes.
 - Classic pop cap 24: the bounty made leaders bank MP at 20.
+
+## Army size (lobby setting)
+- Standard / Large / Massive: unit limit x1 / x2.5 / x5 and every income x1 / x3 / x6 (`CFG.armies`). Income has to grow
+  more than the limit, or armies never fill it (Massive at 3.5x income: 98 units with 6 AIs; at 6x: ~240 Conquest,
+  ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
+  Browser cost at 250+ units hasn't been measured on the friends' PCs.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

@@ -5,6 +5,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Army size in the lobby (host picks): Standard (as before), Large (2.5x unit limit, 3x income) or Massive (5x unit
+  limit, 6x income: MP, Munitions, Fuel and starting MP). The AI buys several units at a time in big games. With 6 AIs
+  on Six Fronts, Massive peaked at about 240 units (Conquest) and 270 (Classic); the server stayed under 8 ms per tick
+  on average (24 ms worst, budget 50). With 3.5x income Massive only reached 98 units: armies died as fast as they came.
 - Aviation (all modes):
   - New air support: Dive Bomber (U, 180 MP / 70 Mun): one heavy bomb right on the spot. Paratroopers (P, 260 / 90):
     a rifle squad dropped where your side can see (counts toward pop). Fighter Cover (I, 120 / 40): for 60s the next
@@ -35,6 +39,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     defend and blue attack) with its real name, size in metres, player count, hills, rivers, and the Assault clock.
   - Short mode names in the menu with a one-line description of the chosen mode underneath.
   - Map names read properly (Kasserine Pass, not kasserine-pass), and Start is a big gold button.
+- Fixed the Flak Gun card and tooltip showing "undefined": they now explain that it shoots down enemy air support.
+  Both the buy bar and Classic training cards use the unit name if a role description is missing.
 - New mode, **Annihilation**: like Assault, but every player gets a Command Bunker with its trench and sandbag ring,
   and there's no clock. A side is out when its last bunker falls; the last side standing wins. Works with any teams,
   including free-for-all. Everyone starts with 300 MP and +4.5/s; points pay manpower only (no VP). Bunkers take 5%
