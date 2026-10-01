@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, terrainFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
@@ -84,7 +84,6 @@ const hostOf = (room) => room.players.findIndex(p => !p.ai);
 const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
 const newPlayer = (room, p) => ({ ...p, team: room.players.length, faction: room.players.length % 3 });
 // how many players the room's map seats in the room's mode (Assault-only spawns count only in Assault)
-const setMap = async (room, name) => { room.mapName = name; room.mapSpawns = (await loadMap(name)).spawns; };
 const seats = (room) => spawnsFor({ spawns: room.mapSpawns }, room.mode).length;
 
 async function lobby(room) {
@@ -98,15 +97,18 @@ async function lobby(room) {
 
 // (re)start a match with the room's settings; everyone gets the new game
 async function startMatch(room) {
+  const starting = room.starting = {};
   room.state = 'play'; room.game = null; room.result = null; // claim it before the await so a double-click can't start twice
-  room.map = await loadMap(room.mapName);
+  const map = await loadMap(room.mapName);
+  if (room.starting !== starting || room.state !== 'play') return;
+  room.map = map;
   room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
   lobby(room);
   room.players.forEach((_, i) => sendStart(room, i));
 }
 
 function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: room.game.cellLog, names: room.players.map(p => p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction) });
+  send(room.players[i].ws, { t: 'start', map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(room.game, i, true), names: room.players.map(p => p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction) });
 }
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
@@ -120,9 +122,9 @@ wss.on('connection', (ws, req) => {
     try { msg = JSON.parse(raw); } catch { return; }
     if (!msg || typeof msg !== 'object') return;
     if (!me) {
-      if (msg.t !== 'hello') return;
+      if (msg.t !== 'hello' || typeof msg.token !== 'string' || typeof msg.name !== 'string') return;
       room = rooms.get(code);
-      if (!room) { rooms.set(code, room = { code, players: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0 }); await setMap(room, 'default'); }
+      if (!room) rooms.set(code, room = { code, players: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0, mapName: 'default', mapSpawns: MAP.spawns });
       const token = String(msg.token || '').slice(0, 40), name = cleanName(msg.name);
       me = room.players.find(p => p.token === token && token);
       if (me) { me.ws?.close(); me.ws = ws; me.name = name; }
@@ -134,20 +136,23 @@ wss.on('connection', (ws, req) => {
       return;
     }
     const slot = room.players.indexOf(me);
+    if (me.ws !== ws || slot < 0) return;
     if (msg.t === 'ping') {
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
       return send(ws, { t: 'pong', c: msg.c });
     }
-    if (msg.t === 'name') { me.name = cleanName(msg.name); lobby(room); }
+    if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
     else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
       room.players.push(newPlayer(room, { token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true }));
       lobby(room);
-    } else if (msg.t === 'kick' && slot === hostOf(room) && room.state === 'lobby' && room.players[msg.slot]?.ai) {
+    } else if (msg.t === 'kick' && slot === hostOf(room) && room.state === 'lobby' && Number.isInteger(msg.slot) && msg.slot >= 0 && room.players[msg.slot]?.ai) {
       room.players.splice(msg.slot, 1);
       lobby(room);
     } else if (msg.t === 'map' && slot === hostOf(room) && room.state !== 'play' && typeof msg.name === 'string' && (await listMaps()).includes(msg.name)) {
-      await setMap(room, msg.name); lobby(room);
-    } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : 3)) {
+      const map = await loadMap(msg.name);
+      if (room.state === 'play' || me.ws !== ws || room.players.indexOf(me) !== hostOf(room)) return;
+      room.mapName = msg.name; room.mapSpawns = map.spawns; lobby(room);
+    } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.slot) && msg.slot >= 0 && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : 3)) {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
       if (p && (slot === hostOf(room) ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
@@ -198,7 +203,7 @@ setInterval(() => {
     if (g.tick % 2 === 0 || g.winner !== null) {
       const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-      room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
+      room.players.forEach((p, i) => { if (p.ws?.readyState === 1) send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }); });
     }
     // match over: straight back to the lobby (map, mode and teams can change; newcomers can join), with the result
     if (g.winner !== null) { room.state = 'lobby'; room.result = { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name) }; lobby(room); }

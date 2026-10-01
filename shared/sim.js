@@ -210,8 +210,9 @@ function payAb(g, u) {
   p.mun -= c;
   return true;
 }
-// units a player fields plus what's queued in their buildings (planes count too)
-export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue?.length ?? 0) : 1) : 0), 0);
+// units a player fields, trains or has incoming with paratroopers (planes count too)
+export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue?.length ?? 0) : 1) : 0), 0)
+  + g.strikes.reduce((a, s) => a + (s.owner === slot && !s.live && SUPPORT[s.kind].unit ? 1 : 0), 0);
 export const popCap = (g) => Math.round((g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap) * (g.army?.pop ?? 1));
 export const supCost = (g, k) => (g.mode?.kind === 'classic' ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
@@ -309,7 +310,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     g.mode = { kind: 'annihilation', teams: new Set(teams).size };
     for (const p of g.players) { p.mp = CFG.assault.annihilationMp; fortify(g, p); }
   }
-  g.army = CFG.armies[opts.army] ?? CFG.armies.standard;
+  g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
   return g;
 }
@@ -355,6 +356,8 @@ function placeBuilding(g, owner, type, c, finished) {
   for (const k of cells) setCell(g, k, 'K');
   const u = spawnUnit(g, owner, type);
   Object.assign(u, footCenter(g, c, def.size), { cells, built: finished ? 1 : 0, hp: finished ? max : max * 0.25, queue: [], prog: 0, rally: null });
+  const footprints = g.buildingCells ??= new Map(), at = { id: u.id, owner, x: u.x, z: u.z };
+  for (const k of cells) footprints.set(k, at); // Keep the footprint private after cancellation or destruction too.
   return u;
 }
 // a building works through its queue; each finished unit steps out on the side facing its rally point
@@ -364,14 +367,14 @@ function train(g, b, dt) {
   b.prog = 0; b.queue.shift();
   const to = b.rally ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 }, a = Math.atan2(to.z - b.z, to.x - b.x), r = UNITS[b.type].radius + 2;
   const u = spawnUnit(g, b.owner, type);
-  if (u.air) return;
+  if (u.air) { Object.assign(u, { x: b.x, z: b.z }); return; }
   const c = nearestFree(g, b.x + Math.cos(a) * r, b.z + Math.sin(a) * r);
   Object.assign(u, cellCenter(g, c), { rot: a, aim: a });
   if (b.rally) u.path = findPath(g, u, b.rally);
 }
 function wreckBuilding(g, u) {
   for (const c of u.cells) setCell(g, c, 'R');
-  g.shots.push({ k: 'collapse', x: u.x, z: u.z, pub: true });
+  g.shots.push({ k: 'collapse', t: u.id, to: u.owner, x: u.x, z: u.z });
   for (const n of g.nodes ?? []) if (n.depot === u.id) n.depot = 0;
 }
 // the first spot at or around (x, z) where a size x size building fits, clear of spawns, points and other nodes
@@ -450,9 +453,10 @@ export function siteNear(g, x, z, size) {
   const c = findSite(g, x - size * CELL / 2, z - size * CELL / 2, size, avoid);
   return c < 0 ? null : footCenter(g, c, size);
 }
-// can this team see the spot right now? (any of its units within vision and line of sight)
+// can this team see the spot right now? Airborne planes see across terrain.
 export function teamSees(g, team, at) {
-  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= UNITS[u.type].vision && (UNITS[u.type].building || los(g, u, at)));
+  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= UNITS[u.type].vision
+    && (u.air ? airborne(u) : UNITS[u.type].building || los(g, u, at)));
 }
 
 function spawnUnit(g, owner, type, n = g.units.size) {
@@ -531,7 +535,7 @@ function antiAir(g, list, dt) {
     best.hp -= aa.dps * dt; best.lastHit = u.owner;
     u.xp += Math.min(aa.dps * dt, Math.max(0, best.hp + aa.dps * dt));
     if ((u.aaShot = (u.aaShot ?? 0) - dt) <= 0) { u.aaShot = 0.35; g.shots.push({ f: u.id, t: best.id, fo: u.owner, to: best.owner, x: best.x, z: best.z, k: 'aa' }); }
-    if (best.hp <= 0 && !best.downed) { best.downed = true; g.shots.push({ k: 'planedown', t: best.id, to: best.owner, x: best.x, z: best.z, dir: best.rot, kill: true, pub: true }); }
+    if (best.hp <= 0 && !best.downed) { best.downed = true; g.shots.push({ k: 'planedown', t: best.id, to: best.owner, x: best.x, z: best.z, dir: best.rot, kill: true }); }
   }
 }
 
@@ -552,7 +556,7 @@ function behindCover(g, t, from) {
   const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
   for (const d of [1.2, 2.2]) { const c = cellOf(g, t.x + ca * d, t.z + sa * d); if (c >= 0 && SOLID.has(g.chars[c])) return true; }
   for (const v of g.units.values()) {
-    if (v === t || UNITS[v.type].infantry || v.hp <= 0) continue;
+    if (v === t || v.air || UNITS[v.type].infantry || v.hp <= 0) continue;
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
     if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) return true;
   }
@@ -560,9 +564,11 @@ function behindCover(g, t, from) {
 }
 // for the HUD: is there anything solid right next to this squad?
 function nearCover(g, u) {
-  const x = Math.floor(u.x / CELL), y = Math.floor(u.z / CELL);
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (SOLID.has(g.chars[(y + dy) * g.w + x + dx])) return true;
-  return [...g.units.values()].some(v => v !== u && !UNITS[v.type].infantry && dist(u, v) < 3.5);
+  const c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
+  if (SOLID.has(g.chars[c + 1]) || SOLID.has(g.chars[c - 1]) || SOLID.has(g.chars[c + g.w]) || SOLID.has(g.chars[c - g.w])) return true;
+  for (const v of g.units.values()) if (v !== u && !v.air && !UNITS[v.type].infantry
+    && Math.abs(v.x - u.x) < 3.5 && Math.abs(v.z - u.z) < 3.5 && dist(u, v) < 3.5) return true;
+  return false;
 }
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
@@ -590,9 +596,20 @@ function entryCell(g, c0, from, taken) {
   return edge[0] ?? -1;
 }
 
+function logCell(g, c, change) {
+  const indexes = g.cellLogIndexes ??= new Map();
+  let index = indexes.get(c);
+  const latest = g.height ? [c, g.chars[c], g.height[c]] : change;
+  if (index === undefined) { index = g.cellLog.length; indexes.set(c, index); g.cellLog.push(latest); }
+  else g.cellLog[index] = latest;
+  // Keep each viewer's changes independently of the transient snapshot batch.
+  for (const p of g.players) p.terrainPending?.add(index);
+  g.newCells.push(change);
+}
+
 function setCell(g, c, ch) {
   g.flags[c] = TERRAIN[ch]; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
-  g.cellLog.push([c, ch]); g.newCells.push([c, ch]);
+  logCell(g, c, [c, ch]);
 }
 // a heavy blast digs the cell one level down, but never below a neighbour's slope (no pits you can't climb out of)
 function dent(g, c) {
@@ -601,7 +618,7 @@ function dent(g, c) {
   const L = g.height[c] - 1, x = c % g.w;
   if (L < CFG.minLevel || [c - g.w, c + g.w, x > 0 ? c - 1 : -1, x < g.w - 1 ? c + 1 : -1].some(n => n >= 0 && n < g.height.length && g.height[n] - L > 1)) return;
   g.height[c] = L;
-  g.cellLog.push([c, g.chars[c], L]); g.newCells.push([c, g.chars[c], L]);
+  logCell(g, c, [c, g.chars[c], L]);
 }
 // dig a (2r+1)^2 patch of cells around a blast, centre first so repeated hits deepen it into a bowl
 function digAt(g, at, r) {
@@ -750,11 +767,11 @@ export function findPath(g, from, to) {
 const num = (v, max) => (Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : null);
 
 export function command(g, slot, cmd) {
-  if (g.winner !== null || !cmd || typeof cmd !== 'object') return;
+  if (g.winner !== null || !Number.isInteger(slot) || !g.players[slot] || g.players[slot].out || g.players[slot].away || !cmd || typeof cmd !== 'object' || Array.isArray(cmd)) return;
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
-  const ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, 50) : [];
+  const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
-    for (const o of cmd.orders.slice(0, 50)) {
+    for (const o of cmd.orders.slice(0, limit)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
@@ -782,7 +799,7 @@ export function command(g, slot, cmd) {
   } else if (cmd.t === 'attack') {
     const t = g.units.get(cmd.target);
     if (!t || allied(g, t.owner, slot) || !g.players[slot].visible.has(t.id)) return;
-    for (const id of ids) { const u = mine(id); if (u?.air) { sendPlane(u, { kind: 'attack', id: t.id, x: t.x, z: t.z }); continue; } if (u) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
+    for (const id of ids) { const u = mine(id); if (u?.air) { sendPlane(u, { kind: 'attack', id: t.id, x: t.x, z: t.z }); continue; } if (u && !t.air) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
   } else if (cmd.t === 'stop') {
     for (const id of ids) { const u = mine(id); if (u?.air) { if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
   } else if (cmd.t === 'escort') {
@@ -812,14 +829,14 @@ export function command(g, slot, cmd) {
     }
   } else if (cmd.t === 'dig') {
     // one squad builds a field fortification (FORTS) across its line of approach
-    const kind = cmd.kind ?? 'trench', f = Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
+    const kind = cmd.kind ?? 'trench', f = typeof kind === 'string' && Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
     const u = mine(ids[0]), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), p = g.players[slot];
     if (!f || !u || !CFG.fortBuilders.includes(u.type) || u.retreating || x === null || z === null || p.mp < f.cost) return;
     const cells = fortCells(g, f, x, z, angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2);
     if (!cells.length) return;
     p.mp -= f.cost;
     Object.assign(u, { dig: { x, z, cells, t: 0 }, attackId: 0, nade: null, repath: 0 });
-  } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
+  } else if (cmd.t === 'support' && typeof cmd.kind === 'string' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return;
     if (sp.unit && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) >= popCap(g))) return;
@@ -867,13 +884,13 @@ export function command(g, slot, cmd) {
   } else if (cmd.t === 'rally') {
     const b = g.units.get(cmd.id), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
     if (b && b.owner === slot && UNITS[b.type].makes && x !== null && z !== null) b.rally = { x, z };
-  } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit) && canBuild(cmd.unit, g.players[slot].faction)) {
+  } else if (cmd.t === 'buy' && typeof cmd.unit === 'string' && Object.hasOwn(UNITS, cmd.unit) && canBuild(cmd.unit, g.players[slot].faction)) {
     const p = g.players[slot], def = UNITS[cmd.unit], classic = g.mode?.kind === 'classic';
     if (def.classic && !classic) return; // Engineers exist only in Classic
     const own = [...g.units.values()].filter(u => u.owner === slot);
     // Classic: training queues count toward the pop cap and the unit limit
     const queued = own.flatMap(b => b.queue ?? []);
-    const pop = own.filter(u => !UNITS[u.type].structure).length + queued.length;
+    const pop = popOf(g, slot);
     const have = own.filter(u => u.type === cmd.unit).length + queued.filter(t => t === cmd.unit).length;
     const price = priceOf(g, cmd.unit);
     if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop >= popCap(g) || have >= (def.max ?? Infinity)) return;
@@ -881,7 +898,7 @@ export function command(g, slot, cmd) {
     // queue it at the building asked for, else the one with the shortest queue
     if (g.mode.suddenDeath) return;
     const makers = own.filter(b => b.built >= 1 && UNITS[b.type].makes?.includes(cmd.unit) && b.queue.length < 5);
-    const b = makers.find(m => m.id === cmd.from) ?? makers.sort((a, c) => a.queue.length - c.queue.length)[0];
+    const b = Object.hasOwn(cmd, 'from') ? makers.find(m => m.id === cmd.from) : makers.sort((a, c) => a.queue.length - c.queue.length)[0];
     if (!b) return;
     p.mp -= price.mp; p.fuel -= price.fuel; b.queue.push(cmd.unit);
   }
@@ -965,19 +982,34 @@ function fire(g, u, t, moving) {
 
 function updateVision(g) {
   // shared vision: the whole team sees what any member sees (computed once per team)
-  const byTeam = new Map();
+  const byTeam = new Map(), ownByTeam = new Map(), list = [...g.units.values()];
+  for (const u of list) {
+    const team = g.players[u.owner].team;
+    if (!ownByTeam.has(team)) ownByTeam.set(team, []);
+    ownByTeam.get(team).push(u);
+  }
   for (const p of g.players) {
     if (byTeam.has(p.team)) { p.visible = byTeam.get(p.team); continue; }
-    const vis = new Set(), own = [...g.units.values()].filter(u => g.players[u.owner].team === p.team);
-    for (const t of g.units.values()) {
+    const vis = new Set(), own = ownByTeam.get(p.team) ?? [];
+    const sources = own.filter(u => !u.air || airborne(u)).map(u => {
+      const def = UNITS[u.type];
+      return { u, def, range: def.vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) };
+    });
+    const recon = g.strikes.filter(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team);
+    for (const t of list) {
       if (g.players[t.owner].team === p.team) continue;
       if (UNITS[t.type].structure && !UNITS[t.type].building) { vis.add(t.id); continue; }
-      if (t.air) { if (airborne(t) && own.some(u => (!u.air || airborne(u)) && dist(u, t) <= CFG.air.seeRange)) vis.add(t.id); continue; }
-      const aim = t.cells ? null : t;
+      if (t.air) { if (airborne(t) && sources.some(s => dist(s.u, t) <= CFG.air.seeRange)) vis.add(t.id); continue; }
       // camouflage: after 3s still and 4s without firing, only seen within camoRange (recon flights still spot it)
       const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
-      if (own.some(u => { const d = dist(u, t), at = aim ?? aimPoint(g, u, t); if (u.air) return airborne(u) && d <= UNITS[u.type].vision && (!hidden || d < CFG.camoRange * 2); if (hidden) return d < CFG.camoRange; return d < 6 || (UNITS[u.type].building && d <= UNITS[u.type].vision) || (d <= UNITS[u.type].vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) && los(g, u, at)); })
-        || g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === p.team && inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
+      let seen = false;
+      for (const { u, def, range } of sources) {
+        const d = dist(u, t);
+        if (u.air ? d <= def.vision && (!hidden || d < CFG.camoRange * 2)
+          : hidden ? d < CFG.camoRange
+            : d < 6 || (def.building && d <= def.vision) || (d <= range && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
+      }
+      if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
     byTeam.set(p.team, p.visible = vis);
     // Ghosts: every enemy building this team has seen stays remembered where it was, until the team sees the spot
@@ -986,7 +1018,7 @@ function updateVision(g) {
     const mem = (g.ghosts ??= new Map()).get(p.team) ?? new Map();
     g.ghosts.set(p.team, mem);
     for (const id of vis) { const t = g.units.get(id); if (UNITS[t.type].building) mem.set(id, { id, type: t.type, owner: t.owner, x: t.x, z: t.z, built: t.built }); }
-    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => dist(u, gh) <= UNITS[u.type].vision && (UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
+    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => (!u.air || airborne(u)) && dist(u, gh) <= UNITS[u.type].vision && (u.air || UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
   }
 }
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
@@ -997,7 +1029,7 @@ export const knownBuildings = (g, slot) => [...(g.ghosts?.get(g.players[slot].te
 // a bombing run drops part of its stick first, a recon flight ends early.
 function intercepted(g, s, list) {
   const team = g.players[s.owner].team, sp = SUPPORT[s.kind];
-  const cover = s.kind !== 'recon' && g.covers?.find(c => c.team !== team && dist(c, s) <= c.r);
+  const cover = s.kind !== 'recon' && g.covers?.find(c => c.t > 0 && c.team !== team && dist(c, s) <= c.r);
   let down = !!cover;
   if (cover) cover.t = 0;
   for (const u of list) {
@@ -1054,7 +1086,7 @@ function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
     g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: u.hp <= 0 });
   }
   // anyone on a bridge that drops into the river goes with it
-  if (TERRAIN[into] & MOVE) for (const u of list) if (u.hp > 0 && cellOf(g, u.x, u.z) === c) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); }
+  if (TERRAIN[into] & MOVE) for (const u of list) if (u.hp > 0 && !u.air && cellOf(g, u.x, u.z) === c) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); }
 }
 
 export function step(g) {
@@ -1065,6 +1097,7 @@ export function step(g) {
 
   const crews = new Map(); // construction site id -> engineers working on it this tick
   for (const u of g.units.values()) {
+    if (u.hp <= 0) continue;
     const def = UNITS[u.type], w = def.w, sm = suppMul(u);
     if (def.building) { if (u.queue?.length && u.built >= 1 && !g.mode.suddenDeath) train(g, u, dt); continue; }
     if (def.air) { stepPlane(g, u, dt); continue; }
@@ -1167,7 +1200,7 @@ export function step(g) {
       }
       continue;
     }
-    if (!u.attackId && (u.retarget <= 0 || !canShoot(g, u, g.units.get(u.targetId)))) { u.targetId = pickTarget(g, u); u.retarget = 0.5; }
+    if (!u.attackId && (u.retarget <= 0 || (u.targetId && !canShoot(g, u, g.units.get(u.targetId))))) { u.targetId = pickTarget(g, u); u.retarget = 0.5; }
     const t = g.units.get(u.targetId);
     if (t && canShoot(g, u, t)) {
       u.aim = Math.atan2(t.z - u.z, t.x - u.x);
@@ -1189,17 +1222,27 @@ export function step(g) {
   }
 
   // soft separation; never push a unit into a blocked cell
-  const list = [...g.units.values()];
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
-    const a = list[i], b = list[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
-    if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air) continue;
-    const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
-    if (d >= min || d === 0) continue;
-    const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
-    if (sa && sb) continue;
-    const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+  const list = [], ground = [], radii = [], structures = [];
+  for (const u of g.units.values()) {
+    list.push(u);
+    if (u.air || u.garrison >= 0) continue;
+    ground.push(u); radii.push(UNITS[u.type].radius); structures.push(UNITS[u.type].structure);
+  }
+  for (let i = 0; i < ground.length; i++) {
+    const a = ground[i], radius = radii[i], sa = structures[i];
+    for (let j = i + 1; j < ground.length; j++) {
+      const b = ground[j], sb = structures[j];
+      if (sa && sb) continue;
+      const min = (radius + radii[j]) * 0.8, dx = b.x - a.x;
+      if (Math.abs(dx) >= min) continue;
+      const dz = b.z - a.z;
+      if (Math.abs(dz) >= min) continue;
+      const d = Math.hypot(dx, dz);
+      if (d >= min || d === 0) continue;
+      const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
+      if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+      if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    }
   }
 
   // grenades: hurt everyone in the blast (friendly fire included), cover doesn't help
@@ -1233,8 +1276,11 @@ export function step(g) {
         const c = cellOf(g, s.x, s.z); if (c >= 0 && g.chars[c] === '.') setCell(g, c, '+');
         digAt(g, s, sp.dig);
       } else if (s.kind === 'para') {
-        if (popOf(g, s.owner) < popCap(g)) { const u = spawnUnit(g, s.owner, sp.unit); Object.assign(u, cellCenter(g, nearestFree(g, s.x, s.z))); g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true }); }
-      } else if (s.kind === 'cover') (g.covers ??= []).push({ team: g.players[s.owner].team, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
+        if (!g.players[s.owner].out && popOf(g, s.owner) < popCap(g)) { const u = spawnUnit(g, s.owner, sp.unit); Object.assign(u, cellCenter(g, nearestFree(g, s.x, s.z))); g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true }); }
+      } else if (s.kind === 'cover') {
+        (g.covers ??= []).push({ team: g.players[s.owner].team, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
+        s.left = 0;
+      }
     }
     if (s.kind === 'recon') s.left -= dt;
     else if (s.kind === 'smoke') {
@@ -1398,10 +1444,35 @@ function planOf(g, u) {
   return end ? [1, end.x, end.z] : [0, 0, 0];
 }
 
+// Terrain remembers the last version each player saw. Building footprints catch up when discovered again.
+export function terrainFor(g, slot, full = false) {
+  const p = g.players[slot], memory = p.terrainMemory ??= new Map();
+  const pending = p.terrainPending ??= new Set(g.cellLog.keys());
+  if (!pending.size) return full ? [...memory.values()] : [];
+  const changes = [], visible = new Map();
+  // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
+  for (const index of [...pending].sort((a, b) => a - b)) {
+    const cell = g.cellLog[index], [c, ch, height] = cell, old = memory.get(c);
+    if (old && old[1] === ch && old[2] === height) { pending.delete(index); continue; }
+    const building = g.buildingCells?.get(c);
+    if (building) {
+      if (!visible.has(building)) visible.set(building, allied(g, building.owner, slot)
+        || (g.units.has(building.id) ? p.visible.has(building.id) : teamSees(g, p.team, building)));
+      if (!visible.get(building)) continue;
+    }
+    pending.delete(index);
+    const known = [...cell]; memory.set(c, known); changes.push(known);
+  }
+  return full ? [...memory.values()] : changes;
+}
+
 // What one player is allowed to know: own units + enemies they can see. Fog is enforced here.
 export function snapshotFor(g, slot, shots, cells = []) {
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
-  const seen = (id) => allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
+  const seen = (id) => {
+    const u = g.units.get(id);
+    return allied(g, u?.owner ?? -1, slot) || (p.visible.has(id) && (!u?.air || airborne(u)));
+  };
   return {
     t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
     nodes: g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: g.players.map(q => !!q.out),
@@ -1427,7 +1498,13 @@ export function snapshotFor(g, slot, shots, cells = []) {
     sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, Math.max(0, Math.ceil(p.sup[k]))])),
     points: g.points.map(q => [q.owner, q.capper, r(q.progress)]),
     vp: g.players.map(q => Math.floor(q.vp)),
-    cells,
-    shots: shots.filter(s => s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || p.visible.has(s.f) || p.visible.has(s.t)),
+    cells: terrainFor(g, slot),
+    shots: shots.filter(s => s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || seen(s.f) || seen(s.t))
+      .map(s => {
+        const shot = { ...s };
+        if (s.f && !seen(s.f)) delete shot.f;
+        if (s.t && !seen(s.t)) delete shot.t;
+        return shot;
+      }),
   };
 }
