@@ -1106,6 +1106,81 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   }
 }
 
+// Autocast, the other abilities: each has its own reason to fire (the cooldown starting is the sign), judged from what the
+// unit's side can see. Enemies here have autocast off and never shoot, so only the unit under test acts.
+{
+  const wide = Array(20).fill('.'.repeat(60));
+  const rich = (g) => { g.players.forEach(p => (p.mp = 5000)); return g; };
+  const setup = (n = 2) => rich(fresh(wide, n));
+  const within = (g, secs, done) => { for (let i = 0; i < secs * 20; i++) { step(g); if (done()) return true; } return false; };
+  const foe = (g, type, x, z) => { const u = put(g, 1, type, x, z); u.auto = false; u.cooldown = 1e9; return u; };
+  const crowd = (g, xs) => xs.forEach(x => foe(g, 'rifle', x, 21 + (x % 2)));
+
+  // Suppressive Fire: for a squad advancing on the MG, not one walking away
+  {
+    const g = setup(), mg = put(g, 0, 'mg', 20, 21), e = foe(g, 'rifle', 45, 21); mg.still = 5; // set up
+    command(g, 1, { t: 'move', orders: [[e.id, 22, 21]] });
+    assert.ok(within(g, 2, () => mg.cd > 0 && mg.buff > 0), 'the MG suppresses a squad coming at it');
+    const h = setup(), mg2 = put(h, 0, 'mg', 20, 21), away = foe(h, 'rifle', 40, 21); mg2.still = 5;
+    command(h, 1, { t: 'move', orders: [[away.id, 58, 21]] });
+    assert.ok(!within(h, 3, () => mg2.cd > 0), 'no Suppressive Fire at a squad walking away');
+  }
+  // AP round: for a vehicle it is shooting at, not for infantry
+  {
+    const g = setup(), at = put(g, 0, 'at', 20, 21); at.still = 5; foe(g, 'tank', 50, 21);
+    assert.ok(within(g, 2, () => at.cd > 0), 'the AT gun loads AP against a tank');
+    const h = setup(), at2 = put(h, 0, 'at', 20, 21); at2.still = 5; foe(h, 'rifle', 40, 21);
+    assert.ok(!within(h, 2, () => at2.cd > 0), 'no AP round against infantry');
+  }
+  // smoke: only a badly hurt tank that was just hit by anti-tank fire
+  {
+    const smokeAfter = (hp, hit) => {
+      const g = setup(), tk = put(g, 0, 'tank', 20, 21); tk.hp = hp; if (hit) tk.atHit = g.tick;
+      return within(g, 1, () => g.smokes.length > 0 && tk.cd > 0);
+    };
+    assert.equal(smokeAfter(100, true), true, 'a hurt tank under anti-tank fire pops smoke');
+    assert.equal(smokeAfter(300, true), false, 'a healthy tank does not');
+    assert.equal(smokeAfter(100, false), false, 'a hurt tank nobody is hitting does not');
+  }
+  // barrage: a crowd it can see, never over its own troops, never at what its side cannot see
+  {
+    const spotter = (g, x) => { put(g, 0, 'rifle', x, 21).auto = false; };
+    for (const type of ['rocket', 'mortar']) {
+      const g = setup(), gun = put(g, 0, type, 20, 21); gun.still = 5; crowd(g, [46, 47, 48]); spotter(g, 30);
+      assert.ok(within(g, 2, () => gun.cd > 0), `${type}: a crowd of three it can see gets a barrage`);
+    }
+    const near = setup(), r1 = put(near, 0, 'rocket', 20, 21); crowd(near, [50, 51, 52]); spotter(near, 45);
+    assert.ok(!within(near, 2, () => r1.cd > 0), 'a friendly squad inside the blast stops it');
+    const hidden = setup(), r2 = put(hidden, 0, 'rocket', 20, 21); crowd(hidden, [55, 56, 57]);
+    assert.ok(!within(hidden, 2, () => r2.cd > 0) && hidden.players[0].visible.size === 0, 'a crowd its side cannot see is left alone');
+    const two = setup(), r3 = put(two, 0, 'rocket', 20, 21); crowd(two, [50, 51]); spotter(two, 30);
+    assert.ok(!within(two, 2, () => r3.cd > 0), 'two in the open are not worth a barrage');
+  }
+  // Ura!: a pinned squad on the move, not one standing still
+  {
+    const g = setup(3), cs = put(g, 2, 'conscript', 20, 21); cs.supp = 70;
+    command(g, 2, { t: 'move', orders: [[cs.id, 50, 21]] });
+    assert.ok(within(g, 1, () => cs.sprint > 0), 'pinned conscripts on the move shout Ura!');
+    const h = setup(3), idle = put(h, 2, 'conscript', 20, 21);
+    assert.ok(!within(h, 1.5, () => { idle.supp = 70; return idle.sprint > 0; }), 'pinned but standing still: no Ura!');
+  }
+  // satchel: Rangers ordered to attack a squad in a house walk up and plant it once within 20 m (they stop to shoot at 26 m)
+  {
+    const rows = wide.map((row, z) => (z === 9 || z === 10 ? row.slice(0, 30) + 'BB' + row.slice(32) : row));
+    const planted = (auto) => {
+      const g = rich(fresh(rows)), e = foe(g, 'rifle', 75, 20);
+      command(g, 1, { t: 'garrison', ids: [e.id], x: 63, z: 20 });
+      assert.ok(within(g, 20, () => e.garrison >= 0), 'the squad took the house');
+      const rg = put(g, 0, 'ranger', 82, 20); rg.auto = auto;
+      run(g, 0.5);
+      assert.equal(command(g, 0, { t: 'attack', ids: [rg.id], target: e.id }), undefined);
+      return within(g, 10, () => rg.cd > 0);
+    };
+    assert.equal(planted(true), true, 'the Rangers plant a satchel on the house they were told to attack');
+    assert.equal(planted(false), false, 'with autocast off they only shoot');
+  }
+}
+
 // Fuel (Classic): contested depots and the HQ pay Fuel; vehicles need it. New units: camouflaged sniper, mortar barrage.
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));

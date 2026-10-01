@@ -125,7 +125,10 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   - Tank smoke: the tank is below half health and took an anti-tank hit in the last 3 s.
   - Rocket or mortar barrage: a spot with 3+ visible enemies in one blast area, or anyone dug in (house, trench,
     bunker); the most crowded or dug-in spot wins.
-  - Satchel: the house or bunker the Ranger squad was ordered to attack, once within 20 m.
+  - Satchel: the house or bunker the Ranger squad was ordered to attack, once within 20 m. An attack order stops the
+    squad at its weapon range (26 m), so this fires in close fights, not when Rangers are sent at a house from afar.
+    Open question: raise the reach to 26 m so a Ranger sent at a house or bunker always runs in and plants it
+    (it would also send Rangers into a bunker's machine gun for little damage), then re-run the balance check.
   - Ura!: the squad is pinned (suppression 50+) while moving.
   Aimed abilities (grenade, barrage, satchel) skip spots where the blast would also hit a friendly unit.
 - It goes through the same ability command as a player's click, so cooldowns, Munitions and the usual checks apply.
