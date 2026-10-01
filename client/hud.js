@@ -90,7 +90,7 @@ export const icon = (k) => `<svg class="ico" viewBox="0 0 32 32" aria-hidden="tr
 // ---------- the HUD ----------
 
 // ctx: state getters (me, teams, names, units, selected, PRIORITY) and helpers/actions from main.js:
-// look, facOf, color, classic, send, blip, retreat, stop, amove, dig, build, ability, support, fType, builders, owns, canPlace, select
+// look, facOf, color, classic, send, blip, retreat, stop, amove, rally, dig, build, ability, support, fType, builders, owns, canPlace, select
 export function createHud(ctx) {
   let snapshot = null;
   const tooltips = installTooltips($('hud'));
@@ -324,6 +324,14 @@ export function createHud(ctx) {
     card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { const action = { t: 'buy', unit: b.dataset.unit }; attempt(action, () => { ctx.send(action); ctx.blip('recruit'); }); }));
   }
   function drawRecruit(s, pop, cap) {
+    const card = $('buy');
+    if (!card.querySelector('[data-rally]')) {
+      const b = document.createElement('button');
+      b.dataset.rally = ''; b.title = `Rally (${label('rally')}): choose where new recruits gather`;
+      b.innerHTML = `Rally <kbd>${label('rally')}</kbd>`;
+      Object.assign(b.style, { position: 'absolute', right: '8px', bottom: 'calc(100% + 6px)', padding: '4px 8px', font: '13px var(--type)', background: 'var(--strip)' });
+      b.onclick = () => ctx.rally(); card.append(b);
+    }
     for (const b of $('buy').querySelectorAll('[data-unit]')) {
       const broke = s.mp < UNITS[b.dataset.unit].cost;
       setAvailability(b, check({ t: 'buy', unit: b.dataset.unit }));

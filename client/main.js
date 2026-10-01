@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { bindings, match } from './keys.js';
 import { createSelection } from './selection.js';
+import { createOrders } from './orders.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck } from '/shared/sim.js';
@@ -837,7 +838,8 @@ function applySnapshot(s) {
     seen.add(id);
     let v = units.get(id);
     if (!v) { v = makeUnit(id, type, owner); Object.assign(v, { x, z, rot, aim }); units.set(id, v); }
-    Object.assign(v, { tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1 });
+    Object.assign(v, { owner, tx: x, tz: z, trot: rot, taim: aim, hp, supp, tgt, cover, cd, flags, vet: stars || 0, garr: !!(flags & 32), built: built ?? 1, plan: null, orders: [] });
+    if (owner !== me) { v.rally = null; v.queue = []; }
     if (v.body) v.body.scale.y = 0.15 + 0.85 * v.built; // a construction site rises as it's built
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
@@ -889,6 +891,10 @@ function applySnapshot(s) {
   }
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
+  for (const [id, n, ...points] of s.orders ?? []) {
+    const v = units.get(id); if (v?.owner !== me) continue;
+    for (let i = 0; i < n && i * 3 + 2 < points.length; i++) v.orders.push({ kind: points[i * 3], x: points[i * 3 + 1], z: points[i * 3 + 2] });
+  }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
   coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
@@ -947,7 +953,7 @@ function aimShape(kind, color) {
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
   if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
   else if (SUPPORT[kind]?.point) { const r = SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4; g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64))); }
-  else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove') {
+  else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally') {
     const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
     g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
   } else {
@@ -1036,7 +1042,7 @@ function placementView() {
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
-  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'),
+  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -1062,7 +1068,8 @@ const plans = planLayer(hAt);
 function drawPlans() {
   if (!world) return;
   if (plans.group.parent !== world) world.add(plans.group);
-  plans.draw(selected, units);
+  const rally = lastSnap?.rally;
+  plans.draw(selected, units, rally ? { x: rally[0], z: rally[1] } : null);
 }
 
 // Engineers put Supply Depots on resource nodes: J, then click near a node
@@ -1124,8 +1131,20 @@ function cancelAim() { feedback.reset(); targeting = null; aimedUnit = null; aim
 function setAim(kind, unit = null) {
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
-  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move' }[kind] ?? 'Click to set the center';
+  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
   $('hint').textContent += ' · right-click cancels';
+}
+function startRally() {
+  if (!lastSnap) return;
+  if (classicMode() && ![...selected].some(id => { const v = units.get(id); return v?.owner === me && UNITS[v.type].makes?.length; })) {
+    $('hint').textContent = 'Select a Production Building to set its rally'; return;
+  }
+  setAim('rally'); blip(620);
+}
+function rallyAt(g) {
+  const ids = classicMode() ? [...selected].filter(id => { const v = units.get(id); return v?.owner === me && UNITS[v.type].makes?.length; }) : [];
+  sendCmd({ t: 'rally', ...(ids.length ? { ids } : {}), x: g.x, z: g.z });
+  marker(g.x, g.z, 0x9dd0ff); blip(620); cancelAim();
 }
 // direction before the second click: planes fly out from home, trenches run across the squad's approach
 function defaultDir(kind, at) {
@@ -1165,12 +1184,10 @@ function formation(sel, g) {
     return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
   });
 }
-function moveTo(g, attack) {
-  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  if (!sel.length) return;
-  sendCmd({ t: attack ? 'amove' : 'move', orders: formation(sel, g) }); marker(g.x, g.z, attack ? 0xff9a40 : MOVE_COLOR); blip(attack ? 500 : 660);
-  bark(attack ? 'attack' : 'move');
-}
+const orders = createOrders({
+  units, selected, get me() { return me; }, defs: UNITS, formation, send: sendCmd, moveColor: MOVE_COLOR,
+  feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); },
+});
 
 // ---------- camera + input ----------
 
@@ -1206,7 +1223,7 @@ const actions = {
   retreat, ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
-  follow: followSelected, rally: () => {},
+  follow: followSelected, rally: startRally,
   home: () => {
     if (!home) return;
     rig.cancelFollow();
@@ -1281,6 +1298,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     const kind = targeting, g = groundAt(e.clientX, e.clientY);
     if (!g) { feedback.show(denySentence('blocked')); return; }
+    if (kind === 'rally') { rallyAt(g); return; }
     if (UNITS[kind]?.building) {
       if (explainUnavailable(available({ t: 'build', kind }))) return;
       const f = footAt(kind, g);
@@ -1292,17 +1310,18 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     }
     if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
-    if (kind === 'amove') { cancelAim(); moveTo(g, true); return; }
+    if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; $('hint').textContent = 'Move the mouse to rotate · click to launch'; blip(560); return; }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
     if (kind === 'dig') {
-      if (explainUnavailable(available({ t: 'dig', kind: fortKind }))) return;
+      // Shift queues the dig behind the squad's orders (paid when it starts) and keeps the placement armed
+      if (explainUnavailable(available({ t: 'dig', kind: fortKind, queue: e.shiftKey }))) return;
       const f = footAt(fortKind, c, dir);
       if (!f.ok) { feedback.show(denySentence(f.reason)); return; }
       const v = nearestDigger(c);
-      cancelAim();
-      if (v) { sendCmd({ t: 'dig', ids: [v.id], kind: fortKind, x: c.x, z: c.z, dir }); marker(c.x, c.z, 0xc8a060); blip(600); }
+      if (e.shiftKey) setAim('dig'); else cancelAim();
+      if (v) { sendCmd({ t: 'dig', ids: [v.id], kind: fortKind, x: c.x, z: c.z, dir, queue: e.shiftKey }); marker(c.x, c.z, 0xc8a060); blip(600); }
     } else {
       if (explainUnavailable(available({ t: 'support', kind }))) return;
       cancelAim(); sendCmd({ t: 'support', kind, x: c.x, z: c.z, dir }); blip(520);
@@ -1311,31 +1330,11 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
-  const enemy = pick(e.clientX, e.clientY, v => foe(v.owner));
-  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  if (sel.length && sel.every(v => UNITS[v.type].building)) {
-    const g = groundAt(e.clientX, e.clientY);
-    if (g) { for (const v of sel) sendCmd({ t: 'rally', id: v.id, x: g.x, z: g.z }); marker(g.x, g.z, 0x9dd0ff); blip(620); }
-    return;
-  }
-  const planes = sel.filter(v => isAir(v.type)), friend = planes.length && pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type));
-  if (friend && planes.length === sel.length) { sendCmd({ t: 'escort', ids: planes.map(v => v.id), target: friend.id }); marker(friend.x, friend.z, 0x9dd0ff); blip(600); return; }
-  const ownB = pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), eng = sel.filter(v => v.type === 'engineer');
-  if (ownB && eng.length && (ownB.built < 1 || ownB.hp < UNITS[ownB.type].hpPer)) { sendCmd({ t: 'assist', ids: eng.map(v => v.id), id: ownB.id }); marker(ownB.x, ownB.z, 0xe8c860); blip(600); return; }
-  if (enemy) { sendCmd({ t: 'attack', ids: sel.map(v => v.id), target: enemy.id }); marker(enemy.x, enemy.z, 0xff4030); blip(440); bark('attack'); return; }
-  // a house: squads go inside, tanks and rocket trucks shell it, anything else walks up to it
-  const house = houseAt(e.clientX, e.clientY);
-  if (house) {
-    const inf = sel.filter(v => UNITS[v.type].garrisons).map(v => v.id), guns = sel.filter(v => UNITS[v.type].w.shellTerrain || UNITS[v.type].w.salvo).map(v => v.id);
-    if (inf.length) sendCmd({ t: 'garrison', ids: inf, x: house.x, z: house.z });
-    if (guns.length) sendCmd({ t: 'fireat', ids: guns, x: house.x, z: house.z });
-    const rest = sel.filter(v => !inf.includes(v.id) && !guns.includes(v.id));
-    if (rest.length) sendCmd({ t: 'move', orders: formation(rest, house) });
-    marker(house.x, house.z, guns.length && !inf.length ? 0xff4030 : 0x9dd0ff); blip(560);
-    return;
-  }
-  const g = groundAt(e.clientX, e.clientY); if (!g) return;
-  moveTo(g, e.ctrlKey); // Ctrl + right-click = attack-move
+  orders.dispatch({
+    ground: groundAt(e.clientX, e.clientY), enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
+    friend: pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
+    building: pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), house: houseAt(e.clientX, e.clientY),
+  }, e);
 });
 
 // the house under the cursor (walls and roofs count), as the center of its cell
@@ -1395,6 +1394,16 @@ function mmToWorld(px, py) {
   const { W, S, r, f } = mmBasis(), a = (px - W / 2) / S, b = -(py - W / 2) / S;
   return { x: MW / 2 + r.x * a + f.x * b, z: MH / 2 + r.z * a + f.z * b };
 }
+function minimapCursor(g) {
+  const near = test => [...units.values()].filter(v => test(v) && Math.hypot(v.x - g.x, v.z - g.z) < 5 / mmBasis().S)
+    .sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0];
+  const x = Math.floor(g.x / CELL), z = Math.floor(g.z / CELL);
+  return {
+    ground: g, enemy: near(v => foe(v.owner)), friend: near(v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
+    building: near(v => !foe(v.owner) && UNITS[v.type].building),
+    house: terrain?.grid[z]?.[x] === 'B' ? { x: (x + 0.5) * CELL, z: (z + 0.5) * CELL } : null,
+  };
+}
 function drawMinimap() {
   const cv = $('minimap'), c = cv.getContext('2d');
   if (!terrain || !lastSnap) return;
@@ -1440,8 +1449,10 @@ function drawMinimap() {
     e.stopPropagation(); rig.cancelFollow();
     const p = at(e);
     if (e.button === 0 && e.altKey && !rig.intro) { e.preventDefault(); pings.send(p.x, p.z); return; }
+    if (targeting === 'rally') { if (e.button === 0) rallyAt(p); else if (e.button === 2) cancelAim(); return; }
+    if (targeting && e.button === 2) { cancelAim(); return; }
     if (e.button === 0) { mmDrag = true; cam.x = p.x; cam.z = p.z; }
-    else if (e.button === 2 && selected.size) moveTo(p, e.ctrlKey);
+    else if (e.button === 2 && selected.size && lastSnap) orders.dispatch(minimapCursor(p), e);
   });
   addEventListener('mousemove', (e) => { if (mmDrag && !(e.buttons & 1)) mmDrag = false; if (mmDrag) { rig.cancelFollow(); const p = at(e); cam.x = p.x; cam.z = p.z; } });
   addEventListener('blur', () => (mmDrag = false));

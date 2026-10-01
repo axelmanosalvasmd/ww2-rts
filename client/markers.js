@@ -377,8 +377,20 @@ export function planLayer(hAt) {
     arrow(batch, n, 1.5);
   }
 
-  function draw(selected, units) {
+  // a small flag sketched on the ground, with its pole rooted at the rally point
+  function flag(x, z) {
+    color(MOVE_COLOR, 0.95);
+    P.length = 4; P[0] = x; P[1] = z; P[2] = x; P[3] = z - 3.6;
+    stroke(solid, 2, 0.42, 0.06);
+    P.length = 8;
+    P[0] = x; P[1] = z - 3.6; P[2] = x + 2.4; P[3] = z - 2.8;
+    P[4] = x; P[5] = z - 2; P[6] = x; P[7] = z - 3.6;
+    stroke(solid, 4, 0.42, 0.06);
+  }
+
+  function draw(selected, units, rally = null) {
     solid.n = dashed.n = 0;
+    if (rally) flag(rally.x, rally.z);
     for (const id of selected) {
       const v = units.get(id);
       if (!v) continue;
@@ -387,7 +399,7 @@ export function planLayer(hAt) {
         color(MOVE_COLOR, 0.75);
         P.length = 4; P[0] = v.x; P[1] = v.z; P[2] = v.rally.x; P[3] = v.rally.z;
         leg(dashed, 2, fromR + 1, 1.5, 0.42);
-        color(MOVE_COLOR, 0.9); loop(solid, v.rally.x, v.rally.z, 1.1, 0.4);
+        flag(v.rally.x, v.rally.z);
       }
       // what it is shooting at right now (ordered or picked by itself), or the enemy it was told to attack
       const t = units.get(v.tgt) ?? (p?.kind === 4 ? { x: p.tx, z: p.tz, type: 'rifle' } : null);
@@ -409,6 +421,16 @@ export function planLayer(hAt) {
           color(hex, 0.75); leg(dashed, 2, 0, 1.5, 0.42);
         } else leg(solid, n, fromR, p.kind === 4 ? (onOrder ? tr : 2.7) + 0.3 : 1.5, 0.55);
         if (p.kind !== 4) { color(hex, 0.9); loop(solid, p.tx, p.tz, 1.1, 0.4); }
+      }
+      let qx = p?.kind ? p.tx : v.x, qz = p?.kind ? p.tz : v.z;
+      let qr = p?.kind ? 1.1 : fromR;
+      for (const order of v.orders ?? []) {
+        const hex = PLAN_COLORS[order.kind] ?? MOVE_COLOR;
+        color(hex, 0.7);
+        P.length = 4; P[0] = qx; P[1] = qz; P[2] = order.x; P[3] = order.z;
+        leg(dashed, 2, qr, 1.5, 0.42);
+        color(hex, 0.85); loop(solid, order.x, order.z, 1.1, 0.4);
+        qx = order.x; qz = order.z; qr = 1.1;
       }
       if (t) {
         if (!onOrder) {

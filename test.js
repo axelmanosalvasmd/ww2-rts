@@ -1665,6 +1665,340 @@ for (const f of readdirSync('maps')) {
   try { await roomLifecycleChecks(harness); }
   finally { await harness.close(); }
 }
+// Shift orders finish one task before starting the next, and ordinary orders replace the plan.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'move', queue: true, orders: [[u.id, 15, 5]] });
+  step(g);
+  assert.deepEqual(snapshotFor(g, 0, []).orders, [], 'an active order without waiting orders adds no snapshot row');
+  command(g, 0, { t: 'move', queue: true, orders: [[u.id, 27, 5]] });
+  command(g, 0, { t: 'amove', queue: true, orders: [[u.id, 27, 27]] });
+  assert.equal(u.orders.length, 2, 'the first Shift order starts on the next tick, with two waiting');
+  assert.equal(u.amove, null, 'queued attack-move does not interrupt movement');
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id), [u.id, 2, 1, 27, 5, 2, 27, 27], 'snapshot preserves waiting order sequence');
+  let passedFirst = false, passedSecond = false;
+  for (let i = 0; i < 20 * 15; i++) {
+    step(g);
+    if (Math.hypot(u.x - 15, u.z - 5) < 1) passedFirst = true;
+    if (u.amove) {
+      assert.ok(passedFirst, 'first move finished before attack-move');
+      assert.ok(Math.hypot(u.x - 27, u.z - 5) < 1 || passedSecond, 'second move finished before attack-move');
+      passedSecond = true;
+    }
+  }
+  assert.ok(passedFirst && passedSecond, 'both move destinations were visited in sequence');
+  assert.ok(Math.hypot(u.x - 27, u.z - 27) < 3, 'attack-move reaches the final destination');
+  assert.equal(u.orders.length, 0, 'finished orders leave the queue');
+  assert.deepEqual(snapshotFor(g, 0, []).orders, [], 'finished queues have no snapshot rows');
+  for (const replacement of ['move', 'stop', 'retreat']) {
+    command(g, 0, { t: 'move', orders: [[u.id, 5, 5]] });
+    command(g, 0, { t: 'amove', queue: true, orders: [[u.id, 5, 27]] });
+    assert.equal(u.orders.length, 1, 'an order is waiting before replacement');
+    command(g, 0, replacement === 'move' ? { t: 'move', orders: [[u.id, 35, 27]] } : { t: replacement, ids: [u.id], queue: true });
+    assert.equal(u.orders.length, 0, `${replacement} clears waiting orders`);
+  }
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 5]] });
+  for (let i = 0; i < 12; i++) command(g, 0, { t: 'move', queue: true, orders: [[u.id, 7 + i * 2, 15]] });
+  assert.equal(u.orders.length, 8, 'at most eight orders can wait');
+  assert.equal(u.orders.at(-1).x, 21, 'overflow leaves accepted orders unchanged');
+  assert.equal(command(g, 0, { t: 'move', queue: true, orders: [[u.id, 9, 9]] }), 'queueFull', 'a full order queue is refused with its reason');
+  assert.equal(command(g, 0, { t: 'orders', queue: true, commands: [{ t: 'move', orders: [[u.id, 9, 9]] }] }), 'queueFull', 'grouped orders report the refusal too');
+}
+
+// Queued digging spends MP when it starts, and an unaffordable task is skipped.
+{
+  const g = fresh(); g.players[0].mp = 1000;
+  const u = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'move', orders: [[u.id, 27, 5]] });
+  const mp = g.players[0].mp;
+  command(g, 0, { t: 'dig', ids: [u.id], queue: true, x: 27, z: 5, dir: 0 });
+  command(g, 0, { t: 'move', queue: true, orders: [[u.id, 27, 27]] });
+  assert.equal(g.players[0].mp, mp, 'waiting trench has not spent MP');
+  assert.equal(u.dig, null, 'waiting trench does not begin early');
+  let paid = false;
+  for (let i = 0; i < 20 * 8 && !u.dig; i++) {
+    const before = g.players[0].mp;
+    step(g);
+    if (u.dig) paid = before - g.players[0].mp > CFG.digCost - 1 && before - g.players[0].mp <= CFG.digCost;
+  }
+  assert.ok(u.dig && paid, 'trench is paid for on activation');
+  const cells = u.dig.cells.map(([c]) => c);
+  run(g, CFG.digCells * CFG.digTime + 8);
+  assert.ok(cells.every(c => g.chars[c] === 'T'), 'queued trench is finished');
+  assert.ok(Math.hypot(u.x - 27, u.z - 27) < 1, 'movement after the trench continues');
+
+  const poor = fresh(); poor.players[0].mp = 1000;
+  const r = put(poor, 0, 'rifle', 5, 5);
+  command(poor, 0, { t: 'move', orders: [[r.id, 7, 5]] });
+  command(poor, 0, { t: 'dig', ids: [r.id], queue: true, x: 7, z: 5, dir: 0 });
+  command(poor, 0, { t: 'move', queue: true, orders: [[r.id, 17, 5]] });
+  poor.players[0].mp = 0;
+  run(poor, 4);
+  assert.equal(r.dig, null, 'trench is dropped when its activation cannot be paid');
+  assert.ok(!poor.chars.includes('T'), 'unpaid task creates no trench cells');
+  assert.ok(Math.hypot(r.x - 17, r.z - 5) < 1, 'a skipped trench does not block the following move');
+  assert.equal(r.orders.length, 0, 'skipped and finished orders leave the queue');
+}
+
+// Queued targets remember their issued position without exposing movement under fog.
+{
+  const rows = Array(60).fill('.'.repeat(60));
+  const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
+  const u = put(g, 0, 'rifle', 5, 5), enemy = put(g, 1, 'rifle', 15, 5);
+  u.cooldown = enemy.cooldown = 100;
+  run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 27]] });
+  command(g, 0, { t: 'attack', ids: [u.id], target: enemy.id, queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 27, 27]], queue: true });
+  assert.deepEqual([u.orders[0].x, u.orders[0].z], [15, 5], 'attack saves the position visible when issued');
+  enemy.x = 19;
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id).slice(2, 5), [4, 19, 5], 'a currently visible queued target uses its current position');
+  enemy.x = enemy.z = 111;
+  run(g, 0.3);
+  assert.ok(!g.players[0].visible.has(enemy.id), 'target has left team vision');
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id).slice(2, 5), [4, 15, 5], 'hidden target stays at the recorded issued position');
+  run(g, 12);
+  assert.equal(u.attackId, 0, 'hidden target is skipped when its order starts');
+  assert.ok(Math.hypot(u.x - 27, u.z - 27) < 1, 'following move proceeds after the hidden target');
+
+  enemy.x = 35; enemy.z = 27; run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[u.id, 27, 39]] });
+  command(g, 0, { t: 'attack', ids: [u.id], target: enemy.id, queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 39, 39]], queue: true });
+  assert.equal(u.orders.length, 2, 'visible target is queued before disappearing');
+  g.units.delete(enemy.id);
+  run(g, 8);
+  assert.equal(u.attackId, 0, 'removed target is skipped when its order starts');
+  assert.ok(Math.hypot(u.x - 39, u.z - 39) < 1, 'following move proceeds after the removed target');
+}
+
+// Shared team vision reveals units, but waiting orders and recruit rallies stay personal.
+{
+  const g = createGame(blank(Array(60).fill('.'.repeat(60))), ['a', 'b', 'c'], false, [0, 0, 1]);
+  g.units.clear(); g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  const own = put(g, 0, 'rifle', 5, 5), ally = put(g, 1, 'rifle', 11, 5), enemy = put(g, 2, 'rifle', 19, 5);
+  for (const u of [own, ally, enemy]) {
+    u.cooldown = 100;
+    command(g, u.owner, { t: 'move', orders: [[u.id, u.x, 27]] });
+    command(g, u.owner, { t: 'amove', queue: true, orders: [[u.id, u.x, 39]] });
+  }
+  command(g, 0, { t: 'rally', x: 51, z: 51 });
+  command(g, 1, { t: 'rally', x: 61, z: 61 });
+  command(g, 2, { t: 'rally', x: 71, z: 71 });
+  run(g, 0.3);
+  for (const slot of [0, 1, 2]) {
+    const snap = snapshotFor(g, slot, []), id = [own, ally, enemy][slot].id;
+    assert.deepEqual(snap.orders.map(q => q[0]), [id], 'snapshot contains only the receiving player\'s waiting orders');
+    assert.deepEqual(snap.rally, [51 + slot * 10, 51 + slot * 10], 'snapshot contains only the receiving player\'s recruit rally');
+  }
+  assert.ok(snapshotFor(g, 0, []).units.some(q => q[0] === ally.id), 'ally is visible despite its private orders');
+  ally.x = 63; ally.z = 65; enemy.x = enemy.z = 65;
+  command(g, 1, { t: 'stop', ids: [ally.id] });
+  command(g, 2, { t: 'stop', ids: [enemy.id] });
+  run(g, 0.3);
+  assert.ok(Math.hypot(own.x - enemy.x, own.z - enemy.z) > UNITS.rifle.vision, 'queued target is outside the ordering squad\'s vision');
+  command(g, 0, { t: 'attack', ids: [own.id], target: enemy.id, queue: true });
+  enemy.x = 67;
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === own.id).slice(5, 8), [4, 67, 65], 'allied spotting updates a queued target for the whole team');
+}
+
+// Conquest and Assault recruits walk to a valid personal rally, with strict destination validation.
+{
+  const rows = Array(60).fill('.'.repeat(60)); rows[25] = '.'.repeat(25) + 'W' + '.'.repeat(34);
+  const map = { ...blank(rows), spawns: [{ x: 5, y: 5 }, { x: 50, y: 50 }] };
+  for (const mode of ['conquest', 'assault']) {
+    const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], mode === 'assault' ? { mode, defenderTeam: 1 } : {});
+    const p = g.players[0]; p.mp = 5000;
+    assert.equal(snapshotFor(g, 0, []).rally, null, `${mode} starts without a recruit rally`);
+    command(g, 0, { t: 'rally', x: 41, z: 41 });
+    assert.deepEqual(snapshotFor(g, 0, []).rally, [41, 41], `${mode} stores the personal recruit rally`);
+    for (const [x, z] of [[-1, 41], [120, 41], [41, 120], [NaN, 41], [51, 51]]) {
+      command(g, 0, { t: 'rally', x, z });
+      assert.deepEqual(snapshotFor(g, 0, []).rally, [41, 41], `${mode} rejects an invalid or impassable rally`);
+    }
+    command(g, 0, { t: 'buy', unit: 'rifle' });
+    const recruit = [...g.units.values()].at(-1);
+    assert.ok(recruit.path.length, `${mode} recruit immediately receives a route`);
+    assert.deepEqual(recruit.path.at(-1), { x: 41, z: 41 }, `${mode} recruit heads to the personal rally`);
+  }
+}
+
+// Recruit rallies leave purchased planes at base and deliberate drops at their landing point.
+{
+  const map = blank(Array(60).fill('.'.repeat(60)));
+  const g = createGame(map, ['a', 'b'], false); g.players[0].mp = 2000;
+  command(g, 0, { t: 'rally', x: 80, z: 80 });
+  for (const type of ['fighter', 'attacker']) command(g, 0, { t: 'buy', unit: type });
+  const planes = [...g.units.values()].filter(u => u.owner === 0 && u.air);
+  assert.deepEqual(planes.map(u => u.type), ['fighter', 'attacker'], 'both planes were recruited');
+  run(g, 4);
+  for (const plane of planes) {
+    assert.equal(plane.air.state, 'base', `${plane.type} waits at base despite the rally`);
+    assert.equal(plane.air.mission, null, `${plane.type} has no automatic mission`);
+    assert.equal(plane.air.fuel, CFG.air.station, `${plane.type} does not burn fuel`);
+  }
+
+  const drop = fresh(Array(60).fill('.'.repeat(60))); drop.players[0].mp = 1000;
+  drop.players[0].spawn = { x: 10, z: 10 };
+  const scout = put(drop, 0, 'rifle', 10, 10);
+  run(drop, 0.3);
+  command(drop, 0, { t: 'rally', x: 80, z: 80 });
+  command(drop, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
+  assert.equal(drop.strikes.length, 1, 'visible paradrop was accepted');
+  run(drop, SUPPORT.para.delay + 0.1);
+  const trooper = [...drop.units.values()].find(u => u.owner === 0 && u.type === 'rifle' && u !== scout);
+  assert.ok(trooper, 'paratroopers landed');
+  assert.deepEqual(trooper.path, [], 'paratroopers have no rally route');
+  assert.ok(Math.hypot(trooper.x - 20, trooper.z - 12) < 3, 'paratroopers landed at the chosen point');
+  const at = { x: trooper.x, z: trooper.z };
+  run(drop, 1);
+  assert.deepEqual({ x: trooper.x, z: trooper.z }, at, 'paratroopers stay at the drop point');
+}
+
+// Classic keeps training separate from unit orders, and Engineers finish queued field and building work.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }, { x: 5, y: 70 }], points: [{ x: 40, y: 40 }] };
+  const classic = (teams = [0, 1]) => createGame(map, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
+  const g = classic(), p = g.players[0]; p.mp = 5000;
+  const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer'), hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+  for (const u of [...g.units.values()]) if (!UNITS[u.type].structure && u !== eng) g.units.delete(u.id);
+  eng.x = eng.z = 71;
+  command(g, 0, { t: 'buy', unit: 'rifle', from: hq.id });
+  command(g, 0, { t: 'rally', id: hq.id, x: 41, z: 41 });
+  assert.deepEqual(hq.queue, ['rifle'], 'Classic training still uses the production queue');
+  assert.deepEqual(hq.rally, { x: 41, z: 41 }, 'Classic rally stays on the selected building');
+  assert.equal(snapshotFor(g, 0, []).rally, null, 'Classic has no personal recruit rally');
+  command(g, 0, { t: 'dig', ids: [eng.id], x: 71, z: 71, dir: 0 });
+  const firstCells = eng.dig.cells.map(([c]) => c);
+  command(g, 0, { t: 'dig', ids: [eng.id], queue: true, x: 87, z: 71, dir: 0 });
+  assert.equal(eng.orders.length, 1, 'second trench waits behind the first');
+  assert.deepEqual(hq.queue, ['rifle'], 'unit orders do not change production');
+  for (let i = 0; i < 20 * 20 && eng.dig?.x !== 87; i++) step(g);
+  assert.equal(eng.dig?.x, 87, 'Engineers start their second trench');
+  assert.ok(firstCells.every(c => g.chars[c] === 'T'), 'first trench is complete before the second starts');
+  const secondCells = eng.dig.cells.map(([c]) => c);
+  run(g, 12);
+  assert.ok(secondCells.every(c => g.chars[c] === 'T'), 'Engineers finish the second trench');
+  assert.equal(eng.orders.length, 0, 'both trench orders have finished');
+
+  eng.x = eng.z = 71; run(g, 0.3);
+  const mp = p.mp;
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 71, z: 83 });
+  const first = [...g.units.values()].at(-1);
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 91, z: 83, queue: true });
+  const second = [...g.units.values()].at(-1);
+  assert.ok(first.type === 'barracks' && second.type === 'barracks' && first.id !== second.id, 'both building sites are placed immediately');
+  assert.equal(p.mp, mp - 2 * UNITS.barracks.cost, 'both sites are paid for up front');
+  assert.equal(eng.build, first.id, 'first site remains the active work');
+  assert.equal(eng.orders.length, 1, 'work on the second site waits');
+  assert.equal(second.built, 0, 'queued site has not been constructed');
+  for (let i = 0; i < 20 * 65 && eng.build !== second.id; i++) step(g);
+  assert.equal(first.built, 1, 'first building finishes before work starts on the second');
+  assert.equal(eng.build, second.id, 'Engineers advance to the queued site');
+  run(g, 65);
+  assert.equal(second.built, 1, 'queued construction finishes');
+  first.hp -= 100;
+  command(g, 0, { t: 'move', orders: [[eng.id, 71, 101]] });
+  command(g, 0, { t: 'assist', ids: [eng.id], id: first.id, queue: true });
+  assert.equal(eng.build, 0, 'queued repair does not interrupt movement');
+  run(g, 35);
+  assert.equal(first.hp, UNITS.barracks.hpPer, 'queued assist repairs the damaged building');
+
+  const transfer = classic([0, 0, 1]);
+  const inherited = [...transfer.units.values()].find(u => u.owner === 1 && u.type === 'rifle');
+  command(transfer, 1, { t: 'move', orders: [[inherited.id, 71, 71]] });
+  command(transfer, 1, { t: 'amove', queue: true, orders: [[inherited.id, 91, 71]] });
+  assert.equal(inherited.orders.length, 1, 'eliminated player had a waiting order');
+  [...transfer.units.values()].find(u => u.owner === 1 && u.type === 'hq').hp = 0;
+  run(transfer, 0.1);
+  assert.ok(transfer.players[1].out && inherited.owner === 0, 'surviving teammate receives the army');
+  assert.equal(inherited.orders.length, 0, 'ownership transfer clears waiting orders');
+}
+// Compound clicks preserve the outer queue choice and validate each unit and building owner.
+{
+  const map = { ...blank(Array(60).fill('.'.repeat(60))), spawns: [{ x: 5, y: 5 }, { x: 50, y: 50 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const own = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle'), foreign = [...g.units.values()].find(u => u.owner === 1 && u.type === 'rifle');
+  const ownHq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq'), foreignHq = [...g.units.values()].find(u => u.owner === 1 && u.type === 'hq');
+  command(g, 0, { t: 'move', orders: [[own.id, 41, 41]] });
+  command(g, 1, { t: 'move', orders: [[foreign.id, 81, 81]] });
+  const ownRoute = own.path.map(p => ({ ...p })), foreignRoute = foreign.path.map(p => ({ ...p }));
+  command(g, 0, { t: 'orders', queue: true, commands: [
+    { t: 'move', queue: false, slot: 1, orders: [[own.id, 41, 61], [foreign.id, 41, 61]] },
+    { t: 'rally', ids: [ownHq.id, foreignHq.id], x: 61, z: 61 },
+  ] });
+  assert.deepEqual(own.path, ownRoute, 'compound Shift move preserves the active route');
+  assert.deepEqual(own.orders.map(o => [o.t, o.x, o.z]), [['move', 41, 61]], 'outer queue choice overrides the leaf choice');
+  assert.deepEqual(ownHq.rally, { x: 61, z: 61 }, 'compound click sets the owned building rally immediately');
+  assert.deepEqual(foreign.path, foreignRoute, 'compound move cannot redirect another player\'s squad');
+  assert.equal(foreign.orders.length, 0, 'compound move cannot queue another player\'s squad');
+  assert.equal(foreignHq.rally, null, 'compound rally cannot change another player\'s building');
+  command(g, 0, { t: 'orders', queue: false, commands: [
+    { t: 'amove', queue: true, orders: [[own.id, 61, 41]] },
+    { t: 'rally', id: ownHq.id, x: 71, z: 71 },
+  ] });
+  assert.equal(own.orders.length, 0, 'ordinary compound move replaces waiting orders despite the leaf queue flag');
+  assert.deepEqual(own.amove, { x: 61, z: 41 }, 'ordinary compound attack-move starts immediately');
+  assert.deepEqual(ownHq.rally, { x: 71, z: 71 }, 'ordinary compound click updates its building rally');
+}
+
+// Queued house entry completes before a move exits, while an ordinary exit replaces waiting orders.
+{
+  const rows = [...empty]; rows[10] = '.'.repeat(9) + 'BB' + '.'.repeat(9);
+  const g = fresh(rows); g.players[0].mp = 1000;
+  const u = put(g, 0, 'rifle', 5, 5);
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 17]] });
+  command(g, 0, { t: 'garrison', ids: [u.id], x: 19, z: 21, queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 31, 31]], queue: true });
+  assert.deepEqual(snapshotFor(g, 0, []).orders.find(q => q[0] === u.id), [u.id, 2, 9, 19, 21, 1, 31, 31], 'snapshot retains the house entry before its exit move');
+  let passedMove = false;
+  for (let i = 0; i < 20 * 12 && u.garrison < 0; i++) {
+    step(g);
+    if (Math.hypot(u.x - 5, u.z - 17) < 1) passedMove = true;
+  }
+  assert.ok(passedMove && u.garrison >= 0, 'squad visits the first waypoint and enters the queued house');
+  assert.equal(u.orders.length, 1, 'exit move waits until house entry is complete');
+  run(g, 6);
+  assert.equal(u.garrison, -1, 'queued move exits the house');
+  assert.ok(Math.hypot(u.x - 31, u.z - 31) < 1, 'queued exit move reaches its destination');
+  command(g, 0, { t: 'garrison', ids: [u.id], x: 19, z: 21 });
+  run(g, 8);
+  assert.ok(u.garrison >= 0, 'squad is back inside before an ordinary exit');
+  command(g, 0, { t: 'move', orders: [[u.id, 31, 5]], queue: true });
+  command(g, 0, { t: 'amove', orders: [[u.id, 35, 5]], queue: true });
+  command(g, 0, { t: 'move', orders: [[u.id, 5, 31]] });
+  assert.equal(u.garrison, -1, 'ordinary move exits immediately');
+  assert.equal(u.orders.length, 0, 'ordinary exit clears waiting orders');
+  run(g, 6);
+  assert.ok(Math.hypot(u.x - 5, u.z - 31) < 1, 'ordinary exit reaches its replacement destination');
+}
+
+// A full Engineer order queue cannot leave a paid Construction Site without assigned work.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }], points: [{ x: 40, y: 40 }] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  g.players[0].mp = 5000; eng.x = eng.z = 71;
+  run(g, 0.3);
+  command(g, 0, { t: 'move', orders: [[eng.id, 71, 101]] });
+  for (let i = 0; i < 8; i++) command(g, 0, { t: 'move', orders: [[eng.id, 73 + i * 2, 101]], queue: true });
+  assert.equal(eng.orders.length, 8, 'Engineer queue is full before construction');
+  const mp = g.players[0].mp, count = g.units.size, nextId = g.nextId, terrain = g.chars.join('');
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 91, z: 83, queue: true });
+  assert.equal(g.players[0].mp, mp, 'rejected queued construction spends no MP');
+  assert.equal(g.units.size, count, 'rejected queued construction places no site');
+  assert.equal(g.nextId, nextId, 'rejected queued construction creates no discarded building');
+  assert.equal(g.chars.join(''), terrain, 'rejected queued construction stamps no terrain');
+  assert.equal(eng.orders.length, 8, 'rejected construction preserves accepted waiting orders');
+  // The same placement must work once the Engineer has queue space.
+  command(g, 0, { t: 'stop', ids: [eng.id] });
+  command(g, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: 91, z: 83, queue: true });
+  const site = [...g.units.values()].at(-1);
+  assert.ok(site.type === 'barracks' && site.built === 0, 'the rejected site position was valid');
+  assert.equal(g.players[0].mp, mp - UNITS.barracks.cost, 'accepted construction pays exactly once');
+  assert.equal(eng.orders[0].id, site.id, 'accepted site has an assigned queued Engineer');
+}
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and

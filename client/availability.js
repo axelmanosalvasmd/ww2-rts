@@ -70,7 +70,7 @@ export function availability(s, cfg = CFG, action = {}) {
     const crew = selected.filter((v) => cfg.fortBuilders.includes(v.type));
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
     if (crew.every((v) => v.flags & 1)) return no(DENY_SENTENCES.retreating);
-    return resources(s, FORTS[action.kind].cost);
+    return action.queue ? yes() : resources(s, FORTS[action.kind].cost); // a queued dig is paid when it starts
   }
   if (action.t === 'ability') {
     const crew = selected.filter((v) => v.type === action.unit);
