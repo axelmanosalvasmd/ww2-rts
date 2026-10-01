@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Miniatures (round 6):
+  - Soldiers stand on small dark-green painted bases like tabletop miniatures (the base stays flat when they crouch,
+    lie down or fall back), wear warmer faction uniforms (olive drab, field grey, khaki) and have a lighter crown on
+    their helmets. The base is part of each soldier's single mesh, so draw calls do not grow.
+  - Hills read more clearly from above: each height level makes the ground a little lighter and drier (about 10 to
+    13% per level, up to three levels), and a thin light rim traces hill crests.
+  - Left for later: the bases were not confirmed close up in a screenshot. The early combat test ("rifle took damage"
+    within 5 s of an MG opening fire) failed once in two runs; it depends on random hits and was not changed here.
 - Polish (round 5):
   - Your HQ is framed between the top panels and the recruit bar at match start, on H and after the opening glide,
     and fully zoomed out the whole board fits on screen, centered with a small table margin. HQ rings and sandbags no
