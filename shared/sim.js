@@ -25,7 +25,9 @@ export const CFG = {
   levelHeight: 2.5, minLevel: -2, maxLevel: 4, eye: 1.6, highGroundAcc: 0.15, highGroundVision: 0.1,
   startForce: ['rifle', 'rifle', 'mg'],
   // Classic mode: build a base. MP from an HQ trickle plus Supply Depots on resource nodes, Munitions from points.
-  classic: { time: 1500, mpStart: 200, trickle: 2, depotInc: 1.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
+  // depots pay per node: safe home nodes less than the contested ones by the villages. upkeep: each fielded unit costs
+  // this share of its price per second, off the income (never below minInc)
+  classic: { time: 1500, mpStart: 200, trickle: 2, homeRate: 1.5, contestedRate: 2.5, upkeep: 0.0008, minInc: 0.5, munPerVp: 1.5, startForce: ['engineer', 'rifle'], buildReach: 2.5, crew: 0.72, repair: 0.005, smallArms: 0.25,
     // a bigger army than Conquest (the economy grows), and Sudden Death: Production Buildings lose decay x max hp per second
     popCap: 20, decay: 0.01,
     // adaptive AI: attack a base only with an army worth this much more than the enemy it saw in the last window seconds
@@ -299,13 +301,13 @@ function setupClassic(g) {
   const want = [];
   for (const p of g.players) {
     const a = Math.atan2(cz - p.spawn.z, cx - p.spawn.x);
-    for (const side of [-1, 1]) want.push({ x: p.spawn.x + Math.cos(a + side * 1.2) * 24, z: p.spawn.z + Math.sin(a + side * 1.2) * 24 });
+    for (const side of [-1, 1]) want.push({ x: p.spawn.x + Math.cos(a + side * 1.2) * 24, z: p.spawn.z + Math.sin(a + side * 1.2) * 24, rate: C.homeRate });
   }
-  for (const p of g.points) if (p.mp > 0) { const a = Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2; want.push({ x: p.x + Math.cos(a) * 14, z: p.z + Math.sin(a) * 14 }); }
+  for (const p of g.points) if (p.mp > 0) { const a = Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2; want.push({ x: p.x + Math.cos(a) * 14, z: p.z + Math.sin(a) * 14, rate: C.contestedRate }); }
   g.nodes = [];
   for (const w of want) {
     const c = findSite(g, w.x, w.z, 2, [...avoid, ...g.nodes.map(n => [n, 10])]);
-    if (c >= 0) g.nodes.push({ c, ...footCenter(g, c, 2), depot: 0 });
+    if (c >= 0) g.nodes.push({ c, ...footCenter(g, c, 2), depot: 0, rate: w.rate });
   }
 }
 // Where a unit retreats to: in Classic the nearest of its owner's finished Production Buildings, else the spawn
@@ -1071,8 +1073,10 @@ export function step(g) {
     if (!g.mode) pl.vp += held.reduce((a, p) => a + p.vp, 0) * dt * (pl.away ? 0 : 1);
     if (g.mode?.kind === 'classic') {
       // no catch-up: MP from the HQ trickle and finished depots, Munitions from every point the team holds
-      const C = CFG.classic, depots = list.filter(u => u.owner === pl.slot && u.type === 'depot' && u.built >= 1 && u.hp > 0).length;
-      pl.inc = pl.away || pl.out ? 0 : C.trickle + depots * C.depotInc;
+      const C = CFG.classic, own = list.filter(u => u.owner === pl.slot && u.hp > 0);
+      const depots = g.nodes.reduce((a, n) => { const d = g.units.get(n.depot); return a + (d && d.owner === pl.slot && d.built >= 1 && d.hp > 0 ? n.rate : 0); }, 0);
+      pl.upkeep = own.reduce((a, u) => a + (UNITS[u.type].structure ? 0 : UNITS[u.type].cost * C.upkeep), 0);
+      pl.inc = pl.away || pl.out ? 0 : Math.max(C.minInc, C.trickle + depots - pl.upkeep);
       pl.mp += pl.inc * dt;
       if (!pl.away && !pl.out) pl.mun += g.points.reduce((a, p) => a + (allied(g, p.owner, pl.slot) ? p.vp : 0), 0) * C.munPerVp * dt;
       continue;
@@ -1136,7 +1140,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
   const seen = (id) => allied(g, g.units.get(id)?.owner ?? -1, slot) || p.visible.has(id);
   return {
     t: 's', tick: g.tick, winner: g.winner, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun),
-    nodes: g.nodes?.map(n => [r(n.x), r(n.z)]), out: g.players.map(q => !!q.out),
+    nodes: g.nodes?.map(n => [r(n.x), r(n.z), n.rate]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: g.players.map(q => !!q.out),
     // your own units' orders, for drawing when selected: [id, kind, target x, target z, ...remaining waypoints x, z]
     // your Production Buildings: [id, training progress 0-1, rally x, rally z (or -1), ...queued unit types]
     queues: [...g.units.values()].filter(b => b.owner === slot && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),

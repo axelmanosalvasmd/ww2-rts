@@ -50,6 +50,12 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   50% (default), 61% (River Towns). 3v3 on Six Fronts runs (3 bunkers).
 - A map can reserve spawns for the defenders with `"defend": [spawn numbers]`; attackers get the rest. Without it,
   spawns are shuffled as usual.
+- Map pack (`tools/genmap-pack.js`): 5 assault maps with `defend`, 5 point-symmetric 2-side conquest maps (drawn with
+  a mirroring canvas, so every cell has its twin through the center) and 2 six-player rotational maps.
+  Cliffs are 2+ level steps; ramps are single-level cells cut through them. Hedges block sight, not movement.
+  AI 1v1 assault, attacker wins: Bocage 6/10, Monte Cassino 7/10, Stalingrad 4/10, Pegasus ~35/40, Seawall ~35/40
+  (runs swing 7-10/10 between identical configs). Defender income didn't move Pegasus/Seawall: bombs do most of the
+  bunker damage. Crossroads Village 1v1 by spawn: 15/9 over 24 (mirrored, so likely noise).
 - Hill 112 (80x110, `tools/genmap.js`): defenders on a level-4 plateau, attackers at level 0. On the upper slope
   the flanks are a 2-level cliff, so the climb funnels through a central ramp or narrow paths at the map edges.
   The AI defender only holds points within 70 m of home, which here is just the summit, so the summit's MP
@@ -85,7 +91,10 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   is eliminated, and the last team standing wins. No VP.
 - Sudden Death at 25:00: production and construction stop, and Production Buildings lose ~1% max hp/s (depots exempt).
   Repair is slower than decay. Last building standing wins; if the last ones fall in the same tick, it's a draw.
-- Economy: MP comes from an HQ trickle of 2/s plus 1.5/s per Supply Depot. Depots only go on Resource Nodes (one each).
+- Economy: MP comes from an HQ trickle of 2/s plus the node rate of each Supply Depot: 1.5/s on home nodes, 2.5/s on
+  the contested ones by the villages (so they're worth fighting for). Upkeep: each fielded unit costs 0.08% of its price
+  per second off the income (min 0.5/s). Doubling upkeep only lengthened games (20.2 min median) without curbing the
+  leader's MP banking at the pop cap, so it stays gentle; banking needs something to spend on. Depots only go on Resource Nodes (one each).
   No catch-up. Start: HQ, 1 Engineer, 1 rifle squad, 200 MP. Pop cap 20 in Classic (buildings excluded, queued units
   count): at 12 the leader sat at the cap banking thousands of MP and games stalled.
 - Resource Nodes: generated per match: 2 home nodes per spawn (~12 cells out, toward the flanks) and 1 beside each point

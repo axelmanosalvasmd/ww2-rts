@@ -254,7 +254,7 @@ function buildEconomy(g, slot, engineers, needArmor) {
     const fix = own.filter(b => b.built < 1 || b.hp < UNITS[b.type].hpPer * 0.7).sort((a, b) => d(u, a) - d(u, b))[0];
     if (fix && d(u, fix) < 60) { command(g, slot, { t: 'assist', ids: [u.id], id: fix.id }); continue; }
     if (next === 'depot') {
-      const pick = free.map(n => ({ n, i: g.nodes.indexOf(n) })).filter(({ i }) => !taken.has(i) || u.aiNode === i).sort((a, b) => d(u, a.n) - d(u, b.n))[0];
+      const pick = free.map(n => ({ n, i: g.nodes.indexOf(n) })).filter(({ i }) => !taken.has(i) || u.aiNode === i).sort((a, b) => d(u, a.n) - a.n.rate * 20 - (d(u, b.n) - b.n.rate * 20))[0]; // richer nodes are worth a walk
       if (!pick) continue;
       u.aiNode = pick.i; taken.add(pick.i);
       if (me.mp >= UNITS.depot.cost && teamSees(g, me.team, pick.n)) command(g, slot, { t: 'build', ids: [u.id], kind: 'depot', x: pick.n.x, z: pick.n.z });

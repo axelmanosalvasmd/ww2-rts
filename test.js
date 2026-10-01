@@ -1,6 +1,6 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createGame, step, command, los, findPath, validateMap, snapshotFor, inTrench, vet, spawnSlots, CFG, CELL, SUPPORT, UNITS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
@@ -620,7 +620,10 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   run(g, 25);
   assert.equal(site.built, 1, 'finished by one Engineer in about 20s');
   run(g, 0.2);
-  assert.equal(p.inc, CFG.classic.trickle + CFG.classic.depotInc, 'finished depot adds income');
+  const upkeep = [...g.units.values()].filter(u => u.owner === 0 && !u.cells).reduce((a, u) => a + UNITS[u.type].cost * CFG.classic.upkeep, 0);
+  assert.ok(Math.abs(p.inc - (CFG.classic.trickle + node.rate - upkeep)) < 1e-9, `finished depot adds its node's rate, minus upkeep (${p.inc})`);
+  assert.ok(g.nodes.some(n => n.rate === CFG.classic.contestedRate) && g.nodes.some(n => n.rate === CFG.classic.homeRate), 'home and richer contested nodes');
+  assert.ok(upkeep > 0 && p.upkeep === upkeep, 'fielded units cost upkeep');
   // supports cost Munitions, not MP
   const mp = p.mp; p.mun = 100;
   command(g, 0, { t: 'support', kind: 'recon', x: 50, z: 50 });
@@ -756,6 +759,16 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(g, 0, { t: 'attack', ids: [a.id], target: b.id });
   plans = snapshotFor(g, 0, []).plans;
   assert.deepEqual(plans[0].slice(1, 4), [4, b.x, b.z], 'locked onto the target it was ordered to attack');
+}
+
+// Every shipped map is valid, and every spawn can walk to every capture point and every other spawn.
+for (const f of readdirSync('maps')) {
+  const map = JSON.parse(readFileSync('maps/' + f, 'utf8'));
+  assert.equal(validateMap(map), null, f);
+  const g = createGame(map, ['a', 'b'], false), W = (p) => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL });
+  for (const s of map.spawns) for (const p of [...map.points, ...map.spawns]) {
+    if (p !== s) assert.ok(findPath(g, W(s), W(p)).length, `${f}: spawn ${s.x},${s.y} can reach ${p.x},${p.y}`);
+  }
 }
 
 // Real map loads for 3 players, all spawns start with their force.

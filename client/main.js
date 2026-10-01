@@ -229,7 +229,7 @@ function startGame(m) {
     ring.material.depthTest = prog.material.depthTest = false; ring.renderOrder = prog.renderOrder = 2; // stay visible on slopes
     const flagMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, side: THREE.DoubleSide });
     const flag = mesh(GEO.plane, flagMat, 2.2, 1.4, 1, 1.1, 7.2, 0);
-    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(p.vp > 1 ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`));
+    g.add(ring, prog, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0), flag, label(classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`)); // Classic: points pay Munitions
     world.add(g);
     return { g, ringMat, prog, progMat, flagMat };
   });
@@ -693,7 +693,7 @@ function applySnapshot(s) {
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
-  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z]) => { const m = nodeMark(x, z); world.add(m); return m; });
+  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate]) => { const m = nodeMark(x, z, rate); world.add(m); return m; });
 
   s.points.forEach(([owner, capper, progress], i) => {
     const p = points[i]; if (!p) return;
@@ -861,7 +861,7 @@ function updateHud(s) {
     b.disabled = cd > 0 || !(s[cur] >= cost);
     b.querySelector('span').textContent = cd > 0 ? `${cd}s` : `${cost} ${cur === 'mun' ? 'Mun' : 'MP'}`;
   });
-  $('income').textContent = `+${s.inc}/s · ${pop}/${popCap(s)} units`;
+  $('income').textContent = `+${s.inc}/s${s.upkeep ? ` (upkeep −${s.upkeep})` : ''} · ${pop}/${popCap(s)} units`;
   if (s.mode?.kind === 'classic') drawCard(s, pop);
   else $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= popCap(s)));
   $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
@@ -1007,10 +1007,12 @@ function applyGhosts(list) {
   }
   for (const [id, gv] of ghosts) if (!keep.has(id)) { world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
-function nodeMark(x, z) {
+function nodeMark(x, z, rate) {
   const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.8, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: 0xe8c860, transparent: true, opacity: 0.6, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.position.y = 0.25; m.renderOrder = 2; m.material.depthTest = false;
   g.add(m, mesh(GEO.box, mat(0x6e5836), 0.8, 0.6, 0.8, 0, 0.3, 0));
+  // what a depot here pays: the richer contested nodes are worth fighting for
+  const tag = label(`+${rate} MP/s`); tag.position.y = 3; tag.scale.multiplyScalar(0.6); g.add(tag);
   g.position.set(x, hAt(x, z), z);
   return g;
 }
