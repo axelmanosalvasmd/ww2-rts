@@ -24,6 +24,51 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   counts hidden neighbours of a visible target, and a hidden mine on a road still shifts vehicle routes (the road is cut
   in the terrain flags), all for players and AI alike.
 
+- Weather: the host picks it in the lobby (Map default, Clear, Fog, Rain, Mud, Snow or Random), and it changes how
+  the match plays for everyone. Ground fog cuts sight by 30%. Rain is the living ground's rain held on all match, on
+  ground soaked from the start: sight -20%, vehicles off the roads -20% (more on low ground), fords slower, smoke
+  thinner and fires put out. Mud is the living ground's soaked ground held all match: vehicles off the roads -20%
+  (more on low ground), fords slower, driven ground churning to mud sooner, and infantry -10%. Snow cuts sight by 10%
+  and slows infantry by 10% and vehicles by 15%. Roads are the map's roads and bridges. In Clear, Fog and Mud the
+  living ground's showers still come and go; in Snow it never rains. Planes and recon flights fly above it. Map
+  default follows the map: the Ardennes snows, and the misty river maps (Pegasus Bridge, The Polder, River Towns)
+  start in ground fog that lifts at 4:00. Random can lift its fog or turn its rain to mud partway through. Any change
+  is announced to everyone 10 seconds ahead in a quiet line under the score strip, which always says the weather and
+  what it does, and also tells of a passing shower or wet ground (it replaces the separate rain line). The board shows
+  it too: thicker haze and drifting fog banks, rain streaks on the wind with wet ground and puddle sheen (after a
+  shower too), mud along the roads and village streets, and snow falling and lying on open ground, on Low graphics as
+  well (with fewer drops). The AI waits for a bigger army before marching on a Classic base or an Assault bunker when
+  it can see less. Balance, measured before the living ground was merged (Rain was then its own rule at sight -15%),
+  AI vs AI on the default map:
+  Conquest (40 matches each) 2nd place ends at 0.59 / 0.63 / 0.62 / 0.62 of the winner's VP in Clear / Fog / Rain /
+  Snow, matches last 9.2 / 9.6 / 9.3 / 9.1 min, faction wins USA/GER/USSR 6/20/14, 14/15/11, 16/16/8, 15/13/12.
+  Classic (20 each) lasts 19.2 to 20.0 min, 14 to 17 of 20 are decided before Sudden Death, faction wins 6/7/6,
+  6/8/6, 6/9/4, 9/5/6 (2 draws in all). Found while measuring: asking for groups of 4 instead of 3 to attack a held
+  point in poor weather made Conquest one-sided (2nd place 0.26 to 0.37 of the winner), so Conquest groups stay at 3.
+  Mud, measured in review (same harness, 40 Conquest matches each): mud ends at 0.60 of the winner's VP, 9.0 min, faction
+  wins 14/16/10, against Clear at 0.57, 9.0 min, 15/14/11. That Clear run also shows the 6/20/14 split above was
+  sampling noise. Classic in mud (24 matches against 24 in Clear) runs about 2 minutes longer (19.9 against 17.7 min)
+  and 7 of 24 reach Sudden Death against 2 of 24 (the same 7 of 24 with the AI's caution switched off, so the slower
+  armies cause it, not the AI). The AI's Classic caution on its own (24 fog matches each way) adds about 1.6 min (19.6
+  against 18.0) and one more match into Sudden Death (4 against 3).
+  Found and fixed in review: the map editor lost the falling snow on winter maps; the lobby tooltip repeated the
+  weather's name; Clear is now exactly the game before weather (the weather seed used to take one random number from
+  every match, which changed seeded bench runs; checked with the bench's final-state hash on both modes); a
+  made-up weather name in a map file or a bad setting falls back to the map default instead of freezing every unit.
+  Merged with the living ground (roads, mud, showers and wind, d1b7150): both had rain and soft ground, so Rain now
+  runs the living ground's rain all match and Mud its soaked ground, instead of their own rules (Mud was -30% off
+  roads; a tank in a mud cell in Mud weather no longer pays twice), the showers follow the match weather, the sim's
+  roads are the map's road and bridge cells (village streets only place the mud and puddles you see), the weather's
+  sight goes through the same range function as the fog of war (#14), and the two lines under the scores became one.
+  Clear is exactly the living-ground game: the seeded bench gives master's final-state hash. Balance after the
+  merge (same harness, default map, 40 Conquest matches each): 2nd place ends at 0.47 / 0.47 / 0.53 / 0.55 of the
+  winner's VP in Clear / Rain / Mud / Snow, matches last 8.7 / 8.8 / 9.2 / 9.0 min, faction wins USA/GER/USSR
+  15/13/12, 9/17/14, 16/7/17, 14/16/10. Nothing is one-sided. Clear is noisy at this size (its two halves gave 0.30
+  and 0.63; master's own Clear over 20 matches gave 0.57), and Germany's 7 of 40 in Mud is about two standard
+  deviations under an even split, worth a second run.
+  Left for later: the match-end test "a new match without the old result" fails on a busy machine: the server sends
+  the lobby update after listing the map files, so it can arrive after the start message. It failed twice in a row at
+  a load average near 75 after the merge and passed on the next run at 33; origin/master passed at 35 to 70.
 - Fog of war now shows exactly what your team sees:
   - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
     (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn

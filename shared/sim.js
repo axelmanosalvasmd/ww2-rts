@@ -2,6 +2,7 @@
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
 import { gridFor, rebuildGrid, updateGrid } from './grid.js';
+import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 
 export const CELL = 2;
 export const TICK = 1 / 20;
@@ -418,6 +419,13 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   }
   g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
+  // weather (shared/weather.js): the lobby's pick ('map' by default), the same plan for the same seed
+  // (only Random uses the seed, so other weather leaves the sim's own random stream, and so the match, as it was)
+  g.weather = planWeather(opts.weather ?? 'map', map, opts.mapKey, opts.weatherSeed ?? (opts.weather === 'random' ? Math.floor(Math.random() * 2 ** 31) : 1));
+  // Rain is the living ground's rain (weather() below) all match, and Mud its soaked ground; either starts soaked, since a
+  // match starts in its weather
+  if (g.wx && g.weather.now === 'rain') Object.assign(g.wx, { raining: true, rain: 1, wet: 1 });
+  if (g.wx && g.weather.now === 'mud') g.wx.wet = 1;
   return g;
 }
 
@@ -626,9 +634,11 @@ export function siteNear(g, x, z, size) {
   const c = findSite(g, x - size * CELL / 2, z - size * CELL / 2, size, avoid);
   return c < 0 ? null : footCenter(g, c, size);
 }
+// how far a unit sees before height and houses: weather shortens it for everything on the ground (shared/weather.js)
+const visionOf = (g, u) => UNITS[u.type].vision * (u.air ? 1 : sightMul(g));
 // can this team see the spot right now? Airborne planes see across terrain.
 export function teamSees(g, team, at) {
-  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= UNITS[u.type].vision
+  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= visionOf(g, u)
     && (u.air ? airborne(u) : UNITS[u.type].building || los(g, u, at)));
 }
 
@@ -1766,7 +1776,7 @@ function updateVision(g) {
     // Planes on the ground see nothing; airborne planes see across terrain.
     const sources = own.filter(u => !u.air || airborne(u)).map(u => {
       const def = UNITS[u.type];
-      return { u, def, range: visionRange(g, u, def) };
+      return { u, def, base: visionOf(g, u), range: visionRange(g, u, def) };
     });
     const watchers = new Map();
     // Gather observers once, in their original order. Each target's check then visits
@@ -1791,11 +1801,11 @@ function updateVision(g) {
       // camouflage: after 3s still and 4s without firing, only seen within camoRange (recon flights still spot it)
       const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
       let seen = false;
-      for (const { u, def, range } of nearby(t)) {
+      for (const { u, def, base, range } of nearby(t)) {
         const d = dist(u, t);
         if (u.air ? d <= def.vision && (!hidden || d < CFG.camoRange * 2)
           : hidden ? d < CFG.camoRange
-            : d < 6 || (def.building && d <= def.vision) || (d <= range * (dusty(g, t) ? CFG.dustSeen : 1) && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
+            : d < 6 || (def.building && d <= base) || (d <= range * (dusty(g, t) ? CFG.dustSeen : 1) && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
       }
       if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
@@ -1808,7 +1818,7 @@ function updateVision(g) {
     const mem = (g.ghosts ??= new Map()).get(p.team) ?? new Map();
     g.ghosts.set(p.team, mem);
     for (const id of vis) { const t = g.units.get(id); if (UNITS[t.type].building) mem.set(id, { id, type: t.type, owner: t.owner, x: t.x, z: t.z, built: t.built }); }
-    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => (!u.air || airborne(u)) && dist(u, gh) <= UNITS[u.type].vision && (u.air || UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
+    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => (!u.air || airborne(u)) && dist(u, gh) <= visionOf(g, u) && (u.air || UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
   }
 }
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
@@ -1902,16 +1912,16 @@ const within = (q, dx, dz, r, strict) => {
   const d = Math.hypot(dx, dz);
   return strict ? d < r : d <= r;
 };
-// A ground unit's sight: high ground and an upper floor see farther, rain sees less. updateVision and the fog masks
-// both read it, so the drawn fog can't drift from what the team sees.
-const visionRange = (g, u, def) => def.vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
+// A ground unit's sight: the match weather (visionOf), high ground and an upper floor see farther, rain sees less.
+// updateVision and the fog masks both read it, so the drawn fog can't drift from what the team sees.
+const visionRange = (g, u, def) => visionOf(g, u) * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
 const fogReach = (g, u, def) => (u.air ? def.vision : Math.max(6, visionRange(g, u, def), def.building ? def.vision : 0));
 const NO_SMOKE = [];
 const smokesNear = (g, u, reach) => (g.smokes.length ? g.smokes.filter(s => Math.hypot(s.x - u.x, s.z - u.z) < reach + s.r) : NO_SMOKE);
 // Marks what one source sees. With `list`, every cell of its circle is worked out and the seen ones are pushed there
 // (kept while the source stands still); without, cells the team already sees are skipped.
 function fogSource(g, f, vis, u, list) {
-  const def = UNITS[u.type], w = g.w, h = g.h, air = !!u.air, building = !!def.building, vision = def.vision, sx = u.x, sz = u.z;
+  const def = UNITS[u.type], w = g.w, h = g.h, air = !!u.air, building = !!def.building, vision = visionOf(g, u), sx = u.x, sz = u.z;
   const range = visionRange(g, u, def), R = fogReach(g, u, def);
   const x0 = Math.max(0, Math.floor((sx - R) / CELL)), x1 = Math.min(w - 1, Math.floor((sx + R) / CELL));
   const y0 = Math.max(0, Math.floor((sz - R) / CELL)), y1 = Math.min(h - 1, Math.floor((sz + R) / CELL));
@@ -2149,11 +2159,15 @@ function burn(g, list, dt) {
 function weather(g, dt) {
   g.wind.a += (rng(g) - 0.5) * 0.6 * dt; g.wind.v = Math.min(1, Math.max(0.15, g.wind.v + (rng(g) - 0.5) * 0.3 * dt));
   for (const s of g.smokes) { s.x += Math.cos(g.wind.a) * g.wind.v * CFG.windSpeed * dt; s.z += Math.sin(g.wind.a) * g.wind.v * CFG.windSpeed * dt; }
-  const wx = g.wx, W = CFG.weather;
+  const wx = g.wx, W = CFG.weather, kind = g.weather?.now;
   if (!wx) return;
-  if ((wx.next -= dt) <= 0) { wx.raining = !wx.raining; const [lo, hi] = wx.raining ? W.rain : W.dry; wx.next = lo + rng(g) * (hi - lo); }
+  // the match weather (shared/weather.js) holds the showers: Rain rains all match (when it turns to mud the rain stops
+  // at once), Snow never rains, and in Clear, Fog and Mud showers come and go as always (Mud's ground stays soaked)
+  if (kind === 'rain') { wx.raining = true; wx.next = 0; }
+  else if (kind === 'snow') wx.raining = false;
+  else if ((wx.next -= dt) <= 0) { wx.raining = !wx.raining; const [lo, hi] = wx.raining ? W.rain : W.dry; wx.next = lo + rng(g) * (hi - lo); }
   wx.rain = Math.min(1, Math.max(0, wx.rain + (wx.raining ? dt : -dt) / 20));
-  wx.wet = Math.min(1, Math.max(0, wx.wet + (wx.rain > 0.5 ? dt / W.soak : -dt / W.dryOut)));
+  wx.wet = kind === 'mud' ? 1 : Math.min(1, Math.max(0, wx.wet + (wx.rain > 0.5 ? dt / W.soak : -dt / W.dryOut)));
 }
 function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
   const x = (c % g.w + 0.5) * CELL, z = (Math.floor(c / g.w) + 0.5) * CELL, was = g.chars[c];
@@ -2178,6 +2192,7 @@ export function step(g) {
   rebuildGrid(g);
   g.tick++;
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure);
+  stepWeather(g);
   if (g.tick % 4 === 1) updateVision(g);
   // Recount paid segments so cancelled work and dead diggers no longer hold up a project.
   if (g.projects?.size) {
@@ -2295,7 +2310,8 @@ export function step(g) {
     // the ground under it, blended over its footprint, and the grade of the next metre if that is uphill
     let grade = 0;
     if (g.height && u.path.length) { const wp = u.path[0], d = dist(u, wp) || 1; grade = heightAt(g, u.x + (wp.x - u.x) / d, u.z + (wp.z - u.z) / d) - heightAt(g, u.x, u.z); }
-    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u) * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade)));
+    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u) * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade)))
+      * weatherSpeed(g, def); // the match weather: infantry in mud, everyone in snow (shared/weather.js)
     // jammed: units that reach one waypoint together push each other off it for good (the separation below undoes each
     // step). After a second without real progress, a unit that can walk straight to its next waypoint skips this one.
     const net = u.was ? dist(u, u.was) : Infinity;
@@ -2732,6 +2748,8 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     orders: cache ? cache.owners[slot].orders : [...g.units.values()].filter(u => u.owner === slot && u.orders?.length).map(u => ordersRow(g, u)),
     rally: p.rally ? [r(p.rally.x), r(p.rally.z)] : null,
     army: g.army,
+    // public weather: [now] or, just before it turns, [now, next, seconds left]
+    weather: weatherRow(g),
     mode: cache ? cache.mode : modeRow(g),
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: cache ? cache.teams.get(p.team).ghosts?.filter(gh => !seen(gh[0])) : g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,

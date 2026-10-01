@@ -42,6 +42,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
+| + weather: Clear / Fog / Rain / Snow (40 each; faction wins and Classic in Weather below) | 59 / 63 / 62 / 62% | 1.88 / 1.93 / 2.05 / 1.80 (checked every 10 s) | 9.2 / 9.6 / 9.3 / 9.1 min |
 
 ## AI information and commands (2026-10-01)
 
@@ -412,6 +413,79 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Endless: Massive's unit limit (x5) with income x20, for players who want the cap full all match. Money stops being a
   constraint, so it is a sandbox setting, not a balanced one (no AI runs behind it).
 
+## Weather (lobby setting, 2026-10-01, all modes)
+- One state at a time, the same for every side. Clear: no effect. Ground fog: sight -30%. Snow: sight -10%,
+  infantry -10%, vehicles -15%. Planes, recon flights and the units' own stats are untouched: `shared/weather.js`
+  gives the sim two multipliers, `sightMul` (vision, for ground units and buildings, through `visionOf` and so
+  `visionRange`, which the fog masks share) and `weatherSpeed` (movement: infantry and vehicles as a whole), read in
+  one place each in sim.js.
+- Rain is the living ground's rain (`weather()` in sim.js, `CFG.weather`) held on all match, on ground soaked from the
+  start: sight -20%, vehicles -20% off roads (-40% on ground below level 0), fords up to 30% slower, three times the
+  traffic wear, smoke thinning faster and fires going out. Its numbers in `WEATHER.rain` only describe it to players and
+  the AI (`rains: true` keeps them out of the two multipliers); test.js keeps them equal to `CFG.weather`. When Random's
+  rain turns to mud the rain stops at once and the ground stays soaked.
+- Mud is the living ground's soaked ground held all match (`wx.wet` at 1): vehicles -20% off roads (-40% below level
+  0), fords slower, three times the traffic wear (so driven ground turns to mud cells sooner), no dust. Infantry -10%
+  is Mud's own, since the living ground never slows infantry for wet ground. On the map's mud cells (`M`) Mud adds
+  nothing the soaked ground has not: the ground is slowed once (test.js checks it). Showers still come in Mud and cut
+  sight while they last, but cannot soak it further.
+- Showers (the living ground's, 1.5 to 3 minutes, 4 to 8 apart, the first after 3 minutes) still come and go in Clear,
+  Fog and Mud, so Clear is the living-ground game as it was: a seeded bench run (`tools/bench.mjs`, 9000 ticks, both
+  scenarios) gives the same final-state hash as master. Snow never rains.
+- Roads: the sim's roads are its ROAD cells (`D` roads and `=` bridges, from the living-ground terrain). The wet ground
+  of Rain and Mud leaves them alone; snow slows vehicles everywhere. `roadMask` only places the look: mud and puddles
+  gather along the roads, bridges and the village streets `client/ground.js` paints (open ground next to a house,
+  unless it lies by water).
+- Lobby: the host picks Map default / Clear / Fog / Rain / Mud / Snow / Random (`room.weather`, message `weather`).
+  Map default reads a `weather` field in the map file, else the map's mood: snowy maps (Ardennes) snow, misty river
+  dawns (Pegasus, Polder, River Towns) start in ground fog that lifts at 4:00, every other map is clear. A host's pick
+  holds all match. Random is seeded per match: any state, and half the time fog lifts at 3:30 to 4:30 or rain turns
+  to mud at 5:00 to 7:00. At most one change per match, announced to everyone 10 seconds before in every snapshot
+  (`weather: [now, next, seconds]`).
+- Screen: one line under the score strip in plain words ("Rain: sight -20%, vehicles -20% off roads"), brass while
+  it is about to change. In Clear, Fog and Mud it also tells of a passing shower or of wet ground, in the living
+  ground's own words (that line used to be a separate panel). `client/atmosphere.js` eases the haze, fog color, sun
+  and shadows over a few seconds, and adds fog banks, rain streaks, falling snow, wet ground with puddle sheen, mud
+  along the streets and snow cover (one ground layer shader). A shower moves the look toward rain's as hard as it
+  rains and wets the ground as much as the server says (`setRain(rain, wet)` from `snapshot.wx`). Rain, snow and dust
+  fall on the server's wind, each fall keeping the slant it started with. Rain and snow stay on Graphics Low with a
+  third of the drops. The light mood is fixed per match: snow brings the winter light, rain and mud an overcast sky,
+  fog and clear keep the map's mood.
+- AI: `aiCaution` (1 in clear weather, 1.12 in mud, 1.2 in snow, 1.4 in rain, 1.43 in fog) raises the army margin and
+  size it wants before marching on a Classic base or an Assault bunker (6 units in clear weather, 9 in fog), since it
+  has seen less of the enemy and its tanks arrive late. Conquest point attacks keep groups of 3: scaling those to 4 made Conquest one-sided (2nd place VP
+  0.26 of the winner's and 6.3 min matches with Clear stats; 0.34 to 0.37 and 7 min in fog, rain and snow).
+- Balance, measured before the living ground was merged (Rain was then its own rule at sight -15%, village streets
+  counted as roads, and there were no showers) (default map, 3 AIs, factions USA/GER/USSR by slot, spawns shuffled;
+  leader changes checked every 10 s):
+  | Weather | Conquest (40 each): 2nd place VP vs winner, leader changes, length, faction wins | Classic (20 each): length, decided before Sudden Death, winner's HQ health left, faction wins |
+  |---|---|---|
+  | Clear | 0.59, 1.88, 9.2 min, 6/20/14 | 19.7 min, 17/20, 88%, 6/7/6 and 1 draw |
+  | Fog | 0.63, 1.93, 9.6 min, 14/15/11 | 19.9 min, 14/20, 76%, 6/8/6 |
+  | Rain | 0.62, 2.05, 9.3 min, 16/16/8 | 20.0 min, 16/20, 85%, 6/9/4 and 1 draw |
+  | Snow | 0.62, 1.80, 9.1 min, 15/13/12 | 19.2 min, 15/20, 76%, 9/5/6 |
+  No weather comes out one-sided: closeness and length stay within the noise of Clear. A faction's win count at 40
+  matches spreads about 3 either way by chance alone; a second Clear run (review) gave 15/14/11 where the first gave 6/20/14.
+- Mud (review, same harness, 40 Conquest matches): 2nd place VP 0.60 of the winner, 1.60 leader changes, 9.0 min, faction
+  wins 14/16/10; the Clear run beside it gave 0.57, 1.75, 9.0 min, 15/14/11. Classic, 24 matches each: Mud 19.9 min with
+  7 reaching Sudden Death (the run was cut at 26 min), Clear 17.7 min with 2. Slower armies make Classic last longer;
+  the AI's caution is not the cause: Mud with it off gave 18.7 min and the same 7 of 24. Fog with the caution on or off,
+  24 matches each: 19.6 against 18.0 min, 4 against 3 reaching Sudden Death, so the caution costs a little time and no
+  balance. If Mud Classic should end sooner, speed up the AI's attack or shorten Mud, not the caution.
+- Balance after merging the living ground (same harness, default map, its roads now real, 40 Conquest matches each):
+  | Weather | 2nd place VP vs winner | leader changes | length | faction wins USA/GER/USSR |
+  |---|---|---|---|---|
+  | Clear | 0.47 | 1.38 | 8.7 min | 15/13/12 |
+  | Rain | 0.47 | 1.65 | 8.8 min | 9/17/14 |
+  | Mud | 0.53 | 1.77 | 9.2 min | 16/7/17 |
+  | Snow | 0.55 | 1.43 | 9.0 min | 14/16/10 |
+  Clear's two halves gave 0.30 and 0.63 (master's own Clear, 20 matches: 0.57, 9.3 min), so 0.1 either way is noise
+  here. Germany's 7 of 40 in Mud is about two standard deviations under an even split; run it again before tuning.
+  Classic was not re-measured after the merge.
+- Clear is the game as it was before weather: only Random draws a random number (the seed), so a seeded bench run
+  gives the same final-state hash with and without this change in Clear weather. (Checked before the living ground
+  was merged; the merge keeps every Clear, Fog and Mud shower roll where the living ground put it.)
+
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
 is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
@@ -627,7 +701,8 @@ the HUD.
   paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
   5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
   and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
-  on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
+  on Low turns off cloud shade, blowing dust and birds, and keeps the table props, the lamp pool, fewer mist sheets
+  and fog banks, and the match weather's rain or snow with a third of the drops.
 - Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
   sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
   A hedgerow stretch is a shaded lumpy core inside leaf cards that run along the hedge, so neighbours close into one
@@ -637,8 +712,9 @@ the HUD.
   foliage darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in `client/surfaces.js`, which samples
   the `client/fog.js` texture (see Fog of war below). It imports `/shared/sim.js` by absolute path, so it is browser
   only.
-- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
-  drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
+- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust)
+  and the match weather (see Weather; the name rules live in `shared/weather.js` so Map default agrees), drifts cloud
+  shadows over the board and table on the server's wind, sets out the planning-table props and the desk lamp, and flies a few
   birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
   ground darkens it too.
 - As merged with rounds 1 to 3: main.js keeps `relief` and `hAt` delegates to it. The round 3 smoothed height field

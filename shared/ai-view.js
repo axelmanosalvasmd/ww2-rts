@@ -123,6 +123,8 @@ export function viewFor(g, slot, memory = {}, cache) {
       owner: snap.points[i][0], capper: snap.points[i][1], progress: snap.points[i][2], contested: !!snap.points[i][3] })),
     nodes: (snap.nodes ?? []).map(([x, z, rate, fuel]) => ({ x, z, rate, fuel: !!fuel })),
     mines: [...(memory.mines ?? [])].map(c => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL })),
+    // the match weather every player is told: now, and just before it turns, what comes next and in how many seconds
+    weather: { now: snap.weather?.[0] ?? 'clear', next: snap.weather?.[1], left: snap.weather?.[2] },
     mode: copy(snap.mode), army: copy(snap.army),
     smokes: snap.smokes.map(([x, z, r]) => ({ x, z, r })),
     strikes: snap.strikes.map(([kind, x, z, dir, t, owner]) => ({ kind, x, z, dir, t, owner, live: t <= 0 })),
