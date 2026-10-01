@@ -1085,4 +1085,126 @@ for (const f of readdirSync('maps')) {
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
+// This is the first server harness. It starts a short-lived server and always closes it.
+{
+  const { spawn } = await import('node:child_process');
+  const { WebSocket } = await import('ws');
+  const { mapPing } = await import('./server/map-pings.js');
+  const sent = [], player = { team: 0, ws: { readyState: 1 } };
+  const ally = { team: 0, ws: { readyState: 1 } }, enemy = { team: 1, ws: { readyState: 1 } };
+  const room = { state: 'play', game: { w: 10, h: 10, players: [{ out: true }, {}, {}] },
+    players: [player, ally, enemy, { team: 0, ai: true, ws: { readyState: 1 } }, { team: 0, ws: { readyState: 3 } }] };
+  const relay = (ws, msg) => sent.push({ ws, msg });
+  mapPing(room, player, 0, { x: -1, z: 1 }, (_, msg) => sent.push(msg));
+  assert.equal(player.mapPingTimes, undefined, 'invalid pings do not use the budget');
+  player.mapPingTimes = [Date.now() - 5001, Date.now() - 5001, Date.now() - 5001];
+  mapPing(room, player, 0, { x: 12.34, z: 20 }, relay);
+  assert.deepEqual(sent.map(({ msg }) => msg), Array(2).fill({ t: 'ping', from: 0, x: 12.3, z: 20 }),
+    'eliminated players can ping and expired limits clear');
+  assert.deepEqual(sent.map(({ ws }) => ws), [player.ws, ally.ws], 'only open human teammate sockets receive pings');
+  assert.equal(player.mapPingTimes.length, 1, 'the timestamp list stays small');
+  sent.length = 0;
+  for (const coordinates of [{ x: -5, z: 5 }, { x: 1e9, z: 5 }, { x: 'abc', z: 5 }, { x: 5, z: null },
+    { x: 5 }, { x: NaN, z: 5 }, { x: 5, z: 21 }, { z: 5 }]) mapPing(room, player, 0, coordinates, relay);
+  assert.equal(sent.length, 0, 'invalid map pings are not relayed');
+  assert.equal(player.mapPingTimes.length, 1, 'invalid map pings preserve the remaining budget');
+  for (let i = 0; i < 4; i++) mapPing(room, ally, 1, { x: i, z: 0 }, relay);
+  assert.deepEqual(sent.filter(({ ws }) => ws === player.ws).map(({ msg }) => msg.x), [0, 1, 2], 'three pings per five seconds');
+  assert.equal(sent.filter(({ ws }) => ws === enemy.ws).length, 0, 'the other team receives no map pings');
+  sent.length = 0; player.ai = true;
+  mapPing(room, player, 0, { x: 5, z: 5 }, relay);
+  assert.equal(sent.length, 0, 'only human players can send map pings');
+  delete player.ai; room.state = 'lobby';
+  mapPing(room, player, 0, { x: 5, z: 5 }, relay);
+  assert.equal(sent.length, 0, 'map pings require a running match');
+
+  const serverHarness = async () => {
+    const port = 40000 + Math.floor(Math.random() * 20000), code = 'ping' + Math.random().toString(36).slice(2, 9);
+    const child = spawn(process.execPath, ['server.js'], {
+      cwd: import.meta.dirname,
+      env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', PUBLIC_URL: `http://127.0.0.1:${port}`, EDIT_PASSWORD: 'ping-test' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const clients = []; let output = '', errors = '', childError = null;
+    child.stdout.on('data', data => { output += data; });
+    child.stderr.on('data', data => { errors += data; });
+    child.on('error', error => { childError = error; });
+    const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const waitFor = async (predicate, label) => {
+      const end = Date.now() + 2000;
+      while (!predicate()) {
+        if (childError) throw childError;
+        if (child.exitCode !== null) {
+          const error = new Error(`server stopped: ${errors}`);
+          if (errors.includes('listen EPERM:')) error.code = 'LISTEN_EPERM';
+          throw error;
+        }
+        if (Date.now() >= end) throw new Error(`timed out waiting for ${label}: ${errors}`);
+        await pause(10);
+      }
+    };
+    const send = (client, msg) => client.ws.send(JSON.stringify(msg));
+    const pings = client => client.messages.filter(msg => msg.t === 'ping');
+    const clear = () => clients.forEach(client => { client.messages.length = 0; });
+    try {
+      await waitFor(() => output.includes('ww2-rts on http://'), 'server startup');
+      for (let slot = 0; slot < 3; slot++) {
+        const client = { ws: new WebSocket(`ws://127.0.0.1:${port}/ws?room=${code}`), messages: [], error: null };
+        clients.push(client);
+        client.ws.on('message', raw => client.messages.push(JSON.parse(raw)));
+        client.ws.on('error', error => { client.error = error; });
+        await waitFor(() => { if (client.error) throw client.error; return client.ws.readyState === 1; }, 'socket open');
+        send(client, { t: 'hello', name: `Player ${slot}`, token: `${code}${slot}` });
+        await waitFor(() => client.messages.some(msg => msg.t === 'lobby' && msg.you === slot), 'player join');
+      }
+      send(clients[0], { t: 'team', slot: 1, v: 0 });
+      send(clients[0], { t: 'team', slot: 2, v: 1 });
+      await waitFor(() => clients[0].messages.some(msg => msg.t === 'lobby' && msg.players.length === 3 &&
+        msg.players.map(p => p.team).join(',') === '0,0,1'), 'teams');
+      send(clients[0], { t: 'start' });
+      await waitFor(() => clients.every(client => client.messages.some(msg => msg.t === 'start')), 'match start');
+      const map = clients[0].messages.find(msg => msg.t === 'start').map;
+      clear();
+      send(clients[0], { t: 'ping', x: 12.3, z: 45.6 });
+      await waitFor(() => pings(clients[0]).length === 1 && pings(clients[1]).length === 1, 'team ping');
+      await pause(400);
+      assert.deepEqual(pings(clients[1]), [{ t: 'ping', from: 0, x: 12.3, z: 45.6 }], 'the teammate receives the ping');
+      assert.deepEqual(pings(clients[0]), pings(clients[1]), 'the sender receives the same relay');
+      assert.equal(pings(clients[2]).length, 0, 'the other team receives no ping');
+      clear();
+      for (const coordinates of [
+        { x: -5, z: 5 }, { x: 1e9, z: 5 }, { x: 'abc', z: 5 }, { x: 5, z: null },
+        { x: 5 }, { x: NaN, z: 5 }, { x: 5, z: map.h * CELL + 1 }, { z: 5 },
+      ]) send(clients[0], { t: 'ping', ...coordinates });
+      await pause(200);
+      assert.ok(clients.every(client => pings(client).length === 0), 'invalid coordinates are silently dropped');
+      clear();
+      for (let i = 0; i < 4; i++) send(clients[1], { t: 'ping', x: 20 + i, z: 30 });
+      await waitFor(() => pings(clients[0]).length >= 3, 'three accepted pings');
+      await pause(200);
+      assert.deepEqual(pings(clients[0]).map(msg => msg.x), [20, 21, 22], 'the fourth ping inside five seconds is dropped');
+      assert.deepEqual(pings(clients[1]), pings(clients[0]), 'the sender sees only accepted pings');
+      assert.equal(pings(clients[2]).length, 0, 'rate-limited pings stay within the team');
+      clear();
+      send(clients[0], { t: 'ping', c: 123, rtt: 5 });
+      await waitFor(() => clients[0].messages.some(msg => msg.t === 'pong' && msg.c === 123), 'latency pong');
+      await pause(100);
+      assert.ok(clients.every(client => pings(client).length === 0), 'latency pings are never relayed');
+    } finally {
+      clients.forEach(client => client.ws.terminate());
+      if (child.pid && child.exitCode === null && child.signalCode === null) {
+        await new Promise(resolve => {
+          const timeout = setTimeout(() => child.kill('SIGKILL'), 1000);
+          child.once('exit', () => { clearTimeout(timeout); resolve(); });
+          child.kill();
+        });
+      }
+    }
+  };
+  try { await serverHarness(); }
+  catch (error) {
+    if (error.code !== 'LISTEN_EPERM') throw error;
+    console.log('Server socket checks skipped: sandbox denied listen (EPERM). Direct map ping checks passed.');
+  }
+}
 console.log('all sim checks passed');

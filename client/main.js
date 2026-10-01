@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
+import { rig, groundAt as marchGround } from './camera.js';
+import { pings } from './pings.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, MOVE_COLOR } from './markers.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
@@ -59,6 +61,7 @@ function connect() {
     if (m.t === 'lobby') renderLobby(m);
     else if (m.t === 'start') startGame(m);
     else if (m.t === 's') applySnapshot(m);
+    else if (m.t === 'ping') pings.receive(m);
     else if (m.t === 'pong' && Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c);
     else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'A match is going on in this room (or it is full). It opens again when the match ends: reload then, or make a New room.'; }
     else if (m.t === 'left') { refused = true; $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden'); $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.'; }
@@ -248,6 +251,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m) {
+  pings.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   const map = m.map;
   if (world) scene.remove(world);
@@ -317,6 +321,7 @@ function startGame(m) {
   home = m.spawn;
   cam.yaw = Math.atan2(sx - MW / 2, sz - MH / 2);
   cam.x = sx + (MW / 2 - sx) * 0.25; cam.z = sz + (MH / 2 - sz) * 0.25; cam.dist = 60;
+  rig.startIntro(EDIT || m.resume === true);
 
   buildBuyBar();
   buildSupportBar();
@@ -1109,14 +1114,31 @@ function moveTo(g, attack) {
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
+rig.init({ cam, camera, pitch: PITCH, keys, mouse: () => mouse, dragging: () => drag, world: () => world,
+  units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
+  chip: $('following'), top: $('top'), edgeButton: $('edgeBtn'), panButton: $('panBtn'),
+  unitName: (v) => look(v.owner).names[v.type] ?? UNITS[v.type].name });
+function followSelected() {
+  if (rig.following != null) { rig.cancelFollow(); return; }
+  let v = [...selected].map(id => units.get(id)).find(Boolean);
+  if (!v && lastSnap?.out?.[me]) v = (mouse.inside && pick(mouse.x, mouse.y, () => true)) || pick(innerWidth / 2, innerHeight / 2, () => true, Infinity);
+  if (v) rig.follow(v.id);
+}
+function cancelInput(clearKeys = true) {
+  if (clearKeys) keys.clear();
+  mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden');
+}
+addEventListener('mousedown', (e) => { if (rig.skipIntro()) { e.preventDefault(); e.stopPropagation(); } }, { capture: true });
 
 addEventListener('keydown', (e) => {
+  if (rig.skipIntro()) { e.preventDefault(); return; }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   keys.add(e.code);
   if (EDIT) return;
   const n = /^Digit([1-9])$/.exec(e.code)?.[1];
   // Ctrl+number sets a group (Shift+number too: in a plain browser tab Ctrl+1-8 switches tabs and pages can't stop it)
-  if (n && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); groups[n] = [...selected]; blip(990); }
+  if (e.code === 'Space' && e.shiftKey) { if (!e.repeat) followSelected(); e.preventDefault(); }
+  else if (n && (e.ctrlKey || e.metaKey || e.shiftKey)) { e.preventDefault(); groups[n] = [...selected]; blip(990); }
   else if (n) { selected.clear(); (groups[n] || []).forEach(id => units.has(id) && selected.add(id)); }
   else if (e.code === 'KeyX') { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }
   else if (e.code === 'KeyR') retreat();
@@ -1129,9 +1151,10 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyO') startBuild('airfield');
   else if (e.code === 'KeyY') startBuild('flakpos');
   else if (e.code === 'KeyM') setMuted(!muted);
-  else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
+  else if (e.code === 'Space') { rig.cancelFollow(); const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) {
+    rig.cancelFollow();
     cam.x = home.x; cam.z = home.z;
     const hq = classicMode() && [...units.values()].find(v => v.owner === me && v.type === 'hq');
     if (hq) { selected.clear(); selected.add(hq.id); if (lastSnap) updateHud(lastSnap); }
@@ -1150,18 +1173,21 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyL') startBuild('motorpool');
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => keys.clear());
+addEventListener('blur', cancelInput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) cancelInput(); });
 addEventListener('mousemove', (e) => {
-  mouse = { x: e.clientX, y: e.clientY, inside: true };
+  mouse = { x: e.clientX, y: e.clientY, inside: !document.hidden };
+  rig.moveMiddle(e);
+  if (drag && !(e.buttons & 1)) { drag = null; $('box').classList.add('hidden'); }
   if (drag && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
-    drag.moved = true;
+    drag.moved = true; rig.cancelFollow();
     Object.assign($('box').style, { left: Math.min(drag.x, e.clientX) + 'px', top: Math.min(drag.y, e.clientY) + 'px', width: Math.abs(e.clientX - drag.x) + 'px', height: Math.abs(e.clientY - drag.y) + 'px' });
     $('box').classList.remove('hidden');
   }
 });
-document.addEventListener('mouseleave', () => (mouse.inside = false));
+document.addEventListener('mouseleave', () => cancelInput(false));
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
-renderer.domElement.addEventListener('wheel', (e) => { cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: true });
+renderer.domElement.addEventListener('wheel', (e) => rig.wheel(e), { passive: false });
 
 const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
 function pick(mx, my, test, r) {
@@ -1173,14 +1199,14 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
-const groundAt = (mx, my) => {
-  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
-  const hit = groundMesh && ray.intersectObject(groundMesh)[0];
-  return hit ? hit.point : ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
-};
+const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160);
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;
+  if (e.button === 1) { rig.beginMiddle(e); return; }
+  if (e.button === 0 && e.altKey && !targeting && !rig.intro) {
+    e.preventDefault(); const g = groundAt(e.clientX, e.clientY); if (g) pings.send(g.x, g.z); return;
+  }
   if (targeting) {
     const kind = targeting, g = e.button === 0 && groundAt(e.clientX, e.clientY);
     if (!g) { cancelAim(); return; }
@@ -1245,6 +1271,7 @@ function houseAt(mx, my) {
   return terrain.grid[y]?.[x] === 'B' ? { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL } : null;
 }
 addEventListener('mouseup', (e) => {
+  if (e.button === 1) rig.stopDrag();
   if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
   if (!e.shiftKey) selected.clear();
@@ -1315,8 +1342,9 @@ function drawMinimap() {
     if (selected.has(v.id)) { c.strokeStyle = '#fff'; c.lineWidth = 1.5 / S; c.stroke(); }
   }
   alerts.drawPings(c, S);
+  pings.drawMinimap(c, S);
   // what the camera sees
-  const corners = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => groundAt(x, y)).filter(Boolean);
+  const corners = rig.corners(field);
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
 }
 {
@@ -1325,12 +1353,16 @@ function drawMinimap() {
   const at = (e) => { const b = cv.getBoundingClientRect(); return mmToWorld((e.clientX - b.left) * cv.width / b.width, (e.clientY - b.top) * cv.height / b.height); };
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
   cv.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); rig.cancelFollow();
     const p = at(e);
+    if (e.button === 0 && e.altKey && !rig.intro) { e.preventDefault(); pings.send(p.x, p.z); return; }
     if (e.button === 0) { mmDrag = true; cam.x = p.x; cam.z = p.z; }
     else if (e.button === 2 && selected.size) moveTo(p, e.ctrlKey);
   });
-  addEventListener('mousemove', (e) => { if (mmDrag) { const p = at(e); cam.x = p.x; cam.z = p.z; } });
+  addEventListener('mousemove', (e) => { if (mmDrag && !(e.buttons & 1)) mmDrag = false; if (mmDrag) { rig.cancelFollow(); const p = at(e); cam.x = p.x; cam.z = p.z; } });
+  addEventListener('blur', () => (mmDrag = false));
+  document.addEventListener('mouseleave', () => (mmDrag = false));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) mmDrag = false; });
   addEventListener('mouseup', () => (mmDrag = false));
 }
 let fogTimer = 0;
@@ -1355,17 +1387,7 @@ function updateFog() {
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   // camera
-  const pan = cam.dist * 1.1 * dt, f = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) }, r = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) };
-  let fw = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  let rt = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-  if (mouse.inside && !drag && world) { if (mouse.x < 8) rt = -1; if (mouse.x > innerWidth - 8) rt = 1; if (mouse.y < 8) fw = 1; if (mouse.y > innerHeight - 8) fw = -1; }
-  cam.x = Math.min(MW || 160, Math.max(0, cam.x + (f.x * fw + r.x * rt) * pan));
-  cam.z = Math.min(MH || 160, Math.max(0, cam.z + (f.z * fw + r.z * rt) * pan));
-  cam.yaw += ((keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') ? 1 : 0)) * 1.6 * dt;
-  const hd = cam.dist * Math.cos(PITCH);
-  cam.y = (cam.y ?? 0) + (hAt(cam.x, cam.z) - (cam.y ?? 0)) * Math.min(1, dt * 4); // glide over hills
-  camera.position.set(cam.x + Math.sin(cam.yaw) * hd, cam.y + cam.dist * Math.sin(PITCH), cam.z + Math.cos(cam.yaw) * hd);
-  camera.lookAt(cam.x, cam.y, cam.z);
+  rig.update(dt);
 
   // units: smooth toward the latest server state
   const k = 1 - Math.exp(-dt * 10);
@@ -1387,7 +1409,8 @@ renderer.setAnimationLoop(() => {
   }
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   alerts.frame();
-  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
+  pings.frame();
+  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
@@ -1412,8 +1435,10 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, get groundMesh() { return groundMesh; }, get me() { return me; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
-  pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },
+  resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
   onScreen: (x, z) => { const p = screenOf({ x, z }); return p.front && p.x >= 0 && p.x <= innerWidth && p.y >= 0 && p.y <= innerHeight; } });
+
+pings.init({ scene, hAt, send: sendCmd, playerName: (slot) => names[slot] ?? 'An ally' });

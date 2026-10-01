@@ -18,6 +18,7 @@
   animation: alert-in 0.18s ease-out;
 }
 #alerts .alert:first-child { font-weight: 700; } /* the newest one, where Space goes */
+#alerts .alert.k-ping { --rule: #e6dcc0; }
 #alerts .alert:hover { background: rgba(48, 52, 38, 0.92); }
 @keyframes alert-in { from { opacity: 0; transform: translateX(12px); } }
 @media (prefers-reduced-motion: reduce) { #alerts .alert { animation: none; } }
