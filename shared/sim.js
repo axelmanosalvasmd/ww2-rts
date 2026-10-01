@@ -304,10 +304,15 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   if (opts.mode === 'classic') setupClassic(g);
   for (const p of g.players) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, i));
-  if (assault) setupAssault(g, opts.defenderTeam, map.assaultTime);
+  if (assault) {
+    setupAssault(g, opts.defenderTeam, map.assaultTime);
+    g.mode.total = [...g.units.values()].filter(u => UNITS[u.type].structure).length;
+  }
   if (opts.mode === 'annihilation') {
     g.mode = { kind: 'annihilation', teams: new Set(teams).size };
     for (const p of g.players) { p.mp = CFG.assault.annihilationMp; fortify(g, p); }
+    g.mode.bunkers = Array(Math.max(...teams) + 1).fill(0);
+    for (const u of g.units.values()) if (u.type === 'bunker') g.mode.bunkers[g.players[u.owner].team]++;
   }
   g.army = CFG.armies[opts.army] ?? CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
@@ -1306,7 +1311,9 @@ export function step(g) {
   // teammates standing on it keep it theirs.
   for (const p of g.points) {
     const on = list.filter(u => u.hp > 0 && !u.retreating && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius);
-    if (!on.length || on.some(u => !allied(g, u.owner, on[0].owner))) continue;
+    p.onPoint = on.map(u => u.id);
+    p.contested = on.some(u => !allied(g, u.owner, on[0].owner));
+    if (!on.length || p.contested) continue;
     const s = on[0].owner, rate = dt / CFG.captureTime;
     if (allied(g, p.owner, s)) p.progress = 1;
     else if (p.owner >= 0) { p.progress -= rate; if (p.progress <= 0) { p.owner = -1; p.progress = 0; p.capper = s; } }
@@ -1410,7 +1417,7 @@ export function snapshotFor(g, slot, shots, cells = []) {
     queues: [...g.units.values()].filter(b => b.owner === slot && b.queue).map(b => [b.id, b.queue.length ? r(b.prog / UNITS[b.queue[0]].train) : 0, b.rally ? r(b.rally.x) : -1, b.rally ? r(b.rally.z) : -1, ...b.queue]),
     plans: [...g.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure).map(u => [u.id, ...planOf(g, u).map(r), ...u.path.flatMap(q => [r(q.x), r(q.z)])]),
     army: g.army,
-    mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath },
+    mode: g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath, total: g.mode.total, bunkers: g.mode.bunkers },
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !p.visible.has(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
@@ -1425,7 +1432,11 @@ export function snapshotFor(g, slot, shots, cells = []) {
     air: [...g.units.values()].filter(u => u.owner === slot && u.air).map(u => [u.id, ['base', 'out', 'station', 'home', 'rearm'].indexOf(u.air.state), Math.ceil(u.air.fuel), u.air.ammo, Math.ceil(u.air.timer)]),
     covers: (g.covers ?? []).filter(c => c.team === p.team).map(c => [r(c.x), r(c.z), c.r, Math.ceil(c.t)]),
     sup: Object.fromEntries(SUPPORT_TYPES.map(k => [k, Math.max(0, Math.ceil(p.sup[k]))])),
-    points: g.points.map(q => [q.owner, q.capper, r(q.progress)]),
+    points: g.points.map(q => {
+      // A contest is readable only when at least two teams' on-point units are already visible.
+      const teams = new Set((q.contested ? q.onPoint : []).filter(seen).map(id => g.players[g.units.get(id)?.owner]?.team).filter(t => t !== undefined));
+      return [q.owner, q.capper, r(q.progress), teams.size > 1 ? 1 : 0];
+    }),
     vp: g.players.map(q => Math.floor(q.vp)),
     cells,
     shots: shots.filter(s => s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || p.visible.has(s.f) || p.visible.has(s.t)),

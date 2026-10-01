@@ -892,5 +892,24 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
     if (fleet) for (const p of fleet) { p.on = false; p.g.visible = false; }
   }
 
-  return { update, snapshot, wreck, reset, explode, scorch, collapse, get count() { return n; } };
+  // A roof-sized burst from one source. objectives.js owns its cadence and the number of active buildings.
+  function plume(kind, x, y, z, radius = 3) {
+    const spread = radius * 0.65;
+    if (kind !== 'fire') {
+      const dark = kind === 'dark', p = dark ? FX.wreckSmoke : FX.smoke;
+      for (let i = 0, count = low() ? 1 : 2; i < count; i++) {
+        emit(p, x + rr(-0.4, 0.4) * spread, y + rr(0, 0.6), z + rr(-0.4, 0.4) * spread,
+          rr(-0.4, 0.4), rr(2.1, 2.8), rr(-0.4, 0.4), radius * (low() ? 0.78 : 0.72), dark ? 3 : 3.3);
+      }
+      return;
+    }
+    for (let i = 0, count = low() ? 2 : 4; i < count; i++) {
+      emit(FX.flame, x + rr(-spread, spread), y + rr(0.2, 0.5), z + rr(-spread, spread),
+        rr(-0.3, 0.3), rr(1.2, 1.8), rr(-0.3, 0.3), radius * (low() ? 0.64 : 0.55), rr(0.7, 0.95));
+    }
+    emit(FX.fire, x + rr(-0.3, 0.3) * spread, y + 0.6, z + rr(-0.3, 0.3) * spread,
+      0, 1.5, 0, radius * 0.58, 0.7);
+  }
+
+  return { update, snapshot, wreck, reset, explode, scorch, collapse, plume, get count() { return n; } };
 }

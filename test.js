@@ -1085,4 +1085,57 @@ for (const f of readdirSync('maps')) {
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
+// Battlefield readability: contested points obey team vision, and bunker totals never shrink.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['blue', 'red', 'observer'], false, [0, 1, 2], [0, 1, 2]);
+  g.units.clear();
+  g.players.forEach(p => { p.mp = 1000; p.spawn = { x: -1000, z: -1000 }; });
+  const point = g.points[0];
+  const infantry = (owner, x, z) => {
+    command(g, owner, { t: 'buy', unit: 'rifle' });
+    const u = [...g.units.values()].at(-1);
+    Object.assign(u, { x, z, cooldown: 1000 });
+    return u;
+  };
+  const blue = infantry(0, point.x - 1, point.z), red = infantry(1, point.x + 1, point.z);
+  step(g);
+  assert.equal(point.contested, true, 'two opposing teams contest a point');
+  assert.deepEqual(new Set(point.onPoint), new Set([blue.id, red.id]), 'the point remembers only its on-point infantry');
+  assert.equal(point.progress, 0, 'contested capture makes no progress');
+  assert.equal(snapshotFor(g, 0, []).points[0][3], 1, 'a team seeing both sides receives the contest');
+  assert.equal(snapshotFor(g, 2, []).points[0][3], 0, 'a team with no vision of the point receives zero');
+  g.players[0].visible.delete(red.id);
+  assert.equal(snapshotFor(g, 0, []).points[0][3], 0, 'own infantry do not expose a hidden contesting enemy');
+  g.players[2].visible.add(red.id);
+  assert.equal(snapshotFor(g, 2, []).points[0][3], 0, 'seeing just one contesting team does not expose the other');
+  g.players[2].visible.add(blue.id);
+  assert.equal(snapshotFor(g, 2, []).points[0][3], 1, 'a third team seeing both sides can read the contest');
+  red.x += CFG.pointRadius * 3;
+  step(g);
+  assert.equal(point.contested, false, 'the contest clears when one team leaves');
+  assert.equal(snapshotFor(g, 0, []).points[0][3], 0, 'cleared contest is sent as zero');
+  assert.ok(point.progress > 0, 'the remaining team resumes capture');
+  blue.x += CFG.pointRadius * 3;
+  step(g);
+  assert.equal(point.contested, false, 'an empty point stays uncontested');
+  assert.deepEqual(point.onPoint, [], 'an empty point keeps no stale infantry ids');
+
+  const assault = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 1, 1, 0], [0, 1, 2, 0], { mode: 'assault', defenderTeam: 1 });
+  const structures = [...assault.units.values()].filter(u => UNITS[u.type].structure);
+  assert.equal(assault.mode.total, structures.length, 'Assault records the starting structure count');
+  assert.equal(assault.mode.total, 2, 'each defender contributes one starting structure');
+  assert.equal(snapshotFor(assault, 0, []).mode.total, 2, 'the Assault snapshot includes its starting total');
+  structures[0].hp = 0; step(assault);
+  assert.equal(snapshotFor(assault, 0, []).mode.total, 2, 'losing a structure leaves the Assault denominator fixed');
+
+  const annihilation = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 2, 2], [0, 1, 2, 0], { mode: 'annihilation' });
+  const bunkers = [...annihilation.units.values()].filter(u => u.type === 'bunker');
+  const counts = [0, 0, 0];
+  for (const u of bunkers) counts[annihilation.players[u.owner].team]++;
+  assert.deepEqual(annihilation.mode.bunkers, counts, 'Annihilation counts starting bunkers by team id');
+  assert.deepEqual(snapshotFor(annihilation, 2, []).mode.bunkers, [2, 0, 2], 'all teams receive the static initial counts');
+  bunkers[0].hp = 0; step(annihilation);
+  assert.deepEqual(snapshotFor(annihilation, 2, []).mode.bunkers, [2, 0, 2], 'losing a bunker leaves the Annihilation denominators fixed');
+}
 console.log('all sim checks passed');

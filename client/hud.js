@@ -170,7 +170,7 @@ export function createHud(ctx) {
       } else if (kind === 'classic') {
         setText(mode, s.mode.suddenDeath ? 'Sudden death' : 'Sudden death in'); setText(clk, s.mode.suddenDeath ? '' : clock(s.mode.timeLeft));
         mode.classList.toggle('danger', !!s.mode.suddenDeath);
-        score.lead.title = s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : 'Destroy every enemy HQ, Barracks and Motor Pool';
+        score.lead.title = s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : 'Destroy every enemy HQ, Barracks, Motor Pool and Airfield';
       } else {
         setText(mode, 'Annihilation'); setText(clk, ''); score.lead.title = 'Destroy every enemy bunker. Last side standing wins';
       }
@@ -193,11 +193,11 @@ export function createHud(ctx) {
         const vp = tm.mem.reduce((a, i) => a + (s.vp?.[i] ?? 0), 0), goal = winVp(teams);
         frac = vp / goal; num = `${vp} / ${goal}`; u = 'VP';
       } else if (kind === 'assault') {
-        const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => v.type === 'bunker' && teams[v.owner] === tm.t);
+        const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => UNITS[v.type]?.structure && v.hp > 0 && teams[v.owner] === tm.t);
         role = def ? 'Defending' : 'Attacking';
-        if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), max = own.length * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; }
+        if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), total = s.mode.total ?? tm.mem.length, max = total * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Structures left'; num = `${own.length} / ${total}`; }
       } else if (kind === 'annihilation') {
-        const own = units.filter((v) => v.type === 'bunker' && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = tm.mem.length * UNITS.bunker.hpPer;
+        const own = units.filter((v) => v.type === 'bunker' && v.hp > 0 && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = (s.mode.bunkers?.[tm.t] ?? tm.mem.length) * UNITS.bunker.hpPer;
         if (own.length) { frac = hp / max; u0 = own.length > 1 ? `${own.length} bunkers` : 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; } else { u0 = 'Out'; danger = true; }
       } else if (kind === 'classic') {
         const own = units.filter((v) => v.type === 'hq' && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = own.length * UNITS.hq.hpPer;

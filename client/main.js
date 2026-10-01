@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
 import { createEffects } from './fx.js';
+import { createObjectives } from './objectives.js';
+import { endgame } from './endgame.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, MOVE_COLOR } from './markers.js';
@@ -99,7 +101,7 @@ const MODE_INFO = {
   conquest: 'Capture and hold points to earn victory points. First side to the VP goal wins.',
   assault: 'One team defends a fortified command bunker. Everyone else attacks and must destroy it before the clock runs out.',
   annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
-  classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks and Motor Pool.',
+  classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks, Motor Pool and Airfield.',
 };
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
 // lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
@@ -254,6 +256,7 @@ function startGame(m) {
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
   units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear();
+  objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -299,7 +302,7 @@ function startGame(m) {
     const cp = capturePoint(CFG.pointRadius, classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`); // Classic: points pay Munitions
     g.add(cp.group, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0));
     world.add(g);
-    return { g, set: cp.set };
+    return { g, set: cp.set, frame: cp.frame };
   });
 
   // fog of war overlay (client-side approximation; the server decides who you can actually see)
@@ -770,6 +773,7 @@ function applySnapshot(s) {
   for (const sh of s.shots) if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
   effects.snapshot(s, seen); // flashes, tracers, blasts, smoke, planes and their sounds (client/fx.js)
   airShots(s.shots); // aviation kinds fx.js does not draw yet (dive, para, chutes, shot-down planes, flak, aa)
+  objectives.snapshot(s);
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
@@ -779,14 +783,12 @@ function applySnapshot(s) {
   for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
   if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
 
-  s.points.forEach(([owner, capper, progress], i) => {
-    points[i]?.set(owner >= 0 ? look(owner).color : null, capper >= 0 ? look(capper).color : null, progress);
-  });
   syncStrikes(s.strikes);
   applyCells(s.cells);
   alerts.snapshot(s, lastSnap);
   lastSnap = s;
   updateHud(s);
+  endgame.snapshot(s);
 }
 
 // public warnings for incoming support: everyone sees where it will land
@@ -1292,6 +1294,9 @@ function updateFog() {
 }
 
 const effects = createEffects({ scene, camera, cam, hAt, units, sound, colorOf: (slot) => look(slot).color });
+const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
+objectives.init();
+endgame.init({ me: () => me, teams: () => teams });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   // camera
@@ -1325,9 +1330,10 @@ renderer.setAnimationLoop(() => {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
-  effects.update(dt);
+  objectives.frame(dt); effects.update(dt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   alerts.frame();
+  endgame.frame();
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (targeting && world) {
@@ -1353,7 +1359,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, objectives, endgame, get me() { return me; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },
