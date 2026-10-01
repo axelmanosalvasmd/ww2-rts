@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createEffects } from './fx.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
@@ -204,7 +205,7 @@ function startGame(m) {
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
+  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
 
@@ -675,7 +676,7 @@ function removeUnit(v) {
     v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
     v.root.children.slice(0, 2).forEach(o => (o.visible = false));
     fx.push({ obj: v.root, life: 40, update: () => {} });
-    boom(v.x, v.z, 3);
+    effects.wreck(v);
   } else {
     if (v.killed) v.models.forEach(m => m.visible && corpse(v, m));
     world.remove(v.root);
@@ -684,22 +685,6 @@ function removeUnit(v) {
 }
 
 // ---------- effects + sound ----------
-
-function tracer(a, b, color, life) {
-  const g = new THREE.BufferGeometry().setFromPoints([a, b]);
-  const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true }));
-  world.add(line);
-  fx.push({ obj: line, life, max: life, update: (f) => (line.material.opacity = f), dispose: () => { g.dispose(); line.material.dispose(); } });
-}
-
-function boom(x, z, size) {
-  for (const [color, grow, life] of [[0xffb040, 1, 0.35], [0x6d655a, 1.8, 1.4]]) {
-    const m = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false }));
-    m.position.set(x, hAt(x, z) + 0.5, z);
-    world.add(m);
-    fx.push({ obj: m, life, max: life, update: (f) => { m.scale.setScalar(size * grow * (1.2 - f)); m.material.opacity = f * 0.8; }, dispose: () => m.material.dispose() });
-  }
-}
 
 let audio = null, noise = null, voices = 0;
 addEventListener('pointerdown', () => {
@@ -764,32 +749,8 @@ function applySnapshot(s) {
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
   }
-  for (const sh of s.shots) {
-    if (sh.k === 'throw') { const from = units.get(sh.f); if (from) lob(from, sh.x, sh.z); continue; }
-    if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
-    if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing') { plane(sh); continue; }
-    if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
-    if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
-    const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
-    const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
-    const end = new THREE.Vector3(tx, hAt(tx, tz) + (to && isVeh(to.type) ? 1.2 : 0.8), tz);
-    if (from) {
-      const n = sh.k === 'rifle' ? Math.min(3, from.alive) : 1;
-      for (let i = 0; i < n; i++) {
-        const src = from.type === 'tank' || from.type === 'at' ? from.turret : from.models.filter(m => m.visible)[i] || from.root;
-        const start = src.getWorldPosition(new THREE.Vector3()); start.y += from.type === 'tank' ? 0.1 : 1;
-        tracer(start, end, heavy ? 0xfff0b0 : 0xffd27a, heavy ? 0.18 : 0.09);
-      }
-    }
-    if (heavy) boom(tx, tz, sh.hit ? 1.6 : 1);
-    sound(sh.k, sh.x, sh.z);
-    if (sh.kill && to) to.killed = true;
-  }
+  for (const sh of s.shots) if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
+  effects.snapshot(s, seen); // flashes, tracers, blasts, smoke, planes and their sounds (client/fx.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
@@ -803,29 +764,10 @@ function applySnapshot(s) {
     p.progMat.color.set(owner >= 0 ? oc : capper >= 0 ? look(capper).color : 0xffffff);
     p.prog.geometry.setDrawRange(0, Math.round(progress * 64) * 6);
   });
-  syncSmoke(s.smokes);
   syncStrikes(s.strikes);
   applyCells(s.cells);
   lastSnap = s;
   updateHud(s);
-}
-
-const smokes = new Map();
-function syncSmoke(list) {
-  const keep = new Set();
-  for (const [x, z, r] of list) {
-    const key = x + ',' + z; keep.add(key);
-    if (smokes.has(key)) continue;
-    const cloud = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0xd8d8d0, transparent: true, opacity: 0.5, depthWrite: false });
-    for (let i = 0; i < 9; i++) {
-      const a = i * 0.7, d = i ? r * 0.55 : 0, sz = r * (0.45 + Math.random() * 0.2);
-      const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
-      cloud.add(mesh(GEO.ball, m, sz, sz * 0.7, sz, cx, sz * 0.5 + hAt(cx, cz), cz));
-    }
-    cloud.traverse(o => (o.castShadow = false));
-    world.add(cloud); smokes.set(key, cloud);
-  }
-  for (const [key, cloud] of smokes) if (!keep.has(key)) { world.remove(cloud); smokes.delete(key); }
 }
 
 // public warnings for incoming support: everyone sees where it will land
@@ -863,41 +805,6 @@ function aimShape(kind, color) {
   g.userData.mat = matl;
   return g;
 }
-// a plane crossing the map along the run, coming in from the caller's side
-function plane(sh) {
-  const p = new THREE.Group(), c = mat(0x55594a), dx = Math.cos(sh.dir), dz = Math.sin(sh.dir);
-  p.add(mesh(GEO.box, c, 6, 0.9, 0.9), mesh(GEO.box, c, 1.4, 0.2, 9), mesh(GEO.box, c, 0.8, 0.15, 3.2, -2.6, 0, 0), mesh(GEO.box, c, 0.8, 1.2, 0.15, -2.6, 0.6, 0));
-  p.rotation.y = -sh.dir; world.add(p);
-  const low = sh.k === 'strafe' ? 9 : sh.k === 'bombing' ? 18 : 26, span = 140, life = 3;
-  fx.push({ obj: p, life, max: life, update: (f) => { const t = 1 - f, a = (t - 0.5) * span; p.position.set(sh.x + dx * a, hAt(sh.x, sh.z) + low + Math.abs(t - 0.5) * 30, sh.z + dz * a); } });
-  if (sh.k === 'strafe') {
-    // guns rake the strip as it passes over
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 9 - 0.5) * SUPPORT.strafe.len;
-      setTimeout(() => { boom(sh.x + dx * a + (Math.random() - 0.5) * 3, sh.z + dz * a + (Math.random() - 0.5) * 3, 0.8); sound('mg', sh.x + dx * a, sh.z + dz * a); }, 1300 + i * 40);
-    }
-  }
-  sound('tank', sh.x, sh.z);
-}
-
-// rocket salvo: eight streaks arcing from the launcher onto the target area
-function salvo(from, x, z, n = 8) {
-  const start = from.root.position.clone(); start.y += 2.5;
-  for (let i = 0; i < n; i++) {
-    const end = new THREE.Vector3(x + (Math.random() - 0.5) * 8, hAt(x, z), z + (Math.random() - 0.5) * 8), r = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0xffc070 }));
-    r.scale.setScalar(0.3); r.visible = false; world.add(r);
-    const life = 1.2 + i * 0.15;
-    fx.push({ obj: r, life, max: life, update: (f) => { const t = Math.min(1, (1 - f) * life / 1.2 - i * 0.15 / 1.2); r.visible = t > 0; if (t > 0) { r.position.lerpVectors(start, end, t); r.position.y += Math.sin(t * Math.PI) * 18; } }, dispose: () => r.material.dispose() });
-  }
-}
-
-// grenade in flight: a small arc from the thrower to the target
-function lob(from, x, z) {
-  const start = from.root.position.clone(), end = new THREE.Vector3(x, hAt(x, z), z), n = new THREE.Mesh(GEO.ball, mat(0x2a2a22));
-  n.scale.setScalar(0.25); world.add(n);
-  fx.push({ obj: n, life: 1.1, max: 1.1, update: (f) => { const t = 1 - f; n.position.lerpVectors(start, end, t); n.position.y += 1 + Math.sin(t * Math.PI) * 5; } });
-}
-
 // ---------- HUD ----------
 
 const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N' };
@@ -1441,6 +1348,7 @@ function updateFog() {
   fogTex.needsUpdate = true;
 }
 
+const effects = createEffects({ scene, camera, cam, hAt, units, sound, colorOf: (slot) => look(slot).color });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   // camera
@@ -1472,6 +1380,7 @@ renderer.setAnimationLoop(() => {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
+  effects.update(dt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
@@ -1498,4 +1407,4 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, effects, get me() { return me; } };
