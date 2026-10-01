@@ -1705,6 +1705,49 @@ const behindHedge = p => p.x >= 40 - 2.2 && p.x < 42 && p.z > 6 && p.z < 54;
   run(g, 4);
   assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= CFG.behavior.spacing - 0.25, `idle squads spread out (${Math.hypot(a.x - b.x, a.z - b.z).toFixed(2)} m)`);
 }
+// Squads sent to a capture point's center all end inside its circle (the AI sends whole groups there).
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const p = g.points[0], squads = Array.from({ length: 9 }, (_, i) => put(g, 0, 'rifle', 60, 10 + i * 5));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, p.x, p.z]) });
+  const far = Math.max(...squads.map(u => Math.hypot(u.path.at(-1).x - p.x, u.path.at(-1).z - p.z)));
+  assert.ok(far <= CFG.pointRadius, `every end spot is on the point (farthest ${far.toFixed(1)} m)`);
+}
+// A formation spot across water or a cliff from the click falls back to the near side: nobody walks the long way
+// round, and nobody is left without a path.
+for (const [name, edit, heights] of [['river', r => { for (let x = 0; x < 39; x++) r[20][x] = 'W'; }], ['cliff', () => {}, true]]) {
+  const map = blank(field(edit));
+  if (heights) map.heights = Array.from({ length: 30 }, (_, y) => (y >= 20 ? '2' : '0').repeat(40));
+  const g = createGame(map, ['a', 'b'], false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }, p.mp = 5000));
+  const squads = Array.from({ length: 9 }, (_, i) => put(g, 0, 'rifle', 5.3, 10.3 + i * 3));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60.3, 37.3]) });
+  assert.ok(squads.every(u => u.path.length && u.path.at(-1).z < 40), `${name}: every squad gets a spot on the near side`);
+}
+
+// Crossfire: a squad or tank shot at by two squads keeps its target instead of swapping each time the other lands a
+// shot (every recent shooter counts as a threat, not only the last one).
+for (const type of ['rifle', 'tank']) {
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0.99; // misses only
+    const u = put(g, 0, type, 40.3, 40.3), a = put(g, 1, 'rifle', 22.3, 32.3), b = put(g, 1, 'rifle', 58.3, 32.3);
+    command(g, 1, { t: 'attack', ids: [a.id, b.id], target: u.id }); b.cooldown = 0.7;
+    let last = 0, switches = 0;
+    for (let i = 0; i < 20 * 20; i++) { step(g); if (u.targetId && last && u.targetId !== last) switches++; if (u.targetId) last = u.targetId; }
+    assert.ok(last && switches === 0, `${type}: holds one target under crossfire (${switches} switches in 20 s)`);
+  } finally { Math.random = orig; }
+}
+
+// Fog: an enemy the side can't see, standing on the clicked spot, does not move where the squad ends.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const u = put(g, 0, 'rifle', 3, 50), e = put(g, 1, 'rifle', 76, 50);
+  step(g);
+  assert.ok(!g.players[0].visible.has(e.id));
+  command(g, 0, { t: 'move', orders: [[u.id, 76, 50]] });
+  assert.ok(Math.hypot(u.path.at(-1).x - 76, u.path.at(-1).z - 50) < 0.5, 'the squad heads for the exact spot');
+}
 
 // A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)
 // point at the real files, so the copy shares those modules with the normal import.

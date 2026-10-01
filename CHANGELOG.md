@@ -5,6 +5,29 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Smarter units, review fixes (found by testing the entry below before release):
+  - Crossfire: a unit shot at by two enemies no longer swaps targets each time the other one lands a shot. A squad
+    between two rifle squads swapped 37 times in 30 s and a tank's hull swung 37 rad back and forth; now both keep
+    one target and the tank turns once. Every enemy that fired at the unit in the last 3 s counts as a shooter, not
+    only the last one to hit it.
+  - Fog of war: an enemy you could not see, standing on the spot you clicked or walking to it, moved your squad's end
+    spot aside, which gave its position away. Only your own and allied units count as holding a spot now.
+  - Capture points: squads sent to a point's center all end inside its circle (3 of 9 used to stop up to 11 m out,
+    off the point). On a point the group centers on the click and stays within 6.5 m.
+  - Rivers, walls and cliffs: a group sent next to one no longer sends some squads to the far side the long way
+    round, or leaves them with no path at all (2 of 9 squads sent along a cliff never moved). Such spots fall back to
+    the near side.
+  - Numbers (`tools/balance.mjs`, same seeds; old code, the entry below, and with these fixes): Conquest over 210
+    matches, USA/GER/USSR wins 38/36/27%, 37/31/32% and 42/32/26% (no shift beyond chance, p = 0.65 against the old
+    code), closeness 61%, 61% and 62%, lead changes 1.17, 1.13 and 1.26, length 9.3, 9.3 and 9.6 min. Classic over
+    60 matches: 33/35/32%, 20/48/32% and 23/33/42% with one draw, 85%, 90% and 87% decided before Sudden Death, median
+    17.6, 17.2 and 17.1 min. GER's Classic gain is gone, though at 60 matches neither shift is outside chance
+    (p = 0.19 old to the entry below, 0.39 old to fixed). Infantry hits taken in a cover cell rose from 19% to 23%
+    (Conquest) and 12% to 13% (Classic) against the entry below; rear hits and crowding did not move. Per unit-minute
+    in 30 Conquest matches: target switches 3.7 (old), 3.3 and 3.3, AI re-orders 0.45, 0.49 and 0.46, spacing steps
+    0.24 and 0.25, moves stalled for 10 s 0.05 on all three, orders with no path 0.
+  - Left for later: barrage shells still do not count as incoming fire, and planes still re-pick targets every half
+    second (both noted below).
 - Smarter units (all modes, yours and the AI's alike). Units now make the small decisions you used to micromanage,
   using only what your side can see:
   - Targets: AT guns go for vehicles, snipers for MG, AT, mortar and flak crews, MGs and riflemen for infantry, and

@@ -1257,7 +1257,9 @@ function armorMul(t, from) {
   const c = Math.cos(Math.atan2(from.z - t.z, from.x - t.x) - t.rot);
   return c < -0.5 ? 2 : UNITS[t.type].frontArmor && c > 0.5 ? UNITS[t.type].frontArmor : 1;
 }
-const firedOnBy = (g, u, t) => t.id === u.hitBy && g.tick - u.hitAt <= CFG.behavior.threatTime / TICK;
+// t is shooting at u: it hit u last, or it aims at u and fired lately. Counting every shooter (not only the last one)
+// keeps a unit under crossfire from swapping targets each time the other side lands a shot.
+const firedOnBy = (g, u, t) => g.tick - (t.id === u.hitBy ? u.hitAt : t.targetId === u.id ? t.shotAt ?? -1e9 : -1e9) <= CFG.behavior.threatTime / TICK;
 
 // Value = the damage a shot is expected to do (after cover and armor) x the weapon's job x the threat: whoever
 // just shot at us counts 2.5x, an enemy aiming at us 1.5x. Mortars and rockets go for garrisons, then trenches and
@@ -1283,16 +1285,19 @@ function pickTarget(g, u) {
 // A squad at p is sheltered from fire coming from `from` in a cover cell (hedge, wall, crater, ruins, trench, tank
 // traps: every side) or right behind something solid on that side (a house, wall, rubble or hedge).
 const shelterAt = (g, p, from) => (flagsAt(g, p.x, p.z) & COVER) > 0 || (!!from && solidToward(g, p, from));
-// Spots other ground units hold (where they stand idle) or are heading to (their path's end), near `at`.
-function heldSpots(g, skip, at, radius) {
+// Spots the side's own ground units (and its allies') hold (where they stand idle) or are heading to (their path's
+// end), near `at`. Enemies don't count: where they stand or walk to is hidden information.
+function heldSpots(g, skip, at, radius, owner) {
   const out = [];
-  for (const v of gridFor(g).candidates(at, radius + 24, false, v => !skip.has(v.id) && v.hp > 0 && !v.air && !UNITS[v.type].structure && v.garrison < 0)) {
+  for (const v of gridFor(g).candidates(at, radius + 24, false, v => !skip.has(v.id) && v.hp > 0 && !v.air && !UNITS[v.type].structure && v.garrison < 0 && allied(g, v.owner, owner))) {
     const end = v.path.length ? v.path.at(-1) : v;
     if (dist(end, at) <= radius + CFG.behavior.vehicleSpacing) out.push(end);
   }
   return out;
 }
 const spaceFor = u => (UNITS[u.type].infantry ? CFG.behavior.spacing : CFG.behavior.vehicleSpacing);
+// u could walk (or drive) from a to b in a straight line: nothing in the way it can't cross and no cliff step.
+const straightTo = (g, u, a, b) => clear(g, a.x, a.z, b.x, b.z, UNITS[u.type].infantry ? MOVE | WIRE : MOVE | VBLOCK, true) && noCliffs(g, a, b);
 // A spot that starts inside a capture circle stays inside it, so nobody walks off the point it is taking.
 const inPoints = (g, at) => g.points.filter(p => dist(p, at) <= CFG.pointRadius);
 // The best free cell within `radius` of `at` for u: the nearest sheltered one (trenches a little ahead) when `cover`,
@@ -1310,7 +1315,7 @@ function spotNear(g, u, at, radius, held, from, cover) {
     if (cover && mul >= 1) continue;
     const score = d + (mul - CFG.trenchMul) * 4;
     if (score >= bestScore || held.some(h => dist(h, p) < space) || points.some(q => dist(q, p) > CFG.pointRadius - 1)) continue;
-    if (!clear(g, at.x, at.z, p.x, p.z, block, true)) continue;
+    if (!straightTo(g, u, at, p)) continue;
     bestScore = score; best = p;
   }
   return best;
@@ -1339,15 +1344,25 @@ function endSpots(g, go) {
     const n = group.length, cx = group.reduce((a, [u]) => a + u.x, 0) / n, cz = group.reduce((a, [u]) => a + u.z, 0) / n, [, gx, gz] = group[0];
     const len = Math.hypot(gx - cx, gz - cz) || 1, dx = (gx - cx) / len, dz = (gz - cz) / len, cols = Math.ceil(Math.sqrt(n));
     group.sort((a, b) => (a[0].x - cx) * -dz + (a[0].z - cz) * dx - ((b[0].x - cx) * -dz + (b[0].z - cz) * dx));
+    // On a capture point the rows center on the click and stay inside the circle; elsewhere they form behind it. A
+    // spot the unit can't reach from the click in a straight line (across water, a wall or a cliff) falls back to the
+    // click, and the crowding pass below finds it a free cell on the right side.
+    const click = { x: gx, z: gz }, points = inPoints(g, click), shift = points.length ? (Math.ceil(n / cols) - 1) / 2 : 0;
     group.forEach((o, i) => {
-      const col = i % cols - (Math.min(cols, n) - 1) / 2, row = Math.floor(i / cols);
-      o[1] = Math.min(g.w * CELL - 1, Math.max(1, gx - dz * col * B.gap - dx * row * B.gap));
-      o[2] = Math.min(g.h * CELL - 1, Math.max(1, gz + dx * col * B.gap - dz * row * B.gap));
+      const col = i % cols - (Math.min(cols, n) - 1) / 2, row = Math.floor(i / cols) - shift;
+      const p = { x: Math.min(g.w * CELL - 1, Math.max(1, gx - dz * col * B.gap - dx * row * B.gap)),
+        z: Math.min(g.h * CELL - 1, Math.max(1, gz + dx * col * B.gap - dz * row * B.gap)) };
+      for (const q of points) {
+        const d = dist(p, q), max = CFG.pointRadius - 1.5;
+        if (d > max) { p.x = q.x + (p.x - q.x) / d * max; p.z = q.z + (p.z - q.z) / d * max; }
+      }
+      const ok = straightTo(g, o[0], click, p);
+      o[1] = ok ? p.x : gx; o[2] = ok ? p.z : gz;
     });
   }
   return go.map(([u, x, z]) => {
     let at = { x, z };
-    const held = claimed.concat(heldSpots(g, skip, at, B.coverSeek)), crowded = p => held.some(h => dist(h, p) < spaceFor(u));
+    const held = claimed.concat(heldSpots(g, skip, at, B.coverSeek, u.owner)), crowded = p => held.some(h => dist(h, p) < spaceFor(u));
     if (UNITS[u.type].infantry) {
       const from = threatFor(g, u, at);
       if (!shelterAt(g, at, from) || crowded(at)) at = spotNear(g, u, at, B.coverSeek, held, from, true) ?? at;
@@ -1386,7 +1401,7 @@ function react(g, u, def) {
   u.react = 2;
   if (def.infantry) {
     if (shelterAt(g, u, u.hitFrom)) return;
-    const radius = answer ? B.coverShift : B.coverFlee, spot = spotNear(g, u, u, radius, heldSpots(g, new Set([u.id]), u, radius), u.hitFrom, true);
+    const radius = answer ? B.coverShift : B.coverFlee, spot = spotNear(g, u, u, radius, heldSpots(g, new Set([u.id]), u, radius, u.owner), u.hitFrom, true);
     if (spot) { u.path = findPath(g, u, spot); u.drift = 'cover'; }
   } else if (!answer && u.hp < def.models * def.hpPer * 0.5 && !inPoints(g, u).length) {
     const a = Math.atan2(u.z - u.hitFrom.z, u.x - u.hitFrom.x);
@@ -1401,7 +1416,7 @@ function keepSpacing(g, u) {
   u.react = 1;
   const space = CFG.behavior.spacing, close = gridFor(g).candidates(u, space, false, v => v.id < u.id && v.owner === u.owner && v.hp > 0 && UNITS[v.type].infantry && v.garrison < 0 && !v.path.length && dist(u, v) < space - 0.25);
   if (!close.length) return;
-  const held = heldSpots(g, new Set([u.id]), u, CFG.behavior.coverSeek), from = threatFor(g, u, u), sheltered = shelterAt(g, u, from);
+  const held = heldSpots(g, new Set([u.id]), u, CFG.behavior.coverSeek, u.owner), from = threatFor(g, u, u), sheltered = shelterAt(g, u, from);
   const spot = spotNear(g, u, u, CFG.behavior.coverSeek, held, from, true) ?? (sheltered ? null : spotNear(g, u, u, CFG.behavior.coverSeek, held, null, false));
   if (spot) { u.path = findPath(g, u, spot); u.drift = 'space'; }
 }

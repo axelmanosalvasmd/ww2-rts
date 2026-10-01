@@ -439,18 +439,23 @@ Rules:
 - Target choice (`pickTarget`): score = distance / (value x threat). Value is the expected damage after cover and
   armor (rear hits x2, a Tiger's front x0.7) times the weapon's job: AT guns x3 on vehicles, snipers x3 on MG, AT,
   mortar and flak crews, MGs and riflemen x2 on infantry. Mortars and rockets value a garrison x3, a trench x2 and
-  cover x1.5, times the enemies around the target. Threat: the unit that shot at it in the last 3 s counts x2.5, an
-  enemy aiming at it x1.5. A new target must score 30% better than the current one to take over (`switchGain`), and
-  a new shooter makes the target look over its choice at once. A target the player ordered always wins.
+  cover x1.5, times the enemies around the target. Threat: every enemy that shot at it in the last 3 s counts x2.5
+  (the last one to hit it, and any enemy aiming at it that fired in that time), an enemy only aiming at it x1.5. A new
+  target must score 30% better than the current one to take over (`switchGain`), and a new shooter makes the target
+  look over its choice at once. A target the player ordered always wins.
 - Cover at the end of a move (`endSpots`): an infantry move or attack-move ending in the open settles into the
   nearest sheltered cell within 4 m (`coverSeek`): a cover cell (hedge, wall, crater, ruins, trench, tank traps) or
   the cell right behind something solid on the threat's side. A trench beats other cover up to about 0.6 m farther.
   The threat is the nearest armed enemy the side sees within 50 m, else where the last shots came from, else
-  straight ahead. Nobody takes a spot another unit holds or is walking to (3 m apart for infantry, 5 m for
-  vehicles), and a spot inside a capture circle stays inside it.
+  straight ahead. Nobody takes a spot one of the side's own or allied units holds or is walking to (3 m apart for
+  infantry, 5 m for vehicles); enemies never count, since where they stand or walk is hidden. A spot inside a capture
+  circle stays inside it, and a shifted spot must be reachable from the first one in a straight line with no cliff.
 - Spreading: units sent to one spot in one order (the AI's way) spread into rows across the line of travel, 5 m
-  apart (`gap`), before the cover step. Of two idle squads closer than 3 m, the newer one steps to the nearest free
-  spot: cover if there is any, and it never leaves cover for open ground.
+  apart (`gap`), before the cover step. Away from capture points the rows form behind the click; on a capture point
+  they center on it and every spot is pulled to within 6.5 m of the point's center. A row spot the unit could not
+  reach from the click in a straight line (across water, a wall or a cliff) falls back to the click, and the crowding
+  step finds it a free cell on the near side. Of two idle squads closer than 3 m, the newer one steps to the nearest
+  free spot: cover if there is any, and it never leaves cover for open ground.
 - Under fire (`react`), only for units with nothing ordered: a fresh unit walking to its rally point turns the walk
   into an attack-move and answers a shooter it can hit. An idle squad in the open moves into cover facing the fire,
   within 4 m if it can shoot back (`coverShift`) and within 8 m if it can't (`coverFlee`). An idle vehicle below half
@@ -482,6 +487,31 @@ Results (`tools/balance.mjs`, the same seeds on the old and the new code):
 - Server cost: a 300-unit Massive fixture (six AIs on six-fronts, alternating old and new code in one process so both
   see the same machine load) ticks in 26.3 ms against 25.9 ms before (+1.5%). On an 18000-tick Massive Conquest
   bench the step went from 6.5 to 8.0 ms, but more units stayed alive (231 against 188); per unit it is the same.
+
+Review fixes (the same day, before release). Four faults in the first version, each now covered by a test:
+- Crossfire flip-flop: only the last unit to hit counted as the shooter, so a unit between two shooters swapped
+  targets each time the other one landed a shot (37 swaps in 30 s, a tank's hull swinging 37 rad). Every enemy that
+  fired at it in the last 3 s now counts.
+- Fog leak: held spots counted enemy units too, so an unseen enemy on (or walking to) a clicked spot moved the end
+  spot aside. Only the side's own and allied units count now.
+- Capture circle: rows formed behind the click even on a point, so 3 of 9 squads sent to a point's center ended up
+  to 11 m out, off the point. Rows now center on a point and stay within 6.5 m.
+- Far side of an obstacle: a row spot across a river, wall or cliff sent a squad the long way round, or left it with
+  no path at all when the far side was another region (2 of 9 squads along a cliff never moved). Such spots fall
+  back to the click.
+- Numbers (old code / first version / fixed, same seeds): Conquest over 210 matches, USA/GER/USSR 38/36/27%,
+  37/31/32% and 42/32/26% (p = 0.65 old against fixed), closeness 61%, 61%, 62%, lead changes 1.17, 1.13, 1.26,
+  length 9.3, 9.3, 9.6 min. Classic over 60 matches: 33/35/32%, 20/48/32% and 23/33/42% (one draw), median 17.6,
+  17.2, 17.1 min, 85%, 90%, 87% before Sudden Death. The first version's GER gain in Classic does not show with the
+  fixes, but none of the Classic shifts is outside chance at 60 matches (p = 0.19 and 0.39 against the old code).
+  Infantry hits taken in a cover cell went from 19% to 23% in Conquest and 12% to 13% in Classic against the first
+  version; rear hits and idle crowding stayed put. Churn per unit-minute in 30 Conquest matches: target switches
+  3.7, 3.3, 3.3; AI attack-move re-orders 0.45, 0.49, 0.46; spacing steps 0.24 and 0.25; moves stalled 10 s 0.05 on
+  all three; no orders without a path.
+- Seen but not fixed (older than this work): `clear()` can step past its end cell when a ray ends exactly on a cell
+  border (even-metre coordinates), walk off the map and report the line blocked. On open ground, sight from
+  (60, 40) to (78, 32) is false while the reverse is true. Moving units almost never sit on exact borders; the
+  crossfire test uses x.3 positions to stay clear of it.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
