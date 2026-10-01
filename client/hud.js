@@ -24,7 +24,8 @@ const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shell
   dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops a rifle squad where your side can see (counts toward pop)',
   cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)' };
 const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infantry', wire: 'Slows infantry; tanks flatten it', traps: 'Stops vehicles; cover for infantry',
-  nest: 'A trench pit behind a horseshoe of sandbags' };
+  nest: 'A trench pit behind a horseshoe of sandbags', mines: 'Hidden from the enemy; goes off under the first enemy squad or vehicle',
+  bridge: 'Across a river, up to 5 cells; aim it along the crossing' };
 const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
   double: 'Two rows, the second 6 m behind the first', arc: 'A crescent around the first click, bowed toward the second',
   ring: 'A circle around the first click, out to the second', strongpoint: 'A trench square with barbed wire on the side of the second click' };
@@ -91,6 +92,8 @@ const ICON = {
   wire: '<path d="M2 21h28"/><circle cx="8" cy="15.5" r="4.5"/><circle cx="16" cy="15.5" r="4.5"/><circle cx="24" cy="15.5" r="4.5"/>',
   traps: '<path d="M6 27 22 5M10 5l16 22M4 17.5h24"/>',
   nest: '<path d="M4.5 26a11.5 11.5 0 0 1 23 0"/><path d="M16 22V8"/><circle cx="16" cy="22.5" r="2.2"/>',
+  mines: '<ellipse cx="16" cy="20" rx="11" ry="5"/><path d="M12 15.5V12h8v3.5M16 12V7"/>',
+  bridge: '<path d="M2 12h28M2 12c0 9 7 12 14 12s14-3 14-12M9 12v10M16 12v12M23 12v10"/>',
   grenade: '<ellipse cx="15" cy="19.5" rx="7" ry="8.5"/><path d="M12 11V7.5h6V11M18 8.5l6-3.5M15 15v9M11 19.5h8"/>',
   suppress: '<path d="M3 16h7M13 10l13-5M13 16h16M13 22l13 5"/>',
   ap: '<path d="M10 27V14l6-10 6 10v13z"/><path d="M10 21h12"/>',

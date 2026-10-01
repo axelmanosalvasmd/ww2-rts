@@ -572,9 +572,11 @@ function hedges(C) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (at(x, y) !== 'H') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), r1 = rnd(x, y, 80), hb = 0.85 + 0.25 * r1;
-    put('earth', cx, g - 0.1, cz, 2.4, hb, 2.4, r1 * 6.28, [0.78, 0.9, 0.6]);
+    // a shot-up hedge loses its shrubs first, then the bank slumps
+    const hurt = C.stage(x, y), bank = hb * [1, 0.85, 0.6][hurt];
+    put('earth', cx, g - 0.1, cz, 2.4, bank, 2.4, r1 * 6.28, [0.78, 0.9, 0.6]);
     const ex = at(x - 1, y) === 'H' || at(x + 1, y) === 'H', ez = at(x, y - 1) === 'H' || at(x, y + 1) === 'H';
-    const alongX = ex !== ez ? ex : rnd(x, y, 81) < 0.5, top = g - 0.1 + hb, n = low ? 1 : 2;
+    const alongX = ex !== ez ? ex : rnd(x, y, 81) < 0.5, top = g - 0.1 + bank, n = hurt === 2 ? 0 : hurt === 1 || low ? 1 : 2;
     for (let i = 0; i < n; i++) {
       const o = n === 1 ? 0 : (i ? 0.5 : -0.5) + (rnd(x, y, 82 + i) - 0.5) * 0.3, side = (rnd(x, y, 84 + i) - 0.5) * 0.2;
       const rr = (low ? 1.0 : 0.8) + 0.2 * rnd(x, y, 86 + i), wide = low ? 1.15 : 1, v = rnd(x, y, 88 + i);
@@ -590,6 +592,7 @@ function hedges(C) {
 
 // ---------- walls: '#' from the map is a capped stone wall, '#' built in play is a sandbag wall ----------
 const WT = 0.55, WH = 1.0, SINK = 0.3;
+function placePiece(...piece) { put(...piece); } // the module's put, for stoneWall, which wraps it under the same name
 function walls(C) {
   const { w, h, at, orig } = C, isWall = (x, y) => at(x, y) === '#';
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -601,6 +604,9 @@ function walls(C) {
 }
 function stoneWall(C, x, y, conn, diag) {
   const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = C.hAt(cx, cz), tint = 0.85 + 0.25 * rnd(x, y, 100), y0 = g - SINK, cap = tint * 1.18;
+  // a shot-up wall stands lower, and loses its capstones when it is nearly gone
+  const hurt = C.stage(x, y), k = [1, 0.74, 0.48][hurt], whole = placePiece;
+  const put = hurt ? (kind, px, py, pz, sx, sy, sz, ...rest) => { if (sy !== 0.13) whole(kind, px, y0 + (py - y0) * k, pz, sx, sy * k, sz, ...rest); else if (hurt < 2) whole(kind, px, y0 + (py - y0) * k, pz, sx, sy, sz, ...rest); } : whole;
   // a run of wall centered (ox, oz) from the cell center, length along the yaw; diagonals sit a hair lower
   const run = (ox, oz, len, yaw, drop = 0) => {
     put('stone', cx + ox, y0 + WH / 2 - drop, cz + oz, WT, WH, len, yaw, tint);
@@ -633,14 +639,14 @@ function bagWall(C, x, y, conn, diag) {
     // three courses along the half run to the cell edge: two rows deep at the bottom, one above
     const L = Math.hypot(dx, dy), ux = dx / L, uz = dy / L, yaw = yawOf(ux, uz) + Math.PI / 2, len = 0.56 * L;
     const owns = dx > 0 || (dx === 0 && dy > 0); // the bag on the shared edge belongs to one of the two cells
-    for (let c = 0; c < 3; c++) {
+    for (let c = 0; c < 3 - C.stage(x, y); c++) { // a shot-up sandbag wall has lost its top courses
       const at = c === 1 ? (owns ? [0.5, 1] : [0.5]) : [0.25, 0.75], rows = c === 0 ? [-0.2, 0.2] : [0];
       for (const f of at) for (const off of rows) bags(x, y, k++, cx + ux * f * L - uz * off, g + 0.14 + c * 0.25, cz + uz * f * L + ux * off, yaw, len);
     }
   }
   // the middle of the cell, under the second course
   const [dx, dy] = dirs[0];
-  bags(x, y, k++, cx, g + 0.39, cz, yawOf(dx, dy) + Math.PI / 2);
+  if (C.stage(x, y) < 2) bags(x, y, k++, cx, g + 0.39, cz, yawOf(dx, dy) + Math.PI / 2);
 }
 
 // ---------- trenches: timber revetments, posts, duckboards, spoil parapets; MG nests get an inner ring of bags ----------
@@ -712,6 +718,16 @@ function traps(C) {
   }
 }
 
+// ---------- mines: a dark disc half sunk in the turf (the server only tells you about your own side's) ----------
+function mines(C) {
+  const { w, h, at, hAt } = C;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (at(x, y) !== 'N') continue;
+    const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL;
+    put('dark', cx, hAt(cx, cz) + 0.06, cz, 0.7, 0.14, 0.7, rnd(x, y, 150) * 6.28, 0.7);
+  }
+}
+
 // ---------- bridges: plank deck, edge beams, railings and stone cutwaters on the water sides ----------
 function bridges(C) {
   const { w, h, at, hAt } = C;
@@ -736,16 +752,18 @@ function bridges(C) {
 // ---------- the map's pieces ----------
 let state = null;
 function rebuild() {
-  const { group, grid, orig, hAt } = state, h = grid.length, w = grid[0]?.length ?? 0;
+  const { group, grid, orig, hAt, cells } = state, h = grid.length, w = grid[0]?.length ?? 0;
   clearGroup(group);
-  const C = { grid, orig, hAt, w, h, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map() };
-  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); bridges(C);
+  // stage: 0 whole, 1 damaged, 2 nearly gone (bits 3-4 of the cell state the server sends)
+  const C = { grid, orig, hAt, w, h, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
+  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); bridges(C);
   flush(group, C.low);
 }
-// group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height
-export function buildStructures(group, grid, orig, hAt) {
+// group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height;
+// cells: the per-cell state bytes, if any
+export function buildStructures(group, grid, orig, hAt, cells) {
   if (state && state.group !== group) clearGroup(state.group);
-  state = { group, grid, orig, hAt };
+  state = { group, grid, orig, hAt, cells };
   rebuild();
 }
 gfx.onChange(() => { if (state?.group.parent) rebuild(); });

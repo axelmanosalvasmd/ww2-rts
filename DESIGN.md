@@ -51,50 +51,72 @@ only through `command()`.
 - `shared/ai-view.js` is the AI's only window onto the game. `viewFor(g, slot, memory)` runs the same `snapshotFor()`
   a human receives and decodes its rows into plain objects. It copies units, public objectives, announcements and the
   seat's own economy; other seats expose only public start data (spawns, teams, factions) and scores. Coordinates,
-  health, suppression, support countdowns, resources and cooldowns carry their wire values.
+  health, suppression, support countdowns, resources and cooldowns carry their wire values. Stances (hold fire, hold
+  position, auto-retreat), autocast and "digging a mass entrenchment" come from the unit flag bits; the stances and
+  autocast are the owner's only, so an enemy's are always off in a view.
 - `think(g, slot, opts)` keeps its signature. It builds or accepts a view, then calls `plan(view, ...)`, which has no
   reference to the authoritative game. Orders go through `opts.submit` (default `command(g, slot, cmd)`). Engineer
-  node assignments live in private per-seat memory, not on the units.
+  node assignments and the squad sent to rebuild a bridge live in private per-seat memory, not on the units.
 - The server refreshes each AI observation on the human snapshot beat (every 2 to 4 ticks). A turn between beats uses
   the previous view. A seat handed over from a human waits for the next beat and keeps the terrain it had discovered.
 - `seenBy(g, slot, id)` in `sim.js` is the one visibility predicate (reveal, allied, visible, and a plane counts only
   while airborne). `snapshotFor()` and the AI both use it.
 - Terrain starts from an immutable copy of the public map (`g.initialTerrain`, taken before Classic buildings or
   Assault fortifications) and applies only the changes the seat's `terrainFor()` delivers. Cover, trench and house
-  searches and building-site searches run on that remembered terrain, so hidden placement, cancellation and
-  destruction cannot move a plan.
+  searches, building-site searches and the blown-bridge check run on that remembered terrain, so hidden placement,
+  cancellation and destruction cannot move a plan. `terrainFor()` already withholds enemy mines, so the view's `mines`
+  (the cells remembered as `N`) are the seat's own side's, which is what the AI counts before laying more.
 - A resource node counts as taken only when an allied depot, or a visible or remembered enemy depot (Ghost), stands
   within 8 m. A Barracks next to a node does not claim it. Unknown nodes stay candidates, and `command()` rejects a
   wrong guess with the normal visibility mask.
 - Sightings expire after 60 seconds in every mode. The lone-gun artillery fallback needs more than 3 seconds of
   stillness the AI observed itself (0.1 m tolerance, reset when sight is lost).
+- Entrenchment, cover, stances: the AI sends `entrench`, `cover`, `stance` and `dig` (mines, bridge) through `submit`
+  like a player, and `command()` applies the same sight rules (every segment must be in the team's sight). Where it
+  entrenches is decided from remembered terrain (`trenchesNear`) and the squad's own cover value; whether it is already
+  entrenching comes from its own flag bits.
+- Horde. The horde is a scripted wave director plus one more seat. The sim itself spawns each wave and sends every
+  unit at the shared bunker, a public structure that is always visible, so nothing in that needs hidden information.
+  The horde seat's own `think()` (its off-map support, planes and abilities) is not exempt: it plans through the same
+  view as every other seat, so it knows only what its units see, and the server gives it an observation like an AI
+  defender's. The wave budget, the support allowance per wave and the free reinforcements are difficulty rules that
+  do not depend on where the defenders are, so they stay as they are. Co-op AI defenders use the same view too.
 - Proofs in `test.js`: seeded commands for equal snapshots stay equal while hidden armies, secret depots on every
   unseen node, hidden footprints, enemy economies, and the private state of enemies the seat can see (stationary
-  timers, paths, health and position below the wire precision) are perturbed, across Conquest, Classic and Assault
-  matches. Negative controls show that perturbing something the seat sees does change its orders. State is hashed
-  around every submit to catch writes outside `command()`, and an AI seat's orders are replayed as a human to show
-  equal income, costs, cooldowns and limits. These tests were run against the old `ai.js` logic (adapted only to take
-  `opts.submit`): the stillness, landed plane, wire precision, secret depot, footprint, delivery beat and match
-  perturbation proofs all fail there.
-- Integration: `ai.js` functions changed are `memoryOf`, `think`, `houseNear`, `trenchesNear`, `spotNear` and
-  `buildEconomy`. New: `observe`, `plan`, and the view adapters `knownBuildings` and `inCover`. The closures `trains`,
-  `affords`, `pointOf`, `can`, `call` and `send` now read the view or use `submit`. Difficulty and autocast branches
-  should plan on this view, act through `submit`, and pass the same proof tests.
+  timers, paths, health and position below the wire precision, stances) are perturbed, across Conquest (also on a
+  house-free map, where squads entrench), Classic, Assault and Horde matches, including the horde seat itself. A
+  perturbation is kept for a turn only if the human snapshot stays identical. Negative controls show that perturbing
+  something the seat sees does change its orders. State is hashed around every submit to catch writes outside
+  `command()`, and an AI seat's orders are replayed as a human to show equal income, costs, cooldowns and limits.
+  Fixtures cover entrenching beside hidden trench cover, mines (own side counted, enemy mines unknown), auto-retreat,
+  and a blown bridge. These tests were run against the old `ai.js` logic (master's, adapted only to take
+  `opts.submit` and `opts.memory`): the stillness, landed plane, wire precision, secret depot, footprint, entrenchment,
+  delivery beat and match perturbation proofs all fail there. The bridge proof passes on both, as it checks that the
+  port keeps behaviour, and the economy replay passes on both because there never was an AI-only economy.
+- Integration: `ai.js` functions changed are `memoryOf`, `think`, `houseNear`, `trenchesNear`, `spotNear`,
+  `buildEconomy`, `minesNear` and `rebuildBridge`. New: `observe`, `plan`, and the view adapters `knownBuildings` and
+  `inCover`. The closures `trains`, `affords`, `pointOf`, `can`, `call` and `send` now read the view or use `submit`.
+  Difficulty branches should plan on this view, act through `submit`, and pass the same proof tests.
 - Reproducible runs use `tools/ai-balance.mjs` (default map, 3 players, standard armies, shuffled spawns, factions by
   slot, seeds 1 to N, 20 minute limit; medians include matches stopped at the limit). Same seeds before and after, no
-  economy or unit tuning:
+  economy or unit tuning, both on the merged code with unit control, roads, mud, mines and bridges (master at
+  d1b7150 as "before"):
 
 | Mode (matches) | Wins USA/GER/USSR | Wins by spawn 0/1/2 | Finished | Median length |
 |---|---|---|---|---|
-| Conquest (60) before | 30/14/16 | 24/17/19 | 60 | 8.45 min |
-| Conquest (60) after | 26/13/21 | 19/21/20 | 60 | 9.59 min |
-| Classic (30) before | 8/8/4 | 12/3/5 | 20 | 15.57 min |
-| Classic (30) after | 8/9/6 | 7/7/9 | 23 | 15.99 min |
+| Conquest (60) before | 23/20/17 | 22/22/16 | 60 | 9.27 min |
+| Conquest (60) after | 19/17/24 | 28/17/15 | 60 | 9.15 min |
+| Classic (30) before | 4/8/5 | 12/2/3 | 17 | 19.41 min |
+| Classic (30) after | 7/10/5 | 12/3/7 | 22 | 18.39 min |
 
-  Conquest runner-up VP over winner VP: mean 0.550 before, 0.608 after (median 0.543, 0.645).
+  Conquest runner-up VP over winner VP: mean 0.573 before, 0.533 after (median 0.605, 0.561). Classic median length
+  among finished matches: 18.01 minutes before, 15.91 after. Before the merge (master at 4f01489, the AI without
+  stances, mines or bridges) the same check gave Conquest 30/14/16 to 26/13/21 with 8.45 to 9.59 minutes, and Classic
+  8/8/4 to 8/9/6 with 20 to 23 finished.
 - Left for later: two Engineers can propose the same building site in one turn before the next terrain snapshot (the
   second command is rejected normally). Shared automatic salvo targeting scores hidden neighbours of a visible target,
-  for human and AI armies alike. The uncommitted difficulty and autocast worktrees were not merged or edited.
+  for human and AI armies alike. A mine painted in the editor belongs to nobody and is not counted. The uncommitted
+  difficulty branch has not been merged or edited.
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
@@ -664,6 +686,81 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
   40 hp) and VBLOCK (vehicles' paths treat it as a wall; infantry pass and get cover; 250 hp). findPath picks the
   blocking mask from the moving unit's type.
 - Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.
+
+## Roads, mud, bridges and mines (2026-10-01)
+- Three terrain cells: `D` road (flag ROAD), `M` mud (flag MUD), `N` mine (no flags). `=` bridge also carries ROAD.
+  The flags array is 16 bits now (MUD is 256).
+- Vehicles only: speed x `CFG.roadSpeed` (1.35) on ROAD, mud between 0.7 and 0.35 by depth (see Living ground below).
+  In `findPath` a vehicle's step costs 1 / the cell's speed, so the cost is the travel time. On a map with roads
+  (`g.roads`) the A* estimate is scaled by 1 / 1.35 to stay admissible; maps without roads pay nothing. String-pulling
+  does not cross mud and does not skip past the next road cell, so a vehicle stays on the road it chose.
+- Infantry ignore both. One rule per terrain kept the HUD free of new tooltips; revisit if roads feel dull on foot.
+- Roads and mud are buildable ground: a fortification replaces the cell, and it wrecks to open ground, not back to road.
+- Bridge and Minefield are two more `FORTS`, so the dig command, queueing, previews and the Orders buttons came free.
+  `on: 'W'` makes the bridge take river cells instead of open ground, `reach: 9` lets the squad work from the bank
+  (the usual 3 m would send it into the river), `along` aims it the way the squad walks instead of across.
+- Mines: `g.mines` maps the cell to the slot that laid it. `terrainFor` withholds an `N` cell from anyone not allied
+  with that slot, so enemy clients never receive it; when it goes off the cell becomes `+` and everyone sees that.
+  A mine painted in the editor has no owner and goes off under anyone. `terrainHp.N` is 1, so every blast with a
+  terrain value clears mines. The mine's own blast has no terrain value, so mines do not set each other off.
+- Known gap: the fire-at-structure order answers "blocked" for an empty cell and accepts a hidden mine cell, so a
+  player could probe for mines one cell at a time. Not worth a fix until someone does it.
+- `tools/roads.mjs` stamps roads and ford mud onto finished maps (spawn to nearest point, point to nearest point, ties
+  within 10% all count so symmetric maps stay symmetric). It is separate from the generators: run it again after genmap.
+- A bridge builder walks to `digGoal`: a point on the line from the span's middle to the squad, 2 m inside reach. Asking
+  the pathfinder for the middle of the river picked either bank, and the far one is unreachable. Ceiling: on a river
+  wider than the reach the nearest land to that point can be out of reach and the squad waits; build from closer.
+- AI (`shared/ai.js`): the point holder lays one minefield at point radius + 2 m toward the nearest enemy HQ before it
+  entrenches, again when fewer than 2 of its mines remain within radius + 10 m. Laid from inside the point, so the
+  squad still counts as holding it (further out, it walked off the point and the AI never sent it back).
+  `rebuildBridge` notes the map's bridge cells on the first look and sends the nearest free builder to a cell that has
+  become river, one job per look, never with a visible enemy within 35 m. It does not bridge new crossings: knowing
+  where a new bridge pays would need a path query per look, and no map needs one yet.
+- Balance (120 three-way AI matches per map, wins per spawn, with / without roads, AI not using them): Three Crossroads
+  44/33/23 vs 44/29/27, River Towns 39/30/31 vs 43/28/29. With the AI laying mines and rebuilding bridges: Three
+  Crossroads 30/34/36 (120), River Towns 43/29/28 (360).
+
+## Living ground (2026-10-01): less board, more ground
+The owner's brief: the game felt like a board game because tiles have fixed effects that switch at their edges. Keep
+the sand-table look, move the rules away from the board a little.
+- One number per cell, `g.wear` (0-1), read according to the cell's type: churn on open ground, depth for mud, fords
+  and craters, damage on a road. `groundMul(g, c, veh)` turns it into a speed; `speedMul` averages it over five points
+  of the unit's footprint (centre and four at 0.6 x radius), skipping water and walls. That average is the whole
+  "soft edges" rule for movement.
+- Traffic: `CFG.traffic` (0.05) wear per metre a tank drives, half for vehicles that do not crush, half again in mud,
+  x (1 + 3 x wetness). Open ground at wear 1 becomes `M` with wear 0, so the speed is continuous across the change
+  (0.7 either side). First tried 0.02: a standard 9-minute AI match then churned under 10 cells, invisible.
+- Shelling: `damageCells` adds hit / 200 to a road's wear (crater at 1) and hit / 500 to a crater's.
+- Starting depth comes from `cellNoise(c)`, a hash of the cell index: mud and fords 0.2-0.8, craters 0.3-0.6. Cheap
+  and stable, but it is not symmetric, so it can favour a spawn (River Towns moved from 43/29/28 to 30/43/27).
+  If that matters, mirror the hash through the map's symmetry or let map files carry depths.
+- Cover: `coverQ` scales a cover cell's protection (hp share for walls and hedges, depth for craters);
+  `coverBehind` returns 0-1 by distance to the first solid cell toward the shooter (full to 2.2 m, zero at 3.8 m)
+  times that cell's `coverQ`. `behindCover` (cover seeking, cover rank) is `coverBehind > 0.4`.
+- Slope: `heightAt` interpolates the cell levels; the grade of the next metre along the path scales speed by
+  `CFG.slope` ([0.2 infantry, 0.45 vehicles]). Levels stay whole numbers: only the movement reads them smoothly.
+- Clients learn a cell's state as a 4th element in the terrain log entry: wear in quarters (bits 0-1), burnt (bit 2),
+  damage stage (bits 3-4). `touch` logs a cell only when that byte changes, so wear costs four messages per cell
+  over its life. `startState(ch, c)` is exported so the client can draw map cells nobody has mentioned yet.
+- Wind, weather and fire roll their own dice (`g.seed`, `rng`), so they do not shift the combat rolls that some
+  tests script through Math.random. The seed is a plain number so a game can still be cloned.
+- Wind: `g.wind` { a, v } random-walks. `weather()` moves every smoke cloud by v x `CFG.windSpeed`. Smoke clouds
+  got ids because the client keyed them by position and would have re-burst a drifting cloud every snapshot.
+- Rain: `g.wx` { rain, wet, raining, next }. rain ramps over 20 s, wet follows over `soak` / `dryOut`. Effects are
+  listed in the changelog; all of them read `g.wx` where they apply, there is no weather system beyond that.
+  `createGame(..., { weather: false })` gives a game without it.
+- Fire: `g.fires` maps cell -> seconds left; `burn()` runs twice a second. Spread chance per second per neighbour:
+  hedge 0.25, house 0.03, grass 0.022, x max(0.1, 1 + 1.5 x wind along the step) x (1 - rain). Grass is tuned to
+  under one new cell per burning cell in still air, so a grass fire dies out unless the wind carries it; hedgerows
+  burn end to end. Only blasts with a terrain value of 60+ can ignite (hedge 0.3, house 0.15, grass 0.03 per cell).
+- Dust: `u.dust` is the tick a vehicle last moved on dry ground; `updateVision` multiplies the viewer's range by
+  `CFG.dustSeen` (1.3) for such a target. Unit flag 32768 tells the client to draw the trail.
+- Client: `client/wind.js` holds the wind for fx.js and atmosphere.js (it was a constant in both). ground.js maps the
+  state byte onto the existing material blend (mud share for wear, shelled earth for burnt and for broken road).
+  structures.js lowers a damaged stone wall and drops its capstones, removes sandbag courses, and thins a hedge.
+  fx.js draws fires with the existing flame, ember and wreck smoke particles and leaves the existing scorch decal.
+  atmosphere.js adds rain as a third kind of weather points (the snow system with a streak fragment) and dims the sun.
+- Balance and wear numbers: see the changelog entry.
 
 ## Unit control and unit AI (decided 2026-10-01, four slices)
 Decisions from the planning interview:

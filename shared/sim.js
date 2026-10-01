@@ -38,8 +38,27 @@ export const CFG = {
   // an idle vehicle turns its front to a threat (rad/s)
   autoRetreat: 0.35, hullTurn: 1.2,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
-  terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
-  fordSpeed: 0.5,
+  terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250, N: 1 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.', N: '+' }, crush: { H: '.', '#': 'R', X: '.' },
+  // a ford's speed, shallow to deep (each ford cell has its own depth)
+  fordSpeed: [0.75, 0.35],
+  // vehicles: faster on an unbroken road or bridge; mud from shallow to deep; open ground down to 1 - churn as traffic
+  // cuts it up, after which it is mud. traffic: wear per metre a tank drives over a cell (light vehicles half)
+  roadSpeed: 1.35, mudSpeed: [0.7, 0.35], churn: 0.3, traffic: 0.05,
+  // going uphill costs speed in proportion to the grade (a rise of 1 m per metre = the full share): [infantry, vehicles]
+  slope: [0.2, 0.45],
+  // weather: first rain no sooner than firstRain s, a dry spell and a shower each last between these seconds. Ground
+  // takes soak s of rain to get fully wet and dryOut s to dry. Wet ground slows vehicles (twice as much below level 0),
+  // wears three times faster, deepens fords, shortens sight and smothers fire.
+  weather: { firstRain: 180, dry: [240, 480], rain: [90, 180], soak: 90, dryOut: 240, wetGround: 0.2, wetFord: 0.3, wetWear: 3, sight: 0.2 },
+  // wind: smoke drifts at up to this many m/s, and fire runs before it
+  windSpeed: 1.2,
+  // dust: a vehicle moving over dry ground is seen from this much further away
+  dustSeen: 1.3,
+  // fire: seconds a cell burns, chance per second of catching from a burning neighbour (more downwind, little upwind),
+  // chance a heavy blast sets it alight. Infantry in a burning cell lose hp and nerve every second.
+  fire: { burn: { H: 14, B: 25, '.': 5 }, spread: { H: 0.25, B: 0.03, '.': 0.022 }, ignite: { H: 0.3, B: 0.15, '.': 0.03 }, inf: 8, supp: 12, smoke: { r: 5, t: 12 } },
+  // a mine goes off under the first enemy to step on it; any explosion that damages terrain clears it
+  mine: { blast: 3, inf: 45, veh: 220, supp: 60 },
   // garrisoned squads: heavy cover, upper-floor vision, thrown out (and hurt) when the house comes down
   garrisonMul: 0.35, garrisonVision: 1.25, garrisonEvictDamage: 0.3,
   // veterancy: damage dealt (as multiples of the unit's cost) for 1/2/3 stars, and what each star is worth
@@ -57,12 +76,13 @@ export const CFG = {
     aiAttackRatio: 1.1, aiSeenWindow: 30 },
 };
 
-export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64;
+export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64, ROAD = 128, MUD = 256;
 // T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
 // = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
 // K = footprint of a Classic building (never in map files): solid until the building falls, then rubble
-export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER };
+export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': ROAD, R: COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER, D: ROAD, M: MUD, N: 0 };
 // X barbed wire (infantry wade through slowly, tanks flatten it) · Y tank traps (stop vehicles, cover for infantry)
+// D road (vehicles drive faster and route along it) · M mud (vehicles crawl) · N mine (hidden from the enemy)
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
 // perModel: damage scales with living squad members. moveFire: accuracy multiplier while moving (absent = can't).
@@ -196,8 +216,11 @@ export const FORTS = {
   wire: { name: 'Barbed Wire', cost: 25, ch: 'X', n: 5 },
   traps: { name: 'Tank Traps', cost: 40, ch: 'Y', n: 4 },
   nest: { name: 'MG Nest', cost: 60, nest: true },
+  mines: { name: 'Minefield', cost: 40, ch: 'N', n: 4 },
+  // on: the ground it is built on (river); reach: the builders work from the bank; along: runs the way they walk
+  bridge: { name: 'Bridge', cost: 80, ch: '=', n: 5, on: 'W', reach: 9, along: true },
 };
-const BUILDABLE_GROUND = '.+R';
+const BUILDABLE_GROUND = '.+RDM'; // a trench, wire or traps across a road cut it
 // the cells a fortification covers when centered on (x, z), running along direction a
 export function fortCells(g, f, x, z, a) {
   const sx = Math.cos(a), sz = Math.sin(a), fx = sz, fz = -sx; // forward: away from the builders
@@ -205,7 +228,7 @@ export function fortCells(g, f, x, z, a) {
   const plan = f.nest ? [[0, 0, 'T'], [-1, 1, '#'], [0, 1, '#'], [1, 1, '#'], [-1, 0, '#'], [1, 0, '#']].map(([s, w, ch]) => [at(s, w), ch])
     : Array.from({ length: f.n }, (_, i) => [at(i - (f.n - 1) / 2, 0), f.ch]);
   const out = [];
-  for (const [c, ch] of plan) if (c >= 0 && BUILDABLE_GROUND.includes(g.chars[c]) && !out.some(o => o[0] === c)) out.push([c, ch]);
+  for (const [c, ch] of plan) if (c >= 0 && (f.on ?? BUILDABLE_GROUND).includes(g.chars[c]) && !out.some(o => o[0] === c)) out.push([c, ch]);
   return out;
 }
 // Mass entrenchment: every selected digger works one shared pattern. The player gives two points (a click, then a
@@ -351,7 +374,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   // horde: every defender shares the middle defender spawn as one HQ; the horde's own is the first attacker spawn
   if (horde) teams.forEach((t, i) => { spawnIdx[i] = t ? map.spawns.findIndex((_, k) => !map.defend.includes(k)) : map.defend[map.defend.length >> 1]; });
   const g = {
-    w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
+    w: map.w, h: map.h, flags: new Uint16Array(map.w * map.h),
     tick: 0, nextId: 1, winVp: winVp(teams), units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], winner: null,
     // terrain changed mid-match: full log for (re)joining clients, plus what's new since the last snapshot
     cellLog: [], newCells: [],
@@ -365,7 +388,17 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
   g.chars = [...map.rows.join('')];
+  g.roads = g.chars.includes('D'); // no roads: vehicle paths skip the road arithmetic
+  g.mines = new Map(); // mine cell -> the slot that laid it (a mine drawn on the map belongs to nobody)
   g.cellHp = Float32Array.from(g.chars, ch => CFG.terrainHp[ch] ?? 0);
+  g.wear = Float32Array.from(g.chars, startWear); g.burnt = new Uint8Array(g.chars.length);
+  g.cellState = Uint8Array.from(g.chars, startState);
+  g.fires = new Map(); // burning cell -> seconds left
+  // wind, weather and fire roll their own dice, so they do not disturb the order of the combat rolls
+  g.seed = Math.floor(Math.random() * 2 ** 32);
+  g.wind = { a: rng(g) * Math.PI * 2, v: 0.3 + rng(g) * 0.5 };
+  // rain 0-1 is how hard it is raining, wet 0-1 how soaked the ground is, next the seconds to the next change
+  g.wx = opts.weather === false ? null : { rain: 0, raining: false, wet: 0, next: CFG.weather.firstRain + rng(g) * CFG.weather.dry[0] };
   g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   // The map clients download stays separate from later building footprints and terrain edits.
@@ -695,25 +728,72 @@ const cellOf = (g, x, z) => {
 const flagsAt = (g, x, z) => { const c = cellOf(g, x, z); return c < 0 ? MOVE | SIGHT : g.flags[c]; };
 export const inCover = (g, u) => UNITS[u.type].infantry && (flagsAt(g, u.x, u.z) & COVER) > 0;
 export const inTrench = (g, u) => UNITS[u.type].infantry && (flagsAt(g, u.x, u.z) & TRENCH) > 0;
-const coverMul = (g, t) => (t.garrison >= 0 ? CFG.garrisonMul : inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? CFG.coverMul : 1);
+// how much of its protection a cover cell still gives: walls and hedges lose it as they are shot up (down to half),
+// a crater gives more the deeper it is
+const coverQ = (g, c) => {
+  const ch = g.chars[c], max = CFG.terrainHp[ch];
+  return ch === '+' ? Math.min(1.4, 0.55 + (g.wear ? g.wear[c] : 0.45)) : max > 1 ? 0.5 + 0.5 * Math.max(0, g.cellHp[c]) / max : 1;
+};
+const coverMul = (g, t) => (t.garrison >= 0 ? CFG.garrisonMul : inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? 1 - (1 - CFG.coverMul) * coverQ(g, cellOf(g, t.x, t.z)) : 1);
 // Cover from something solid between you and the shooter, within ~2 m on their side:
 // a house, wall, rubble, hedge, or a vehicle. Protects from the front, not the flank.
 const SOLID = new Set(['B', '#', 'R', 'H', 'K']);
 const WALLS = new Set(['B', 'K']), AROUND = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-function behindCover(g, t, from) {
+// 0-1: full within about 2 m of the thing, fading to nothing at 3.8 m, and less behind something half shot away
+export function coverBehind(g, t, from) {
   const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
-  for (const d of [1.2, 2.2]) { const c = cellOf(g, t.x + ca * d, t.z + sa * d); if (c >= 0 && SOLID.has(g.chars[c])) return true; }
+  let best = 0;
+  for (let d = 0.8; d < 3.7; d += 0.7) {
+    const c = cellOf(g, t.x + ca * d, t.z + sa * d);
+    if (c >= 0 && SOLID.has(g.chars[c])) { best = Math.min(1, (3.8 - d) / 1.6) * Math.min(1, coverQ(g, c)); break; }
+  }
   // leaning out from a corner: a house wall in a cell next to the squad, within 60 degrees of the shooter
   const x = Math.floor(t.x / CELL), y = Math.floor(t.z / CELL);
   for (const [dx, dy] of AROUND) {
     if (x + dx < 0 || y + dy < 0 || x + dx >= g.w || y + dy >= g.h || !WALLS.has(g.chars[(y + dy) * g.w + x + dx])) continue;
-    if ((dx * ca + dy * sa) / Math.hypot(dx, dy) > 0.5) return true;
+    if ((dx * ca + dy * sa) / Math.hypot(dx, dy) > 0.5) best = 1;
   }
   for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0)) {
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
-    if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) return true;
+    if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) best = Math.max(best, Math.min(1, (4 - d) / 1.5));
   }
-  return false;
+  return best;
+}
+const behindCover = (g, t, from) => coverBehind(g, t, from) > 0.4;
+
+// ---------- ground: wear, depth and the speed it allows ----------
+// g.wear holds one number per cell, 0-1, and it means what the cell's type makes of it: how churned open ground is,
+// how deep mud, a ford or a crater is, how broken a road is.
+const lerp = (a, b, t) => a + (b - a) * t;
+const rng = (g) => { let t = g.seed = (g.seed + 0x6D2B79F5) | 0; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+// a stable 0-1 number per cell, so two fords or two mud patches on one map are not alike
+const cellNoise = (c) => { let h = Math.imul(c + 1, 0x9e3779b1); h ^= h >>> 15; h = Math.imul(h, 0x85ebca6b); return ((h ^ h >>> 13) >>> 0) / 4294967296; };
+const startWear = (ch, c) => (ch === 'M' || ch === 'F' ? 0.2 + 0.6 * cellNoise(c) : ch === '+' ? 0.3 + 0.3 * cellNoise(c) : 0);
+// What clients are told about a cell besides its type: wear in quarters (bits 0-1), burnt (bit 2), and how shot up a
+// wall, hedge or house is (bits 3-4: 0 whole, 1 damaged, 2 nearly gone).
+const packState = (wear, burnt, hp, max) => Math.min(3, Math.floor(wear * 4)) | (burnt ? 4 : 0) | (max > 1 && hp < max * 0.67 ? (hp < max * 0.34 ? 16 : 8) : 0);
+const stateOf = (g, c) => packState(g.wear[c], g.burnt[c], g.cellHp[c], CFG.terrainHp[g.chars[c]]);
+// the state a map cell starts in (clients use it for cells the server has not mentioned yet)
+export const startState = (ch, c) => packState(startWear(ch, c), 0, 1, 1);
+// tell the clients when a cell's state crosses into another step
+function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.cellState[c] = s; logCell(g, c, [c, g.chars[c]]); } }
+// how fast a unit moves on one cell (1 = open dry ground)
+function groundMul(g, c, veh) {
+  const f = g.flags[c], w = g.wear ? g.wear[c] : 0, wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
+  if (f & FORD) return lerp(CFG.fordSpeed[0], CFG.fordSpeed[1], w) * (1 - CFG.weather.wetFord * Math.min(1, wet));
+  if (!veh) return f & WIRE ? CFG.wireSpeed : 1;
+  if (f & ROAD) return lerp(CFG.roadSpeed, 1, w);
+  if (f & MUD) return lerp(CFG.mudSpeed[0], CFG.mudSpeed[1], w) * (1 - CFG.weather.wetGround * wet);
+  return (1 - CFG.churn * w) * (1 - CFG.weather.wetGround * wet);
+}
+// A unit's speed is the average over what it stands on, so a tank half on a road gets half the bonus and nothing
+// snaps at a cell's edge. Water and walls beside it do not count.
+const FOOT = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
+function speedMul(g, u) {
+  const def = UNITS[u.type], r = def.radius * 0.6;
+  let sum = 0, n = 0;
+  for (const [dx, dz] of FOOT) { const c = cellOf(g, u.x + dx * r, u.z + dz * r); if (c >= 0 && !(g.flags[c] & MOVE)) { sum += groundMul(g, c, !def.infantry); n++; } }
+  return n ? sum / n : 1;
 }
 // for the HUD: is there anything solid right next to this squad?
 function nearCover(g, u) {
@@ -793,7 +873,8 @@ function entryCell(g, c0, from, taken) {
 function logCell(g, c, change) {
   const indexes = g.cellLogIndexes ??= new Map();
   let index = indexes.get(c);
-  const latest = g.height ? [c, g.chars[c], g.height[c]] : change;
+  const state = g.cellState ? g.cellState[c] : 0;
+  const latest = state ? [c, g.chars[c], g.height ? g.height[c] : 0, state] : g.height ? [c, g.chars[c], g.height[c]] : change;
   if (index === undefined) { index = g.cellLog.length; indexes.set(c, index); g.cellLog.push(latest); }
   else g.cellLog[index] = latest;
   // Keep each viewer's changes independently of the transient snapshot batch.
@@ -803,7 +884,10 @@ function logCell(g, c, change) {
 
 function setCell(g, c, ch) {
   const old = g.flags[c], next = TERRAIN[ch];
+  if (g.chars[c] === 'N') g.mines.delete(c);
   g.flags[c] = next; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
+  g.fires?.delete(c);
+  if (g.wear) { g.wear[c] = startWear(ch, c); g.cellState[c] = stateOf(g, c); }
   g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   // Cover and wire edits leave the region graph unchanged. Only movement bits relabel it.
   if ((old ^ next) & MOVE) g.infantryRegionVersion = (g.infantryRegionVersion ?? 0) + 1;
@@ -856,6 +940,13 @@ export const levelOf = (ch) => (ch >= 'a' ? 96 - ch.charCodeAt(0) : +ch);
 export const levelChar = (n) => (n < 0 ? String.fromCharCode(96 - n) : String(n));
 const level = (g, c) => (g.height && c >= 0 ? g.height[c] : 0);
 export const levelAt = (g, x, z) => level(g, cellOf(g, x, z));
+// ground height in metres, smooth between cell centres (levelAt is the step version)
+function heightAt(g, x, z) {
+  const fx = Math.min(g.w - 1, Math.max(0, x / CELL - 0.5)), fz = Math.min(g.h - 1, Math.max(0, z / CELL - 0.5));
+  const x0 = Math.floor(fx), z0 = Math.floor(fz), x1 = Math.min(g.w - 1, x0 + 1), z1 = Math.min(g.h - 1, z0 + 1), tx = fx - x0, tz = fz - z0;
+  const h = (cx, cz) => g.height[cz * g.w + cx];
+  return (h(x0, z0) * (1 - tx) * (1 - tz) + h(x1, z0) * tx * (1 - tz) + h(x0, z1) * (1 - tx) * tz + h(x1, z1) * tx * tz) * CFG.levelHeight;
+}
 // hills block sight: sample the line between two eyes and compare with the ground under it
 function overHills(g, a, b) {
   if (!g.height) return true;
@@ -1010,7 +1101,9 @@ export function findPath(g, from, to) {
   pathFailures.delete(from); // a fresh immediate command resets earlier retry failures
   const W = g.w, N = W * g.h, goal = nearestFree(g, to.x, to.z), start = Math.max(0, cellOf(g, from.x, from.z));
   // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
-  const veh = UNITS[from.type] && !UNITS[from.type].infantry, block = veh ? MOVE | VBLOCK : MOVE, pull = veh ? block : MOVE | WIRE;
+  const veh = UNITS[from.type] && !UNITS[from.type].infantry, block = veh ? MOVE | VBLOCK : MOVE, pull = veh ? block | MUD : MOVE | WIRE;
+  const roads = veh && g.roads, low = roads ? 1 / CFG.roadSpeed : 1; // the cheapest step, so the estimate never overshoots
+  const burning = g.fires?.size > 0;
   const stats = pathStatsFor(g); stats.calls++;
   if (goal !== start && !(g.flags[start] & block)) {
     const labels = regionsFor(g, block);
@@ -1018,7 +1111,7 @@ export function findPath(g, from, to) {
   }
   const b = buffersFor(N), gen = nextGeneration(b), { gs, came, seen, closed } = b;
   const gx = goal % W, gy = Math.floor(goal / W);
-  const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
+  const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return (Math.max(dx, dy) + 0.414 * Math.min(dx, dy)) * low; };
   b.heapLength = 0; heapPush(b, hq(start), start);
   gs[start] = 0; seen[start] = gen; came[start] = -1;
   while (b.heapLength) {
@@ -1037,7 +1130,8 @@ export function findPath(g, from, to) {
       const climb = level(g, n) - level(g, c);
       if (Math.abs(climb) > 1) continue; // cliff
       if (dx && dy && (Math.abs(level(g, y * W + nx) - level(g, c)) > 1 || Math.abs(level(g, ny * W + x) - level(g, c)) > 1)) continue;
-      const cost = gs[c] + (dx && dy ? 1.414 : 1) + Math.max(0, climb) * 0.5 + (!veh && g.flags[n] & WIRE ? 4 : 0); // uphill costs a bit more, wire a lot
+      // uphill costs a bit more, wire a lot, fire more; a vehicle's step costs the time its ground takes (road, mud, churn)
+      const cost = gs[c] + (dx && dy ? 1.414 : 1) * (veh ? Math.max(low, 1 / groundMul(g, n, true)) : 1) + Math.max(0, climb) * 0.5 + (!veh && g.flags[n] & WIRE ? 4 : 0) + (burning && g.fires.has(n) ? 8 : 0);
       if (seen[n] !== gen || cost < gs[n]) { gs[n] = cost; came[n] = c; seen[n] = gen; heapPush(b, cost + hq(n), n); }
     }
   }
@@ -1050,12 +1144,17 @@ export function findPath(g, from, to) {
   let at = from;
   for (let i = 0; i < pts.length;) {
     let j = pts.length - 1;
+    // a vehicle keeps to the road it chose: no shortcut past the next road cell
+    if (roads) for (let k = i; k < j; k++) if (flagsAt(g, pts[k].x, pts[k].z) & ROAD) { j = k; break; }
     while (j > i && !walkable(g, at, pts[j], pull)) j--;
     out.push(pts[j]); at = pts[j]; i = j + 1;
   }
   return out;
 }
 
+// where a squad walks to for its dig: the spot itself, or for a bridge a point on its own bank just inside reach
+// (the middle of the river has no nearest bank, and the far one cannot be walked to)
+const digGoal = (u) => (!u.dig.reach ? u.dig : (u.dig.from ??= (() => { const k = (u.dig.reach - 2) / (dist(u, u.dig) || 1); return { x: u.dig.x + (u.x - u.dig.x) * k, z: u.dig.z + (u.z - u.dig.z) * k }; })()));
 function currentPathGoal(g, u, kind) {
   if (u.hp <= 0 || u.retreating) return null;
   const def = UNITS[u.type];
@@ -1063,7 +1162,7 @@ function currentPathGoal(g, u, kind) {
     const s = g.units.get(u.build);
     return s && !(s.built >= 1 && s.hp >= UNITS[s.type].hpPer) && !u.path.length && dist(u, s) > UNITS[s.type].radius + CFG.classic.buildReach ? s : null;
   }
-  if (kind === 'dig') return u.dig && !u.path.length && dist(u, u.dig) > 3 ? u.dig : null;
+  if (kind === 'dig') return u.dig && !u.path.length && dist(u, u.dig) > (u.dig.reach ?? 3) ? digGoal(u) : null;
   if (kind === 'nade') return u.nade && dist(u, u.nade) > def.ab.range ? u.nade : null;
   if (kind === 'enter') {
     const at = u.enter >= 0 && g.chars[u.enter] === 'B' ? cellCenter(g, u.enter) : null;
@@ -1374,7 +1473,7 @@ export function command(g, slot, cmd, auto = false) {
       else if (ab.id === 'suppress') { u.buff = ab.dur; u.cd = ab.cd; }
       else if (ab.id === 'ura') { u.sprint = ab.dur; u.supp = 0; u.cd = ab.cd; }
       else if (ab.id === 'ap') { u.ap = true; u.cd = ab.cd; }
-      else if (ab.id === 'smoke') { g.smokes.push({ x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
+      else if (ab.id === 'smoke') { g.smokes.push({ id: g.nextId++, x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
       else continue;
       used = true;
     }
@@ -1390,14 +1489,14 @@ export function command(g, slot, cmd, auto = false) {
     const kind = cmd.kind ?? 'trench', f = typeof kind === 'string' && Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
     const u = mine(ids[0]), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), p = g.players[slot];
     if (!f || !u || !CFG.fortBuilders.includes(u.type) || u.retreating || x === null || z === null || (cmd.queue !== true && p.mp < f.cost)) return !f || x === null || z === null ? 'blocked' : !u || !CFG.fortBuilders.includes(u.type) ? 'noBuilders' : u.retreating ? 'retreating' : 'mp';
-    const dir = angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2;
+    const dir = angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + (f.along ? 0 : Math.PI / 2);
     const place = placementCheck(g, { kind, x, z, dir }, at => teamSees(g, p.team, at));
     if (!place.ok) return place.reason;
     if (cmd.queue === true) return enqueueOrder(u, { t: 'dig', ids: [u.id], kind, x, z, dir }) ? undefined : 'queueFull';
     const cells = place.cells;
     p.mp -= f.cost; tally(g, slot, 'mpSpent', f.cost);
     exitBuilding(g, u);
-    Object.assign(u, { orders: [], entrench: null, dig: { x, z, cells, t: 0 }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
+    Object.assign(u, { orders: [], entrench: null, dig: { x, z, cells, t: 0, reach: f.reach }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
   } else if (cmd.t === 'entrench') {
     // Mass entrenchment: all the selected diggers share one pattern. Nothing is paid here: each digger pays for a
     // segment as it takes it, so a pattern bigger than the purse gets dug as the manpower comes in.
@@ -1611,7 +1710,7 @@ function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
 function fire(g, u, t, moving) {
   if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval; return; }
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
-  const cover = Math.min(coverMul(g, t), inf && behindCover(g, t, u) ? CFG.coverMul : 1);
+  const cover = Math.min(coverMul(g, t), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1);
   // shooting downhill is easier, uphill harder
   const hg = Math.min(1.45, Math.max(0.7, 1 + CFG.highGroundAcc * (levelAt(g, u.x, u.z) - levelAt(g, t.x, t.z))));
   let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg * (1 + CFG.vetAcc * vet(u));
@@ -1649,6 +1748,8 @@ function fire(g, u, t, moving) {
   }
 }
 
+// a vehicle that drove over dry ground in the last second trails dust
+const dusty = (g, u) => g.tick - (u.dust ?? -1e9) < 20;
 function updateVision(g) {
   // shared vision: the whole team sees what any member sees (computed once per team)
   const byTeam = new Map(), ownByTeam = new Map(), list = [...g.units.values()];
@@ -1663,13 +1764,13 @@ function updateVision(g) {
     // Planes on the ground see nothing; airborne planes see across terrain.
     const sources = own.filter(u => !u.air || airborne(u)).map(u => {
       const def = UNITS[u.type];
-      return { u, def, range: def.vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) };
+      return { u, def, range: def.vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0)) };
     });
     const watchers = new Map();
     // Gather observers once, in their original order. Each target's check then visits
     // only the sources near it, without querying once per team and target.
     for (const source of sources) {
-      const { u, def, range } = source, reach = Math.max(6, CFG.camoRange, def.vision, range);
+      const { u, def, range } = source, reach = Math.max(6, CFG.camoRange, def.vision, range) * CFG.dustSeen;
       for (const t of gridFor(g).candidates(u, Math.max(reach, CFG.air.seeRange), false)) {
         if (g.players[t.owner].team === p.team) continue;
         const bound = t.air ? CFG.air.seeRange : reach;
@@ -1692,7 +1793,7 @@ function updateVision(g) {
         const d = dist(u, t);
         if (u.air ? d <= def.vision && (!hidden || d < CFG.camoRange * 2)
           : hidden ? d < CFG.camoRange
-            : d < 6 || (def.building && d <= def.vision) || (d <= range && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
+            : d < 6 || (def.building && d <= def.vision) || (d <= range * (dusty(g, t) ? CFG.dustSeen : 1) && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
       }
       if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
@@ -1756,9 +1857,70 @@ function damageCells(g, list, at, radius, dmg) {
   for (let y = Math.floor(at.z / CELL) - r; y <= Math.floor(at.z / CELL) + r; y++) for (let x = Math.floor(at.x / CELL) - r; x <= Math.floor(at.x / CELL) + r; x++) {
     if (x < 0 || y < 0 || x >= g.w || y >= g.h) continue;
     const c = y * g.w + x, d = Math.hypot((x + 0.5) * CELL - at.x, (y + 0.5) * CELL - at.z);
-    if (d > radius + CELL / 2 || !(g.cellHp[c] > 0)) continue;
-    if ((g.cellHp[c] -= dmg * (1 - Math.min(1, d / (radius + CELL)) * 0.5)) <= 0) wreckCell(g, list, c);
+    if (d > radius + CELL / 2) continue;
+    const hit = dmg * (1 - Math.min(1, d / (radius + CELL)) * 0.5), ch = g.chars[c];
+    // a shelled road breaks up until it is one more crater; a crater that is hit again gets deeper
+    if (ch === 'D' || ch === '+') {
+      g.wear[c] = Math.min(1, g.wear[c] + hit / (ch === 'D' ? 200 : 500));
+      if (ch === 'D' && g.wear[c] >= 1) setCell(g, c, '+'); else touch(g, c);
+    }
+    if (dmg >= 60 && CFG.fire.ignite[ch] && rng(g) < CFG.fire.ignite[ch]) ignite(g, c);
+    if (!(g.cellHp[c] > 0)) continue;
+    if ((g.cellHp[c] -= hit) <= 0) wreckCell(g, list, c); else touch(g, c);
   }
+}
+// what burns: hedges, houses, and dry grass that is neither churned up nor already burnt
+const flammable = (g, c) => {
+  const ch = g.chars[c];
+  return !g.fires.has(c) && (ch === 'H' || ch === 'B' || (ch === '.' && !g.burnt[c] && g.wear[c] < 0.5 && (g.wx?.wet ?? 0) < 0.35));
+};
+function ignite(g, c) {
+  if (!flammable(g, c)) return;
+  g.fires.set(c, CFG.fire.burn[g.chars[c]]);
+  // hedges and houses throw up smoke, one cloud per stretch of fire
+  const at = cellCenter(g, c), s = CFG.fire.smoke;
+  if (g.chars[c] !== '.' && !g.smokes.some(q => dist(q, at) < s.r * 1.5)) g.smokes.push({ id: g.nextId++, x: at.x, z: at.z, r: s.r, t: s.t });
+}
+// Twice a second: fires burn down (faster in rain), hurt and pin infantry standing in them, and catch on to what is
+// next to them. A burnt-out hedge is gone, a burnt-out house is rubble, burnt grass does not burn twice.
+function burn(g, list, dt) {
+  const rain = g.wx?.rain ?? 0, wx = Math.cos(g.wind.a), wz = Math.sin(g.wind.a);
+  for (const u of list) {
+    const c = u.hp > 0 && !u.air && UNITS[u.type].infantry ? (u.garrison >= 0 ? u.garrison : cellOf(g, u.x, u.z)) : -1;
+    if (c < 0 || !g.fires.has(c)) continue;
+    u.hp -= CFG.fire.inf * dt; u.supp = Math.min(100, u.supp + CFG.fire.supp * dt);
+    g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: u.hp <= 0 });
+    // a squad with nothing to do steps out of the flames
+    if (u.garrison < 0 && !u.path.length) {
+      const out = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].map(([dx, dy]) => cellOf(g, u.x + dx * CELL, u.z + dy * CELL)).filter(n => n >= 0 && !(g.flags[n] & MOVE) && !g.fires.has(n));
+      const to = out.find(n => g.chars[n] !== 'H') ?? out[0]; // not further down the hedge that is burning
+      if (to !== undefined) u.path = [cellCenter(g, to)];
+    }
+  }
+  for (const [c, left] of [...g.fires]) {
+    const ch = g.chars[c], x = c % g.w, y = Math.floor(c / g.w);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy, n = ny * g.w + nx;
+      if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= g.w || ny >= g.h || !flammable(g, n)) continue;
+      const along = (dx * wx + dy * wz) / Math.hypot(dx, dy) * g.wind.v;
+      if (rng(g) < CFG.fire.spread[g.chars[n]] * dt * Math.max(0.1, 1 + 1.5 * along) * (1 - rain)) ignite(g, n);
+    }
+    if (ch === 'B' && (g.cellHp[c] -= CFG.terrainHp.B / CFG.fire.burn.B * dt) <= 0) { g.burnt[c] = 1; wreckCell(g, list, c); continue; }
+    const t = left - dt * (1 + 3 * rain);
+    if (t > 0) { g.fires.set(c, t); continue; }
+    g.fires.delete(c); g.burnt[c] = 1;
+    if (ch === 'H') wreckCell(g, list, c, '.'); else touch(g, c);
+  }
+}
+// The wind wanders. Showers come and go: the ground soaks and dries more slowly than the rain starts and stops.
+function weather(g, dt) {
+  g.wind.a += (rng(g) - 0.5) * 0.6 * dt; g.wind.v = Math.min(1, Math.max(0.15, g.wind.v + (rng(g) - 0.5) * 0.3 * dt));
+  for (const s of g.smokes) { s.x += Math.cos(g.wind.a) * g.wind.v * CFG.windSpeed * dt; s.z += Math.sin(g.wind.a) * g.wind.v * CFG.windSpeed * dt; }
+  const wx = g.wx, W = CFG.weather;
+  if (!wx) return;
+  if ((wx.next -= dt) <= 0) { wx.raining = !wx.raining; const [lo, hi] = wx.raining ? W.rain : W.dry; wx.next = lo + rng(g) * (hi - lo); }
+  wx.rain = Math.min(1, Math.max(0, wx.rain + (wx.raining ? dt : -dt) / 20));
+  wx.wet = Math.min(1, Math.max(0, wx.wet + (wx.rain > 0.5 ? dt / W.soak : -dt / W.dryOut)));
 }
 function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
   const x = (c % g.w + 0.5) * CELL, z = (Math.floor(c / g.w) + 0.5) * CELL, was = g.chars[c];
@@ -1834,13 +1996,13 @@ export function step(g) {
 
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
-      if (dist(u, u.dig) > 3) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, u.dig, 'dig'); }
+      if (dist(u, u.dig) > (u.dig.reach ?? 3)) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, digGoal(u), 'dig'); }
       else if ((u.dig.t += dt) >= CFG.digTime * (u.type === 'engineer' ? 0.5 : 1)) {
         u.dig.t = 0;
         const [c, ch] = u.dig.cells.shift();
         // ground can change while building; tank traps never go down under a vehicle
         const under = ch === 'Y' && [...g.units.values()].some(v => !UNITS[v.type].infantry && cellOf(g, v.x, v.z) === c);
-        if (BUILDABLE_GROUND.includes(g.chars[c]) && !under) setCell(g, c, ch);
+        if ((ch === '=' ? 'W' : BUILDABLE_GROUND).includes(g.chars[c]) && !under) { setCell(g, c, ch); if (ch === 'N') g.mines.set(c, u.owner); }
         if (!u.dig.cells.length) { if (u.dig.project) u.dig.project.active--; u.dig = null; tally(g, u.owner, 'built'); }
       }
     }
@@ -1897,7 +2059,10 @@ export function step(g) {
 
     // movement
     const before = { x: u.x, z: u.z };
-    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
+    // the ground under it, blended over its footprint, and the grade of the next metre if that is uphill
+    let grade = 0;
+    if (g.height && u.path.length) { const wp = u.path[0], d = dist(u, wp) || 1; grade = heightAt(g, u.x + (wp.x - u.x) / d, u.z + (wp.z - u.z) / d) - heightAt(g, u.x, u.z); }
+    const speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * speedMul(g, u) * (1 - CFG.slope[def.infantry ? 0 : 1] * Math.min(1, Math.max(0, grade)));
     // jammed: units that reach one waypoint together push each other off it for good (the separation below undoes each
     // step). After a second without real progress, a unit that can walk straight to its next waypoint skips this one.
     const net = u.was ? dist(u, u.was) : Infinity;
@@ -1916,6 +2081,26 @@ export function step(g) {
     const moved = dist(u, before), moving = u.path.length > 0 || moved > 0.001;
     updateGrid(g, u);
     if (def.crushes && moved > 0) { const c = cellOf(g, u.x, u.z); if (c >= 0 && CFG.crush[g.chars[c]]) wreckCell(g, [], c, CFG.crush[g.chars[c]]); }
+    // a mine goes off under the first squad or vehicle that is not on the side that laid it
+    if (moved > 0) {
+      const c = cellOf(g, u.x, u.z);
+      // vehicles cut up the ground they drive on, faster when it is wet: open ground slowly turns to mud, mud deepens.
+      // On dry ground they raise dust instead.
+      if (!def.infantry && c >= 0) {
+        const ch = g.chars[c], wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
+        if (ch === '.' || ch === 'M') {
+          g.wear[c] = Math.min(1, g.wear[c] + moved * CFG.traffic * (def.crushes ? 1 : 0.5) * (ch === 'M' ? 0.5 : 1) * (1 + CFG.weather.wetWear * wet));
+          if (ch === '.' && g.wear[c] >= 1) { setCell(g, c, 'M'); g.wear[c] = 0; g.cellState[c] = stateOf(g, c); logCell(g, c, [c, 'M']); } else touch(g, c);
+        }
+        if (wet < 0.3 && !(g.flags[c] & (MUD | FORD))) u.dust = g.tick;
+      }
+      if (c >= 0 && g.chars[c] === 'N' && !allied(g, g.mines.get(c) ?? -1, u.owner)) {
+        const at = cellCenter(g, c), by = g.mines.get(c) ?? -1;
+        setCell(g, c, '+'); g.shots.push({ x: at.x, z: at.z, k: 'boom', pub: true });
+        blast(g, [...g.units.values()], at, CFG.mine.blast, CFG.mine, by);
+        if (u.hp <= 0) continue;
+      }
+    }
     u.still = moving ? 0 : u.still + dt;
     // give up if blocked by friends crowding the destination
     if (u.retreating && !u.path.length) u.retreating = false;
@@ -2037,7 +2222,7 @@ export function step(g) {
       for (let i = 0; i < sp.clouds; i++) {
         // a wall of clouds along the line
         const at = stripAt(s, (i / (sp.clouds - 1) - 0.5) * (sp.len - sp.cloud), (Math.random() - 0.5) * 2);
-        g.smokes.push({ x: at.x, z: at.z, r: sp.cloud, t: sp.dur });
+        g.smokes.push({ id: g.nextId++, x: at.x, z: at.z, r: sp.cloud, t: sp.dur });
       }
       g.shots.push({ k: 'smokeshells', x: s.x, z: s.z, pub: true });
       s.left = 0;
@@ -2073,7 +2258,9 @@ export function step(g) {
   antiAir(g, list, dt);
   if (g.covers) { for (const c of g.covers) c.t -= dt; g.covers = g.covers.filter(c => c.t > 0); }
   for (const p of g.players) for (const k of SUPPORT_TYPES) p.sup[k] -= dt;
-  for (const s of g.smokes) s.t -= dt;
+  for (const s of g.smokes) s.t -= dt * (1 + 0.5 * (g.wx?.rain ?? 0));
+  weather(g, dt);
+  if (g.fires.size && g.tick % 10 === 0) burn(g, list, dt * 10);
   g.smokes = g.smokes.filter(s => s.t > 0);
 
   // reinforce / repair near your own spawn (Classic: near any own or allied Production Building), paid in manpower
@@ -2222,7 +2409,9 @@ export function terrainFor(g, slot, full = false) {
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
     const cell = g.cellLog[index], [c, ch, height] = cell, old = memory.get(c);
-    if (old && old[1] === ch && old[2] === height) { pending.delete(index); continue; }
+    if (old && old[1] === ch && old[2] === height && old[3] === cell[3]) { pending.delete(index); continue; }
+    // a mine shows only to the side that laid it, until it goes off
+    if (ch === 'N' && !allied(g, g.mines.get(c) ?? -1, slot)) continue;
     const building = g.buildingCells?.get(c);
     if (building) {
       if (!visible.has(building)) visible.set(building, allied(g, building.owner, slot)
@@ -2237,7 +2426,7 @@ export function terrainFor(g, slot, full = false) {
 
 const rounded = (v) => Math.round(v * 10) / 10;
 export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
-const unitFlags = (g, u) => (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0);
+const unitFlags = (g, u) => (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0);
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
@@ -2253,10 +2442,11 @@ function playerRow(row, slot, seen) {
   const result = row.slice();
   result[9] = row[9] && seen(row[9]) ? row[9] : 0;
   result[11] = row[2] === slot ? row[11] : 0;
-  if (row[2] !== slot) result[12] = row[12] & 2047; // stances and autocast are the owner's business
+  if (row[2] !== slot) result[12] = row[12] & (2047 | 32768); // stances and autocast are the owner's business, dust is everyone's
   return result;
 }
 
+const wxRow = (g) => [rounded(g.wx?.rain ?? 0), rounded(g.wx?.wet ?? 0), rounded(g.wind.a), rounded(g.wind.v)];
 // Explicit send-scoped cache. The caller must rebuild after any state change.
 export function snapshotCache(g) {
   rebuildGrid(g);
@@ -2281,7 +2471,8 @@ export function snapshotCache(g) {
   return { units, owners, teams,
     nodes: g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), out: g.players.map(q => !!q.out),
     mode: modeRow(g),
-    smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r]), strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
+    smokes: g.smokes.map(q => [r(q.x), r(q.z), q.r, q.id]), strikes: g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
+    fires: [...g.fires.keys()], wx: wxRow(g),
     points: g.points.map(q => [q.owner, q.capper, r(q.progress)]), vp: g.players.map(q => Math.floor(q.vp)),
   };
 }
@@ -2318,7 +2509,9 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
         u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, unitFlags(g, u) | (u.owner === slot ? stanceBits(u) | (u.auto ? AUTO_FLAG : 0) : 0), vet(u), u.built ?? 1]),
-    smokes: cache ? cache.smokes : g.smokes.map(q => [r(q.x), r(q.z), q.r]),
+    smokes: cache ? cache.smokes : g.smokes.map(q => [r(q.x), r(q.z), q.r, q.id]),
+    // burning cells, and the weather: [rain 0-1, how wet the ground is 0-1, wind direction, wind strength 0-1]
+    fires: cache ? cache.fires : [...g.fires.keys()], wx: cache ? cache.wx : wxRow(g),
     // incoming and active strikes are public: that's the counterplay
     strikes: cache ? cache.strikes : g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),
     // your planes: [id, state (0 at base, 1 out, 2 on station, 3 heading home, 4 rearming), fuel s, ammo, rearm s]

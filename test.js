@@ -2596,18 +2596,18 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 
 // Entrenching and taking cover plan on remembered terrain; auto-retreat is set from the seat's own units.
 {
-  const field = (trench) => {
+  const field = (trench, mp = 185) => { // 185 MP is enough to dig but not to lay mines first (FORTS.mines.cost + 150)
     const map = aiMap();
     if (trench) for (const r of [39, 40, 41]) map.rows[r] = '.'.repeat(39) + 'TTT' + '.'.repeat(38);
     const g = createGame(map, ['AI', 'enemy'], false, [0, 1]);
     const squad = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
-    Object.assign(squad, { x: g.points[0].x, z: g.points[0].z }); g.points[0].owner = 0; g.players[0].mp = 1000;
+    Object.assign(squad, { x: g.points[0].x, z: g.points[0].z }); g.points[0].owner = 0; g.players[0].mp = mp;
     return { g, squad };
   };
   // Positive control: on open ground the squad holding a point entrenches, and every squad is put on auto-retreat.
   const open = field(false), plain = aiCommands(open.g, 0, {}, 5).commands;
   const dug = plain.find(c => c.t === 'entrench');
-  assert.ok(dug && dug.ids.includes(open.squad.id) && dug.pattern === 'strongpoint', 'a squad holding open ground entrenches');
+  assert.ok(dug && dug.ids.includes(open.squad.id) && dug.pattern === 'arc', 'a squad holding open ground entrenches');
   assert.ok(plain.some(c => c.t === 'stance' && c.key === 'autoRetreat' && c.on === true && c.ids.includes(open.squad.id)), 'the army is put on auto-retreat');
   // Trench already stands around the point (public map): no new entrenchment, the squad takes cover in it instead.
   const dugIn = field(true); dugIn.squad.x += 6; // beside the trench, still on the point
@@ -2618,12 +2618,50 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const hidden = structuredClone(dugIn.g), post = massiveInternals.placeBuilding(hidden, 1, 'barracks', 39 * hidden.w + 39, true);
   assert.ok(!teamSees(hidden, 0, post), 'the enemy building is under fog');
   aiEquivalent(dugIn.g, hidden, 0, {}, 5, 'an unseen building over trench cells does not trigger an entrenchment');
+  // With manpower to spare the holding squad lays mines first. It counts the minefields its own side laid and no others:
+  // enemy mines are never reported to the seat, so they cannot make it skip laying its own.
+  const rich = field(false, 1000), laid = aiCommands(rich.g, 0, {}, 5).commands.find(c => c.t === 'dig' && c.kind === 'mines');
+  assert.ok(laid && laid.ids.includes(rich.squad.id), 'a squad with manpower to spare lays mines at the point it holds');
+  const mineCells = [0, 1].map(i => Math.floor(rich.g.points[0].z / CELL) * rich.g.w + Math.floor(rich.g.points[0].x / CELL) + 5 + i);
+  const own = structuredClone(rich.g), foe = structuredClone(rich.g);
+  for (const c of mineCells) { massiveInternals.setCell(own, c, 'N'); own.mines.set(c, 0); massiveInternals.setCell(foe, c, 'N'); foe.mines.set(c, 1); }
+  assert.equal(viewFor(own, 0, {}).mines.length, 2, 'the seat knows the mines its own side laid');
+  assert.equal(viewFor(foe, 0, {}).mines.length, 0, 'the seat is not told about enemy mines');
+  aiEquivalent(rich.g, foe, 0, {}, 5, 'enemy mines do not change where the AI lays its own');
+  assert.ok(!aiCommands(own, 0, {}, 5).commands.some(c => c.t === 'dig' && c.kind === 'mines'), 'two minefields of its own are enough');
   // Stances come from the seat's own rows: once a squad reports auto-retreat the AI stops ordering it.
   open.squad.autoRetreat = true;
   assert.ok(!aiCommands(open.g, 0, {}, 5).commands.some(c => c.t === 'stance' && c.ids.includes(open.squad.id)), 'a squad already on auto-retreat is left alone');
   // A squad already on a mass entrenchment is not given another one.
   open.squad.entrench = { jobs: [{ x: 1, z: 1 }], active: 0, crew: 1 };
   assert.ok(!aiCommands(open.g, 0, {}, 5).commands.some(c => c.t === 'entrench'), 'a squad on a mass entrenchment is not ordered to entrench again');
+}
+
+// A blown bridge is put back using the public map and the seat's remembered terrain; one still standing is left alone.
+{
+  const map = aiMap();
+  for (let r = 0; r < 80; r++) map.rows[r] = '.'.repeat(30) + ([39, 40, 41].includes(r) ? '====' : 'WWWW') + '.'.repeat(46);
+  const span = [39, 40, 41].flatMap(r => [30, 31, 32, 33].map(c => r * 80 + c));
+  const standing = createGame(map, ['AI', 'enemy'], false, [0, 1]); standing.players[0].mp = 1000;
+  // The AI first looks at the intact map, then the bridge is blown.
+  const lookedAt = {}, intact = aiCommands(standing, 0, lookedAt, 9).commands;
+  assert.ok(!intact.some(c => c.t === 'dig' && c.kind === 'bridge'), 'an intact bridge is not rebuilt');
+  const blown = structuredClone(standing);
+  for (const c of span) massiveInternals.setCell(blown, c, 'W');
+  const rebuild = (g, seed = 9) => aiCommands(g, 0, structuredClone(lookedAt), seed).commands.find(c => c.t === 'dig' && c.kind === 'bridge');
+  const order = rebuild(blown);
+  assert.ok(order && order.x >= 60 && order.x <= 68 && order.z >= 76 && order.z <= 86 && order.dir === 0, 'a blown bridge gets a builder squad, laid along the shorter stretch of water');
+  // The squad it sent is remembered: while it digs, no second bridge squad is sent, and once it is done the memory clears.
+  const memory = structuredClone(lookedAt), first = aiCommands(blown, 0, memory, 9);
+  assert.ok(first.commands.some(c => c.t === 'dig' && c.kind === 'bridge'), 'the first look orders the bridge');
+  const sent = first.commands.find(c => c.t === 'dig' && c.kind === 'bridge').ids[0];
+  blown.units.get(sent).dig = { x: order.x, z: order.z, cells: span.map(c => [c, '=']), t: 0 };
+  assert.ok(!aiCommands(blown, 0, memory, 9).commands.some(c => c.t === 'dig' && c.kind === 'bridge'), 'a squad already digging the bridge is not given company');
+  blown.units.get(sent).dig = null; blown.tick += 20;
+  assert.ok(aiCommands(blown, 0, memory, 9).commands.some(c => c.t === 'dig' && c.kind === 'bridge'), 'once that squad stops, the still-missing bridge is ordered again');
+  // Hidden enemy state changes nothing about it.
+  const hidden = structuredClone(blown); massiveInternals.placeBuilding(hidden, 1, 'barracks', 60 * hidden.w + 60, true);
+  aiEquivalent(blown, hidden, 0, lookedAt, 9, 'an unseen enemy building does not change the bridge job');
 }
 
 // A detached view contains no live player, unit, terrain, or visibility references.
@@ -4737,6 +4775,197 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual([saved['default|1|standard'].wave, host.lobby().hordeBest.wave], [1, 1], 'the best run is saved per map, team size and army size, and shown in the lobby');
   Object.assign(module.recordFile, disk);
   await h.close();
+}
+
+// Roads and mud: vehicles drive faster along a road and crawl through mud; infantry do not care. Paths avoid mud.
+{
+  const rows = empty.map((row, y) => y >= 1 && y <= 3 ? 'D'.repeat(20) : row), g = fresh(rows), bog = fresh(Array(20).fill('M'.repeat(20))), deep = fresh(Array(20).fill('M'.repeat(20)));
+  for (const p of [g, bog, deep].flatMap(q => q.players)) p.mp = 5000;
+  bog.wear.fill(0); deep.wear.fill(1);
+  const go = (type, z, q = g) => { const u = put(q, 0, type, 3, z); command(q, 0, { t: 'move', orders: [[u.id, 37, z]] }); return u; };
+  const road = go('tank', 5), edge = go('tank', 8.2), grass = go('tank', 29), mud = go('tank', 29, bog), sunk = go('tank', 29, deep), feet = go('rifle', 13, bog), feetGrass = go('rifle', 13);
+  run(g, 2); run(bog, 2); run(deep, 2);
+  const ratio = (u) => (u.x - 3) / (grass.x - 3);
+  assert.ok(Math.abs(ratio(road) - CFG.roadSpeed) < 0.1, 'a tank on a road drives roadSpeed times faster');
+  assert.ok(ratio(edge) > 1.03 && ratio(edge) < CFG.roadSpeed - 0.1, 'a tank half on the road gets part of the bonus');
+  assert.ok(Math.abs(ratio(mud) - CFG.mudSpeed[0]) < 0.1, 'a tank in shallow mud');
+  assert.ok(Math.abs(ratio(sunk) - CFG.mudSpeed[1]) < 0.1, 'a tank in deep mud');
+  assert.ok(Math.abs(feet.x - feetGrass.x) < 0.2, 'infantry walk through mud at full speed');
+  // a mud band with one dry cell: the tank goes through the gap, the squad walks straight across
+  const band = empty.map((row, y) => y >= 7 && y <= 13 ? row.slice(0, 10) + (y === 11 ? '.' : 'M') + row.slice(11) : row), b = fresh(band);
+  b.chars.forEach((ch, c) => { if (ch === "M") b.wear[c] = 1; });
+  const wet = (path) => path.some(p => b.chars[Math.floor(p.z / CELL) * b.w + Math.floor(p.x / CELL)] === 'M');
+  const drive = findPath(b, { x: 5, z: 21, type: 'tank' }, { x: 35, z: 21 });
+  assert.ok(drive.length > 1 && !wet(drive), 'a vehicle routes around mud when dry ground is near');
+  assert.equal(findPath(b, { x: 5, z: 21, type: 'rifle' }, { x: 35, z: 21 }).length, 1, 'infantry walk straight through mud');
+  // a road two cells to the side: the vehicle swings onto it and stays on it, the squad walks straight
+  const onRoad = (path) => path.filter(p => Math.floor(p.z / CELL) >= 1 && Math.floor(p.z / CELL) <= 3).length;
+  assert.ok(onRoad(findPath(g, { x: 3, z: 9, type: 'tank' }, { x: 37, z: 9 })) > 5, 'a vehicle takes the road beside it');
+  assert.equal(onRoad(findPath(g, { x: 3, z: 9, type: 'rifle' }, { x: 37, z: 9 })), 0, 'infantry ignore the road');
+}
+
+// Bridges: a squad builds one across a river from the bank, and vehicles can then cross.
+{
+  const rows = empty.map(row => row.slice(0, 9) + 'WWW' + row.slice(12)), g = fresh(rows);
+  g.players[0].mp = 1000;
+  const crew = put(g, 0, 'rifle', 13, 21), mp = g.players[0].mp, from = { x: 5, z: 21, type: 'tank' }, to = { x: 35, z: 21 };
+  assert.deepEqual(findPath(g, from, to), [], 'the river stops vehicles');
+  assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 5, z: 21, dir: 0 }), 'blocked', 'a bridge needs a river under it');
+  assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 21, z: 21, dir: 0 }), undefined, 'a bridge is ordered across the river');
+  assert.equal(g.players[0].mp, mp - sim.FORTS.bridge.cost, 'the bridge is paid for');
+  run(g, CFG.digTime * 3 + 1);
+  assert.deepEqual([9, 10, 11].map(x => g.chars[10 * g.w + x]).join(''), '===', 'the span is built from the bank');
+  assert.ok(crew.x < 18, 'the builders stay on their bank');
+  assert.ok(findPath(g, from, to).length, 'vehicles cross the new bridge');
+}
+
+// Mines: hidden from the enemy, harmless to the side that laid them, and they go off under the first enemy.
+{
+  const g = fresh(); for (const p of g.players) p.mp = 5000;
+  const sapper = put(g, 0, 'rifle', 21, 17);
+  command(g, 0, { t: 'dig', ids: [sapper.id], kind: 'mines', x: 21, z: 21, dir: 0 });
+  run(g, CFG.digTime * 4 + 1);
+  const cells = [9, 10, 11, 12].map(x => 10 * g.w + x), laid = () => cells.filter(c => g.chars[c] === 'N').length;
+  assert.equal(laid(), 4, 'four mines are laid');
+  assert.equal(sim.terrainFor(g, 0, true).filter(([, ch]) => ch === 'N').length, 4, 'the side that laid them sees them');
+  assert.equal(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).length, 0, 'the enemy is told nothing');
+  const friend = put(g, 0, 'tank', 21, 13); command(g, 0, { t: 'move', orders: [[friend.id, 21, 29]] });
+  run(g, 4);
+  assert.equal(laid(), 4, 'friendly vehicles drive over them');
+  g.units.delete(friend.id); g.units.delete(sapper.id); // nobody for the enemy tank to shell: a stray shell would clear mines
+  const foe = put(g, 1, 'tank', 23, 13), hp = foe.hp; command(g, 1, { t: 'move', orders: [[foe.id, 23, 29]] });
+  run(g, 4);
+  assert.equal(laid(), 3, 'one mine goes off under the enemy tank');
+  assert.ok(hp - foe.hp >= CFG.mine.veh * 0.5, 'it hurts the tank (at least half the mine damage, by distance from the cell)');
+  assert.equal(g.chars[10 * g.w + 11], '+', 'and leaves a crater');
+  assert.deepEqual(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).map(([, ch]) => ch), ['+'], 'the enemy now sees the crater, not the other mines');
+  // an explosion clears the mines it reaches
+  command(g, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }); run(g, 8);
+  assert.equal(laid(), 0, 'a bomb clears the mines');
+}
+
+// Ground that wears: traffic churns open ground into mud, shelling breaks a road into craters, and clients hear of it.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  const row = 10 * g.w, state = (q, c) => sim.terrainFor(q, 0, true).find(([k]) => k === c)?.[3] ?? 0;
+  const tank = put(g, 0, 'tank', 3, 21), slow = fresh(); slow.players[0].mp = 5000; slow.wear.fill(0.5);
+  const worn = put(slow, 0, 'tank', 3, 29), ref = put(g, 0, 'tank', 3, 29);
+  for (const [q, u] of [[slow, worn], [g, ref]]) command(q, 0, { t: 'move', orders: [[u.id, 37, 29]] });
+  run(g, 2); run(slow, 2);
+  assert.ok(Math.abs((worn.x - 3) / (ref.x - 3) - (1 - CFG.churn * 0.5)) < 0.06, 'half-churned ground costs half the churn');
+  assert.ok(g.wear[14 * g.w + 3] > 0 && g.wear[14 * g.w + 3] < 0.2, 'one pass leaves a little wear');
+  g.wear.fill(0.24, row, row + g.w);
+  command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 8);
+  assert.equal(state(g, row + 5) & 3, 1, 'the wear step reaches the clients');
+  g.wear.fill(0.99, row, row + g.w);
+  command(g, 0, { t: 'move', orders: [[tank.id, 3, 21]] }); run(g, 10);
+  assert.equal(g.chars[row + 8], 'M', 'ground driven on enough turns to mud');
+  assert.ok(g.wear[row + 8] < 0.2, 'shallow mud at first');
+  assert.equal(sim.terrainFor(g, 0, true).find(([k]) => k === row + 8)[1], 'M', 'and the clients are told');
+
+  const road = fresh(empty.map((r, y) => y === 10 ? 'D'.repeat(20) : r)); road.players[1].mp = 5000;
+  command(road, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }); run(road, 8);
+  assert.equal(road.chars[row + 10], '+', 'a bomb turns the road under it into a crater');
+  assert.ok(road.chars[row + 14] === 'D' && road.wear[row + 14] === 0, 'and leaves the road out of its reach alone');
+  assert.equal(findPath(road, { x: 3, z: 21, type: 'tank' }, { x: 37, z: 21 }).length > 0, true);
+
+  // depth: fords and mud differ from cell to cell, and the client can work out a map cell's first state
+  const wet = fresh(empty.map((r, y) => y === 10 ? 'F'.repeat(20) : r));
+  const depths = [...wet.wear.slice(row, row + g.w)];
+  assert.ok(Math.max(...depths) - Math.min(...depths) > 0.2 && depths.every(d => d >= 0.2 && d <= 0.8), 'ford cells have their own depth');
+  assert.equal(sim.startState('F', row + 3), Math.min(3, Math.floor(wet.wear[row + 3] * 4)), 'startState gives a map cell its first state');
+}
+
+// Cover fades with distance and with damage; a shot-up wall tells the clients its stage.
+{
+  const rows = empty.map((r, y) => y === 10 ? r.slice(0, 10) + '#' + r.slice(11) : r), g = fresh(rows), c = 10 * g.w + 10, from = { x: 39, z: 21 };
+  const at = (d) => sim.coverBehind(g, { x: 20 - d, z: 21 }, from);
+  assert.equal(at(1), 1, 'full cover right behind the wall');
+  assert.ok(at(2.6) > 0.1 && at(2.6) < 0.9, 'partial cover a few steps back');
+  assert.equal(at(5), 0, 'none further away');
+  assert.equal(sim.coverBehind(g, { x: 23, z: 21 }, from), 0, 'none on the shooter\u2019s side');
+  g.players[0].mp = 5000;
+  const tank = put(g, 0, 'tank', 21, 35); command(g, 0, { t: 'fireat', ids: [tank.id], x: 21, z: 21 });
+  let stage = 0;
+  for (let i = 0; i < 20 * 30 && g.chars[c] === '#'; i++) { step(g); stage = Math.max(stage, (sim.terrainFor(g, 0, true).find(([k]) => k === c)?.[3] ?? 0) >> 3); if (stage && at(1) === 1) assert.fail('a damaged wall still gives full cover'); }
+  assert.ok(stage >= 1, 'the wall passes through a damaged stage before it falls');
+}
+
+// Slope: going uphill is slower in proportion to the grade.
+{
+  const heights = empty.map(() => '0'.repeat(10) + '1'.repeat(10)), hill = createGame({ ...blank(empty), heights }, ['a', 'b'], false), flat = fresh();
+  hill.units.clear(); hill.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }));
+  hill.players[0].mp = flat.players[0].mp = 5000;
+  const up = put(hill, 0, 'tank', 15, 21), level = put(flat, 0, 'tank', 15, 21), down = put(hill, 0, 'tank', 25, 29), back = put(flat, 0, 'tank', 25, 29);
+  command(hill, 0, { t: 'move', orders: [[up.id, 25, 21], [down.id, 15, 29]] }); command(flat, 0, { t: 'move', orders: [[level.id, 25, 21], [back.id, 15, 29]] });
+  run(hill, 1.2); run(flat, 1.2);
+  assert.ok(up.x < level.x - 0.5, 'a tank climbs slower than it drives on the flat');
+  assert.ok(Math.abs(down.x - back.x) < 0.3, 'and loses nothing going down');
+}
+
+// Wind, weather, dust and fire.
+{
+  const g = fresh(); g.players[0].mp = 5000;
+  g.wind = { a: 0, v: 1 }; g.smokes.push({ x: 10, z: 10, r: 5, t: 60 });
+  run(g, 5);
+  assert.ok(g.smokes[0].x > 14 && Math.abs(g.smokes[0].z - 10) < 2, 'smoke drifts downwind');
+  // rain: comes on, soaks the ground, slows vehicles off the road and shortens sight
+  const tank = put(g, 0, 'tank', 3, 21); command(g, 0, { t: 'move', orders: [[tank.id, 37, 21]] }); run(g, 1);
+  const dry = tank.x - 3, flags = (q, u) => snapshotFor(q, 0, []).units.find(r => r[0] === u.id)[12];
+  assert.ok(flags(g, tank) & 32768, 'a tank moving on dry ground trails dust');
+  g.wx.next = 0; run(g, 40);
+  assert.equal(g.wx.rain, 1, 'the rain sets in');
+  assert.ok(g.wx.wet > 0.15 && g.wx.wet < 0.5, 'and the ground soaks slowly');
+  assert.deepEqual(snapshotFor(g, 0, []).wx.slice(0, 1), [1], 'clients are told the weather');
+  g.wx.wet = 1; g.wx.next = 1e9; Object.assign(tank, { x: 3, z: 25, path: [] });
+  command(g, 0, { t: 'move', orders: [[tank.id, 37, 25]] }); run(g, 1);
+  assert.ok(Math.abs((tank.x - 3) / dry - (1 - CFG.weather.wetGround)) < 0.06, 'wet ground slows a tank');
+  assert.ok(!(flags(g, tank) & 32768), 'no dust in the wet');
+  assert.equal(createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: false }).wx, null, 'weather can be switched off');
+
+  // fire: runs down a hedge before the wind, leaves it burnt, hurts infantry, and rain smothers it
+  const rows = empty.map((r, y) => y === 10 ? '..' + 'H'.repeat(14) + '....' : r), f = fresh(rows), row = 10 * f.w;
+  f.players[0].mp = 5000; f.wind = { a: 0, v: 1 }; f.wx = null;
+  f.fires.set(row + 2, CFG.fire.burn.H);
+  assert.deepEqual(snapshotFor(f, 0, []).fires, [row + 2], 'clients are told what burns');
+  const squad = put(f, 0, 'rifle', 7, 21), hp = squad.hp; f.fires.set(row + 3, CFG.fire.burn.H);
+  run(f, 3);
+  assert.ok(squad.hp < hp, 'infantry in the fire are hurt');
+  assert.ok(Math.floor(squad.z / CELL) !== 10 && squad.hp > 0, 'and an idle squad steps out of the hedge');
+  run(f, 120);
+  assert.equal(f.fires.size, 0, 'the fire burns out');
+  const gone = [...f.chars.slice(row + 2, row + 16)].filter(ch => ch !== 'H').length;
+  assert.ok(gone >= 12, `the fire ran down the hedge (${gone} of 14 cells)`);
+  assert.ok(f.burnt[row + 2] && (sim.terrainFor(f, 0, true).find(([k]) => k === row + 2)[3] & 4), 'burnt ground is marked for the clients');
+  const wetRows = fresh(rows); wetRows.wx.rain = 1; wetRows.wx.raining = true; wetRows.wx.next = 1e9;
+  wetRows.fires.set(row + 2, CFG.fire.burn.H); run(wetRows, 5);
+  assert.equal(wetRows.fires.size, 0, 'rain puts a fire out before it spreads');
+  assert.equal([...wetRows.chars.slice(row + 3, row + 16)].filter(ch => ch !== 'H').length, 0);
+}
+
+// Computer players lay mines in front of a point they hold and put a blown bridge back.
+{
+  const g = fresh(); g.players[0].mp = 5000; g.points[0].owner = 0; g.points[0].progress = 1;
+  const holder = put(g, 0, 'rifle', g.points[0].x, g.points[0].z);
+  for (let i = 0; i < 20 * 90; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  const laid = g.mines.size;
+  assert.ok(laid >= 3 && laid <= sim.FORTS.mines.n, 'the squad holding a point lays one minefield');
+  assert.ok([...g.mines.values()].every(by => by === 0), 'the mines are its own');
+  for (let i = 0; i < 20 * 30; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  assert.equal(g.mines.size, laid, 'and does not keep laying more');
+  assert.ok(holder.hp > 0);
+
+  const rows = empty.map((row, y) => row.slice(0, 9) + (y === 10 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
+  r.players[0].mp = 5000; r.points = [];
+  const sapper = put(r, 0, 'rifle', 5, 21), tank = { x: 5, z: 21, type: 'tank' };
+  think(r, 0); // first look: the bridge is noted
+  r.players[1].mp = 5000;
+  assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
+  for (let i = 0; i < 20 * 15 && r.chars[10 * r.w + 10] === '='; i++) step(r);
+  assert.equal(r.chars[10 * r.w + 10], 'W', 'the bridge is blown');
+  for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { if (i % 40 === 0) think(r, 0); step(r); }
+  assert.ok(findPath(r, tank, { x: 35, z: 21 }).length, 'the computer player rebuilds the bridge');
+  assert.ok(sapper.hp > 0);
 }
 
 console.log('all sim checks passed');
