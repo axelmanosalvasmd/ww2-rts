@@ -20,8 +20,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   matches: wins USA/Germany/USSR 23/20/17 to 19/17/24, median length 9.27 to 9.15 minutes, all matches finished,
   runner-up VP over winner VP 0.573 to 0.533. Classic, 30 matches: wins 4/8/5 to 7/10/5, finished 17 to 22 (timeouts 13
   to 8), median length including timeouts 19.41 to 18.39 minutes. Left for later: two Engineers can pick the same
-  building site in one turn (the second order is rejected normally), and the shared auto-targeting of rocket salvos still
-  counts hidden neighbours of a visible target, for players and AI alike.
+  building site in one turn (the second order is rejected normally), the shared auto-targeting of rocket salvos still
+  counts hidden neighbours of a visible target, and a hidden mine on a road still shifts vehicle routes (the road is cut
+  in the terrain flags), all for players and AI alike.
 
 - Fog of war now shows exactly what your team sees:
   - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells

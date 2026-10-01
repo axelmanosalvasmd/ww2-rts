@@ -83,7 +83,8 @@ only through `command()`.
   do not depend on where the defenders are, so they stay as they are. Co-op AI defenders use the same view too.
 - Proofs in `test.js`: seeded commands for equal snapshots stay equal while hidden armies, secret depots on every
   unseen node, hidden footprints, enemy economies, and the private state of enemies the seat can see (stationary
-  timers, paths, health and position below the wire precision, stances) are perturbed, across Conquest (also on a
+  timers, paths, health and position below the wire precision, stances) and enemy mines laid around the seat's units and
+  points (on open ground, mud and road) are perturbed, across Conquest (also on a
   house-free map, where squads entrench), Classic, Assault and Horde matches, including the horde seat itself. A
   perturbation is kept for a turn only if the human snapshot stays identical. Negative controls show that perturbing
   something the seat sees does change its orders. State is hashed around every submit to catch writes outside
@@ -92,7 +93,8 @@ only through `command()`.
   and a blown bridge. These tests were run against the old `ai.js` logic (master's, adapted only to take
   `opts.submit` and `opts.memory`): the stillness, landed plane, wire precision, secret depot, footprint, entrenchment,
   delivery beat and match perturbation proofs all fail there. The bridge proof passes on both, as it checks that the
-  port keeps behaviour, and the economy replay passes on both because there never was an AI-only economy.
+  port keeps behaviour, and the economy replay passes on both because there never was an AI-only economy. The mine
+  proof passes on the old logic as well: master's AI already counted only its own side's mines, so it guards that rule.
 - Integration: `ai.js` functions changed are `memoryOf`, `think`, `houseNear`, `trenchesNear`, `spotNear`,
   `buildEconomy`, `minesNear` and `rebuildBridge`. New: `observe`, `plan`, and the view adapters `knownBuildings` and
   `inCover`. The closures `trains`, `affords`, `pointOf`, `can`, `call` and `send` now read the view or use `submit`.
@@ -113,7 +115,10 @@ only through `command()`.
   among finished matches: 18.01 minutes before, 15.91 after. Before the merge (master at 4f01489, the AI without
   stances, mines or bridges) the same check gave Conquest 30/14/16 to 26/13/21 with 8.45 to 9.59 minutes, and Classic
   8/8/4 to 8/9/6 with 20 to 23 finished.
-- Left for later: two Engineers can propose the same building site in one turn before the next terrain snapshot (the
+- Left for later: a mine laid on a road cell turns it into `N` (no flags), which cuts the road in the authoritative
+  terrain, so a vehicle's route shifts around a hidden mine for any player, human or AI. The AI plans no paths and reads
+  no road flags, so it gains nothing, but keeping the ROAD flag under a mine would close the side channel for everyone.
+  Two Engineers can propose the same building site in one turn before the next terrain snapshot (the
   second command is rejected normally). Shared automatic salvo targeting scores hidden neighbours of a visible target,
   for human and AI armies alike. A mine painted in the editor belongs to nobody and is not counted. The uncommitted
   difficulty branch has not been merged or edited.

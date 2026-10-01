@@ -2874,7 +2874,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   // The same map without houses: holding squads have nowhere to garrison, so they entrench.
   maps.open = { ...maps.default, rows: maps.default.rows.map(row => row.replaceAll('B', '.')) };
   const originalRandom = Math.random;
-  const counts = { comparisons: 0, commands: 0, hiddenUnits: 0, footprints: 0, depots: 0, visibleUnits: 0, digits: 0, dropped: 0 }, byType = {};
+  const counts = { comparisons: 0, commands: 0, hiddenUnits: 0, footprints: 0, depots: 0, visibleUnits: 0, digits: 0, hiddenMines: 0, dropped: 0 }, byType = {};
   const hordeSeats = new Set();
   try {
     for (const [mode, mapName, ticks] of [['conquest', 'default', 1600], ['conquest', 'open', 1600], ['classic', 'default', 1600], ['assault', 'default', 1600], ['horde', 'hill-112', 2600]]) for (const seed of [617, 902]) {
@@ -2937,6 +2937,18 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
               for (const node of foe ? a.nodes ?? [] : []) if (!node.depot && !teamSees(g, team, node)) { node.depot = massiveInternals.placeBuilding(a, foe.slot, 'depot', node.c, true).id; n++; }
               return n;
             },
+            // enemy mines laid around the seat's units and points, on open ground, mud and road: the seat is never told of them
+            hiddenMines(a) {
+              const foe = a.players.find(p => p.team !== team);
+              if (!foe) return 0;
+              let n = 0;
+              const around = [...a.units.values()].filter(u => a.players[u.owner].team === team && !UNITS[u.type].structure && !u.air).concat(a.points);
+              for (const o of around) for (const [dx, dz] of [[6, 0], [-6, 0], [0, 6], [0, -6], [10, 10], [-10, -10]]) {
+                const c = Math.floor((o.z + dz) / CELL) * a.w + Math.floor((o.x + dx) / CELL);
+                if (c >= 0 && c < a.chars.length && '.MD'.includes(a.chars[c]) && !a.mines.has(c)) { massiveInternals.setCell(a, c, 'N'); a.mines.set(c, foe.slot); n++; }
+              }
+              return n;
+            },
             footprints(a) {
               const hiddenBuilding = [...g.units.values()].find(u => UNITS[u.type].building && g.players[u.owner].team !== team && !visible.has(u.id) && !teamSees(g, team, u));
               if (!hiddenBuilding) return 0;
@@ -2969,11 +2981,11 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
     }
   } finally { Math.random = originalRandom; }
   assert.ok(counts.comparisons >= 600, `checked ${counts.comparisons} paired turns`);
-  assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100 && counts.digits >= 100,
-    'proof exercised actual orders, hidden armies, private footprints, secret depots and visible enemies\' private state');
+  assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100 && counts.digits >= 100 && counts.hiddenMines >= 100,
+    'proof exercised actual orders, hidden armies, private footprints, secret depots, hidden mines and visible enemies\' private state');
   assert.ok(byType.entrench > 0 && byType.stance > 0, `the matches exercised entrenchment and auto-retreat orders (${JSON.stringify(byType)})`);
   assert.equal(hordeSeats.size, 2, 'the Horde seat itself planned through the view in both Horde runs');
-  console.log(`AI fog proofs: ${counts.comparisons} paired turns, ${counts.commands} command-only orders (${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(', ')}), ${counts.hiddenUnits} hidden-unit, ${counts.visibleUnits} visible-unit, ${counts.digits} sub-precision and ${counts.depots} secret-depot perturbations, ${counts.dropped} dropped as visible`);
+  console.log(`AI fog proofs: ${counts.comparisons} paired turns, ${counts.commands} command-only orders (${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(', ')}), ${counts.hiddenUnits} hidden-unit, ${counts.visibleUnits} visible-unit, ${counts.digits} sub-precision and ${counts.depots} secret-depot and ${counts.hiddenMines} hidden-mine perturbations, ${counts.dropped} dropped as visible`);
 }
 
 // Replay an AI seat's actual commands as a human: income, payments, queues and limits stay equal.
