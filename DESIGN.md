@@ -445,8 +445,8 @@ the HUD.
 8. ~~Faction flavor~~ (procedural models, no asset files): per-faction helmets, tanks (Stuart / Panzer II / T-70) and rocket
    carriers (Calliope on a Sherman / Panzerwerfer half-track / Katyusha truck). Units answer orders in their language via
    the browser's speech synthesis (mute: M). One unique unit each:
-   - USA Ranger Squad (185): 6 elite men with bazookas; Satchel Charge demolishes a house, wall or bridge.
-   - Germany Tiger (620, max 1): 900 hp, big gun, front armor takes 70%.
+   - USA Ranger Squad (200, was 185 until the unit control rebalance): 6 elite men with bazookas; Satchel Charge demolishes a house, wall or bridge.
+   - Germany Tiger (560, was 620 until the unit control rebalance; max 1): 900 hp, big gun, front armor takes 70%.
    - USSR Conscripts (80): 7 cheap men; Ura! = 6s sprint that ignores suppression.
    300 AI matches per map, wins by faction USA/GER/USSR: 37/33/30% (default), 36/35/30% (River Towns).
    Before tuning: USSR won 74% (conscripts at 60 MP were too efficient) and the German AI stalled saving for the Tiger.
@@ -524,3 +524,19 @@ Slice 3, stances and the rest (`STANCES`, `retreatUnit`, `claim`/`retarget`, the
   one volley's worth of overkill nothing changes, so small fights pick targets exactly as before. Salvo weapons
   (rockets, mortar) keep their own clustering rule.
 - Balance after slices 1 to 3, Conquest 300 matches: 42/33/26% (39/33/28% before).
+
+Slice 4, the AI and the rebalance (`shared/ai.js`):
+- The point holder orders `entrench` (arc toward the nearest enemy HQ; strongpoint at 600 MP or more) where it used to
+  order one `dig`. Any `fortBuilders` squad may be the holder, so conscripts dig. A holder outside cover orders `cover`.
+- `autoRetreat` is switched on for every AI ground unit each decision. The AI's own retreat rule stays for the case
+  auto-retreat does not cover (pinned and under 60%).
+- Hold fire and hold position are left unused by the AI on purpose (decided against the interview's "everything"):
+  without an ambush plan they only stop guns shooting. Revisit if the AI ever gets one.
+- Balance log, Conquest three-way AI matches, USA/GER/USSR, same script throughout (factions rotated over spawns):
+  - before the four slices: default 39/33/28% (300), River Towns 37/34/29% (700)
+  - River Towns by slice (400 each): cover 40/31/28, entrench and corners 42/31/27, stances and fire 43/29/28,
+    AI 44/26/29 (700). A steady drift to the USA, about 2 points a slice; no single change stands out.
+  - default after slice 4: 38/32/30 (700). Pooled over both maps: 41/29/30 (1400).
+  - tried alone, 800 matches each: Ranger 185 -> 200: 40/31/29. Tiger 620 -> 560: 40/31/28. Both together, 1400
+    matches: 36/35/29 (default 38/34/27, River Towns 34/35/31). Kept both.
+  - One 400-match run moves a faction by 2 to 3 points on its own; smaller runs cannot tell these variants apart.

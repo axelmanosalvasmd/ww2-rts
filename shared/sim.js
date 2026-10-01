@@ -121,11 +121,11 @@ UNITS.medium = { name: 'Medium Tank', cost: 380, models: 1, hpPer: 600, speed: 5
 
 // ---------- faction units (player faction: 0 USA, 1 Germany, 2 USSR) ----------
 // USA Rangers: elite all-rounders with bazookas; satchel charge demolishes houses, walls and bridges.
-UNITS.ranger = { name: 'Ranger Squad', faction: 0, cost: 185, models: 6, hpPer: 24, speed: 5, radius: 1.6, vision: 36, infantry: true, garrisons: true,
+UNITS.ranger = { name: 'Ranger Squad', faction: 0, cost: 200, models: 6, hpPer: 24, speed: 5, radius: 1.6, vision: 36, infantry: true, garrisons: true,
   w: { range: 26, interval: 1.4, inf: 3.6, veh: 3, accInf: 0.72, accVeh: 0.6, supp: 5, perModel: true, moveFire: 0.6 },
   ab: { id: 'satchel', name: 'Satchel Charge', cd: 40, range: 6, fuse: 4, radius: 5, inf: 60, veh: 180, supp: 60, terrain: 600 } };
 // Germany Tiger: heavy tank, one at a time. Thick front armor: flank it.
-UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 620, models: 1, hpPer: 900, speed: 4, radius: 3, vision: 42, infantry: false, crushes: true, frontArmor: 0.7,
+UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 900, speed: 4, radius: 3, vision: 42, infantry: false, crushes: true, frontArmor: 0.7,
   w: { range: 42, interval: 4, inf: 40, veh: 110, accInf: 0.55, accVeh: 0.8, supp: 30, moveFire: 0.6, shellTerrain: 140 },
   ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
 // USSR Conscripts: cheap human waves. Ura! = sprint and shrug off suppression.

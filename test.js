@@ -88,7 +88,7 @@ const blank = (rows) => ({ w: rows[0].length, h: rows.length, rows, spawns: [{ x
 const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
 const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
-const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 185, tiger: 620, conscript: 80 })[t];
+const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 200, tiger: 560, conscript: 80 })[t];
 const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; return u; };
 
 // LOS: a building between two points blocks sight; a wall does not.

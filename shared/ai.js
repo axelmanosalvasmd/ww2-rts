@@ -77,6 +77,9 @@ export function think(g, slot, opts = {}) {
   // Classic: only what my finished buildings can train
   const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
   const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
+  // auto-retreat on for the whole army: a broken unit runs the moment it breaks, not at the next decision
+  const steady = all.filter(u => !u.air && !u.autoRetreat);
+  if (steady.length) command(g, slot, { t: 'stance', ids: steady.map(u => u.id), key: 'autoRetreat', on: true });
   const seenTanks = Math.max([...me.visible].filter(id => g.units.get(id)?.type === 'tank').length, rule(1) ? seenArmor : 0);
 
   // shopping: counter tanks it has seen, get one tank once the infantry is out, a mortar for dug-in enemies, a sniper
@@ -232,13 +235,13 @@ export function think(g, slot, opts = {}) {
         // hold it from a house if there is one close by, otherwise dig in
         const house = u.garrison < 0 && def.garrisons && houseNear(g, p, CFG.pointRadius + 3);
         if (house) { command(g, slot, { t: 'garrison', ids: [u.id], x: house.x, z: house.z }); if (u.enter >= 0) continue; }
-        if (u.garrison < 0 && u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
-          // dig a line between the point and the closest enemy HQ
+        if (u.garrison < 0 && CFG.fortBuilders.includes(u.type) && !u.dig && !u.entrench && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
+          // entrench toward the closest enemy HQ: an arc of trench, or a strongpoint when there is manpower to spare
           const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
           if (!foe) continue;
           const l = d(foe, p) || 1;
-          command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 });
-        }
+          command(g, slot, { t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: p.x + (foe.x - p.x) / l * 6, z2: p.z + (foe.z - p.z) / l * 6 });
+        } else if (u.garrison < 0 && !u.dig && !u.entrench && !inCover(g, u)) command(g, slot, { t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
         continue;
       }
     }

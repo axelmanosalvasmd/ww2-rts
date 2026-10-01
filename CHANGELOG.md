@@ -5,6 +5,27 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Unit control, part 4: the computer uses it, and a rebalance.
+  - Computer players dig in properly: the squad holding a captured point entrenches an arc of trench toward the
+    nearest enemy HQ (a strongpoint with wire when it has 600 MP or more), instead of one short trench line. Soviet
+    AIs dig too now (only rifle squads did before, and they field conscripts). A holding squad that is standing in the
+    open walks into the trench or other cover.
+  - Computer players switch auto-retreat on for their whole army, so a broken squad runs the moment it breaks instead
+    of at the AI's next decision two seconds later.
+  - The AI does not use Hold fire or Hold position: it has no ambush plan, and on its units they would only mean
+    guns that do not shoot. Auto-cover, corner cover, hull turning and spread fire apply to it as to everyone.
+  - Rebalance: Ranger Squad 185 -> 200 MP, Tiger 620 -> 560 MP (Classic Tiger price unchanged). Cover that infantry
+    find by themselves helped the infantry-heavy USA and did nothing for Germany's Tiger: after parts 1 to 4 the
+    factions stood at USA/GER/USSR 41/29/30% over 1400 three-way AI Conquest matches (700 on the default map, 700 on
+    River Towns; 38/33/29% before any of this, 1000 matches). With the two prices changed: 36/35/29% over 1400 matches
+    (default 38/34/27%, River Towns 34/35/31%).
+  - Other modes after part 4, default map, measured before the two price changes: Classic 40/33/27% (90 matches,
+    32/38/30% before, both inside the noise for 90); Annihilation 32/37/32% (60 matches), every match finished.
+  - Server cost per tick in a three-AI Conquest match went from about 65 to 75 microseconds.
+  - Not done: the planned pattern is not drawn after you order it; entrench orders cannot be shift-queued; the on-map
+    preview of a pattern was not seen running (the test browser does not render frames in the background), only the
+    buttons, hotkeys and orders were.
+
 - Unit control, part 3: stances, auto-retreat, smarter vehicles and fire.
   - Three switches per unit in Orders, all off for new units, so nothing changes until you use them. A switch that is
     on is ringed in brass and tagged in the selection list; click or press the key again to turn it off.
