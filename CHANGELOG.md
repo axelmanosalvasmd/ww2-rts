@@ -17,7 +17,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Left for later: wrecks give no cover in the game (dead vehicles are removed), so they get no marks. The cover
     shield over a unit still uses green for light cover and cyan for trenches, while the preview uses green for heavy
     and brass for light. The game also counts an enemy vehicle within 4 m as cover against its own fire, and the
-    preview shows that as it is.
+    preview shows that as it is. After a reload or rejoin the scouting memory starts empty, so only ground in view is
+    marked until you scout again (the client has no record of what it saw before).
+  - Fixed in review: starting a new match in the same tab (Play again) used the last match's vision as scouted ground.
+    After a match that had ended that was the whole map, so marks showed on ground your side had never seen. The
+    memory now starts empty and ignores the old vision until the first update of the new match; a new test checks
+    this and that unscouted ground stays unmarked. Checked live: marks only on ground your side or an ally sees (every
+    mark in a 2v2 sat on a scouted cell), none over the HUD, none while the left button is down, still shown with the
+    right button held and in attack-move, hidden while aiming a grenade; a frame costs about 2 microseconds (60 with 800
+    units) and the heap did not grow over a million frames; the preview adds 4 draw calls and about 100 triangles.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

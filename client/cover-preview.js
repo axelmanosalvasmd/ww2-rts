@@ -336,11 +336,12 @@ export function createCoverPreview(ctx) {
   const smooth = (t) => { const k = Math.max(0, Math.min(1, t)); return k * k * (3 - 2 * k); };
 
   return {
-    // a new match: the scouting memory starts empty
+    // a new match: the scouting memory starts empty. The client's vision array from the last match (all ones once the
+    // fog lifted at the end) lives on until the first fog update, so it counts as already merged.
     start() {
       ensure();
       const g = ctx.grid(); grid = g; H = g?.length ?? 0; W = g?.[0]?.length ?? 0;
-      seen = new Uint8Array(W * H); lastFog = null; flT = FLASH; cursorKey = -1; curOk = false; mx = NaN;
+      seen = new Uint8Array(W * H); lastFog = ctx.fog(); flT = FLASH; cursorKey = -1; curOk = false; mx = NaN;
       for (const gr of geo.groups) gr.count = 0;
     },
     // terrain changed (digging, shelling): rewrite the marks on the next frame

@@ -1723,6 +1723,35 @@ const referenceNearCover = (g, u) => {
   assert.ok(covered > 100 && covered < checked / 4, `directional cover is the exception, not the rule (${covered}/${checked})`);
 }
 
+// The preview marks only ground this side has scouted. The vision array the last match left behind (all ones once the
+// fog lifted at the end) is not scouting for the new match, and ground nobody has seen stays unmarked.
+{
+  const THREE = await import('three'), { createCoverPreview } = await import('./client/cover-preview.js');
+  const noop = () => {}, handlers = {};
+  const pen = new Proxy({}, { get: (_, k) => k === 'getImageData' ? (_x, _y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }) : noop, set: () => true });
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => pen }), getElementById: () => null };
+  globalThis.addEventListener = noop;
+  try {
+    const W = 20, rows = Array.from({ length: W }, () => '.'.repeat(W).split('')), at = { x: 10, z: 10 }, mouse = { x: 1, y: 1, inside: true };
+    let mesh = null, vis = new Uint8Array(W * W).fill(1);
+    const units = new Map([[1, { id: 1, type: 'rifle', owner: 0, x: 21, z: 21, hp: 100 }]]);
+    const cp = createCoverPreview({ scene: { add: (m) => { mesh = m; } }, camera: new THREE.PerspectiveCamera(), units, selected: new Set([1]),
+      canvas: { addEventListener: (type, fn) => { handlers[type] = fn; } }, hAt: () => 0, groundAt: () => ({ x: at.x * CELL + 1, z: at.z * CELL + 1 }),
+      gfx: { low: false, onChange: noop }, foe: () => false, me: () => 0, mouse: () => mouse, targeting: () => null, grid: () => rows, fog: () => vis });
+    cp.start();
+    handlers.pointermove();
+    const marks = () => { mouse.x++; cp.frame(0.016); return mesh.visible; }; // a moved mouse makes frame() look at the ground again
+    assert.equal(marks(), false, 'the last match\'s vision does not count as scouted ground');
+    vis = new Uint8Array(W * W);
+    assert.equal(marks(), false, 'nothing scouted, nothing marked');
+    vis = new Uint8Array(W * W); // the client builds a new array at every fog update
+    for (let y = 8; y < 13; y++) for (let x = 8; x < 13; x++) vis[y * W + x] = 1;
+    assert.equal(marks(), true, 'scouted ground around the cursor is marked');
+    at.x = at.z = 2;
+    assert.equal(marks(), false, 'unscouted ground away from the scouted patch is not marked');
+  } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
+}
+
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
   const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));

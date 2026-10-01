@@ -348,9 +348,16 @@ the HUD.
   house, hedge, wall, trap and rubble cells draw through the models, the rest are depth tested, and all sit under the
   fog overlay. One mesh and one preallocated BufferGeometry (cursor and flash regions, partial uploads) are rewritten
   only when the cursor's cell, the nearest enemy's cell, nearby vehicles, the terrain or the scouted cells change;
-  a rewrite costs about 0.1 ms and an idle frame about 4 microseconds, with no allocation per frame. Low graphics uses
-  a 5.2 m circle and 4 vertices per mark (High 6.5 m and 9). The setting is `ww2-cover` in localStorage. main.js only
-  creates it and calls `start`, `dirty` (terrain changed), `frame` and `flash` (move order).
+  a rewrite costs about 0.1 ms (0.16 ms with 800 units on the map) and an idle frame about 2 microseconds (60 with 800
+  units, because each frame looks over the units for the nearest enemy and nearby vehicles), with no allocation per
+  frame (the heap did not grow over a million frames). Low graphics uses a 5.2 m circle and 4 vertices per mark (High
+  6.5 m and 9); the preview adds 4 draw calls and about 100 triangles. The setting is `ww2-cover` in localStorage.
+  main.js only creates it and calls `start`, `dirty` (terrain changed), `frame` and `flash` (move order).
+  Fog: marks only go on cells in the scouting memory, which `start()` empties and then fills from the client's vision
+  array (`fogVis`, rebuilt every 0.2 s, allies included). The array the last match left behind is ignored until the
+  first new one arrives, because after a match ends it is all ones; a reload or rejoin starts the memory empty, so only
+  ground in view is marked until it is scouted again. The nearest enemy and the cover vehicles come from `units`, which
+  holds only what the server sent, so nothing hidden can show through a chevron. test.js checks both rules.
 
 ## Rooms, controls and match flow (round 3, 2026-10-01)
 - Pause: the host can pause and resume at any time. A human who drops mid-match auto-pauses the game for up to 30 s,
