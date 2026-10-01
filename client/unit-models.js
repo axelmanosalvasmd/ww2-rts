@@ -15,12 +15,13 @@ const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
   body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), helmet: new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
   plane: new THREE.PlaneGeometry(1, 1), ball: new THREE.SphereGeometry(1, 12, 8),
+  base: new THREE.CylinderGeometry(0.8, 1, 1, 16), // a soldier's round base, the narrower top makes the bevel
 };
 // the far-away soldier: the same shapes with far fewer faces
 const LOW = {
   box: GEO.box, cyl: new THREE.CylinderGeometry(1, 1, 1, 6),
   body: new THREE.CapsuleGeometry(0.3, 0.8, 1, 6), helmet: new THREE.SphereGeometry(0.27, 6, 2, 0, Math.PI * 2, 0, Math.PI / 2),
-  ball: new THREE.SphereGeometry(1, 6, 4),
+  ball: new THREE.SphereGeometry(1, 6, 4), base: new THREE.CylinderGeometry(0.8, 1, 1, 8),
 };
 
 // barracks roof: a triangle pushed out along the hut
@@ -30,7 +31,9 @@ const ROOF = (() => {
   return g;
 })();
 
-const DARK = 0x2a2a24, GEAR = 0x2c2b26, WOOD = 0x5e4226, SKIN = 0xc8a07a;
+const DARK = 0x2a2a24, GEAR = 0x2c2b26, WOOD = 0x5e4226, SKIN = 0xc8a07a, BASE = 0x33401f;
+// soldiers are painted like miniatures: warm, saturated uniforms per faction (olive drab, field grey, khaki)
+const UNIFORM = [0x6f7240, 0x5e6554, 0x867448];
 // one material for every plain-colored part; the color sits in the geometry
 export const PAINT = new THREE.MeshLambertMaterial({ vertexColors: true });
 const colors = new Map();
@@ -108,7 +111,7 @@ function relative(o, top) {
 
 // Bake the parts under group into meshes (one per material), cached under key. Returns the meshes.
 const baked = new Map();
-function bakeMeshes(group, key, shadow) {
+function bakeMeshes(group, key, shadow, level = 0) {
   let list = baked.get(key);
   if (!list) {
     const buckets = new Map();
@@ -120,6 +123,7 @@ function bakeMeshes(group, key, shadow) {
       buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT ? colorOf(d.paint) : null });
     });
     list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT) }));
+    if (level) levelBase(list[0].geometry, level);
     baked.set(key, list);
   }
   return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; return m; });
@@ -150,11 +154,12 @@ const SLOTS = {
 };
 
 // headgear per faction: round M1 (USA), flared Stahlhelm (Germany), tall SSh-40 (USSR); conscripts wear a pilotka cap
-function headgear(man, fac, type, c, G = GEO) {
+// helmets get a lighter crown (light), like a dry-brushed highlight: a smaller dome poking out of the top
+function headgear(man, fac, type, c, light, G = GEO) {
   if (type === 'conscript') { man.add(part(G.box, c, 0.38, 0.13, 0.22, 0, 1.2, 0)); return; }
-  if (fac === 1) man.add(part(G.helmet, c, 1.05, 1, 1.05, 0, 1.28, 0), part(G.cyl, c, 0.33, 0.07, 0.33, 0, 1.25, 0));
-  else if (fac === 2) man.add(part(G.helmet, c, 1, 1.3, 1, 0, 1.26, 0));
-  else man.add(part(G.helmet, c, 1.12, 0.95, 1.12, 0, 1.28, 0));
+  const [sx, sy, y] = fac === 1 ? [1.05, 1, 1.28] : fac === 2 ? [1, 1.3, 1.26] : [1.12, 0.95, 1.28];
+  man.add(part(G.helmet, c, sx, sy, sx, 0, y, 0), part(G.helmet, light, sx * 0.5, sy * 0.36, sx * 0.5, 0, y + 0.27 * sy * 0.7, 0));
+  if (fac === 1) man.add(part(G.cyl, c, 0.33, 0.07, 0.33, 0, 1.25, 0));
 }
 
 // what each class carries, so squads read apart even without their badges (+x = forward)
@@ -234,6 +239,25 @@ export const POSTURE = { crouch: 50, prone: 90, blend: 0.3 };
 // retreating wins over suppression; in a trench (cover 2) a pinned squad crouches, since lying down there would
 // sink it out of sight below the ground
 export const postureOf = (supp, flags, cover) => (flags & 1 ? 3 : supp >= POSTURE.prone && cover !== 2 ? 2 : supp >= POSTURE.crouch ? 1 : 0);
+// The base stays flat on the ground in every posture. Each pose but standing gets a morph target that moves only the
+// base's vertices (the first n of the merged soldier) so the pose's lean, squash and shift put them back level;
+// animate() sets the targets' weights from the posture weights. Prone, the base sits under the lying man's middle.
+const BASE_AT = [0, 0, -0.1, 0];
+function levelBase(g, n) {
+  const P = g.attributes.position, N = g.attributes.normal, pos = [], nor = [];
+  for (let k = 1; k < POSES.length; k++) {
+    const [lean, sy, tx, ty] = POSES[k], c = Math.cos(lean), s = Math.sin(lean), p = P.clone(), q = N.clone();
+    for (let i = 0; i < n; i++) {
+      const x = P.getX(i) + BASE_AT[k] - tx, y = P.getY(i) - ty, nx = N.getX(i), ny = N.getY(i);
+      p.setXY(i, x * c + y * s, (y * c - x * s) / sy);
+      const mx = nx * c + ny * s, my = (ny * c - nx * s) * sy, len = Math.hypot(mx, my, N.getZ(i));
+      q.setXYZ(i, mx / len, my / len, N.getZ(i) / len);
+    }
+    pos.push(p); nor.push(q);
+  }
+  g.morphAttributes.position = pos; g.morphAttributes.normal = nor;
+  g.computeBoundingSphere();
+}
 // beyond this camera distance soldiers swap to the far-away model (closer on Low graphics)
 export const LOD = { high: 110, low: 80 };
 
@@ -328,16 +352,18 @@ export function buildModel(v, root, f, fac, def) {
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else {
-    const helmet = new THREE.Color(f.uniform).lerp(new THREE.Color(f.color), 0.55).getHex(), scale = type === 'conscript' ? 1.25 : 1.35;
+    const uniform = UNIFORM[fac] ?? f.uniform, tint = new THREE.Color(uniform).lerp(new THREE.Color(f.color), 0.55), scale = type === 'conscript' ? 1.25 : 1.35;
+    const helmet = tint.getHex(), light = tint.lerp(new THREE.Color(0xffffff), 0.3).getHex();
     SLOTS[type].forEach(([x, z], i) => {
       const raw = new THREE.Group(), far = new THREE.Group();
-      raw.add(part(GEO.body, f.uniform, 1, 1, 1, 0, 0.72, 0), part(GEO.ball, SKIN, 0.19, 0.19, 0.19, 0, 1.24, 0));
-      headgear(raw, fac, type, helmet);
+      // the base goes first: levelBase() finds its vertices at the start of the merged soldier
+      raw.add(part(GEO.base, BASE, 0.36, 0.07, 0.36, 0, 0.035, 0), part(GEO.body, uniform, 1, 1, 1, 0, 0.72, 0), part(GEO.ball, SKIN, 0.19, 0.19, 0.19, 0, 1.24, 0));
+      headgear(raw, fac, type, helmet, light);
       gear(raw, type, i, f);
-      // far away: body, head and helmet only
-      far.add(part(LOW.body, f.uniform, 1, 1, 1, 0, 0.72, 0), part(LOW.ball, SKIN, 0.19, 0.19, 0.19, 0, 1.24, 0));
-      headgear(far, fac, type, helmet, LOW);
-      const hi = bakeMeshes(raw, `${key}|man|${kit(type, i)}`, false), lo = bakeMeshes(far, `${key}|far`, false);
+      // far away: base, body, head and helmet only
+      far.add(part(LOW.base, BASE, 0.36, 0.07, 0.36, 0, 0.035, 0), part(LOW.body, uniform, 1, 1, 1, 0, 0.72, 0), part(LOW.ball, SKIN, 0.19, 0.19, 0.19, 0, 1.24, 0));
+      headgear(far, fac, type, helmet, light, LOW);
+      const hi = bakeMeshes(raw, `${key}|man|${kit(type, i)}`, false, GEO.base.attributes.position.count), lo = bakeMeshes(far, `${key}|far`, false, LOW.base.attributes.position.count);
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down
       const man = new THREE.Group(), pose = new THREE.Group();
@@ -389,6 +415,8 @@ export function animate(v, dt, eye) {
     const u = man.userData, s = man.scale.x;
     man.position.set(u.slot[0] + ox * s, sink + oy * s, u.slot[1]);
     u.pose.rotation.z = p[0]; u.pose.scale.y = p[1]; u.pose.position.set(p[2] - ox, p[3] - oy, 0);
+    for (const m of u.hi) for (let k = 0; k < 3; k++) m.morphTargetInfluences[k] = w[k + 1] / sum; // keep the base level
+    for (const m of u.lo) for (let k = 0; k < 3; k++) m.morphTargetInfluences[k] = w[k + 1] / sum;
   }
 }
 
