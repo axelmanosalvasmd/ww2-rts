@@ -83,6 +83,7 @@ export function availability(s, cfg = CFG, action = {}) {
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
     return crew.every((v) => v.flags & 1) ? no(DENY_SENTENCES.retreating) : yes();
   }
+  if (action.t === 'stance') return selected.some((v) => !UNITS[v.type].structure) ? yes() : no('Select a unit');
   if (action.t === 'cover') {
     const squads = selected.filter((v) => UNITS[v.type].infantry);
     if (!squads.length) return no('Select an infantry squad');

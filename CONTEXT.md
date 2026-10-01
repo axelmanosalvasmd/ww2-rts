@@ -86,6 +86,10 @@ _Avoid_: flag, objective
 The order that sends the selected infantry to the best cover within reach. Idle infantry under fire do the same on their own; crewed weapons only on the order.
 _Avoid_: hide, duck
 
+**Stance**:
+One of three per-unit switches the player sets: Hold Fire (shoot only on an attack order), Hold Position (never move unordered) and Auto-retreat (run for home when broken). All off by default.
+_Avoid_: mode, behaviour
+
 **Mass Entrenchment**:
 One order that sets every selected builder squad digging a shared pattern (trench line, zigzag, double line, arc, ring, strongpoint). Each squad pays for a segment as it starts it.
 _Avoid_: mass dig, auto-trench

@@ -509,3 +509,18 @@ House corners (asked for during slice 2):
 - Now a house or building cell (`WALLS`: B, K) in any of the 8 cells around the squad counts when it lies within 60
   degrees of the shooter (cosine above 0.5). Same multiplier as other directional cover (`coverMul` 0.5), no new number.
 - `seekCover` adds 3 m to a rank 2 spot that cannot see the threat, so corners win over blind spots behind the wall.
+
+Slice 3, stances and the rest (`STANCES`, `retreatUnit`, `claim`/`retarget`, the hull-turn block in `step`):
+- Three independent booleans on the unit (`holdFire`, `holdPos`, `autoRetreat`) set by the `stance` command, instead
+  of one enum: the interview's "hold fire" and "hold position" are both wanted at once on an ambush gun. Sent as flag
+  bits 2048/4096/8192, masked for everyone but the owner.
+- Units never chased on their own in this game (auto-targeting only picks what is in range), so Hold position has one
+  job: switching off auto-cover. It does not stop an explicit order, Take cover included.
+- Auto-retreat threshold `CFG.autoRetreat` 0.35 is the number the AI already used for pulling squads back.
+- Hull turn: `CFG.hullTurn` 1.2 rad/s, only while not moving. A shooter counts when its `w.veh` is 20 or more (the
+  same line that separates guns from small arms against buildings) and it is not a plane.
+- Spread fire: `g.claims` is rebuilt every tick from current targets (team and target -> expected volley damage) and
+  kept current as units switch. `pickTarget` multiplies a target's score by max(1, others' claims / target hp). Below
+  one volley's worth of overkill nothing changes, so small fights pick targets exactly as before. Salvo weapons
+  (rockets, mortar) keep their own clustering rule.
+- Balance after slices 1 to 3, Conquest 300 matches: 42/33/26% (39/33/28% before).

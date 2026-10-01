@@ -692,7 +692,7 @@ function placementView() {
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
-  retreat: () => retreat(), takeCover: () => takeCover(), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
+  retreat: () => retreat(), takeCover: () => takeCover(), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -803,6 +803,13 @@ audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles m
 function toggleMute() { audio.toggleMute(); } // the M key (client/keys.js); the slider follows
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
+// stance switches: on for the whole selection unless every selected unit already has it
+const STANCE_BIT = { holdFire: 2048, holdPos: 4096, autoRetreat: 8192 };
+function toggleStance(key) {
+  const us = [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure);
+  if (!us.length) return;
+  sendCmd({ t: 'stance', ids: us.map(v => v.id), key, on: !us.every(v => v.flags & STANCE_BIT[key]) }); blip(480);
+}
 function takeCover() { if (!selected.size || explainUnavailable(available({ t: 'cover' }))) return; sendCmd({ t: 'cover', ids: [...selected] }); blip(420); }
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
@@ -923,6 +930,7 @@ for (const { id } of bindings) {
   if (kind === 'support') actions[id] = () => aimSupport(value);
   else if (kind === 'fort') actions[id] = () => startDig(value);
   else if (kind === 'entrench') actions[id] = () => startEntrench(value);
+  else if (kind === 'stance') actions[id] = () => toggleStance(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
   else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
 }

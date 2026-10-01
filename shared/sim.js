@@ -27,6 +27,9 @@ export const CFG = {
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
   // seeking cover: how far a squad will walk for it (metres), and how long an idle squad under fire waits between looks
   coverSeek: 10, coverRetry: 2,
+  // auto-retreat (a per-unit switch): the share of full strength below which a unit runs for home. hullTurn: how fast
+  // an idle vehicle turns its front to a threat (rad/s)
+  autoRetreat: 0.35, hullTurn: 1.2,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
   terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
   fordSpeed: 0.5,
@@ -1080,6 +1083,18 @@ function takeDigJob(g, u) {
   u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0 }; u.repath = 0;
 }
 
+// Per-unit switches the player sets. holdFire: shoot only on an attack order. holdPos: never move unordered (no
+// seeking cover). autoRetreat: run for home when below CFG.autoRetreat of full strength.
+export const STANCES = ['holdFire', 'holdPos', 'autoRetreat'];
+const stanceBits = (u) => (u.holdFire ? 2048 : 0) | (u.holdPos ? 4096 : 0) | (u.autoRetreat ? 8192 : 0);
+function retreatUnit(g, u) {
+  u.orders = []; u.entrench = null;
+  if (u.air) { if (airborne(u)) u.air.state = 'home'; return; } // back to base
+  exitBuilding(g, u);
+  Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1, build: 0 });
+  u.path = findPath(g, u, homeOf(g, u));
+}
+
 // Waiting orders are separate from a Production Building's training queue.
 // Returns false when the unit already has 8 waiting orders.
 function enqueueOrder(u, order) {
@@ -1194,14 +1209,13 @@ export function command(g, slot, cmd) {
     for (const id of ids) { const u = mine(id); if (u?.air) { u.orders = []; sendPlane(u, { kind: 'escort', id: t.id, x: t.x, z: t.z }); } }
   } else if (cmd.t === 'retreat') {
     if (!ids.some(mine)) return 'needs';
-    for (const id of ids) {
-      const u = mine(id); if (!u) continue;
-      u.orders = [];
-      if (u.air) { if (airborne(u)) u.air.state = 'home'; continue; } // back to base
-      exitBuilding(g, u);
-      Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1, build: 0 });
-      u.path = findPath(g, u, homeOf(g, u));
-    }
+    for (const id of ids) { const u = mine(id); if (u) retreatUnit(g, u); }
+  } else if (cmd.t === 'stance') {
+    // per-unit switches (STANCES), all off for a new unit
+    if (!STANCES.includes(cmd.key) || typeof cmd.on !== 'boolean') return 'blocked';
+    const us = ids.map(mine).filter(Boolean);
+    if (!us.length) return 'needs';
+    for (const u of us) u[cmd.key] = cmd.on;
   } else if (cmd.t === 'cover') {
     // Take Cover: every selected infantry squad drops what it is doing and runs to the best cover within reach,
     // judged against the nearest enemy its team can see. Squads already in a trench or a house stay put.
@@ -1372,15 +1386,32 @@ function aimPoint(g, u, t) {
   return best;
 }
 
+// Spread fire: g.claims holds, per team and target, the damage its shooters expect to land with their next volley.
+// A target that is already getting more than it has left looks further away to the next shooter, in proportion, so
+// a group does not empty every gun into a squad that is as good as dead.
+const volley = (u, t) => { const w = UNITS[u.type].w; return !w || w.salvo ? 0 : (UNITS[t.type].infantry ? w.inf * w.accInf : w.veh * w.accVeh) * (w.perModel ? alive(u) : 1); };
+function claim(g, u, id, sign) {
+  const t = id && g.units.get(id);
+  if (!t || !g.claims) return;
+  const key = id * 8 + g.players[u.owner].team;
+  g.claims.set(key, (g.claims.get(key) ?? 0) + sign * volley(u, t));
+}
+function retarget(g, u) {
+  const next = pickTarget(g, u);
+  if (next !== u.targetId) { claim(g, u, u.targetId, -1); claim(g, u, next, 1); }
+  u.targetId = next;
+}
+
 function pickTarget(g, u) {
-  const w = UNITS[u.type].w;
+  const w = UNITS[u.type].w, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity;
   for (const t of gridFor(g).candidates(u, w.range, true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
     const inf = UNITS[t.type].infantry;
     // salvos go for garrisons first, then for whatever has the most enemies around it
     const value = w.salvo ? (t.garrison >= 0 ? 3 : 1) * (1 + gridFor(g).candidates(t, 6).filter(o => o.owner === t.owner && dist(o, t) < 6).length) : inf ? w.inf * w.accInf : w.veh * w.accVeh;
-    const score = dist(u, t) / value * (UNITS[t.type].structure ? 5 : 1); // soldiers first, concrete later
+    const others = w.salvo ? 0 : (g.claims?.get(t.id * 8 + team) ?? 0) - (t.id === u.targetId ? volley(u, t) : 0);
+    const score = dist(u, t) / value * (UNITS[t.type].structure ? 5 : 1) * Math.max(1, others / t.hp); // soldiers first, concrete later
     if (score < bestScore) { bestScore = score; best = t.id; }
   }
   return best;
@@ -1419,7 +1450,8 @@ function fire(g, u, t, moving) {
   const before = t.hp;
   t.hp -= dmg * hits;
   if (hits) t.lastHit = u.owner;
-  if (inf) { t.hitAt = g.tick; t.hitFrom = { x: u.x, z: u.z }; } // shot at, hit or not: idle squads look for cover
+  // shot at, hit or not: idle squads look for cover, idle vehicles turn to face a gun (not a plane overhead)
+  if (inf || (w.veh >= 20 && !u.air)) { t.hitAt = g.tick; t.hitFrom = { x: u.x, z: u.z }; }
   u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating && !(t.sprint > 0)) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
   u.cooldown = w.interval * rate; u.shotAt = g.tick;
@@ -1566,6 +1598,8 @@ export function step(g) {
   if (g.tick % 4 === 1) updateVision(g);
 
   beginPathTick(g);
+  g.claims = new Map();
+  for (const u of g.units.values()) if (u.targetId && u.hp > 0) claim(g, u, u.targetId, 1);
   const crews = new Map(); // construction site id -> engineers working on it this tick
   for (const u of g.units.values()) {
     if (u.hp <= 0) continue;
@@ -1575,6 +1609,9 @@ export function step(g) {
     if (def.air) { stepPlane(g, u, dt); continue; }
     if (def.infantry) u.supp = Math.max(0, u.supp - 8 * dt);
     u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt;
+
+    // auto-retreat: a broken unit runs for home by itself
+    if (u.autoRetreat && !u.retreating && def.speed > 0 && u.hp < def.models * def.hpPer * CFG.autoRetreat && dist(u, homeOf(g, u)) > CFG.reinforceRadius) retreatUnit(g, u);
 
     // Engineers: walk up to the site, then build
     if (u.build) {
@@ -1646,7 +1683,7 @@ export function step(g) {
     }
 
     // under fire with nothing to do: idle infantry shift to the nearest cover (crewed weapons keep their position)
-    if (def.infantry && !w.setup && u.hitAt >= g.tick - 40 && (u.coverTry ?? 0) <= g.tick && u.garrison < 0 && idle(u)) {
+    if (def.infantry && !w.setup && !u.holdPos && u.hitAt >= g.tick - 40 && (u.coverTry ?? 0) <= g.tick && u.garrison < 0 && idle(u)) {
       u.coverTry = g.tick + CFG.coverRetry / TICK; seekCover(g, u, u.hitFrom);
     }
 
@@ -1668,6 +1705,12 @@ export function step(g) {
     if (u.retreating && !u.path.length) u.retreating = false;
     if (u.path.length && moved < speed * dt * 0.3) { u.stuck += dt; if (u.stuck > 1) { u.path = []; u.stuck = 0; if (u.amove) u.amove = null; } } else u.stuck = 0;
 
+    // a vehicle standing still turns its front armor to the gun that last shot at it, else to a gun it is fighting
+    if (!def.infantry && !def.structure && !moving && def.speed > 0) {
+      const foe = g.units.get(u.targetId), at = u.hitAt >= g.tick - 100 ? u.hitFrom : foe && UNITS[foe.type].w?.veh >= 20 ? foe : null;
+      if (at) { const to = Math.atan2(at.z - u.z, at.x - u.x), d = Math.atan2(Math.sin(to - u.rot), Math.cos(to - u.rot)); u.rot += Math.max(-CFG.hullTurn * dt, Math.min(CFG.hullTurn * dt, d)); }
+    }
+
     // targeting + firing
     if (u.retreating) { u.targetId = 0; u.aim = u.rot; continue; }
     if (u.fireAt >= 0) {
@@ -1681,7 +1724,8 @@ export function step(g) {
       }
       continue;
     }
-    if (!u.attackId && (u.retarget <= 0 || (u.targetId && !canShoot(g, u, g.units.get(u.targetId))))) { u.targetId = pickTarget(g, u); u.retarget = 0.5; }
+    if (u.holdFire && !u.attackId) u.targetId = 0; // holding fire: only an attack order shoots
+    else if (!u.attackId && (u.retarget <= 0 || (u.targetId && !canShoot(g, u, g.units.get(u.targetId))))) { retarget(g, u); u.retarget = 0.5; }
     const t = g.units.get(u.targetId);
     if (t && canShoot(g, u, t)) {
       u.aim = Math.atan2(t.z - u.z, t.x - u.x);
@@ -1975,7 +2019,7 @@ const rounded = (v) => Math.round(v * 10) / 10;
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-    Math.max(0, Math.ceil(u.cd)), (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0), vet(u), u.built ?? 1];
+    Math.max(0, Math.ceil(u.cd)), (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | stanceBits(u), vet(u), u.built ?? 1];
 }
 // a unit's waiting orders as its owner sees them: [id, count, kind, x, z, ...]
 function ordersRow(g, u) { return [u.id, u.orders.length, ...u.orders.flatMap(o => queuedPlan(g, u.owner, o).map(rounded))]; }
@@ -1986,6 +2030,7 @@ function playerRow(row, slot, seen) {
   const result = row.slice();
   result[9] = row[9] && seen(row[9]) ? row[9] : 0;
   result[11] = row[2] === slot ? row[11] : 0;
+  if (row[2] !== slot) result[12] = row[12] & 2047; // stances are the owner's business
   return result;
 }
 
@@ -2042,10 +2087,11 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: cache ? cache.teams.get(p.team).ghosts?.filter(gh => !seen(gh[0])) : g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
-    // 128 building a site, 256 hidden, 512 plane on the ground, 1024 on a mass entrenchment. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
+    // 128 building a site, 256 hidden, 512 plane on the ground, 1024 on a mass entrenchment;
+    // own units only: 2048 holding fire, 4096 holding position, 8192 auto-retreat. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0), vet(u), u.built ?? 1]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (u.owner === slot ? stanceBits(u) : 0), vet(u), u.built ?? 1]),
     smokes: cache ? cache.smokes : g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: cache ? cache.strikes : g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),

@@ -5,6 +5,27 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Unit control, part 3: stances, auto-retreat, smarter vehicles and fire.
+  - Three switches per unit in Orders, all off for new units, so nothing changes until you use them. A switch that is
+    on is ringed in brass and tagged in the selection list; click or press the key again to turn it off.
+    - Hold fire (Shift+F): the unit shoots only when you give it an attack order. A sniper stays hidden, an AT gun
+      waits for the tank you pick.
+    - Hold position (Shift+G): the unit never moves on its own, not even to cover.
+    - Auto-retreat (Shift+X): the unit runs for home by itself when it falls below 35% strength (a squad of five down
+      to its last two men), unless it is already at base. It reinforces there as usual.
+    These are independent switches rather than one three-way stance, so a gun can hold fire and hold position at once.
+    Enemies who see your unit do not see its switches.
+  - Vehicles standing still turn their hull toward the gun that last shot at them (tank guns, AT guns: anything that
+    hurts armor), or toward such a gun they are fighting, at about 70 degrees a second. Rifles and planes do not make
+    them turn. A flanked tank no longer sits with its rear to the AT gun.
+  - Spread fire: units choosing a target count what their own side already has aimed at it. A squad that is already
+    getting more than it can survive in the next volley looks further away in proportion, so a big group moves on to
+    the next enemy instead of emptying every gun into one dying squad. Attack orders are not affected.
+  - Balance (Conquest, default map, 300 three-way AI matches): USA/GER/USSR 42/33/26% (39/33/28% before parts 1 to 3),
+    average match 559 s (552 s). The AI does not use the switches yet.
+  - Shift+R is deliberately left unbound (an existing rule: R with a modifier must not retreat by accident), so
+    auto-retreat is on Shift+X.
+
 - House corners are cover: a squad standing beside a house (or a Classic building), corner cells included, takes half
   the fire from any shooter on the house's side, within 60 degrees of the wall. It still sees and shoots past the
   corner, which a squad hidden behind the house cannot. Fire from the open side is not reduced. The selection list

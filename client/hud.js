@@ -28,6 +28,10 @@ const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infa
 const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
   double: 'Two rows, the second 6 m behind the first', arc: 'A crescent around the first click, bowed toward the second',
   ring: 'A circle around the first click, out to the second', strongpoint: 'A trench square with barbed wire on the side of the second click' };
+// the per-unit switches: [flag bit, name, what it does]
+const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack order (snipers and guns stay hidden)'],
+  holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
+  autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
 const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
   airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
@@ -74,6 +78,9 @@ const ICON = {
   stop: '<path d="M11 4h10l7 7v10l-7 7H11l-7-7V11z"/><path d="M11 16h10"/>',
   takecover: '<path d="M3 27h26M18 27V13h9v14"/><circle cx="10" cy="17.5" r="3"/><path d="M5.5 27c0-4 2-5.5 4.5-5.5s4.5 1.5 4.5 5.5"/>',
   trench: '<path d="M3 12h6v8h7v-8h7v8h6"/>',
+  holdFire: '<circle cx="16" cy="16" r="8"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6M6 26 26 6"/>',
+  holdPos: '<path d="M16 4v19M10 8h12M6 18c0 6 4.5 9 10 9s10-3 10-9M4 18h4M24 18h4"/>',
+  autoRetreat: '<path d="M24 27V14a7 7 0 0 0-14 0v6"/><path d="M5.5 15.5 10 21l4.5-5.5"/><path d="M18 26l3-7 3 7M19 24h4"/>',
   e_line: '<path d="M4 16h24M4 11v10M28 11v10"/>',
   e_zigzag: '<path d="M3 21l6.5-10 6.5 10 6.5-10L29 21"/>',
   e_double: '<path d="M4 11h24M4 21h24"/>',
@@ -243,6 +250,7 @@ export function createHud(ctx) {
     if (v.flags & 16) t.push(['', 'Digging']); else if (v.flags & 1024) t.push(['', 'Waiting for MP to dig']);
     if (v.flags & 32) t.push(['cov', 'Garrisoned']);
     if (v.flags & 64) t.push(['', 'Attack-move']);
+    for (const [bit, nm] of Object.values(STANCE)) if (v.flags & bit) t.push(['', nm]);
     if (UNITS[v.type].building && v.built < 1) t.push(['', `Building ${Math.round(v.built * 100)}%`]);
     return t.map(([c, s]) => `<span class="tag ${c}">${s}</span>`).join('') + (v.vet ? `<span class="vet" title="Veteran: ${v.vet} star${v.vet > 1 ? 's' : ''}">${'★'.repeat(v.vet)}</span>` : '');
   };
@@ -299,6 +307,7 @@ export function createHud(ctx) {
         orderBtn('data-a="retreat"', 'retreat', label('retreat'), `Retreat (${label('retreat')}): run back to base, heal and reinforce there`) +
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
+        Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m`) : '') +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
         (dig ? ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
@@ -308,7 +317,7 @@ export function createHud(ctx) {
       el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
         const a = b.dataset.a;
         if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
-        else if (a === 'cover') ctx.takeCover(); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
+        else if (a === 'cover') ctx.takeCover(); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
         else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
       }));
     }
@@ -319,6 +328,10 @@ export function createHud(ctx) {
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (a === 'cover') result = check({ t: 'cover' });
+      else if (a.startsWith('st:')) {
+        const bit = STANCE[a.slice(3)][0], on = sel.filter((v) => v.flags & bit).length;
+        txt = !on ? 'off' : on === sel.length ? 'ON' : `${on}/${sel.length}`; b.classList.toggle('on', on > 0);
+      }
       else if (a.startsWith('ent:')) { result = check({ t: 'entrench' }); txt = `${FORTS.trench.cost}/seg`; }
       else if (UNITS[a]) {
         // same squads the reason sentence counts: retreating squads cannot use the ability

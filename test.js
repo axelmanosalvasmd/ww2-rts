@@ -805,6 +805,62 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(fromHouseSide < fromOpenSide * 0.7, 'fire from the house side is blunted; fire from the open side is not');
 }
 
+// Stances: hold fire, hold position and auto-retreat are per-unit switches, off for new units.
+{
+  const g = fresh(); g.players.forEach(p => (p.mp = 10000));
+  const a = put(g, 0, 'rifle', 11, 21), b = put(g, 1, 'rifle', 29, 21);
+  assert.ok(!a.holdFire && !a.holdPos && !a.autoRetreat, 'a new unit has every switch off');
+  assert.equal(command(g, 0, { t: 'stance', ids: [a.id], key: 'toString', on: true }), 'blocked', 'an unknown switch is refused');
+  assert.equal(command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: 1 }), 'blocked', 'on must be true or false');
+  assert.equal(command(g, 0, { t: 'stance', ids: [b.id], key: 'holdFire', on: true }), 'needs', 'only your own units');
+  assert.equal(command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: true }), undefined);
+  b.holdFire = true; run(g, 4);
+  assert.equal(b.hp, UNITS.rifle.models * UNITS.rifle.hpPer, 'a squad holding fire does not shoot an enemy in range');
+  for (const cache of [undefined, snapshotCache(g)]) {
+    const flags = (slot, u) => snapshotFor(g, slot, [], [], cache).units.find(v => v[0] === u.id)[12];
+    assert.ok(flags(0, a) & 2048, 'the owner sees its unit holding fire');
+    assert.equal(flags(1, a) & 2048, 0, 'an enemy who sees the unit does not see its stance');
+  }
+  command(g, 0, { t: 'attack', ids: [a.id], target: b.id }); run(g, 4);
+  assert.ok(b.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'an attack order still shoots while holding fire');
+  command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: false });
+  assert.equal(a.holdFire, false, 'the switch turns off again');
+}
+
+// Hold position: no seeking cover. Auto-retreat: a broken squad runs for home; without the switch it stays.
+{
+  const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14);
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  const held = put(g, 0, 'rifle', 15, 21); put(g, 1, 'rifle', 35, 21);
+  command(g, 0, { t: 'stance', ids: [held.id], key: 'holdPos', on: true });
+  run(g, 4);
+  assert.deepEqual([held.x, held.z], [15, 21], 'a squad holding position under fire does not walk to cover');
+  const h = fresh(); h.players.forEach(p => (p.mp = 10000));
+  const stays = put(h, 0, 'rifle', 21, 21), runs = put(h, 0, 'rifle', 21, 31);
+  command(h, 0, { t: 'stance', ids: [runs.id], key: 'autoRetreat', on: true });
+  step(h);
+  assert.ok(!runs.retreating, 'a healthy squad with auto-retreat stays');
+  stays.hp = runs.hp = UNITS.rifle.models * UNITS.rifle.hpPer * 0.3; step(h);
+  assert.ok(runs.retreating && !stays.retreating, 'only the squad with auto-retreat on runs when broken');
+}
+
+// Vehicles turn their front to the gun shooting them; a group spreads its fire instead of overkilling one squad.
+{
+  const g = fresh(); g.players.forEach(p => (p.mp = 10000));
+  const tank = put(g, 0, 'tank', 21, 21), gun = put(g, 1, 'at', 5, 21);
+  tank.hp = 1e5; tank.rot = 0; gun.still = 10; // facing away from the gun
+  run(g, 9);
+  assert.ok(Math.cos(tank.rot - Math.PI) > 0.95, 'a tank shot in the rear turns its front to the gun');
+  const s = fresh(); s.players.forEach(p => (p.mp = 10000));
+  const shooters = Array.from({ length: 6 }, (_, i) => put(s, 0, 'rifle', 5, 11 + i * 3));
+  const weak = put(s, 1, 'rifle', 25, 19), far = put(s, 1, 'rifle', 27.5, 19);
+  weak.hp = 20; weak.holdFire = far.holdFire = true;
+  step(s);
+  const on = (t) => shooters.filter(u => u.targetId === t.id).length;
+  assert.equal(on(weak) + on(far), 6, 'every shooter has a target');
+  assert.ok(on(weak) >= 1 && on(far) >= 2, 'once the weak squad is covered, the rest shoot the next one');
+}
+
 // Take Cover order: the selected infantry run to cover, crewed weapons included; vehicles and open ground refuse.
 {
   const rows = [...empty]; rows[10] = '.....##' + '.'.repeat(13);
@@ -3757,6 +3813,8 @@ console.log('all command feedback checks passed');
   assert.equal(check({ t: 'cover' }).ok, true);
   assert.equal(check({ t: 'entrench' }).ok, true, 'Engineers can entrench, and nothing is charged up front');
   assert.equal(check({ t: 'entrench', ids: [hq.id] }).reason, 'Select a builder squad');
+  assert.equal(check({ t: 'stance' }).ok, true);
+  assert.equal(check({ t: 'stance', ids: [hq.id] }).reason, 'Select a unit');
   assert.equal(check({ t: 'cover', ids: [hq.id] }).reason, 'Select an infantry squad');
   assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
   hq.queue = Array(5).fill('rifle');
