@@ -8,6 +8,7 @@ import { buildModel, animate, setSurfaces, setBuildings } from './unit-models.js
 import { createAviation } from './aircraft.js';
 import { ownerRing } from './markers.js';
 import { setupLight, sky } from './light.js';
+import { MOODS, DEFAULT_MOOD } from './moods.js';
 import { surface } from './surfaces.js';
 import { buildingModel } from './structures.js';
 import { gfx } from './gfx.js';
@@ -24,8 +25,8 @@ const facOf = () => fac;
 
 // ---------- the game camera and sun (client/camera.js, client/light.js) ----------
 const GAME = { fov: 42, pitch: 0.95, dist: 40, w: 1920, h: 1080 }; // the cell crops a 1920x1080 frame at 1:1
-const SUN_SIDE = 60 * Math.PI / 180, HAZE = 0xbcae96; // light.js
-const GRASS = 0x6e6a54; // ground.js painted grass, flat: its texture average after the grass tint and saturation
+const SUN_SIDE = 60 * Math.PI / 180, HAZE = MOODS[DEFAULT_MOOD].haze; // light.js and moods.js
+const GRASS = 0x6c6c45; // ground.js painted grass, flat: its texture average after the grass tint and saturation
 const SUN_DIR = new THREE.Vector3(); // light.js aimSun(0): the opening view of yaw 0
 {
   const az = Math.PI - SUN_SIDE, up = sky.sunUp * Math.PI / 180;
@@ -89,7 +90,7 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const gameCam = new THREE.PerspectiveCamera(GAME.fov, GAME.w / GAME.h, 1, 1000); // main.js camera
 const closeCam = new THREE.PerspectiveCamera(30, 1, 0.05, 3000);
-const { sun } = setupLight(renderer, scene, gameCam); // tone mapping, shadows, hemisphere fill, the warm sun, haze
+const { sun } = setupLight(renderer, scene, gameCam); // tone mapping, shadows, hemisphere fill, the sun, haze (the default mood)
 scene.background = new THREE.Color(bg);
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: GRASS }));

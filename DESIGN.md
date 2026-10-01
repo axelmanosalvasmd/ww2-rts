@@ -238,23 +238,39 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
   Browser cost at 250+ units hasn't been measured on the friends' PCs.
 
-## Look and feel (decided 2026-10-01)
-Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
-is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
-mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
-The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
-the HUD. Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
+## Look and feel (art direction changed 2026-10-01)
+Art direction: **grounded realism**, a realistic modern RTS look in the spirit of Company of Heroes 3. Grounded lighting
+(a real sun, soft shadows that stay present), natural muted colors, weathering (worn grass, dirt, tire tracks, crops),
+a light haze in the distance and true-scale units. The target is `docs/concepts/f-grounded.jpg`. The concept shows richer
+models than ours; the models stay procedural, so the look comes from light, ground and weathering as much as from the
+models. Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
 lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
 still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
+
+The earlier **sand table** direction was dropped on 2026-10-01 at the user's request, because it read as a board game:
+the battlefield as a painted terrain model on a commander's planning table (a wooden table around the map, the board's
+cut earth edge, desk props, a tilt-shift blur along the top of the screen, "slightly saturated painted miniature"
+colors). `a-sand-table.jpg` and `e-mix-acetate.jpg` (the target that mixed that world with the HUD) stay in
+`docs/concepts/` as history, with `c-clean-modern.jpg` (the restraint: slim panels, small screen coverage) and
+`before-conquest.jpg` (where we started). Golden hour is not the default but is one row of the light table (`golden`
+in `client/moods.js`, `?mood=golden`), ready for a map to pick.
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
-- Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
-  particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
+- Graphics setting (menu): High / Low, saved per browser. Low uses cheaper shadows and fewer particles, and drops screen
+  shake, cloud shadows, weather and birds. Defaults to High; switches itself to Low with a one-line notice if the game
+  runs under 45 fps for 5 s.
 - World:
   - Ground painted from tileable textures (grass, dirt, mud, road, field) generated with gpt-image-2 and blended per
-    cell; contour lines stay. Craters and scorch marks are painted into the ground.
-  - Warm low sun, soft shadows, slightly saturated "painted miniature" colors, a light haze.
-  - A slight blur only along the far (top) edge of the screen, subtle enough that units there stay readable. Off on Low.
-  - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
+    cell; contour lines stay. Craters and scorch marks are painted into the ground. Colors are muted: olive grass,
+    grey-brown dirt.
+  - Light: every light setting lives in one table, `client/moods.js`, one row per mood. The default is a clear
+    afternoon: a warm real sun (3.5) against a much weaker sky fill (0.74), so shadows stay present, with soft edges;
+    filmic (ACES) tone mapping at exposure 0.9; a pale grey haze that thickens as the camera zooms out. No bloom, no
+    flat bright ambient light, no saturation boost, no bright cartoon sky. Other rows: dawn, overcast, snow, dust (picked
+    by map name) and `golden`.
+  - No blur anywhere: the far-edge blur read as tilt-shift photography and made the world look toy-sized.
+  - Beyond the map edge: land (`client/apron.js`). The same ground carries on in every direction with no seam, hills at
+    the edge settle into gentle ground, rivers and seas that leave the map carry on, and ground you cannot see is as
+    dim there as inside the map. At no camera position or zoom is there a void, a table or a cut edge.
   - Unit markers: the class badge over each unit becomes the same military map symbol the HUD uses, drawn in the
     owner's color. Health bar, cover shield and veterancy stay.
   - Order lines and range rings drawn like grease pencil on the table (slightly rough strokes, arrowheads on routes).
@@ -288,7 +304,7 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
   retreat, under fire, unit lost), two takes per line, directed with v4 audio tags. They replace the browser's speech
   synthesis. One volume control covers effects, voices and alerts (mute used to silence only the voices). No music.
 - Slices, each its own commit with its changelog entry: 1 HUD (layout, panels, colors, type, symbols, and the bugs
-  below), 2 alerts, 3 world (ground, light, table edge, graphics setting), 4 combat effects, 5 audio.
+  below), 2 alerts, 3 world (ground, light, graphics setting; the table edge was removed later), 4 combat effects, 5 audio.
 - Bugs found while looking (fixed in slice 1): at 1600x900 the orders panel covers the recruit bar; Classic's
   "MP · Mun · Fuel" readout wraps to two lines; the lobby form spills past its card; the orders panel's HTML is rebuilt
   on every snapshot (10 Hz), which can eat clicks; mute only silences the voices.
@@ -300,9 +316,10 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
 - As built, slice 2 (alerts): `client/alerts.js` and `client/alerts.css`, worked out client-side from two snapshots in
   a row. "Enemy Air Support incoming" covers the aviation calls too (dive bomber, paratroopers) but not fighter cover;
   your planes count as units for "under attack" and "lost".
-- As built, slice 3 (world): `client/light.js` (sun, sky fill, haze, the table and board edge, the far-edge blur and
-  the Graphics High / Low button), `client/ground.js` (the painted ground canvas, repainted in tiles when cells
-  change), `client/surfaces.js` (textured structure materials) and `client/markers.js` (rings, badges, order lines,
+- As built, slice 3 (world): `client/light.js` (sun, sky fill, haze, tone mapping and the Graphics High / Low button;
+  this slice also built a planning table, a cut earth edge and a far-edge blur, all removed on 2026-10-01, see "World
+  edge and light" below), `client/ground.js` (the painted ground canvas, repainted in tiles when cells change),
+  `client/surfaces.js` (textured structure materials) and `client/markers.js` (rings, badges, order lines,
   capture points, tags). Player colors are blue, red, chalk, orange, violet and cyan. The aviation types got map
   symbols in `client/symbols.js` (plane, dome over armor, installation bar), since the 3D badges now use the same
   symbols as the HUD and the old pictograms for flak and planes went away.
@@ -380,7 +397,7 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
 
 ## Relief, structures and atmosphere (round 4, 2026-10-01)
 - Relief module: `client/relief.js` (`createRelief(map, grid, { texture, isRoad, gfx, low, onGeometry, material })`)
-  builds the board surface from the sim's cell levels and returns `{ mesh, geometry, hAt, update(cells), stats,
+  builds the terrain surface from the sim's cell levels and returns `{ mesh, geometry, hAt, update(cells), stats,
   dispose }`. The geometry is in world space (y up, x and z from 0 to the map size) with a fixed bounding box, and its
   UVs match the ground canvas and the fog texture (`v = 1 - z / MH`). `hAt(x, z)` is the one ground height for units,
   props, water, the camera, the minimap and picking (the mesh raycasts by marching against `hAt`). `update(cells)`
@@ -398,25 +415,59 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
   paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
   5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
   and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
-  on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
+  on Low turns off cloud shade, weather and birds, and uses fewer mist sheets.
 - Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
   sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
   It never changes gameplay cells. The five base buildings are one merged, vertex-colored model per type and team
   (`buildingModel`). Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
   `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
-- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
-  drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
-  birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
-  ground darkens it too.
+- Atmosphere: `client/atmosphere.js` picks a mood from the map name (the default light, dawn with river mist, overcast,
+  snow, dust; the rows are in `client/moods.js`), drifts cloud shadows over the terrain and the land around it, and
+  flies a few birds on High. Everything over the map is transparent, writes no depth and draws before the fog overlay,
+  so unseen ground darkens it too.
 - As merged with rounds 1 to 3: main.js keeps `relief` and `hAt` delegates to it. The round 3 smoothed height field
   (`buildField`, `terrainGeometry`) and its house, roof and parapet builder are gone; `applyCells` now paints the
   ground, calls `relief.update(cells)`, rebuilds the structures, refreshes the props and updates the water.
   `createWater(grid, map, hAt)` takes the relief height. `client/ground.js` returns `isRoad` for the relief's road
   sink. `client/unit-models.js` keeps the round 3 one-draw units and Node tests keep its box buildings; main.js
   injects `buildingModel` through `setBuildings`, and the command bunker keeps no `v.body` because it is never built.
-  The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
-  box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
-  step) along the four sides so the cut-earth skirt follows cliffs at the edge.
+  The HQ uses `sandbagRing` from structures.js. `client/atmosphere.js` reads the relief's bounding box for the map size.
+
+## World edge and light (2026-10-01, replaces the sand table)
+- Why: the sand table made the game read as a board game, so the table, the board's cut earth edge, the desk props, the
+  far-edge blur and the miniature color boost were removed (see Look and feel above).
+- The apron (`client/apron.js`, `createApron({ ground, relief, grid, map })`): the land past the map edge, one mesh
+  built as a ring of columns around the map and rows that grow outward (0.5 m next to the edge, up to 1250 m, farther
+  than the camera can see at any zoom, yaw or window shape). Heights: the first row is `relief.hAt` along the edge
+  (twin columns 1 mm either side of each cell boundary keep a cliff's two heights; columns every 0.5 m where the edge is
+  not flat, otherwise two per cell), then a hill at the edge settles to the base land over 48 m while the profile is
+  smoothed more with distance, so a cliff flares into a ramp instead of a fin. Far out the land rolls by up to about
+  4.5 m (value noise). Water that leaves the map stays low. A 0.3 m strip tucked under the map's edge and a skirt below
+  the first row cover any crack between the two meshes. Paint: a fragment shader samples the same tinted tiles
+  (`groundLook()` in `client/ground.js`) with the same warped four-cell blend as the map, every cell past the edge taking
+  the edge cell's materials, so a road, a river or a field carries on outward. Fields fade out by 36 m, the paint settles
+  into grass and dirt by 240 m, and the first 14 m past the edge ease to 20% darker and 25% greyer. Only the tiles that
+  count are sampled.
+- Water (`client/water.js`) extends a strip 900 m past every edge cell that carries water, and a block past the corners
+  where they meet, so a river or a sea does not stop at the map edge (the island map is surrounded by sea).
+- Fog of war past the edge: `apron.fogMesh` is a copy of the map's overlay on the apron's whole surface, fading to a
+  flat "unseen" alpha (120 of 255) from 6 to 32 m out, so it also darkens the water that leaves the map. The map's
+  overlay mesh is no longer lifted 0.12 m (a depth offset instead), so the two meet with no line.
+- Cost: draw calls drop by 6 to 8 (the land is 3: ground, cloud shade, fog of war; the table, skirt, contact shadow,
+  props, lamp pool, table cloud shade and the two blur passes are gone), triangles rise by about 40 000 (about 240 000
+  in all on the default map). The camera's far plane is 2200 m (was 1000).
+- Light: `client/moods.js` is the one table of light settings (one row per mood: sun height, sun color and strength, sky
+  fill colors and strength, haze color and distance, shadow darkness and softness, exposure, cloud shade, mist,
+  weather), `setMood()` in `client/light.js` applies a row and `client/atmosphere.js` calls it when a match starts.
+  `?mood=name` in the URL, a `mood` field in the map file or the map's name pick the row. Tone mapping is ACES filmic
+  (one constant in `client/moods.js`). The default `day` row was tuned against `docs/concepts/f-grounded.jpg`:
+  sun `#ffe0b8` at 3.5, sky fill 0.74, exposure 0.9, haze `#b9bdbc`. Lit materials are no longer saturated 1.1 and the
+  ground tiles are pulled toward olive and grey-brown. The haze distances are 0.6 and 3.8 times the camera distance
+  (were 0.7 and 4.5). Left for the golden-hour look: the `golden` row, tried with `?mood=golden`.
+- Checked: opening view, widest view at three headings, each edge and corner looking outward (default map), wide and
+  edge views on island-towns, twin-valleys, kasserine-pass, river-towns, seawall, hill-112, monte-cassino and
+  ardennes-crossing, a temporary low camera pitch (the haze reaches a horizon), Graphics Low, `?mood=golden`, the model
+  viewer, the map editor and Restart match (twice).
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

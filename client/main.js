@@ -10,6 +10,7 @@ import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelO
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
+import { createApron } from './apron.js';
 import { createGround } from './ground.js';
 import { surface, setFogMap } from './surfaces.js';
 import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
@@ -293,12 +294,12 @@ function renderLobby(m) {
 setSurfaces(surface); // structure models take the textured wood and sandbag (client/surfaces.js)
 setBuildings(buildingModel); // HQ, barracks, motor pool, depot and command bunker: one merged model each (client/structures.js)
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.localClippingEnabled = true; // the HQ's ring and disc are cut at the board edge (buildHQ)
+renderer.localClippingEnabled = true; // the HQ's ring and disc are cut at the map edge (buildHQ)
 renderScale(renderer); // pixel ratio per graphics level (client/perf.js); shadows are set in client/light.js
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-const lights = setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
+const camera = new THREE.PerspectiveCamera(42, 1, 1, 2200); // far enough for the apron's outer rows (client/apron.js)
+setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -318,10 +319,10 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null, water = null;
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null, water = null, apron = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
-// Ground height and the board surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
+// Ground height and the terrain surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
 let relief = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
@@ -332,7 +333,7 @@ function startGame(m, restored = null) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
-  relief?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
+  relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
   units.clear(); selected.clear(); selection.reset();
@@ -355,6 +356,8 @@ function startGame(m, restored = null) {
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
+  apron = createApron({ ground: gp, relief, grid: terrain.grid, map }); // the land past the map edge (client/apron.js)
+  world.add(apron.mesh, apron.fogMesh); apron.fogMesh.visible = !EDIT;
 
   buildStructures();
   water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
@@ -376,10 +379,11 @@ function startGame(m, restored = null) {
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
   setFogMap(EDIT ? null : fogTex, MW, MH); // walls and roofs darken in the fog too
-  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
+  // flush with the ground (a depth offset instead of a lift), so it ends exactly at the map edge where the apron takes over
+  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
+  fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
-  atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt, apron }); // mood, cloud shadows, mist, weather, birds
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
@@ -431,7 +435,7 @@ function applyCells(cells) {
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
-// A spawn near the board edge would hang its ring over the table: the zone and ring are cut at the edge and the
+// A spawn near the map edge would hang its ring over the land past it: the zone and ring are cut at the edge and the
 // bags past it are left out (the reinforce zone itself is unchanged).
 function buildHQ(sp, slot) {
   const f = look(slot), R = CFG.reinforceRadius, g = new THREE.Group();
@@ -441,7 +445,7 @@ function buildHQ(sp, slot) {
   const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
   const ring = hqRing(R, f.color, edge);
   g.add(zone, ring);
-  g.add(onBoard(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
+  g.add(insideMap(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
   // command tent + crates
   const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
   const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
@@ -454,8 +458,8 @@ function buildHQ(sp, slot) {
   return g;
 }
 
-// Keep the instances of an HQ piece at (ox, oz) whose center is at least pad inside the board.
-function onBoard(im, ox, oz, pad) {
+// Keep the instances of an HQ piece at (ox, oz) whose center is at least pad inside the map.
+function insideMap(im, ox, oz, pad) {
   const m = new THREE.Matrix4(), p = new THREE.Vector3(), c = new THREE.Color();
   let n = 0;
   for (let i = 0; i < im.count; i++) {
@@ -1144,7 +1148,7 @@ function updateFog() {
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
 objectives.init();
-const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
+const atmos = createAtmosphere({ scene, renderer, camera, cam }); // client/atmosphere.js
 endgame.init({ me: () => me, teams: () => teams });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
@@ -1199,7 +1203,8 @@ renderer.setAnimationLoop(() => {
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   for (const m of strikeMarks.values()) m.frame(m.t > 0, now);
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
-  renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
+  apron?.update(); // follows craters at the map edge and changes to the ground paint
+  renderFrame(cam, groundMesh); // shadows follow the view, haze follows the zoom
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });
 

@@ -5,6 +5,31 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Realistic look, round 1 (the board game framing is gone; art direction is now grounded realism, target image
+  `docs/concepts/f-grounded.jpg`):
+  - The map no longer sits on a wooden planning table. The ground carries on past the map edge in every direction
+    with the same grass, dirt and fields, and no seam: hills at the edge settle into gentle ground, rivers and seas
+    that leave the map keep going, and the ground you cannot see is as dim out there as inside the map. At every
+    camera position and zoom, including fully zoomed out, there is no void, table or cut edge. The playable area is
+    marked softly: just past the edge the ground is darker and greyer. The cut earth edge, the table
+    props (field map, ruler, pencil, mug, compass, pins, desk lamp and its pool of light) and the table's cloud
+    shadows are removed. It costs 3 draw calls (the land, its cloud shade and its fog of war), where the table,
+    skirt, contact shadow, props, lamp pool and cloud shade used to cost 6 to 8, and the blur pass is gone.
+  - The far-edge blur along the top of the screen is gone. It worked like tilt-shift photography and made the world
+    look toy-sized. The Graphics button now says what Low still does (cheaper shadows and effects).
+  - The widest zoom still shows the whole map, centered, now framed by the land around it.
+  - Light and color: one table of light settings, `client/moods.js`, one row per mood (sun, sky fill, haze, exposure,
+    shadow softness). The default is a clear afternoon with a warm real sun, soft shadows that stay present and
+    muted natural color: filmic (ACES) tone mapping at exposure 0.9, sun 3.5 against a sky fill of 0.74 (was neutral
+    mapping, 3.2 and 0.9), a pale grey haze (was warm tan), no saturation boost on lit materials (it was 1.1), and
+    ground colors pulled toward olive grass and grey-brown dirt. Dawn, overcast, snow and dust are retuned to match.
+    A `golden` row (low golden sun) is ready for a map to pick: try `?mood=golden`. The haze starts a bit closer
+    when you zoom out, so the far ground fades into the distance.
+  - Cloud shadows are softer and lighter. The map editor shares all of this and still works.
+  - Removed the two table textures (`table-wood.jpg`, `board-soil.jpg`).
+  - Left for later: comments in the unit, aircraft and structure models still say "miniature" (those files belong
+    to other work in progress), and the camera has a fixed pitch, so the haze at a low horizon (checked with a
+    temporary low pitch) is not reachable by players yet.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

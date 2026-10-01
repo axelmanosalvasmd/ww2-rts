@@ -10,15 +10,15 @@ import { gfx } from './gfx.js';
 const GRASS = 0, DIRT = 1, MUD = 2, FIELD = 3, ROAD = 4, WATER = 5, RUBBLE = 6, SHELL = 7, EARTH = 8, FIELD_V = 9, NMAT = 10;
 // texture, metres per repeat, color multiplier (sRGB), saturation, contrast, flat color (texture average) used until the textures load
 const LOOK = [
-  { tex: 'grass', m: 9, mul: [1.06, 1.03, 1.6], sat: 0.6, con: 0.9, avg: [107, 103, 44] },
-  { tex: 'dirt', m: 8, mul: [0.94, 0.9, 1.14], sat: 0.58, avg: [160, 117, 72] },
-  { tex: 'mud', m: 7, mul: [1, 1, 1], sat: 0.9, avg: [87, 64, 43] },
-  { tex: 'field', m: 10, mul: [0.95, 0.95, 1], sat: 0.6, con: 0.55, avg: [103, 70, 44] },
-  { tex: 'road', m: 8, mul: [0.9, 0.9, 0.88], sat: 0.8, avg: [162, 136, 109] },
+  { tex: 'grass', m: 9, mul: [1.02, 1.06, 1.35], sat: 0.78, con: 0.9, avg: [107, 103, 44] },
+  { tex: 'dirt', m: 8, mul: [0.95, 1, 1.04], sat: 0.5, avg: [160, 117, 72] },
+  { tex: 'mud', m: 7, mul: [1, 1, 1], sat: 0.72, avg: [87, 64, 43] },
+  { tex: 'field', m: 10, mul: [0.95, 0.95, 1], sat: 0.5, con: 0.55, avg: [103, 70, 44] },
+  { tex: 'road', m: 8, mul: [0.9, 0.9, 0.88], sat: 0.62, avg: [162, 136, 109] },
   { tex: 'water', m: 12, mul: [0.95, 1, 1.08], sat: 1, avg: [57, 83, 82] },
-  { tex: 'rubble', m: 6, mul: [0.92, 0.92, 0.92], sat: 0.85, avg: [135, 105, 86] },
-  { tex: 'shelled', m: 7, mul: [1, 1, 1], sat: 0.9, avg: [81, 63, 53] },
-  { tex: 'earth', m: 5, mul: [1.1, 1.1, 1.1], sat: 0.9, avg: [69, 49, 34] },
+  { tex: 'rubble', m: 6, mul: [0.92, 0.92, 0.92], sat: 0.7, avg: [135, 105, 86] },
+  { tex: 'shelled', m: 7, mul: [1, 1, 1], sat: 0.72, avg: [81, 63, 53] },
+  { tex: 'earth', m: 5, mul: [1.1, 1.1, 1.1], sat: 0.75, avg: [69, 49, 34] },
 ];
 const TILE = 4; // cells per repaint tile
 const WARP = 0.32; // how far (in cells) the blend edges wander
@@ -100,6 +100,14 @@ function buildTiles(P) {
   });
   tiles.push({ ...tiles[FIELD], ox: tiles[FIELD].oy, oy: tiles[FIELD].ox }); // FIELD_V samples the field tile transposed
   tilesP = P;
+}
+
+// What client/apron.js needs to continue this ground past the map edge with the same look: the tinted tiles the map is
+// painted from (null until the textures have loaded; `ready` flips when they have), the metres each tile covers, and the
+// noise tables the blend uses. The apron is built per match and asks again after `loading` resolves.
+export function groundLook() {
+  if (!NA) buildNoise();
+  return { ready, tiles, meters: LOOK.map(L => L.m), flat, noise: { NA, NP, size: NS }, loading };
 }
 const flat = LOOK.map(L => {
   const [r, g, b] = L.avg.map((v, k) => v * L.mul[k]), y = 0.3 * r + 0.59 * g + 0.11 * b;
@@ -392,6 +400,7 @@ function tilePaint(S, dirty) {
 function paint(S, grid) {
   const prev = S.attrs;
   S.attrs = cellAttrs(S, grid);
+  S.version = (S.version ?? 0) + 1;
   const want = ready ? 'textured' : 'flat';
   if (!prev || S.painted !== want) return fullPaint(S);
   const { w, h } = S, n = w * h, tw = Math.ceil(w / TILE), dirty = new Set(), R = 2;
@@ -428,6 +437,8 @@ export function createGround(map, renderer) {
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
+  // cells(): the per-cell materials (prim, sec, amt), for the apron beyond the edge; version() changes with every paint
   return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid) => paint(S, grid),
-    isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading };
+    isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading,
+    cells: () => S.attrs && { w: S.w, h: S.h, prim: S.attrs.prim, sec: S.attrs.sec, amt: S.attrs.amt }, version: () => S.version ?? 0 };
 }
