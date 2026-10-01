@@ -28,8 +28,12 @@ export const CFG = {
   // seeking cover: how far a squad will walk for it (metres), and how long an idle squad under fire waits between looks
   coverSeek: 10, coverRetry: 2,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
-  terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
+  terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250, N: 1 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.', N: '+' }, crush: { H: '.', '#': 'R', X: '.' },
   fordSpeed: 0.5,
+  // vehicles: faster on roads and bridges, bogged down in mud. roadCost: what a road cell costs their pathfinder (open ground = 1)
+  roadSpeed: 1.35, roadCost: 0.75, mudSpeed: 0.5, mudCost: 1,
+  // a mine goes off under the first enemy to step on it; any explosion that damages terrain clears it
+  mine: { blast: 3, inf: 45, veh: 220, supp: 60 },
   // garrisoned squads: heavy cover, upper-floor vision, thrown out (and hurt) when the house comes down
   garrisonMul: 0.35, garrisonVision: 1.25, garrisonEvictDamage: 0.3,
   // veterancy: damage dealt (as multiples of the unit's cost) for 1/2/3 stars, and what each star is worth
@@ -47,12 +51,13 @@ export const CFG = {
     aiAttackRatio: 1.1, aiSeenWindow: 30 },
 };
 
-export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64;
+export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64, ROAD = 128, MUD = 256;
 // T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
 // = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
 // K = footprint of a Classic building (never in map files): solid until the building falls, then rubble
-export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': 0, R: COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER };
+export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': ROAD, R: COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER, D: ROAD, M: MUD, N: 0 };
 // X barbed wire (infantry wade through slowly, tanks flatten it) · Y tank traps (stop vehicles, cover for infantry)
+// D road (vehicles drive faster and route along it) · M mud (vehicles crawl) · N mine (hidden from the enemy)
 
 // w = weapon. acc* = hit chance vs infantry / vehicles. supp = suppression added per shot.
 // perModel: damage scales with living squad members. moveFire: accuracy multiplier while moving (absent = can't).
@@ -186,8 +191,11 @@ export const FORTS = {
   wire: { name: 'Barbed Wire', cost: 25, ch: 'X', n: 5 },
   traps: { name: 'Tank Traps', cost: 40, ch: 'Y', n: 4 },
   nest: { name: 'MG Nest', cost: 60, nest: true },
+  mines: { name: 'Minefield', cost: 40, ch: 'N', n: 4 },
+  // on: the ground it is built on (river); reach: the builders work from the bank; along: runs the way they walk
+  bridge: { name: 'Bridge', cost: 80, ch: '=', n: 5, on: 'W', reach: 9, along: true },
 };
-const BUILDABLE_GROUND = '.+R';
+const BUILDABLE_GROUND = '.+RDM'; // a trench, wire or traps across a road cut it
 // the cells a fortification covers when centered on (x, z), running along direction a
 export function fortCells(g, f, x, z, a) {
   const sx = Math.cos(a), sz = Math.sin(a), fx = sz, fz = -sx; // forward: away from the builders
@@ -195,7 +203,7 @@ export function fortCells(g, f, x, z, a) {
   const plan = f.nest ? [[0, 0, 'T'], [-1, 1, '#'], [0, 1, '#'], [1, 1, '#'], [-1, 0, '#'], [1, 0, '#']].map(([s, w, ch]) => [at(s, w), ch])
     : Array.from({ length: f.n }, (_, i) => [at(i - (f.n - 1) / 2, 0), f.ch]);
   const out = [];
-  for (const [c, ch] of plan) if (c >= 0 && BUILDABLE_GROUND.includes(g.chars[c]) && !out.some(o => o[0] === c)) out.push([c, ch]);
+  for (const [c, ch] of plan) if (c >= 0 && (f.on ?? BUILDABLE_GROUND).includes(g.chars[c]) && !out.some(o => o[0] === c)) out.push([c, ch]);
   return out;
 }
 const SUPPORT_SRC = new Set(Object.values(SUPPORT));
@@ -290,7 +298,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     teams.forEach((t, i) => { spawnIdx[i] = t === opts.defenderTeam ? map.defend[d++ % map.defend.length] : att[a++ % att.length]; });
   }
   const g = {
-    w: map.w, h: map.h, flags: new Uint8Array(map.w * map.h),
+    w: map.w, h: map.h, flags: new Uint16Array(map.w * map.h),
     tick: 0, nextId: 1, winVp: winVp(teams), units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], winner: null,
     // terrain changed mid-match: full log for (re)joining clients, plus what's new since the last snapshot
     cellLog: [], newCells: [],
@@ -304,6 +312,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   };
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
   g.chars = [...map.rows.join('')];
+  g.roads = g.chars.includes('D'); // no roads: vehicle paths skip the road arithmetic
+  g.mines = new Map(); // mine cell -> the slot that laid it (a mine drawn on the map belongs to nobody)
   g.cellHp = Float32Array.from(g.chars, ch => CFG.terrainHp[ch] ?? 0);
   g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
@@ -658,6 +668,7 @@ function logCell(g, c, change) {
 
 function setCell(g, c, ch) {
   const old = g.flags[c], next = TERRAIN[ch];
+  if (g.chars[c] === 'N') g.mines.delete(c);
   g.flags[c] = next; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
   g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   // Cover and wire edits leave the region graph unchanged. Only movement bits relabel it.
@@ -865,7 +876,8 @@ export function findPath(g, from, to) {
   pathFailures.delete(from); // a fresh immediate command resets earlier retry failures
   const W = g.w, N = W * g.h, goal = nearestFree(g, to.x, to.z), start = Math.max(0, cellOf(g, from.x, from.z));
   // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
-  const veh = UNITS[from.type] && !UNITS[from.type].infantry, block = veh ? MOVE | VBLOCK : MOVE, pull = veh ? block : MOVE | WIRE;
+  const veh = UNITS[from.type] && !UNITS[from.type].infantry, block = veh ? MOVE | VBLOCK : MOVE, pull = veh ? block | MUD : MOVE | WIRE;
+  const roads = veh && g.roads, low = roads ? CFG.roadCost : 1; // the cheapest step, so the estimate never overshoots
   const stats = pathStatsFor(g); stats.calls++;
   if (goal !== start && !(g.flags[start] & block)) {
     const labels = regionsFor(g, block);
@@ -873,7 +885,7 @@ export function findPath(g, from, to) {
   }
   const b = buffersFor(N), gen = nextGeneration(b), { gs, came, seen, closed } = b;
   const gx = goal % W, gy = Math.floor(goal / W);
-  const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
+  const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return (Math.max(dx, dy) + 0.414 * Math.min(dx, dy)) * low; };
   b.heapLength = 0; heapPush(b, hq(start), start);
   gs[start] = 0; seen[start] = gen; came[start] = -1;
   while (b.heapLength) {
@@ -892,7 +904,8 @@ export function findPath(g, from, to) {
       const climb = level(g, n) - level(g, c);
       if (Math.abs(climb) > 1) continue; // cliff
       if (dx && dy && (Math.abs(level(g, y * W + nx) - level(g, c)) > 1 || Math.abs(level(g, ny * W + x) - level(g, c)) > 1)) continue;
-      const cost = gs[c] + (dx && dy ? 1.414 : 1) + Math.max(0, climb) * 0.5 + (!veh && g.flags[n] & WIRE ? 4 : 0); // uphill costs a bit more, wire a lot
+      // uphill costs a bit more, wire a lot; vehicles pay less along a road and more through mud
+      const cost = gs[c] + (dx && dy ? 1.414 : 1) * (roads && g.flags[n] & ROAD ? CFG.roadCost : 1) + Math.max(0, climb) * 0.5 + (!veh && g.flags[n] & WIRE ? 4 : 0) + (veh && g.flags[n] & MUD ? CFG.mudCost : 0);
       if (seen[n] !== gen || cost < gs[n]) { gs[n] = cost; came[n] = c; seen[n] = gen; heapPush(b, cost + hq(n), n); }
     }
   }
@@ -905,6 +918,8 @@ export function findPath(g, from, to) {
   let at = from;
   for (let i = 0; i < pts.length;) {
     let j = pts.length - 1;
+    // a vehicle keeps to the road it chose: no shortcut past the next road cell
+    if (roads) for (let k = i; k < j; k++) if (flagsAt(g, pts[k].x, pts[k].z) & ROAD) { j = k; break; }
     while (j > i && !walkable(g, at, pts[j], pull)) j--;
     out.push(pts[j]); at = pts[j]; i = j + 1;
   }
@@ -918,7 +933,7 @@ function currentPathGoal(g, u, kind) {
     const s = g.units.get(u.build);
     return s && !(s.built >= 1 && s.hp >= UNITS[s.type].hpPer) && !u.path.length && dist(u, s) > UNITS[s.type].radius + CFG.classic.buildReach ? s : null;
   }
-  if (kind === 'dig') return u.dig && !u.path.length && dist(u, u.dig) > 3 ? u.dig : null;
+  if (kind === 'dig') return u.dig && !u.path.length && dist(u, u.dig) > (u.dig.reach ?? 3) ? u.dig : null;
   if (kind === 'nade') return u.nade && dist(u, u.nade) > def.ab.range ? u.nade : null;
   if (kind === 'enter') {
     const at = u.enter >= 0 && g.chars[u.enter] === 'B' ? cellCenter(g, u.enter) : null;
@@ -1172,14 +1187,14 @@ export function command(g, slot, cmd) {
     const kind = cmd.kind ?? 'trench', f = typeof kind === 'string' && Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
     const u = mine(ids[0]), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), p = g.players[slot];
     if (!f || !u || !CFG.fortBuilders.includes(u.type) || u.retreating || x === null || z === null || (cmd.queue !== true && p.mp < f.cost)) return !f || x === null || z === null ? 'blocked' : !u || !CFG.fortBuilders.includes(u.type) ? 'noBuilders' : u.retreating ? 'retreating' : 'mp';
-    const dir = angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2;
+    const dir = angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + (f.along ? 0 : Math.PI / 2);
     const place = placementCheck(g, { kind, x, z, dir }, at => teamSees(g, p.team, at));
     if (!place.ok) return place.reason;
     if (cmd.queue === true) return enqueueOrder(u, { t: 'dig', ids: [u.id], kind, x, z, dir }) ? undefined : 'queueFull';
     const cells = place.cells;
     p.mp -= f.cost; tally(g, slot, 'mpSpent', f.cost);
     exitBuilding(g, u);
-    Object.assign(u, { orders: [], dig: { x, z, cells, t: 0 }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
+    Object.assign(u, { orders: [], dig: { x, z, cells, t: 0, reach: f.reach }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
   } else if (cmd.t === 'support' && typeof cmd.kind === 'string' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return x === null || z === null ? 'blocked' : p.sup[cmd.kind] > 0 ? 'cooldown' : cur;
@@ -1494,13 +1509,13 @@ export function step(g) {
 
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
-      if (dist(u, u.dig) > 3) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, u.dig, 'dig'); }
+      if (dist(u, u.dig) > (u.dig.reach ?? 3)) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, u.dig, 'dig'); }
       else if ((u.dig.t += dt) >= CFG.digTime * (u.type === 'engineer' ? 0.5 : 1)) {
         u.dig.t = 0;
         const [c, ch] = u.dig.cells.shift();
         // ground can change while building; tank traps never go down under a vehicle
         const under = ch === 'Y' && [...g.units.values()].some(v => !UNITS[v.type].infantry && cellOf(g, v.x, v.z) === c);
-        if (BUILDABLE_GROUND.includes(g.chars[c]) && !under) setCell(g, c, ch);
+        if ((ch === '=' ? 'W' : BUILDABLE_GROUND).includes(g.chars[c]) && !under) { setCell(g, c, ch); if (ch === 'N') g.mines.set(c, u.owner); }
         if (!u.dig.cells.length) { u.dig = null; tally(g, u.owner, 'built'); }
       }
     }
@@ -1558,7 +1573,8 @@ export function step(g) {
 
     // movement
     const before = { x: u.x, z: u.z };
-    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
+    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1)
+      * (def.infantry ? 1 : here & ROAD ? CFG.roadSpeed : here & MUD ? CFG.mudSpeed : 1);
     let budget = speed * dt;
     while (budget > 0 && u.path.length) {
       const wp = u.path[0], d = dist(u, wp);
@@ -1569,6 +1585,16 @@ export function step(g) {
     const moved = dist(u, before), moving = u.path.length > 0 || moved > 0.001;
     updateGrid(g, u);
     if (def.crushes && moved > 0) { const c = cellOf(g, u.x, u.z); if (c >= 0 && CFG.crush[g.chars[c]]) wreckCell(g, [], c, CFG.crush[g.chars[c]]); }
+    // a mine goes off under the first squad or vehicle that is not on the side that laid it
+    if (moved > 0) {
+      const c = cellOf(g, u.x, u.z);
+      if (c >= 0 && g.chars[c] === 'N' && !allied(g, g.mines.get(c) ?? -1, u.owner)) {
+        const at = cellCenter(g, c), by = g.mines.get(c) ?? -1;
+        setCell(g, c, '+'); g.shots.push({ x: at.x, z: at.z, k: 'boom', pub: true });
+        blast(g, [...g.units.values()], at, CFG.mine.blast, CFG.mine, by);
+        if (u.hp <= 0) continue;
+      }
+    }
     u.still = moving ? 0 : u.still + dt;
     // give up if blocked by friends crowding the destination
     if (u.retreating && !u.path.length) u.retreating = false;
@@ -1863,6 +1889,8 @@ export function terrainFor(g, slot, full = false) {
   for (const index of [...pending].sort((a, b) => a - b)) {
     const cell = g.cellLog[index], [c, ch, height] = cell, old = memory.get(c);
     if (old && old[1] === ch && old[2] === height) { pending.delete(index); continue; }
+    // a mine shows only to the side that laid it, until it goes off
+    if (ch === 'N' && !allied(g, g.mines.get(c) ?? -1, slot)) continue;
     const building = g.buildingCells?.get(c);
     if (building) {
       if (!visible.has(building)) visible.set(building, allied(g, building.owner, slot)

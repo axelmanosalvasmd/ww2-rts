@@ -3508,6 +3508,67 @@ for (const lookupFinished of [false, true]) {
     relief.dispose();
   }
 }
+// Roads and mud: vehicles drive faster along a road and crawl through mud; infantry do not care. Paths avoid mud.
+{
+  const rows = empty.map((row, y) => y === 2 ? 'D'.repeat(20) : row), g = fresh(rows), bog = fresh(Array(20).fill('M'.repeat(20)));
+  for (const p of [g, bog].flatMap(q => q.players)) p.mp = 5000;
+  const go = (type, z, q = g) => { const u = put(q, 0, type, 3, z); command(q, 0, { t: 'move', orders: [[u.id, 37, z]] }); return u; };
+  const road = go('tank', 5), grass = go('tank', 29), mud = go('tank', 29, bog), feet = go('rifle', 13, bog), feetGrass = go('rifle', 13);
+  run(g, 2); run(bog, 2);
+  assert.ok(Math.abs((road.x - 3) / (grass.x - 3) - CFG.roadSpeed) < 0.1, 'a tank on a road drives roadSpeed times faster');
+  assert.ok(Math.abs((mud.x - 3) / (grass.x - 3) - CFG.mudSpeed) < 0.1, 'a tank in mud drives at mudSpeed');
+  assert.ok(Math.abs(feet.x - feetGrass.x) < 0.2, 'infantry walk through mud at full speed');
+  // a mud band with one dry cell: the tank goes through the gap, the squad walks straight across
+  const band = empty.map((row, y) => y >= 7 && y <= 13 ? row.slice(0, 10) + (y === 11 ? '.' : 'M') + row.slice(11) : row), b = fresh(band);
+  const wet = (path) => path.some(p => b.chars[Math.floor(p.z / CELL) * b.w + Math.floor(p.x / CELL)] === 'M');
+  const drive = findPath(b, { x: 5, z: 21, type: 'tank' }, { x: 35, z: 21 });
+  assert.ok(drive.length > 1 && !wet(drive), 'a vehicle routes around mud when dry ground is near');
+  assert.equal(findPath(b, { x: 5, z: 21, type: 'rifle' }, { x: 35, z: 21 }).length, 1, 'infantry walk straight through mud');
+  // a road two cells to the side: the vehicle swings onto it and stays on it, the squad walks straight
+  const onRoad = (path) => path.filter(p => Math.floor(p.z / CELL) === 2).length;
+  assert.ok(onRoad(findPath(g, { x: 3, z: 9, type: 'tank' }, { x: 37, z: 9 })) > 5, 'a vehicle takes the road beside it');
+  assert.equal(onRoad(findPath(g, { x: 3, z: 9, type: 'rifle' }, { x: 37, z: 9 })), 0, 'infantry ignore the road');
+}
+
+// Bridges: a squad builds one across a river from the bank, and vehicles can then cross.
+{
+  const rows = empty.map(row => row.slice(0, 9) + 'WWW' + row.slice(12)), g = fresh(rows);
+  g.players[0].mp = 1000;
+  const crew = put(g, 0, 'rifle', 13, 21), mp = g.players[0].mp, from = { x: 5, z: 21, type: 'tank' }, to = { x: 35, z: 21 };
+  assert.deepEqual(findPath(g, from, to), [], 'the river stops vehicles');
+  assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 5, z: 21, dir: 0 }), 'blocked', 'a bridge needs a river under it');
+  assert.equal(command(g, 0, { t: 'dig', ids: [crew.id], kind: 'bridge', x: 21, z: 21, dir: 0 }), undefined, 'a bridge is ordered across the river');
+  assert.equal(g.players[0].mp, mp - sim.FORTS.bridge.cost, 'the bridge is paid for');
+  run(g, CFG.digTime * 3 + 1);
+  assert.deepEqual([9, 10, 11].map(x => g.chars[10 * g.w + x]).join(''), '===', 'the span is built from the bank');
+  assert.ok(crew.x < 18, 'the builders stay on their bank');
+  assert.ok(findPath(g, from, to).length, 'vehicles cross the new bridge');
+}
+
+// Mines: hidden from the enemy, harmless to the side that laid them, and they go off under the first enemy.
+{
+  const g = fresh(); for (const p of g.players) p.mp = 5000;
+  const sapper = put(g, 0, 'rifle', 21, 17);
+  command(g, 0, { t: 'dig', ids: [sapper.id], kind: 'mines', x: 21, z: 21, dir: 0 });
+  run(g, CFG.digTime * 4 + 1);
+  const cells = [9, 10, 11, 12].map(x => 10 * g.w + x), laid = () => cells.filter(c => g.chars[c] === 'N').length;
+  assert.equal(laid(), 4, 'four mines are laid');
+  assert.equal(sim.terrainFor(g, 0, true).filter(([, ch]) => ch === 'N').length, 4, 'the side that laid them sees them');
+  assert.equal(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).length, 0, 'the enemy is told nothing');
+  const friend = put(g, 0, 'tank', 21, 13); command(g, 0, { t: 'move', orders: [[friend.id, 21, 29]] });
+  run(g, 4);
+  assert.equal(laid(), 4, 'friendly vehicles drive over them');
+  const foe = put(g, 1, 'tank', 23, 13), hp = foe.hp; command(g, 1, { t: 'move', orders: [[foe.id, 23, 29]] });
+  run(g, 4);
+  assert.equal(laid(), 3, 'one mine goes off under the enemy tank');
+  assert.ok(hp - foe.hp >= CFG.mine.veh * 0.5, 'it hurts the tank (at least half the mine damage, by distance from the cell)');
+  assert.equal(g.chars[10 * g.w + 11], '+', 'and leaves a crater');
+  assert.deepEqual(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).map(([, ch]) => ch), ['+'], 'the enemy now sees the crater, not the other mines');
+  // shelling clears a minefield
+  command(g, 1, { t: 'support', kind: 'artillery', x: 21, z: 21, dir: 0 }); run(g, 12);
+  assert.equal(laid(), 0, 'artillery clears the mines');
+}
+
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and

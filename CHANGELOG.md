@@ -5,6 +5,27 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Terrain: roads, mud, buildable bridges and mines.
+  - Roads: vehicles drive 35% faster on a road or a bridge and plan their routes along roads. Infantry are unaffected.
+    A trench, wire or tank traps can be built across a road, which cuts it.
+  - Mud: vehicles move at half speed in mud and route around it when dry ground is close. Infantry are unaffected.
+  - Bridges can be built: Shift+K (or the Bridge button with a builder squad selected), click on a river and aim along
+    the crossing. 80 MP, up to 5 river cells, built from the bank one cell every 3 s (engineers twice as fast). It is
+    an ordinary bridge afterwards: vehicles cross it and explosives drop it.
+  - Mines: Shift+J (or the Minefield button). 40 MP for 4 mines in a line. Only your team sees them. A mine goes off
+    under the first enemy squad or vehicle that steps on it (45 damage to infantry, 220 to vehicles, 3 m blast) and
+    leaves a crater. Your own side walks over them safely. Any explosion that damages terrain (artillery, bombs,
+    grenades, satchels) clears the mines it reaches.
+  - Maps: Three Crossroads, Crossroads Village, River Towns and Ardennes Crossing now have roads from each HQ to its
+    nearest points and between neighbouring points; River Towns and Ardennes Crossing have mud at the ford approaches.
+    The map editor has Road, Mud and Mine brushes. The other maps are unchanged.
+  - Balance: Conquest, 120 three-way AI matches per map, wins per spawn. Three Crossroads 44/33/23% with roads
+    (44/29/27% without, same script). River Towns 39/30/31% (43/28/29% without). No measurable change. The top spawn
+    winning about 4 in 10 is there with and without roads.
+  - Craters from shelling were already in the game (shells, bombs and rockets turn open ground into crater cover).
+    There are no woods in any branch: the trees on the board are scenery only.
+  - Left for later: computer players do not lay mines or build bridges, and nothing detects mines short of shelling
+    the ground. Shells do not crater roads or mud. Mines are drawn as a plain dark disc.
 - Unit control, part 1: cover.
   - Infantry look after themselves: a squad with no orders that gets shot at walks to the nearest better cover within
     10 m (a trench first, then a cover cell such as a wall, rubble, a hedge or a shell hole, then a spot behind

@@ -461,6 +461,29 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
   blocking mask from the moving unit's type.
 - Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.
 
+## Roads, mud, bridges and mines (2026-10-01)
+- Three terrain cells: `D` road (flag ROAD), `M` mud (flag MUD), `N` mine (no flags). `=` bridge also carries ROAD.
+  The flags array is 16 bits now (MUD is 256).
+- Vehicles only: speed x `CFG.roadSpeed` (1.35) on ROAD, x `CFG.mudSpeed` (0.5) in MUD. In `findPath` a road step
+  costs `roadCost` (0.75) and a mud cell adds `mudCost` (1), so the cost matches the travel time. On a map with roads
+  (`g.roads`) the A* estimate is scaled by 0.75 to stay admissible; maps without roads pay nothing. String-pulling does
+  not cross mud and does not skip past the next road cell, so a vehicle stays on the road it chose.
+- Infantry ignore both. One rule per terrain kept the HUD free of new tooltips; revisit if roads feel dull on foot.
+- Roads and mud are buildable ground: a fortification replaces the cell, and it wrecks to open ground, not back to road.
+- Bridge and Minefield are two more `FORTS`, so the dig command, queueing, previews and the Orders buttons came free.
+  `on: 'W'` makes the bridge take river cells instead of open ground, `reach: 9` lets the squad work from the bank
+  (the usual 3 m would send it into the river), `along` aims it the way the squad walks instead of across.
+- Mines: `g.mines` maps the cell to the slot that laid it. `terrainFor` withholds an `N` cell from anyone not allied
+  with that slot, so enemy clients never receive it; when it goes off the cell becomes `+` and everyone sees that.
+  A mine painted in the editor has no owner and goes off under anyone. `terrainHp.N` is 1, so every blast with a
+  terrain value clears mines. The mine's own blast has no terrain value, so mines do not set each other off.
+- Known gap: the fire-at-structure order answers "blocked" for an empty cell and accepts a hidden mine cell, so a
+  player could probe for mines one cell at a time. Not worth a fix until someone does it.
+- `tools/roads.mjs` stamps roads and ford mud onto finished maps (spawn to nearest point, point to nearest point, ties
+  within 10% all count so symmetric maps stay symmetric). It is separate from the generators: run it again after genmap.
+- Balance (120 three-way AI matches per map, wins per spawn, with / without roads): Three Crossroads 44/33/23 vs
+  44/29/27, River Towns 39/30/31 vs 43/28/29. The AI lays no mines and builds no bridges.
+
 ## Unit control and unit AI (decided 2026-10-01, four slices)
 Decisions from the planning interview:
 - Cover: both automatic (idle infantry under fire) and a Take Cover order. Hold Position (slice 3) means hold: no

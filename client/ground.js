@@ -161,6 +161,9 @@ function cellAttrs(S, grid) {
     else if (ch === 'X') { s = MUD; a = 0.45; }
     else if (ch === 'Y') a = 0.4;
     else if (ch === '#') a = 0.5;
+    else if (ch === 'D') { p = ROAD; a = 0.12; }
+    else if (ch === 'M') { p = MUD; a = 0.25; }
+    else if (ch === 'N') a = 0.3;
     if (!a) s = p;
     prim[i] = p; sec[i] = s; amt[i] = a; key[i] = p | s << 4;
   }

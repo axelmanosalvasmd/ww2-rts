@@ -668,6 +668,16 @@ function traps(C) {
   }
 }
 
+// ---------- mines: a dark disc half sunk in the turf (the server only tells you about your own side's) ----------
+function mines(C) {
+  const { w, h, at, hAt } = C;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (at(x, y) !== 'N') continue;
+    const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL;
+    put('dark', cx, hAt(cx, cz) + 0.06, cz, 0.7, 0.14, 0.7, rnd(x, y, 150) * 6.28, 0.7);
+  }
+}
+
 // ---------- bridges: plank deck, edge beams, railings and stone cutwaters on the water sides ----------
 function bridges(C) {
   const { w, h, at, hAt } = C;
@@ -695,7 +705,7 @@ function rebuild() {
   const { group, grid, orig, hAt } = state, h = grid.length, w = grid[0]?.length ?? 0;
   clearGroup(group);
   const C = { grid, orig, hAt, w, h, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map() };
-  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); bridges(C);
+  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); bridges(C);
   flush(group, C.low);
 }
 // group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height
