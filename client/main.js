@@ -3,7 +3,6 @@ import { createHud } from './hud.js';
 import { createEffects } from './fx.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
-import { unitRole } from './unit-roles.js';
 import { createGround } from './ground.js';
 import { setFogMap } from './surfaces.js';
 import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
