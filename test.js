@@ -3564,9 +3564,34 @@ for (const lookupFinished of [false, true]) {
   assert.ok(hp - foe.hp >= CFG.mine.veh * 0.5, 'it hurts the tank (at least half the mine damage, by distance from the cell)');
   assert.equal(g.chars[10 * g.w + 11], '+', 'and leaves a crater');
   assert.deepEqual(sim.terrainFor(g, 1, true).filter(([c]) => cells.includes(c)).map(([, ch]) => ch), ['+'], 'the enemy now sees the crater, not the other mines');
-  // shelling clears a minefield
-  command(g, 1, { t: 'support', kind: 'artillery', x: 21, z: 21, dir: 0 }); run(g, 12);
-  assert.equal(laid(), 0, 'artillery clears the mines');
+  // an explosion clears the mines it reaches
+  command(g, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }); run(g, 8);
+  assert.equal(laid(), 0, 'a bomb clears the mines');
+}
+
+// Computer players lay mines in front of a point they hold and put a blown bridge back.
+{
+  const g = fresh(); g.players[0].mp = 5000; g.points[0].owner = 0; g.points[0].progress = 1;
+  const holder = put(g, 0, 'rifle', g.points[0].x, g.points[0].z);
+  for (let i = 0; i < 20 * 90; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  const laid = g.mines.size;
+  assert.ok(laid >= 3 && laid <= sim.FORTS.mines.n, 'the squad holding a point lays one minefield');
+  assert.ok([...g.mines.values()].every(by => by === 0), 'the mines are its own');
+  for (let i = 0; i < 20 * 30; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  assert.equal(g.mines.size, laid, 'and does not keep laying more');
+  assert.ok(holder.hp > 0);
+
+  const rows = empty.map((row, y) => row.slice(0, 9) + (y === 10 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
+  r.players[0].mp = 5000; r.points = [];
+  const sapper = put(r, 0, 'rifle', 5, 21), tank = { x: 5, z: 21, type: 'tank' };
+  think(r, 0); // first look: the bridge is noted
+  r.players[1].mp = 5000;
+  assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
+  for (let i = 0; i < 20 * 15 && r.chars[10 * r.w + 10] === '='; i++) step(r);
+  assert.equal(r.chars[10 * r.w + 10], 'W', 'the bridge is blown');
+  for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { if (i % 40 === 0) think(r, 0); step(r); }
+  assert.ok(findPath(r, tank, { x: 35, z: 21 }).length, 'the computer player rebuilds the bridge');
+  assert.ok(sapper.hp > 0);
 }
 
 console.log('all sim checks passed');

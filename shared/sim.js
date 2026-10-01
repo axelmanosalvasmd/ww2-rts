@@ -926,6 +926,9 @@ export function findPath(g, from, to) {
   return out;
 }
 
+// where a squad walks to for its dig: the spot itself, or for a bridge a point on its own bank just inside reach
+// (the middle of the river has no nearest bank, and the far one cannot be walked to)
+const digGoal = (u) => (!u.dig.reach ? u.dig : (u.dig.from ??= (() => { const k = (u.dig.reach - 2) / (dist(u, u.dig) || 1); return { x: u.dig.x + (u.x - u.dig.x) * k, z: u.dig.z + (u.z - u.dig.z) * k }; })()));
 function currentPathGoal(g, u, kind) {
   if (u.hp <= 0 || u.retreating) return null;
   const def = UNITS[u.type];
@@ -933,7 +936,7 @@ function currentPathGoal(g, u, kind) {
     const s = g.units.get(u.build);
     return s && !(s.built >= 1 && s.hp >= UNITS[s.type].hpPer) && !u.path.length && dist(u, s) > UNITS[s.type].radius + CFG.classic.buildReach ? s : null;
   }
-  if (kind === 'dig') return u.dig && !u.path.length && dist(u, u.dig) > (u.dig.reach ?? 3) ? u.dig : null;
+  if (kind === 'dig') return u.dig && !u.path.length && dist(u, u.dig) > (u.dig.reach ?? 3) ? digGoal(u) : null;
   if (kind === 'nade') return u.nade && dist(u, u.nade) > def.ab.range ? u.nade : null;
   if (kind === 'enter') {
     const at = u.enter >= 0 && g.chars[u.enter] === 'B' ? cellCenter(g, u.enter) : null;
@@ -1509,7 +1512,7 @@ export function step(g) {
 
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
-      if (dist(u, u.dig) > (u.dig.reach ?? 3)) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, u.dig, 'dig'); }
+      if (dist(u, u.dig) > (u.dig.reach ?? 3)) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, digGoal(u), 'dig'); }
       else if ((u.dig.t += dt) >= CFG.digTime * (u.type === 'engineer' ? 0.5 : 1)) {
         u.dig.t = 0;
         const [c, ch] = u.dig.cells.shift();

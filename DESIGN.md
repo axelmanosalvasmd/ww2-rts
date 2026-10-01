@@ -481,8 +481,17 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
   player could probe for mines one cell at a time. Not worth a fix until someone does it.
 - `tools/roads.mjs` stamps roads and ford mud onto finished maps (spawn to nearest point, point to nearest point, ties
   within 10% all count so symmetric maps stay symmetric). It is separate from the generators: run it again after genmap.
-- Balance (120 three-way AI matches per map, wins per spawn, with / without roads): Three Crossroads 44/33/23 vs
-  44/29/27, River Towns 39/30/31 vs 43/28/29. The AI lays no mines and builds no bridges.
+- A bridge builder walks to `digGoal`: a point on the line from the span's middle to the squad, 2 m inside reach. Asking
+  the pathfinder for the middle of the river picked either bank, and the far one is unreachable. Ceiling: on a river
+  wider than the reach the nearest land to that point can be out of reach and the squad waits; build from closer.
+- AI (`shared/ai.js`): the point holder lays one minefield at point radius + 6 m toward the nearest enemy HQ after its
+  trench order is refused (the line is dug), again when fewer than 2 of its mines remain within radius + 14 m.
+  `rebuildBridge` notes the map's bridge cells on the first look and sends the nearest free builder to a cell that has
+  become river, one job per look, never with a visible enemy within 35 m. It does not bridge new crossings: knowing
+  where a new bridge pays would need a path query per look, and no map needs one yet.
+- Balance (120 three-way AI matches per map, wins per spawn, with / without roads, AI not using them): Three Crossroads
+  44/33/23 vs 44/29/27, River Towns 39/30/31 vs 43/28/29. With the AI laying mines and rebuilding bridges: Three
+  Crossroads 30/34/36 (120), River Towns 43/29/28 (360).
 
 ## Unit control and unit AI (decided 2026-10-01, four slices)
 Decisions from the planning interview:

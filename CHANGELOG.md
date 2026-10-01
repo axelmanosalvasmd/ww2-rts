@@ -24,8 +24,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     winning about 4 in 10 is there with and without roads.
   - Craters from shelling were already in the game (shells, bombs and rockets turn open ground into crater cover).
     There are no woods in any branch: the trees on the board are scenery only.
-  - Left for later: computer players do not lay mines or build bridges, and nothing detects mines short of shelling
-    the ground. Shells do not crater roads or mud. Mines are drawn as a plain dark disc.
+  - Computer players use both. The squad holding a captured point lays one minefield across the approach from the
+    nearest enemy HQ once its trench is dug, and lays it again when fewer than 2 of its mines are left. When a bridge
+    that was on the map gets blown, the nearest free builder squad walks to the bank and puts it back (not while
+    enemies are within 35 m of the gap). Both keep 150 MP in reserve.
+  - Balance with the AI doing this: Three Crossroads 30/34/36% per spawn over 120 matches (44/33/23% before), River
+    Towns 43/29/28% over 360 (39/30/31% before, 120 matches). Match length unchanged at about 9 minutes.
+  - Bug fixed along the way: a squad ordered to bridge a river from further than 9 m away stood still instead of
+    walking to the bank. It now walks to its own bank first.
+  - Left for later: computer players only rebuild bridges the map started with, they never bridge a new crossing.
+    Nothing detects mines short of shelling the ground. Shells do not crater roads or mud. Mines are drawn as a
+    plain dark disc.
 - Unit control, part 1: cover.
   - Infantry look after themselves: a squad with no orders that gets shot at walks to the nearest better cover within
     10 m (a trench first, then a cover cell such as a wall, rubble, a hedge or a shell hole, then a spot behind
