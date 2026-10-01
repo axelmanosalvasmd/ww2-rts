@@ -4,6 +4,8 @@ import { unitRole } from './unit-roles.js';
 import { createGround } from './ground.js';
 import { surface, roofGeometry, roofMaterials } from './surfaces.js';
 import { createWater } from './water.js';
+import { createRelief } from './relief.js';
+import { gfx } from './gfx.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -221,37 +223,15 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, water = null;
 
-// Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
-let field = null;
-function buildField(map) {
-  const w = map.w, h = map.h, lv = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0') * CFG.levelHeight;
-  const vert = new Float32Array((w + 1) * (h + 1));
-  for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) {
-    let sum = 0, n = 0;
-    for (const [cx, cy] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]]) if (cx >= 0 && cy >= 0 && cx < w && cy < h) { sum += lv(cx, cy); n++; }
-    vert[y * (w + 1) + x] = sum / n;
-  }
-  field = { w, h, vert };
-}
-function hAt(x, z) {
-  if (!field) return 0;
-  const fx = Math.min(field.w, Math.max(0, x / CELL)), fz = Math.min(field.h, Math.max(0, z / CELL));
-  const x0 = Math.min(field.w - 1, Math.floor(fx)), z0 = Math.min(field.h - 1, Math.floor(fz)), tx = fx - x0, tz = fz - z0, W = field.w + 1, v = field.vert;
-  return (v[z0 * W + x0] * (1 - tx) + v[z0 * W + x0 + 1] * tx) * (1 - tz) + (v[(z0 + 1) * W + x0] * (1 - tx) + v[(z0 + 1) * W + x0 + 1] * tx) * tz;
-}
-// a flat plane bent over the height field (row 0 of vertices = map row 0)
-function terrainGeometry() {
-  const geo = new THREE.PlaneGeometry(MW, MH, field.w, field.h), pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) pos.setZ(i, field.vert[i]);
-  geo.computeVertexNormals();
-  return geo;
-}
+let relief = null, fogMesh = null;
+const hAt = (x, z) => relief?.hAt(x, z) ?? 0;
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   const map = m.map;
+  relief?.dispose(); fogMesh?.material.dispose(); fogTex?.dispose(); fogMesh = null;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
   units.clear(); selected.clear(); fx.length = 0; lastSnap = null; smokes.clear(); strikeMarks.clear();
@@ -263,14 +243,14 @@ function startGame(m) {
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
-  buildField(map);
-  const ground = new THREE.Mesh(terrainGeometry(), gp.material);
-  ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
+  gp.paint(terrain.grid);
+  relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
+    onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
+  const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
 
-  gp.paint(terrain.grid);
   buildStructures();
-  water?.dispose(); water = createWater(terrain.grid, map); if (water) world.add(water.mesh);
+  water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
 
   // capture points
   const assault = lobbyState?.mode === 'assault' || lobbyState?.mode === 'annihilation'; // no VP in either
@@ -294,7 +274,7 @@ function startGame(m) {
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
   const fog = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
+  fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT; fogMesh = fog;
   world.add(fog);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
@@ -412,14 +392,13 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
-  let dug = false;
   for (const [cell, ch, lv] of cells) {
     const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
     terrain.grid[y][x] = ch;
-    if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
+    if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = terrainGeometry(); }
   terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
+  relief.update(cells);
   buildStructures();
   water?.changed(cells);
   mmImage = null;
@@ -1453,7 +1432,7 @@ function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
   const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
   terrain.grid.forEach((row, y) => row.forEach((ch, x) => {
-    const lv = field ? field.vert[y * (w + 1) + x] / CFG.levelHeight : 0, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
+    const lv = hAt((x + 0.5) * CELL, (y + 0.5) * CELL) / CFG.levelHeight, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
     img.data[i] = r * k; img.data[i + 1] = g * k; img.data[i + 2] = b * k; img.data[i + 3] = 255;
   }));
   x2.putImageData(img, 0, 0);
@@ -1594,4 +1573,4 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; }, get water() { return water; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, get me() { return me; }, get water() { return water; }, get relief() { return relief; } };
