@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- One link for good: the plain address (no #code) always opens the same room, so friends can bookmark it. The lobby has
+  a Room box to join any other room by code, and New room for a private one.
+- When a match ends, the room goes straight back to the lobby with the result on top: change map, mode, teams or AIs,
+  and new friends can join, then Play again. (Before, the room stayed locked on the result until a rematch.)
+- In-game menu (the ☰ button by the MP): the host can Restart the match (same settings) or End it (everyone back to the
+  lobby); anyone can Leave, and an AI takes over their army so the match goes on. Each asks for a second click.
 - Tailnet members can also join by IP: http://<host's Tailscale IP>:3000 (start.cmd prints it). The server listens on
   all interfaces; a Windows Firewall rule, "ww2-rts game (Tailscale only)", lets in only Tailscale addresses
   (100.64.0.0/10), so the home network and the internet stay blocked. The rule has to be added once as admin.

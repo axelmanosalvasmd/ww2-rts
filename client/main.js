@@ -27,13 +27,23 @@ const tryStore = (fn) => { try { return fn(); } catch { return null; } };
 
 const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens the map editor instead of a match
 
+// the bare link always lands in the same room, so friends can keep one bookmark; #code picks any other room
+const MAIN_ROOM = 'main';
 let room = location.hash.slice(1).toLowerCase();
-if (!/^[a-z0-9]{3,12}$/.test(room)) { room = Math.random().toString(36).slice(2, 7); history.replaceState(null, '', '#' + room); }
+if (!/^[a-z0-9]{3,12}$/.test(room)) { room = MAIN_ROOM; if (location.hash) history.replaceState(null, '', location.pathname + location.search); }
+const roomLink = (base) => base + (room === MAIN_ROOM ? '/' : '/#' + room);
+addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
 // per-tab token so a refresh reclaims your slot, while two tabs can still play each other
 let token = tryStore(() => sessionStorage.getItem('ww2-token'));
 if (!token) { token = Math.random().toString(36).slice(2) + Date.now().toString(36); tryStore(() => sessionStorage.setItem('ww2-token', token)); }
 $('name').value = tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
-$('link').value = location.href;
+$('link').value = roomLink(location.origin);
+$('roomCode').value = room;
+// Room box: type a code to join (or make) that room; New room makes a private one
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.hash = code === MAIN_ROOM ? '' : code; location.reload(); };
+$('joinRoom').onclick = () => goRoom($('roomCode').value);
+$('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('roomCode').value));
+$('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));
 
 let ws, me = -1, names = [], lobbyState = null, lastSnap = null, refused = false, rtt = null;
 setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
@@ -47,7 +57,8 @@ function connect() {
     else if (m.t === 'start') startGame(m);
     else if (m.t === 's') applySnapshot(m);
     else if (m.t === 'pong' && Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c);
-    else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'This room is full or already playing. Make a new one by removing the #code from the link.'; }
+    else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'A match is going on in this room (or it is full). It opens again when the match ends: reload then, or make a New room.'; }
+    else if (m.t === 'left') { refused = true; $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden'); $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.'; }
   };
   ws.onclose = () => { if (refused) return; $('status').textContent = 'Connection lost, reconnecting...'; setTimeout(connect, 2000); };
 }
@@ -68,12 +79,22 @@ $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
 $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
+// in-game menu: the host can restart or end the match, anyone can leave (an AI takes over). Each needs a second click.
+const menuOpen = (on) => $('menu').classList.toggle('hidden', !on);
+$('menuBtn').onclick = () => { const host = lobbyState && lobbyState.you === lobbyState.host; $('restartBtn').classList.toggle('hidden', !host); $('endBtn').classList.toggle('hidden', !host); menuOpen($('menu').classList.contains('hidden')); };
+const confirmClick = (id, label, act) => {
+  let armed = 0;
+  $(id).onclick = () => { if (Date.now() - armed < 3000) { act(); menuOpen(false); $(id).textContent = label; armed = 0; return; } armed = Date.now(); $(id).textContent = 'Click again to confirm'; setTimeout(() => ($(id).textContent = label), 3000); };
+};
+confirmClick('restartBtn', 'Restart match', () => sendCmd({ t: 'restart' }));
+confirmClick('endBtn', 'End match (back to lobby)', () => sendCmd({ t: 'end' }));
+confirmClick('leaveBtn', 'Leave game', () => sendCmd({ t: 'leave' }));
 
 function renderLobby(m) {
   lobbyState = m; me = m.you;
   // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
-  $('link').value = local && m.publicUrl ? `${m.publicUrl}/#${room}` : location.href;
+  $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
   $('overlay').classList.toggle('hidden', m.state === 'play');
   const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
   // host sets teams (and the AIs' factions), everyone picks their own faction
@@ -100,13 +121,16 @@ function renderLobby(m) {
   // "3v3", "2v2v2", "1v1", or FFA when nobody shares a team
   const sizes = [...new Set(m.players.map(p => p.team))].map(t => m.players.filter(p => p.team === t).length);
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
-  $('start').textContent = m.state === 'over' ? 'Rematch' : `Start ${assault ? 'assault' : m.mode === 'classic' ? 'classic ' + mode : mode}`;
+  $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${assault ? 'assault' : m.mode === 'classic' ? 'classic ' + mode : mode}`;
   const tooMany = n > (m.spawns ?? 3);
   $('start').disabled = tooMany || !assaultOk;
   $('lobbyMsg').textContent = tooMany ? `This map has ${m.spawns} spawns: pick a bigger map or remove players.` : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? 'Send the invite link, or add an AI opponent.' : '') : 'Waiting for the host to start...';
-  const w = lastSnap?.winner;
-  $('result').classList.toggle('hidden', m.state !== 'over' || w == null);
-  if (m.state === 'over' && w != null) $('result').textContent = w === -1 ? 'Draw' : w === (teams[me] ?? me) ? 'Victory' : `${names.filter((_, i) => (teams[i] ?? i) === w).join(' & ') || 'Enemy'} win${teams.filter(t => t === w).length > 1 ? '' : 's'}`;
+  // the last match's result, until the next one starts (the room is back in the lobby: change map or mode freely)
+  const r = m.result, w = r?.winner;
+  $('result').classList.toggle('hidden', !r);
+  if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
+    : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
+  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); }
 }
 
 // ---------- renderer / scene ----------
@@ -576,6 +600,16 @@ function makeUnit(id, type, owner) {
   return v;
 }
 
+window.__dev = { makeUnit: (...a) => makeUnit(...a), get cam() { return cam; }, get camera() { return camera; }, hAt: (x, z) => hAt(x, z), units }; // TEMP-DEV
+if (location.search.includes('lineup')) { // TEMP-DEV
+  setTimeout(() => $('start').click(), 1500); // TEMP-DEV
+  setTimeout(() => { // TEMP-DEV
+    const types = ['rifle', 'ranger', 'conscript', 'mg', 'mortar', 'sniper', 'engineer', 'at', 'armoredcar', 'tank', 'medium', 'tiger', 'rocket']; // TEMP-DEV
+    const sx = +(new URLSearchParams(location.search).get('x') || 60), d = +(new URLSearchParams(location.search).get('d') || 60); // TEMP-DEV
+    const vs = []; types.forEach((t, i) => [0, 1, 2].forEach(o => { const v = makeUnit(-1000 - i * 10 - o, t, o), x = sx + i * 7 - 42, z = 60 + o * 10; v.root.position.set(x, hAt(x, z), z); v.bars.position.set(x, hAt(x, z) + barY(t), z); vs.push(v); })); // TEMP-DEV
+    cam.x = sx; cam.z = 68; cam.dist = d; setInterval(() => vs.forEach(v => v.bars.quaternion.copy(camera.quaternion)), 50); // TEMP-DEV
+  }, 4000); // TEMP-DEV
+} // TEMP-DEV
 function corpse(v, man) {
   const p = man.getWorldPosition(new THREE.Vector3());
   const body = mesh(GEO.body, mat(0x3a372c), 1, 1, 1, p.x, hAt(p.x, p.z) + 0.3, p.z);

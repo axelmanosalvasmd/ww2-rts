@@ -86,8 +86,9 @@
     <div class="muted">WW2 skirmish. Hold the points, first to 1200 victory points wins.</div>
     <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
     <div>
-      <div class="muted">Invite link (send to your friends)</div>
+      <div class="muted">Invite link (send to your friends; it always opens this room)</div>
       <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
+      <div class="row"><label for="roomCode">Room</label><input id="roomCode" maxlength="12" style="flex:1" title="Type a room code and press Join; leave it as main for the usual room"><button id="joinRoom">Join</button><button id="newRoom" title="A private room with a random code">New room</button></div>
     </div>
     <div id="roster"></div>
     <div class="row"><label for="mapSel">Map</label><select id="mapSel"></select></div>
@@ -101,7 +102,8 @@
 
 <div id="hud" class="hidden">
   <div id="scores" class="panel"></div>
-  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="mute" title="Unit voices (M)" style="float:left;padding:2px 7px;margin-left:4px">🔊</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div></div>
+  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="mute" title="Unit voices (M)" style="float:left;padding:2px 7px;margin-left:4px">🔊</button><button id="menuBtn" title="Menu: restart, end or leave the match" style="float:left;padding:2px 7px;margin-left:4px">☰</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div></div>
+  <div id="menu" class="panel hidden" style="position:absolute;top:60px;right:10px;display:grid;gap:6px;z-index:20"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button></div>
   <div id="buy" class="panel"></div>
   <div id="lowerleft"><div id="abil"></div><div id="selection" class="panel"></div></div>
   <div id="help" class="panel">

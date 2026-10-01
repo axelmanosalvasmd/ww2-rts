@@ -72,7 +72,8 @@ const server = http.createServer(async (req, res) => {
   } catch { res.writeHead(404); res.end('not found'); }
 });
 
-// room: { code, players: [{ token, name, ws, ai, team, faction }], state: 'lobby'|'play'|'over', game, map, mapName, spawns, emptySince }
+// room: { code, players: [{ token, name, ws, ai, team, faction }], state: 'lobby'|'play', game, map, mapName, spawns, emptySince,
+//   result: how the last match ended, shown in the lobby until the next one starts }
 // A player's slot in the game is their index in players; the host is the first human.
 const rooms = new Map();
 const cleanName = (n) => String(n || '').replace(/[<>&"']/g, '').trim().slice(0, 16) || 'Soldier';
@@ -88,9 +89,18 @@ async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: room.spawns, publicUrl: PUBLIC_URL,
-    mode: room.mode, defenderTeam: room.defenderTeam,
+    mode: room.mode, defenderTeam: room.defenderTeam, result: room.result ?? null,
     players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
+}
+
+// (re)start a match with the room's settings; everyone gets the new game
+async function startMatch(room) {
+  room.state = 'play'; room.game = null; room.result = null; // claim it before the await so a double-click can't start twice
+  room.map = await loadMap(room.mapName);
+  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam });
+  lobby(room);
+  room.players.forEach((_, i) => sendStart(room, i));
 }
 
 function sendStart(room, i) {
@@ -144,11 +154,17 @@ wss.on('connection', (ws, req) => {
     } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
       room.defenderTeam = msg.v; lobby(room);
     } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= room.spawns && assaultReady(room)) {
-      room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
-      room.map = await loadMap(room.mapName);
-      room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam });
+      await startMatch(room);
+    } else if (msg.t === 'restart' && slot === hostOf(room) && room.state === 'play' && room.game) {
+      await startMatch(room); // same map, mode and teams, from scratch
+    } else if (msg.t === 'end' && slot === hostOf(room) && room.state === 'play') {
+      room.state = 'lobby'; room.game = null; room.result = { ended: true }; lobby(room); // back to the lobby, no winner
+    } else if (msg.t === 'leave' && room.state === 'play' && !me.ai) {
+      // an AI takes over your army so the match goes on for the others; you can join the lobby again afterwards
+      Object.assign(me, { ai: true, ws: null, token: '', name: me.name + ' (AI)' });
+      send(ws, { t: 'left' }); ws.close();
+      if (!room.players.some(p => p.ws)) room.emptySince = Date.now();
       lobby(room);
-      room.players.forEach((_, i) => sendStart(room, i));
     } else if (room.state === 'play' && room.game) command(room.game, slot, msg);
   });
 
@@ -180,7 +196,8 @@ setInterval(() => {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
       room.players.forEach((p, i) => send(p.ws, { ...snapshotFor(g, i, shots, cells), online, ping }));
     }
-    if (g.winner !== null) { room.state = 'over'; lobby(room); }
+    // match over: straight back to the lobby (map, mode and teams can change; newcomers can join), with the result
+    if (g.winner !== null) { room.state = 'lobby'; room.result = { winner: g.winner, teams: g.players.map(p => p.team), names: room.players.map(p => p.name) }; lobby(room); }
   }
 }, TICK * 1000);
 
