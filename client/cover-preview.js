@@ -3,11 +3,13 @@
 //   heavy (chalk green, cross-hatched pip): trench, the MG nest's center, a house edge cell a squad can garrison;
 //   light (brass, hatched pip): hedge, wall, sandbags, crater, rubble, tank traps;
 //   open (grease red, small dot): everything else a squad can stand on.
-// Brass chevrons mark directional cover: something solid 1.2 or 2.2 m from the squad on the shooter's side, or a
-// vehicle, gun or building within 4 m, which the sim counts as light cover against direct fire from that side only.
+// Brass chevrons mark directional cover, the sim's behindCover (coverBehind above 0.4): something solid within
+// 2.2 m on the shooter's side (or a wall not yet badly shot up at 2.9 m), a house wall at a corner of the squad's cell,
+// or a vehicle or gun within 3.4 m. The sim counts it against direct fire from that side only, fading with distance.
 // With an enemy in sight the cells are judged against the nearest one; otherwise each open cell shows the sides it
-// is covered from. A right-click move flashes the same marks at the destination.
-// The rules mirror shared/sim.js (coverMul, behindCover, entryCell); test.js checks them against the sim itself.
+// is covered from. A right-click move flashes the same marks at the destination. Marks show only on ground your side
+// has explored (the server's fog of war, client/fog.js), which a reload or rejoin keeps.
+// The rules mirror shared/sim.js (coverMul, coverBehind, entryCell); test.js checks them against the sim itself.
 // One mesh and one preallocated BufferGeometry draw everything; it is rewritten only when the cursor enters a new
 // cell or what the marks depend on changes, and frame() allocates nothing.
 import * as THREE from 'three';
@@ -16,8 +18,11 @@ import { CELL, TERRAIN, MOVE, COVER, TRENCH, UNITS } from '../shared/sim.js';
 // ---------- rules ----------
 // at(x, y) is the terrain char of cell (x, y), '' off the map.
 export const NONE = 0, OPEN = 1, LIGHT = 2, HEAVY = 3;
-// shared/sim.js SOLID: a house, wall or sandbags, rubble, hedge, or a Classic building
+// shared/sim.js SOLID: a house, wall or sandbags, rubble, hedge, or a Classic building; WALLS: a house or a building
 const solid = (ch) => ch === 'B' || ch === '#' || ch === 'R' || ch === 'H' || ch === 'K';
+const wall = (ch) => ch === 'B' || ch === 'K';
+const AROUND = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+const WHOLE = () => 0;
 const walkable = (ch) => !((TERRAIN[ch] ?? MOVE) & MOVE);
 
 // a house cell with ground next to it a squad can step onto, so it can see and shoot out (sim entryCell)
@@ -33,17 +38,31 @@ export function cellCover(at, x, y, garrisons = true) {
   if (f & MOVE) return NONE;
   return f & TRENCH ? HEAVY : f & COVER ? LIGHT : OPEN;
 }
-// sim behindCover, terrain half: something solid 1.2 or 2.2 m from (px, pz) along (ca, sa), toward the shooter
-export function solidToward(at, px, pz, ca, sa) {
-  return solid(at(Math.floor((px + ca * 1.2) / CELL), Math.floor((pz + sa * 1.2) / CELL)))
-    || solid(at(Math.floor((px + ca * 2.2) / CELL), Math.floor((pz + sa * 2.2) / CELL)));
+// sim behindCover, terrain half, from (px, pz) toward the shooter along (ca, sa). Stepping out as the sim does, the
+// first solid cell decides: its cover, min(1, (3.8 - d) / 1.6) times its quality (0.5 to 1 with what is left of it),
+// passes 0.4 for anything within 2.2 m, at 2.9 m only for a wall not yet badly shot up, and never at 3.6 m. A house wall
+// in a cell next to the squad, within 60 degrees of the shooter, covers too (leaning out from the corner).
+// stage(x, y): a cell's damage stage, 0 whole, 1 damaged, 2 nearly gone (the server's cell state, bits 3-4). The sim
+// splits stage 1 at 42% health; the client only knows the stage, so all of stage 1 counts.
+export function solidToward(at, px, pz, ca, sa, stage = WHOLE) {
+  for (let d = 0.8; d < 3.7; d += 0.7) {
+    const x = Math.floor((px + ca * d) / CELL), y = Math.floor((pz + sa * d) / CELL);
+    if (!solid(at(x, y))) continue;
+    if (d < 2.5 || (d < 3.3 && stage(x, y) < 2)) return true;
+    break;
+  }
+  const x = Math.floor(px / CELL), y = Math.floor(pz / CELL);
+  for (const [dx, dy] of AROUND) if (wall(at(x + dx, y + dy)) && (dx * ca + dy * sa) / Math.hypot(dx, dy) > 0.5) return true;
+  return false;
 }
-// sim behindCover, vehicle half: one of n live ground non-infantry units (x, z pairs in pos) within 4 m, no more
+// a vehicle or gun covers a squad as much as min(1, (4 - d) / 1.5): above 0.4 inside 3.4 m
+const vehicleCovers = (d) => d > 0 && (4 - d) / 1.5 > 0.4;
+// sim behindCover, vehicle half: one of n live ground non-infantry units (x, z pairs in pos) close enough, no more
 // than about 45 degrees off the shooter's bearing
 export function vehicleToward(pos, n, px, pz, ca, sa) {
   for (let i = 0; i < n; i++) {
     const dx = pos[i * 2] - px, dz = pos[i * 2 + 1] - pz, d = Math.hypot(dx, dz);
-    if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) return true;
+    if (vehicleCovers(d) && (dx * ca + dz * sa) / d > 0.7) return true;
   }
   return false;
 }
@@ -103,7 +122,8 @@ function atlas() {
 }
 
 // ctx: { scene, camera, canvas, units, selected, hAt, groundAt(mx, my), gfx, me(), foe(slot), mouse(), targeting(),
-// grid() (rows of char arrays, or null between matches), fog() (the client's vision Uint8Array, or null) }
+// grid() (rows of char arrays, or null between matches), state() (each cell's server state, damage stage in bits 3-4,
+// or null), fog() (client/fog.js's state: explored, a Uint8Array of ever-seen cells, and version, or null) }
 export function createCoverPreview(ctx) {
   const store = (fn) => { try { return fn(); } catch { return null; } };
   let on = store(() => localStorage.getItem('ww2-cover')) !== '0';
@@ -147,13 +167,14 @@ export function createCoverPreview(ctx) {
   }
 
   // ---------- the map as the client knows it ----------
-  let grid = null, W = 0, H = 0, seen = null, lastFog = null, terrainVersion = 0, seenVersion = 0;
+  let grid = null, W = 0, H = 0, seen = null, lastFog = -1, terrainVersion = 0, seenVersion = 0;
   const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? '' : grid[y][x]);
-  // cells this side can see or has seen: terrain is known, the marks still stay out of ground never scouted
+  const stage = (x, y) => (ctx.state?.()?.[y * W + x] ?? 0) >> 3 & 3;
+  // cells this side has seen (the server's explored cells): terrain is known, the marks stay out of ground never scouted
   function mergeFog() {
-    const vis = ctx.fog();
-    if (!vis || vis === lastFog || !seen || vis.length !== seen.length) return;
-    lastFog = vis;
+    const f = ctx.fog(), vis = f?.explored;
+    if (!vis || f.version === lastFog || !seen || vis.length !== seen.length) return;
+    lastFog = f.version;
     const rc = Math.ceil(radius() / CELL);
     for (let i = 0; i < vis.length; i++) if (vis[i] && !seen[i]) {
       seen[i] = 1;
@@ -229,19 +250,19 @@ export function createCoverPreview(ctx) {
       else if (enemy) {
         // the sim aims from the squad to the shooter
         const a = Math.atan2(enemy.z - pz, enemy.x - px), ca = Math.cos(a), sa = Math.sin(a);
-        if (solidToward(at, px, pz, ca, sa) || vehicleToward(vpos, nveh, px, pz, ca, sa)) { pip(LIGHT, px, pz, tilt, fade); chevron(px, pz, ca, sa, fade); }
+        if (solidToward(at, px, pz, ca, sa, stage) || vehicleToward(vpos, nveh, px, pz, ca, sa)) { pip(LIGHT, px, pz, tilt, fade); chevron(px, pz, ca, sa, fade); }
         else pip(OPEN, px, pz, tilt, fade);
       } else {
         pip(OPEN, px, pz, tilt, fade);
         // the sides with something solid next to them; a corner only when neither of its edges is covered
-        for (let k = 0; k < 8; k += 2) if (solidToward(at, px, pz, SIDE_C[k], SIDE_S[k])) chevron(px, pz, SIDE_C[k], SIDE_S[k], fade);
+        for (let k = 0; k < 8; k += 2) if (solidToward(at, px, pz, SIDE_C[k], SIDE_S[k], stage)) chevron(px, pz, SIDE_C[k], SIDE_S[k], fade);
         for (let k = 1; k < 8; k += 2) {
-          if (solidToward(at, px, pz, SIDE_C[k - 1], SIDE_S[k - 1]) || solidToward(at, px, pz, SIDE_C[(k + 1) & 7], SIDE_S[(k + 1) & 7])) continue;
-          if (solidToward(at, px, pz, SIDE_C[k], SIDE_S[k])) chevron(px, pz, SIDE_C[k], SIDE_S[k], fade);
+          if (solidToward(at, px, pz, SIDE_C[k - 1], SIDE_S[k - 1], stage) || solidToward(at, px, pz, SIDE_C[(k + 1) & 7], SIDE_S[(k + 1) & 7], stage)) continue;
+          if (solidToward(at, px, pz, SIDE_C[k], SIDE_S[k], stage)) chevron(px, pz, SIDE_C[k], SIDE_S[k], fade);
         }
         for (let i = 0, n = 0; i < nveh && n < 2; i++) {
           const vx = vpos[i * 2] - px, vz = vpos[i * 2 + 1] - pz, vd = Math.hypot(vx, vz);
-          if (vd > 0 && vd < 4) { chevron(px, pz, vx / vd, vz / vd, fade); n++; }
+          if (vehicleCovers(vd)) { chevron(px, pz, vx / vd, vz / vd, fade); n++; }
         }
       }
       ground = wi - g0;
@@ -336,12 +357,12 @@ export function createCoverPreview(ctx) {
   const smooth = (t) => { const k = Math.max(0, Math.min(1, t)); return k * k * (3 - 2 * k); };
 
   return {
-    // a new match: the scouting memory starts empty. The client's vision array from the last match (all ones once the
-    // fog lifted at the end) lives on until the first fog update, so it counts as already merged.
+    // a new match (main.js has made its fog already): scouting is what the server says this side has explored, which
+    // after a reload or rejoin includes everything seen before it
     start() {
       ensure();
       const g = ctx.grid(); grid = g; H = g?.length ?? 0; W = g?.[0]?.length ?? 0;
-      seen = new Uint8Array(W * H); lastFog = ctx.fog(); flT = FLASH; cursorKey = -1; curOk = false; mx = NaN;
+      seen = new Uint8Array(W * H); lastFog = -1; flT = FLASH; cursorKey = -1; curOk = false; mx = NaN;
       for (const gr of geo.groups) gr.count = 0;
     },
     // terrain changed (digging, shelling): rewrite the marks on the next frame

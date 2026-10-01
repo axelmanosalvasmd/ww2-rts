@@ -16,6 +16,10 @@ export function createOrders(ctx) {
       } else if (b && eng.length && (b.built < 1 || b.hp < ctx.defs[b.type].hpPer)) {
         at = b; color = 0xe8c860; tone = 600; voice = null;
         add({ t: 'assist', ids: eng.map(v => v.id), id: b.id });
+      } else if (cursor.works != null && troops.some(v => ctx.diggers.includes(v.type))) {
+        // right-click a planned entrenchment: the selected builder squads join it
+        at = g; color = 0xc8a060; tone = 600; voice = 'move';
+        add({ t: 'entrench', ids: troops.filter(v => ctx.diggers.includes(v.type)).map(v => v.id), join: cursor.works });
       } else if (cursor.enemy) {
         at = cursor.enemy; color = 0xff4030; tone = 440; voice = 'attack';
         add({ t: 'attack', ids: troops.map(v => v.id), target: at.id });

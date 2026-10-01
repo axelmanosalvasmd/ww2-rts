@@ -1,10 +1,14 @@
-// Atmosphere: a mood per map (sun height and color, sky fill, haze, river mist, falling snow or blowing dust), slow
-// cloud shadows drifting over the board and table, the planning-table props around the board, and a few birds
-// circling low over it. main.js calls createAtmosphere() once, start() from startGame and update(dt) every frame.
+// Atmosphere: a mood per map (sun height and color, sky fill, haze, river mist, blowing dust), the match weather
+// (shared/weather.js: ground fog, rain, mud, snow), slow cloud shadows drifting over the board and table, the
+// planning-table props around the board, and a few birds circling low over it. main.js calls createAtmosphere() once,
+// start() from startGame, setWeather() when the weather turns, setRain() with every snapshot's showers and wet ground
+// (the living ground, shared/sim.js), and update(dt) every frame. Rain, snow, dust and cloud shade drift on the
+// server's wind (client/wind.js).
 //
 // Cost in draw calls: cloud shade 2 (board and table), props 1 (plus 1 in the shadow pass), lamp light pool 1,
-// river mist 1 (dawn maps), snow or dust 1 (those maps), four birds 1. Graphics Low turns off the cloud shade, the weather
-// and the birds, keeps the props, the lamp pool and fewer mist sheets.
+// river mist 1 (dawn maps), rain, snow or dust 1, wet ground, mud or snow cover 1 (in that weather), fog banks 1 (in
+// fog), four birds 1. Graphics Low turns off the cloud shade, the dust and the birds, keeps rain and snow with a third
+// of the drops, and keeps the props, the lamp pool, the ground cover and fewer mist sheets and fog banks.
 //
 // Fog of war: everything over the board is transparent, writes no depth and draws before the fog overlay
 // (renderOrder 1 in main.js), so unseen ground darkens the cloud shade, mist, flakes and birds like the terrain they
@@ -12,9 +16,11 @@
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
 import { sky, BOARD } from './light.js';
+import { mapMood, roadMask } from '/shared/weather.js';
+import { wind } from './wind.js';
 
 const TAU = Math.PI * 2;
-const WL = Math.hypot(0.55, 0.25), WX = 0.55 / WL, WZ = 0.25 / WL; // the way smoke drifts in fx.js
+const WL = Math.hypot(0.55, 0.25), WX = 0.55 / WL, WZ = 0.25 / WL; // the wind before the server reports one (client/wind.js)
 const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const seeded = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
 
@@ -22,27 +28,34 @@ const seeded = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
 
 // sunUp: sun height in degrees. sun, top, bottom (sky fill), haze: colors. hazeK > 1 pulls the haze closer.
 // shadow: how dark sun shadows get (1 = full). soft: wider shadow blur on High. clouds: cloud shade strength.
-// lamp: strength of the desk lamp's pool of light. mist: sheets over rivers. weather: 'snow' or 'dust'.
+// lamp: strength of the desk lamp's pool of light. mist: sheets over rivers. weather: 'dust' blows on dry maps
+// (falling snow and rain follow the match weather, not the mood).
 export const MOODS = {
   warm: { sunUp: 37, sun: 0xffd6a8, sunI: 3.2, top: 0xc9d6e4, bottom: 0x5a4a32, hemiI: 0.9, haze: 0xbcae96, hazeK: 1, shadow: 1, soft: 1, clouds: 0.2, lamp: 0.2 },
   dawn: { sunUp: 21, sun: 0xffc690, sunI: 3.6, top: 0xccd3dd, bottom: 0x5e5040, hemiI: 1.15, haze: 0xcfc8ba, hazeK: 1.35, shadow: 0.85, soft: 1.5, clouds: 0.07, lamp: 0.3, mist: true },
   overcast: { sunUp: 52, sun: 0xe9e6dc, sunI: 1.7, top: 0xc3cad1, bottom: 0x5b554b, hemiI: 1.5, haze: 0xa8aba5, hazeK: 1.25, shadow: 0.55, soft: 2.6, clouds: 0.1, lamp: 0.32 },
-  snow: { sunUp: 30, sun: 0xeef0f5, sunI: 1.9, top: 0xd2dae4, bottom: 0x67645e, hemiI: 1.45, haze: 0xb9bfc5, hazeK: 1.4, shadow: 0.6, soft: 2.2, clouds: 0.08, lamp: 0.32, weather: 'snow' },
+  snow: { sunUp: 30, sun: 0xeef0f5, sunI: 1.9, top: 0xd2dae4, bottom: 0x67645e, hemiI: 1.45, haze: 0xb9bfc5, hazeK: 1.4, shadow: 0.6, soft: 2.2, clouds: 0.08, lamp: 0.32 },
   dust: { sunUp: 48, sun: 0xffe1ad, sunI: 3.3, top: 0xd5cdb9, bottom: 0x6b5536, hemiI: 0.95, haze: 0xd0b78f, hazeK: 1.3, shadow: 1, soft: 1.2, clouds: 0.12, lamp: 0.18, weather: 'dust' },
 };
-const RULES = [
-  ['snow', /ardennes|bastogne|bulge|winter|snow/i],
-  ['dust', /kasserine|desert|tobruk|alamein|africa|tunis/i],
-  ['dawn', /pegasus|polder|river|canal|marsh/i],
-  ['overcast', /bocage|cassino|stalingrad|seawall|rain|storm/i],
-];
-// ?mood=snow in the URL or a "mood" field in the map file wins; otherwise the map's name picks; warm by default
-export function moodFor(map, key) {
-  const pick = new URLSearchParams(location.search).get('mood') || map?.mood;
+// ?mood=snow in the URL wins. Otherwise the weather sets the light (snow brings the winter mood, rain and mud an
+// overcast sky) and in fog or clear weather the map's own mood holds: a "mood" field or its name (shared/weather.js).
+export function moodFor(map, key, kind = 'clear') {
+  const pick = new URLSearchParams(location.search).get('mood');
   if (MOODS[pick]) return pick;
-  const text = `${map?.name ?? ''} ${key ?? ''}`;
-  return RULES.find(([, re]) => re.test(text))?.[0] ?? 'warm';
+  return kind === 'snow' ? 'snow' : kind === 'rain' || kind === 'mud' ? 'overcast' : mapMood(map, key);
 }
+
+// What each weather does to the picture, on top of the mood. haze: haze pulled closer (x); hazeTo, hazeMix: haze and
+// sky color moved toward hazeTo by hazeMix; sun, shadow: sun strength and shadow darkness (x); clouds: cloud shade (x).
+// wet: darker ground, sheen: puddles, mud: brown ground by the roads, cover: lying snow, banks: fog banks (0-1 each).
+const LOOK = {
+  clear: { haze: 1, hazeTo: 0xffffff, hazeMix: 0, sun: 1, shadow: 1, clouds: 1, wet: 0, sheen: 0, mud: 0, cover: 0, banks: 0 },
+  fog: { haze: 2.4, hazeTo: 0xc9cbc6, hazeMix: 0.75, sun: 0.62, shadow: 0.45, clouds: 0.2, wet: 0.25, sheen: 0, mud: 0, cover: 0, banks: 1 },
+  rain: { haze: 1.6, hazeTo: 0x8e959a, hazeMix: 0.55, sun: 0.6, shadow: 0.5, clouds: 2.6, wet: 1, sheen: 1, mud: 0.35, cover: 0, banks: 0 },
+  mud: { haze: 1.15, hazeTo: 0xa29c90, hazeMix: 0.3, sun: 0.85, shadow: 0.8, clouds: 1.6, wet: 0.55, sheen: 0.55, mud: 1, cover: 0, banks: 0 },
+  snow: { haze: 1.25, hazeTo: 0xdfe3e8, hazeMix: 0.35, sun: 0.95, shadow: 0.9, clouds: 1, wet: 0, sheen: 0, mud: 0, cover: 1, banks: 0 },
+};
+const FALL = { rain: 'rain', snow: 'snow' }; // weather that falls as particles
 
 // ---------- shared shader bits ----------
 
@@ -167,24 +180,31 @@ function flowAngle(water, p, r) {
   return n < 3 ? 0 : -0.5 * Math.atan2(2 * xz, xx - zz);
 }
 
-// ---------- snow and dust ----------
+// ---------- rain, snow and dust ----------
+
+// n: points (Graphics Low draws a third). alpha, sway (m), box (m), vel (m/s), size (m), pxMax, fade (m), color.
+// Rain draws each point as a short slanted streak; snow and dust as soft dots.
+const FALLS = {
+  rain: { n: 3600, seed: 3, alpha: 0.42, sway: 0.1, box: [150, 36, 150], vel: [WX * 3, -21, WZ * 3], size: [0.55, 1.0], pxMax: 16, fade: [50, 90], color: 0xc4ccd4, streak: 1 },
+  snow: { n: 2600, seed: 5, alpha: 0.9, sway: 0.7, box: [200, 60, 200], vel: [WX * 1.4, -2.0, WZ * 1.4], size: [0.16, 0.3], pxMax: 5, fade: [55, 98], color: 0xf7f8fb, streak: 0 },
+  dust: { n: 800, seed: 9, alpha: 0.13, sway: 1.2, box: [220, 9, 220], vel: [WX * 7, 0.25, WZ * 7], size: [1.4, 3.2], pxMax: 30, fade: [50, 100], color: 0xcaa879, streak: 0 },
+};
 
 // Points live in a world-space box that follows the camera target; each one wraps around inside the box, so panning
 // never moves the flakes already on screen. They fade toward the box edges, near the camera and in the haze.
+// Rain falls in the Rain weather and in the showers of the others (snapshot.wx), as strong as it rains.
 function weatherPoints(kind) {
-  const snow = kind === 'snow', n = snow ? 2600 : 800, rnd = seeded(snow ? 5 : 9);
+  const F = FALLS[kind], n = F.n, rnd = seeded(F.seed);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(Float32Array.from({ length: n * 3 }, rnd), 3));
   geo.setAttribute('aRand', new THREE.Float32BufferAttribute(Float32Array.from({ length: n * 4 }, rnd), 4));
   const u = {
-    ...fogUniforms(), uTime: { value: 0 }, uScale: { value: 1000 }, uAlpha: { value: snow ? 0.9 : 0.13 },
-    uSway: { value: snow ? 0.7 : 1.2 }, uBoxMin: { value: new THREE.Vector3() },
-    uBox: { value: snow ? new THREE.Vector3(200, 60, 200) : new THREE.Vector3(220, 9, 220) },
-    uVel: { value: snow ? new THREE.Vector3(WX * 1.4, -2.0, WZ * 1.4) : new THREE.Vector3(WX * 7, 0.25, WZ * 7) },
-    uSizeM: { value: snow ? new THREE.Vector2(0.16, 0.3) : new THREE.Vector2(1.4, 3.2) },
-    uPx: { value: new THREE.Vector2() }, uPxMax: { value: snow ? 5 : 30 },
-    uFade: { value: new THREE.Vector4(0, 0, snow ? 55 : 50, snow ? 98 : 100) },
-    uColor: { value: new THREE.Color(snow ? 0xf7f8fb : 0xcaa879) },
+    ...fogUniforms(), uTime: { value: 0 }, uScale: { value: 1000 }, uAlpha: { value: F.alpha }, uStreak: { value: F.streak },
+    uSway: { value: F.sway }, uBoxMin: { value: new THREE.Vector3() }, uBox: { value: new THREE.Vector3(...F.box) },
+    uVel: { value: new THREE.Vector3(...F.vel) }, uSizeM: { value: new THREE.Vector2(...F.size) },
+    uPx: { value: new THREE.Vector2() }, uPxMax: { value: F.pxMax },
+    uFade: { value: new THREE.Vector4(0, 0, ...F.fade) },
+    uColor: { value: new THREE.Color(F.color) },
   };
   const mat = new THREE.ShaderMaterial({
     uniforms: u, transparent: true, depthWrite: false, fog: true,
@@ -214,12 +234,15 @@ function weatherPoints(kind) {
       }`,
     fragmentShader: /* glsl */`
       uniform vec3 uColor;
+      uniform float uStreak;
       varying float vAlpha;
       #include <common>
       #include <fog_pars_fragment>
       void main() {
         vec2 c = gl_PointCoord - 0.5;
-        float a = vAlpha * ( 1.0 - smoothstep( 0.06, 0.25, dot( c, c ) ) );
+        float soft = 1.0 - smoothstep( 0.06, 0.25, dot( c, c ) );
+        float streak = ( 1.0 - smoothstep( 0.02, 0.07, abs( c.x - c.y * 0.18 ) ) ) * ( 1.0 - smoothstep( 0.2, 0.5, abs( c.y ) ) );
+        float a = vAlpha * mix( soft, streak, uStreak );
         if ( a < 0.01 ) discard;
         ${FOG_FADE}
         gl_FragColor = vec4( mix( uColor, fogColor, fogF ), a * ( 1.0 - 0.6 * fogF ) );
@@ -230,6 +253,95 @@ function weatherPoints(kind) {
   pts.frustumCulled = false; pts.renderOrder = 0.8; pts.raycast = () => {};
   pts.userData.kind = kind;
   return pts;
+}
+
+// ---------- wet ground, mud and lying snow ----------
+
+// Per map cell: r how close a road is (1 on it, fading over 3 cells), g water (nothing settles there), b the road
+// itself. Linear filtering softens the cell edges. Roads and village streets are where client/ground.js paints them
+// (roadMask in shared/weather.js).
+function groundMask(map) {
+  const { w, h, rows } = map, road = roadMask(map), data = new Uint8Array(w * h * 4), R = 3;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let near = 0;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if (xx >= 0 && yy >= 0 && xx < w && yy < h && road[yy * w + xx]) near = Math.max(near, 1 - Math.hypot(dx, dy) / (R + 0.5));
+    }
+    const ch = rows[y][x], i = (y * w + x) * 4;
+    data[i] = Math.round(near * 255); data[i + 1] = ch === 'W' || ch === 'F' ? 255 : 0; data[i + 2] = road[y * w + x] ? 255 : 0; data[i + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, w, h);
+  t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  return t;
+}
+
+// One transparent layer over the board in the ground's own shape: wet ground darkens, puddles catch the sky (more at
+// a glancing view), mud spreads from the roads, snow lies on flat ground and thinner on the roads.
+function coverMaterial(tNoise) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      ...fogUniforms(), tNoise: { value: tNoise }, tMask: { value: null }, uSize: { value: new THREE.Vector2(1, 1) },
+      uWet: { value: 0 }, uSheen: { value: 0 }, uMud: { value: 0 }, uCover: { value: 0 }, uTime: { value: 0 },
+      uSky: { value: new THREE.Color() }, uMudColor: { value: new THREE.Color(0x4b3a26) }, uSnow: { value: new THREE.Color(0xeef1f4) },
+    },
+    vertexShader: /* glsl */`
+      #include <common>
+      #include <fog_pars_vertex>
+      varying vec2 vXZ;
+      varying vec3 vN, vView;
+      void main() {
+        vec4 wp = modelMatrix * vec4( position, 1.0 );
+        vXZ = wp.xz;
+        vN = normalize( mat3( modelMatrix ) * normal );
+        vView = cameraPosition - wp.xyz;
+        vec4 mvPosition = viewMatrix * wp;
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: /* glsl */`
+      uniform sampler2D tNoise, tMask;
+      uniform vec2 uSize;
+      uniform float uWet, uSheen, uMud, uCover, uTime;
+      uniform vec3 uSky, uMudColor, uSnow;
+      varying vec2 vXZ;
+      varying vec3 vN, vView;
+      #include <common>
+      #include <fog_pars_fragment>
+      vec4 over( vec4 dst, vec3 c, float a ) { return vec4( c * a + dst.rgb * ( 1.0 - a ), a + dst.a * ( 1.0 - a ) ); }
+      void main() {
+        vec4 m = texture2D( tMask, vXZ / uSize );
+        float dry = 1.0 - m.g, flat_ = smoothstep( 0.82, 0.97, vN.y );
+        float big = texture2D( tNoise, vXZ / 41.0 ).r, small = texture2D( tNoise, vXZ / 9.0 + 0.37 ).r;
+        vec4 acc = vec4( 0.0 );
+        acc = over( acc, vec3( 0.05, 0.045, 0.04 ), uWet * 0.3 * dry );
+        float mud = uMud * smoothstep( 0.1, 0.75, m.r ) * smoothstep( 0.3, 0.55, big * 0.65 + small * 0.35 + m.b * 0.2 ) * dry;
+        acc = over( acc, uMudColor, mud * 0.62 );
+        // puddles: in the ruts by the roads and in low patches, shining more when seen at a slant
+        float pud = uSheen * smoothstep( 0.6, 0.66, big * 0.55 + small * 0.3 + m.r * 0.22 ) * dry * flat_;
+        float glance = pow( 1.0 - clamp( normalize( vView ).y, 0.0, 1.0 ), 2.0 );
+        float ripple = 0.85 + 0.15 * sin( uTime * 3.1 + small * 40.0 );
+        acc = over( acc, mix( uSky, vec3( 1.0 ), 0.25 ) * ripple, pud * ( 0.3 + 0.55 * glance ) );
+        float snow = uCover * dry * smoothstep( 0.55, 0.9, vN.y ) * ( 0.72 + 0.28 * small ) * ( 1.0 - 0.45 * m.b );
+        acc = over( acc, uSnow, snow * 0.82 );
+        ${FOG_FADE}
+        float a = acc.a * ( 1.0 - fogF );
+        if ( a < 0.004 ) discard;
+        gl_FragColor = vec4( acc.rgb / max( acc.a, 1e-4 ), a );
+        ${OUT}
+      }`,
+    transparent: true, depthWrite: false, fog: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+  });
+}
+
+// fog banks: low sheets scattered over the whole board, away from nothing in particular
+function bankSites(MW, MH, hAt, cap) {
+  const rnd = seeded(Math.round(MW * 3 + MH * 5) + 17), out = [];
+  for (let i = 0; i < cap; i++) {
+    const x = rnd() * MW, z = rnd() * MH;
+    out.push({ x, z, y: hAt(x, z) + 0.8 + rnd() * 1.8, yaw: Math.atan2(WZ, WX) + (rnd() - 0.5) * 0.6, sx: 30 + rnd() * 22, sz: 13 + rnd() * 8, ph: rnd() * TAU });
+  }
+  return out;
 }
 
 // ---------- birds ----------
@@ -572,6 +684,12 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   const cloudTable = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), cloudTableMat);
   for (const m of [cloudBoard, cloudTable]) { m.renderOrder = 0.6; m.raycast = () => {}; m.frustumCulled = false; root.add(m); }
 
+  // wet ground, mud and lying snow, under the cloud shade
+  const coverMat = coverMaterial(cloudMat.uniforms.tNoise.value);
+  const cover = new THREE.Mesh(new THREE.BufferGeometry(), coverMat);
+  cover.renderOrder = 0.58; cover.raycast = () => {}; cover.frustumCulled = false;
+  root.add(cover);
+
   const propsMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: drawAtlas() });
   const props = new THREE.Mesh(new THREE.BufferGeometry(), propsMat);
   props.castShadow = props.receiveShadow = true; props.raycast = () => {};
@@ -580,29 +698,63 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   pool.renderOrder = 0.55; pool.raycast = () => {};
   root.add(props, pool);
 
-  const MIST_CAP = 36;
+  const MIST_CAP = 36, wisp = wispTexture();
   const mist = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ map: wispTexture(), color: 0xf3f0ea, transparent: true, opacity: 0.28, depthWrite: false, fog: true }), MIST_CAP);
+    new THREE.MeshBasicMaterial({ map: wisp, color: 0xf3f0ea, transparent: true, opacity: 0.28, depthWrite: false, fog: true }), MIST_CAP);
   mist.renderOrder = 0.7; mist.frustumCulled = false; mist.raycast = () => {}; mist.count = 0;
   root.add(mist);
   let sites = [];
 
-  let weather = null;
+  // ground fog: wide low sheets over the whole board
+  const BANK_CAP = 64;
+  const banks = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ map: wisp, color: 0xeceeea, transparent: true, opacity: 0, depthWrite: false, fog: true }), BANK_CAP);
+  banks.renderOrder = 0.72; banks.frustumCulled = false; banks.raycast = () => {}; banks.count = 0;
+  root.add(banks);
+  let bankAt = [];
+
+  let fall = null, fallA = 0; // rain, snow or dust in the air, and how far it has faded in (0-1)
+  // showers and the wet ground they leave (the living ground, snapshot.wx), 0-1 each
+  let shower = { rain: 0, wet: 0 };
+  const drift = new THREE.Vector2();
   const BIRDS = 4, birds = birdMesh(BIRDS);
   root.add(birds);
   let flight = [];
 
+  // the weather: what it looks like now (cur) eases toward what it should look like (goal), so fog lifts slowly
+  let wxNow = 'clear';
+  const cur = { ...LOOK.clear }, goal = { ...LOOK.clear }, hazeNow = new THREE.Color(), hazeGoal = new THREE.Color();
+
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(0, 0, 0, 'YXZ'), p3 = new THREE.Vector3(), s3 = new THREE.Vector3(), v2 = new THREE.Vector2();
 
+  function aim(kind) {
+    wxNow = LOOK[kind] ? kind : 'clear';
+    blend();
+  }
+  // The look to ease toward: the match weather, moved toward rain's look as hard as a shower rains (the server keeps
+  // showers out of Snow, and in Rain it rains all match), with the ground as wet as the shower left it.
+  const hazeBase = new THREE.Color(), hazeTmp = new THREE.Color();
+  function blend() {
+    const base = LOOK[wxNow], r = LOOK.rain, k = shower.rain, wet = wxNow === 'mud' ? 0 : shower.wet; // Mud's look is its soaked ground
+    Object.assign(goal, base);
+    for (const key of ['haze', 'sun', 'shadow', 'clouds', 'banks']) goal[key] = base[key] + (r[key] - base[key]) * k;
+    for (const key of ['wet', 'sheen', 'mud']) goal[key] = Math.max(base[key], r[key] * wet);
+    hazeBase.setHex(M.haze).lerp(hazeTmp.setHex(base.hazeTo), base.hazeMix);
+    hazeGoal.setHex(M.haze).lerp(hazeTmp.setHex(r.hazeTo), r.hazeMix).lerp(hazeBase, 1 - k);
+  }
+
   function applyMood() {
-    sky.sunUp = M.sunUp; sky.haze = M.hazeK;
-    sun.color.setHex(M.sun); sun.intensity = M.sunI; sun.shadow.intensity = M.shadow;
+    sky.sunUp = M.sunUp; sky.haze = M.hazeK * cur.haze;
+    sun.color.setHex(M.sun); sun.intensity = M.sunI * cur.sun; sun.shadow.intensity = M.shadow * cur.shadow;
     hemi.color.setHex(M.top); hemi.groundColor.setHex(M.bottom); hemi.intensity = M.hemiI;
-    if (scene.background?.isColor) scene.background.setHex(M.haze);
-    scene.fog?.color.setHex(M.haze);
-    cloudMat.uniforms.strength.value = M.clouds;
-    cloudTableMat.uniforms.strength.value = Math.min(0.44, M.clouds * 1.8);
+    if (scene.background?.isColor) scene.background.copy(hazeNow);
+    scene.fog?.color.copy(hazeNow);
+    cloudMat.uniforms.strength.value = Math.min(0.32, M.clouds * cur.clouds);
+    cloudTableMat.uniforms.strength.value = Math.min(0.44, M.clouds * cur.clouds * 1.8);
     poolMat.opacity = M.lamp;
+    const u = coverMat.uniforms;
+    u.uWet.value = cur.wet; u.uSheen.value = cur.sheen; u.uMud.value = cur.mud; u.uCover.value = cur.cover; u.uSky.value.copy(hazeNow);
+    banks.material.opacity = 0.34 * cur.banks;
   }
 
   // light.js's Graphics handler runs first (subscribed earlier) and sets its radius; this widens it per mood
@@ -610,12 +762,32 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     const low = gfx.low;
     sun.shadow.radius = low ? 1 : 2.5 * M.soft;
     cloudBoard.visible = cloudTable.visible = on && !low && M.clouds > 0;
-    if (weather) weather.visible = on && !low && !reduceMotion && weather.userData.kind === M.weather;
+    if (fall) {
+      const kind = fall.userData.kind, n = FALLS[kind].n;
+      fall.visible = on && !reduceMotion && !(low && kind === 'dust'); // rain and snow stay on Low, thinner
+      fall.geometry.setDrawRange(0, low ? Math.ceil(n / 3) : n);
+    }
     birds.visible = on && !low && !reduceMotion && flight.length > 0;
     mist.visible = on && !!M.mist && sites.length > 0;
     mist.count = Math.min(sites.length, low ? 18 : MIST_CAP);
+    banks.count = Math.min(bankAt.length, low ? 26 : BANK_CAP);
   }
   gfx.onChange(applyGfx);
+
+  // what should be in the air: the weather's rain or snow, a shower's rain, else the mood's dust on a clear day
+  const fallKind = () => FALL[wxNow] ?? (shower.rain > 0.02 ? 'rain' : M.weather === 'dust' && wxNow === 'clear' ? 'dust' : null);
+  function swapFall(kind) {
+    if (fall) { root.remove(fall); fall.geometry.dispose(); fall.material.dispose(); fall = null; }
+    if (kind) {
+      fall = weatherPoints(kind); root.add(fall);
+      // it falls on the wind it started in (client/wind.js): positions follow from speed times the clock, so the slant
+      // never changes under a fall that is already on screen
+      const F = FALLS[kind], h = Math.hypot(F.vel[0], F.vel[2]) / WL;
+      fall.material.uniforms.uVel.value.set(wind.x * h, F.vel[1], wind.z * h);
+    }
+    fallA = 0;
+    applyGfx();
+  }
 
   function measureGround() {
     groundGeo = ground.geometry;
@@ -636,18 +808,29 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     pool.position.y = tableY + 0.05;
   }
 
-  function start({ map, key, ground: g, hAt: h }) {
+  // weather: the match's weather row from the server ([now] or [now, next, seconds]); none in the editor
+  function start({ map, key, ground: g, hAt: h, weather }) {
     ground = g; hAt = h;
     // board size: a PlaneGeometry's own, or the fixed bounds client/relief.js gives its geometry (x and z from 0)
     const prm = g.geometry.parameters, box = g.geometry.boundingBox;
     MW = prm ? prm.width : box.max.x; MH = prm ? prm.height : box.max.z;
     const cell = MW / map.w;
     measureGround();
-    moodName = moodFor(map, key); M = MOODS[moodName];
+    // the editor has no match weather: a winter map still snows there, as it always has
+    const kind = weather?.[0] ?? (mapMood(map, key) === 'snow' ? 'snow' : 'clear');
+    moodName = moodFor(map, key, kind); M = MOODS[moodName];
+    shower = { rain: 0, wet: 0 };
+    aim(kind);
+    Object.assign(cur, goal); hazeNow.copy(hazeGoal); // a match starts in its weather, no easing in
     applyMood();
 
     cloudBoard.geometry = g.geometry;
     cloudBoard.position.copy(g.position); cloudBoard.position.y += 0.06; cloudBoard.rotation.copy(g.rotation);
+    cover.geometry = g.geometry;
+    cover.position.copy(g.position); cover.position.y += 0.05; cover.rotation.copy(g.rotation);
+    coverMat.uniforms.tMask.value?.dispose();
+    coverMat.uniforms.tMask.value = groundMask(map);
+    coverMat.uniforms.uSize.value.set(MW, MH);
 
     // the editor rebuilds the world on every change; the props only depend on the board's size and table height
     const pk = `${MW}x${MH}@${tableY.toFixed(2)}`;
@@ -660,11 +843,11 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     placeTable();
 
     sites = M.mist ? mistSites(map, cell, hAt, MIST_CAP) : [];
+    bankAt = bankSites(MW, MH, hAt, BANK_CAP);
 
-    if (M.weather && weather?.userData.kind !== M.weather) {
-      if (weather) { root.remove(weather); weather.geometry.dispose(); weather.material.dispose(); }
-      weather = weatherPoints(M.weather); root.add(weather);
-    }
+    const want = fallKind();
+    if (fall?.userData.kind !== want) swapFall(want);
+    fallA = 1;
 
     // two pairs circling over different parts of the board, 10 to 16 m above the local ground
     const rnd = seeded(Math.round(MW * 7 + MH * 13));
@@ -678,19 +861,41 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     update(0);
   }
 
+  // the weather turned (fog lifting, rain stopping): the picture eases into the new one over a few seconds
+  function setWeather(row) {
+    if (!on || !Array.isArray(row) || row[0] === wxNow) return;
+    aim(row[0]);
+  }
+
   function update(dt) {
     if (!on || !ground) return;
     t = (t + dt) % 10000;
     // digging swaps the terrain geometry (and can lower the table)
     if (ground.geometry !== groundGeo) {
-      cloudBoard.geometry = ground.geometry;
+      cloudBoard.geometry = cover.geometry = ground.geometry;
       const before = tableY; measureGround();
       if (tableY !== before) placeTable();
     }
-    if (cloudBoard.visible) {
-      const k = (CLOUD_SPEED * t) / CLOUD_SCALE;
-      cloudMat.uniforms.drift.value.set(-WX * k % 1, -WZ * k % 1, (-WX * k * 1.6 + 0.37) % 1, (-WZ * k * 1.9 + 0.61) % 1);
+    // ease toward the weather (about 8 s to settle), then fade the rain or snow out and the next one in
+    const k = 1 - Math.exp(-dt / 2.5);
+    if (k > 0) {
+      for (const key of ['haze', 'sun', 'shadow', 'clouds', 'wet', 'sheen', 'mud', 'cover', 'banks']) cur[key] += (goal[key] - cur[key]) * k;
+      hazeNow.lerp(hazeGoal, k);
+      applyMood();
     }
+    const want = fallKind();
+    if (fall && fall.userData.kind !== want) { fallA = Math.max(0, fallA - dt / 3); if (fallA === 0) swapFall(want); }
+    else if (!fall && want) swapFall(want);
+    else fallA = Math.min(1, fallA + dt / 3);
+    cover.visible = on && cur.wet + cur.sheen + cur.mud + cur.cover > 0.004;
+    banks.visible = on && cur.banks > 0.004 && banks.count > 0;
+    if (cloudBoard.visible) {
+      // cloud shade moves with the wind; summed up frame by frame so a change of wind does not make it jump
+      const k = (CLOUD_SPEED * dt) / CLOUD_SCALE / WL;
+      drift.x = (drift.x - wind.x * k) % 1; drift.y = (drift.y - wind.z * k) % 1;
+      cloudMat.uniforms.drift.value.set(drift.x, drift.y, (drift.x * 1.6 + 0.37) % 1, (drift.y * 1.9 + 0.61) % 1);
+    }
+    if (cover.visible) coverMat.uniforms.uTime.value = t;
     if (mist.visible) {
       for (let i = 0; i < mist.count; i++) {
         const s = sites[i], w = Math.sin(t * 0.05 + s.ph) * 3, br = 1 + 0.08 * Math.sin(t * 0.11 + s.ph * 2);
@@ -699,10 +904,21 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
       }
       mist.instanceMatrix.needsUpdate = true;
     }
-    if (weather?.visible) {
-      const u = weather.material.uniforms, box = u.uBox.value, gy = cam.y ?? hAt(cam.x, cam.z), snow = weather.userData.kind === 'snow';
+    if (banks.visible) {
+      // the banks drift with the wind and rise a little as they thin out
+      const lift = (1 - cur.banks) * 3;
+      for (let i = 0; i < banks.count; i++) {
+        const s = bankAt[i], w = Math.sin(t * 0.03 + s.ph) * 6, br = 1 + 0.1 * Math.sin(t * 0.07 + s.ph * 2);
+        p3.set(s.x + WX * w, s.y + lift, s.z + WZ * w); q.setFromAxisAngle(UP, s.yaw);
+        banks.setMatrixAt(i, m4.compose(p3, q, s3.set(s.sx * br, 1, s.sz * br)));
+      }
+      banks.instanceMatrix.needsUpdate = true;
+    }
+    if (fall?.visible) {
+      const u = fall.material.uniforms, box = u.uBox.value, gy = cam.y ?? hAt(cam.x, cam.z), kind = fall.userData.kind;
       u.uTime.value = t;
-      u.uBoxMin.value.set(cam.x - box.x / 2, gy - (snow ? 4 : 1.5), cam.z - box.z / 2);
+      u.uAlpha.value = FALLS[kind].alpha * fallA * (FALL[wxNow] || kind !== 'rain' ? 1 : shower.rain);
+      u.uBoxMin.value.set(cam.x - box.x / 2, gy - (kind === 'dust' ? 1.5 : 4), cam.z - box.z / 2);
       u.uFade.value.x = cam.x; u.uFade.value.y = cam.z;
       renderer.getDrawingBufferSize(v2);
       u.uScale.value = v2.y / (2 * Math.tan((camera.fov * Math.PI) / 360));
@@ -723,8 +939,15 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   }
 
   return {
-    start, update,
+    start, update, setWeather,
+    // showers and the wet ground they leave, 0-1 each (snapshot.wx)
+    setRain(rain, wet) {
+      if (rain === shower.rain && wet === shower.wet) return;
+      shower = { rain, wet };
+      if (on) blend();
+    },
     get mood() { return moodName; },
+    get weather() { return wxNow; },
     // debug: hide everything this module draws (for measuring its cost)
     setEnabled(v) { enabled = !!v; root.visible = on && enabled; },
   };
