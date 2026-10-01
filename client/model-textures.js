@@ -111,14 +111,22 @@ function defines({ material, grime }) {
 }
 gfx.onChange(() => patched.forEach(defines));
 
-// Patch a vertex-colored Lambert material to take the model textures. mat: the material of vertices whose matId is
-// UNSET (meshes built outside mergeParts); grime: draw the baked grime.
+// Patch a vertex-colored Lambert (or Phong) material to take the model textures. mat: the material of vertices whose
+// matId is UNSET (meshes built outside mergeParts); grime: draw the baked grime.
 // Every patched material compiles the same shader text and differs only in uniforms and defines, so they share
-// programs (three keys programs by the onBeforeCompile source).
+// programs (three keys programs by the onBeforeCompile source). A material that already patches its shader (the
+// planes' paint, client/models/planes.js paintMaterial) keeps that patch: ours goes in first, so its color work
+// lands right after the vertex colors and the texture on top of it, and its program key gains a prefix.
 export function modelMaterial(material, { mat = 'armor-paint', grime = false } = {}) {
   const own = { uModelDefault: { value: matId(mat) } };
-  material.onBeforeCompile = (shader) => patch(shader, own);
-  material.defaultAttributeValues = { matId: [UNSET] }; // a geometry without the attribute reads UNSET
+  const before = Object.hasOwn(material, 'onBeforeCompile') ? material.onBeforeCompile : null;
+  if (before) {
+    const key = material.customProgramCacheKey.bind(material);
+    material.onBeforeCompile = (shader, renderer) => { patch(shader, own); before(shader, renderer); };
+    material.customProgramCacheKey = () => `model-textures|${key()}`;
+  } else material.onBeforeCompile = (shader) => patch(shader, own);
+  // a geometry without the attribute reads UNSET (other attributes' defaults, like the planes' camo, stay)
+  material.defaultAttributeValues = { ...material.defaultAttributeValues, matId: [UNSET] };
   const entry = { material, grime };
   patched.push(entry);
   defines(entry);

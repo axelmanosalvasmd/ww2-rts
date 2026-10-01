@@ -1,12 +1,13 @@
-// Aircraft look for the sand table: painted-miniature planes for each faction (a fighter, a ground-attack plane and a
-// twin-engine bomber), spinning propellers, a soft ground shadow, damage smoke, shoot-downs, flak bursts and the Classic
-// airfield. main.js creates one instance with createAviation() and calls the small API it returns.
+// Aircraft look for the sand table: painted-miniature planes for each faction (a fighter, a ground-attack plane, a
+// twin-engine bomber and a transport), spinning propellers, a soft ground shadow, damage smoke, shoot-downs, flak bursts
+// and the Classic airfield. main.js creates one instance with createAviation() and calls the small API it returns.
 //
-// How the models are built: a plane is a handful of shapes (a lathed fuselage, wing strips cut from a planform and
-// extruded, a fin, a canopy, nacelles). All of them are merged into ONE vertex-coloured mesh per aircraft and owner colour,
-// and every plane of that kind shares it (geometry and material), so a plane costs one draw call plus its propellers.
-// The faction paint and insignia are small flat shapes baked into the same mesh; the owner's colour is on the spinner,
-// the wing tips and the top of the tail, so you can tell whose plane it is from above.
+// The plane models themselves are built in models/planes.js: ONE vertex-coloured mesh per aircraft and owner colour,
+// shared by every plane of that kind (geometry and material), so a plane costs one draw call, one per propeller for
+// the blades and one more for all its blur discs together.
+// The owner's colour is on the wing tips, the whole fin and rudder, a band round the rear fuselage and the spinner or
+// cowl lip, so you can tell whose plane it is from above. The body material draws the camouflage per pixel and a fill
+// light in the paint's own colour (paintMaterial in models/planes.js); bare-metal planes get a shinier copy of it.
 //
 // Smoke and flak bursts are puffs from one pooled InstancedMesh (one draw call, a fixed number of puffs). Everything
 // here only draws: the simulation decides what happens, and the shots it sends say when.
@@ -14,6 +15,7 @@ import * as THREE from 'three';
 import { gfx } from './gfx.js';
 import { modelMaterial } from './model-textures.js';
 import { matId } from './models/geom.js';
+import { plane, paintMaterial } from './models/planes.js';
 
 const PI = Math.PI, TAU = Math.PI * 2;
 const GLASS = 0x2f4452, DARK = 0x26241f, TIP = 0xd9b43a, WHITE = 0xece6d6, BLACK = 0x1c1b18, BLUE = 0x2a4a8f, RED = 0xc23a2a;
@@ -44,7 +46,7 @@ function supportHeight(x, z, y, ground) {
   return floor + heightBand.y;
 }
 
-// ---------- geometry kit ----------
+// ---------- shared shapes (the airfield, bombs and propellers) ----------
 
 const star = (R, r) => {
   const s = new THREE.Shape();
@@ -54,8 +56,6 @@ const star = (R, r) => {
 // shared source shapes; every part is a transformed copy of one of these
 const SRC = {
   box: new THREE.BoxGeometry(1, 1, 1),
-  dome: new THREE.SphereGeometry(1, 10, 6, 0, TAU, 0, PI / 2),       // upper half, open at the bottom
-  ball: new THREE.SphereGeometry(1, 10, 7),
   cyl: new THREE.CylinderGeometry(1, 1, 1, 10).rotateZ(PI / 2),      // axis along x
   cone: new THREE.ConeGeometry(1, 1, 10).rotateZ(-PI / 2),           // tip toward +x
   disc: new THREE.CircleGeometry(1, 16),
@@ -85,31 +85,6 @@ function merge(parts) {
   return out;
 }
 
-// A flat piece cut from a planform polygon [[x, z], ...] (x forward), thick in y, centred on y = 0.
-function slab(pts, thick) {
-  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z))), { depth: thick, bevelEnabled: false });
-  g.rotateX(PI / 2); g.translate(0, thick / 2, 0);
-  return g;
-}
-// A tail fin: polygon [[x, y], ...] in the side view, thick in z.
-function fin2(pts, thick) {
-  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), { depth: thick, bevelEnabled: false });
-  g.translate(0, 0, -thick / 2);
-  return g;
-}
-// polygon clipped to one side of the horizontal line y = yc
-function clipY(poly, yc, above) {
-  const out = [], n = poly.length, ok = (p) => (above ? p[1] >= yc : p[1] <= yc);
-  for (let i = 0; i < n; i++) {
-    const a = poly[i], b = poly[(i + 1) % n];
-    if (ok(a)) out.push(a);
-    if (ok(a) !== ok(b)) { const t = (yc - a[1]) / (b[1] - a[1]); out.push([a[0] + (b[0] - a[0]) * t, yc]); }
-  }
-  return out;
-}
-// elliptical planform stations [z, xLeadingEdge, xTrailingEdge] for a wing of half-span b
-const ellipse = (b, chord, le, sweep, zs) => zs.map((z) => { const c = chord * Math.sqrt(Math.max(0.02, 1 - (z / b) ** 2)); const l = le - sweep * z / b; return [z, l, l - c]; });
-
 // The faction's marking as flat parts in a unit frame (x across, y up the page, layers stacked in z).
 function insignia(fac, r) {
   const F = (geo, color, layer, sx, sy, x = 0, y = 0) => ({ geo, color, m: xf(x, y, layer * 0.025, 0, 0, 0, sx, sy, 0.01) });
@@ -119,201 +94,31 @@ function insignia(fac, r) {
 }
 const FLAT = new THREE.Matrix4().makeRotationY(-PI / 2).multiply(new THREE.Matrix4().makeRotationX(-PI / 2)); // lies on a wing: x across, y forward
 
-// The model kit handed to each aircraft's builder.
-function kit(fac, own) {
-  const parts = [], polys = [], props = [];
-  const add = (geo, color, m) => parts.push({ geo, color, m });
-  const k = {
-    parts, polys, props, own, fac,
-    box: (color, sx, sy, sz, x = 0, y = 0, z = 0, ry = 0) => add(SRC.box, color, xf(x, y, z, 0, ry, 0, sx, sy, sz)),
-    dome: (color, sx, sy, sz, x = 0, y = 0, z = 0) => add(SRC.dome, color, xf(x, y, z, 0, 0, 0, sx, sy, sz)),
-    ball: (color, sx, sy, sz, x = 0, y = 0, z = 0) => add(SRC.ball, color, xf(x, y, z, 0, 0, 0, sx, sy, sz)),
-    cyl: (color, len, r, x = 0, y = 0, z = 0) => add(SRC.cyl, color, xf(x, y, z, 0, 0, 0, len, r, r)),
-    cone: (color, len, r, x = 0, y = 0, z = 0) => add(SRC.cone, color, xf(x, y, z, 0, 0, 0, len, r, r)),
-    // a lathed body along x from the tail to the nose: profile [[x, radius], ...]; oval by fz (width) and fy (height)
-    fus(profile, fz, color, z = 0, y = 0, fy = 1) {
-      const g = new THREE.LatheGeometry(profile.map(([x, r]) => new THREE.Vector2(r, x)), 10).rotateZ(-PI / 2).scale(1, fy, fz);
-      add(g, color, xf(0, y, z));
-      polys.push([...profile.map(([x, r]) => [x, z + r * fz]), ...profile.map(([x, r]) => [x, z - r * fz]).reverse()]);
-    },
-    // wing strips between stations [z, xLE, xTE] (right side, mirrored), one colour per strip from colorAt(z)
-    wing(st, y, thick, colorAt) {
-      for (let i = 0; i < st.length - 1; i++) {
-        const [za, la, ta] = st[i], [zb, lb, tb] = st[i + 1], col = colorAt((za + zb) / 2);
-        for (const s of [1, -1]) { const pts = [[la, za * s], [lb, zb * s], [tb, zb * s], [ta, za * s]]; add(slab(pts, thick), col, xf(0, y, 0)); polys.push(pts); }
-      }
-    },
-    // a fin standing at z; the part above capY takes the owner's colour
-    fin(pts, thick, z, color, capY) {
-      if (!capY) add(fin2(pts, thick), color, xf(0, 0, z));
-      else { add(fin2(clipY(pts, capY, false), thick), color, xf(0, 0, z)); add(fin2(clipY(pts, capY, true), thick), k.own, xf(0, 0, z)); }
-      polys.push(pts.map(([x]) => [x, z - thick / 2]).slice(0, 2).concat(pts.map(([x]) => [x, z + thick / 2]).slice(0, 2).reverse()));
-    },
-    // insignia lying on a wing (x, y of its top, z) or standing on a fuselage or fin side (z the side, facing outward)
-    onWing(r, x, y, z) { for (const p of insignia(fac, r)) add(p.geo, p.color, xf(x, y, z).multiply(FLAT).multiply(p.m)); },
-    onSide(r, x, y, z) { for (const p of insignia(fac, r)) add(p.geo, p.color, xf(x, y, z, 0, z < 0 ? PI : 0, 0).multiply(p.m)); },
-    prop(x, y, z, r, n) { props.push({ x, y, z, r, n }); },
-  };
-  return k;
-}
-
-// ---------- the nine aircraft ----------
-// x is forward, y up, z to the right wing. Lengths are about 80% of the real plane so a bomber is not a house.
-// Each builder returns { span, len, tail, nose } (tail and nose: where the smoke and the engine fire come from).
-
-const A_P51 = 0xb9bdb2, A_OD = 0x62693f;
-const MODELS = [
-  {
-    // USA: P-51 Mustang. Bare metal, long clean wing, bubble canopy, olive glare panel, 4-blade prop.
-    fighter(k) {
-      k.fus([[-4, .06], [-3.4, .16], [-2.4, .3], [-1.2, .5], [-.2, .56], [.8, .52], [1.8, .44], [2.6, .38], [3.1, .3], [3.45, .1]], .85, A_P51);
-      k.box(0x3f4a2e, 2, .06, .55, 2.15, .4); k.dome(GLASS, 1.15, .42, .36, .15, .5);
-      k.wing([[0, .75, -1.9], [1.3, .5, -1.75], [2.8, .1, -1.4], [3.9, -.1, -1.1], [4.45, -.3, -.95], [4.7, -.55, -.85]], -.12, .15, (z) => (z > 3.95 ? k.own : A_P51));
-      k.wing([[0, -3, -3.8], [1.4, -3.3, -3.85], [1.65, -3.5, -3.8]], .1, .1, () => A_P51);
-      k.fin([[-2.7, .3], [-3.8, .3], [-4, 1.6], [-3.5, 1.65]], .1, 0, A_P51, 1.15);
-      k.cone(k.own, .7, .33, 3.75); k.prop(3.8, 0, 0, 1.35, 4);
-      k.onWing(.55, -.55, -.025, 2.6); k.onWing(.55, -.55, -.025, -2.6);
-      return { span: 9.4, len: 8.2, tail: -3.9, nose: 3.8 };
-    },
-    // USA: P-47 Thunderbolt. Fat barrel body, big round wing, olive drab.
-    attacker(k) {
-      k.fus([[-4.3, .08], [-3.6, .28], [-2.4, .55], [-1, .78], [.4, .88], [1.6, .9], [2.6, .88], [3.25, .84], [3.6, .66], [3.72, .3], [3.74, .06]], .88, A_OD);
-      k.cyl(0x2a2a24, .08, .64, 3.68); k.cone(k.own, .55, .3, 3.95); k.dome(GLASS, 1.3, .5, .46, .1, .92);
-      k.wing(ellipse(5.6, 3.3, .9, .5, [0, 1.3, 2.6, 3.8, 4.7, 5.25, 5.5]), -.15, .17, (z) => (z > 4.6 ? k.own : A_OD));
-      k.wing(ellipse(2.3, 1.1, -3.1, .3, [0, .8, 1.5, 2, 2.2]), .1, .1, () => A_OD);
-      k.fin([[-3, .45], [-4.15, .45], [-4.3, 1.85], [-3.75, 1.9]], .12, 0, A_OD, 1.35);
-      for (const z of [2.2, 3, -2.2, -3]) k.cyl(DARK, 1, .07, .3, -.5, z);   // rockets under the wings
-      k.prop(3.95, 0, 0, 1.6, 4);
-      k.onWing(.62, -.8, -.045, 3.3); k.onWing(.62, -.8, -.045, -3.3);
-      return { span: 11.4, len: 9, tail: -4.3, nose: 4 };
-    },
-    // USA: B-25 Mitchell. Glazed nose, straight wing with two engines, twin fins.
-    bomber(k) {
-      k.fus([[-6.2, .06], [-5.4, .22], [-3.6, .5], [-1.6, .7], [.4, .78], [2.4, .74], [3.8, .6], [4.9, .42], [5.4, .22]], .88, A_OD);
-      k.ball(GLASS, .85, .5, .5, 5.2); k.dome(GLASS, 1.6, .45, .42, 3.6, .5); k.dome(GLASS, .9, .5, .45, 1.4, .66); k.ball(GLASS, .5, .3, .3, -6, .1);
-      k.wing([[0, 1.5, -1.5], [3, 1.3, -1.4], [5.2, .7, -1], [7.4, .2, -.7], [8.5, -.1, -.55], [8.8, -.25, -.45]], 0, .22, (z) => (z > 7.5 ? k.own : A_OD));
-      for (const z of [2.9, -2.9]) {
-        k.fus([[-1.5, .12], [-.8, .3], [0, .5], [1.5, .55], [2.7, .56], [3.2, .5], [3.45, .3], [3.5, .1]], 1, A_OD, z);
-        k.cyl(0x2a2a24, .1, .5, 3.3, 0, z); k.cone(k.own, .5, .26, 3.75, 0, z); k.prop(3.8, 0, z, 1.5, 4);
-      }
-      k.wing([[0, -5, -6], [2, -5.2, -6], [2.9, -5.5, -5.95], [3.2, -5.7, -5.9]], .2, .12, () => A_OD);
-      for (const z of [3, -3]) k.fin([[-4.7, .2], [-6, .2], [-6.25, 2.2], [-5.45, 2.3]], .12, z, A_OD, 1.6);
-      k.onWing(.85, -.2, .13, 5.6); k.onWing(.85, -.2, .13, -5.6); k.onSide(.5, -3.6, .1, .4); k.onSide(.5, -3.6, .1, -.4);
-      return { span: 17.6, len: 12.2, tail: -6.2, nose: 3.9 };
-    },
-  },
-  {
-    // Germany: Bf 109. Slim grey-green body, short square-tipped wing, framed canopy.
-    fighter(k) {
-      const G = 0x6c7864, M = 0x4e5a47;
-      k.fus([[-3.6, .05], [-3.2, .16], [-2.2, .32], [-.9, .46], [.3, .5], [1.5, .42], [2.4, .36], [3, .3], [3.3, .08]], .8, G);
-      for (const [x, y, w] of [[-1.6, .38, .9], [.2, .48, .8], [1.4, .42, .9], [2.4, .34, .6]]) k.box(M, w, .04, .36, x, y);
-      k.box(GLASS, 1, .28, .42, .55, .52); k.dome(GLASS, .9, .34, .34, .5, .5);
-      for (const x of [.1, .55, 1]) k.box(DARK, .04, .3, .44, x, .52);
-      k.wing([[0, .45, -1.45], [1.2, .3, -1.4], [2.6, 0, -1.2], [3.6, -.12, -1.05], [4.1, -.15, -1]], -.12, .14, (z) => (z > 3.6 ? k.own : G));
-      k.wing([[0, -3, -3.65], [1.3, -3.2, -3.7]], .1, .1, () => G);
-      k.fin([[-2.7, .3], [-3.55, .3], [-3.7, 1.4], [-3.25, 1.45]], .1, 0, G, 1);
-      k.cone(k.own, .7, .3, 3.65); k.prop(3.95, 0, 0, 1.25, 3);
-      k.onWing(.5, -.55, -.03, 2.2); k.onWing(.5, -.55, -.03, -2.2);
-      return { span: 8.2, len: 7.6, tail: -3.6, nose: 3.9 };
-    },
-    // Germany: Ju 87 Stuka. Long glazed canopy, cranked wing with square tips, spats, a bomb on the belly.
-    attacker(k) {
-      const G = 0x56643f;
-      k.fus([[-4.2, .08], [-3.5, .2], [-2.4, .42], [-1, .62], [.4, .68], [1.8, .56], [2.8, .48], [3.5, .42], [3.85, .1]], .88, G);
-      k.box(GLASS, 2.6, .45, .74, .1, .8); for (const x of [-1, -.4, .2, .8, 1.4]) k.box(DARK, .05, .47, .76, x, .8);
-      k.wing([[0, .8, -1.7], [1.5, .65, -1.55], [1.9, .5, -1.5], [3.4, .1, -1.45], [4.6, -.05, -1.4], [5.5, -.1, -1.3], [5.75, -.15, -1.2]], -.1, .16, (z) => (z > 5 ? k.own : G));
-      for (const z of [1.7, -1.7]) { k.box(0x3b4433, 1.4, .55, .36, .3, -.5, z); k.cyl(DARK, .2, .3, .3, -.78, z); }
-      k.cyl(0x34362a, 1.5, .26, .5, -.85); k.cyl(TIP, .15, .27, .8, -.85);
-      k.wing([[0, -3.35, -4.1], [1.9, -3.6, -4.15]], .15, .1, () => G);
-      k.fin([[-3.2, .35], [-4.15, .35], [-4.3, 1.7], [-3.85, 1.75]], .1, 0, G, 1.2);
-      k.cone(k.own, .8, .33, 4.1); k.prop(4.25, 0, 0, 1.55, 3);
-      k.onWing(.55, -.7, -.03, 3.7); k.onWing(.55, -.7, -.03, -3.7);
-      return { span: 11.5, len: 9, tail: -4.2, nose: 4.3, belly: true };
-    },
-    // Germany: He 111. Greenhouse nose, long wing with two engines ahead of it, one tall fin.
-    bomber(k) {
-      const G = 0x56604e, M = 0x3d4838;
-      k.fus([[-6, .06], [-5, .2], [-3.5, .45], [-1.8, .62], [0, .7], [2, .68], [3.8, .62], [5, .55], [5.6, .4]], .95, G);
-      for (const [x, y, w] of [[-2.6, .42, 1.2], [-.4, .66, 1.2], [1.8, .64, 1.1]]) k.box(M, w, .04, .5, x, y);
-      k.ball(GLASS, 1.4, .62, .6, 5.3, .05); for (const x of [4.7, 5.25, 5.8]) k.box(DARK, .05, .62, .6, x, .05); k.dome(GLASS, .8, .4, .4, 2.4, .68);
-      k.wing([[0, 1.8, -1.6], [3.2, 1.6, -1.5], [5.5, 1, -1.1], [7.4, .35, -.65], [8.5, -.05, -.4], [8.9, -.2, -.3]], 0, .22, (z) => (z > 7.6 ? k.own : G));
-      for (const z of [2.8, -2.8]) {
-        k.fus([[-1.3, .2], [-.5, .4], [.6, .55], [2.2, .55], [3.3, .52], [3.6, .3], [3.7, .1]], 1, G, z);
-        k.cyl(0x2a2a24, .1, .52, 3.5, 0, z); k.cone(k.own, .5, .27, 3.95, 0, z); k.prop(3.95, 0, z, 1.5, 3);
-      }
-      k.wing([[0, -4.7, -6], [2.4, -5, -5.95], [3.2, -5.4, -5.75]], .15, .12, () => G);
-      k.fin([[-4.3, .4], [-6, .4], [-6.2, 2.5], [-5.4, 2.9], [-4.9, 2.7]], .12, 0, G, 1.9);
-      k.onWing(.75, -.2, .13, 5.3); k.onWing(.75, -.2, .13, -5.3); k.onSide(.5, -3.4, .1, .45); k.onSide(.5, -3.4, .1, -.45);
-      return { span: 17.8, len: 12.2, tail: -6.1, nose: 4.2 };
-    },
-  },
-  {
-    // USSR: Yak-9. Short green fighter with a teardrop canopy and red stars.
-    fighter(k) {
-      const G = 0x5d6e3e;
-      k.fus([[-3.7, .05], [-3.2, .15], [-2, .3], [-.6, .44], [.6, .48], [1.8, .4], [2.7, .34], [3.2, .28], [3.5, .08]], .82, G);
-      k.dome(GLASS, 1.3, .4, .34, .3, .5);
-      k.wing([[0, .7, -1.7], [1.3, .45, -1.5], [2.7, .1, -1.15], [3.8, -.2, -.95], [4.25, -.45, -.85], [4.35, -.6, -.8]], -.12, .14, (z) => (z > 3.7 ? k.own : G));
-      k.wing([[0, -3, -3.7], [1.5, -3.3, -3.75], [1.7, -3.45, -3.7]], .1, .1, () => G);
-      k.fin([[-2.6, .3], [-3.7, .3], [-3.9, 1.55], [-3.4, 1.6]], .1, 0, G, 1.1);
-      k.onSide(.35, -3.35, .9, .08); k.onSide(.35, -3.35, .9, -.08);
-      k.cone(k.own, .7, .3, 3.75); k.prop(3.8, 0, 0, 1.3, 3);
-      k.onWing(.5, -.5, -.03, 2.6); k.onWing(.5, -.5, -.03, -2.6);
-      return { span: 8.8, len: 7.7, tail: -3.7, nose: 3.8 };
-    },
-    // USSR: Il-2 Sturmovik. Blunt armoured nose, wide straight inner wing, rails for rockets.
-    attacker(k) {
-      const G = 0x58693a, D = 0x3b4a28;
-      k.fus([[-4.3, .06], [-3.6, .2], [-2.6, .4], [-1.4, .58], [-.2, .66], [1.2, .72], [2.4, .68], [3.3, .6], [3.8, .5], [4, .1]], .9, G);
-      k.box(D, 3, .1, .9, 1.8, .66); k.dome(GLASS, .95, .38, .42, .9, .62); k.box(GLASS, .8, .3, .5, -1.3, .7);
-      k.wing([[0, 1, -1.8], [2.4, .85, -1.6], [3.8, .45, -1.35], [5, 0, -1.05], [5.55, -.3, -.9], [5.8, -.5, -.8]], -.12, .17, (z) => (z > 5 ? k.own : G));
-      for (const z of [2, 2.4, 2.8, -2, -2.4, -2.8]) k.cyl(DARK, .9, .07, .4, -.45, z);
-      k.wing([[0, -3.3, -4.1], [1.75, -3.6, -4.15]], .12, .1, () => G);
-      k.fin([[-3.2, .4], [-4.2, .4], [-4.4, 1.5], [-3.95, 1.55]], .1, 0, G, 1.15);
-      k.cone(k.own, .7, .35, 4.3); k.prop(4.4, 0, 0, 1.45, 3);
-      k.onWing(.6, -.4, -.04, 3.6); k.onWing(.6, -.4, -.04, -3.6);
-      return { span: 11.6, len: 9, tail: -4.3, nose: 4.4 };
-    },
-    // USSR: Pe-2. Slim body, engines past the wing, twin fins at the tailplane tips.
-    bomber(k) {
-      const G = 0x5c6b3c;
-      k.fus([[-5.2, .06], [-4.4, .18], [-3, .36], [-1.2, .54], [.6, .6], [2.4, .55], [3.6, .42], [4.6, .3], [5.1, .1]], .9, G);
-      k.ball(GLASS, .8, .4, .4, 4.7, .05); k.dome(GLASS, 1.5, .4, .4, 1.6, .52); k.dome(GLASS, .6, .3, .3, -1, .55);
-      k.wing([[0, 1.2, -1.4], [2.3, 1, -1.3], [4.8, .35, -.95], [6.4, -.05, -.7], [7.1, -.25, -.55], [7.3, -.35, -.45]], 0, .2, (z) => (z > 6.2 ? k.own : G));
-      for (const z of [2.4, -2.4]) {
-        k.fus([[-2.6, .1], [-1.8, .25], [-.6, .45], [1, .5], [2.4, .5], [3, .45], [3.25, .3], [3.3, .1]], 1, G, z);
-        k.cyl(0x2a2a24, .1, .46, 3.1, 0, z); k.cone(k.own, .5, .25, 3.55, 0, z); k.prop(3.55, 0, z, 1.35, 3);
-      }
-      k.wing([[0, -4.2, -5], [2.4, -4.4, -5], [2.7, -4.5, -4.95]], .2, .1, () => G);
-      for (const z of [2.6, -2.6]) k.fin([[-3.9, .2], [-5.1, .2], [-5.3, 1.9], [-4.6, 2]], .1, z, G, 1.4);
-      k.onWing(.7, -.3, .12, 4.6); k.onWing(.7, -.3, .12, -4.6); k.onSide(.45, -3.2, .1, .4); k.onSide(.45, -3.2, .1, -.4);
-      return { span: 14.8, len: 11, tail: -5.2, nose: 3.8 };
-    },
-  },
-];
-export const ROLE_OF_UNIT = { fighter: 'fighter', attacker: 'attacker' };
+export const ROLE_OF_UNIT = { fighter: 'fighter', attacker: 'attacker', bomber: 'bomber', transport: 'transport' }; // the last two: the model viewer
 // which plane each kind of air support flies
-export const ROLE_OF_SUPPORT = { recon: 'fighter', strafe: 'attacker', dive: 'attacker', bombing: 'bomber', para: 'bomber' };
+export const ROLE_OF_SUPPORT = { recon: 'fighter', strafe: 'attacker', dive: 'attacker', bombing: 'bomber', para: 'transport' };
 
 // ---------- shared materials, built models, shadows ----------
 
-// the model textures (client/model-textures.js): aircraft paint wherever a part does not say otherwise, no grime
-const BODY_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
+// the model textures (client/model-textures.js) on top of the planes' paint: aircraft paint (bare metal on the shiny
+// planes) wherever a part does not say otherwise, no grime
+const BODY_MAT = modelMaterial(paintMaterial(new THREE.MeshLambertMaterial({ vertexColors: true })), { mat: 'aircraft-paint' });
+const METAL_MAT = modelMaterial(paintMaterial(new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x3a3a3a, shininess: 26 })), { mat: 'aluminum' });
+const FIELD_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
 const BLADE_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'gunmetal' });
-const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0xe8e6da, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0x30302a, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
 const BOMB_GEO = merge([{ geo: SRC.cyl, color: 0x34362a, m: xf(0, 0, 0, 0, 0, 0, 1.5, .26, .26) }, { geo: SRC.cyl, color: TIP, m: xf(.3, 0, 0, 0, 0, 0, .15, .27, .27) }, { geo: SRC.cone, color: 0x34362a, m: xf(.95, 0, 0, 0, 0, 0, .4, .26, .26) }]);
 
 const built = new Map(), bladeGeo = new Map(), discGeo = new Map(), shadowMats = new Map();
 
-function bladesFor(n, r) {
-  const key = n + ':' + r;
+function bladesFor(n, r, tip = TIP) {
+  const key = n + ':' + r + ':' + tip;
   if (!bladeGeo.has(key)) {
     const parts = [];
     for (let i = 0; i < n; i++) {
       const a = i * TAU / n;
       parts.push({ geo: SRC.box, color: DARK, m: xf(0, 0, 0, a).multiply(xf(0, r * .42, 0, 0, 0, 0, .05, r * .84, .17)) },
-        { geo: SRC.box, color: TIP, m: xf(0, 0, 0, a).multiply(xf(0, r * .92, 0, 0, 0, 0, .055, r * .16, .17)) });
+        { geo: SRC.box, color: tip, m: xf(0, 0, 0, a).multiply(xf(0, r * .92, 0, 0, 0, 0, .055, r * .16, .17)) });
     }
     bladeGeo.set(key, merge(parts));
     discGeo.set(key, new THREE.CircleGeometry(r, 18).rotateY(PI / 2));
@@ -352,10 +157,12 @@ function model(fac, role, ownerColor) {
   const key = `${fac}:${role}:${ownerColor}`;
   let m = built.get(key);
   if (m) return m;
-  const k = kit(fac, ownerColor), spec = MODELS[fac][role](k);
-  m = { key, geo: merge(k.parts), props: k.props.map((p) => ({ ...p, blades: bladesFor(p.n, p.r) })), ...spec };
+  const spec = plane(fac, role, ownerColor);
+  m = { key, ...spec, props: spec.props.map((p) => ({ ...p, blades: bladesFor(p.n, p.r, spec.tip ?? TIP) })) };
+  // the blur discs of all the propellers as one mesh: a plain disc looks the same however far it has turned
+  m.discs = merge(m.props.map((p) => ({ geo: discGeo.get(p.blades), m: new THREE.Matrix4().makeTranslation(p.x, p.y, p.z) })));
   const ext = Math.max(spec.span, spec.len) / 2 * 1.12;
-  m.shadow = shadowMat(`${fac}:${role}`, k.polys, ext);
+  m.shadow = shadowMat(`${fac}:${role}`, spec.polys, ext);
   m.ext = ext;
   built.set(key, m);
   return m;
@@ -467,12 +274,13 @@ gl_Position = projectionMatrix * mvPosition;`);
   function instance(fac, role, owner, opts = {}) {
     const m = model(fac, role, ctx.colorOf(owner)), body = new THREE.Group(), props = [];
     body.rotation.order = 'ZXY';
-    const mesh = new THREE.Mesh(m.geo, BODY_MAT); mesh.onBeforeRender = rememberCamera; body.add(mesh);
+    const mesh = new THREE.Mesh(m.geo, m.metal ? METAL_MAT : BODY_MAT); mesh.onBeforeRender = rememberCamera; body.add(mesh);
     for (const p of m.props) {
       const g = new THREE.Group(); g.position.set(p.x, p.y, p.z); g.rotation.x = Math.random() * TAU;
-      g.add(new THREE.Mesh(bladeGeo.get(p.blades), BLADE_MAT), new THREE.Mesh(discGeo.get(p.blades), DISC_MAT));
+      g.add(new THREE.Mesh(bladeGeo.get(p.blades), BLADE_MAT));
       g.userData.spin = 22 + Math.random() * 4; body.add(g); props.push(g);
     }
+    body.add(new THREE.Mesh(m.discs, DISC_MAT));
     if (opts.bomb && !m.belly) { const b = new THREE.Mesh(BOMB_GEO, BODY_MAT); b.position.set(0.3, -0.85, 0); body.add(b); }
     return { body, props, m };
   }
@@ -706,7 +514,7 @@ gl_Position = projectionMatrix * mvPosition;`);
       const fac = ctx.facOf(owner), own = ctx.colorOf(owner), roof = ctx.vehicleOf(owner), key = `af:${fac}:${own}:${roof}`;
       if (!built.has(key)) built.set(key, airfield(fac, own, roof));
       v.body = new THREE.Group();
-      const mesh = new THREE.Mesh(built.get(key), BODY_MAT); mesh.castShadow = true; mesh.receiveShadow = true;
+      const mesh = new THREE.Mesh(built.get(key), FIELD_MAT); mesh.castShadow = true; mesh.receiveShadow = true;
       v.body.add(mesh); root.add(v.body); v.models.push(root);
     },
 
