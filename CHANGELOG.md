@@ -7,7 +7,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 - Fixed entrenchment orders leaking unseen terrain or buildings: every segment needs sight when placed and when
   it starts. Refused orders preserve the digging, full queues create no abandoned plans, and follow-up orders wait
-  for every squad's paid segment to finish.
+  for every squad's paid segment to finish. A single fortification (trench, wire, tank traps, nest) now also needs its
+  cells in sight: before, a valid one could be ordered into fog while an invalid one answered "not visible", which told
+  the player whether hidden ground was buildable.
 - Fixed Take cover letting squads leave trenches, Hold fire being ignored by aircraft and anti-air weapons, and
   crowded units skipping required terrain corners. Full shelling queues now report a refusal, and Shift-queued
   grenades, satchels and barrages can wait for cooldowns and munitions in the browser as they do on the server.

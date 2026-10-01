@@ -4343,7 +4343,7 @@ console.log('all sim checks passed');
   assert.equal(placementCheck(ground, place, () => false).reason, 'notVisible', 'sight is checked before hidden ground');
   ground.height[flat.cells[1]] = 0;
   assert.equal(placementCheck(ground, place, at => at.x !== 19 || at.z !== 19).ok, true, 'a visible center permits an unseen corner');
-  assert.equal(placementCheck(ground, { kind: 'trench', x: 21, z: 21, dir: 0 }, () => false).ok, true, 'a valid fort needs no sight');
+  assert.equal(placementCheck(ground, { kind: 'trench', x: 21, z: 21, dir: 0 }, () => false).reason, 'notVisible', 'a fort on unseen ground is refused even when valid, so the answer says nothing about hidden terrain');
   const blockedFort = fresh(); blockedFort.chars.fill('W');
   const trench = { kind: 'trench', x: 21, z: 21, dir: 0 };
   assert.equal(placementCheck(blockedFort, trench, () => false).reason, 'notVisible', 'fog masks a rejected fort');
