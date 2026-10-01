@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- House corners are cover: a squad standing beside a house (or a Classic building), corner cells included, takes half
+  the fire from any shooter on the house's side, within 60 degrees of the wall. It still sees and shoots past the
+  corner, which a squad hidden behind the house cannot. Fire from the open side is not reduced. The selection list
+  shows "By cover" for a squad at a corner. Squads looking for cover (on their own or on Take cover) now prefer a
+  corner they can fire from over a spot fully behind the wall. Before this, a house only protected squads inside it.
+
 - Unit control, part 2: mass entrenchment.
   - Six new orders next to the single fortifications, for every selected builder squad at once (rifles, conscripts,
     engineers): Trench line (Shift+T), Zigzag trench, Double line, Arc, Ring and Strongpoint. Click where it starts,

@@ -607,9 +607,16 @@ const coverMul = (g, t) => (t.garrison >= 0 ? CFG.garrisonMul : inTrench(g, t) ?
 // Cover from something solid between you and the shooter, within ~2 m on their side:
 // a house, wall, rubble, hedge, or a vehicle. Protects from the front, not the flank.
 const SOLID = new Set(['B', '#', 'R', 'H', 'K']);
+const WALLS = new Set(['B', 'K']), AROUND = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 function behindCover(g, t, from) {
   const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
   for (const d of [1.2, 2.2]) { const c = cellOf(g, t.x + ca * d, t.z + sa * d); if (c >= 0 && SOLID.has(g.chars[c])) return true; }
+  // leaning out from a corner: a house wall in a cell next to the squad, within 60 degrees of the shooter
+  const x = Math.floor(t.x / CELL), y = Math.floor(t.z / CELL);
+  for (const [dx, dy] of AROUND) {
+    if (x + dx < 0 || y + dy < 0 || x + dx >= g.w || y + dy >= g.h || !WALLS.has(g.chars[(y + dy) * g.w + x + dx])) continue;
+    if ((dx * ca + dy * sa) / Math.hypot(dx, dy) > 0.5) return true;
+  }
   for (const v of gridFor(g).candidates(t, 4, false, v => v !== t && !v.air && !UNITS[v.type].infantry && v.hp > 0)) {
     const dx = v.x - t.x, dz = v.z - t.z, d = Math.hypot(dx, dz);
     if (d > 0 && d < 4 && (dx * ca + dz * sa) / d > 0.7) return true;
@@ -620,6 +627,7 @@ function behindCover(g, t, from) {
 function nearCover(g, u) {
   const c = Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
   if (SOLID.has(g.chars[c + 1]) || SOLID.has(g.chars[c - 1]) || SOLID.has(g.chars[c + g.w]) || SOLID.has(g.chars[c - g.w])) return true;
+  if (WALLS.has(g.chars[c + g.w + 1]) || WALLS.has(g.chars[c + g.w - 1]) || WALLS.has(g.chars[c - g.w + 1]) || WALLS.has(g.chars[c - g.w - 1])) return true; // a house corner
   return gridFor(g).candidates(u, 3.5, false, v => v !== u && !v.air && !UNITS[v.type].infantry).some(v => dist(u, v) < 3.5);
 }
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
@@ -647,7 +655,8 @@ function seekCover(g, u, from) {
     if (rank >= now) continue;
     const claim = claims.get(c);
     if (claim && claim.id !== u.id && g.tick - claim.tick < 100 && g.units.get(claim.id)?.hp > 0) continue;
-    spots.push({ c, at, score: d + rank * 4 });
+    // behind something solid, a spot that can still see the threat (a corner to lean out from) beats a blind one
+    spots.push({ c, at, score: d + rank * 4 + (rank === 2 && !los(g, at, from) ? 3 : 0) });
   }
   spots.sort((a, b) => a.score - b.score);
   let tries = 0;

@@ -502,3 +502,10 @@ Slice 2, mass entrenchment (`entrenchPlan`, `takeDigJob`, the `entrench` command
   dead behind the squad standing in it.
 - The zigzag has no rule of its own. Blast damage in a trench is `trenchBlastMul` whatever the shape; its only gain
   is more trench cells per metre of front (6 segments on 40 m against 5).
+
+House corners (asked for during slice 2):
+- `behindCover` used to sample the line to the shooter at 1.2 and 2.2 m. For a house that never fired while the squad
+  could be shot at all: a house cell on that line also blocks the line of sight. So houses gave cover only from inside.
+- Now a house or building cell (`WALLS`: B, K) in any of the 8 cells around the squad counts when it lies within 60
+  degrees of the shooter (cosine above 0.5). Same multiplier as other directional cover (`coverMul` 0.5), no new number.
+- `seekCover` adds 3 m to a rank 2 spot that cannot see the threat, so corners win over blind spots behind the wall.

@@ -781,6 +781,30 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.deepEqual([open.x, open.z], [15, 21], 'with no cover in reach the squad stays where it is');
 }
 
+// House corners: a squad beside a house is covered from shooters on the house's side, and can still shoot back.
+{
+  const rows = [...empty]; rows[9] = '.....BB' + '.'.repeat(13); rows[8] = rows[9]; // a house over cells x 5-6, y 8-9
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  // the squad stands just below the house's lower right corner cell (6, 9): cell (7, 10), the house is diagonal to it
+  const corner = put(g, 0, 'rifle', 15, 21), open = put(g, 0, 'rifle', 15, 31);
+  corner.coverTry = open.coverTry = Infinity; // stay put: this checks the cover rule, not the walking
+  const north = put(g, 1, 'rifle', 15, 3), south = put(g, 1, 'rifle', 15, 39);
+  for (let i = 0; i < 4; i++) step(g);
+  assert.ok(los(g, north, corner), 'the squad at the corner can be seen (and can see) past the house');
+  const row = (u) => snapshotFor(g, 0, []).units.find(v => v[0] === u.id);
+  assert.equal(row(corner)[10], 3, 'the HUD shows the corner squad as by cover');
+  assert.equal(row(open)[10], 0, 'and the squad in the open as not');
+  // suppression a single volley adds is scaled by cover, so it measures cover without random hits
+  const volley = (shooter, target) => { target.supp = 0; target.hp = 100; shooter.cooldown = 0; shooter.targetId = target.id; shooter.retarget = 1e9; step(g); return target.supp; };
+  g.units.delete(south.id);
+  const fromHouseSide = volley(north, corner);
+  g.units.delete(north.id);
+  const flank = put(g, 1, 'rifle', 15, 39); for (let i = 0; i < 4; i++) step(g);
+  const fromOpenSide = volley(flank, corner);
+  assert.ok(fromHouseSide > 0 && fromOpenSide > 0, 'both volleys were fired');
+  assert.ok(fromHouseSide < fromOpenSide * 0.7, 'fire from the house side is blunted; fire from the open side is not');
+}
+
 // Take Cover order: the selected infantry run to cover, crewed weapons included; vehicles and open ground refuse.
 {
   const rows = [...empty]; rows[10] = '.....##' + '.'.repeat(13);
@@ -1758,6 +1782,7 @@ const referenceSeparation = `
 const referenceNearCover = (g, u) => {
   const solid = new Set(['B', '#', 'R', 'H', 'K']), x = Math.floor(u.x / CELL), y = Math.floor(u.z / CELL);
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (solid.has(g.chars[(y + dy) * g.w + x + dx])) return true;
+  for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) if ('BK'.includes(g.chars[(y + dy) * g.w + x + dx] ?? ' ')) return true;
   return [...g.units.values()].some(v => v !== u && !v.air && !UNITS[v.type].infantry && massiveInternals.dist(u, v) < 3.5);
 };
 
