@@ -21,8 +21,9 @@ export function loadTexture(name, onReady) {
   if (t.ready) onReady(t.tex); else t.waiting.push(onReady);
 }
 
-// Fog of war on 3D pieces: the overlay mesh only covers the ground, so walls and roofs sample the same fog texture
-// (alpha 0 seen, about 0.47 fogged) and mix toward the overlay's color. One set of uniforms, shared by every material.
+// Fog of war on 3D pieces: the overlay mesh only covers the ground, so walls, roofs and props sample the same fog
+// texture (client/fog.js: alpha 0 seen, about 0.47 explored, about 0.73 never seen) and mix toward the overlay's
+// color. One set of uniforms, shared by every material.
 const noFog = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 noFog.needsUpdate = true;
 const FOW = { fowMap: { value: noFog }, fowSize: { value: new THREE.Vector2(1, 1) } };
@@ -41,10 +42,13 @@ export function fogShader(shader) {
 	#endif
 	fowP = modelMatrix * fowP;
 	vFowUv = vec2( fowP.x / fowSize.x, 1.0 - fowP.z / fowSize.y );`);
-  // 0.22 is the overlay's color (10 / 255, linear) after the sRGB output conversion
+  // The mix runs in the shader's linear working space, before tone mapping and the output conversion, toward the
+  // overlay's own color (10 / 255, SHADE in client/fog.js). Both graphics levels then treat a piece like the ground:
+  // High draws into a linear render target and converts in a later pass, Low converts here, so a constant placed after
+  // the conversion fades pieces toward a much lighter grey on High.
   shader.fragmentShader = shader.fragmentShader
     .replace('#include <common>', '#include <common>\nuniform sampler2D fowMap;\nvarying vec2 vFowUv;')
-    .replace('#include <fog_fragment>', 'gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.22 ), texture2D( fowMap, vFowUv ).a );\n#include <fog_fragment>');
+    .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.0392 ), texture2D( fowMap, vFowUv ).a );');
 }
 function fogOnly(shader) { fogShader(shader); }
 // a plain (untextured) material that still goes dark in the fog of war

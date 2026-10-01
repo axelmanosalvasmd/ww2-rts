@@ -2216,6 +2216,134 @@ const referenceVision = g => {
   }
 }
 
+// The fog mask a team is sent is its vision and nothing more: updateVision's rule at every cell centre (the public los
+// and plain Math.hypot here), the live recon corridors and the cells under the enemy ground units the team sees. The
+// packed keyframe and deltas rebuild it on each client. Units standing still keep their cells between passes, so the
+// check runs again after a hedge, a smoke cloud and a raised patch of ground appear inside one unit's view.
+// the match weather's own sight (shared/weather.js); Rain cuts sight through the sim's rain (g.wx) instead
+const WEATHER_SIGHT = { clear: 1, fog: 0.7, mud: 1, snow: 0.9, rain: 1 };
+const fogSees = (g, u, at) => {
+  const def = UNITS[u.type], d = Math.hypot(u.x - at.x, u.z - at.z);
+  if (u.air) return d <= def.vision;
+  const sight = def.vision * (WEATHER_SIGHT[g.weather?.now] ?? 1), range = sight * (1 + CFG.highGroundVision * massiveInternals.levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
+  return d < 6 || (!!def.building && d <= sight) || (d <= range && los(g, u, at));
+};
+const fogEyes = (g, team) => [...g.units.values()].filter(u => g.players[u.owner].team === team && (!u.air || massiveInternals.airborne(u)));
+const cellAt = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+const underSeen = (g, team) => [...g.players.find(p => p.team === team).visible].flatMap(id => {
+  const t = g.units.get(id);
+  return !t || t.air ? [] : t.cells ? [...t.cells] : [Math.floor(t.z / CELL) * g.w + Math.floor(t.x / CELL)];
+});
+const reconOver = (g, team, at) => g.strikes.some(s => s.live && s.kind === 'recon' && g.players[s.owner].team === team && massiveInternals.inStrip(s, at, SUPPORT.recon.len, SUPPORT.recon.width));
+const referenceFog = (g, team) => {
+  const vis = new Uint8Array(g.w * g.h);
+  for (const u of fogEyes(g, team)) {
+    const R = Math.max(6, UNITS[u.type].vision * 2) + CELL; // the high-ground and garrison range stays under twice the vision
+    for (let y = Math.max(0, Math.floor((u.z - R) / CELL)); y <= Math.min(g.h - 1, Math.floor((u.z + R) / CELL)); y++)
+      for (let x = Math.max(0, Math.floor((u.x - R) / CELL)); x <= Math.min(g.w - 1, Math.floor((u.x + R) / CELL)); x++)
+        if (!vis[y * g.w + x] && fogSees(g, u, cellAt(g, y * g.w + x))) vis[y * g.w + x] = 1;
+  }
+  for (let c = 0; c < vis.length; c++) if (!vis[c] && reconOver(g, team, cellAt(g, c))) vis[c] = 1;
+  for (const c of underSeen(g, team)) vis[c] = 1;
+  return vis;
+};
+{
+  const { updateVision, setCell, airborne } = massiveInternals, g = massiveFixture(), n = g.w * g.h;
+  const teams = [...new Set(g.players.map(p => p.team))], ever = new Map(teams.map(t => [t, new Uint8Array(n)]));
+  const flip = (str, into) => { sim.unpackRuns(str, (start, count) => { for (let c = start; c < start + count; c++) into[c] ^= 1; }); return into; };
+  let clients = null;
+  const pass = (label) => {
+    g.tick += 4;
+    updateVision(g);
+    const masks = new Map();
+    for (const team of teams) {
+      const want = referenceFog(g, team), f = sim.teamFog(g, team);
+      const extra = [], missing = [];
+      for (let c = 0; c < n; c++) if (f.vis[c] !== want[c]) (f.vis[c] ? extra : missing).push(c);
+      assert.equal(extra.length, 0, `${label}: team ${team}'s fog mask has no cell the team can't see (${extra.length} cells, first ${extra[0]})`);
+      assert.equal(missing.length, 0, `${label}: team ${team}'s fog mask has every cell the team sees (${missing.length} cells missing, first ${missing[0]})`);
+      assert.ok(underSeen(g, team).every(c => f.vis[c]), `${label}: every enemy ground unit team ${team} sees stands on clear ground`);
+      const e = ever.get(team);
+      for (let c = 0; c < n; c++) e[c] |= want[c];
+      assert.deepEqual(f.explored, e, `${label}: team ${team} has explored every cell it has seen`);
+      masks.set(team, f.vis.slice()); // teamFog reuses its buffers on later passes
+    }
+    if (!clients) {
+      // match start: each player gets the whole mask and the explored cells
+      clients = g.players.map((p, slot) => {
+        const key = sim.fogFor(g, slot, true);
+        assert.deepEqual(flip(key.e, new Uint8Array(n)), sim.teamFog(g, p.team).explored, `player ${slot}'s first fog carries the explored cells`);
+        return flip(key.v, new Uint8Array(n));
+      });
+    } else g.players.forEach((p, slot) => { const delta = sim.fogFor(g, slot); if (delta !== undefined) flip(delta, clients[slot]); });
+    g.players.forEach((p, slot) => {
+      assert.deepEqual(clients[slot], masks.get(p.team), `${label}: player ${slot}'s client rebuilds its team's mask`);
+      assert.equal(sim.fogFor(g, slot), undefined, `${label}: nothing more to send player ${slot} until the view changes`);
+    });
+    return masks;
+  };
+  const start = pass('start');
+  assert.ok(teams.every(t => start.get(t).some(v => v) && start.get(t).some(v => !v)), 'every team sees part of the map');
+  pass('standing'); pass('still standing'); // the second pass keeps the standing units' cells, the third reuses them
+  const moved = new Set();
+  for (const u of g.units.values()) {
+    if (u.air) { u.air.state = ['base', 'out', 'station', 'home', 'rearm'][(u.id + 1) % 5]; continue; }
+    if (u.id % 3 || UNITS[u.type].structure || UNITS[u.type].building) continue;
+    u.x += 3; u.z -= 1; moved.add(u.id);
+  }
+  const after = pass('moved');
+  assert.ok(teams.some(t => after.get(t).some((v, c) => v !== start.get(t)[c])), 'moving units changes the fog');
+  pass('standing after the move');
+
+  // one cell a single standing ground unit sees, well past 6 m and outside the recon corridor, and the cell halfway
+  // along its sight line, away from the map edge and from every unit
+  const team = 0, mask = sim.teamFog(g, team).vis, eyes = fogEyes(g, team), under = new Set(underSeen(g, team));
+  const occupied = new Set([...g.units.values()].flatMap(t => t.cells ? [...t.cells] : [Math.floor(t.z / CELL) * g.w + Math.floor(t.x / CELL)]));
+  const near = m => [-g.w - 1, -g.w, -g.w + 1, -1, 0, 1, g.w - 1, g.w, g.w + 1].map(k => m + k);
+  let pick = null;
+  for (let c = 0; c < n && !pick; c++) {
+    const at = cellAt(g, c);
+    if (!mask[c] || under.has(c) || reconOver(g, team, at)) continue;
+    const by = eyes.filter(u => fogSees(g, u, at));
+    if (by.length !== 1) continue;
+    const u = by[0], d = Math.hypot(u.x - at.x, u.z - at.z);
+    if (u.air || moved.has(u.id) || UNITS[u.type].building || d < 12 || massiveInternals.levelAt(g, u.x, u.z) > 2 || g.height[c] > 2) continue;
+    const mx = (u.x + at.x) / 2, mz = (u.z + at.z) / 2, x = Math.floor(mx / CELL), y = Math.floor(mz / CELL), m = y * g.w + x;
+    if (mx % CELL && mz % CELL && x > 0 && y > 0 && x < g.w - 1 && y < g.h - 1 && g.chars[m] === '.' && near(m).every(k => !occupied.has(k))) pick = { c, m };
+  }
+  assert.ok(pick, 'the fixture has a cell only one standing unit sees');
+  const { c, m } = pick, char = g.chars[m];
+  setCell(g, m, 'H');
+  assert.equal(pass('hedge').get(team)[c], 0, 'a new hedge hides the ground behind it from a unit that stood still');
+  setCell(g, m, char);
+  assert.equal(pass('hedge gone').get(team)[c], 1, 'the ground shows again once the hedge is gone');
+  g.smokes.push({ ...cellAt(g, c), r: 1.5, t: 10 });
+  assert.equal(pass('smoke').get(team)[c], 0, 'smoke over a cell hides it');
+  g.smokes.length = 0;
+  assert.equal(pass('smoke gone').get(team)[c], 1, 'the cell shows again once the smoke clears');
+  const patch = near(m), levels = patch.map(k => g.height[k]);
+  for (const k of patch) g.height[k] = CFG.maxLevel;
+  g.terrainVersion++;
+  assert.equal(pass('raised ground').get(team)[c], 0, 'raised ground in the way hides the cell');
+  patch.forEach((k, i) => { g.height[k] = levels[i]; });
+  g.terrainVersion++;
+  assert.equal(pass('ground back').get(team)[c], 1, 'the cell shows again once the ground is back');
+  // a shower shortens every unit's sight (updateVision's rule), and units that stood still through it follow
+  const dry = sim.teamFog(g, team).vis.reduce((a, v) => a + v, 0);
+  g.wx.rain = 1;
+  const wet = pass('rain').get(team).reduce((a, v) => a + v, 0);
+  assert.ok(wet < dry, `rain shrinks what the team sees (${dry} cells dry, ${wet} in rain)`);
+  g.wx.rain = 0;
+  assert.equal(pass('rain over').get(team).reduce((a, v) => a + v, 0), dry, 'the view comes back when the rain stops');
+  // ground fog (the match weather) shortens sight the same way, buildings' own circles too
+  g.weather = { now: 'fog', next: null, at: 0 };
+  const foggy = pass('ground fog').get(team).reduce((a, v) => a + v, 0);
+  assert.ok(foggy < dry, `ground fog shrinks what the team sees (${dry} cells clear, ${foggy} in fog)`);
+  g.weather = { now: 'clear', next: null, at: 0 };
+  assert.equal(pass('fog lifted').get(team).reduce((a, v) => a + v, 0), dry, 'the view comes back when the fog lifts');
+  assert.ok(g.units.size === 300 && [...g.units.values()].some(u => u.air && airborne(u)), 'airborne planes took part');
+}
+
 // Reference before the cheap separation gates. Pair order and floating-point pushes are unchanged.
 const referenceSeparation = `
   const list = [...g.units.values()];
@@ -2759,6 +2887,29 @@ for (const lookupFinished of [false, true]) {
   Object.defineProperty(socket, 'readyState', { value: 2, configurable: true });
   try { assert.equal(await built(2), 0, 'server constructs no snapshot for a socket that is closing'); }
   finally { delete socket.readyState; }
+  await h.close();
+}
+
+// Server: only the host picks the weather, from the known choices, and the match starts with it.
+{
+  const h = await serverHarness(), code = 'weather';
+  const p = await h.connect(code, { token: 'host', name: 'Host' }), q = await h.connect(code, { token: 'guest', name: 'Guest' });
+  await q.wait('lobby');
+  assert.equal(p.lobby().weather, 'map', 'server lobby starts on the map default weather');
+  await p.send({ t: 'weather', v: 'fog' });
+  assert.equal(q.lobby().weather, 'fog', 'server host weather pick reaches everyone');
+  await q.send({ t: 'weather', v: 'snow' });
+  await p.send({ t: 'weather', v: 'hail' });
+  await p.send({ t: 'weather', v: { toString: null } });
+  assert.equal(p.lobby().weather, 'fog', 'server ignores a guest or unknown weather pick');
+  await p.send({ t: 'start' });
+  const start = await q.wait('start');
+  assert.deepEqual(start.weather, ['fog'], 'server start message carries the weather');
+  assert.equal(h.game(code).weather.now, 'fog', 'server match runs in the picked weather');
+  await h.tick(2);
+  assert.deepEqual(q.messages.filter(m => m.t === 's').at(-1)?.weather, ['fog'], 'server snapshots carry the weather');
+  await p.send({ t: 'weather', v: 'clear' });
+  assert.equal(h.game(code).weather.now, 'fog', 'server weather cannot change mid-match');
   await h.close();
 }
 
@@ -3873,9 +4024,10 @@ for (const lookupFinished of [false, true]) {
   const same = (g, label) => {
     const shots = g.shots, cells = g.newCells, cache = snapshotCache(g), saved = JSON.stringify(cache.units), out = [];
     for (let slot = 0; slot < g.players.length; slot++) {
-      // terrain is each player's own memory (terrainFor, outside the cache): the first build takes the pending cells
+      // terrain and fog are each player's own memory (terrainFor and fogFor, outside the cache): the first build takes
+      // the pending cells and the fog change
       const cached = wire(snapshotFor(g, slot, shots, cells, cache)), plain = wire(snapshotFor(g, slot, shots, cells));
-      assert.deepEqual({ ...cached, cells: undefined }, { ...plain, cells: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
+      assert.deepEqual({ ...cached, cells: undefined, fog: undefined }, { ...plain, cells: undefined, fog: undefined }, `${label}: cached wire snapshot matches player ${slot}`);
       out.push(cached);
     }
     assert.equal(JSON.stringify(cache.units), saved, 'player filtering never mutates shared unit rows');
@@ -4134,6 +4286,127 @@ for (const lookupFinished of [false, true]) {
     }
     relief.dispose();
   }
+}
+
+// Weather (shared/weather.js): the plan is the same for the same seed, it turns on time after a public warning, and
+// the effects reach movement and sight through one multiplier each. Rain is the living ground's rain held on all
+// match, and the showers follow the match weather. Fog of war stays on the server: shorter sight sends fewer enemy rows.
+{
+  const { planWeather, weatherRow, weatherSpeed, roadMask, WEATHER, WEATHER_KINDS, WEATHER_WARN } = await import('./shared/weather.js');
+  const plain = blank(empty);
+  for (let seed = 0; seed < 50; seed++) assert.deepEqual(planWeather('random', plain, 'x', seed), planWeather('random', plain, 'x', seed), 'weather: the same seed gives the same plan');
+  const plans = Array.from({ length: 300 }, (_, seed) => planWeather('random', plain, 'x', seed));
+  for (const k of WEATHER_KINDS) assert.ok(plans.some(p => p.now === k), `weather: Random can pick ${k}`);
+  assert.ok(plans.some(p => p.next) && plans.some(p => !p.next), 'weather: Random sometimes turns once, sometimes holds');
+  for (const p of plans.filter(p => p.next)) {
+    assert.ok((p.now === 'fog' && p.next === 'clear' && p.at >= 210 * 20 && p.at <= 270 * 20) || (p.now === 'rain' && p.next === 'mud' && p.at >= 300 * 20 && p.at <= 420 * 20), `weather: only fog lifts or rain turns to mud, on time (${JSON.stringify(p)})`);
+  }
+  assert.deepEqual(planWeather('snow', plain, 'x', 7), { now: 'snow', next: null, at: 0 }, 'weather: a host pick holds all match');
+  assert.deepEqual(planWeather('map', { ...plain, name: 'Ardennes Crossing' }, 'ardennes-crossing'), { now: 'snow', next: null, at: 0 }, 'weather: a winter map snows by default');
+  assert.deepEqual(planWeather('map', { ...plain, name: 'Pegasus Bridge' }, 'pegasus-bridge'), { now: 'fog', next: 'clear', at: 240 * 20 }, 'weather: a river dawn starts in fog that lifts after 4 minutes');
+  assert.deepEqual(planWeather('map', { ...plain, weather: 'rain' }, 'x'), { now: 'rain', next: null, at: 0 }, 'weather: a map file can name its weather');
+  assert.deepEqual(planWeather('map', plain, 'x'), { now: 'clear', next: null, at: 0 }, 'weather: other maps are clear');
+  const twin = (seed) => createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'random', weatherSeed: seed }).weather;
+  assert.deepEqual(twin(12345), twin(12345), 'weather: createGame with the same seed plans the same weather');
+  assert.deepEqual(planWeather('__proto__', plain, 'x', 7), { now: 'clear', next: null, at: 0 }, 'weather: a made-up setting falls back to the map default');
+  assert.deepEqual(planWeather('map', { ...plain, weather: 'constructor' }, 'x'), { now: 'clear', next: null, at: 0 }, 'weather: a map file naming no real weather is clear');
+  // only Random draws a random number, so every other weather leaves the sim's random stream (and a seeded bench run) as it was
+  const randomCalls = (opts) => { let n = 0; const real = Math.random; Math.random = () => (n++, real()); try { createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], opts); } finally { Math.random = real; } return n; };
+  const base = randomCalls({ weather: false }); // createGame's own draws (the living ground's dice seed)
+  assert.equal(randomCalls({}), base, 'weather: Map default uses no random numbers');
+  assert.equal(randomCalls({ weather: 'fog' }), base, 'weather: a host pick uses no random numbers');
+  assert.equal(randomCalls({ weather: 'random' }), base + 1, 'weather: Random draws its seed');
+
+  // Rain is the living ground's rain all match, on soaked ground; Snow never rains; elsewhere showers come and go
+  assert.equal(WEATHER.rain.sight, 1 - CFG.weather.sight, 'weather: the Rain the lobby describes cuts sight as the sim rain does');
+  assert.equal(WEATHER.rain.offRoad, 1 - CFG.weather.wetGround, 'weather: and slows vehicles off roads as soaked ground does');
+  assert.equal(WEATHER.mud.offRoad, 1 - CFG.weather.wetGround, 'weather: Mud slows vehicles off roads as soaked ground does');
+  const bog = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'mud' });
+  assert.equal(bog.wx.wet, 1, 'weather: a Mud match starts on soaked ground');
+  bog.wx.next = 0; run(bog, 5); bog.wx.raining = false; run(bog, 30);
+  assert.equal(bog.wx.wet, 1, 'weather: and it stays soaked after a shower passes');
+  const wet = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'rain' });
+  assert.deepEqual([wet.wx.raining, wet.wx.rain, wet.wx.wet], [true, 1, 1], 'weather: a Rain match starts raining on soaked ground');
+  wet.wx.next = 0; run(wet, 30);
+  assert.deepEqual([wet.wx.raining, wet.wx.rain], [true, 1], 'weather: and the rain never lets up');
+  wet.weather = { now: 'mud', next: null, at: 0 }; run(wet, 25);
+  assert.ok(!wet.wx.raining && wet.wx.rain === 0 && wet.wx.wet === 1, 'weather: when Rain turns to mud the rain stops and the ground stays soaked');
+  const winter = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'snow' });
+  winter.wx.next = 0; run(winter, 5);
+  assert.ok(!winter.wx.raining && winter.wx.rain === 0, 'weather: no showers in snow');
+  const fair = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'clear' });
+  fair.wx.next = 0; run(fair, 5);
+  assert.ok(fair.wx.raining && fair.wx.rain > 0, 'weather: in Clear a shower can still come');
+
+  // the one change: silent until WEATHER_WARN seconds before, then announced in every snapshot, then it happens
+  const g = fresh();
+  assert.deepEqual(snapshotFor(g, 0, []).weather, ['clear'], 'weather: the test map is clear');
+  g.weather = { now: 'fog', next: 'clear', at: g.tick + 30 * 20 };
+  run(g, 30 - WEATHER_WARN - 1);
+  assert.deepEqual(weatherRow(g), ['fog'], 'weather: no warning too early');
+  run(g, 2);
+  const warned = snapshotFor(g, 1, []).weather;
+  assert.equal(warned[0], 'fog'); assert.equal(warned[1], 'clear');
+  assert.ok(warned[2] > 0 && warned[2] <= WEATHER_WARN, 'weather: everyone hears about the change seconds ahead');
+  assert.deepEqual(snapshotFor(g, 0, []).weather, warned, 'weather: the warning is public');
+  run(g, WEATHER_WARN);
+  assert.deepEqual(snapshotFor(g, 0, []).weather, ['clear'], 'weather: the fog lifts on time');
+
+  // movement: how far a unit gets in 3 s, by weather (roads: every cell a road, the sim's own D cells)
+  const travel = (kind, type, roads = false) => {
+    const g = fresh(roads ? Array(20).fill('D'.repeat(20)) : empty); g.players[0].mp = 1000;
+    g.weather = { now: kind, next: null, at: 0 };
+    if (kind === 'rain') Object.assign(g.wx, { raining: true, rain: 1, wet: 1 }); // as createGame starts a Rain match
+    if (kind === 'mud') g.wx.wet = 1; // and a Mud match
+    const u = put(g, 0, type, 4, 20);
+    command(g, 0, { t: 'move', orders: [[u.id, 38, 20]] });
+    run(g, 3);
+    return u.x - 4;
+  };
+  const near = (a, b, what) => assert.ok(Math.abs(a - b) < 0.03, `${what}: ${a.toFixed(3)} vs ${b}`);
+  const tank = travel('clear', 'tank'), rifle = travel('clear', 'rifle'), tankRoad = travel('clear', 'tank', true);
+  assert.ok(tank > 5 && rifle > 5, 'weather: units move in clear weather');
+  // (the tank churns the soaked ground it drives on, as in the living-ground test, hence the wider margin)
+  assert.ok(Math.abs(travel('rain', 'tank') / tank - 0.8) < 0.06, 'weather: rain slows vehicles off roads by 20%');
+  near(travel('rain', 'tank', true) / tankRoad, 1, 'weather: rain does not slow vehicles on roads');
+  near(travel('rain', 'rifle') / rifle, 1, 'weather: rain does not slow infantry');
+  assert.ok(Math.abs(travel('mud', 'tank') / tank - 0.8) < 0.06, 'weather: mud slows vehicles off roads by 20% (the soaked ground)');
+  near(travel('mud', 'rifle') / rifle, 0.9, 'weather: mud slows infantry by 10%');
+  near(travel('snow', 'tank') / tank, 0.85, 'weather: snow slows vehicles by 15%');
+  near(travel('mud', 'tank', true) / tankRoad, 1, 'weather: mud does not slow vehicles on roads');
+  // no double penalty: on the map's own mud cells, Mud weather is the same soaked mud as a Clear day after a long shower
+  const sink = (kind) => {
+    const g = fresh(Array(20).fill('M'.repeat(20))); g.players[0].mp = 1000;
+    g.weather = { now: kind, next: null, at: 0 }; g.wx.wet = 1; g.wx.next = 1e9; g.wear.fill(0.5); // the same depth in both
+    const u = put(g, 0, 'tank', 4, 20); command(g, 0, { t: 'move', orders: [[u.id, 38, 20]] }); run(g, 3);
+    return u.x - 4;
+  };
+  near(sink('mud') / sink('clear'), 1, 'weather: Mud adds nothing to a mud cell that the soaked ground has not');
+  near(travel('snow', 'tank', true) / tankRoad, 0.85, 'weather: snow slows vehicles on roads too');
+  near(travel('snow', 'rifle') / rifle, 0.9, 'weather: snow slows infantry by 10%');
+  near(travel('fog', 'tank') / tank, 1, 'weather: fog does not slow anyone');
+  assert.equal(weatherSpeed({ weather: { now: 'snow' } }, UNITS.fighter), 1, 'weather: planes fly over the weather');
+  // the look's roads follow the ground painter: open ground by a house, not by water; bridges and roads
+  const village = roadMask({ w: 5, h: 3, rows: ['.B...', '.....', 'W=.D+'] });
+  assert.deepEqual([...village], [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], 'weather: road cells follow the village, the bridge and the road');
+
+  // sight: enemies 10, 20, 28 and 33 m from a rifle squad (vision 36 m); fog (25 m) sees two, rain (29 m) three
+  const sees = (kind) => {
+    const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+    g.weather = { now: kind, next: null, at: 0 };
+    if (kind === 'rain') Object.assign(g.wx, { raining: true, rain: 1, wet: 1 });
+    put(g, 0, 'rifle', 4, 20);
+    const foes = [10, 20, 28, 33].map(dx => put(g, 1, 'rifle', 4 + dx, 20));
+    run(g, 0.5);
+    const rows = snapshotFor(g, 0, []).units;
+    return { rows: rows.length, ids: foes.filter(f => rows.some(r => r[0] === f.id)).map(f => Math.round(f.x - 4)) };
+  };
+  const clear = sees('clear'), fog = sees('fog'), rain = sees('rain'), snow = sees('snow');
+  assert.deepEqual(clear.ids, [10, 20, 28, 33], 'weather: clear weather sees all four');
+  assert.deepEqual(fog.ids, [10, 20], 'weather: ground fog cuts sight by 30%');
+  assert.deepEqual(rain.ids, [10, 20, 28], 'weather: rain cuts sight by 20%');
+  assert.deepEqual(snow.ids, [10, 20, 28], 'weather: snow cuts sight by 10%');
+  assert.ok(fog.rows < rain.rows && rain.rows < clear.rows, 'weather: shorter sight sends fewer snapshot rows (server-side fog of war)');
 }
 // Horde: one shared HQ and bunker, waves from the attacker spawns, the break only after a wave is dead.
 {

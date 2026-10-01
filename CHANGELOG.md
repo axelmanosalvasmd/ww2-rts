@@ -27,10 +27,135 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     terrain on the GPU from a height texture of the relief (redone around any cell that changes). Line width holds
     when you zoom out and stays crisp when you zoom in. Draw calls went down: a selection ring and a strike zone are
     one each (were two), the entrenchment preview is one instead of one per cell, and nothing is created per frame.
-  - Not looked at in a browser: the Classic resource node brackets, and a point flipping owner (the brass ring).
-  - Left for later: the cover preview (landing on its own branch), unit name and badge labels, the HUD panels and the
-    minimap, which another branch restyles.
+  - Not looked at in a browser: a point flipping owner (the brass ring).
+  - Left for later: the cover preview (landing on its own branch).
 
+- New look for the whole interface. The paperwork style (manila cards, typewriter text, stencil numbers, map symbols)
+  made the game read like a board game, so the HUD, lobby, menu, alerts, banners, tooltips, match report, end-of-match
+  notice, map editor and the labels and badges over the battlefield now share one modern style: dark gunmetal panels
+  with thin khaki edges, one condensed typeface (Barlow Semi Condensed) and brass only on manpower, victory points and
+  the clock. Layout, hotkeys, element ids and what each panel shows are unchanged.
+- Recruit cards, train and build cards and the selection list show a small picture of each unit, rendered from its
+  real 3D model in your faction and color. They are made one per frame once the match is under way, so loading and the
+  frame rate are not affected, and they follow the models as those improve. Until a picture is ready the slot shows
+  the unit's silhouette.
+- One set of flat silhouette icons replaces the NATO map symbols and the line icons: unit types, buildings, support
+  calls, orders and the badge beside each unit's health bar on the battlefield (drawn there in the owner's color on a
+  small dark plate). Costs are plain numbers; resources get a small icon (helmet, cartridge, jerrycan).
+- The Victory or Defeat notice at the end of a match is a quiet panel that fades in, instead of a tilted rubber stamp.
+- Recruit by letter and autocast take the new look. The Recruit tab, when on, reads in brass with a brass hairline
+  and the Command Card's edge turns brass while the letters are live; each card's letter sits at the left end of its
+  cost line, clear of the name and the portrait; a card bought by its letter shows the pressed look for a moment.
+  An ability with autocast on gets the HUD's on state (brass hairline over a faint brass tint) and a small A, instead
+  of a dashed pencil border.
+- Stances, Take cover, mass entrenchment, Horde and the weather line take the new look. The stance switches (hold
+  fire, hold position, auto-retreat) and Take cover, the six entrenchment patterns (line, zigzag, double, arc, ring,
+  strongpoint), mines and the bridge get silhouettes from the same set; a stance that is on shows the HUD's on state
+  and reads "On" or "Off" (it read "ON"). Horde's next-wave button, Horde's result line, the lobby's Weather
+  picker and the weather line under the teams use the panels, hairlines and plain punctuation like the rest.
+- The lobby shows the selected map's real battlefield behind the room form: the camera drifts slowly over it, dimmed so
+  the form stays easy to read, and it changes with the Map select. It runs on a small low-resolution renderer of its
+  own that is freed when the match starts, is skipped on Graphics Low, and on software rendering (or with reduced
+  motion) shows a single still frame. Its world is built in steps in idle time; the biggest step, painting the ground,
+  took about 0.7 to 1.1 s on the heavily loaded test machine, and a match on that map reuses the painted ground.
+- The Command Card's group names (Infantry, Support weapons, Vehicles, Aircraft) lead with a small silhouette.
+- Fixed: starting a match could send the start before the lobby message that clears the last match's result, because
+  that message waits on reading the map list. The server now sends the lobby first. It made `node test.js` fail now
+  and then on a busy machine ("a new match without the old result").
+- Status lines and hints read as plain sentences ("0 pts, 0 held", "60 MP, 20s", "Right-click cancels") instead of
+  pieces joined with middle dots.
+- Checked in Conquest and Classic at 1920x1080 and 1366x768 (lobby, HQ view, selection with orders and recruit row,
+  support calls, alerts, tooltip, menu, pause banner, end notice, match report, map editor): nothing overlaps, all 16
+  Conquest portraits render, no console errors. The Impeccable detector (4.1.0) is clean on `client/`.
+- Left for later: the portraits show today's simple models and will look better as the models do; a few text glyphs remain (veterancy stars in the selection list,
+  the lobby's kick cross, the editor's check and warning marks, the star on double-VP point tags); `client/markers.js`
+  still exports the old ink color, unused now; the menu button's tooltip can cover the first menu item while the
+  cursor stays on the button.
+
+- Weather: the host picks it in the lobby (Map default, Clear, Fog, Rain, Mud, Snow or Random), and it changes how
+  the match plays for everyone. Ground fog cuts sight by 30%. Rain is the living ground's rain held on all match, on
+  ground soaked from the start: sight -20%, vehicles off the roads -20% (more on low ground), fords slower, smoke
+  thinner and fires put out. Mud is the living ground's soaked ground held all match: vehicles off the roads -20%
+  (more on low ground), fords slower, driven ground churning to mud sooner, and infantry -10%. Snow cuts sight by 10%
+  and slows infantry by 10% and vehicles by 15%. Roads are the map's roads and bridges. In Clear, Fog and Mud the
+  living ground's showers still come and go; in Snow it never rains. Planes and recon flights fly above it. Map
+  default follows the map: the Ardennes snows, and the misty river maps (Pegasus Bridge, The Polder, River Towns)
+  start in ground fog that lifts at 4:00. Random can lift its fog or turn its rain to mud partway through. Any change
+  is announced to everyone 10 seconds ahead in a quiet line under the score strip, which always says the weather and
+  what it does, and also tells of a passing shower or wet ground (it replaces the separate rain line). The board shows
+  it too: thicker haze and drifting fog banks, rain streaks on the wind with wet ground and puddle sheen (after a
+  shower too), mud along the roads and village streets, and snow falling and lying on open ground, on Low graphics as
+  well (with fewer drops). The AI waits for a bigger army before marching on a Classic base or an Assault bunker when
+  it can see less. Balance, measured before the living ground was merged (Rain was then its own rule at sight -15%),
+  AI vs AI on the default map:
+  Conquest (40 matches each) 2nd place ends at 0.59 / 0.63 / 0.62 / 0.62 of the winner's VP in Clear / Fog / Rain /
+  Snow, matches last 9.2 / 9.6 / 9.3 / 9.1 min, faction wins USA/GER/USSR 6/20/14, 14/15/11, 16/16/8, 15/13/12.
+  Classic (20 each) lasts 19.2 to 20.0 min, 14 to 17 of 20 are decided before Sudden Death, faction wins 6/7/6,
+  6/8/6, 6/9/4, 9/5/6 (2 draws in all). Found while measuring: asking for groups of 4 instead of 3 to attack a held
+  point in poor weather made Conquest one-sided (2nd place 0.26 to 0.37 of the winner), so Conquest groups stay at 3.
+  Mud, measured in review (same harness, 40 Conquest matches each): mud ends at 0.60 of the winner's VP, 9.0 min, faction
+  wins 14/16/10, against Clear at 0.57, 9.0 min, 15/14/11. That Clear run also shows the 6/20/14 split above was
+  sampling noise. Classic in mud (24 matches against 24 in Clear) runs about 2 minutes longer (19.9 against 17.7 min)
+  and 7 of 24 reach Sudden Death against 2 of 24 (the same 7 of 24 with the AI's caution switched off, so the slower
+  armies cause it, not the AI). The AI's Classic caution on its own (24 fog matches each way) adds about 1.6 min (19.6
+  against 18.0) and one more match into Sudden Death (4 against 3).
+  Found and fixed in review: the map editor lost the falling snow on winter maps; the lobby tooltip repeated the
+  weather's name; Clear is now exactly the game before weather (the weather seed used to take one random number from
+  every match, which changed seeded bench runs; checked with the bench's final-state hash on both modes); a
+  made-up weather name in a map file or a bad setting falls back to the map default instead of freezing every unit.
+  Merged with the living ground (roads, mud, showers and wind, d1b7150): both had rain and soft ground, so Rain now
+  runs the living ground's rain all match and Mud its soaked ground, instead of their own rules (Mud was -30% off
+  roads; a tank in a mud cell in Mud weather no longer pays twice), the showers follow the match weather, the sim's
+  roads are the map's road and bridge cells (village streets only place the mud and puddles you see), the weather's
+  sight goes through the same range function as the fog of war (#14), and the two lines under the scores became one.
+  Clear is exactly the living-ground game: the seeded bench gives master's final-state hash. Balance after the
+  merge (same harness, default map, 40 Conquest matches each): 2nd place ends at 0.47 / 0.47 / 0.53 / 0.55 of the
+  winner's VP in Clear / Rain / Mud / Snow, matches last 8.7 / 8.8 / 9.2 / 9.0 min, faction wins USA/GER/USSR
+  15/13/12, 9/17/14, 16/7/17, 14/16/10. Nothing is one-sided. Clear is noisy at this size (its two halves gave 0.30
+  and 0.63; master's own Clear over 20 matches gave 0.57), and Germany's 7 of 40 in Mud is about two standard
+  deviations under an even split, worth a second run.
+  Left for later: the match-end test "a new match without the old result" fails on a busy machine: the server sends
+  the lobby update after listing the map files, so it can arrive after the start message. It failed twice in a row at
+  a load average near 75 after the merge and passed on the next run at 33; origin/master passed at 35 to 70.
+- Fog of war now shows exactly what your team sees:
+  - Before, the client drew its own vision circles, and they disagreed with the server on 6.4% of the map's cells
+    (a quarter of all the cells either side called seen) over AI matches on five maps. 5.7% of the map was drawn
+    clear while the team saw nothing there, 0.7% was seen but drawn fogged, and 29 of 477 enemy units the server
+    showed stood on fogged ground (on Bocage, all of them).
+  - The server now sends each player only its own team's seen cells: the whole mask at match start and on
+    reconnect, then only the cells that changed, as short run-length strings. On a six-player Massive game (Six
+    Fronts, Conquest) a snapshot grows from 1920 to 2022 bytes on average (+102, about 5%). Working out the masks
+    raises the server's cost for one round of six snapshots from 0.77 to 3.75 ms on average (p95 2.8 to 10.7 ms).
+  - The ground has three looks: seen (clear), explored (dimmed) and never seen (dark). A cell fades to its new look
+    within a quarter second, and only the changed part of each texture row goes to the graphics card (about 1 KB a
+    frame instead of the whole 90 KB texture). Trees, rocks and other props now darken in the fog like houses and
+    walls already did, and water darkens under the same overlay.
+  - Every unit a snapshot shows stands on clear ground: in a replay of 1334 snapshots, 0 of 21108 shown ground
+    units stood on fog and the client's seen cells matched the server's every time, and in a live 2v1 match on
+    Bocage 0 of 13588 shown ground units over 1465 snapshots stood on fog. A new server test checks each
+    team's mask against a cell-by-cell vision check on the 300-unit Massive fixture, including after a hedge, smoke
+    and raised ground appear in a standing unit's view.
+  - Review fix: houses, walls, hedges and props in the fog now darken like the ground. On High graphics they faded
+    toward a mid grey, so hedge rows and trees showed as pale shapes on dark ground. The fog mix ran after the colour
+    conversion, which High does in a later pass, so it used a grey meant for Low. It now mixes toward the overlay's own
+    colour before conversion, and both graphics levels match the ground.
+  - Review checks: a live reconnect on Bocage kept every explored cell and the changed-cells stream stayed in step
+    afterwards (0 of 15818 shown ground units outside the server's mask over 1274 snapshots). Replays of Classic
+    (Default, Bocage) and Annihilation (Hill 112) had 0 mismatches between the client's seen cells and the server's
+    mask, and every building footprint matched cell by cell (7340 building rows on Bocage alone). Client fog work on a
+    six-player Massive game costs 0.16 ms per snapshot and 0.009 ms per frame on average, about 3 KB of texture upload
+    a frame.
+  - Merged with the realistic scenery: the new trees, bushes, hedgerow leaves, grass and wheat darken from the same
+    server mask, with the same mix as the ground. Their own darkening rule (a multiply written against the old grey
+    mix) no longer matched anything, so `client/foliage.js` now uses the shared fog shader as it is.
+  - Merged with the living ground: rain now shortens sight by up to 20%, and the drawn fog follows it. The fog and the
+    server's vision read one range function, and units standing still recompute their seen cells when a shower
+    comes or goes. A new test pass checks that rain shrinks the mask and that it comes back when the rain stops.
+  - Left for later: terrain changes (craters, trenches) still reach every client, even in the fog. Enemy planes
+    still show over fog (by design), and a camouflaged sniper can stand unseen on clear ground. The fog edge can
+    trail a moving unit by up to about half a second (five vision passes a second plus the fade). In Annihilation the
+    ground under the always-visible enemy bunkers is clear, and in Horde the last few attackers shown through the fog
+    get a clear cell under them the same way. The new test adds about 3 seconds to `node test.js`.
 - Living ground: the board wears, burns and gets rained on, and nothing snaps at a tile edge any more.
   - Soft edges: a unit's speed is the average of the ground under its whole footprint, so a tank half on a road gets
     half the bonus. Cover behind a wall, house, hedge or vehicle is full within about 2 m and fades to nothing at
@@ -313,6 +438,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     if another building still has room (the server refuses a full chosen building).
   - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
     and the extra buys come back refused with their reason.
+
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
   goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window

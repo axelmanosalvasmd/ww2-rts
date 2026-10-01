@@ -1,9 +1,10 @@
 // Map markings: unit and selection rings, weapon range rings, order lines with arrowheads, capture point rings and
-// flags, strike warnings and entrenchment cells, the military symbol badge over each unit and the text tags in the
-// world. Everything on the ground is flat geometry that client/overlay.js drapes over the terrain on the GPU and
-// anti-aliases: thin even lines with a dark edge, small filled arrowheads, soft fills. Geometry and materials are
-// made once and shared; order lines reuse growable buffers, so a snapshot only rewrites vertex data and never makes
-// or frees GPU objects.
+// flags, strike warnings and entrenchment cells. Everything on the ground is flat geometry that client/overlay.js
+// drapes over the terrain on the GPU and anti-aliases: thin even lines with a dark edge, small filled arrowheads, soft
+// fills. The unit badges and the text tags in the world are drawn like the HUD instead: gunmetal plates, the HUD's
+// silhouette icons and its type (Barlow Semi Condensed).
+// Geometry and materials are made once and shared; order lines reuse growable buffers, so a snapshot only rewrites
+// vertex data and never makes or frees GPU objects.
 import * as THREE from 'three';
 import { UNITS, CELL } from '/shared/sim.js';
 import { drawSymbol } from './symbols.js';
@@ -162,15 +163,23 @@ export function coverRings() {
   };
 }
 
-// ---------- unit symbol badges ----------
-// The unit's military map symbol, frame filled in the owner's color with chalk lines (dark ink on the chalk player).
+// ---------- unit badges ----------
+// The unit's silhouette (client/symbols.js) in the owner's color on a small gunmetal plate edged in that color, left
+// of the health bar. Dark player colors are lifted toward white a little so the silhouette reads on the plate.
 const badgeMats = new Map(), badgeGeo = new THREE.PlaneGeometry(1, 1);
+const PLATE = 'rgba(22, 25, 27, 0.88)', HAIRLINE = 'rgba(176, 164, 122, 0.55)', LABEL_TEXT = '#e2dfd3';
+const lift = (c, k) => { const m = (v) => Math.round(v + (255 - v) * k); return `rgb(${m((c >> 16) & 255)}, ${m((c >> 8) & 255)}, ${m(c & 255)})`; };
+const rounded = (c, x, y, w, h, r) => { c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); };
 export function symbolBadge(type, color) {
   const key = type + '|' + color;
   let m = badgeMats.get(key);
   if (!m) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
-    drawSymbol(cv.getContext('2d'), type, 64, 64, 112, { color: lum(color) > 0.7 ? INK : '#f4efe2', fill: css(color), halo: 'rgba(18,18,12,0.9)', stroke: 9 });
+    const c = cv.getContext('2d');
+    // the badge shows at about 26 px, so 5 canvas px of edge reads as a 1 px hairline
+    rounded(c, 5, 5, 118, 118, 7); c.fillStyle = PLATE; c.fill();
+    c.lineWidth = 5; c.strokeStyle = css(color); c.stroke();
+    drawSymbol(c, type, 64, 64, 104, { color: lift(color, lum(color) < 0.45 ? 0.25 : 0) });
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
     m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthTest: false, depthWrite: false });
     badgeMats.set(key, m);
@@ -181,14 +190,15 @@ export function symbolBadge(type, color) {
 }
 
 // ---------- text tags ----------
-// HQ names in Stardos Stencil with an owner-color bar; point and node tags in Courier Prime. Canvas text drawn
-// before a web font arrives uses the fallback, so every tag is redrawn when fonts finish loading.
+// HQ names and point and node tags on gunmetal plates in the HUD's type; the HQ sign leads with an owner-color swatch
+// holding the HQ silhouette. Canvas text drawn before a web font arrives uses the fallback, so every tag is redrawn
+// when fonts finish loading.
 // Tags keep a fixed size on screen: sx is the sprite width in CSS pixels (the 32 px tall tag prints its text at
 // 16 px), so they stay readable zoomed out and never grow over a close fight. fade is the camera depth band (m)
 // over which a tag fades out as you zoom in on it.
 const LABEL = {
-  hq: { w: 512, h: 112, sx: 156, px: 62, font: (px) => `700 ${px}px "Stardos Stencil", Impact, sans-serif`, upper: false, spacing: 3, fade: [10, 17] },
-  tag: { w: 256, h: 64, sx: 128, px: 32, font: (px) => `700 ${px}px "Courier Prime", "Courier New", monospace`, upper: false, spacing: 0, fade: [19, 27] },
+  hq: { w: 512, h: 112, sx: 156, px: 54, font: (px) => `600 ${px}px "Barlow Semi Condensed", "Arial Narrow", sans-serif`, upper: false, spacing: 1, fade: [10, 17] },
+  tag: { w: 256, h: 64, sx: 128, px: 30, font: (px) => `600 ${px}px "Barlow Semi Condensed", "Arial Narrow", sans-serif`, upper: false, spacing: 0, fade: [19, 27] },
 };
 // The sprite shader with sizeAttenuation off keeps scale in clip units; this patch turns it into CSS pixels
 // (2 / (P[1][1] * view height)) and fades the tag by its view depth.
@@ -207,18 +217,23 @@ function screenSized(shader) {
 }
 const labels = new Map();
 function paintLabel(e) {
-  // an owner's label (the HQ sign) leads with the owner's HQ map symbol instead of a colored side stripe
-  const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, sym = Math.round((H - 12) * 0.95), bar = e.color != null ? sym + 12 : 0, pad = 14;
+  // the sprite shows the canvas at about a third of its size, so 3 canvas px of edge reads as a 1 px hairline
+  const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, bh = H - 12, y0 = 6, pad = 16;
+  const sw = e.color != null ? bh - 22 : 0, lead = sw ? sw + 14 : 0;
   c.clearRect(0, 0, W, H);
   if ('letterSpacing' in c) c.letterSpacing = st.spacing + 'px';
   let px = st.px; c.font = st.font(px);
-  while (c.measureText(e.text).width > W - 2 * pad - bar - 8 && px > 12) c.font = st.font(px -= 2);
-  const bw = Math.min(W - 4, c.measureText(e.text).width + 2 * pad + bar), bh = H - 12, x0 = (W - bw) / 2, y0 = 6;
-  c.fillStyle = 'rgba(34, 37, 27, 0.86)'; c.fillRect(x0, y0, bw, bh);
-  c.strokeStyle = 'rgba(236, 230, 214, 0.35)'; c.lineWidth = 2; c.strokeRect(x0 + 1, y0 + 1, bw - 2, bh - 2);
-  if (bar) drawSymbol(c, 'hq', x0 + 8 + sym / 2, H / 2, sym, { color: lum(e.color) > 0.7 ? INK : '#f4efe2', fill: css(e.color), halo: 'rgba(18,18,12,0.9)', stroke: 9 });
-  c.fillStyle = '#e6dcc0'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(e.text, x0 + bar + (bw - bar) / 2, H / 2 + (e.style === 'hq' ? 4 : 2));
+  while (c.measureText(e.text).width > W - 2 * pad - lead - 8 && px > 12) c.font = st.font(px -= 2);
+  const bw = Math.min(W - 4, c.measureText(e.text).width + 2 * pad + lead), x0 = (W - bw) / 2;
+  rounded(c, x0 + 1.5, y0 + 1.5, bw - 3, bh - 3, 5); c.fillStyle = PLATE; c.fill();
+  c.lineWidth = 3; c.strokeStyle = HAIRLINE; c.stroke();
+  if (sw) {
+    const sx = x0 + 11, sy = (H - sw) / 2;
+    rounded(c, sx, sy, sw, sw, 4); c.fillStyle = css(e.color); c.fill();
+    drawSymbol(c, 'hq', sx + sw / 2, H / 2, sw * 0.86, { color: lum(e.color) > 0.6 ? '#1a1d1f' : '#f2efe6' });
+  }
+  c.fillStyle = LABEL_TEXT; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(e.text, x0 + lead + (bw - lead) / 2, H / 2 + 2);
 }
 let fontsHooked = false;
 function hookFonts() {

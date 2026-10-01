@@ -42,6 +42,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
+| + weather: Clear / Fog / Rain / Snow (40 each; faction wins and Classic in Weather below) | 59 / 63 / 62 / 62% | 1.88 / 1.93 / 2.05 / 1.80 (checked every 10 s) | 9.2 / 9.6 / 9.3 / 9.1 min |
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
@@ -332,12 +333,94 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Endless: Massive's unit limit (x5) with income x20, for players who want the cap full all match. Money stops being a
   constraint, so it is a sandbox setting, not a balanced one (no AI runs behind it).
 
+## Weather (lobby setting, 2026-10-01, all modes)
+- One state at a time, the same for every side. Clear: no effect. Ground fog: sight -30%. Snow: sight -10%,
+  infantry -10%, vehicles -15%. Planes, recon flights and the units' own stats are untouched: `shared/weather.js`
+  gives the sim two multipliers, `sightMul` (vision, for ground units and buildings, through `visionOf` and so
+  `visionRange`, which the fog masks share) and `weatherSpeed` (movement: infantry and vehicles as a whole), read in
+  one place each in sim.js.
+- Rain is the living ground's rain (`weather()` in sim.js, `CFG.weather`) held on all match, on ground soaked from the
+  start: sight -20%, vehicles -20% off roads (-40% on ground below level 0), fords up to 30% slower, three times the
+  traffic wear, smoke thinning faster and fires going out. Its numbers in `WEATHER.rain` only describe it to players and
+  the AI (`rains: true` keeps them out of the two multipliers); test.js keeps them equal to `CFG.weather`. When Random's
+  rain turns to mud the rain stops at once and the ground stays soaked.
+- Mud is the living ground's soaked ground held all match (`wx.wet` at 1): vehicles -20% off roads (-40% below level
+  0), fords slower, three times the traffic wear (so driven ground turns to mud cells sooner), no dust. Infantry -10%
+  is Mud's own, since the living ground never slows infantry for wet ground. On the map's mud cells (`M`) Mud adds
+  nothing the soaked ground has not: the ground is slowed once (test.js checks it). Showers still come in Mud and cut
+  sight while they last, but cannot soak it further.
+- Showers (the living ground's, 1.5 to 3 minutes, 4 to 8 apart, the first after 3 minutes) still come and go in Clear,
+  Fog and Mud, so Clear is the living-ground game as it was: a seeded bench run (`tools/bench.mjs`, 9000 ticks, both
+  scenarios) gives the same final-state hash as master. Snow never rains.
+- Roads: the sim's roads are its ROAD cells (`D` roads and `=` bridges, from the living-ground terrain). The wet ground
+  of Rain and Mud leaves them alone; snow slows vehicles everywhere. `roadMask` only places the look: mud and puddles
+  gather along the roads, bridges and the village streets `client/ground.js` paints (open ground next to a house,
+  unless it lies by water).
+- Lobby: the host picks Map default / Clear / Fog / Rain / Mud / Snow / Random (`room.weather`, message `weather`).
+  Map default reads a `weather` field in the map file, else the map's mood: snowy maps (Ardennes) snow, misty river
+  dawns (Pegasus, Polder, River Towns) start in ground fog that lifts at 4:00, every other map is clear. A host's pick
+  holds all match. Random is seeded per match: any state, and half the time fog lifts at 3:30 to 4:30 or rain turns
+  to mud at 5:00 to 7:00. At most one change per match, announced to everyone 10 seconds before in every snapshot
+  (`weather: [now, next, seconds]`).
+- Screen: one line under the score strip in plain words ("Rain: sight -20%, vehicles -20% off roads"), brass while
+  it is about to change. In Clear, Fog and Mud it also tells of a passing shower or of wet ground, in the living
+  ground's own words (that line used to be a separate panel). `client/atmosphere.js` eases the haze, fog color, sun
+  and shadows over a few seconds, and adds fog banks, rain streaks, falling snow, wet ground with puddle sheen, mud
+  along the streets and snow cover (one ground layer shader). A shower moves the look toward rain's as hard as it
+  rains and wets the ground as much as the server says (`setRain(rain, wet)` from `snapshot.wx`). Rain, snow and dust
+  fall on the server's wind, each fall keeping the slant it started with. Rain and snow stay on Graphics Low with a
+  third of the drops. The light mood is fixed per match: snow brings the winter light, rain and mud an overcast sky,
+  fog and clear keep the map's mood.
+- AI: `aiCaution` (1 in clear weather, 1.12 in mud, 1.2 in snow, 1.4 in rain, 1.43 in fog) raises the army margin and
+  size it wants before marching on a Classic base or an Assault bunker (6 units in clear weather, 9 in fog), since it
+  has seen less of the enemy and its tanks arrive late. Conquest point attacks keep groups of 3: scaling those to 4 made Conquest one-sided (2nd place VP
+  0.26 of the winner's and 6.3 min matches with Clear stats; 0.34 to 0.37 and 7 min in fog, rain and snow).
+- Balance, measured before the living ground was merged (Rain was then its own rule at sight -15%, village streets
+  counted as roads, and there were no showers) (default map, 3 AIs, factions USA/GER/USSR by slot, spawns shuffled;
+  leader changes checked every 10 s):
+  | Weather | Conquest (40 each): 2nd place VP vs winner, leader changes, length, faction wins | Classic (20 each): length, decided before Sudden Death, winner's HQ health left, faction wins |
+  |---|---|---|
+  | Clear | 0.59, 1.88, 9.2 min, 6/20/14 | 19.7 min, 17/20, 88%, 6/7/6 and 1 draw |
+  | Fog | 0.63, 1.93, 9.6 min, 14/15/11 | 19.9 min, 14/20, 76%, 6/8/6 |
+  | Rain | 0.62, 2.05, 9.3 min, 16/16/8 | 20.0 min, 16/20, 85%, 6/9/4 and 1 draw |
+  | Snow | 0.62, 1.80, 9.1 min, 15/13/12 | 19.2 min, 15/20, 76%, 9/5/6 |
+  No weather comes out one-sided: closeness and length stay within the noise of Clear. A faction's win count at 40
+  matches spreads about 3 either way by chance alone; a second Clear run (review) gave 15/14/11 where the first gave 6/20/14.
+- Mud (review, same harness, 40 Conquest matches): 2nd place VP 0.60 of the winner, 1.60 leader changes, 9.0 min, faction
+  wins 14/16/10; the Clear run beside it gave 0.57, 1.75, 9.0 min, 15/14/11. Classic, 24 matches each: Mud 19.9 min with
+  7 reaching Sudden Death (the run was cut at 26 min), Clear 17.7 min with 2. Slower armies make Classic last longer;
+  the AI's caution is not the cause: Mud with it off gave 18.7 min and the same 7 of 24. Fog with the caution on or off,
+  24 matches each: 19.6 against 18.0 min, 4 against 3 reaching Sudden Death, so the caution costs a little time and no
+  balance. If Mud Classic should end sooner, speed up the AI's attack or shorten Mud, not the caution.
+- Balance after merging the living ground (same harness, default map, its roads now real, 40 Conquest matches each):
+  | Weather | 2nd place VP vs winner | leader changes | length | faction wins USA/GER/USSR |
+  |---|---|---|---|---|
+  | Clear | 0.47 | 1.38 | 8.7 min | 15/13/12 |
+  | Rain | 0.47 | 1.65 | 8.8 min | 9/17/14 |
+  | Mud | 0.53 | 1.77 | 9.2 min | 16/7/17 |
+  | Snow | 0.55 | 1.43 | 9.0 min | 14/16/10 |
+  Clear's two halves gave 0.30 and 0.63 (master's own Clear, 20 matches: 0.57, 9.3 min), so 0.1 either way is noise
+  here. Germany's 7 of 40 in Mud is about two standard deviations under an even split; run it again before tuning.
+  Classic was not re-measured after the merge.
+- Clear is the game as it was before weather: only Random draws a random number (the seed), so a seeded bench run
+  gives the same final-state hash with and without this change in Clear weather. (Checked before the living ground
+  was merged; the merge keeps every Clear, Fog and Mud shower roll where the living ground put it.)
+
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
-is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
-mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
-The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
-the HUD.
+was the paperwork around it until 2026-10-01 (see below). Concepts in `docs/concepts/`: `e-mix-acetate.jpg` was the
+target, `a-sand-table.jpg` the world mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage),
+`before-conquest.jpg` where we started. The concept images show richer models than ours; the models stay procedural,
+so the look comes from paint, light and the HUD.
+
+The HUD's paperwork style (manila cards, typewriter text, stencil numbers, grease-pencil map symbols) was dropped on
+2026-10-01 because it read as a board game. The HUD is now a modern PC military RTS interface: gunmetal panels, one
+condensed sans, unit portraits and silhouette icons. Target: `docs/concepts/g-hud-gunmetal.jpg` (its coin icons by the
+costs were left out). Reference games for density and restraint: Company of Heroes 3, Men of War II, Steel Division 2.
+Rules from the user: it must not look like a mobile game, so no chunky rounded buttons or pills, glossy bevels,
+gradients or inner glows, outlined or shadowed text and icons, cartoon or saturated colors, ornate or rarity-colored
+card frames, coin or gem currency icons, red notification dots, oversized tap-sized targets, bouncy or pop-in motion
+or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body text, real hover and keyboard focus.
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
 - Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
   particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
@@ -347,27 +430,55 @@ the HUD.
   - Warm low sun, soft shadows, slightly saturated "painted miniature" colors, a light haze.
   - A slight blur only along the far (top) edge of the screen, subtle enough that units there stay readable. Off on Low.
   - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
-  - Unit markers: the class badge over each unit becomes the same military map symbol the HUD uses, drawn in the
-    owner's color. Health bar, cover shield and veterancy stay.
+  - Unit markers: the badge left of each unit's health bar is the unit's silhouette from the HUD's icon set, drawn
+    in the owner's color on a small gunmetal plate edged in that color. Health bar, cover shield and veterancy stay.
   - Order lines, rings and zones: restyled 2026-10-01 to a realistic modern RTS look, see "Ground overlays" below.
     Colors keep their meaning: blue move, orange attack-move, white retreat, red attack, yellow dig/build.
-- Player colors (grease pencil, they read on grass, the dark strip and manila): blue `#3b73d6`, red `#cc3a2e`, chalk
-  `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue against red. Gold and green are gone:
-  gold clashed with the brass accent and manila, green vanished on grass.
-- HUD (panel style "E"): a dark translucent olive-charcoal strip (`#22251b` at ~85%) holds everything; only the Command
-  Card's unit cards and the selected-unit list are manila cards (`#d8c69a`) with dark brown ink (`#2b2418`). Light text
-  on the strip `#e6dcc0`, brass `#d2a849` for big numbers, grease-pencil red `#b8322a` for danger.
-- Type: Courier Prime (typewriter) for all HUD text, Stardos Stencil only for big numbers (MP, VP, clock, HQ labels).
-  No all-caps labels, nothing under 13 px. IBM Plex Mono is gone.
-- Unit icons everywhere: period military map symbols (infantry box with an X, armor box with an oval, artillery box
-  with a dot, and so on), one symbol per unit type, full name and role in a tooltip. Faction markings next to player
-  names in the score panel: US star, German cross, Soviet star.
+- Player colors (they carry meaning, so the HUD redesign kept them; they read on grass and on the gunmetal panels):
+  blue `#3b73d6`, red `#cc3a2e`, chalk `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue
+  against red. Gold and green are gone: gold clashed with the brass accent, green vanished on grass.
+- HUD panels (2026-10-01, replacing panel style "E"): translucent gunmetal `rgba(25, 28, 30, 0.86)` with a 1 px warm
+  khaki hairline `rgba(176, 164, 122, 0.46)` and 2 px corners, no shadows, glows or blur. The top panels (scores,
+  resources, buttons) are near solid (0.96) so world labels never read through. Cards, buttons and list cells sit a
+  step lighter (`#24282b`) with a fainter hairline; hover lifts the cell (`#2e3337`) and lights its hairline brass,
+  keyboard focus is a 1 px brass outline. The minimap sits in a plain frame (a 4 px gunmetal band and a hairline).
+- Palette (restrained: neutrals plus one accent): text `#e2dfd3`, secondary text `#a6a292` (warm, tinted toward the
+  khaki lines), brass `#d6b25e` only on the numbers that matter (manpower, victory points, the clock) and the lobby's
+  Start button, olive `#a9b37b` for income and cover, signal red `#c8483b` (text `#ee8a7b`) for danger. Costs are plain
+  numbers with a dim "MP"; resources are plain numbers with a small silhouette icon (helmet, cartridge, jerrycan).
+- Type: Barlow Semi Condensed (Google Fonts, 400 to 700) for every word and number, tabular figures on. A straight-
+  sided, DIN-like grotesk in the family of road-sign and equipment lettering, which suits the subject; of the five
+  condensed faces tried (Sofia Sans Semi Condensed, Barlow Semi Condensed, Mona Sans, Archivo, Fira Sans Condensed)
+  its numerals read clearest at 13 to 14 px and its width fits fourteen recruit cards at 1920. Weights: 500 body, 600
+  names and numbers. Sentence case, no all-caps labels, nothing under 13 px. Courier Prime and Stardos Stencil are gone.
+- Icons (`client/symbols.js`): one set of flat, filled silhouettes in a 100 box, single color, for unit types (side
+  view facing right on a common baseline, planes from above), buildings, support calls, orders and the few UI glyphs.
+  The HUD draws them in the text color; world badges draw them in the owner's color. They replace the NATO map
+  symbols and the line icons. Full name and role stay in each tooltip. Faction markings next to player names in the
+  score panel: US star, German cross, Soviet star.
+- Portraits (`client/portraits.js`): recruit cards, train and build cards and the selection list show a small render
+  of each unit's real 3D model, made from the same builders the battlefield uses (main.js hands them in), once per type
+  and look (faction and player color), so they follow the models as those improve. A small renderer of its own
+  starts 1.2 s after the match starts and renders one portrait per frame; colors are pulled 20% toward grey so the
+  renders sit quietly on the panels. Until a portrait is ready its slot shows the silhouette icon.
 - Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
   row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
   Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
   Classic); bottom right the minimap. Nothing overlaps at 1366x768. The always-on keybinding panel is parked
   (issue #2); hotkeys show on buttons.
-- Lobby: same style, the room form as a manila order card. The map editor only takes the new fonts and colors.
+- On states share one look: a brass hairline over a faint brass tint (Capture mouse pressed, the Recruit tab on, an
+  ability with autocast on, which also shows a small A). While recruit letters are live the Command Card's hairline
+  turns brass; each card's letter sits at the left end of its cost line, clear of the name and the portrait. The
+  Command Card's group names lead with a small silhouette (rifleman, MG team, tank, fighter).
+- Lobby backdrop (`client/lobby-view.js`): behind the form, the selected map's real battlefield (the match's ground,
+  relief, houses, water and trees) seen from above at about 50 degrees, the camera gliding slowly over the middle of
+  the map on two unsynchronized sweeps (140 s and 95 s) without turning or changing height. It renders at half
+  resolution on its own small renderer, shows at half strength over the dark ground, follows the Map select, and is
+  freed when a match starts. It is built in steps in idle time; Graphics Low skips it; software rendering
+  (SwiftShader) and reduced motion get one still frame.
+- Lobby: the room form on one gunmetal panel in the HUD's style; Start is the one brass button. The match report,
+  tooltips, banners, alerts and the end-of-match notice (a quiet panel, no stamp) share the panel and type. The map
+  editor takes the same panel, type and colors.
 - Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area), point captured /
   lost, unit lost, enemy Air Support incoming, unit ready and building finished (Classic). One line each in a short list
   above the minimap (newest on top, gone after ~6 s), a minimap ping and a short sound. Space jumps to the newest alert
@@ -547,16 +658,20 @@ the HUD.
   paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
   5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
   and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
-  on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
+  on Low turns off cloud shade, blowing dust and birds, and keeps the table props, the lamp pool, fewer mist sheets
+  and fog banks, and the match weather's rain or snow with a third of the drops.
 - Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
   sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
   A hedgerow stretch is a shaded lumpy core inside leaf cards that run along the hedge, so neighbours close into one
   wall. It never changes gameplay cells. The five base buildings are one merged model per type and team
   (`buildingModel`), textured through the detail map above. `hqCamp(f, tent)` builds the HQ's tent, crates, table and
-  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
-  `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
-- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
-  drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
+  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces, props and
+  foliage darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in `client/surfaces.js`, which samples
+  the `client/fog.js` texture (see Fog of war below). It imports `/shared/sim.js` by absolute path, so it is browser
+  only.
+- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust)
+  and the match weather (see Weather; the name rules live in `shared/weather.js` so Map default agrees), drifts cloud
+  shadows over the board and table on the server's wind, sets out the planning-table props and the desk lamp, and flies a few
   birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
   ground darkens it too.
 - As merged with rounds 1 to 3: main.js keeps `relief` and `hAt` delegates to it. The round 3 smoothed height field
@@ -568,6 +683,34 @@ the HUD.
   The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
   box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
   step) along the four sides so the cut-earth skirt follows cliffs at the edge.
+
+## Fog of war (2026-10-01)
+- The server decides what each team sees, cell by cell, and the client only draws it. The old client drew its own
+  vision circles and disagreed with the server on 6.4% of the map's cells (a quarter of the cells either side called
+  seen), with 29 of 477 shown enemies standing on fogged ground.
+- `teamFog(g, team)` in `shared/sim.js` applies updateVision's rule at every cell centre: within 6 m, a building's or
+  an airborne plane's whole vision circle, a live recon corridor, otherwise the high-ground and garrison range with
+  line of sight. The range comes from `visionRange`, the same function updateVision uses (high ground, garrison and,
+  since the living-ground terrain, rain), so the two can't drift apart. The cells under the enemy ground units the
+  team sees count too (a building's whole footprint), so nothing a snapshot shows stands on fogged ground; that also
+  covers a dusty target seen from farther away, and the Horde stragglers revealed through the fog. It runs once per
+  vision pass (`g.visionTick`, every 4 ticks), the first time a snapshot asks. Units standing still keep their cells
+  until sight changes in their box (terrain edits, smoke) or their range changes (rain). Enemy planes are still shown
+  over fog (they are seen up to `CFG.air.seeRange` away).
+- Wire: `fogFor(g, slot, full)`. The start message carries `{ v, e }` (seen now and ever seen); each snapshot's `fog`
+  is the cells that flipped since that player's last fog, or nothing when the view did not change. Both use
+  `packRuns`: alternating run lengths as base-32 varints in URL-safe base64 digits. Teammates on the same base share
+  one packing. A six-player Massive snapshot went from 1920 to 2022 bytes on average.
+- Client: `client/fog.js` keeps seen, explored and the target look per cell: clear (seen, or under a unit the snapshot
+  shows), dimmed (explored) or dark (never seen). Cells fade to a new look within 0.25 s, and only the changed span of
+  each texture row is uploaded (`addUpdateRange`, after the first full upload). The ground overlay, structures, props
+  and the minimap read it, and so does the realistic scenery's foliage (bark, leaves, grass, wheat), through the same
+  `fogShader`; water darkens under the overlay. The match-end lift clears it.
+- Fog on 3D pieces (`fogShader` in `client/surfaces.js`) mixes toward the overlay's own colour (10 / 255) right after
+  `opaque_fragment`, in the shader's linear space. High draws into a linear render target and tone maps and converts
+  in `client/light.js`'s last pass, Low converts in the material, so a constant placed after `colorspace_fragment`
+  (the first version used 0.22) matches the ground on Low only and turns pieces pale on High.
+- Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
@@ -818,5 +961,4 @@ modern PC RTS (Company of Heroes 3, Men of War II). Everything the game draws fl
   edge over one pixel, draws the dark hairline and cuts dashes with soft ends, with no textures. Order lines reuse two
   growable buffers rewritten each snapshot; the entrenchment cells do the same. Draw calls: a unit's selection ring is
   one (was two), a strike zone one (was two), and the entrenchment preview one instead of one per cell.
-- Not restyled here: unit name and badge labels, the HUD panels and the minimap (another branch), and the cover preview
-  (landing separately).
+- Not restyled here: the cover preview (landing separately). Unit name and badge labels are the HUD's plates.
