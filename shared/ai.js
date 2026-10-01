@@ -230,7 +230,9 @@ export function think(g, slot, opts = {}) {
         if (house) { command(g, slot, { t: 'garrison', ids: [u.id], x: house.x, z: house.z }); if (u.enter >= 0) continue; }
         if (u.garrison < 0 && u.type === 'rifle' && !u.dig && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
           // dig a line between the point and the closest enemy HQ
-          const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0].spawn, l = d(foe, p) || 1;
+          const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
+          if (!foe) continue;
+          const l = d(foe, p) || 1;
           command(g, slot, { t: 'dig', ids: [u.id], x: p.x + (foe.x - p.x) / l * 5, z: p.z + (foe.z - p.z) / l * 5, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 });
         }
         continue;
@@ -283,7 +285,7 @@ function buildEconomy(g, slot, engineers, needArmor) {
   const has = (t, done) => own.some(b => b.type === t && (!done || b.built >= 1));
   const hq = own.find(b => b.type === 'hq') ?? me.spawn, cx = g.w * CELL / 2, cz = g.h * CELL / 2;
   const depots = own.filter(b => b.type === 'depot').length, free = g.nodes.filter(n => !n.depot);
-  const planesNear = [...g.units.values()].some(e => e.air && airborne(e) && !allied(g, e.owner, slot) && d(e, hq) < 60);
+  const planesNear = [...me.visible].some(id => { const e = g.units.get(id); return e?.air && airborne(e) && !allied(g, e.owner, slot) && d(e, hq) < 60; });
   const next = depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
     : planesNear && own.filter(b => b.type === 'flakpos').length < 2 ? 'flakpos' : free.length ? 'depot' : has('motorpool', true) && !has('airfield') && depots >= 3 ? 'airfield' : null;
   const taken = new Set(engineers.map(u => u.aiNode).filter(n => n !== undefined));

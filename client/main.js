@@ -10,6 +10,9 @@ import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, fla
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
+import { createProps } from './props.js';
+import { createWater } from './water.js';
+import { createAviation } from './aircraft.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -215,7 +218,7 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null;
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null, water = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
@@ -252,7 +255,7 @@ function startGame(m) {
   const map = m.map;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
-  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear();
+  units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear(); aviation.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
   // ground: painted canvas (client/ground.js), reused across rebuilds of a same-sized map
@@ -267,6 +270,9 @@ function startGame(m) {
 
   gp.paint(terrain.grid);
   buildStructures();
+  water?.dispose(); water = createWater(terrain.grid, map); if (water) world.add(water.mesh);
+
+  props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
 
   // capture points
   const assault = lobbyState?.mode === 'assault' || lobbyState?.mode === 'annihilation'; // no VP in either
@@ -303,6 +309,7 @@ function startGame(m) {
 
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
+let props = null;
 // stable pseudo-random per cell, so rebuilding after a change doesn't reshuffle everything
 const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
 
@@ -399,6 +406,8 @@ function applyCells(cells) {
   if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = fogMesh.geometry = terrainGeometry(); }
   terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
   buildStructures();
+  props?.refresh();
+  water?.changed(cells);
   mmImage = null;
 }
 
@@ -511,23 +520,9 @@ function makeUnit(id, type, owner) {
   const base = ownerRing(def.radius + 0.4, f.color);
   Object.assign(v, selectionRing(def.radius + 1, def.w ? [def.w.range, def.w.minRange].filter(Boolean) : []));
   root.add(base, v.sel); v.base = base;
-  if (isAir(type)) {
-    // fighter: slim, long nose; ground-attack plane: bigger, rockets and a bomb under the wings
-    const big = type === 'attacker', c = mat(f.vehicle), dark = mat(0x2a2a24);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, c, big ? 7 : 6, big ? 1.1 : 0.9, big ? 1.1 : 0.9), mesh(GEO.box, c, big ? 1.8 : 1.4, 0.2, big ? 11 : 9.5, big ? 0.4 : 0.6, -0.1, 0),
-      mesh(GEO.box, c, 0.9, 0.15, 3.4, big ? -3 : -2.6, 0.1, 0), mesh(GEO.box, c, 0.9, 1.3, 0.15, big ? -3 : -2.6, 0.7, 0),
-      mesh(GEO.box, mat(f.color), 0.5, 0.22, big ? 11.2 : 9.7, big ? 0.4 : 0.6, -0.05, 0), mesh(GEO.cyl, dark, 0.15, 0.4, 0.15, big ? 3.7 : 3.2, 0, 0).rotateZ(Math.PI / 2));
-    if (big) for (const z of [-3.5, -2.5, 2.5, 3.5]) v.body.add(mesh(GEO.cyl, dark, 0.12, 1.2, 0.12, 0.6, -0.4, z).rotateZ(Math.PI / 2));
-    if (big) v.body.add(mesh(GEO.box, dark, 1.4, 0.4, 0.4, 0.3, -0.7, 0));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'airfield') {
-    // a dirt strip, a hangar and a windsock
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, surface('earth'), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
-      mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'flakpos') {
+  if (isAir(type)) aviation.buildUnit(v, root, type, owner);   // per-faction plane, propellers, shadow (client/aircraft.js)
+  else if (type === 'airfield') aviation.buildAirfield(v, root, owner);
+  else if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     const dark = mat(0x2a2a24);
     v.body = new THREE.Group();
@@ -650,8 +645,8 @@ function corpse(v, man) {
 function removeUnit(v) {
   world.remove(v.bars);
   if (isAir(v.type)) {
-    // a plane shot down falls out of the sky and blows up where it lands (client/fx.js); one out of sight just goes
-    if (v.killed && v.root.visible) effects.downPlane(v); else world.remove(v.root);
+    // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
+    aviation.release(v); world.remove(v.root);
   } else if (v.killed && isVeh(v.type)) {
     // leave a burnt-out wreck for a while
     v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
@@ -676,6 +671,16 @@ function marker(x, z, color) {
   world.add(m);
   fx.push({ obj: m, life: 0.6, max: 0.6, update: (f) => { m.scale.setScalar(0.5 + (1 - f) * 2); m.material.opacity = f; }, dispose: () => m.material.dispose() });
 }
+
+// planes, airfields, flak bursts and shoot-downs (client/aircraft.js)
+// effects is made further down; explode and play only run once a match is on
+const aviation = createAviation({ hAt, UNITS, SUPPORT, units, altitude: AIR_ALT, world: () => world, facOf, colorOf: (slot) => look(slot).color, vehicleOf: (slot) => look(slot).vehicle, me: () => me,
+  explode: (x, z, size, opts) => effects.explode(x, z, size, opts), play: (name, x, z, opts) => audio.play(name, { x, z }, opts), flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
+// shots aircraft.js draws instead of fx.js; a support plane's value is the engine sound it comes in with
+const SUPPORT_PLANES = { strafe: 'plane_flyby', recon: 'plane_flyby', dive: 'plane_flyby', bombing: 'bomber', para: 'bomber' };
+// ('flak' with a target or a hit flag is a flak gun firing at the ground, which stays with fx.js)
+const AIR_SHOTS = new Set([...Object.keys(SUPPORT_PLANES), 'chutes', 'shotdown', 'planedown', 'flak', 'aa']);
+const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== undefined || sh.hit !== undefined));
 
 // ---------- snapshots ----------
 
@@ -708,9 +713,22 @@ function applySnapshot(s) {
   }
   for (const sh of s.shots) {
     if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
-    if (sh.k === 'chutes') chutes(sh.x, sh.z);
+    if (!airShot(sh)) continue;
+    // planes, parachutes, flak and shoot-downs are drawn by client/aircraft.js; their sounds go through client/audio.js
+    const at = { x: sh.x, z: sh.z };
+    if (SUPPORT_PLANES[sh.k]) { aviation.supportPlane(sh); audio.play(SUPPORT_PLANES[sh.k], at); }
+    else if (sh.k === 'chutes') chutes(sh.x, sh.z);
+    else if (sh.k === 'shotdown' || sh.k === 'planedown') { aviation.shotDown(sh); audio.play('flak', at); }
+    else if (sh.k === 'flak') { aviation.flak(sh); audio.play('flak', at); }
+    else if (sh.k === 'aa') {
+      const a = seen.has(sh.f) ? units.get(sh.f) : null, b = seen.has(sh.t) ? units.get(sh.t) : null;
+      if (a && b) aviation.aaBurst(a, b);
+      effects.aaFire(sh, a, b); // the guns' tracers and their sound (client/fx.js); aircraft.js draws the bursts
+    }
   }
-  effects.snapshot(s, seen); // flashes, tracers, blasts, smoke, planes, flak and their sounds (client/fx.js)
+  // flashes, tracers, blasts and smoke for the ground war and their sounds (client/fx.js); the air shots and the
+  // planes' strike warnings are left out so nothing is drawn twice
+  effects.snapshot({ ...s, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
@@ -718,7 +736,7 @@ function applySnapshot(s) {
   coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
   coverGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); coverGroup.clear();
   for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
-  if (s.nodes && !nodeMarks) nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; });
+  if (s.nodes && !nodeMarks) { props?.setNodes(s.nodes); nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; }); }
 
   s.points.forEach(([owner, capper, progress], i) => {
     points[i]?.set(owner >= 0 ? look(owner).color : null, capper >= 0 ? look(capper).color : null, progress);
@@ -1195,6 +1213,7 @@ function updateFog() {
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  water?.tick(now);
   // camera
   const pan = cam.dist * 1.1 * dt, f = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) }, r = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) };
   let fw = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
@@ -1216,7 +1235,7 @@ renderer.setAnimationLoop(() => {
     const gy = hAt(v.x, v.z);
     const air = isAir(v.type), up = air ? AIR_ALT : 0;
     v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
-    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; }
+    if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; aviation.tick(v, dt); }
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
@@ -1228,6 +1247,7 @@ renderer.setAnimationLoop(() => {
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
   effects.update(dt);
+  aviation.update(dt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   alerts.frame();
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() ? 0.05 : 0.15; drawMinimap(); }
@@ -1255,7 +1275,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, get me() { return me; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, alerts, effects, aviation, get me() { return me; }, get water() { return water; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { cam.x = x; cam.z = z; },

@@ -318,6 +318,21 @@ the HUD.
   wrecks). `client/battle-sound.js` only moves the listener with the camera, drives the tank engine bed from moving
   vehicles and plays dig and build foley. The Volume slider sits in the in-game menu and replaces the old mute
   button. `tools/build-audio.mjs` rebuilds the mp3s and index from the raw takes (needs ffmpeg).
+- As built, round 2 (props): `client/props.js` (`createProps({ map, grid, hAt, parent })`) places painted scenery
+  from integer hash seeds, so every browser and late joiner sees the same trees, poplar rows, pines, bushes, rocks,
+  fences, haystacks and crates. One InstancedMesh per kind, kept clear of spawns, points, the paths between points and
+  resource nodes (`setNodes`); `refresh()` after terrain changes, and Graphics Low shows half of them.
+- As built, round 2 (water): `client/water.js` (`createWater(grid, map)`) is one see-through mesh over river, ford and
+  bridge cells, painted from a mask texture (shoreline, depth guess, fords, bridges) with a per-vertex flow
+  direction. It draws first in the see-through pass and writes no depth, so fog of war, smoke and effects draw over
+  it. `changed(cells)` rebuilds it after a bridge or bank change, `tick(now)` animates it, Graphics Low freezes it.
+- As built, round 2 (aviation visuals): `client/aircraft.js` (`createAviation`) builds each faction's fighter,
+  ground-attack plane and bomber as one merged vertex-colored mesh plus propellers, and draws plane units (bank,
+  shadow, damage smoke), the Classic airfield, support planes crossing the map, flak bursts and shoot-downs. main.js
+  sends it the air shots (`strafe`, `recon`, `bombing`, `dive`, `para`, `shotdown`, `planedown`, `flak` at a support
+  plane, `aa`) and keeps those shots and the support planes' strike warnings out of `effects.snapshot`, so `client/fx.js`
+  draws only the ground war plus the anti-air tracers (`effects.aaFire`). Paratroop canopies stay in main.js. Crashes
+  and strafing hits use `effects.explode`, and every air sound plays through `client/audio.js`.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

@@ -5,6 +5,45 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Scenery, water and planes (round 2):
+  - Map symbols now cover every aviation unit (fighter, ground-attack plane, mobile flak, flak emplacement, airfield)
+    and all eight support calls, and an unknown unit type shows an empty frame with a "?" instead of a blank one.
+  - Open ground is dressed with painted scenery props: round trees, poplar rows, pines on high ground, bushes along
+    hedges, rocks, fences, haystacks and crates beside houses. They are purely visual, keep clear of spawns, points,
+    paths and resource nodes, stay put when terrain changes, and Low graphics shows half of them.
+  - Rivers, fords and bridges get a flowing water surface: blue-green, darker in deep water, pebbled at fords, with
+    foam at the banks and around bridge spans. Fog of war still darkens it, it rebuilds when a bridge collapses, and
+    Low graphics freezes the animation.
+  - Planes are now per-faction painted miniatures (P-51, P-47, B-25; Bf 109, Ju 87, He 111; Yak-9, Il-2, Pe-2) with
+    spinning propellers, a ground shadow, banking in turns, damage smoke, dark flak bursts and a spiral-down
+    shoot-down that ends in a fireball, and the Classic airfield gets a runway, arched hangar, control tower and
+    windsock.
+  - The new planes use the round 1 explosions and recorded sounds: a crash plays the plane-crash sound and a fire
+    loop, a strafing run plays one gun burst, and the tracers that flak and fighters fire at planes still come from
+    the effects layer, so each plane, burst and tracer is drawn once.
+  - Left for later: support bombers no longer show bombs falling from the plane (the bomb blasts still land on
+    time), and `client/fx.js` still carries its own plane pool and falling-plane code, now unused.
+- Simulation fixes (round 2):
+  - Air support: a spent Fighter Cover ring now leaves the map instead of staying forever. Ground squads ignore an
+    attack order on a plane, one cover can no longer shoot down two strikes on the same tick, blowing a bridge no
+    longer kills planes flying over it, and a plane overhead no longer counts as cover. Parked planes no longer spot,
+    houses no longer block spotting from the air, new planes appear at the Airfield that trained them, and
+    paratroopers take a population slot and no longer drop for an eliminated army.
+  - Fog of war: shoot-downs, flak shooters and HQ collapses only reach teams that can see them, terrain updates and
+    the start of a match no longer reveal unseen building footprints, and a reconnect keeps remembered terrain.
+  - Server: commands with a bad player slot, unit, support or fortification name, or someone else's building are
+    rejected, a bad army value no longer gives NaN MP, Massive selections are no longer capped at 50 units, and
+    reconnects and map loads during the start or end of a match are handled. The AI no longer crashes when it holds
+    an allied point with no opponent left.
+  - Speed: a Massive six-army Classic match steps in 3 ms on average instead of 21 ms. Idle squads look for targets on
+    a 0.5 s timer, vision and terrain updates skip work they threw away, and AI players get no snapshots.
+  - Balance is unchanged within noise: Conquest wins 34/36/30% by faction over 300 AI matches (was 41/29/31%), and
+    Classic 47/47/44 wins over 160 matches.
+  - Left for later: the lobby still labels Large and Massive as 2x and 3.5x income while the game uses 3x and 6x; the
+    Tiger limit of 1 does not grow with army size; the server tests strip `import` lines from server.js with a
+    regex; AI anti-tank buying against medium tanks is untested; an idle squad now notices a new enemy up to 0.5 s
+    later; and AI thinking spikes in big armies were not profiled.
+
 - Polish (review fixes for the HUD, world and effects slices):
   - Point and resource node income tags and the HQ sign keep the same size on screen at every zoom, so they stay
     readable when zoomed out and no longer cover the fight when zoomed in. They fade out up close, and a point's tag

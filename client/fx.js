@@ -890,7 +890,8 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
     if (from && muzzleAt(from, 0, px, pz)) skyShot(v3.x, v3.y, v3.z, px + rr(-3, 3), py, pz + rr(-3, 3), GUNS.flak);
     play('flak', from ? from.x : px, from ? from.z : pz, 0.1);
   }
-  function antiAir(sh, from, to) {
+  // bursts = false: only the guns' tracers and their sound (main.js has client/aircraft.js draw the bursts)
+  function antiAir(sh, from, to, bursts = true) {
     let ex = sh.x, ey = hAt(sh.x, sh.z) + airAlt, ez = sh.z;
     if (to) { to.root.updateWorldMatrix(true, false); v3.setFromMatrixPosition(to.root.matrixWorld); ex = v3.x; ey = v3.y; ez = v3.z; }
     // style by shooter: flak guns burst shells around the plane; an MG (or a shooter out of sight) is plain tracer fire
@@ -903,7 +904,7 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
       T = Math.hypot(ex - mx, ey - my, ez - mz) / st.spd;
       for (let b = 0; b < st.burst; b++) later(b * st.gap, E_SKY, mx, my, mz, ex + rr(-2.5, 2.5), ey + rr(-1.5, 1.5), ez + rr(-2.5, 2.5), sti);
     }
-    if (flak) later(T, E_FLAK, ex + rr(-4, 4), ey + rr(-2, 3), ez + rr(-4, 4), 0.7); // shells bursting around it
+    if (flak && bursts) later(T, E_FLAK, ex + rr(-4, 4), ey + rr(-2, 3), ez + rr(-4, 4), 0.7); // shells bursting around it
     play(st.snd, from ? from.x : ex, from ? from.z : ez, 0.1);
   }
 
@@ -1032,5 +1033,6 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
     if (fleet) for (const p of fleet) { p.on = false; p.down = false; p.g.visible = false; }
   }
 
-  return { update, snapshot, wreck, downPlane, reset, explode, scorch, collapse, get count() { return n; } };
+  const aaFire = (sh, from, to) => antiAir(sh, from, to, false);
+  return { update, snapshot, wreck, downPlane, aaFire, reset, explode, scorch, collapse, get count() { return n; } };
 }
