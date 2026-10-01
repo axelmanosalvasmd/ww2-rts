@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- start.cmd tries Tailscale Funnel first (a public link: friends can join without Tailscale) and falls back to the
+  tailnet-only link. Funnel stays off until the tailnet admin allows it; the link is the same either way.
 - Conquest catch-up is stronger: trailing players get up to +6 MP/s (was 4), 1 per 60 VP behind (was 80). The new units
   had made games one-sided (2nd place finished with 54% of the winner's VP); now 66% on Three Crossroads and 63% on
   River Towns, more lead changes (1.58), 9.6 min games, faction wins 33/31/26 (90 AI matches). Tried and dropped: keeping
