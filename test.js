@@ -2180,6 +2180,72 @@ async function stopServerHarness() {
   bunkers[0].hp = 0; step(annihilation);
   assert.deepEqual(snapshotFor(annihilation, 2, []).mode.bunkers, [2, 0, 2], 'losing a bunker leaves the Annihilation denominators fixed');
 }
+// Unit models (client/unit-models.js): merged parts keep their shape and facing, every unit builds with each
+// soldier as one draw, postures blend and keep the weapon above ground, and corpses stay under the cap.
+{
+  const THREE = await import('three');
+  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies } = await import('./client/unit-models.js');
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
+  assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
+  merged.computeBoundingBox();
+  assert.deepEqual([merged.boundingBox.min.toArray(), merged.boundingBox.max.toArray()], [[-2.5, -1, -0.5], [2.5, 1, 0.5]], 'merge bakes each part\'s transform');
+  const P = merged.attributes.position, N = merged.attributes.normal, I = merged.index, t = [0, 1, 2].map(() => new THREE.Vector3()), n = new THREE.Vector3();
+  for (let i = 0; i < I.count; i += 3) {
+    t.forEach((p, k) => p.fromBufferAttribute(P, I.getX(i + k)));
+    const face = new THREE.Vector3().subVectors(t[1], t[0]).cross(new THREE.Vector3().subVectors(t[2], t[0]));
+    assert.ok(face.dot(n.fromBufferAttribute(N, I.getX(i))) > 0, `triangle ${i / 3} faces outward, also on the mirrored part`);
+  }
+  const mat = new THREE.MeshLambertMaterial(), bags = [0, 1, 2].map((i) => { const m = new THREE.Mesh(box, mat); m.position.x = i * 3; m.castShadow = true; return m; });
+  const one = mergeMeshes(bags);
+  assert.ok(one.material === mat && one.castShadow && one.geometry.index.count === 3 * box.index.count, 'scenery merges into one shadow-casting mesh');
+
+  const look = { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 };
+  for (const [type, def] of Object.entries(UNITS)) for (const fac of [0, 1, 2]) {
+    const root = new THREE.Group(), v = { type, root, models: [], turret: null };
+    buildModel(v, root, look, fac, def);
+    assert.ok(v.models.length, `${type}: has a model`);
+    if (v.squad) {
+      assert.equal(v.models.length, def.models, `${type}: one soldier per model`);
+      for (const man of v.models) {
+        const { hi, lo } = man.userData;
+        assert.ok(hi.length === 1 && lo.length === 1, `${type}: a soldier is one draw near and far`);
+        assert.ok(![...hi, ...lo].some((m) => m.castShadow), `${type}: soldiers cast no shadow`);
+      }
+    } else {
+      let draws = 0;
+      root.traverse((o) => { if (o.isMesh) { draws++; assert.ok(o.castShadow, `${type}: vehicles and structures cast shadows`); } });
+      assert.ok(draws >= 1 && draws <= 3, `${type}: ${draws} draws`);
+    }
+  }
+
+  assert.deepEqual([49, POSTURE.crouch, 89, POSTURE.prone].map((s) => postureOf(s, 0)), [0, 1, 1, 2], 'stand, crouch at 50, prone at 90');
+  assert.equal(postureOf(100, 1), 3, 'retreating squads lean even when pinned');
+  assert.equal(postureOf(100, 0, 2), 1, 'pinned in a trench: crouch, not out of sight');
+  const root = new THREE.Group(), v = { type: 'rifle', root, models: [], x: 0, z: 0, supp: 95, flags: 0, cover: 0 }, eye = new THREE.Vector3(0, 30, 30);
+  buildModel(v, root, look, 0, UNITS.rifle);
+  animate(v, POSTURE.blend / 2, eye);
+  assert.ok(Math.abs(v.squad.w[2] - 0.5) < 0.01, 'halfway to prone after half the blend time');
+  animate(v, POSTURE.blend / 2 + 0.01, eye);
+  assert.equal(v.squad.w[2], 1, 'prone after the blend time');
+  const man = v.models[0];
+  man.updateMatrixWorld(true);
+  const muzzle = new THREE.Vector3(0.72, 1.1, 0.2).applyMatrix4(man.matrixWorld); // client/fx.js HAND.rifle
+  assert.ok(man.userData.pose.rotation.z < -1.3 && muzzle.y > 0.3 && muzzle.y < 1, `lying down, weapon just above ground (${muzzle.y.toFixed(2)})`);
+  animate(v, 0.016, new THREE.Vector3(0, 0, LOD.high + 10));
+  assert.ok(v.squad.far && !man.userData.hi[0].visible && man.userData.lo[0].visible, 'far model beyond the LOD distance');
+
+  const bodies = createBodies(), scene = new THREE.Scene(), world = new THREE.Group();
+  scene.add(world);
+  let most = 0;
+  for (let i = 0; i < 600; i++) { bodies.add(world, i % 50, 0.3, i / 50); bodies.update(0.02); most = Math.max(most, bodies.count); }
+  assert.ok(most <= CORPSES.cap && most > CORPSES.cap - 20, `corpses stay at or under the cap (${most})`);
+  assert.equal(world.children.find((o) => o.isInstancedMesh).count, bodies.count, 'one instanced mesh draws them all');
+  for (let s = 0; s < CORPSES.life + CORPSES.fade + 1; s += 0.5) bodies.update(0.5);
+  assert.equal(bodies.count, 0, 'old bodies fade out and leave');
+  bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
+  assert.equal(bodies.count, 0, 'a finished match empties the pool');
+}
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and

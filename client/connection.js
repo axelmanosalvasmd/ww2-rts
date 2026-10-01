@@ -4,7 +4,7 @@ export function createConnection({ url, hello, WebSocket = globalThis.WebSocket,
 } }) {
   const handlers = new Map();
   let socket = null, running = false, timer = null, attempts = 0, answered = false, waitingForRoom = false;
-  const emit = (type, data) => { for (const fn of handlers.get(type) || []) fn(data); };
+  const emit = (type, data, size) => { for (const fn of handlers.get(type) || []) fn(data, size); };
   const clearRetry = () => { if (timer !== null) clock.clearTimeout(timer); timer = null; };
   const retire = () => { const old = socket; socket = null; if (old && old.readyState < 2) old.close(); };
   const send = (message) => { if (socket?.readyState !== 1) return false; socket.send(JSON.stringify(message)); return true; };
@@ -46,7 +46,7 @@ export function createConnection({ url, hello, WebSocket = globalThis.WebSocket,
       }
       attempts = 0; waitingForRoom = false;
       if (!answered) { answered = true; emit('connected', message); }
-      emit(message.t, message);
+      emit(message.t, message, event.data.length); // the size feeds the perf overlay (client/perf.js)
     };
     current.onclose = (event) => {
       if (current !== socket || !running) return;
