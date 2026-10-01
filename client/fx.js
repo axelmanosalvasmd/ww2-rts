@@ -16,11 +16,11 @@ import * as THREE from 'three';
 import { UNITS, SUPPORT, CELL } from '/shared/sim.js';
 import { gfx } from './gfx.js';
 import { audio } from './audio.js';
+import { wind } from './wind.js';
 
 const TAU = Math.PI * 2, rand = Math.random, rr = (a, b) => a + (b - a) * rand();
 const lin = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r * k, c.g * k, c.b * k]; };
 const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-const WIND_X = 0.55, WIND_Z = 0.25; // smoke drifts the same way everywhere
 
 // ---------- textures, drawn once on canvases ----------
 
@@ -141,6 +141,8 @@ const FX = {
   wreckSmoke: pre({ c0: lin(0x161412), c1: lin(0x55524c), a: 0.72, frame: 0, frames: 4, grow: 3.6, rv: 0.25, drag: 0.6, wind: 1.3, grav: -0.7, pull: 0.45, fin: 0.12, k: 1.6 }),
   screen: pre({ c0: lin(0xbdbcb4), c1: lin(0xcfcec8), a: 0.66, frame: 0, frames: 4, grow: 1.35, rv: 0.06, drag: 0.4, wind: 0.35, grav: -0.04, pull: 0.55, fin: 0.22, k: 2.2 }),
   collapse: pre({ c0: lin(0x9d927e), c1: lin(0xb0a794), a: 0.7, frame: 8, grow: 2.2, rv: 0.2, drag: 0.9, wind: 0.6, grav: -0.15, pull: 0.5, fin: 0.1, k: 1.7 }),
+  // the plume a vehicle raises on dry ground: thin, low and quick to spread
+  roadDust: pre({ c0: lin(0xa39274), c1: lin(0xb3a68e), a: 0.3, frame: 8, grow: 3.2, rv: 0.25, drag: 2.2, wind: 1, grav: -0.3, pull: 0.3, fin: 0.12, k: 1.5 }),
   trail: pre({ c0: lin(0xa8a49c), c1: lin(0xc4c1ba), a: 0.42, frame: 0, frames: 4, grow: 3.5, rv: 0.5, drag: 1.5, wind: 1, grav: -0.3, pull: 0.2, fin: 0.05, k: 1.3 }),
   bomb: pre({ c0: lin(0x24241e), frame: 7, len: 1.1, grav: 0, k: 20, fin: 0 }),
   nade: pre({ c0: lin(0x2a2a22), frame: 7, rv: 10, k: 20, fin: 0 }),
@@ -285,7 +287,7 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
       const drag = S[o + 21];
       if (drag > 0) {
         const kk = Math.min(1, drag * dt), wf = S[o + 28];
-        S[o + 3] += (WIND_X * wf - S[o + 3]) * kk; S[o + 5] += (WIND_Z * wf - S[o + 5]) * kk; S[o + 4] -= S[o + 4] * kk;
+        S[o + 3] += (wind.x * wf - S[o + 3]) * kk; S[o + 5] += (wind.z * wf - S[o + 5]) * kk; S[o + 4] -= S[o + 4] * kk; // smoke drifts with the game's wind
       }
       const g = S[o + 22];
       S[o] += S[o + 3] * dt; S[o + 1] += (S[o + 4] - 0.5 * g * dt) * dt; S[o + 2] += S[o + 5] * dt; S[o + 4] -= g * dt;
@@ -634,9 +636,10 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
   }
   function syncClouds(list) {
     for (const c of clouds.values()) c.keep = false;
-    for (const [x, z, r] of list) {
-      const key = x * 100003 + z;
+    for (const [x, z, r, id] of list) {
+      const key = id ?? x * 100003 + z;
       let c = clouds.get(key);
+      if (c) { c.x = x; c.z = z; } // the wind carries it
       if (!c) {
         c = { id: ++cloudId, x, z, r, acc: 0, keep: true };
         clouds.set(key, c);
@@ -652,6 +655,38 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
       clouds.delete(key);
       // the screen is gone on the server: thin it out quickly so it doesn't look like it still blocks sight
       for (let i = 0; i < n; i++) { const o = i * F; if (S[o + 29] === c.id) S[o + 7] = Math.min(S[o + 7], S[o + 6] + rr(1, 2.2)); }
+    }
+  }
+  // ---------- fires: burning hedges, houses and grass (snapshot.fires) ----------
+  const fires = new Map();
+  function syncFires(list) {
+    for (const f of fires.values()) f.keep = false;
+    for (const [x, z] of list) {
+      const key = x * 100003 + z;
+      let f = fires.get(key);
+      if (!f) fires.set(key, f = { x, z, y: hAt(x, z), acc: rand() });
+      f.keep = true;
+    }
+    // a fire that has gone out leaves a scorch mark
+    for (const [key, f] of fires) if (!f.keep) { fires.delete(key); scorch(f.x, f.z, 1.7); }
+  }
+  function updateFires(dt) {
+    // many fires share the particle budget
+    const rate = (low() ? 4 : 9) * Math.min(1, 50 / Math.max(1, fires.size));
+    for (const f of fires.values()) {
+      for (f.acc += dt * rate; f.acc >= 1; f.acc--) {
+        emit(FX.flame, f.x + rr(-0.9, 0.9), f.y + rr(0.2, 0.6), f.z + rr(-0.9, 0.9), wind.x, rr(1, 2), wind.z, rr(0.7, 1.2), rr(0.5, 0.9));
+        if (rand() < 0.2) emit(FX.wreckSmoke, f.x + rr(-0.6, 0.6), f.y + 1.2, f.z + rr(-0.6, 0.6), rr(-0.3, 0.3), rr(1.2, 2), rr(-0.3, 0.3), rr(0.8, 1.3), rr(2.5, 4));
+        if (!low() && rand() < 0.1) emit(FX.ember, f.x + rr(-0.6, 0.6), f.y + 0.8, f.z + rr(-0.6, 0.6), rr(-1, 1), rr(2, 4), rr(-1, 1), 0.06, rr(1, 2));
+      }
+    }
+  }
+  // a vehicle moving over dry ground trails dust (unit flag 32768)
+  function dustTrails(rows, seen) {
+    for (const r of rows ?? []) {
+      if (!(r[12] & 32768) || !seen.has(r[0]) || rand() > (low() ? 0.3 : 0.6)) continue;
+      const x = r[3] - Math.cos(r[5]) * 1.6 + rr(-0.7, 0.7), z = r[4] - Math.sin(r[5]) * 1.6 + rr(-0.7, 0.7);
+      emit(FX.roadDust, x, hAt(x, z) + 0.3, z, rr(-0.3, 0.3), rr(0.3, 0.8), rr(-0.3, 0.3), rr(0.7, 1.2), rr(1.4, 2.4));
     }
   }
   function updateClouds(dt) {
@@ -967,6 +1002,8 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
       if (UNITS[k]) directFire(sh, from, sh.t !== undefined && seen.has(sh.t));
     }
     syncClouds(s.smokes ?? []);
+    syncFires(s.fires ?? []);
+    dustTrails(s.units, seen);
   }
 
   function salvo(sh, from) {
@@ -1013,7 +1050,7 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
     updateFalls(dt);
     updateRockets(dt);
     updateWrecks(dt);
-    updateClouds(dt);
+    updateClouds(dt); updateFires(dt);
     simulate(dt);
     updateDecals(dt);
     if (shake > 0.004) {

@@ -1,6 +1,6 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. It only reacts to enemies its own player can see.
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf, airborne } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf, airborne } from './sim.js';
 import { gridFor, rebuildGrid } from './grid.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -23,6 +23,35 @@ function trenchesNear(g, p, r) {
     for (let x = Math.floor((p.x - r) / CELL); x <= (p.x + r) / CELL; x++)
       if (x >= 0 && y >= 0 && x < g.w && y < g.h && g.flags[y * g.w + x] & TRENCH) n++;
   return n;
+}
+
+// how many of my side's mines lie within r of p
+const minesNear = (g, slot, p, r) => [...g.mines].filter(([c, by]) => allied(g, by, slot) && d(p, { x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL }) <= r).length;
+
+// A blown bridge to put back: the map's bridge cells are noted on the first look, and one that is river now gets a
+// builder squad. The span runs along the shorter stretch of water through the cell. One job per look.
+function rebuildBridge(g, slot, squads, enemies, busy) {
+  const me = g.players[slot], mem = memoryOf(g, slot);
+  mem.bridges ??= g.chars.flatMap((ch, c) => (ch === '=' ? [c] : []));
+  if (me.mp < FORTS.bridge.cost + 150 || squads.some(u => u.dig?.cells.some(([, ch]) => ch === '='))) return;
+  const at = (c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
+  const crew = squads.filter(u => CFG.fortBuilders.includes(u.type) && !u.retreating && !u.targetId && !u.dig && u.garrison < 0);
+  const gap = mem.bridges.filter(c => g.chars[c] === 'W' && !enemies.some(e => d(e, at(c)) < 35))
+    .sort((a, b) => d(at(a), me.spawn) - d(at(b), me.spawn))[0];
+  if (gap === undefined || !crew.length) return;
+  // how far the water runs each way from the gap, along x and along y
+  const run = (step) => { let lo = 0, hi = 0; while (lo > -8 && g.chars[gap + (lo - 1) * step] === 'W') lo--; while (hi < 8 && g.chars[gap + (hi + 1) * step] === 'W') hi++; return [lo, hi]; };
+  const [x0, x1] = run(1), [y0, y1] = run(g.w), alongX = x1 - x0 <= y1 - y0;
+  const mid = at(gap), off = (alongX ? x0 + x1 : y0 + y1) / 2 * CELL;
+  const spot = { x: mid.x + (alongX ? off : 0), z: mid.z + (alongX ? 0 : off) };
+  const u = crew.sort((a, b) => d(a, spot) - d(b, spot))[0];
+  busy.add(u.id);
+  // out of sight (every cell of the span must be seen, and a bomb crater hides them from afar): walk up to its own
+  // bank first, to a point just inside the builders' reach (the middle of the river has no reachable nearest cell)
+  if (command(g, slot, { t: 'dig', ids: [u.id], kind: 'bridge', x: spot.x, z: spot.z, dir: alongX ? 0 : Math.PI / 2 }) && !u.path.length) {
+    const k = Math.min(1, (FORTS.bridge.reach - 2) / (d(u, spot) || 1));
+    command(g, slot, { t: 'move', orders: [[u.id, spot.x + (u.x - spot.x) * k, spot.z + (u.z - spot.z) * k]] });
+  }
 }
 
 // a random cover cell near the point, so squads dig in instead of standing in the open
@@ -149,6 +178,7 @@ export function think(g, slot, opts = {}) {
   else if (can('strafe')) call('strafe', cluster(2, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && (classic || me.mp > 250)) call('recon', g.points.find(p => p.owner >= 0 && !allied(g, p.owner, slot)));
   const busy = new Set();
+  rebuildBridge(g, slot, mine.filter(u => !u.air), enemies, busy);
   if (adapt) {
     const free = mine.filter(u => !u.retreating && !u.targetId);
     // a hurt squad is left to the normal logic, which pulls it back to reinforce
@@ -237,11 +267,15 @@ export function think(g, slot, opts = {}) {
         // hold it from a house if there is one close by, otherwise dig in
         const house = u.garrison < 0 && def.garrisons && houseNear(g, p, CFG.pointRadius + 3);
         if (house) { command(g, slot, { t: 'garrison', ids: [u.id], x: house.x, z: house.z }); if (u.enter >= 0) continue; }
-        if (u.garrison < 0 && CFG.fortBuilders.includes(u.type) && !u.dig && !u.entrench && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
+        const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
+        if (!foe) continue;
+        const l = d(foe, p) || 1, free = !u.dig && !u.entrench && CFG.fortBuilders.includes(u.type);
+        // mines first, across the approach from the closest enemy HQ and just outside the point (laid from inside it,
+        // so the squad still holds the point), then the trenches
+        if (free && me.mp >= FORTS.mines.cost + 150 && minesNear(g, slot, p, CFG.pointRadius + 10) < 2
+          && command(g, slot, { t: 'dig', ids: [u.id], kind: 'mines', x: p.x + (foe.x - p.x) / l * (CFG.pointRadius + 2), z: p.z + (foe.z - p.z) / l * (CFG.pointRadius + 2), dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 }) === undefined) continue;
+        if (u.garrison < 0 && free && me.mp >= CFG.digCost + 150 && trenchesNear(g, p, CFG.pointRadius + 4) < 6) {
           // entrench toward the closest enemy HQ: an arc of trench, or a strongpoint when there is manpower to spare
-          const foe = g.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
-          if (!foe) continue;
-          const l = d(foe, p) || 1;
           command(g, slot, { t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: p.x + (foe.x - p.x) / l * 6, z2: p.z + (foe.z - p.z) / l * 6 });
         } else if (u.garrison < 0 && !u.dig && !u.entrench && !inCover(g, u)) command(g, slot, { t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
         continue;
