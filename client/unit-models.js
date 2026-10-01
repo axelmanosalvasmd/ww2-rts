@@ -1,7 +1,8 @@
 // Unit models: soldiers, vehicles, guns and the structures units build, plus how squads stand (posture), the cheap
 // far-away soldier, and the pooled corpses.
 //
-// Models are put together from boxes, cylinders and capsules like before, then baked: every part with a plain color
+// Models come from the families in client/models/ (infantry, armor-medium, armor-lightheavy, wheeled, guns) or, for
+// the stand-in structures, from boxes, cylinders and capsules, and are then baked: every part with a plain color
 // becomes part of one mesh that carries its colors per vertex and shares one material, so a soldier, a hull or a
 // turret is one draw call. Parts with a special material (two-sided flags, the textured wood and sandbag surfaces
 // main.js hands in through setSurfaces) merge with the other parts that use it. Planes and the airfield are not built here:
