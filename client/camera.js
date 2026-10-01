@@ -62,23 +62,88 @@ function pose() {
   camera.lookAt(cam.x, cam.y ?? 0, cam.z);
   camera.updateMatrixWorld();
 }
-function clamp() {
-  const { cam } = hooks, { w, h } = hooks.bounds();
-  cam.x = Math.min(w || 160, Math.max(0, cam.x)); cam.z = Math.min(h || 160, Math.max(0, cam.z));
+// The clear band between the HUD's top panels and the recruit bar, in CSS pixels. Measured on demand (match start,
+// H, zoom) and after a resize, not every frame; the whole view when the HUD is hidden or leaves too little room.
+let bandCache = null;
+function band(fresh = false) {
+  if (fresh || !bandCache) {
+    const b = hooks.band?.(), top = Math.max(0, b?.top ?? 0), bottom = Math.min(innerHeight, b?.bottom ?? innerHeight);
+    bandCache = bottom - top >= innerHeight * 0.3 ? { top, bottom } : { top: 0, bottom: innerHeight };
+  }
+  return bandCache;
 }
-function solveAnchor() {
-  if (!anchor) return;
+// The widest zoom: the distance and target at which the whole board, at the current heading, fits the clear band
+// with a small table margin on every side and sits in its middle. Cached until the heading, window, band or map changes.
+const FIT_MARGIN = 0.04, MIN_WIDE = 60;
+let fitKey = '', fit = { dist: 150, x: 80, z: 80 };
+function wide() {
+  const { cam, camera } = hooks, { w, h } = hooks.bounds();
+  if (!w || !h) return { dist: 150, x: (w || 160) / 2, z: (h || 160) / 2 };
+  const { top, bottom } = band(), key = `${w},${h},${cam.yaw},${innerWidth},${innerHeight},${top},${bottom}`;
+  if (key === fitKey) return fit;
+  const saved = { x: cam.x, y: cam.y, z: cam.z, dist: cam.dist };
+  const corners = [[0, 0], [w, 0], [w, h], [0, h]].map(([x, z]) => new THREE.Vector3(x, hooks.hAt(Math.min(x, w - 0.01), Math.min(z, h - 0.01)), z));
+  const roomX = innerWidth * (1 - 2 * FIT_MARGIN), roomY = bottom - top - 2 * innerHeight * FIT_MARGIN;
+  const middle = new THREE.Vector3(w / 2, hooks.hAt(w / 2, h / 2), h / 2);
+  // the board's box on screen, looking at its middle from dist
+  const box = (dist) => {
+    cam.x = w / 2; cam.z = h / 2; cam.y = middle.y; cam.dist = dist; pose();
+    const r = { ok: true, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+    for (const p of corners) {
+      const s = a.copy(p).project(camera), x = (s.x + 1) / 2 * innerWidth, y = (1 - s.y) / 2 * innerHeight;
+      if (!(s.z > -1 && s.z < 1)) r.ok = false;
+      r.x0 = Math.min(r.x0, x); r.x1 = Math.max(r.x1, x); r.y0 = Math.min(r.y0, y); r.y1 = Math.max(r.y1, y);
+    }
+    return r;
+  };
+  let lo = 20, hi = 800;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2, r = box(mid);
+    if (r.ok && r.x1 - r.x0 <= roomX && r.y1 - r.y0 <= roomY) hi = mid; else lo = mid;
+  }
+  const dist = Math.max(MIN_WIDE, hi), r = box(dist);
+  // slide the target so the box's middle lands on the band's middle (perspective puts the near edge lower)
+  shift(middle, innerWidth - (r.x0 + r.x1) / 2, innerHeight / 2 + (top + bottom) / 2 - (r.y0 + r.y1) / 2);
+  fit = { dist, x: Math.min(w, Math.max(0, cam.x)), z: Math.min(h, Math.max(0, cam.z)) };
+  fitKey = key;
+  Object.assign(cam, saved); pose();
+  return fit;
+}
+// The target stays on the board. Zoomed out past half the widest view it is drawn toward the widest view's target,
+// so the widest view is the whole board, centered, and not a corner of it with the table filling the rest.
+function clamp() {
+  const { cam } = hooks, { w, h } = hooks.bounds(), W = w || 160, H = h || 160, f = wide();
+  const free = Math.min(1, Math.max(0, 2 * (1 - cam.dist / f.dist)));
+  cam.x = Math.min(f.x + (W - f.x) * free, Math.max(f.x * (1 - free), cam.x));
+  cam.z = Math.min(f.z + (H - f.z) * free, Math.max(f.z * (1 - free), cam.z));
+}
+// Move the target so the screen point (mx, my) looks at the ground point p. False when the ray runs level.
+function shift(p, mx, my) {
   const { cam, camera } = hooks;
   pose();
-  cursor.set(anchor.mx / innerWidth * 2 - 1, 1 - anchor.my / innerHeight * 2);
+  cursor.set(mx / innerWidth * 2 - 1, 1 - my / innerHeight * 2);
   raycaster.setFromCamera(cursor, camera);
   const { origin, direction } = raycaster.ray;
-  if (Math.abs(direction.y) < 1e-6) return;
+  if (Math.abs(direction.y) < 1e-6) return false;
   // Translate the ray through the anchor at its ground height, including the camera's height glide.
-  const t = (anchor.point.y - origin.y) / direction.y;
-  cam.x += anchor.point.x - (origin.x + direction.x * t);
-  cam.z += anchor.point.z - (origin.z + direction.z * t);
-  clamp(); pose();
+  const t = (p.y - origin.y) / direction.y;
+  cam.x += p.x - (origin.x + direction.x * t);
+  cam.z += p.z - (origin.z + direction.z * t);
+  return true;
+}
+function solve(p, mx, my) {
+  if (shift(p, mx, my)) { clamp(); pose(); }
+}
+function solveAnchor() {
+  if (anchor) solve(anchor.point, anchor.mx, anchor.my);
+}
+// Put the ground point (x, z) in the middle of the clear band, so the recruit bar and top panels do not cover it.
+function frame(x, z) {
+  const { cam } = hooks, { top, bottom } = band(true), p = new THREE.Vector3(x, hooks.hAt(x, z), z);
+  anchor = null; cam.x = x; cam.z = z;
+  cam.dist = Math.min(cam.dist, wide().dist);
+  // two passes: the camera's height follows the ground under the target, which moves in the first
+  for (let i = 0; i < 2; i++) { cam.y = hooks.hAt(cam.x, cam.z); solve(p, innerWidth / 2, (top + bottom) / 2); }
 }
 
 function showFollow() {
@@ -110,7 +175,10 @@ function init(h) {
   hooks.edgeButton.onclick = () => { edge = !edge; hooks.tryStore(() => localStorage.setItem('ww2-edge', edge ? '1' : '0')); preferences(); };
   hooks.panButton.onclick = () => { speed = (speed + 1) % 3; hooks.tryStore(() => localStorage.setItem('ww2-pan', String(speed))); preferences(); };
   preferences();
-  addEventListener('resize', () => { if (followed != null && hooks.top && hooks.chip) hooks.chip.style.top = Math.ceil(hooks.top.getBoundingClientRect().bottom + 8) + 'px'; });
+  addEventListener('resize', () => {
+    bandCache = null;
+    if (followed != null && hooks.top && hooks.chip) hooks.chip.style.top = Math.ceil(hooks.top.getBoundingClientRect().bottom + 8) + 'px';
+  });
 }
 function skipIntro() {
   if (!intro) return false;
@@ -121,8 +189,9 @@ function startIntro(skip) {
   const { cam } = hooks;
   cam.y = hooks.hAt(cam.x, cam.z);
   if (!skip) {
-    const { w, h } = hooks.bounds(), to = { ...cam };
-    intro = { to, from: { x: w / 2, z: h / 2, y: hooks.hAt(w / 2, h / 2), dist: Math.max(180, w, h) }, age: 0 };
+    // the sweep starts on the whole board (the widest view) and settles on the start view
+    const f = wide(), to = { ...cam };
+    intro = { to, from: { x: f.x, z: f.z, y: hooks.hAt(f.x, f.z), dist: Math.max(f.dist, to.dist) }, age: 0 };
     Object.assign(cam, intro.from);
   }
   pose();
@@ -133,7 +202,8 @@ function wheel(e) {
   const { cam } = hooks;
   pose();
   const point = hooks.groundAt(e.clientX, e.clientY);
-  cam.dist = Math.min(150, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+  band(true); // the panels may have changed height since the last zoom
+  cam.dist = Math.min(wide().dist, Math.max(25, cam.dist * (1 + Math.sign(e.deltaY) * 0.1)));
   // Following holds the unit at the center while zoom changes its viewing distance.
   anchor = point && followed == null ? { point, mx: e.clientX, my: e.clientY, left: 0.4 } : null;
   pose(); solveAnchor();
@@ -184,5 +254,5 @@ function corners(terrain) {
   return cornerPoints;
 }
 
-export const rig = { init, update, pose, wheel, follow, cancelFollow, startIntro, skipIntro, beginMiddle, moveMiddle, stopDrag, corners,
+export const rig = { init, update, pose, wheel, frame, follow, cancelFollow, startIntro, skipIntro, beginMiddle, moveMiddle, stopDrag, corners,
   get following() { return followed; }, get intro() { return !!intro; } };

@@ -116,8 +116,12 @@ export function selectionRing(radius, ranges = []) {
   return { sel: g, range };
 }
 
-// the reinforce circle around an HQ
-export const hqRing = (R, color) => ringMesh(R - 0.35, 0.8, pencilMat(color, { opacity: 0.88 }), 0.07, 1);
+// the reinforce circle around an HQ; clip (world planes) cuts it at the board edge, with its own material
+export function hqRing(R, color, clip = null) {
+  const m = ringMesh(R - 0.35, 0.8, pencilMat(color, { opacity: 0.88 }), 0.07, 1);
+  if (clip) { m.material = m.material.clone(); m.material.clippingPlanes = clip; }
+  return m;
+}
 
 // a resource node: a pencil square, each side its own stroke running a little past the corners
 const squareGeos = new Map();
@@ -310,6 +314,85 @@ export function capturePoint(radius, text) {
       flag.scale.set(2.2, 1.4 * (1 + 0.22 * flourish), 1);
       group.userData.flipping = flip > 0;
     },
+  };
+}
+
+// ---------- strike warnings ----------
+// Where incoming support will land, in grease pencil: an outline, light hatching and a faint wash. The pieces are
+// draped over the ground and depth tested, so units, flags and buildings standing in the zone keep their colors.
+// shape: { r } for a circle, { len, width } for a strip (with an arrow past its far end, along +x).
+const HATCH = 1.6; // meters per hatch tile (one diagonal line)
+let hatchTex = null;
+function hatchTexture() {
+  if (hatchTex) return hatchTex;
+  const N = 64, cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const c = cv.getContext('2d'), img = c.createImageData(N, N), d = img.data;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    // one diagonal stroke per tile, with grain; the wash between strokes stays faint
+    const t = ((x + y) % N) / N, line = Math.max(0, 1 - Math.abs(t - 0.5) * 14);
+    const a = 0.1 + 0.55 * line * (0.6 + 0.4 * hash(x * 13.1 + y * 7.3)), i = (y * N + x) * 4;
+    d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = Math.round(255 * a);
+  }
+  c.putImageData(img, 0, 0);
+  hatchTex = new THREE.CanvasTexture(cv); hatchTex.wrapS = hatchTex.wrapT = THREE.RepeatWrapping; hatchTex.anisotropy = 4;
+  return hatchTex;
+}
+// quads along segments [ax, az, bx, bz], each running a little past its ends; u in meters for the stroke texture
+function segmentsGeometry(list, w) {
+  const pos = [], uv = [], idx = [], hw = w / 2;
+  list.forEach(([ax, az, bx, bz], s) => {
+    const len = Math.hypot(bx - ax, bz - az) || 1, dx = (bx - ax) / len, dz = (bz - az) / len, nx = -dz, nz = dx, e = 0.25, b = s * 4;
+    const x0 = ax - dx * e, z0 = az - dz * e, x1 = bx + dx * e, z1 = bz + dz * e;
+    pos.push(x0 + nx * hw, 0, z0 + nz * hw, x0 - nx * hw, 0, z0 - nz * hw, x1 + nx * hw, 0, z1 + nz * hw, x1 - nx * hw, 0, z1 - nz * hw);
+    uv.push(s * 3, 0, s * 3, 1, s * 3 + len + 2 * e, 0, s * 3 + len + 2 * e, 1);
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+// lay a flat (XZ) geometry over the ground under a marker at (x, z) turned by rot, lift meters above it
+function drape(geo, x, z, rot, hAt, lift) {
+  const p = geo.attributes.position, c = Math.cos(rot), s = Math.sin(rot), y0 = hAt(x, z);
+  for (let i = 0; i < p.count; i++) {
+    const lx = p.getX(i), lz = p.getZ(i);
+    p.setY(i, hAt(x + lx * c + lz * s, z - lx * s + lz * c) - y0 + lift);
+  }
+  p.needsUpdate = true; geo.computeBoundingSphere();
+  return geo;
+}
+export function strikeZone(shape, color, { x, z, rot = 0, hAt }) {
+  const group = new THREE.Group();
+  const line = new THREE.MeshBasicMaterial({ color, map: strokeTexture('solid'), transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const wash = new THREE.MeshBasicMaterial({ color, map: hatchTexture(), transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  let fill, outline;
+  if (shape.r) {
+    const r = shape.r;
+    fill = new THREE.RingGeometry(0.01, r - 0.2, 48, Math.max(2, Math.ceil(r / 2))).rotateX(-Math.PI / 2);
+    outline = ringGeometry(r - 0.25, 0.45).clone();
+  } else {
+    const hx = shape.len / 2, hz = shape.width / 2;
+    fill = new THREE.PlaneGeometry(shape.len, shape.width, Math.max(1, Math.ceil(shape.len / 2)), Math.max(1, Math.ceil(shape.width / 2))).rotateX(-Math.PI / 2);
+    const sides = [[-hx, -hz, hx, -hz], [hx, -hz, hx, hz], [hx, hz, -hx, hz], [-hx, hz, -hx, -hz]];
+    // the open arrowhead past the far end shows which way the run goes
+    if (shape.arrow !== false) sides.push([hx + 0.8, -2, hx + 3.6, 0], [hx + 3.6, 0, hx + 0.8, 2]);
+    outline = segmentsGeometry(sides, 0.45);
+  }
+  // hatching in world meters, the same density on every size
+  const fp = fill.attributes.position, fu = fill.attributes.uv;
+  for (let i = 0; i < fp.count; i++) fu.setXY(i, (fp.getX(i) + fp.getZ(i) * 0.15) / HATCH, (fp.getZ(i) - fp.getX(i) * 0.15) / HATCH);
+  fu.needsUpdate = true;
+  const a = new THREE.Mesh(drape(fill, x, z, rot, hAt, 0.25), wash), b = new THREE.Mesh(drape(outline, x, z, rot, hAt, 0.3), line);
+  a.renderOrder = 2; b.renderOrder = 3;
+  group.add(a, b);
+  group.position.set(x, hAt(x, z), z); group.rotation.y = rot;
+  return {
+    group,
+    // pending strikes pulse; the outline carries the pulse so the hatched wash stays faint
+    frame(pending, time) { line.opacity = pending ? 0.7 + 0.25 * Math.sin(time / 120) : 0.55; },
+    dispose() { fill.dispose(); outline.dispose(); line.dispose(); wash.dispose(); },
   };
 }
 
