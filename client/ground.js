@@ -10,8 +10,8 @@ import { gfx } from './gfx.js';
 const GRASS = 0, DIRT = 1, MUD = 2, FIELD = 3, ROAD = 4, WATER = 5, RUBBLE = 6, SHELL = 7, EARTH = 8, FIELD_V = 9, NMAT = 10;
 // texture, metres per repeat, color multiplier (sRGB), saturation, contrast, flat color (texture average) used until the textures load
 const LOOK = [
-  { tex: 'grass', m: 9, mul: [1, 1.08, 1.4], sat: 0.8, avg: [107, 103, 44] },
-  { tex: 'dirt', m: 8, mul: [0.88, 0.9, 0.98], sat: 0.7, avg: [160, 117, 72] },
+  { tex: 'grass', m: 9, mul: [1.06, 1.03, 1.6], sat: 0.6, con: 0.9, avg: [107, 103, 44] },
+  { tex: 'dirt', m: 8, mul: [0.94, 0.9, 1.14], sat: 0.58, avg: [160, 117, 72] },
   { tex: 'mud', m: 7, mul: [1, 1, 1], sat: 0.9, avg: [87, 64, 43] },
   { tex: 'field', m: 10, mul: [0.95, 0.95, 1], sat: 0.6, con: 0.55, avg: [103, 70, 44] },
   { tex: 'road', m: 8, mul: [0.9, 0.9, 0.88], sat: 0.8, avg: [162, 136, 109] },
@@ -223,18 +223,18 @@ function raster(S, X0, Y0, W, H, img) {
         const p = prim[c00], q = sec[c00];
         const am = (amt[c00] * (1 - tx) + amt[c01] * tx) * (1 - ty) + (amt[c10] * (1 - tx) + amt[c11] * tx) * ty;
         let s = 0;
-        if (am > 0) { s = (am - pn) * 9 + 0.5; s = s < 0 ? 0 : s > 1 ? 1 : s * s * (3 - 2 * s); }
+        if (am > 0) { s = (am - pn) * 5.5 + 0.5; s = s < 0 ? 0 : s > 1 ? 1 : s * s * (3 - 2 * s); }
         if (s < 1) { const dd = tData[p], k = tq(p, i, j), f = 1 - s; r = f * dd[k]; g = f * dd[k + 1]; bl = f * dd[k + 2]; if (p === WATER) wWater = f; }
         if (s > 0) { const dd = tData[q], k = tq(q, i, j); r += s * dd[k]; g += s * dd[k + 1]; bl += s * dd[k + 2]; if (q === WATER) wWater += s; }
       } else {
         let a = (1 - tx) * (1 - ty), b = tx * (1 - ty), cc = (1 - tx) * ty, e = tx * ty;
-        a *= a * a; b *= b * b; cc *= cc * cc; e *= e * e; // sharpen: most of the pixel belongs to the nearest cell
+        a *= a; b *= b; cc *= cc; e *= e; // retain cell centers, with wider blends between different materials
         const sum = a + b + cc + e;
         for (let k = 0; k < 4; k++) {
           const ci = k === 0 ? c00 : k === 1 ? c01 : k === 2 ? c10 : c11, wc = (k === 0 ? a : k === 1 ? b : k === 2 ? cc : e) / sum;
           const am = amt[ci];
           if (am > 0) {
-            let s = (am - pn) * 9 + 0.5;
+            let s = (am - pn) * 5.5 + 0.5;
             s = s < 0 ? 0 : s > 1 ? 1 : s * s * (3 - 2 * s);
             wt[sec[ci]] += wc * s; wt[prim[ci]] += wc * (1 - s);
           } else wt[prim[ci]] += wc;
@@ -250,7 +250,7 @@ function raster(S, X0, Y0, W, H, img) {
         }
       }
       // broad light and dark sweeps, so the repeat of the textures doesn't show
-      const br = 1 + 0.08 * NA[rB | cB[c]];
+      const br = 1 + 0.14 * NA[rB | cB[c]];
       r *= br; g *= br; bl *= br;
       // a pale line where water meets land
       if (wWater > 0.06 && wWater < 0.94) {
