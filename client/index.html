@@ -13,7 +13,7 @@
   :root {
     --strip: rgba(34, 37, 27, 0.85); --strip-hi: rgba(255, 246, 214, 0.07); --edge: rgba(150, 140, 102, 0.45);
     --text: #e6dcc0; --dim: #b4aa8e; --brass: #d2a849; --red: #b8322a; --red-hi: #e0574a;
-    --manila: #d8c69a; --manila-hi: #e7d9b4; --manila-edge: #a08c5f; --ink: #2b2418; --ink-dim: #5c4f37;
+    --manila: #d8c69a; --manila-hi: #e7d9b4; --manila-edge: #a08c5f; --ink: #2b2418; --ink-dim: #4a3f2b;
     --type: 'Courier Prime', 'Courier New', ui-monospace, monospace; --stencil: 'Stardos Stencil', Impact, sans-serif;
     /* layout: screen margin, minimap size, bottom-left column width, Command Card height (the hint sits above it) */
     --gap: 8px; --mm: 184px; --left-w: 248px; --card-h: 138px;
@@ -71,14 +71,18 @@
   #roster { display: grid; gap: 6px; }
   .slot { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 28px; align-items: center; gap: 10px; padding: 6px 8px; background: rgba(43, 36, 24, 0.07); border: 1px dashed rgba(43, 36, 24, 0.35); border-radius: 2px; }
   .slot.muted { display: block; }
-  .slot > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the name gets the whole line; "you · host" goes on a small second line, so neither is cut off */
+  .slot > .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+  .slot > .who > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slot > .who .muted { font-size: 11px; }
+  .slot > .who .muted:empty { display: none; }
   .slot > span:nth-child(3) { display: flex; gap: 6px; margin-left: 0 !important; }
   .slot select { flex: none; padding: 3px 5px; }
   .kick { padding: 2px 8px; }
   /* two columns: players and invite on the left, the battle (map preview, mode, army size) on the right */
   .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
   .cols section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
-  .sec { margin: 6px 0 0; padding-bottom: 4px; font: 700 15px/1.1 var(--stencil); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); border-bottom: 1px dashed rgba(43, 36, 24, 0.45); }
+  .sec { margin: 6px 0 0; padding-bottom: 4px; font: 700 16px/1.1 var(--type); color: var(--ink); border-bottom: 1px dashed rgba(43, 36, 24, 0.45); }
   .cols section > .sec:first-child { margin-top: 0; }
   #mapPrev { display: flex; gap: 12px; align-items: flex-start; }
   #mapCanvas { width: 150px; height: 150px; flex: none; border: 1px solid var(--manila-edge); border-radius: 2px; background: #11110d; }
@@ -150,6 +154,7 @@
   .ob .val:empty { display: none; }
   .ob kbd { position: absolute; top: 2px; right: 2px; padding: 0 2px; min-width: 15px; }
   .ob .val { font-size: 13px; line-height: 1; color: var(--brass); white-space: nowrap; min-height: 13px; }
+  .ob:disabled { opacity: 0.65; } /* costs and hotkeys stay readable, so you can plan */
   .ob:disabled .val { color: var(--text); }
   .ob .usym { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; color: var(--text); }
   .ob .usym .sym { width: 18px; height: 18px; display: block; }
@@ -171,9 +176,9 @@
   .srow .q { color: var(--ink-dim); }
   .tag { font-size: 13px; line-height: 1.2; padding: 0 5px; border-radius: 2px; border: 1px solid rgba(43, 36, 24, 0.45); }
   .tag.pin { background: var(--red); border-color: var(--red); color: #f6ecd6; }
-  .tag.sup { background: #a8741f; border-color: #a8741f; color: #f6ecd6; }
+  .tag.sup { background: #8a5a14; border-color: #8a5a14; color: #f6ecd6; }
   .tag.cov { background: #4f5d33; border-color: #4f5d33; color: #efe6cc; }
-  .vet { color: #8a5f0c; font-size: 13px; letter-spacing: 1px; }
+  .vet { color: #6b4708; font-size: 13px; letter-spacing: 1px; }
   #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
   #abil .ob { width: auto; }
 
@@ -187,12 +192,16 @@
   .uc { width: clamp(80px, 5.9vw, 100px); padding: 4px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.05)), var(--manila); border: 1px solid var(--manila-edge); }
   .uc:hover:not(:disabled) { background: var(--manila-hi); border-color: var(--ink); }
-  .uc:disabled { opacity: 0.55; }
+  /* a locked card goes flat and fades its symbol; its name, cost and the note that says why stay at full strength */
+  .uc:disabled { opacity: 1; background: #c9ba95; border-color: rgba(160, 140, 95, 0.75); }
+  .uc:disabled .sym { opacity: 0.4; }
   .uc .nm { height: 2.3em; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 1.15; letter-spacing: -0.025em; overflow-wrap: anywhere; }
   .uc .sym { width: 40px; height: 40px; flex: none; }
   .uc .cost { font-size: 13px; font-weight: 700; line-height: 1.25; padding: 0 5px; white-space: nowrap; border: 1px solid rgba(43, 36, 24, 0.35); background: rgba(43, 36, 24, 0.1); border-radius: 2px; }
   .uc .sub { font-size: 13px; line-height: 1.2; color: var(--ink-dim); text-align: center; }
-  .uc.broke .cost { color: var(--red); border-color: var(--red); }
+  .uc.broke .cost { color: #f6ecd6; background: var(--red); border-color: var(--red); }
+  .uc .sub.danger { color: var(--ink) !important; font-weight: 700; }
+  .uc .sub.danger::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--red); vertical-align: 1px; }
   .uc.wide { width: 136px; }
   /* the recruit row (outside Classic) splits the room between its cards (hud.js sets --nc cards and --ng groups);
      below about 78 px a card shows only its symbol and cost, the name stays in the tooltip */
@@ -211,7 +220,7 @@
   /* bottom right: the minimap; the alerts list (client/alerts.js) stacks just above it, so keep that slot free */
   #minimap { position: absolute; bottom: var(--gap); right: var(--gap); width: var(--mm); height: var(--mm); padding: 0; cursor: crosshair; border: none; border-radius: 2px;
     box-shadow: 0 0 0 4px rgba(34, 37, 27, 0.92), 0 0 0 5px var(--edge), 0 2px 14px 4px rgba(0, 0, 0, 0.4); }
-  #alerts { position: absolute; right: var(--gap); bottom: calc(var(--mm) + 3 * var(--gap)); }
+  #alerts { position: absolute; right: var(--gap); bottom: calc(var(--mm) + 2 * var(--gap) + 5px); }
   #hint { position: absolute; bottom: calc(var(--card-h) + 2 * var(--gap)); left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--text); pointer-events: none !important; white-space: nowrap; }
   #hint:empty { display: none; }
   #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
@@ -229,11 +238,11 @@
         <h3 class="sec">Players</h3>
         <div class="row"><label for="name">Name</label><input id="name" maxlength="16"></div>
         <div id="roster"></div>
-        <button id="addAi">+ Add AI player</button>
+        <button id="addAi" title="Fill an open slot with an AI player">+ Add AI player</button>
         <h3 class="sec">Invite</h3>
         <div class="muted">Send this link to friends. It always opens this room.</div>
-        <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
-        <div class="row"><label for="roomCode">Room</label><input id="roomCode" maxlength="12" title="Type a room code and press Join; leave it as main for the usual room"><button id="joinRoom">Join</button><button id="newRoom" title="A private room with a random code">New</button></div>
+        <div class="row"><input id="link" readonly><button id="copy" title="Copy the invite link">Copy</button></div>
+        <div class="row"><label for="roomCode">Room</label><input id="roomCode" maxlength="12" title="Type a room code and press Join; leave it as main for the usual room"><button id="joinRoom" title="Join the room code typed on the left">Join</button><button id="newRoom" title="A private room with a random code">New</button></div>
       </section>
       <section>
         <h3 class="sec">Battle</h3>
@@ -246,7 +255,7 @@
       </section>
     </div>
     <div id="lobbyMsg" class="muted"></div>
-    <div class="row"><button id="start" class="stencil">Start</button></div>
+    <div class="row"><button id="start" class="stencil" title="Start the match for everyone in the room">Start</button></div>
     <a href="/?edit" target="_blank" class="muted">Map editor</a>
   </div>
 </div>

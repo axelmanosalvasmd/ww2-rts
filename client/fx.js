@@ -893,7 +893,9 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
   function antiAir(sh, from, to) {
     let ex = sh.x, ey = hAt(sh.x, sh.z) + airAlt, ez = sh.z;
     if (to) { to.root.updateWorldMatrix(true, false); v3.setFromMatrixPosition(to.root.matrixWorld); ex = v3.x; ey = v3.y; ez = v3.z; }
-    const fighter = from?.type === 'fighter', st = fighter ? GUNS.fighter : from?.type === 'flaktrack' ? GUNS.flaktrack : GUNS.flak, sti = STYLES.indexOf(st);
+    // style by shooter: flak guns burst shells around the plane; an MG (or a shooter out of sight) is plain tracer fire
+    const t = from?.type, flak = t === 'flak' || t === 'flaktrack' || t === 'flakpos';
+    const st = t === 'fighter' ? GUNS.fighter : t === 'flaktrack' ? GUNS.flaktrack : flak ? GUNS.flak : GUNS.mg, sti = STYLES.indexOf(st);
     let T = 0.15;
     if (from) for (let i = 0; i < (st.guns ?? 1); i++) {
       if (!muzzleAt(from, i, ex, ez)) break;
@@ -901,7 +903,7 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
       T = Math.hypot(ex - mx, ey - my, ez - mz) / st.spd;
       for (let b = 0; b < st.burst; b++) later(b * st.gap, E_SKY, mx, my, mz, ex + rr(-2.5, 2.5), ey + rr(-1.5, 1.5), ez + rr(-2.5, 2.5), sti);
     }
-    if (!fighter) later(T, E_FLAK, ex + rr(-4, 4), ey + rr(-2, 3), ez + rr(-4, 4), 0.7); // shells bursting around it
+    if (flak) later(T, E_FLAK, ex + rr(-4, 4), ey + rr(-2, 3), ez + rr(-4, 4), 0.7); // shells bursting around it
     play(st.snd, from ? from.x : ex, from ? from.z : ez, 0.1);
   }
 

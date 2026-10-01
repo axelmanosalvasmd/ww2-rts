@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 
 #hud > #alerts {
-  position: absolute; right: 10px; bottom: 232px; /* alerts.js moves it to sit just above the minimap */
+  position: absolute; /* index.html places it above the minimap; alerts.js keeps it there on resize */
   display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
   max-width: min(320px, calc(100vw - 20px));
   pointer-events: none; /* only the lines take clicks, the gaps between them stay on the map */

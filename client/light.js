@@ -20,9 +20,9 @@ for (const id of ['lambert', 'phong', 'toon', 'standard', 'physical']) {
 const SUN_UP = 37 * Math.PI / 180, SUN_SIDE = 60 * Math.PI / 180;
 const SUN_DIR = new THREE.Vector3(); // from the ground toward the sun
 const HAZE = 0xbcae96;
-const BOARD = 6; // board thickness below its lowest point, in meters
+const BOARD = 9; // board thickness below its lowest point, in meters (deep enough that the soil layers read)
 const WOOD_TILE = 44; // meters per wood texture repeat (four planks)
-const SOIL_PROFILE = 6, SOIL_DEEP = 1.5; // the full soil profile spans 6 m; below it dark soil repeats every 1.5 m
+const SOIL_PROFILE = 8, SOIL_DEEP = 2.5; // the full soil profile spans 8 m; below it dark soil repeats every 2.5 m
 const SOIL_U = (SOIL_PROFILE / 0.8) * 3.17; // horizontal meters per soil repeat (texture is 3.17:1, profile = top 80%)
 const BLUR_START = 0.75; // blur fades in from 75% of the screen height up to the top edge
 const BLUR_SIGMA = 1.6; // Gaussian sigma at the very top, in pixels at 1080 lines
@@ -147,7 +147,7 @@ const texture = (file, wrapT) => {
   t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.wrapT = wrapT; t.anisotropy = 8;
   return t;
 };
-const board = { mesh: null, key: '', geo: null, table: null, skirt: null, woodTex: null, soilTex: null };
+const board = { mesh: null, key: '', geo: null, table: null, skirt: null, contact: null, woodTex: null, soilTex: null };
 
 function buildBoard(ground) {
   board.geo = ground.geometry;
@@ -204,7 +204,8 @@ function buildBoard(ground) {
   skirtGeo.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
   skirtGeo.setIndex(I);
   if (!board.skirt) {
-    board.skirt = new THREE.Mesh(skirtGeo, new THREE.MeshLambertMaterial({ map: board.soilTex, color: 0xe8ddd0 }));
+    // a small emissive lift (through the soil texture) keeps the layers readable on the side away from the sun
+    board.skirt = new THREE.Mesh(skirtGeo, new THREE.MeshLambertMaterial({ map: board.soilTex, color: 0xe8ddd0, emissive: 0x5a5044, emissiveMap: board.soilTex }));
     board.skirt.castShadow = board.skirt.receiveShadow = true;
     scene.add(board.skirt);
   } else { board.skirt.geometry.dispose(); board.skirt.geometry = skirtGeo; }
@@ -213,13 +214,36 @@ function buildBoard(ground) {
   const size = Math.max(Math.abs(c11.x - c00.x), Math.abs(c11.z - c00.z)) + 1400;
   if (!board.table) {
     board.table = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ map: board.woodTex, color: 0xc8b8a8 }));
-    board.table.rotation.x = -Math.PI / 2; board.table.receiveShadow = true;
+    // no shadow-map shadow on the table: the board's would end in stair steps along its foot. A soft painted
+    // contact shadow grounds the board instead.
+    board.table.rotation.x = -Math.PI / 2; board.table.receiveShadow = false;
     scene.add(board.table);
   }
+  const contactGeo = contactShadow(Math.min(c00.x, c11.x), Math.min(c00.z, c11.z), Math.max(c00.x, c11.x), Math.max(c00.z, c11.z), bottom + 0.01);
+  if (!board.contact) {
+    board.contact = new THREE.Mesh(contactGeo, new THREE.MeshBasicMaterial({ color: 0x1a140c, vertexColors: true, transparent: true, depthWrite: false }));
+    scene.add(board.contact);
+  } else { board.contact.geometry.dispose(); board.contact.geometry = contactGeo; }
   board.table.scale.set(size, size, 1);
   board.table.position.set(mid.x, bottom - 0.02, mid.z);
   board.woodTex.repeat.set(size / WOOD_TILE, size / WOOD_TILE);
   board.woodTex.offset.set(((mid.x - size / 2 - Math.min(c00.x, c11.x)) / WOOD_TILE) % 1, 0); // a plank joint at the board's west edge
+}
+
+// rings around the board's footprint, from its foot outward: [distance m, shadow alpha], with mitered corners
+const CONTACT = [[0, 0.5], [1.2, 0.26], [5.5, 0]];
+function contactShadow(x0, z0, x1, z1, y) {
+  const P = [], C = [], I = [], n = CONTACT.length;
+  for (const [d, a] of CONTACT) for (const [x, z] of [[x0 - d, z0 - d], [x1 + d, z0 - d], [x1 + d, z1 + d], [x0 - d, z1 + d]]) { P.push(x, y, z); C.push(1, 1, 1, a); }
+  for (let r = 0; r < n - 1; r++) for (let k = 0; k < 4; k++) {
+    const a = r * 4 + k, b = r * 4 + (k + 1) % 4, c = a + 4, d = b + 4;
+    I.push(a, b, c, b, d, c); // counter-clockwise from above, so the strip faces up
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 4));
+  g.setIndex(I);
+  return g;
 }
 
 // ---------- far-edge blur (High only) ----------

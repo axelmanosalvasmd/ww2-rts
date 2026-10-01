@@ -5,6 +5,35 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Polish (review fixes for the HUD, world and effects slices):
+  - Point and resource node income tags and the HQ sign keep the same size on screen at every zoom, so they stay
+    readable when zoomed out and no longer cover the fight when zoomed in. They fade out up close, and a point's tag
+    hides while that point is being captured. The HQ sign shows the name as typed, not in capitals.
+  - The HQ reinforce zone is a faint chalk tint inside its ring instead of a blue patch that looked like a pond.
+    Big pencil rings no longer draw a second line a meter inside the first.
+  - Range rings show only for a small selection (up to two units, or up to four of one type), so a big selection no
+    longer covers the screen in dashes.
+  - The edge of the board is deeper and lighter, so its soil layers show on both the sunny and the shaded side, and it
+    meets the table with a soft shadow instead of a jagged black line.
+  - Fallen soldiers stay as soldiers (helmet and colors) and sink into the ground, instead of turning into brown
+    capsules. Classic buildings use the wood, sandbag and earth textures of the rest of the world. Resource nodes are
+    marked with a brass pencil square.
+  - Command Card: a locked card keeps its "Needs a Barracks" note readable (dark ink with a red dot), and the cost of
+    a unit you can't afford is a solid red chip. Disabled support buttons are less faded, so their costs can be read
+    at the start of a Classic match.
+  - In Classic the "click where to build" hint sits above the Build panel instead of on top of it.
+  - Lobby: section headings are in sentence case, your own name and the host mark no longer get cut off, muted text
+    is darker, and the Add AI, Copy link, Join and Start buttons have tooltips. The support and veteran tags are
+    easier to read.
+  - Alerts sit a little higher above the minimap so they no longer touch its frame.
+  - Fixed: every dig or shell that changed the terrain left the old buildings' and roofs' GPU buffers behind, and
+    Play again kept the whole previous match on the GPU. Both are freed now. The fog of war now follows craters and
+    trenches. The minimap no longer raycasts the terrain on every redraw (it was costly while an alert was showing).
+    A machine gun shooting at a plane no longer shows flak bursts or plays the flak sound.
+  - Left for later: warmer ground and rounder hedges, smoother contour lines, a north arrow and scale bar on the
+    minimap, Graphics Low cutting shadow draw calls, patching only the dug part of the terrain instead of rebuilding
+    it, trimming the blur pass's unused GPU memory, unit names on recruit cards at 1366 and 1600 px wide, and a
+    design decision on whether the lobby title and Start button may keep the stencil font.
 - Audio (slice 5): recorded effects and voice lines, one volume control:
   - Recorded sound effects (ElevenLabs) for every weapon, shell, grenade, bomb and rocket, the support planes, flak,
     plane crashes, falling houses, smoke shells, digging and building, plus a quiet battlefield ambience and a short

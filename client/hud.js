@@ -94,6 +94,12 @@ export const icon = (k) => `<svg class="ico" viewBox="0 0 32 32" aria-hidden="tr
 // ctx: state getters (me, teams, names, units, selected, PRIORITY) and helpers/actions from main.js:
 // look, facOf, color, classic, send, blip, retreat, stop, amove, dig, build, ability, support, fType, builders, owns, canPlace, select
 export function createHud(ctx) {
+  // the placement hint sits just above the Command Card, whose height changes (the Classic build card is taller
+  // than the recruit row), so --card-h follows the card's real height
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => {
+    const h = $('buy').offsetHeight;
+    if (h) $('hud').style.setProperty('--card-h', h + 'px'); else $('hud').style.removeProperty('--card-h');
+  }).observe($('buy'));
   const name = (t, slot = ctx.me) => ctx.look(slot).names[t] ?? UNITS[t].name;
   const pc = (i) => `var(--p${i}, ${ctx.color(i)})`;
   const selUnits = () => [...ctx.selected].map((id) => ctx.units.get(id)).filter(Boolean);

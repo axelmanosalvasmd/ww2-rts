@@ -61,7 +61,7 @@ function place() {
   const mm = document.getElementById('minimap'), r = mm?.getBoundingClientRect();
   if (!box || !r?.width) return;
   box.style.right = Math.max(0, Math.round(innerWidth - r.right)) + 'px';
-  box.style.bottom = Math.max(0, Math.round(innerHeight - r.top + 8)) + 'px';
+  box.style.bottom = Math.max(0, Math.round(innerHeight - r.top + 5 + 8)) + 'px'; // clear the minimap's 5 px frame, then an 8 px gap
 }
 
 function sound(kind) {

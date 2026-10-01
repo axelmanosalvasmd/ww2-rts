@@ -6,7 +6,8 @@ import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createGround } from './ground.js';
 import { surface, roofGeometry, roofMaterials } from './surfaces.js';
-import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, MOVE_COLOR } from './markers.js';
+import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, MOVE_COLOR } from './markers.js';
+import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
 
@@ -153,7 +154,7 @@ function renderLobby(m) {
   $('roster').innerHTML = m.players.map((p, i) => {
     const kick = p.ai && host && lobby ? `<button class="kick" data-slot="${i}" title="Remove AI">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
-      <span>${esc(p.name)}${i === m.you ? ' (you)' : ''}<span class="muted">${!p.connected ? ' · offline' : ''}${i === m.host ? ' · host' : ''}</span></span>
+      <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
@@ -214,7 +215,8 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null;
+let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null;
+const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
 let field = null;
@@ -248,7 +250,7 @@ function startGame(m) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
-  if (world) scene.remove(world);
+  if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
   units.clear(); selected.clear(); fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear();
   MW = map.w * CELL; MH = map.h * CELL;
@@ -280,7 +282,7 @@ function startGame(m) {
   fogGrid = { w: map.w, h: map.h };
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
-  const fog = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
 
@@ -307,11 +309,12 @@ const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74
 // all 3D terrain pieces, rebuilt from the grid whenever a cell changes
 function buildStructures() {
   const { grid, group, w } = terrain;
-  group.clear();
+  disposeTree(group, SHARED_GEOS); group.clear();
   const cells = { B: [], H: [], '#': [], '=': [], R: [], X: [], Y: [] };
   grid.forEach((row, y) => row.forEach((ch, x) => cells[ch]?.push([x, y])));
   // kind: a textured surface from client/surfaces.js (world-planar texture, so instancing still works)
   const inst = (list, kind, fn, per = 1) => {
+    if (!list.length) return;
     const im = new THREE.InstancedMesh(GEO.box, surface(kind), list.length * per);
     const m4 = new THREE.Matrix4(), col = new THREE.Color();
     list.forEach((cell, i) => {
@@ -393,7 +396,7 @@ function applyCells(cells) {
     terrain.grid[y][x] = ch;
     if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
   }
-  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = terrainGeometry(); }
+  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = fogMesh.geometry = terrainGeometry(); }
   terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
   buildStructures();
   mmImage = null;
@@ -404,7 +407,8 @@ function buildHQ(sp, slot) {
   const f = look(slot), R = CFG.reinforceRadius, g = new THREE.Group();
   g.position.set(sp.x, hAt(sp.x, sp.z), sp.z);
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
-  g.add(flat(new THREE.CircleGeometry(R, 48), 0.18, 0.05), hqRing(R, f.color));
+  const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
+  g.add(zone, hqRing(R, f.color));
   // sandbags with gaps for the exits
   for (let i = 0; i < 36; i++) {
     if (i % 9 < 2) continue;
@@ -520,33 +524,33 @@ function makeUnit(id, type, owner) {
   } else if (type === 'airfield') {
     // a dirt strip, a hangar and a windsock
     v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x6a5e44), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
+    v.body.add(mesh(GEO.box, surface('earth'), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
       mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
     root.add(v.body); v.models.push(root);
   } else if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
     const dark = mat(0x2a2a24);
     v.body = new THREE.Group();
-    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, mat(0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, surface('sandbag'), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
     v.body.add(mesh(GEO.cyl, dark, 0.5, 0.6, 0.5, 0, 0.3, 0), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
     root.add(v.body); v.models.push(root);
   } else if (type === 'hq') {
     // command post: sandbagged timber block with a radio mast
-    const wood = mat(0x7a6446), roof = mat(0x5a4a34);
+    const wood = surface('wood'), roof = surface('darkwood');
     v.body = new THREE.Group();
     v.body.add(mesh(GEO.box, wood, 5.4, 3, 5.4, 0, 1.5, 0), mesh(GEO.box, roof, 6, 0.4, 6, 0, 3.2, 0), mesh(GEO.box, mat(f.vehicle), 5.6, 0.5, 1.2, 0, 1.2, 2.5),
       mesh(GEO.cyl, mat(0x2a2a24), 0.06, 5, 0.06, 2, 5.6, 2), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, 0.9, 7.4, 2));
     root.add(v.body); v.models.push(root);
   } else if (type === 'barracks') {
     // long timber hut with a pitched roof
-    const wood = mat(0x8a7050), roofM = mat(f.vehicle);
+    const wood = surface('wood'), roofM = mat(f.vehicle);
     v.body = new THREE.Group();
     const shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 1.8)]), rg = new THREE.ExtrudeGeometry(shape, { depth: 5.6, bevelEnabled: false }); rg.translate(0, 0, -2.8);
-    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, mat(0x3a2e20), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
+    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, surface('darkwood'), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
     root.add(v.body); v.models.push(root);
   } else if (type === 'motorpool') {
     // open vehicle shed: posts, a flat roof, oil drums
-    const post = mat(0x5a4a34);
+    const post = surface('darkwood');
     v.body = new THREE.Group();
     for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) v.body.add(mesh(GEO.box, post, 0.35, 3.2, 0.35, x, 1.6, z));
     v.body.add(mesh(GEO.box, mat(f.vehicle), 6, 0.3, 6, 0, 3.3, 0), mesh(GEO.box, mat(0x4a4a44), 5.6, 0.1, 5.6, 0, 0.05, 0), mesh(GEO.box, post, 5.6, 1.4, 0.3, 0, 0.7, -2.7));
@@ -554,16 +558,16 @@ function makeUnit(id, type, owner) {
     root.add(v.body); v.models.push(root);
   } else if (type === 'depot') {
     // supply dump: stacked crates and fuel drums
-    const crate = mat(0x6e5836), drum = mat(f.vehicle);
+    const crate = surface('wood'), drum = mat(f.vehicle);
     v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x5a4a34), 3.8, 0.2, 3.8, 0, 0.1, 0), mesh(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), mesh(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
+    v.body.add(mesh(GEO.box, surface('darkwood'), 3.8, 0.2, 3.8, 0, 0.1, 0), mesh(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), mesh(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
       mesh(GEO.box, crate, 1.2, 1, 1.2, -0.1, 1.8, -0.9));
     for (let i = 0; i < 4; i++) v.body.add(mesh(GEO.cyl, drum, 0.4, 1.1, 0.4, -1.1 + i * 0.75, 0.65, 1));
     root.add(v.body); v.models.push(root);
   } else if (type === 'bunker') {
     const conc = mat(0x8a8a82), dark = mat(0x1e1e1a);
     root.add(mesh(GEO.box, conc, 5.2, 2.4, 5.2, 0, 1.2, 0), mesh(GEO.box, mat(0x74746c), 6, 0.5, 6, 0, 2.6, 0), mesh(GEO.box, dark, 0.3, 0.4, 3, 2.62, 1.6, 0));
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, mat(0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, surface('sandbag'), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
     root.add(mesh(GEO.cyl, mat(0x4a3f30), 0.08, 4, 0.08, -1.8, 4.6, -1.8), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, -0.9, 6, -1.8));
     v.models.push(root);
   } else if (TANKS[type]) {
@@ -634,12 +638,12 @@ function makeUnit(id, type, owner) {
   return v;
 }
 
+// the fallen soldier's own model (uniform, helmet, owner tint) on its side; it sinks into the ground at the end
 function corpse(v, man) {
-  const p = man.getWorldPosition(new THREE.Vector3());
-  const body = mesh(GEO.body, mat(0x3a372c), 1, 1, 1, p.x, hAt(p.x, p.z) + 0.3, p.z);
-  body.rotation.set(0, Math.random() * 6, Math.PI / 2);
+  const p = man.getWorldPosition(new THREE.Vector3()), body = man.clone(), y = hAt(p.x, p.z) + 0.3 * man.scale.y;
+  body.position.set(p.x, y, p.z); body.rotation.set(0, Math.random() * 6, Math.PI / 2);
   world.add(body);
-  fx.push({ obj: body, life: 25, update: () => {} });
+  fx.push({ obj: body, life: 18, max: 18, update: (k) => { body.position.y = y - Math.max(0, 1 - k / 0.3) * 0.9; } });
   man.visible = false;
 }
 
@@ -848,11 +852,10 @@ function applyGhosts(list) {
   for (const [id, gv] of ghosts) if (!keep.has(id)) { world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
 function nodeMark(x, z, rate, fuel) {
-  const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(2.4, 2.8, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: fuel ? 0xe07a30 : 0xe8c860, transparent: true, opacity: 0.6, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.y = 0.25; m.renderOrder = 2; m.material.depthTest = false;
-  g.add(m, mesh(GEO.box, mat(0x6e5836), 0.8, 0.6, 0.8, 0, 0.3, 0));
+  const g = new THREE.Group();
+  g.add(nodeSquare(fuel ? 0xe07a30 : 0xd2a849), mesh(GEO.box, surface('wood'), 0.8, 0.6, 0.8, 0, 0.3, 0));
   // what a depot here pays: the richer contested nodes are worth fighting for
-  const tag = label(fuel ? `+${rate} Fuel/s` : `+${rate} MP/s`); tag.position.y = 3; tag.scale.multiplyScalar(0.6); g.add(tag);
+  const tag = label(fuel ? `+${rate} Fuel/s` : `+${rate} MP/s`); tag.position.y = 3; g.add(tag);
   g.position.set(x, hAt(x, z), z);
   return g;
 }
@@ -983,10 +986,12 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), flatGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const rayAt = (mx, my) => ray.setFromCamera(ndc.set(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
 const groundAt = (mx, my) => {
-  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(mx / innerWidth * 2 - 1, -(my / innerHeight) * 2 + 1), camera);
+  rayAt(mx, my); flatGround.constant = 0;
   const hit = groundMesh && ray.intersectObject(groundMesh)[0];
-  return hit ? hit.point : ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+  return hit ? hit.point : ray.ray.intersectPlane(flatGround, new THREE.Vector3());
 };
 
 renderer.domElement.addEventListener('mousedown', (e) => {
@@ -1075,7 +1080,18 @@ let lastT = performance.now();
 
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
 const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78] };
-let mmImage = null, mmFog = null, mmTimer = 0;
+let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0;
+// the camera's view outline: corner rays against a flat plane at the ground height the camera looks at (close
+// enough at minimap scale, and far cheaper than raycasting the terrain), redone only when the camera moves
+const mmView = { key: '', pts: [] };
+function viewCorners() {
+  const key = `${cam.x}|${cam.z}|${cam.y}|${cam.yaw}|${cam.dist}|${innerWidth}|${innerHeight}`;
+  if (key !== mmView.key) {
+    mmView.key = key; flatGround.constant = -(cam.y ?? 0); camera.updateMatrixWorld();
+    mmView.pts = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => (rayAt(x, y), ray.ray.intersectPlane(flatGround, new THREE.Vector3()))).filter(Boolean);
+  }
+  return mmView.pts;
+}
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
   const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
@@ -1107,10 +1123,15 @@ function drawMinimap() {
   c.drawImage(mmImage, 0, 0, MW, MH);
   if (fogVis) {
     // one smooth image, not thousands of tiny squares (those leave a screen-door pattern)
-    if (!mmFog || mmFog.width !== fogGrid.w) { mmFog = document.createElement('canvas'); mmFog.width = fogGrid.w; mmFog.height = fogGrid.h; }
-    const fc = mmFog.getContext('2d'), img = fc.createImageData(fogGrid.w, fogGrid.h);
-    for (let i = 0; i < fogVis.length; i++) { img.data[i * 4] = img.data[i * 4 + 1] = 10; img.data[i * 4 + 3] = fogVis[i] ? 0 : 130; }
-    fc.putImageData(img, 0, 0);
+    if (!mmFog || mmFog.width !== fogGrid.w || mmFog.height !== fogGrid.h) { mmFog = document.createElement('canvas'); mmFog.width = fogGrid.w; mmFog.height = fogGrid.h; mmFogOf = null; }
+    // refilled only when updateFog made a new visibility grid (every 0.2 s), into one reused ImageData
+    if (mmFogOf !== fogVis) {
+      const fc = mmFog.getContext('2d');
+      if (mmFogImg?.width !== fogGrid.w || mmFogImg.height !== fogGrid.h) mmFogImg = fc.createImageData(fogGrid.w, fogGrid.h);
+      const img = mmFogImg;
+      for (let i = 0; i < fogVis.length; i++) { img.data[i * 4] = img.data[i * 4 + 1] = 10; img.data[i * 4 + 3] = fogVis[i] ? 0 : 130; }
+      fc.putImageData(img, 0, 0); mmFogOf = fogVis;
+    }
     c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
   }
   const col = (slot) => css(look(slot).color);
@@ -1126,7 +1147,7 @@ function drawMinimap() {
   }
   alerts.drawPings(c, S);
   // what the camera sees
-  const corners = [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([x, y]) => groundAt(x, y)).filter(Boolean);
+  const corners = viewCorners();
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
 }
 {
@@ -1142,6 +1163,15 @@ function drawMinimap() {
   });
   addEventListener('mousemove', (e) => { if (mmDrag) { const p = at(e); cam.x = p.x; cam.z = p.z; } });
   addEventListener('mouseup', () => (mmDrag = false));
+}
+// weapon range rings only for a small selection (two units, or up to four of one type), so a big group's dashed
+// rings do not bury the fight
+function rangeRings() {
+  if (selected.size <= 2) return true;
+  if (selected.size > 4) return false;
+  let t = null;
+  for (const id of selected) { const ty = units.get(id)?.type; if (t && ty !== t) return false; t = ty; }
+  return true;
 }
 let fogTimer = 0;
 const lerpAngle = (a, b, k) => a + (Math.atan2(Math.sin(b - a), Math.cos(b - a))) * k;
@@ -1179,7 +1209,7 @@ renderer.setAnimationLoop(() => {
   camera.lookAt(cam.x, cam.y, cam.z);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-dt * 10);
+  const k = 1 - Math.exp(-dt * 10), ranges = rangeRings();
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
@@ -1190,7 +1220,7 @@ renderer.setAnimationLoop(() => {
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
-    if (v.range) v.range.visible = v.sel.visible;
+    if (v.range) v.range.visible = ranges && v.sel.visible;
   }
   battleFrame(cam, units, me);
   for (let i = fx.length - 1; i >= 0; i--) {

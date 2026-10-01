@@ -72,8 +72,9 @@ function ringGeometry(r, w, { arc = false, segs = 0 } = {}) {
   const pos = new Float32Array((n + 1) * 6), uv = new Float32Array((n + 1) * 4), idx = [];
   let u = 0, px = 0, pz = 0;
   for (let i = 0; i <= n; i++) {
+    // the loop drifts inward by at most 0.25 m from start to end, so big rings overlap as one thick line, not two
     const t = (i / n) * total, a = start + t;
-    const k = arc ? 1 : 1 + 0.022 * (0.6 * Math.sin(2 * a + p1) + 0.4 * Math.sin(3 * a + p2)) + (t / total - 0.5) * 0.05;
+    const k = arc ? 1 : 1 + 0.022 * (0.6 * Math.sin(2 * a + p1) + 0.4 * Math.sin(3 * a + p2)) + (t / total - 0.5) * Math.min(0.05, 0.25 / r);
     const hw = (w / 2) * (arc ? 1 : 0.55 + 0.45 * Math.min(1, t / 0.5, (total - t) / 0.5));
     const sx = Math.sin(a), sz = -Math.cos(a), cx = sx * r * k, cz = sz * r * k;
     if (i) u += Math.hypot(cx - px, cz - pz);
@@ -118,6 +119,33 @@ export function selectionRing(radius, ranges = []) {
 // the reinforce circle around an HQ
 export const hqRing = (R, color) => ringMesh(R - 0.35, 0.8, pencilMat(color, { opacity: 0.88 }), 0.07, 1);
 
+// a resource node: a pencil square, each side its own stroke running a little past the corners
+const squareGeos = new Map();
+function squareGeometry(half, w) {
+  const key = `${half}|${w}`;
+  if (squareGeos.has(key)) return squareGeos.get(key);
+  const C = [[-half, -half], [half, -half], [half, half], [-half, half]], pos = [], uv = [], idx = [], hw = w / 2;
+  for (let s = 0; s < 4; s++) {
+    const [ax, az] = C[s], [bx, bz] = C[(s + 1) % 4], len = Math.hypot(bx - ax, bz - az);
+    const dx = (bx - ax) / len, dz = (bz - az) / len, nx = -dz, nz = dx, e0 = 0.2 + 0.25 * hash(s * 3.1), e1 = 0.2 + 0.25 * hash(s * 5.7 + 1);
+    const x0 = ax - dx * e0, z0 = az - dz * e0, x1 = bx + dx * e1, z1 = bz + dz * e1, b = s * 4;
+    pos.push(x0 + nx * hw, 0, z0 + nz * hw, x0 - nx * hw, 0, z0 - nz * hw, x1 + nx * hw, 0, z1 + nz * hw, x1 - nx * hw, 0, z1 - nz * hw);
+    uv.push(s * 3, 0, s * 3, 1, s * 3 + len + e0 + e1, 0, s * 3 + len + e0 + e1, 1);
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  squareGeos.set(key, g);
+  return g;
+}
+export function nodeSquare(color) {
+  const m = new THREE.Mesh(squareGeometry(1.85, 0.45), pencilMat(color, { opacity: 0.85, depthTest: false }));
+  m.position.y = 0.25; m.renderOrder = 2;
+  return m;
+}
+
 // click feedback: its own material, since each one fades on its own
 export function clickRing(color) {
   const m = new THREE.Mesh(ringGeometry(1, 0.26), new THREE.MeshBasicMaterial({ color, map: strokeTexture('solid'), transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
@@ -146,10 +174,28 @@ export function symbolBadge(type, color) {
 // ---------- text tags ----------
 // HQ names in Stardos Stencil with an owner-color bar; point and node tags in Courier Prime. Canvas text drawn
 // before a web font arrives uses the fallback, so every tag is redrawn when fonts finish loading.
+// Tags keep a fixed size on screen: sx is the sprite width in CSS pixels (the 32 px tall tag prints its text at
+// 16 px), so they stay readable zoomed out and never grow over a close fight. fade is the camera depth band (m)
+// over which a tag fades out as you zoom in on it.
 const LABEL = {
-  hq: { w: 512, h: 112, sx: 11, px: 62, font: (px) => `700 ${px}px "Stardos Stencil", Impact, sans-serif`, upper: true, spacing: 3 },
-  tag: { w: 256, h: 64, sx: 8, px: 32, font: (px) => `700 ${px}px "Courier Prime", "IBM Plex Mono", monospace`, upper: false, spacing: 0 },
+  hq: { w: 512, h: 112, sx: 156, px: 62, font: (px) => `700 ${px}px "Stardos Stencil", Impact, sans-serif`, upper: false, spacing: 3, fade: [10, 17] },
+  tag: { w: 256, h: 64, sx: 128, px: 32, font: (px) => `700 ${px}px "Courier Prime", "Courier New", monospace`, upper: false, spacing: 0, fade: [19, 27] },
 };
+// The sprite shader with sizeAttenuation off keeps scale in clip units; this patch turns it into CSS pixels
+// (2 / (P[1][1] * view height)) and fades the tag by its view depth.
+const VIEW_H = { value: innerHeight };
+addEventListener('resize', () => { VIEW_H.value = innerHeight; });
+function screenSized(shader) {
+  shader.uniforms.viewH = VIEW_H;
+  shader.uniforms.fadeNear = this.userData.fadeNear;
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nuniform float viewH;\nuniform vec2 fadeNear;\nvarying float vNear;')
+    .replace('vec2 scale = vec2( length( modelMatrix[ 0 ].xyz ), length( modelMatrix[ 1 ].xyz ) );',
+      'vec2 scale = vec2( length( modelMatrix[ 0 ].xyz ), length( modelMatrix[ 1 ].xyz ) ) * 2.0 / ( projectionMatrix[ 1 ][ 1 ] * viewH );\n\tvNear = smoothstep( fadeNear.x, fadeNear.y, - mvPosition.z );');
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vNear;')
+    .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vNear );');
+}
 const labels = new Map();
 function paintLabel(e) {
   const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, bar = e.color != null ? 14 : 0, pad = 14;
@@ -182,7 +228,9 @@ export function label(text, { style = 'tag', color = null } = {}) {
     e = { cv, style, color, text: shown };
     paintLabel(e);
     e.tex = new THREE.CanvasTexture(cv); e.tex.colorSpace = THREE.SRGBColorSpace;
-    e.mat = new THREE.SpriteMaterial({ map: e.tex, depthTest: false, transparent: true });
+    e.mat = new THREE.SpriteMaterial({ map: e.tex, depthTest: false, transparent: true, sizeAttenuation: false });
+    e.mat.userData.fadeNear = { value: new THREE.Vector2(...st.fade) };
+    e.mat.onBeforeCompile = screenSized;
     labels.set(key, e);
   }
   const sp = new THREE.Sprite(e.mat);
@@ -227,12 +275,18 @@ export function capturePoint(radius, text) {
   prog.position.y = 0.32; prog.renderOrder = 2; prog.geometry.setDrawRange(0, 0);
   const flag = new THREE.Mesh(flagGeo, flagMat(NEUTRAL_FLAG));
   flag.scale.set(2.2, 1.4, 1); flag.position.set(1.1, 7.2, 0); flag.castShadow = true;
-  group.add(ring, prog, flag, label(text));
+  const tag = label(text);
+  group.add(ring, prog, flag, tag);
   const swap = (o, m) => { if (o.material !== m) o.material = m; };
+  // the tag steps aside while the point is being taken or drained, so it does not sit over the fight for it
+  let last = -1, busyUntil = 0;
   return {
     group,
     // owner and capper are player colors, or null
     set(owner, capper, progress) {
+      const now = performance.now();
+      if (last >= 0 && progress !== last) busyUntil = now + 2500;
+      last = progress; tag.visible = now >= busyUntil;
       swap(ring, owner != null ? pencilMat(owner, { opacity: 0.9, depthTest: false }) : pencilMat(NEUTRAL_RING, { dashed: true, opacity: 0.7, depthTest: false }));
       swap(flag, flagMat(owner ?? NEUTRAL_FLAG));
       swap(prog, pencilMat(owner ?? capper ?? 0xffffff, { opacity: 0.45, depthTest: false }));
