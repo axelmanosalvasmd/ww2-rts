@@ -16,6 +16,7 @@ import { buildStructures as buildPieces, sandbagRing, buildingModel } from './st
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
+import { createPointer } from './pointer.js';
 import { pings } from './pings.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR } from './markers.js';
 import { disposeTree } from './upkeep.js';
@@ -168,6 +169,7 @@ $('start').onclick = () => sendCmd({ t: 'start' });
 $('fullscreen').onclick = async () => {
   try {
     if (document.fullscreenElement) return document.exitFullscreen();
+    pointer.beforeFullscreen();
     await document.documentElement.requestFullscreen();
     await navigator.keyboard?.lock?.(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9']);
   } catch {}
@@ -838,7 +840,11 @@ const orders = createOrders({
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
-rig.init({ cam, camera, pitch: PITCH, keys, mouse: () => mouse, dragging: () => drag, world: () => world,
+// created before the mouse listeners below: while Capture mouse is on, its window listeners must run first
+const pointer = createPointer({ view: renderer.domElement, tryStore, captureButton: $('captureBtn'), captureNow: $('captureNow'),
+  playing: () => !EDIT && !$('hud').classList.contains('hidden') && $('overlay').classList.contains('hidden') });
+rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag, world: () => world,
+  blocked: () => !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
   units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
   // the clear band for framing: below the score and status panels, above the recruit bar
   band: () => { const t = $('top').getBoundingClientRect(), b = $('buy').getBoundingClientRect(); return { top: t.height ? t.bottom : 0, bottom: b.height ? b.top : innerHeight }; },
@@ -854,7 +860,7 @@ function cancelInput(clearKeys = true) {
   if (clearKeys) keys.clear();
   mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden');
 }
-addEventListener('mousedown', (e) => { if (rig.skipIntro()) { e.preventDefault(); e.stopPropagation(); } }, { capture: true });
+addEventListener('mousedown', rig.introPress, { capture: true });
 
 // Any shortcut that moves the camera ends follow mode (camera stream rule).
 const centerSelection = (list) => {
@@ -1217,7 +1223,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

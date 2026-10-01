@@ -160,7 +160,7 @@ function cancelFollow() { followed = null; anchor = null; showFollow(); }
 function follow(id) {
   if (followed != null) { cancelFollow(); return; }
   if (id == null || !hooks.units.has(id)) return;
-  followed = id; anchor = null; showFollow();
+  followed = id; anchor = null; edgeHold = true; showFollow();
 }
 function preferences() {
   hooks.edgeButton.textContent = `Edge scroll: ${edge ? 'On' : 'Off'}`;
@@ -215,23 +215,58 @@ function moveMiddle(e) {
   hooks.cam.yaw -= (e.clientX - middle.x) * 0.006; middle.x = e.clientX; anchor = null;
 }
 function stopDrag() { middle = null; anchor = null; }
+// A mouse press during the opening glide ends it and still counts, so the first click or box drag of a match selects.
+// Only a right-click is dropped: its order was aimed at a view that has just jumped to the start view.
+function introPress(e) {
+  if (skipIntro() && e.button === 2) { e.preventDefault(); e.stopPropagation(); }
+}
+
+// Edge scrolling, as in Warcraft III. The cursor (hooks.pointer, client/pointer.js) inside the zone along a window
+// edge pushes the view that way: 30% speed at the zone's inner border up to full speed at the edge, eased in over
+// EDGE_EASE seconds, both ways at once in a corner. A cursor that leaves the window across an edge stays pinned there,
+// so the push goes on until it comes back in, the window loses focus or the tab is hidden. Over a HUD panel only the
+// outer strip counts, so a recruit button near the bottom does not scroll the view while the player aims at it.
+// No push while a mouse button drags (box select, rotate), while a menu or the lobby covers the board, or while a
+// follow is starting with the cursor already at the edge; a fresh push after that ends the follow.
+const EDGE_EASE = 0.15;
+let edgeAge = 0, edgeHold = false;
+function edgeZone() {
+  // CSS pixels already grow with devicePixelRatio (32 CSS px are 64 device px on a 2x screen), so a share of the
+  // window keeps the zone the same size by eye on a laptop and on a large monitor: 32 px at 1920x1080
+  return Math.min(48, Math.max(24, Math.min(innerWidth, innerHeight) * 0.03));
+}
+function edgePush(dt) {
+  const p = hooks.pointer;
+  if (!edge || !p?.active || !hooks.world() || hooks.blocked?.() || (p.buttons & 5) || hooks.dragging() || middle) {
+    edgeAge = 0; edgeHold = false; return null;
+  }
+  const W = innerWidth, H = innerHeight, zone = edgeZone(), reach = p.out || p.overView ? zone : Math.max(6, zone / 4);
+  const depth = (d) => d < reach ? 0.3 + 0.7 * (1 - d / zone) : 0;
+  const rt = depth(W - 1 - p.x) - depth(p.x), fw = depth(p.y) - depth(H - 1 - p.y);
+  if (!rt && !fw) { edgeAge = 0; edgeHold = false; return null; }
+  if (edgeHold && followed != null) return null;
+  edgeHold = false;
+  edgeAge += dt;
+  const t = Math.min(1, edgeAge / EDGE_EASE), ease = t * t * (3 - 2 * t);
+  const dir = (fw > 0 ? 'n' : fw < 0 ? 's' : '') + (rt > 0 ? 'e' : rt < 0 ? 'w' : '');
+  return { fw: fw * ease, rt: rt * ease, dir };
+}
 function update(dt) {
   if (!hooks) return;
   const { cam, keys } = hooks;
   if (intro) {
+    hooks.pointer?.frame(null);
     intro.age = Math.min(2.5, intro.age + dt);
     const t = intro.age / 2.5, eased = t * t * (3 - 2 * t);
     for (const k of ['x', 'y', 'z', 'dist']) cam[k] = intro.from[k] + (intro.to[k] - intro.from[k]) * eased;
     if (t === 1) skipIntro(); else pose();
     return;
   }
-  const mouse = hooks.mouse(), dragging = hooks.dragging() || middle;
   let fw = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   let rt = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-  if (edge && mouse.inside && !dragging && hooks.world()) {
-    if (mouse.x < 8) rt = -1; if (mouse.x > innerWidth - 8) rt = 1;
-    if (mouse.y < 8) fw = 1; if (mouse.y > innerHeight - 8) fw = -1;
-  }
+  const push = edgePush(dt);
+  hooks.pointer?.frame(push?.dir ?? null);
+  if (push) { fw = Math.max(-1, Math.min(1, fw + push.fw)); rt = Math.max(-1, Math.min(1, rt + push.rt)); }
   if (PAN_KEYS.some(k => keys.has(k)) || fw || rt) cancelFollow();
   if (followed != null) {
     const v = hooks.units.get(followed);
@@ -254,5 +289,5 @@ function corners(terrain) {
   return cornerPoints;
 }
 
-export const rig = { init, update, pose, wheel, frame, follow, cancelFollow, startIntro, skipIntro, beginMiddle, moveMiddle, stopDrag, corners,
+export const rig = { init, update, pose, wheel, frame, follow, cancelFollow, startIntro, skipIntro, introPress, beginMiddle, moveMiddle, stopDrag, corners,
   get following() { return followed; }, get intro() { return !!intro; } };
