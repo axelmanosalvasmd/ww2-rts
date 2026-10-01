@@ -5,6 +5,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Recruit by letter: outside Classic, press Tab (or the key under Esc) and the Command Card header reads
+  "Recruiting". Each card gets a letter (Q W E R T, A S D F G, Z X C V B in reading order), the letter buys that unit
+  like a click, and Shift+letter buys five, or as many as your MP and army limit allow. Tab, Esc or a right-click ends
+  it. While it is on, a letter that has a card buys, so WASD, Q/E, Stop (X), Retreat (R), Ability (F), Attack-move (G),
+  Trench (T) and the Z C V support calls pause (the arrows still pan) and their badges hide; B has no card in Conquest
+  and still aims smoke. In Classic, a selected HQ or production building shows the same letters on its train cards
+  without any mode and Shift+letter queues five at that building; an HQ uses only Q and W, so A S D E still pan and
+  rotate. Classic Tab explains this. Refusals show their reason as a click would ("Needs 220 MP", "Army at its limit
+  (12/12)").
+  - Fixed along the way: a Classic card on a selected building now greys out when that building's queue is full, even
+    if another building still has room (the server refuses a full chosen building).
+  - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
+    and the extra buys come back refused with their reason.
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
   goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window

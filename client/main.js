@@ -885,6 +885,8 @@ const actions = {
     if (hq) { selected.clear(); selected.add(hq.id); }
   },
   clear: () => selected.clear(), cancelAim,
+  recruitMode: () => classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()),
+  recruitOff: () => hud.setRecruit(false),
   army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
   idleEngineer: () => selection.findIdle(false, true),
   panForward: () => {}, panBack: () => {}, panLeft: () => {}, panRight: () => {}, rotateLeft: () => {}, rotateRight: () => {},
@@ -895,13 +897,22 @@ for (const { id } of bindings) {
   else if (kind === 'fort') actions[id] = () => startDig(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
   else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
+  else if (kind === 'card' || kind === 'cardMany') actions[id] = () => hud.pressCard(+value, kind === 'cardMany');
 }
+// In a match (not the lobby or the open menu) Tab belongs to the game: it toggles recruit mode and never moves focus.
+const inMatch = () => lobbyState?.state === 'play' && !$('hud').classList.contains('hidden') && $('menu').classList.contains('hidden');
+const keyContexts = () => [classicMode() ? 'classic' : 'army', ...(!inMatch() ? [] : hud.recruiting() ? ['recruit'] : hud.lettered() ? ['building'] : []), ...(targeting ? ['targeting'] : [])];
 addEventListener('keydown', (e) => {
   if (rig.skipIntro()) { e.preventDefault(); return; }
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   keys.add(e.code);
   if (EDIT) return;
-  const id = match(e, [classicMode() ? 'classic' : 'army', ...(targeting ? ['targeting'] : [])]);
+  if (e.code === 'Tab' && inMatch()) e.preventDefault();
+  const contexts = keyContexts();
+  let id = match(e, contexts);
+  if (id === 'recruitMode' && !inMatch()) return;
+  // a letter with no card under it (a Classic HQ has two, Conquest has 14 of the 15) keeps its usual meaning, camera keys included
+  if (id?.startsWith('card') && !hud.hasCard(+id.split(':')[1])) id = match(e, contexts.filter((c) => c !== 'building' && c !== 'recruit'));
   // Shortcuts that share camera codes must not also pan.
   if (id && !id.startsWith('pan') && !id.startsWith('rotate')) keys.delete(e.code);
   if (!id || !actions[id]) return;
