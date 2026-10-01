@@ -5,6 +5,48 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New look for the whole interface. The paperwork style (manila cards, typewriter text, stencil numbers, map symbols)
+  made the game read like a board game, so the HUD, lobby, menu, alerts, banners, tooltips, match report, end-of-match
+  notice, map editor and the labels and badges over the battlefield now share one modern style: dark gunmetal panels
+  with thin khaki edges, one condensed typeface (Barlow Semi Condensed) and brass only on manpower, victory points and
+  the clock. Layout, hotkeys, element ids and what each panel shows are unchanged.
+- Recruit cards, train and build cards and the selection list show a small picture of each unit, rendered from its
+  real 3D model in your faction and color. They are made one per frame once the match is under way, so loading and the
+  frame rate are not affected, and they follow the models as those improve. Until a picture is ready the slot shows
+  the unit's silhouette.
+- One set of flat silhouette icons replaces the NATO map symbols and the line icons: unit types, buildings, support
+  calls, orders and the badge beside each unit's health bar on the battlefield (drawn there in the owner's color on a
+  small dark plate). Costs are plain numbers; resources get a small icon (helmet, cartridge, jerrycan).
+- The Victory or Defeat notice at the end of a match is a quiet panel that fades in, instead of a tilted rubber stamp.
+- Recruit by letter and autocast take the new look. The Recruit tab, when on, reads in brass with a brass hairline
+  and the Command Card's edge turns brass while the letters are live; each card's letter sits at the left end of its
+  cost line, clear of the name and the portrait; a card bought by its letter shows the pressed look for a moment.
+  An ability with autocast on gets the HUD's on state (brass hairline over a faint brass tint) and a small A, instead
+  of a dashed pencil border.
+- Stances, Take cover, mass entrenchment, Horde and the weather line take the new look. The stance switches (hold
+  fire, hold position, auto-retreat) and Take cover, the six entrenchment patterns (line, zigzag, double, arc, ring,
+  strongpoint), mines and the bridge get silhouettes from the same set; a stance that is on shows the HUD's on state
+  and reads "On" or "Off" (it read "ON"). Horde's next-wave button, Horde's result line, the lobby's Weather
+  picker and the weather line under the teams use the panels, hairlines and plain punctuation like the rest.
+- The lobby shows the selected map's real battlefield behind the room form: the camera drifts slowly over it, dimmed so
+  the form stays easy to read, and it changes with the Map select. It runs on a small low-resolution renderer of its
+  own that is freed when the match starts, is skipped on Graphics Low, and on software rendering (or with reduced
+  motion) shows a single still frame. Its world is built in steps in idle time; the biggest step, painting the ground,
+  took about 0.7 to 1.1 s on the heavily loaded test machine, and a match on that map reuses the painted ground.
+- The Command Card's group names (Infantry, Support weapons, Vehicles, Aircraft) lead with a small silhouette.
+- Fixed: starting a match could send the start before the lobby message that clears the last match's result, because
+  that message waits on reading the map list. The server now sends the lobby first. It made `node test.js` fail now
+  and then on a busy machine ("a new match without the old result").
+- Status lines and hints read as plain sentences ("0 pts, 0 held", "60 MP, 20s", "Right-click cancels") instead of
+  pieces joined with middle dots.
+- Checked in Conquest and Classic at 1920x1080 and 1366x768 (lobby, HQ view, selection with orders and recruit row,
+  support calls, alerts, tooltip, menu, pause banner, end notice, match report, map editor): nothing overlaps, all 16
+  Conquest portraits render, no console errors. The Impeccable detector (4.1.0) is clean on `client/`.
+- Left for later: the portraits show today's simple models and will look better as the models do; a few text glyphs remain (veterancy stars in the selection list,
+  the lobby's kick cross, the editor's check and warning marks, the star on double-VP point tags); `client/markers.js`
+  still exports the old ink color, unused now; the menu button's tooltip can cover the first menu item while the
+  cursor stays on the button.
+
 - Weather: the host picks it in the lobby (Map default, Clear, Fog, Rain, Mud, Snow or Random), and it changes how
   the match plays for everyone. Ground fog cuts sight by 30%. Rain is the living ground's rain held on all match, on
   ground soaked from the start: sight -20%, vehicles off the roads -20% (more on low ground), fords slower, smoke
@@ -371,6 +413,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     if another building still has room (the server refuses a full chosen building).
   - Left for later: with a laggy server, a Shift+letter right after a purchase can count MP the server already spent,
     and the extra buys come back refused with their reason.
+
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
   goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window

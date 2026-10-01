@@ -19,8 +19,8 @@ const QUIET_ON_SCREEN = true; // no "under attack" for a fight you are looking a
 // support that is not an air threat: barrages are support but not aircraft (CONTEXT.md), fighter cover only defends
 const NOT_AIR = new Set(['artillery', 'smoke', 'cover']);
 
-// left rule and ping color per kind: grease-pencil red for danger, brass for a point won, chalk for ready
-const RED = '#b8322a', BRASS = '#d2a849', CHALK = '#e6dcc0';
+// minimap ping color per kind: signal red for danger, brass for a point won, the HUD's text color for the rest
+const RED = '#d4574a', BRASS = '#d6b25e', CHALK = '#e2dfd3';
 const COLOR = { attack: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK };
 
 const now = () => performance.now() / 1000;
