@@ -1,10 +1,10 @@
 // Miniature-model pieces for the map and the base buildings, in the painted sand-table style.
-// Map pieces (houses, a church, barns, bocage banks, capped walls, sandbags, trenches, rubble, wire, tank traps,
+// Map pieces (timber sheds, brick and plaster houses, stone buildings, a church, barns, bocage banks, capped walls, sandbags, trenches, rubble, wire, tank traps,
 // bridges) are rebuilt from the grid as one InstancedMesh per kind of piece, so the whole village costs a couple dozen
 // draw calls. Every piece stands on the cells it represents; gameplay cells are never changed here.
 // Base buildings (HQ, barracks, motor pool, depot, command bunker) are one merged, vertex-colored mesh per type and team.
 import * as THREE from 'three';
-import { CELL } from '/shared/sim.js';
+import { CELL, houseKinds } from '/shared/sim.js';
 import { surface, fogShader, fogged, loadTexture } from './surfaces.js';
 import { leafGeometry, leafMaterial } from './foliage.js';
 import { gfx } from './gfx.js';
@@ -228,10 +228,12 @@ const KINDS = {
   wall: { geo: BOX, mat: () => surface('plaster'), pick: true },
   stone: { geo: BOX, mat: () => surface('stone'), pick: true },
   wood: { geo: BOX, mat: () => surface('wood'), pick: true },
+  brick: { geo: BOX, mat: () => surface('brick'), pick: true },
   dark: { geo: BOX, mat: () => surface('darkwood') },
   gable: { geo: GABLE, mat: () => surface('plaster'), pick: true },
   gableWood: { geo: GABLE, mat: () => surface('wood'), pick: true },
   gableStone: { geo: GABLE, mat: () => surface('stone'), pick: true },
+  gableBrick: { geo: GABLE, mat: () => surface('brick'), pick: true },
   roof: { geo: ROOF, mat: () => materials().roof, pick: true },
   spire: { geo: PYRAMID, mat: () => materials().slate, pick: true },
   window: { geo: WINDOW, mat: () => materials().glass, shadow: false, pick: true },
@@ -239,6 +241,8 @@ const KINDS = {
   paint: { geo: BOX, mat: () => materials().paint, shadow: false, pick: true },
   broken: { geo: BROKEN, mat: () => surface('plaster') },
   brokenStone: { geo: BROKEN, mat: () => surface('stone') },
+  brokenBrick: { geo: BROKEN, mat: () => surface('brick') },
+  brokenWood: { geo: BROKEN, mat: () => surface('wood') },
   earth: { geo: MOUND, mat: () => surface('earth') },
   shrub: { geo: SHRUB, mat: () => surface('hedge') }, // the dense, shaded heart of a hedgerow shrub
   leaves: { geo: leafGeometry('hedge'), mat: leafMaterial }, // its ragged outside: leaf cards (client/foliage.js)
@@ -282,7 +286,13 @@ const PLASTER = [[1, 0.95, 0.85], [1.06, 0.9, 0.66], [1, 0.86, 0.8], [0.95, 0.95
 const ROOFS = [[1, 1, 1], [0.86, 0.72, 0.62], [1.08, 0.86, 0.72], [0.62, 0.64, 0.7], [0.95, 0.8, 0.66]];
 const TRIM = [0x7d8f6a, 0x6a7d8f, 0x7a3a30, 0x6b4e32, 0x4f7a78, 0xd8cfb0].map(lin);
 const BARN = [[1.15, 0.62, 0.48], [0.78, 0.76, 0.74], [0.95, 0.8, 0.62]];
-const STONE = [[1, 0.97, 0.9], [0.9, 0.88, 0.84], [1.06, 1, 0.88], [0.95, 0.9, 0.82]]; // fieldstone farmhouses
+const STONE = [[1, 0.97, 0.9], [0.9, 0.88, 0.84], [1.06, 1, 0.88], [0.95, 0.9, 0.82]]; // stone buildings
+const BRICK = [[1, 1, 1], [0.86, 0.8, 0.78], [1.1, 1, 0.86], [0.8, 0.72, 0.7], [1.05, 0.9, 0.84]];
+const SLATE = [[0.6, 0.92, 1.6], [0.52, 0.8, 1.4], [0.66, 0.95, 1.5]]; // pulls the clay tile texture to blue-grey
+const SHINGLE = [[0.6, 0.8, 1.15], [0.5, 0.68, 1.0], [0.68, 0.86, 1.2]]; // weathered grey shingles
+const SHED = [[1.5, 1.32, 1.12], [1.25, 1.25, 1.25], [1.6, 1.0, 0.8], [1.3, 1.1, 0.85]]; // sun-bleached, greyed and red-ochre boards
+const DRESSED = [0.78, 0.74, 0.64]; // smooth-cut stone: lintels and string courses
+const BRICK_DUST = [1.12, 0.66, 0.52];
 const DARK = lin(0x1e1c1a);
 
 // greedy rectangles in scan order: run right, then down while the whole row fits
@@ -312,21 +322,21 @@ function houses(C) {
   const rects = rectangles(0, 0, w, h, isFoot);
   const dims = (r) => { const a = r.x1 - r.x0, b = r.y1 - r.y0; return [Math.min(a, b), Math.max(a, b)]; };
   const area = (r) => (r.x1 - r.x0) * (r.y1 - r.y0);
+  // what each block is in the game (0 timber shed, 1 brick house, 2 stone building): the look follows it
+  const types = houseKinds(Array.from(C.foot, f => (f ? 'B' : '.')), w);
+  for (const r of rects) r.type = types[r.y0 * w + r.x0];
   if (rects.length >= 4) {
-    // churches: the biggest long block, one more per 25 houses, at least 40 cells apart
+    // churches: the biggest long stone block, one more per 25 houses, at least 40 cells apart
     const want = 1 + Math.floor(rects.length / 25), churches = [];
-    const cand = rects.filter(r => { const [s, l] = dims(r); return s >= 3 && s <= 4 && l > s; })
+    const cand = rects.filter(r => { const [s, l] = dims(r); return r.type === 2 && s >= 3 && s <= 4 && l > s; })
       .sort((a, b) => area(b) - area(a) || rnd(a.x0, a.y0, 7) - rnd(b.x0, b.y0, 7));
     for (const r of cand) {
       if (churches.length >= want) break;
       if (churches.every(c => Math.hypot(c.x0 - r.x0, c.y0 - r.y0) >= 40)) { r.kind = 'church'; churches.push(r); }
     }
-    let barns = Math.max(1, Math.floor(rects.length / 8));
-    for (const r of rects) {
-      const [s] = dims(r);
-      if (barns > 0 && !r.kind && area(r) >= 9 && s >= 3 && s <= 4 && rnd(r.x0, r.y0, 8) < 0.3) { r.kind = 'barn'; barns--; }
-    }
   }
+  // about half of the big timber blocks are barns, the rest big sheds
+  for (const r of rects) if (r.type === 0 && dims(r)[0] >= 3 && rnd(r.x0, r.y0, 8) < 0.5) r.kind = 'barn';
   for (const r of rects) {
     const [s, l] = dims(r), alongX = r.x1 - r.x0 >= r.y1 - r.y0;
     if (s >= 5) r.kind = 'block';
@@ -341,7 +351,7 @@ function houses(C) {
     }
     let o = 0;
     for (const k of parts) {
-      piece(C, alongX ? { x0: r.x0 + o, x1: r.x0 + o + k, y0: r.y0, y1: r.y1, kind: r.kind } : { x0: r.x0, x1: r.x1, y0: r.y0 + o, y1: r.y0 + o + k, kind: r.kind });
+      piece(C, alongX ? { x0: r.x0 + o, x1: r.x0 + o + k, y0: r.y0, y1: r.y1, kind: r.kind, type: r.type } : { x0: r.x0, x1: r.x1, y0: r.y0 + o, y1: r.y0 + o + k, kind: r.kind, type: r.type });
       o += k;
     }
   }
@@ -362,20 +372,20 @@ function frame(C, r) {
 
 // one house's look, from its own cell, shared by the standing house and its ruins
 function spec(r) {
-  const kind = r.kind ?? 'house', t = (k) => rnd(r.x0, r.y0, k);
+  const kind = r.kind ?? 'house', t = (k) => rnd(r.x0, r.y0, k), type = r.type ?? 1;
   const church = kind === 'church', barn = kind === 'barn', block = kind === 'block';
-  // a church and about two farmhouses in five are bare fieldstone; the rest are rendered and limewashed
-  const stone = church || (!barn && !block && t(25) < 0.4);
-  const storeys = church || barn ? 1 : block ? 2 + Math.floor(t(9) * 2) : t(1) < 0.55 ? 2 : 1;
+  // the game's three types read at a glance: timber (sheds and barns), brick or limewashed render under clay tiles
+  // (houses), bare stone under slate (stone buildings, the church among them)
+  const wood = type === 0, stone = type === 2, shed = wood && !barn, brick = type === 1 && !block && t(25) < 0.5;
+  const storeys = church || wood ? 1 : block ? 2 + Math.floor(t(9) * 2) : stone || t(1) < 0.55 ? 2 : 1;
   return {
-    kind, church, barn, block, storeys, t,
-    H: church ? 6.2 : barn ? 4.4 + 0.6 * t(2) : block ? storeys * 3.1 + 0.5 : storeys === 2 ? 5.6 + 0.9 * t(2) : 3.6 + 0.8 * t(2),
-    k: church ? 1.25 : barn ? 1.3 : 0.85 + 0.3 * t(10), // roof pitch: ridge height = 0.4 * span * k
-    stone,
-    tint: barn ? pick(BARN, t(4)) : church ? [1.04, 1, 0.92] : stone ? pick(STONE, t(4)) : pick(PLASTER, t(4)),
-    roof: church ? [0.6, 0.62, 0.68] : barn ? [0.62, 0.56, 0.5] : pick(ROOFS, t(5)),
+    kind, church, barn, block, storeys, t, wood, shed, stone, brick,
+    H: church ? 6.2 : barn ? 4.4 + 0.6 * t(2) : shed ? 2.5 + 0.5 * t(2) : block ? storeys * 3.1 + 0.5 : storeys === 2 ? (stone ? 6.1 : 5.6) + 0.9 * t(2) : 3.6 + 0.8 * t(2),
+    k: church ? 1.25 : barn ? 1.3 : shed ? 0.7 + 0.25 * t(10) : 0.85 + 0.3 * t(10), // roof pitch: ridge height = 0.4 * span * k
+    tint: barn ? pick(BARN, t(4)) : shed ? pick(SHED, t(4)) : church ? [1.04, 1, 0.92] : stone ? pick(STONE, t(4)) : brick ? pick(BRICK, t(4)) : pick(PLASTER, t(4)),
+    roof: wood ? pick(SHINGLE, t(5)) : stone ? pick(SLATE, t(5)) : pick(ROOFS, t(5)),
     trim: pick(TRIM, t(6)),
-    shutters: !block && !church && !barn && t(18) < 0.7,
+    shutters: type === 1 && !block && t(18) < (brick ? 0.5 : 0.7),
   };
 }
 
@@ -408,14 +418,15 @@ function piece(C, r) {
   const cells = [];
   for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) cells.push([x, y]);
   const sp = spec(r);
-  for (const [x, y] of cells) C.tint.set(y * C.w + x, { color: sp.tint, wood: sp.barn, stone: sp.stone });
+  for (const [x, y] of cells) C.tint.set(y * C.w + x, { color: sp.brick ? BRICK_DUST : sp.tint, wall: sp.tint, wood: sp.wood, stone: sp.stone, brick: sp.brick });
   const standing = cells.filter(([x, y]) => C.at(x, y) === 'B');
   if (!standing.length) return; // all rubble: rubble() draws it
   if (standing.length < cells.length) ruin(C, r, sp, standing);
   else house(C, r, sp);
 }
 
-const wallKind = (sp) => (sp.barn ? 'wood' : sp.stone ? 'stone' : 'wall');
+const wallKind = (sp) => (sp.wood ? 'wood' : sp.stone ? 'stone' : sp.brick ? 'brick' : 'wall');
+const jagKind = (sp) => (sp.wood ? 'brokenWood' : sp.stone ? 'brokenStone' : sp.brick ? 'brokenBrick' : 'broken');
 
 // stone quoins up a rendered house's outside corners, blocks alternately long and short on each face; corners
 // that meet a neighbour (terraces) get none
@@ -437,10 +448,12 @@ function quoins(C, r, F, H) {
 }
 
 function house(C, r, sp) {
-  const F = frame(C, r), { L, S, base, P } = F, { H, k, tint, t } = sp, oh = 0.35;
+  const F = frame(C, r), { L, S, base, P } = F, { H, k, tint, t } = sp, oh = 0.35, ph = sp.shed ? 0.2 : 0.55;
   P(wallKind(sp), 0, base - 1 + (H + 1) / 2, 0, S, H + 1, L, tint);
-  if (!sp.stone && !sp.barn) quoins(C, r, F, H);
-  P('stone', 0, base - 0.5, 0, S + 0.14, 2.1, L + 0.14, 0.85); // plinth, up to base + 0.55
+  if (!sp.stone && !sp.wood) quoins(C, r, F, H);
+  P('stone', 0, base - 1.55 + (ph + 1.55) / 2, 0, S + 0.14, ph + 1.55, L + 0.14, 0.85); // plinth, up to base + ph
+  // a stone building's string courses: a dressed band between each pair of storeys
+  if (sp.stone && !sp.church) for (let i = 1; i < sp.storeys; i++) P('paint', 0, sp.block ? base + 0.05 + i * 3.1 : base + H / 2 + 0.15, 0, S + 0.12, 0.2, L + 0.12, DRESSED);
   if (sp.block) {
     // flat roof: cornice, tar, a stone parapet and a couple of chimney stacks
     P('stone', 0, base + H - 0.25, 0, S + 0.24, 0.22, L + 0.24, 1.05);
@@ -456,13 +469,13 @@ function house(C, r, sp) {
     }
   } else {
     // pitched roof: gable ends in the wall paint, a tiled roof with eaves overhanging by oh
-    P(sp.barn ? 'gableWood' : sp.stone ? 'gableStone' : 'gable', 0, base + H, 0, S, S * k, L, tint);
+    P(sp.wood ? 'gableWood' : sp.stone ? 'gableStone' : sp.brick ? 'gableBrick' : 'gable', 0, base + H, 0, S, S * k, L, tint);
     const W = S + 2 * oh;
     P('roof', 0, base + H - 0.8 * k * oh, 0, W, W * k, L + 2 * oh, sp.roof);
-    if (!sp.church && !sp.barn && t(13) < 0.8) {
+    if (!sp.church && !sp.wood && t(13) < 0.8) {
       const a = (t(14) < 0.5 ? -1 : 1) * Math.max(0, L / 2 - 0.9), s = (t(15) < 0.5 ? -1 : 1) * 0.22 * S;
       const top = base + H + 0.4 * k * (S - 2 * Math.abs(s)) + 1.0 + 0.3 * t(16), bot = base + H - 0.3;
-      P('stone', s, (top + bot) / 2, a, 0.6, top - bot, 0.75, 0.8);
+      P(sp.brick ? 'brick' : 'stone', s, (top + bot) / 2, a, 0.6, top - bot, 0.75, sp.brick ? mul(tint, 0.9) : 0.8);
       P('stone', s, top + 0.06, a, 0.78, 0.12, 0.92, 0.5);
       for (const d of t(16) < 0.5 ? [0] : [-0.18, 0.18]) P('paint', s, top + 0.27, a + d, 0.16, 0.3, 0.16, lin(0x7a4a36)); // clay pots
     }
@@ -490,6 +503,7 @@ function house(C, r, sp) {
     P('paint', 0, base + H + 0.75, aE, 1.1, 1.0, 0.1, lin(0x3a2a1c));
     return;
   }
+  if (sp.shed) return shed(C, F, sp, list);
   // windows on every open bay and storey, a door on a long side
   const longs = list.filter(b => b.long), door = !sp.block && longs.length ? longs[Math.floor(t(17) * longs.length)] : null;
   for (const b of list) for (let i = 0; i < sp.storeys; i++) {
@@ -497,6 +511,8 @@ function house(C, r, sp) {
     if (rnd(b.x * 3 + b.dx, b.y * 3 + b.dy, 30 + i) < 0.15) continue; // a few blank bays
     const y = sp.block ? base + 1.6 + i * 3.1 : i === 0 ? base + 1.6 : base + H - 1.45;
     windowAt(sp.shutters ? 'window' : 'pane', b, y, sp.trim);
+    // bare masonry gets a dressed stone lintel over each window
+    if (sp.stone || sp.brick) put('paint', b.px + b.dx * 0.02, y + 0.63, b.pz + b.dy * 0.02, 1.02, 0.2, 0.12, yawOf(b.dx, b.dy), DRESSED);
   }
   if (door) {
     const yd = yawOf(door.dx, door.dy), g = Math.max(base, C.hAt(door.px + door.dx * 0.4, door.pz + door.dy * 0.4));
@@ -508,23 +524,40 @@ function house(C, r, sp) {
   }
 }
 
+// a timber shed's trim: tarred corner posts and wall plates, a ledged and braced plank door, the odd small window
+function shed(C, F, sp, list) {
+  const { L, S, base, P } = F, { H, t } = sp, pale = [1.25, 1.15, 1];
+  for (const s of [-1, 1]) {
+    for (const a of [-1, 1]) P('dark', s * (S / 2 - 0.04), base + H / 2, a * (L / 2 - 0.04), 0.2, H, 0.2, 0.8);
+    P('dark', s * (S / 2 + 0.01), base + H - 0.11, 0, 0.14, 0.22, L + 0.1, 0.8);
+  }
+  const door = list[Math.floor(t(17) * list.length)];
+  for (const b of list) if (b !== door && b.long && rnd(b.x * 3 + b.dx, b.y * 3 + b.dy, 30) < 0.4) windowAt('pane', b, base + H - 1.0, lin(0x5a4a3a), 0.8, 0.6);
+  if (!door) return;
+  const yd = yawOf(door.dx, door.dy), g = Math.max(base, C.hAt(door.px + door.dx * 0.4, door.pz + door.dy * 0.4)), dh = Math.min(1.9, H - 0.45);
+  const x = door.px + door.dx * 0.03, z = door.pz + door.dy * 0.03, bx = door.px + door.dx * 0.07, bz = door.pz + door.dy * 0.07;
+  put('dark', x, g + 0.05 + dh / 2, z, 0.95, dh, 0.08, yd, 0.7);
+  for (const y of [0.3, dh - 0.25]) put('wood', bx, g + 0.05 + y, bz, 0.95, 0.12, 0.06, yd, pale);
+  put('wood', bx, g + 0.05 + dh / 2, bz, Math.hypot(0.85, dh - 0.55), 0.11, 0.05, yd, pale, 0, Math.atan2(dh - 0.55, 0.85));
+}
+
 // a house with fallen cells: what stands is a roofless, burnt-out shell with jagged wall tops
 function ruin(C, r, sp, standing) {
-  const keep = new Set(standing.map(([x, y]) => y * C.w + x));
+  const keep = new Set(standing.map(([x, y]) => y * C.w + x)), ph = sp.shed ? 0.2 : 0.55;
   for (const q of rectangles(r.x0, r.y0, r.x1, r.y1, (x, y) => keep.has(y * C.w + x))) {
     const F = frame(C, q), { L, S, base, P } = F, t = (k) => rnd(q.x0, q.y0, 40 + k);
-    const Hs = Math.max(2.6, sp.H * (0.6 + 0.25 * t(1)));
+    const Hs = Math.max(Math.min(2.6, sp.H * 0.8), sp.H * (0.6 + 0.25 * t(1)));
     P(wallKind(sp), 0, base - 1 + (Hs + 1) / 2, 0, S, Hs + 1, L, sp.tint);
-    P('stone', 0, base - 0.5, 0, S + 0.14, 2.1, L + 0.14, 0.85);
+    P('stone', 0, base - 1.55 + (ph + 1.55) / 2, 0, S + 0.14, ph + 1.55, L + 0.14, 0.85);
     P('paint', 0, base + Hs + 0.03, 0, S - 0.3, 0.06, L - 0.3, lin(0x3a342e));
-    const jag = sp.barn || sp.stone ? 'brokenStone' : 'broken', tint = sp.barn ? 0.8 : sp.tint;
+    const jag = jagKind(sp), tint = sp.tint;
     for (const s of [-1, 1]) {
       P(jag, s * (S / 2 - 0.15), base + Hs - 0.05, 0, L, 0.7 + 0.7 * t(2 + s), 0.3, tint, Math.PI / 2 + (t(4 + s) < 0.5 ? Math.PI : 0));
       P(jag, 0, base + Hs - 0.05, s * (L / 2 - 0.15), S, 0.6 + 0.7 * t(6 + s), 0.3, tint, t(8 + s) < 0.5 ? Math.PI : 0);
     }
     for (let i = 0; i < 2; i++) P('dark', 0, base + Hs + 0.05, (t(10 + i) - 0.5) * (L - 0.6), S * 0.96, 0.2, 0.2, 0.45, 0, 0, (t(12 + i) - 0.5) * 0.4);
     for (const b of bays(C, q, F)) {
-      windowAt('pane', b, base + 1.6, lin(0x5a544c));
+      if (!sp.wood) windowAt('pane', b, base + 1.6, lin(0x5a544c));
       if (Hs > 4.6 && sp.storeys > 1) windowAt('pane', b, base + Hs - 1.6, lin(0x5a544c));
     }
   }
@@ -558,9 +591,9 @@ function rubble(C) {
       const nb = at(x + dx, y + dy);
       if (nb === 'R' || nb === 'B' || nb === 'K' || rnd(x, y, 50 + i) > (house ? 0.6 : 0.35)) return;
       const len = 0.9 + 1.1 * rnd(x, y, 54 + i), ht = house ? 0.6 + 0.7 * rnd(x, y, 58 + i) : 0.4 + 0.5 * rnd(x, y, 58 + i);
-      const along = (rnd(x, y, 62 + i) - 0.5) * (CELL - len), stone = !house || house.wood || house.stone;
-      put(stone ? 'brokenStone' : 'broken', cx + dx * 0.82 - dy * along, g - 0.2, cz + dy * 0.82 + dx * along, len, ht + 0.2, 0.3,
-        yawOf(dx, dy) + (rnd(x, y, 66 + i) < 0.5 ? Math.PI : 0), stone ? 0.95 : house.color);
+      const along = (rnd(x, y, 62 + i) - 0.5) * (CELL - len), stone = !house || house.stone;
+      put(stone ? 'brokenStone' : house.wood ? 'brokenWood' : house.brick ? 'brokenBrick' : 'broken', cx + dx * 0.82 - dy * along, g - 0.2, cz + dy * 0.82 + dx * along, len, ht + 0.2, 0.3,
+        yawOf(dx, dy) + (rnd(x, y, 66 + i) < 0.5 ? Math.PI : 0), stone ? 0.95 : house.wall);
     });
     if (house && !low && rnd(x, y, 70) < 0.45) put('dark', cx + rnd(x, y, 71) - 0.5, g + 0.35, cz + rnd(x, y, 72) - 0.5, 2.2, 0.16, 0.16, rnd(x, y, 73) * 6.28, 0.45, 0, 0.3);
   }
@@ -728,6 +761,20 @@ function mines(C) {
   }
 }
 
+// ---------- Field Hospital: a white ridge tent with a red cross on a board over the ridge ----------
+function hospitals(C) {
+  const { w, h, at, hAt } = C, canvas = [1.25, 1.22, 1.12], red = [0.9, 0.12, 0.1];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (at(x, y) !== 'A') continue;
+    const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz);
+    put('wall', cx, g + 0.45, cz, 1.9, 0.9, 1.9, 0, canvas);
+    put('gable', cx, g + 0.9, cz, 1.9, 2.5, 1.9, 0, canvas);
+    put('dark', cx, g + 1.5, cz, 0.08, 3, 0.08);
+    put('paint', cx, g + 2.6, cz, 0.9, 0.9, 0.06, 0, [1.3, 1.3, 1.25]);
+    for (const s of [-1, 1]) { put('paint', cx, g + 2.6, cz + s * 0.04, 0.62, 0.18, 0.02, 0, red); put('paint', cx, g + 2.6, cz + s * 0.04, 0.18, 0.62, 0.02, 0, red); }
+  }
+}
+
 // ---------- bridges: plank deck, edge beams, railings and stone cutwaters on the water sides ----------
 function bridges(C) {
   const { w, h, at, hAt } = C;
@@ -756,7 +803,7 @@ function rebuild() {
   clearGroup(group);
   // stage: 0 whole, 1 damaged, 2 nearly gone (bits 3-4 of the cell state the server sends)
   const C = { grid, orig, hAt, w, h, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
-  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); bridges(C);
+  houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); hospitals(C); bridges(C);
   flush(group, C.low);
 }
 // group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height;

@@ -173,14 +173,20 @@ function bake(group, key, shadow, look = 'vehicle') {
 }
 
 // Formation slots in local space (+x = forward). Gun crews stand behind the gun.
+// Line infantry is drawn as a battalion: a block of ranks with more men than the sim counts (def.models), front rank
+// first so the rear ranks thin out as the squad loses health. Purely a look; main.js maps health onto the men drawn.
+// ponytail: one mesh per man, so about 3x the draw calls for these squads; instance the men if big armies drop frames
+const block = (cols, rows, gap = 0.65) => Array.from({ length: cols * rows }, (_, i) => [((rows - 1) / 2 - Math.floor(i / cols)) * gap, (i % cols - (cols - 1) / 2) * gap]);
 const SLOTS = {
-  rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
+  rifle: block(5, 3),
   ...GUN_SLOTS, // mg, mortar, at, flak: around the weapons of client/models/guns.js
   sniper: [[0.4, 0], [-0.5, 0.6]],
-  engineer: [[0.6, 0], [-0.4, 0.7], [-0.4, -0.7]],
-  ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
-  conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
+  medic: [[0.3, 0.4], [-0.3, -0.4]],
+  engineer: block(3, 2),
+  ranger: block(6, 2),
+  conscript: block(7, 3),
 };
+const BLOCKS = new Set(['rifle', 'engineer', 'ranger', 'conscript']); // smaller men, so the ranks stand shoulder to shoulder
 
 // soldier posture, blended by weight: [lean (rad, + = back), height scale, shift x, shift y, weapon x, weapon y]
 // in the soldier's own units (+x forward, feet at 0). The weapon point is where muzzle flashes start (client/fx.js
@@ -301,11 +307,12 @@ export function buildModel(v, root, f, fac, def) {
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else {
-    const scale = type === 'conscript' ? 1.25 : 1.35;
+    const scale = BLOCKS.has(type) ? 1.1 : 1.35;
+    const figure = type === 'medic' ? 'engineer' : type; // ponytail: medics borrow the engineer figure until they get their own
     SLOTS[type].forEach(([x, z], i) => {
       // client/models/infantry.js builds the figure, near and far, with its kneeling, prone and running builds in
       // userData.poses for the posture morph targets
-      const s = soldier(type, fac, i, f), poses = (g) => g.children[0].userData.geo.userData.poses;
+      const s = soldier(figure, fac, i, f), poses = (g) => g.children[0].userData.geo.userData.poses;
       const hi = bakeMeshes(s.near, `${key}|man|${s.kit}`, false, poses(s.near), 'soldier'), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, poses(s.far), 'soldier');
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down

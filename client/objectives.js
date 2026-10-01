@@ -57,9 +57,10 @@ export function createObjectives(hooks) {
   function snapshot(s) {
     const time = now(), points = hooks.points();
     for (let i = 0; i < (s.points ?? []).length; i++) {
-      const [owner, capper, progress, contested = 0] = s.points[i], old = pointState[i];
+      const [owner, capper, progress, contested = 0, cut = 0] = s.points[i], old = pointState[i];
       pointState[i] = { owner, flipped: old && old.owner !== owner ? time : old?.flipped ?? -Infinity };
       points[i]?.set(owner >= 0 ? hooks.colorOf(owner) : null, capper >= 0 ? hooks.colorOf(capper) : null, progress, contested);
+      points[i]?.cut?.(cut);
     }
     const keep = new Set();
     for (const [id, type, , x, z, , , hp, , , , , , , built = 1] of s.units ?? []) {

@@ -8,7 +8,7 @@ import { createSelection } from './selection.js';
 import { createOrders } from './orders.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -43,9 +43,9 @@ import { createAutocast } from './autocast.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 let teams = [], factions = [];
@@ -362,7 +362,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
@@ -391,8 +391,10 @@ function startGame(m, restored = null) {
     const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, hAt((p.x + 0.5) * CELL, (p.y + 0.5) * CELL), (p.y + 0.5) * CELL);
     const cp = capturePoint(CFG.pointRadius, classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`); // Classic: points pay Munitions
     g.add(cp.group, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0));
+    // shown while the point is cut off from its owner's HQ and pays nothing (supply lines)
+    const cutTag = label('Cut off: no supply', { color: 0xb8322a }); cutTag.position.y = 13; cutTag.visible = false; g.add(cutTag);
     world.add(g);
-    return { g, set: cp.set, frame: cp.frame };
+    return { g, set: cp.set, frame: cp.frame, cut: (on) => { cutTag.visible = !!on; } };
   });
 
   // fog of war overlay: the server's mask of what my team sees (client/fog.js)
@@ -529,16 +531,49 @@ function corpse(v, man) {
   man.visible = false;
 }
 
+// In a trench the squad breaks ranks: its men line the trench cells nearest the squad instead of standing in a block
+// across the open ground beside it. v.trench holds a world spot per man; seatTrench() turns them into slots each frame.
+// Each living man claims a spot (four to a trench cell) for the snapshot, so squads sharing a trench stand side by side:
+// trenchTaken is cleared per snapshot and squads claim in snapshot order, nearest cells first, one man per cell per pass.
+// ponytail: trench cells within 3 cells of the squad; when every spot there is taken the rest double up on the nearest
+const QUAD = [[-0.45, -0.45], [0.45, 0.45], [-0.45, 0.45], [0.45, -0.45]];
+const trenchTaken = new Set();
+function manTrench(v) {
+  const cells = [];
+  if (v.cover === 2 && !v.garr) {
+    const cx = Math.floor(v.tx / CELL), cz = Math.floor(v.tz / CELL);
+    for (let z = cz - 3; z <= cz + 3; z++) for (let x = cx - 3; x <= cx + 3; x++) if (terrain.grid[z]?.[x] === 'T') cells.push([(x + 0.5) * CELL, (z + 0.5) * CELL]);
+    cells.sort((a, b) => Math.hypot(a[0] - v.tx, a[1] - v.tz) - Math.hypot(b[0] - v.tx, b[1] - v.tz));
+  }
+  if (!cells.length) {
+    if (v.trench) for (const man of v.models) { const u = man.userData; u.slot = [...u.home]; man.position.x = u.slot[0]; man.position.z = u.slot[1]; }
+    v.trench = null; return;
+  }
+  const spots = QUAD.flatMap((q) => cells.map((c) => [c[0] + q[0], c[1] + q[1]])), free = spots.filter((p) => !trenchTaken.has(p.join()));
+  v.trench = v.models.map((man, i) => {
+    man.userData.home ??= [...man.userData.slot];
+    const p = free[i] ?? spots[i % spots.length];
+    if (i < v.alive) trenchTaken.add(p.join());
+    return p;
+  });
+}
+function seatTrench(v) {
+  const c = Math.cos(v.rot), s = Math.sin(v.rot);
+  v.models.forEach((man, i) => {
+    const dx = v.trench[i][0] - v.x, dz = v.trench[i][1] - v.z, slot = man.userData.slot;
+    man.position.x = slot[0] = dx * c + dz * s; man.position.z = slot[1] = dz * c - dx * s;
+  });
+}
+
+const hulks = new Map(); // wreck id -> its model
 function removeUnit(v) {
   world.remove(v.bars);
   if (isAir(v.type)) {
     // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
     aviation.release(v); world.remove(v.root);
   } else if (v.killed && isVeh(v.type)) {
-    // leave a burnt-out wreck for a while
-    v.root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
-    v.root.children.slice(0, 2).forEach(o => (o.visible = false));
-    fx.push({ obj: v.root, life: 40, update: () => {} });
+    // it burns; the hull that stays is drawn from the snapshot's wrecks (see hulks)
+    world.remove(v.root);
     effects.wreck(v);
   } else {
     if (v.killed) v.models.forEach(m => m.visible && corpse(v, m));
@@ -578,6 +613,7 @@ function applySnapshot(s) {
   if (snapshotAt) snapshotGap += (Math.max(60, Math.min(400, arrived - snapshotAt)) - snapshotGap) * 0.2;
   snapshotAt = arrived;
   const seen = new Set();
+  trenchTaken.clear();
   for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built] of s.units) {
     seen.add(id);
     let v = units.get(id);
@@ -591,10 +627,14 @@ function applySnapshot(s) {
     if (cl) { v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; }
     // inside a building: the squad disappears into it; its bars float above the roof
     setOwnerRing(v.base, flags & 1 ? 0xffffff : look(owner).color);
-    const def = UNITS[type], alive = Math.ceil(hp / def.hpPer);
-    if (!isVeh(type)) while (v.alive > alive) corpse(v, v.models[--v.alive]);
+    // men drawn, not men counted: a squad may be drawn as a bigger block (client/unit-models.js), so health maps onto it
+    const def = UNITS[type], alive = Math.ceil(hp * v.models.length / (def.models * def.hpPer));
+    if (!isVeh(type)) { while (v.alive > alive) corpse(v, v.models[--v.alive]); v.alive = alive; } // reinforced men come back
     if (!isVeh(type)) v.models.forEach((man, i) => { man.position.y = cover === 2 ? -0.6 : 0; man.visible = i < v.alive && !v.garr; });
+    if (v.squad) manTrench(v);
     v.base.visible = !v.garr;
+    // riding in a halftrack: not drawn, not selectable; it comes back when it gets out
+    if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = v.bars.visible = !riding; if (riding) selected.delete(id); }
     if (UNITS[type].camo) v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; }));
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
@@ -627,6 +667,19 @@ function applySnapshot(s) {
   effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
+  // burnt-out vehicles stay on the field as cover until the sim clears the oldest away
+  const left = new Set((s.wrecks ?? []).map(w => w[0]));
+  for (const [id, root] of hulks) if (!left.has(id)) { world.remove(root); hulks.delete(id); }
+  for (const [id, type, owner, x, z, rot] of s.wrecks ?? []) {
+    let root = hulks.get(id);
+    if (!root) {
+      const v = makeUnit(id, type, owner); world.remove(v.bars); root = v.root; hulks.set(id, root);
+      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
+      root.children.slice(0, 2).forEach(o => (o.visible = false)); // no owner ring, no selection ring
+      root.rotation.y = -rot;
+    }
+    root.position.set(x, hAt(x, z), z); // craters under it come later
+  }
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }
   for (const [id, n, ...points] of s.orders ?? []) {
     const v = units.get(id); if (v?.owner !== me) continue;
@@ -723,7 +776,7 @@ const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return lobbyState?.host === me; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
-  dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  dig: (k) => startDig(k), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -777,7 +830,7 @@ function entrenchSummary(segs) {
     : `${entrenchName()}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? `; ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
 }
 // a square on every cell the segments would dig (trench green, wire brass); the tiles are pooled on the group
-const TILE_COLOR = { wire: 0xd2a849, sandbags: 0xd8c79a, traps: 0xa9b0b8, mines: 0xd0604a };
+const TILE_COLOR = { wire: 0xd2a849, sandbags: 0xd8c79a, traps: 0xa9b0b8, mines: 0xd0604a, fill: 0x9a7b55, demine: 0x8fc7e8, aid: 0xf0ece0 };
 function paintTiles(group, segs, opacity) {
   const w = placementView()?.game.w ?? 1, tiles = group.userData.tiles ??= [];
   let n = 0;
@@ -872,6 +925,10 @@ function bark(kind) { audio.voice(kind); }
 audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles mute
 function toggleMute() { audio.toggleMute(); } // the M key (client/keys.js); the slider follows
 
+function unload() {
+  const ids = [...selected].filter(id => UNITS[units.get(id)?.type]?.carries);
+  if (ids.length) { sendCmd({ t: 'unload', ids }); blip(520); }
+}
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // stance switches: on for the whole selection unless every selected unit already has it
 const STANCE_BIT = { holdFire: 2048, holdPos: 4096, autoRetreat: 8192 };
@@ -983,7 +1040,7 @@ const selection = createSelection({ units, selected, groups, owner: () => me, de
   screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
-  retreat, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
+  retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
   follow: followSelected, rally: startRally,
@@ -1055,7 +1112,7 @@ const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1 + (
 function pick(mx, my, test, r) {
   let best = null, bd = Infinity;
   for (const v of units.values()) {
-    if (!test(v)) continue;
+    if (!test(v) || v.flags & RIDING_FLAG) continue; // a squad inside a halftrack cannot be clicked
     const s = screenOf(v), d = Math.hypot(s.x - mx, s.y - my);
     if (s.front && d < (r ?? (isVeh(v.type) ? 45 : 32)) && d < bd) { bd = d; best = v; }
   }
@@ -1160,7 +1217,7 @@ renderer.domElement.addEventListener('dblclick', (e) => {
 let lastT = performance.now();
 
 // ---------- minimap: rotated with the camera so "up" matches the screen ----------
-const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78], D: [150, 128, 100], M: [92, 80, 58], N: [120, 96, 60] };
+const MM_COLORS = { '.': [108, 118, 69], B: [150, 132, 100], H: [47, 74, 34], '#': [154, 149, 138], '+': [90, 79, 54], T: [62, 50, 34], W: [60, 93, 112], '=': [122, 90, 58], F: [106, 127, 122], R: [122, 114, 102], X: [96, 90, 70], Y: [84, 84, 78], D: [150, 128, 100], M: [92, 80, 58], N: [120, 96, 60], O: [38, 62, 30], A: [226, 220, 204] };
 let mmImage = null, mmFog = null, mmFogImg = null, mmFogOf = null, mmTimer = 0;
 function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -1215,7 +1272,9 @@ function drawMinimap() {
     c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
   }
   const col = (slot) => css(look(slot).color);
-  lastSnap.points.forEach(([owner], i) => { const p = points[i]?.g.position; if (!p) return; c.beginPath(); c.arc(p.x, p.z, CFG.pointRadius, 0, Math.PI * 2); c.fillStyle = owner >= 0 ? col(owner) + '99' : '#dddddd66'; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1 / S; c.stroke(); });
+  lastSnap.points.forEach(([owner], i) => { const p = points[i]?.g.position; if (!p) return; c.beginPath(); c.arc(p.x, p.z, CFG.pointRadius, 0, Math.PI * 2); c.fillStyle = owner >= 0 ? col(owner) + '99' : '#dddddd66'; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1 / S; c.stroke();
+    // cut off from its HQ: a red cross through it
+    if (lastSnap.points[i][4]) { const r = CFG.pointRadius * 0.7; c.beginPath(); c.moveTo(p.x - r, p.z - r); c.lineTo(p.x + r, p.z + r); c.moveTo(p.x + r, p.z - r); c.lineTo(p.x - r, p.z + r); c.strokeStyle = '#d0362c'; c.lineWidth = 3 / S; c.stroke(); } });
   (lastStart?.spawns || []).forEach((sp, i) => { c.fillStyle = col(i); c.fillRect(sp.x - 5, sp.z - 5, 10, 10); c.strokeStyle = '#000'; c.strokeRect(sp.x - 5, sp.z - 5, 10, 10); });
   for (const [kind, x, z, dir, , owner] of lastSnap.strikes || []) {
     const sp = SUPPORT[kind]; if (!sp) continue;
@@ -1287,6 +1346,7 @@ renderer.setAnimationLoop(() => {
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = ranges && v.sel.visible;
+    if (v.trench) seatTrench(v);
     animate(v, sdt, camera.position); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
   }
   battleFrame(cam, units, me);

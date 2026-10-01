@@ -5,6 +5,73 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Woods, mine clearing, halftracks, medics, the Field Hospital and supply lines.
+  - Woods (new terrain): infantry in a wood get light cover (30% fewer hits, a wall gives 50%), sight reaches about
+    three cells (6 m) into the trees and never through a wood, vehicles drive through at half speed and route around,
+    and nothing can be dug or built there. Woods burn (a cell burns for 20 s, the fire runs through the trees) and
+    heavy shelling clears them. Three Crossroads, Crossroads Village, River Towns and Ardennes Crossing now have woods
+    on the flanks of each HQ's road to its nearest point (`node tools/woods.mjs <map>` stamps them). The map editor
+    has a Woods brush.
+  - Finding mines: a rifle, conscript or engineer squad that stands still for 2 s finds enemy mines within 6 m
+    (Engineers find them on the move). Found mines show to the whole team, and the team's units route around them.
+  - Clear mines (Shift+M, 5 MP per 4-cell piece, drawn as a line like sandbags): builder squads lift the mines their
+    side knows about, working from a few metres back.
+  - Halftrack (180 MP; Classic: Motor Pool, 140 MP + 20 Fuel): fast, light MG, thin armor. It carries one infantry
+    squad: right-click your halftrack with infantry selected and the nearest squad climbs in; Unload (Shift+E, or the
+    button) lets it out. A squad inside cannot be seen, shot or ordered. If the halftrack is destroyed the squad is
+    thrown out with 30% losses. Infantry within 10 m of a halftrack that has stood still for 2 s reinforce there
+    (same price as at the HQ, half the pace).
+  - Medic team (120 MP; Classic: Barracks): two unarmed men. They heal the most hurt friendly squad within 10 m at
+    2 hp per second, for free, but only a squad that has taken no damage for 5 s.
+  - Field Hospital (100 MP, on the builder squads' orders panel, 12 s to put up, one per player): a tent. Your side's
+    infantry within 12 m reinforce there like beside a halftrack. Shelling destroys it.
+  - Supply lines (every mode but Horde): a point pays its manpower, victory points and Munitions only while a
+    vehicle could drive to it from its owner's HQ (or a teammate's). Rivers without a bridge or ford, walls, tank
+    traps and cliffs block the way, and so does the ground within 8 m of an enemy fighting unit, unless that enemy
+    is within 16 m of the point (that is a fight for the point, not a cut road). A cut point shows "Cut off: no
+    supply", a red cross on the minimap and an alert. Checked every 2 s.
+  - Computer players buy one medic team once they have five infantry squads and keep it with the army, lift mines
+    their side has found, and send free units to reopen a point of theirs that is cut off. They do not buy
+    halftracks or build hospitals.
+  - Balance, Conquest, AI against AI, 150 matches per map, everything on against woods and supply off (medics in
+    both): Three Crossroads wins per spawn 37/44/19% (39/41/20%), length 465 s (475 s); River Towns 36/39/25%
+    (36/40/24%), 519 s (503 s). No measurable change. Ardennes Crossing, 100 matches, four-way: 53/1/46/0%
+    (53/0/47/0%): two of its four spawns never win, with or without the new rules.
+  - Supply was never cut in those 550 AI matches: the computer does not block roads on purpose, and these maps have
+    fords beside every bridge. So the rule is untested as a balance factor between people.
+  - Bug fixed along the way: a grenade or satchel ordered at a spot with no way to it could crash the match after
+    20 failed route searches.
+  - Not checked in a browser (the browser tools could not reach the local server this session): the new models, the
+    wood trees, the hospital tent, the Unload button and the cut-off marker are unseen. `node test.js` passes.
+  - Left for later: the fog of war drawn on the client does not know woods hide things (the server does). The
+    Command Card now has 16 cards for 15 letters, so the last one (the ground-attack plane) is click-only. A found
+    mine stays known after the squad that found it leaves. The halftrack is drawn on wheels only.
+- Houses now come in three types, set by how big the building is on the map: a wooden shed (10 cells or fewer) is weak
+  cover and falls fast (55% incoming accuracy, 250 HP per cell), a brick house (11-23 cells) is what every house used
+  to be (35%, 400 HP), and a stone building (24+ cells) is a fortress (25%, 650 HP). The tag on a garrisoned squad
+  names the type.
+  - A house protects less as it is shot up: the squad's own cell slides to 85% / 70% / 55% just before it collapses,
+    so shelling a garrison hurts it before the house comes down.
+  - Balance, 40 AI matches per map, old rules vs new: 2nd place's VP share fell from 58% to 53% (default), 56% to 51%
+    (River Towns) and 76% to 68% (Stalingrad Factory); match length moved by 15 s at most. First-guess numbers.
+  - Each type has its own model, so you can read a building before you send a squad in. Sheds are timber: plank
+    walls on a low stone footing, tarred corner posts, a braced plank door and grey shingles (about half of the 3x3
+    ones are barns). Houses are brick or limewashed render under clay tiles, with stone corners and lintels. Stone
+    buildings are bare stone under slate, two storeys or more, with pale dressed lintels and a band between storeys.
+    Ruins and rubble keep the material (splintered boards, broken brick, broken stone).
+  - The church is now always a stone building, so maps with no block of 24 cells or more have no church. Fieldstone
+    farmhouses are gone from the mid-size houses, since stone now means the strong type.
+  - Left for later: the AI does not yet weigh a house's type or damage when it picks one to hold.
+
+- Line infantry now marches as a battalion: a block of ranks instead of a handful of men. Rifle squads draw 15 men
+  (3 ranks of 5), conscripts 21 (3 of 7), rangers 12 (2 of 6), engineers 6 (2 of 3). Looks only: health, damage and
+  cost are unchanged, and the rear ranks fall as the squad loses health. Weapon crews and snipers stay as they were.
+  - In a trench the block breaks ranks: the men line the trench cells nearest the squad (up to four to a cell)
+    instead of standing sunk into the open ground beside it, and form up again when they leave. Squads sharing a
+    trench take separate spots; only when a stretch is full (more than four men per cell) do the extra men double up.
+  - Fixed: men a squad got back by reinforcing near its spawn were never drawn again.
+  - Left for later: each man is his own mesh, so very large armies draw about 3x as much; instance them if it stutters.
+
 - Sandbags, barbed wire, tank traps and minefields can be drawn out as one continuous line, like a trench line.
   - Their buttons and hotkeys now take two clicks: where the line starts and where it ends. A short line is one piece
     (as before); a long one is up to 12 pieces end to end. Every selected builder squad works on it, each piece is paid
@@ -30,6 +97,46 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     fill in the first second.
   - Left for later: trenches do not flood, a deep crater does not become impassable river, rain does not fill craters.
   - Not checked in a browser, and no AI balance run yet (shelling a riverbank now removes cover instead of making it).
+- Wrecks: a destroyed vehicle no longer disappears. Its burnt-out hull stays where it stopped and is cover.
+  - Infantry behind a wreck get the same cover as behind a live vehicle: full within about 2.5 m, fading to nothing
+    at 4 m, from the front only. A squad standing on the wreck's cell is in cover as well.
+  - A wreck blocks vehicles like tank traps do: tanks have to go around, so a knocked-out tank can plug a road or a
+    one-cell gap. Infantry climb over it. It does not block sight.
+  - A wreck can be blown apart: it has 300 hp against explosions (a bomb or a satchel charge in one, about four
+    artillery or tank shells) and leaves a crater. Wire, sandbags and buildings cannot be put on it.
+  - A vehicle that dies on a bridge or in a ford, or on a cell another vehicle stands on, leaves a hull that is only
+    cover: it blocks nothing and cannot be destroyed, and goes when the 40-wreck limit clears it.
+  - Every tank, half-track, rocket launcher and other ground vehicle leaves one. Planes, guns and infantry do not, and
+    neither does a vehicle that went into the river with its bridge.
+  - Up to 40 wrecks lie on the field. Past that the oldest is cleared away. Before, the hull was only drawn for 40
+    seconds and never gave cover.
+  - Everyone sees every wreck, also through fog and after reconnecting.
+  - Not checked in a browser. Computer players do not look for wrecks to hide behind, and do not shoot wrecks out of
+    their way (their tanks path around).
+- Scarred ground: shelling sinks the ground, bomb holes are round, and squads can fill holes back in.
+  - Artillery now sinks the ground around where its shells land, not just the one cell under each shell. A cell goes
+    one level (2.5 m) down for every 600 terrain damage it takes, which is about three barrages on the same strip, and
+    it becomes a crater when it sinks. Tank shells count a quarter (roughly 35 shots on one spot per level). Bombs are
+    unchanged in speed: one level at once. Rockets, mortars, grenades and satchels do not sink ground.
+  - The limits are the old ones: nothing goes below level -2, and a cell never ends up more than one level below the
+    ground beside it, so a pounded field sinks as a bowl from the middle out, never as a shaft.
+  - Bomb holes are round. A Bombing Run bomb digs a 4.2 m hole and a Dive Bomber a 3.2 m one, measured from where the
+    bomb lands (not snapped to a 3x3 square), two levels deep in the inner half, with craters across the whole hole.
+    Under a river the bed is only dug once.
+  - New order, Fill in (Shift+L, 10 MP, a line like sandbags): builder squads turn craters, flooded craters and sunken
+    ground back into open ground and raise it towards the height the map had, at most one level above the lowest
+    ground beside it. A deep bowl takes several passes, deepest cells first. Fords drawn on the map cannot be filled.
+  - Buildings can go on ground with one level of fall across the footprint. The builders level it to the highest
+    cell. Before, any dip under a site blocked it, which shelling would now cause all the time.
+  - Computer players fill holes too: flooded craters and sunken ground within reach of a point their side holds, and
+    on a free supply node (so a shelled node can take a depot again). One job at a time, with 160 MP or more in hand,
+    never with a visible enemy within 35 m, and only a squad within 60 m goes. Dry craters at the map's height are
+    left alone because they are cover. Their artillery and tanks scar the ground like anyone's.
+  - Not checked in a browser. No AI balance run.
+  - Left for later: a hole two levels deep hides its bottom from a squad a few metres back, so a Fill in order there
+    answers "not visible" until the squad stands at the rim.
+  - Test fix: the lobby check "a new match without the old result" raced the lobby message and failed about half the
+    runs. It now waits for it. `node test.js` passed 5 of 5 afterwards.
   - Found, not fixed: `node test.js` fails about one run in three on the lobby check "a new match without the old
     result" (once on "an explicit ground attack overrides the plane stance" with flooding switched off).
 - The computer opponents no longer cheat. They plan only from what a player in their seat could know: the same

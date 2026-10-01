@@ -1,6 +1,6 @@
 // Simple AI player. Runs on the server every couple of seconds and plays through command(),
 // exactly like a human would. Planning receives only a detached per-seat observation.
-import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf } from './sim.js';
+import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf } from './sim.js';
 import { viewFor } from './ai-view.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
@@ -61,6 +61,66 @@ function rebuildBridge(view, slot, squads, enemies, busy, mem, submit) {
   else if (!u.path.length) {
     const k = Math.min(1, (FORTS.bridge.reach - 2) / (d(u, spot) || 1));
     submit({ t: 'move', orders: [[u.id, spot.x + (u.x - spot.x) * k, spot.z + (u.z - spot.z) * k]] });
+  }
+}
+
+// The squads this AI sent on a job of one kind (a view shows that a squad digs, not what): id -> { t, dug }.
+// Forgotten once the squad has dug and stopped, is gone, or 90 s have passed.
+function sent(mem, key, squads, now) {
+  const crew = mem[key] ??= new Map(), byId = new Map(squads.map(u => [u.id, u]));
+  for (const [id, job] of crew) {
+    const u = byId.get(id);
+    if (!u || (job.dug && !u.dig) || now - job.t > 90) crew.delete(id); else if (u.dig) job.dug = true;
+  }
+  return crew;
+}
+const builders = (squads, busy) => squads.filter(u => CFG.fortBuilders.includes(u.type) && !u.retreating && !u.targetId && !u.dig && !u.entrench && u.garrison < 0 && !busy.has(u.id));
+
+// Spoiled ground to shovel back in: flooded craters and ground that shelling sank, around a point my side holds or on
+// a supply node nobody has built on (a depot needs a nearly level site). One job per look, never with a visible
+// enemy within 35 m, and only a squad within 60 m goes.
+function fillHoles(view, slot, squads, enemies, busy, mem, submit) {
+  const me = view.players[slot], now = view.tick / 20, crew = sent(mem, 'fillCrew', squads, now);
+  if (me.mp < FORTS.fill.cost + 150 || crew.size) return;
+  const idle = builders(squads, busy);
+  if (!idle.length) return;
+  // the ground as this seat knows it, in the shape the sim's own test reads
+  const ground = { w: view.w, chars: view.chars, height: view.height, initialTerrain: { chars: view.mapChars, height: view.mapHeight } };
+  const spots = [...view.points.filter(p => p.owner >= 0 && allied(view, p.owner, slot)).map(p => [p, CFG.pointRadius + 10]), ...view.nodes.filter((n, i) => !view.claimedNodes.has(i)).map(n => [n, 4])];
+  for (const [p, r] of spots) {
+    const n = Math.ceil(r / CELL), px = Math.floor(p.x / CELL), py = Math.floor(p.z / CELL);
+    for (let y = Math.max(0, py - n); y <= Math.min(view.h - 1, py + n); y++) for (let x = Math.max(0, px - n); x <= Math.min(view.w - 1, px + n); x++) {
+      const at = { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL };
+      if (!spoiled(ground, y * view.w + x) || d(at, p) > r || enemies.some(e => d(e, at) < 35)) continue;
+      const u = idle.sort((a, b) => d(a, at) - d(b, at))[0];
+      if (d(u, at) > 60) continue;
+      busy.add(u.id);
+      // the bottom of a deep hole cannot be seen from afar: walk up to it first
+      if (submit({ t: 'dig', ids: [u.id], kind: 'fill', x: at.x, z: at.z, dir: 0 }) === undefined) crew.set(u.id, { t: now, dug: false });
+      else if (!u.path.length) submit({ t: 'move', orders: [[u.id, at.x, at.z]] });
+      return;
+    }
+  }
+}
+
+// Enemy mines my side has found (a builder squad stood near them): the nearest free builder squad within 40 m lifts
+// them, working from a few metres back. One job per look, never with a visible enemy within 35 m.
+function clearMines(view, slot, squads, enemies, busy, mem, submit) {
+  const me = view.players[slot], now = view.tick / 20, crew = sent(mem, 'demineCrew', squads, now);
+  if (!view.foundMines.length || me.mp < FORTS.demine.cost || crew.size) return;
+  const idle = builders(squads, busy);
+  for (const at of view.foundMines) {
+    if (enemies.some(e => d(e, at) < 35)) continue;
+    const u = idle.sort((a, b) => d(a, at) - d(b, at))[0];
+    if (!u || d(u, at) > 40) continue;
+    busy.add(u.id);
+    // out of sight: walk up to 9 m short of it first (never onto it)
+    if (submit({ t: 'dig', ids: [u.id], kind: 'demine', x: at.x, z: at.z, dir: 0 }) === undefined) crew.set(u.id, { t: now, dug: false });
+    else if (!u.path.length && d(u, at) > 10) {
+      const k = 1 - 9 / d(u, at);
+      submit({ t: 'move', orders: [[u.id, u.x + (at.x - u.x) * k, u.z + (at.z - u.z) * k]] });
+    }
+    return;
   }
 }
 
@@ -169,6 +229,7 @@ function plan(observation, slot, opts, mem, send) {
     : enemyPlanes > count('fighter') && trains('fighter') ? 'fighter' : count('attacker') < 2 && mine.length >= 8 && trains('attacker') ? 'attacker' : null;
   const want = airWant ? airWant : seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : tanks < 1 && mine.length >= 4 ? 'tank'
     : (seenDugIn || mine.length >= 6) && count('mortar') < 1 ? 'mortar' : seenInf >= 6 && count('sniper') < 1 && mine.length >= 5 ? 'sniper'
+    : count('medic') < 1 && mine.filter(u => UNITS[u.type].infantry).length >= 5 ? 'medic' // one medic team once there is infantry to patch up
     : count('armoredcar') < 1 && mine.length >= 7 ? 'armoredcar' : tanks < 2 && mine.length >= 8 ? 'tank'
     : count('mg') * 2 < count('rifle') || (rule(1) && seenInf >= 6 && count('mg') < 3) ? 'mg' : 'rifle'; // many infantry seen: more MGs
   // faction flavor: USA mixes in Rangers, Germany saves up for its Tiger, USSR fields Conscripts instead of rifles
@@ -225,6 +286,8 @@ function plan(observation, slot, opts, mem, send) {
   if (can('recon') && !enemies.length && (classic || me.mp > 250)) call('recon', view.points.find(p => p.owner >= 0 && !allied(view, p.owner, slot)));
   const busy = new Set();
   rebuildBridge(view, slot, mine.filter(u => !u.air), enemies, busy, mem, submit);
+  fillHoles(view, slot, mine.filter(u => !u.air), enemies, busy, mem, submit);
+  clearMines(view, slot, mine.filter(u => !u.air), enemies, busy, mem, submit);
   if (adapt) {
     const free = mine.filter(u => !u.retreating && !u.targetId);
     // a hurt squad is left to the normal logic, which pulls it back to reinforce
@@ -275,6 +338,8 @@ function plan(observation, slot, opts, mem, send) {
     if (busy.has(u.id)) continue;
     const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = d(u, me.spawn) <= CFG.reinforceRadius;
     if (u.retreating) continue;
+    // a medic keeps to the middle of the army, where the wounded are
+    if (def.medic) { if (!u.path.length && d(u, front) > 8) orders.push([u.id, front.x, front.z]); continue; }
 
     // abilities
     const target = view.units.get(u.targetId);
@@ -336,7 +401,9 @@ function plan(observation, slot, opts, mem, send) {
       continue;
     }
     view.points.forEach((p, i) => {
-      if (allied(view, p.owner, slot)) return;
+      // a point of ours that is cut off from the HQ is a target again, for units not already at it: they
+      // attack-move to it and meet whatever sits on the road
+      if (allied(view, p.owner, slot) && (!p.cut || d(u, p) <= CFG.pointRadius + 16)) return;
       if (defending && d(p, me.spawn) > 70) return; // defenders stay near home
       // the center is worth double VP, villages feed manpower
       const score = d(u, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10;
@@ -358,7 +425,7 @@ function plan(observation, slot, opts, mem, send) {
       call('smoke', { x: cx + (p.x - cx) * 0.6, z: cz + (p.z - cz) * 0.6 }, Math.atan2(p.z - cz, p.x - cx) + Math.PI / 2); // wall across the approach
     }
     // assaults on held points attack-move, so they fight their way in instead of walking past defenders
-    const held = p.owner >= 0 && !allied(view, p.owner, slot);
+    const held = p.owner >= 0 && (p.cut || !allied(view, p.owner, slot));
     for (const u of group) { const s = spotNear(view, p); (held ? assault_ : orders).push([u.id, s.x, s.z]); }
   });
   if (retreat.length) submit({ t: 'retreat', ids: retreat });

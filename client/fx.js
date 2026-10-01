@@ -166,6 +166,7 @@ const GUNS = {
   tank: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.3, tr: FX.tracerHot, flash: 1.4, heavy: 1.2, smoke: 1 },
   medium: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.34, tr: FX.tracerHot, flash: 1.7, heavy: 1.5, smoke: 1 },
   tiger: { ...SMALL, snd: 'tankgun', n: 1, spd: 160, w: 0.38, tr: FX.tracerHot, flash: 2.1, heavy: 1.8, smoke: 1 },
+  halftrack: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.16, flash: 0.45 },
   armoredcar: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.22, tr: FX.tracerHot, flash: 0.8, heavy: 0.7, smoke: 0.5 },
   // anti-air guns turned on the ground; planes (guns = wing guns firing together)
   flak: { ...SMALL, snd: 'flak', n: 1, burst: 2, gap: 0.1, spd: 240, w: 0.2, tr: FX.tracerHot, flash: 0.6 },

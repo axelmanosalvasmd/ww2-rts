@@ -167,11 +167,13 @@ function cellAttrs(S, grid) {
     else if (ch === 'F') { p = WATER; s = ROAD; a = 0.6 - 0.13 * worn; } // the shallows show their gravel
     else if (ch === 'H') { s = MUD; a = 0.35; }
     else if (ch === 'X') { s = MUD; a = 0.45; }
-    else if (ch === 'Y') a = 0.4;
+    else if (ch === 'Y' || ch === 'Q') a = 0.4;
     else if (ch === '#') a = 0.5;
     else if (ch === 'D') { p = ROAD; s = worn ? SHELL : DIRT; a = 0.12 + 0.2 * worn; } // a shelled road breaks up
     else if (ch === 'M') { p = MUD; a = 0.42 - 0.12 * worn; } // shallow mud still shows the dirt
     else if (ch === 'N') a = 0.3;
+    else if (ch === 'O') { s = MUD; a = 0.5; } // forest floor: leaf litter and bare earth under the trees
+    else if (ch === 'A') { p = DIRT; a = 0.2; }
     if (!a) s = p;
     prim[i] = p; sec[i] = s; amt[i] = a; key[i] = p | s << 4;
   }

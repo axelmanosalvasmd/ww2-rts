@@ -245,7 +245,18 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
 - F fires one ability: the first ready type in rifle > MG > AT > tank > rocket order; others are click-only in the bar.
   Right-clicking an ability button turns autocast on or off (see Autocast below).
 - Garrison: right-click a house with rifles/MGs. One squad per house cell (edge cells, so they can shoot out).
-  Inside: 35% incoming accuracy, +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.
+  Inside: +25% vision, blasts halved. House wrecked -> thrown out with 30% damage.
+- House types (2026-10-01), set by the size of the block on the map, worked out once at match start (`CFG.houses`):
+  wooden shed (10 cells or fewer, 250 HP per cell, 55% incoming accuracy), brick house (11-23 cells, 400 HP, 35%, the
+  old numbers), stone building (24+ cells, 650 HP, 25%). Protection wears down with the squad's own cell: it slides to
+  85% / 70% / 55% as that cell nears collapse, so shelling pays off before the house falls and the defender has to
+  choose when to leave. All types burn down in the same time. The HUD tag names the type.
+  The look follows the type (client/structures.js asks the same `houseKinds`): timber sheds and barns, brick or
+  rendered houses under clay tiles, bare stone under slate. Stone on screen always means the strong type, which is
+  why the church is only ever placed on a stone block. Brick is a texture drawn in code (client/surfaces.js).
+  40 AI matches each, old rules vs new: default 15/8/17 -> 20/10/10 slot wins, 2nd place 58% -> 53%; River Towns
+  12/10/18 -> 8/15/17, 56% -> 51%; Stalingrad Factory 0/27/13 -> 3/21/16, 76% -> 68%. Match length within 15 s.
+  Too few matches to call the slot shifts real; the numbers are a first guess.
 - Tanks shell a house on right-click (fire-at), and every tank round damages the structure it lands on.
 - Directional cover: a house, wall, rubble, hedge or vehicle within ~2 m on the shooter's side = 50% cover from that shooter.
 - Veterancy: damage dealt of 1/2.5/5x the unit's cost = 1-3 stars (+10% accuracy, -8% damage, -15% suppression each).
@@ -916,6 +927,28 @@ the sand-table look, move the rules away from the board a little.
   `dent` changed, and its neighbours), so a quiet map costs nothing. Chosen over a real fluid sim (water volume per
   cell): on a 2 m grid it would look the same and cost synced state and tuning. The client needed no change: a new
   `F` cell joins its neighbour's body in `water-levels.js` and takes its water line. Balance not rerun.
+- Scarring: `damageCells` takes a `scar` share (artillery 1, tank shells `CFG.scar.tank` 0.25, everything else 0) and
+  adds hit x scar / `CFG.scar.hit` (600) to `g.scar[c]` on open ground and craters. At 1 the cell is dented and
+  cratered. A cell the slope rule holds back stays at 1 and goes down once its neighbours have, which is what makes a
+  bowl. Kept apart from `g.wear` so cover and depth do not change. The floor stays `minLevel` -2: going deeper needs
+  the map format (heights are `0-4ab`) and the relief checked first.
+- Round holes: `digAt(g, at, r)` dents every cell whose centre is within r metres of the blast, then the inner half
+  again, and craters open ground in it. River cells are not dented twice: a bridge needs every cell of its span seen,
+  and a squad on the bank cannot see a bed two levels down (the AI stopped rebuilding bombed bridges).
+- Fill in: a `FORTS` entry with `fill: true`, so the button, the line drawing and the dig jobs come for free.
+  `fillable` picks the cells, `fillCell` raises one to min(original height, lowest neighbour + 1). `g.chars0` and
+  `g.height0` keep the map as drawn. Buildings: `canStamp` allows one level of fall and `placeBuilding` raises the
+  footprint to its top. That can leave a two-level step beside a building; it is a cliff edge like any other.
+- Wrecks: `g.wrecks` (id, type, owner, x, z, rot), filled in the death loop, capped at `CFG.wrecks` 40. `coverBehind`
+  treats them like live vehicles. On open ground, a crater, a road or mud the cell also becomes `Q` (VBLOCK | COVER,
+  300 hp, wrecks into `+`), so pathing, cover and `damageCells` need nothing new; `setCell` drops the hull when its
+  `Q` cell changes. One cell, although a tank is wider: enough to plug a road, and no footprint code. Not on a bridge
+  (the span logic owns `=` cells) or a ford, where the hull is cover only. Sent whole in every snapshot
+  (40 short rows at most); the client keeps one darkened model per id in `hulks`.
+- AI filling: `fillHoles` in `shared/ai.js` sits beside `rebuildBridge` and works the same way (one job per look,
+  walk up when the cell is not visible). `spoiled(g, c)` in the sim says what counts: flooded or below the map's
+  height, and a shovel would change it now. That last part is what stops it paying for the same cell for ever: the
+  lowest cell of any hole can always rise, so every job makes progress.
 - Cover: `coverQ` scales a cover cell's protection (hp share for walls and hedges, depth for craters);
   `coverBehind` returns 0-1 by distance to the first solid cell toward the shooter (full to 2.2 m, zero at 3.8 m)
   times that cell's `coverQ`. `behindCover` (cover seeking, cover rank) is `coverBehind > 0.4`.
@@ -1047,3 +1080,28 @@ Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
   checks for queued grenade, satchel and barrage targets; ordinary target clicks and instant abilities check at once.
 - Hold fire applies to aircraft guns, anti-air damage and Flak interception. A plane's explicit attack permits
   firing only at that target. Jam recovery skips a waypoint only with a walkable route to the following waypoint.
+
+## Woods, mines, halftracks, medics and supply lines (2026-10-01)
+- Woods are a terrain char `O` with a new flag `WOOD` (plus `COVER`). `clear()` counts wood cells along a sight line
+  and stops at `CFG.wood.sight` (3); the start and end cells are not counted, so a squad at the edge sees out and is
+  seen. Cover is `CFG.wood.cover` (0.6) of normal cover. Vehicles: `groundMul` gives `CFG.wood.speed` (0.5), and the
+  route cost and string-pull treat woods like mud. Fire and blasts turn a wood cell into open ground.
+  `tools/woods.mjs` stamps woods relative to each spawn's road, so a symmetric map stays close to symmetric.
+- Mines: `g.mineSeen` (cell -> team bits) holds what builder squads found (`sweepMines`, twice a second, only while
+  mines exist). `mineKnown(g, cell, team)` is the one test: `terrainFor` shows a known mine, `findPath` adds 30 to a
+  known enemy mine cell and never cuts its corner, and Clear mines (`FORTS.demine`) only takes cells the ordering
+  team knows, so an order on a hidden mine answers "blocked" like empty ground and gives nothing away.
+- Riding: `u.board` (walking to a carrier), `u.riding` (in it), `c.cargo`. A rider is skipped by the unit loop,
+  targeting (`canShoot`), blasts, strafing, fire, separation, capture and enemy vision, and `mine()` in `command`
+  refuses it orders. Its owner and allies get `RIDING_FLAG` (the client hides it); only the owner gets `CARGO_FLAG`.
+- Forward aid is one hook in the reinforce pass (`atAid`): a Field Hospital cell (`A`, `g.aid` cell -> owner) or a
+  halted halftrack. Infantry only, `CFG.aid.slow` (2) times slower than the HQ, same price.
+- Medics heal hp, not men: a squad is a pool of hp, so "treat the wounded but do not replace the dead" would heal at
+  most one man's worth. Decided: free and slow (2 hp/s on one squad), and only out of the fight (5 s without damage).
+- Supply (`supplyLines`, every 40 ticks): per team, a flood fill from its HQs over cells a vehicle can cross. A held
+  point is supplied when the flood reaches any cell inside its capture radius. Enemy units close the ground within
+  `zoc` 8 m, except within `free` 16 m of a point the team holds: without that exemption, any enemy walking up to a
+  point would switch its income off, which is what capturing is for. `opts.supply === false` turns it off (no lobby
+  switch). Horde is left out: a wave would cut every point and the mode's balance was measured without it.
+  Known fog leak, accepted: "cut off" tells the owner that an enemy stands somewhere on the road.
+- Open question: a cut point pays nothing at all. Half pay may be kinder if people find it too swingy.

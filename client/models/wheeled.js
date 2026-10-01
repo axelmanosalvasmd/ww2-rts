@@ -711,6 +711,7 @@ function katyusha(P, fac) {
 const BUILD = {
   armoredcar: [[m8, 'od'], [sdkfz222, 'grey'], [ba64, 'green']],
   flaktrack: [[m16, 'od'], null, null],
+  halftrack: [[m16, 'od'], [m16, 'grey'], [m16, 'green']], // ponytail: every faction's carrier borrows the M16 half-track until it gets its own
   rocket: [null, [panzerwerfer, 'gelb'], [katyusha, 'green']],
 };
 

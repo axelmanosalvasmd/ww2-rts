@@ -144,6 +144,7 @@ function snapshot(s, prev) {
     if (had && !has) push('pointLost', 'Point lost', at.x, at.z);
     else if (!had && has) push('pointWon', owner === me ? 'Point captured' : `${hooks.playerName(owner)} captured a point`, at.x, at.z);
     else if (has && prog < was[2]) underAttack(at, 'Point under attack');
+    else if (has && s.points[i][4] && !was[4]) push('pointLost', 'Point cut off: it pays nothing until the road to it is open', at.x, at.z);
   });
 
   // unit lost: one of yours left the snapshot (your units are always in it while they exist)

@@ -12,6 +12,7 @@ export const bindings = [
   binding('stance:holdPos', 'KeyG', 'Shift+G', 'Toggle hold position', 'global', { shift: true }),
   binding('stance:autoRetreat', 'KeyX', 'Shift+X', 'Toggle auto-retreat', 'global', { shift: true }),
   binding('mute', 'KeyM', 'M', 'Toggle audio'),
+  binding('unload', 'KeyE', 'Shift+E', 'Unload the selected halftracks', 'global', { shift: true }),
   binding('alert', 'Space', 'Space', 'Jump to the newest alert, or center the selection'),
   binding('follow', 'Space', 'Shift+Space', 'Follow the selection', 'global', { shift: true }),
   binding('rally', 'KeyH', 'Shift+H', 'Set the army rally point', 'global', { shift: true }),
@@ -25,7 +26,7 @@ export const bindings = [
   binding('idleEngineer', 'Comma', ',', 'Select and center the next idle Engineer'),
   ...Object.entries({ recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N', dive: 'U', para: 'P', cover: 'I' })
     .map(([kind, key]) => binding(`support:${kind}`, `Key${key}`, key, `Aim ${kind} support`)),
-  ...Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O', mines: 'J', bridge: 'K' })
+  ...Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O', mines: 'J', bridge: 'K', fill: 'L', demine: 'M' })
     .map(([kind, key]) => binding(`fort:${kind}`, `Key${key}`, kind === 'trench' ? key : `Shift+${key}`, `Place ${kind}`, 'global', { shift: kind !== 'trench' })),
   binding('entrench:line', 'KeyT', 'Shift+T', 'All selected builders dig a trench line', 'global', { shift: true }),
   ...Object.entries({ depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' })

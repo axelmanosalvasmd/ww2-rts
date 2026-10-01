@@ -54,11 +54,42 @@ function fogOnly(shader) { fogShader(shader); }
 // a plain (untextured) material that still goes dark in the fog of war
 export function fogged(material) { material.onBeforeCompile = fogOnly; return material; }
 
-// size: metres per texture repeat. flat: the color before the texture arrives (the old untextured look).
+// Brick is drawn, not photographed: stretcher bond, 10 bricks by 32 courses to the tile (2.4 m), each brick its own
+// shade with the odd overburnt one, then weather stains and grain.
+function brickCanvas() {
+  const N = 512, c = document.createElement('canvas'), bw = N / 10, bh = N / 32;
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  let seed = 7;
+  const r = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  g.fillStyle = '#b3a793'; g.fillRect(0, 0, N, N); // mortar
+  for (let row = 0; row < 32; row++) for (let i = -1; i < 10; i++) {
+    const v = r(), burnt = r() < 0.08;
+    g.fillStyle = `hsl(${11 + v * 10}, ${burnt ? 20 : 40 + r() * 14}%, ${burnt ? 30 + r() * 5 : 35 + v * 12}%)`;
+    g.fillRect((i + (row & 1 ? 0.5 : 0)) * bw + 1, row * bh + 1, bw - 2, bh - 2);
+  }
+  for (let i = 0; i < 36; i++) {
+    const x = r() * N, y = r() * N, rad = 40 + r() * 90, dark = r() < 0.6;
+    for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) { // drawn at every wrap, so the tile has no seam
+      const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+      gr.addColorStop(0, dark ? 'rgba(40,30,26,0.16)' : 'rgba(225,205,185,0.12)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+    }
+  }
+  const img = g.getImageData(0, 0, N, N), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 18; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return tex;
+}
+
+// size: metres per texture repeat. draw: makes the texture here instead of loading a file. flat: the color before the texture arrives (the old untextured look).
 // tint: linear color multiplier once textured. top: extra tint on faces that point up (flat roofs, wall tops).
 const SURF = {
   plaster: { tex: 'plaster', size: 6, flat: 0xb8a888, tint: [0.78, 0.76, 0.74], top: [0.5, 0.47, 0.44] },
   hedge: { tex: 'hedge', size: 1.6, flat: 0x3f5a2a, tint: [1, 1.35, 1.15], top: [1.15, 1.15, 1] },
+  brick: { draw: brickCanvas, size: 2.4, flat: 0x8a5545, tint: [1, 1, 1], top: [0.7, 0.68, 0.66] },
   stone: { tex: 'stone', size: 2, flat: 0x9a958a, tint: [1.1, 1.15, 1.2], top: [1.1, 1.1, 1.1] },
   sandbag: { tex: 'sandbag', size: 1, flat: 0x9c8a60, tint: [1.2, 1.3, 1.3], top: [1.1, 1.1, 1.1] }, // stacks drawn as one box
   burlap: { tex: 'burlap', size: 0.5, flat: 0x9c8a60, tint: [0.82, 0.78, 0.68], top: [1.05, 1.05, 1.05] }, // single bags
@@ -106,10 +137,11 @@ export function surface(key, painted = false) {
   m.userData.uvScale = { value: 1 / s.size };
   m.userData.topTint = { value: new THREE.Color(1, 1, 1) };
   m.onBeforeCompile = planar;
-  loadTexture(s.tex, (tex) => {
+  const ready = (tex) => {
     m.map = tex; m.color.setRGB(...s.tint); m.userData.topTint.value.setRGB(...s.top);
     m.needsUpdate = true;
-  });
+  };
+  if (s.draw) ready(s.draw()); else loadTexture(s.tex, ready);
   cache.set(id, m);
   return m;
 }

@@ -5,7 +5,7 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
@@ -26,7 +26,10 @@ const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shell
   cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)' };
 const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infantry', wire: 'Slows infantry; tanks flatten it', traps: 'Stops vehicles; cover for infantry',
   nest: 'A trench pit behind a horseshoe of sandbags', mines: 'Hidden from the enemy; goes off under the first enemy squad or vehicle',
-  bridge: 'Across a river, up to 5 cells; aim it along the crossing' };
+  bridge: 'Across a river, up to 5 cells; aim it along the crossing',
+  fill: 'Shovels craters, flooded craters and sunken ground back to open ground',
+  demine: `Lifts the mines your side knows about: your own, and enemy ones a builder squad found by standing within ${CFG.mine.detect} m`,
+  aid: `Infantry within ${CFG.aid.radius} m reinforce for manpower, at half the HQ's pace. One per player` };
 const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
   double: 'Two rows, the second 6 m behind the first', arc: 'A crescent around the first click, bowed toward the second',
   ring: 'A circle around the first click, out to the second', strongpoint: 'A trench square with barbed wire on the side of the second click' };
@@ -43,7 +46,7 @@ const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need
 const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft'];
 const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter']; // a silhouette before each group's name
 const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak']);
-const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'engineer', 'mg', 'mortar', 'at', 'flak', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'fighter', 'attacker'];
+const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'fighter', 'attacker'];
 const groupOf = (t) => (UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
 const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? ORDER.length + UNIT_TYPES.indexOf(t) : i; };
 // long one-word names get a soft hyphen so they break cleanly on a narrow card
@@ -225,6 +228,8 @@ export function createHud(ctx) {
   const tagsOf = (v) => {
     const t = [];
     if (v.flags & 256) t.push(['cov', 'Hidden']);
+    if (v.flags & RIDING_FLAG) t.push(['cov', 'Riding']);
+    if (v.flags & CARGO_FLAG) t.push(['', 'Carrying a squad']);
     if (v.flags & 1) t.push(['', 'Retreating']);
     if (v.flags & 8) t.push(['cov', 'Reinforcing']);
     if (v.flags & 2) t.push(['sup', 'Suppressive fire']);
@@ -232,7 +237,7 @@ export function createHud(ctx) {
     if (v.supp >= 90) t.push(['pin', 'Pinned']); else if (v.supp >= 50) t.push(['sup', 'Suppressed']);
     if (!v.garr) { if (v.cover === 2) t.push(['cov', 'In trench']); else if (v.cover === 3) t.push(['cov', 'By cover']); else if (v.cover) t.push(['cov', 'In cover']); }
     if (v.flags & 16) t.push(['', 'Digging']); else if (v.flags & 1024) t.push(['', 'Waiting for MP to dig']);
-    if (v.flags & 32) t.push(['cov', 'Garrisoned']);
+    if (v.flags & 32) t.push(['cov', `Garrisoned: ${CFG.houses[v.flags >> 16 & 3].name}`]);
     if (v.flags & 64) t.push(['', 'Attack-move']);
     for (const [bit, nm] of Object.values(STANCE)) if (v.flags & bit) t.push(['', nm]);
     if (UNITS[v.type].building && v.built < 1) t.push(['', `Building ${Math.round(v.built * 100)}%`]);
@@ -283,8 +288,8 @@ export function createHud(ctx) {
     const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
-    const inf = sel.some((v) => UNITS[v.type].infantry);
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}`;
+    const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries);
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
@@ -293,6 +298,7 @@ export function createHud(ctx) {
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
         Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
+        (carry ? orderBtn('data-a="unload"', 'unload', badge('unload'), `Unload (${label('unload')}): the squad inside gets out beside the halftrack. To board, right-click the halftrack with infantry selected`) : '') +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('') : '') +
         (dig ? ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
           `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('') : '') +
@@ -302,7 +308,7 @@ export function createHud(ctx) {
         const a = b.dataset.a;
         b.onclick = (e) => {
           if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
-          else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
+          else if (a === 'unload') ctx.unload(); else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
           else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
         };
         if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
@@ -315,6 +321,7 @@ export function createHud(ctx) {
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (a === 'cover') result = check({ t: 'cover' });
+      else if (a === 'unload') { const n = sel.filter((v) => v.flags & CARGO_FLAG).length; result = n ? result : { ok: false, reason: 'No squad on board' }; txt = n ? 'full' : 'empty'; }
       else if (a.startsWith('st:')) {
         const bit = STANCE[a.slice(3)][0], on = sel.filter((v) => v.flags & bit).length;
         txt = !on ? 'Off' : on === sel.length ? 'On' : `${on}/${sel.length}`; b.classList.toggle('on', on > 0);

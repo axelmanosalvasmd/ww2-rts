@@ -13,6 +13,10 @@ export function createOrders(ctx) {
       if (cursor.friend && planes.length === troops.length) {
         at = cursor.friend; color = 0x9dd0ff; tone = 600; voice = null;
         add({ t: 'escort', ids: planes.map(v => v.id), target: at.id });
+      } else if (cursor.friend && cursor.friend.owner === ctx.me && ctx.defs[cursor.friend.type].carries && troops.some(v => ctx.defs[v.type].infantry)) {
+        // right-click your own halftrack with infantry: the nearest squad climbs in
+        at = cursor.friend; color = 0x9dd0ff; tone = 600;
+        add({ t: 'board', ids: troops.filter(v => ctx.defs[v.type].infantry).map(v => v.id), target: at.id });
       } else if (b && eng.length && (b.built < 1 || b.hp < ctx.defs[b.type].hpPer)) {
         at = b; color = 0xe8c860; tone = 600; voice = null;
         add({ t: 'assist', ids: eng.map(v => v.id), id: b.id });

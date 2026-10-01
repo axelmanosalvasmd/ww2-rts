@@ -4,7 +4,7 @@ import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAY
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
-  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'], ['D', 'Road'], ['M', 'Mud'], ['N', 'Mine'],
+  ['W', 'River'], ['F', 'Ford'], ['=', 'Bridge'], ['R', 'Rubble'], ['D', 'Road'], ['M', 'Mud'], ['N', 'Mine'], ['O', 'Woods'],
   ['up', 'Raise ground'], ['down', 'Lower / dig'], ['pt', 'Capture point'],
   // spawns go in order around the map: the game seats teammates on neighbouring numbers
   ...Array.from({ length: MAX_PLAYERS }, (_, i) => ['s' + i, 'Spawn ' + (i + 1)]),
@@ -188,7 +188,7 @@ export async function start(api) {
     }
     return { cells, ch };
   }
-  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble', D: 'road', M: 'mud', N: 'mines' };
+  const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', X: 'barbed wire', Y: 'tank traps', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble', D: 'road', M: 'mud', N: 'mines', O: 'woods' };
   function highlight() {
     hl.clear();
     const sp = picked?.marker === 'spawn' && map.spawns[picked.i];

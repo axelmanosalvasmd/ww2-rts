@@ -49,6 +49,7 @@ function distanceToSegment(x, z, { ax, az, bx, bz }) {
 
 // This filter uses only live state. Removing an obstacle restores the cached props.
 export function visible(c, grid, { heights, nodes = [], low = false } = {}) {
+  if (c.wood) return grid[c.cy]?.[c.cx] === 'O' && !(low && (c.seed & 1)); // a wood's tree stands while its cell is wood
   if (low && (c.seed & 1) && c.kind !== 'crop') return false; // a crop field stays whole
   if (c.cx < 2 || c.cy < 2 || c.cx >= grid[0].length - 2 || c.cy >= grid.length - 2) return false;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -198,7 +199,16 @@ export function candidates(map) {
   }
   const trees = list.filter(c => ['deciduous', 'pine', 'poplar'].includes(c.kind)).sort((a, b) => a.seed - b.seed);
   const capped = new Set(trees.slice(1200));
-  return list.filter(c => !capped.has(c));
+  // woods ('O' cells): a tree on about one cell in three, smaller than a field tree so the canopy stays readable.
+  // They are the wood itself, so they skip the clearings and paths the scattered trees keep to. Capped separately.
+  const wood = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (rows[y][x] !== 'O' || fraction(x, y, 140) > 0.3) continue;
+    wood.push({ kind: fraction(x, y, 141) < 0.3 ? 'pine' : 'deciduous', cx: x, cy: y, x: (x + 0.5) * CELL + (fraction(x, y, 142) - 0.5) * 1.2, z: (y + 0.5) * CELL + (fraction(x, y, 143) - 0.5) * 1.2,
+      seed: hash(x, y, 144), angle: fraction(x, y, 145) * Math.PI * 2, scale: 0.55 + fraction(x, y, 146) * 0.3, wood: true });
+  }
+  wood.sort((a, b) => a.seed - b.seed);
+  return [...list.filter(c => !capped.has(c)), ...wood.slice(0, 1500)];
 }
 
 // Rocks, fences, haystacks and supply heaps: parts merged by hand (only the core three.js module is served). Parts keep

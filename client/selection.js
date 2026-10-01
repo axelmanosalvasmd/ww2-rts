@@ -5,13 +5,13 @@ export function createSelection({ units, selected, groups, owner, definitions, s
   const rows = () => [...selected].map(id => units.get(id)).filter(own);
   const replace = (list) => { selected.clear(); for (const v of list) selected.add(v.id); return list; };
   const armyUnit = (v) => own(v) && definitions[v.type] && !definitions[v.type].structure;
-  const selectable = (v) => armyUnit(v) && !(v.flags & 512);
+  const selectable = (v) => armyUnit(v) && !(v.flags & (512 | 262144)); // not a plane at base, not a squad riding in a halftrack
   const prune = () => {
     for (const key of Object.keys(groups)) groups[key] = [...new Set(groups[key])].filter(id => own(units.get(id)));
   };
   function idle(engineers = false) {
     return [...units.values()].filter(v => armyUnit(v) && !definitions[v.type].air &&
-      (!engineers || v.type === 'engineer') && !(v.flags & (1 | 16 | 32 | 128)) &&
+      (!engineers || v.type === 'engineer') && !(v.flags & (1 | 16 | 32 | 128 | 262144)) &&
       (!v.plan || v.plan.kind === 0)).sort((a, b) => a.id - b.id);
   }
   return {

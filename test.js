@@ -330,7 +330,8 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   Math.random = orig;
   assert.ok(r.hp < 100 || !g.units.has(r.id), 'barrage hits the squad');
   assert.equal(g.strikes.length, 0, 'barrage finished');
-  assert.equal(g.height.filter(l => l < 0).length, 1, 'shells dig a single cell (bombs dig more)');
+  const sunk = g.height.filter(l => l < 0).length;
+  assert.ok(sunk > 1 && sunk <= 21, `ten shells on one spot sink the ground around it (${sunk} cells)`);
 }
 
 // Strafe: hits along the line, misses off it.
@@ -577,11 +578,13 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   // heavy cover: the same shots hit less often than in the open
   const foe = put(g, 1, 'mg', 19, 38); foe.still = 5; // the MG inside shoots back: foe's health is reset every step
   let inside = 0, open = 0;
+  const scar = CFG.scar.tank; CFG.scar.tank = 0; // the tank's shells would sink the ground under foe between the two counts
   for (let i = 0; i < 1500; i++) { a.hp = 100; foe.hp = 75; foe.supp = 0; foe.cooldown = 0; foe.targetId = a.id; foe.retarget = 1; step(g); if (a.hp < 100) inside++; }
   command(g, 0, { t: 'move', orders: [[a.id, 19, 30]] });
   assert.equal(a.garrison, -1, 'a move order leaves the building');
   run(g, 3);
   for (let i = 0; i < 1500; i++) { a.hp = 100; a.x = 19; a.z = 30; foe.hp = 75; foe.supp = 0; foe.cooldown = 0; foe.targetId = a.id; foe.retarget = 1; step(g); if (a.hp < 100) open++; }
+  CFG.scar.tank = scar;
   assert.ok(inside < open * 0.8, `garrison is harder to hit (${inside} vs ${open})`);
   // wreck the house with the MG inside
   const orig = Math.random; Math.random = () => 0.5;
@@ -589,6 +592,21 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   run(g, SUPPORT.artillery.delay + 5);
   Math.random = orig;
   assert.ok(!g.units.has(b.id) || (b.garrison === -1 && b.hp < 75), 'squad thrown out and hurt when the house falls');
+}
+
+// House types: a block's size on the map makes it a shed, a brick house or a stone building, and a shot-up cell protects less.
+{
+  const rows = [...empty]; rows[1] = 'B' + '.'.repeat(19);
+  for (const y of [4, 5, 6]) rows[y] = 'BBBB' + '.'.repeat(16);
+  for (const y of [10, 11, 12, 13]) rows[y] = '.'.repeat(8) + 'BBBBBB' + '.'.repeat(6);
+  const g = fresh(rows), shed = 20, brick = 4 * 20, stone = 10 * 20 + 8;
+  assert.deepEqual([shed, brick, stone].map(c => g.house[c]), [0, 1, 2], 'type follows the size of the block');
+  assert.deepEqual([shed, brick, stone].map(c => g.cellHp[c]), CFG.houses.map(h => h.hp), 'each type has its own hit points');
+  assert.deepEqual([shed, brick, stone].map(c => sim.garrisonMul(g, c)), CFG.houses.map(h => h.mul), 'whole walls give the full protection');
+  g.cellHp[brick] /= 2;
+  assert.ok(Math.abs(sim.garrisonMul(g, brick) - (CFG.houses[1].mul + CFG.houses[1].worn) / 2) < 1e-6, 'a half-wrecked cell gives half as much');
+  const u = put(g, 0, 'rifle', 3, 21); Object.assign(u, { garrison: stone });
+  assert.equal(snapshotFor(g, 0, []).units.find(r => r[0] === u.id)[12] >> 16 & 3, 2, 'the snapshot says which type the squad is in');
 }
 
 // Veterancy: damage dealt earns stars; stars make a squad better.
@@ -617,6 +635,56 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (let i = 0; i < 4; i++) { g.players[0].sup.bombing = 0; command(g, 0, { t: 'support', kind: 'bombing', x: 20, z: 21, dir: 0 }); run(g, SUPPORT.bombing.delay + 3); }
   for (let c = 0; c < g.height.length; c++) if (c % g.w > 0) assert.ok(Math.abs(g.height[c] - g.height[c - 1]) <= 1, 'no cliffs from craters');
   assert.ok(!g.units.has(t.id) || t.hp < 360 * 0.5, 'tank under the bombs is wrecked or badly hurt');
+}
+
+// Scarring: a bomb hole is round, and barrage after barrage sinks the ground around where the shells land.
+{
+  const g = fresh(); g.players[0].mp = 1e6;
+  command(g, 0, { t: 'support', kind: 'dive', x: 21, z: 21 }); run(g, SUPPORT.dive.delay + 1);
+  const h = (x, y) => g.height[y * 20 + x];
+  assert.deepEqual([h(10, 10), h(11, 10), h(11, 11), h(12, 12)], [-2, -1, -1, 0], 'deep in the middle, a ring around it, corners untouched');
+  assert.equal(g.chars[10 * 20 + 11], '+', 'the ring is cratered too');
+  // a squad fills the hole back in: open ground again, and up as far as the ground beside it allows
+  const r = put(g, 0, 'rifle', 17, 21); run(g, 1);
+  assert.equal(command(g, 0, { t: 'dig', ids: [r.id], kind: 'fill', x: 21, z: 21, dir: 0 }), undefined, 'fill in is an order');
+  run(g, 40);
+  assert.deepEqual([g.chars[10 * 20 + 9], g.chars[10 * 20 + 10], h(10, 10)], ['.', '.', 0], 'the middle of the hole is level ground again');
+  assert.equal(sim.placementCheck(g, { kind: 'fill', x: 31, z: 31 }).reason, 'blocked', 'nothing to fill on untouched ground');
+  // shells land in rows 8-12 here, so rows 7 and 13 only sink from what lands beside them
+  const s = fresh(); s.players[0].mp = 1e6;
+  for (let i = 0; i < 16; i++) { s.players[0].sup.artillery = 0; command(s, 0, { t: 'support', kind: 'artillery', x: 20, z: 21, dir: 0 }); run(s, SUPPORT.artillery.delay + 5); }
+  assert.ok([7, 13].some(y => s.height.slice(y * 20, y * 20 + 20).some(l => l < 0)), 'ground beside the shell holes sinks');
+  for (let c = 0; c < s.height.length; c++) if (c % s.w > 0) assert.ok(Math.abs(s.height[c] - s.height[c - 1]) <= 1, 'no cliffs from shelling');
+}
+
+// Wrecks: a knocked-out tank stays where it stopped and covers infantry behind it like a live one.
+{
+  const g = fresh(); g.players[0].mp = g.players[1].mp = 5000;
+  const t = put(g, 0, 'tank', 20, 21), from = { x: 35, z: 21 };
+  t.hp = 0; run(g, 0.5);
+  assert.ok(!g.units.has(t.id) && g.wrecks.length === 1, 'the tank is gone, its wreck is not');
+  assert.equal(g.chars[10 * 20 + 10], 'Q', 'its cell is a wreck');
+  assert.ok(sim.coverBehind(g, { x: 18, z: 21 }, from) > 0.9, 'cover behind the wreck');
+  assert.equal(sim.coverBehind(g, { x: 22, z: 21 }, from), 0, 'none in front of it');
+  assert.deepEqual(snapshotFor(g, 1, []).wrecks, [[t.id, 'tank', 0, 20, 21, 0]], 'everyone is told where it lies');
+  const r = put(g, 0, 'rifle', 30, 30); r.hp = 0; run(g, 0.5);
+  assert.equal(g.wrecks.length, 1, 'infantry leave no wreck');
+  const cap = CFG.wrecks; CFG.wrecks = 3;
+  for (let i = 0; i < 5; i++) { put(g, 0, 'tank', 10 + i * 4, 31).hp = 0; run(g, 0.1); }
+  CFG.wrecks = cap;
+  assert.deepEqual([g.wrecks.length, g.wrecks[0].x], [3, 18], 'the oldest wrecks are cleared away');
+}
+
+// A wreck plugs a causeway for vehicles, not for infantry, until it is blown apart.
+{
+  const g = fresh(empty.map((row, y) => (y === 10 ? row : 'W'.repeat(20)))); g.players[0].mp = g.players[1].mp = 5000;
+  const tank = { x: 5, z: 21, type: 'tank' }, far = { x: 35, z: 21 };
+  put(g, 0, 'tank', 20, 21).hp = 0; run(g, 0.5);
+  assert.deepEqual(findPath(g, tank, far), [], 'no way past for a tank');
+  assert.ok(findPath(g, { x: 5, z: 21 }, far).length, 'infantry climb over');
+  command(g, 1, { t: 'support', kind: 'dive', x: 20, z: 21 }); run(g, SUPPORT.dive.delay + 1);
+  assert.equal(g.wrecks.length, 0, 'a bomb clears the wreck');
+  assert.ok(findPath(g, tank, far).length, 'and the causeway is open again');
 }
 
 // Flooding: water creeps from a river down a line of craters, but not uphill and not to a crater that is apart.
@@ -1134,6 +1202,16 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(command(g, 0, { t: 'entrench', ids: [first.id, helper.id], pattern: 'line', fort: 'wire', x: 25, z: 30, x2: 55, z2: 30 }), undefined, 'a line of wire is ordered');
   assert.deepEqual(works(0).map(w => w[5]), ['wire', 'wire', 'wire'], 'three pieces of wire in the ghost');
   run(g, 40);
+  assert.equal(cells('X'), 15, 'the wire runs the whole line');
+  assert.equal(command(g, 0, { t: 'entrench', ids: [first.id], pattern: 'line', fort: 'traps', x: 25, z: 26, x2: 33, z2: 26 }), undefined, 'tank traps too');
+  run(g, 20); assert.equal(cells('Y'), 4);
+  for (const bad of [{ fort: 'bridge' }, { fort: 'nest' }, { fort: 'toString' }, { fort: 'wire', pattern: 'ring' }]) assert.equal(command(g, 0, { t: 'entrench', ids: [first.id], pattern: 'line', x: 25, z: 20, x2: 40, z2: 20, ...bad }), 'blocked', `not as a line: ${JSON.stringify(bad)}`);
+  // a single fortification has a ghost too, and it is not something to join
+  command(g, 0, { t: 'dig', ids: [first.id], kind: 'wire', x: 40, z: 60, dir: 0 });
+  assert.deepEqual(works(0), [[-1, 1, 40, 60, 0, 'wire']], 'one wire shows as a ghost while the squad walks to it');
+  assert.equal(works(2).length, 0, 'not to the enemy');
+  run(g, 30);
+  assert.equal(works(0).length, 0);
   assert.equal(trenches(g), 20, 'together they finish the line');
   assert.equal(g.projects.size, 0, 'a finished project is dropped');
 
@@ -1148,16 +1226,6 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(q.projects.size, 1, 'a project somebody is waiting to start is kept');
   run(q, 110);
   assert.equal(trenches(q), 20, 'the queued pattern is dug after the move');
-  assert.equal(cells('X'), 15, 'the wire runs the whole line');
-  assert.equal(command(g, 0, { t: 'entrench', ids: [first.id], pattern: 'line', fort: 'traps', x: 25, z: 26, x2: 33, z2: 26 }), undefined, 'tank traps too');
-  run(g, 20); assert.equal(cells('Y'), 4);
-  for (const bad of [{ fort: 'bridge' }, { fort: 'nest' }, { fort: 'toString' }, { fort: 'wire', pattern: 'ring' }]) assert.equal(command(g, 0, { t: 'entrench', ids: [first.id], pattern: 'line', x: 25, z: 20, x2: 40, z2: 20, ...bad }), 'blocked', `not as a line: ${JSON.stringify(bad)}`);
-  // a single fortification has a ghost too, and it is not something to join
-  command(g, 0, { t: 'dig', ids: [first.id], kind: 'wire', x: 40, z: 60, dir: 0 });
-  assert.deepEqual(works(0), [[-1, 1, 40, 60, 0, 'wire']], 'one wire shows as a ghost while the squad walks to it');
-  assert.equal(works(2).length, 0, 'not to the enemy');
-  run(g, 30);
-  assert.equal(works(0).length, 0);
   assert.ok(u.z > 70 && !u.entrench, 'and the move queued behind it runs once the pattern is done');
 
   const s = fresh(big); s.players[0].mp = 10000;
@@ -3567,7 +3635,7 @@ for (const lookupFinished of [false, true]) {
     assert.deepEqual(res.you, { outcome: 'draw', team: 0 }); assert.deepEqual(room.players[1].lastMatch, { outcome: 'draw', team: 1 });
     // the next start clears the result
     const after = cal.messages.length;
-    await cal.send({ t: 'start' }); await cal.wait('start', () => true, after);
+    await cal.send({ t: 'start' }); await cal.wait('start', () => true, after); await h.waitFor(() => lobbies(cal).at(-1).result === null, 'the lobby after the start'); // it can arrive after 'start'
     assert.ok(room.state === 'play' && room.game && lobbies(cal).at(-1).result === null, 'a new match without the old result');
     await h.clear('enddraw');
   }
@@ -4491,7 +4559,7 @@ for (const lookupFinished of [false, true]) {
     assert.ok(v.models.length, `${type}: has a model`);
     root.traverse((o) => { if (o.isMesh && o.material === PAINT) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
     if (v.squad) {
-      assert.equal(v.models.length, def.models, `${type}: one soldier per model`);
+      assert.ok(v.models.length >= def.models && v.models.length % def.models === 0, `${type}: whole ranks, a multiple of its ${def.models} models (battalion blocks draw more men)`);
       for (const man of v.models) {
         const { hi, lo } = man.userData;
         assert.ok(hi.length === 1 && lo.length === 1, `${type}: a soldier is one draw near and far`);
@@ -4720,7 +4788,7 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual(findPath(g, from, to), [], 'two-level cliff separates the map');
   command(g, 0, { t: 'support', kind: 'dive', x: 21, z: 21 });
   run(g, SUPPORT.dive.delay + 0.1);
-  assert.equal(g.height[10 * g.w + 10], 1, 'blast lowers the cliff by one level');
+  assert.equal(g.height[10 * g.w + 10], 0, 'blast lowers the cliff, two levels in the middle of the hole');
   assert.ok(findPath(g, from, to).length, 'height changes invalidate weak regions');
 }
 
@@ -5297,6 +5365,14 @@ for (const lookupFinished of [false, true]) {
   assert.equal(g.mines.size, laid, 'and does not keep laying more');
   assert.ok(holder.hp > 0);
 
+  // a bomb hole beside the point it holds gets filled back in
+  g.players[1].mp = 5000; command(g, 1, { t: 'support', kind: 'dive', x: 29, z: 21 });
+  run(g, SUPPORT.dive.delay + 1);
+  assert.ok(g.height.some(l => l === -2), 'a hole two levels deep');
+  for (let i = 0; i < 20 * 300 && g.height.some(l => l < 0); i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  assert.ok(g.height.every(l => l >= 0), 'the computer player fills the hole in');
+  assert.ok(holder.hp > 0);
+
   const rows = empty.map((row, y) => row.slice(0, 9) + (y === 10 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
   r.players[0].mp = 5000; r.points = [];
   const sapper = put(r, 0, 'rifle', 5, 21), tank = { x: 5, z: 21, type: 'tank' };
@@ -5310,6 +5386,164 @@ for (const lookupFinished of [false, true]) {
   assert.ok(sapper.hp > 0);
 }
 
+// ---------- woods, mine clearing, halftracks, medics, the Field Hospital and supply lines ----------
+{
+  const open = (w = 40, h = 40) => Array(h).fill('.'.repeat(w));
+  const put = (rows, x, y, s) => { rows[y] = rows[y].slice(0, x) + s + rows[y].slice(x + s.length); };
+  const mapOf = (rows, extra = {}) => ({ name: 't', w: rows[0].length, h: rows.length, rows, spawns: [{ x: 2, y: 2 }, { x: rows[0].length - 3, y: rows.length - 3 }], points: [{ x: 20, y: 20 }], ...extra });
+  const unitOf = (g, slot, type) => [...g.units.values()].find(u => u.owner === slot && u.type === type);
+  const at = (x, y) => ({ x: (x + 0.5) * CELL, z: (y + 0.5) * CELL });
+  const place = (g, u, x, y) => { Object.assign(u, at(x, y), { path: [] }); return u; };
+  const run = (g, n) => { for (let i = 0; i < n; i++) step(g); };
+  const add = (g, slot, type, x, y) => { g.players[slot].mp += 2000; command(g, slot, { t: 'buy', unit: type }); const u = [...g.units.values()].filter(o => o.owner === slot && o.type === type).at(-1); return place(g, u, x, y); };
+
+  // woods: sight reaches a few cells in, infantry get light cover, vehicles crawl and route around, fire clears them
+  {
+    const rows = open(); for (let y = 17; y < 24; y++) put(rows, 15, y, "OOOOOOOOOO");
+    assert.equal(sim.validateMap(mapOf(rows)), null, 'a map with woods is valid');
+    const g = createGame(mapOf(rows), ['a', 'b'], false, [0, 1], [0, 1], { weather: false });
+    assert.ok(los(g, at(10, 20), at(17, 20)), 'a squad two cells inside the woods is seen from outside');
+    assert.ok(!los(g, at(10, 20), at(22, 20)), 'a squad deep in the woods is hidden');
+    assert.ok(!los(g, at(10, 20), at(30, 20)), 'nobody sees through a wood');
+    assert.ok(los(g, at(10, 5), at(30, 5)), 'open ground beside the wood is clear');
+    const rifle = place(g, unitOf(g, 0, 'rifle'), 16, 20);
+    assert.ok(sim.inCover(g, rifle), 'infantry in the woods are in cover');
+    const tank = add(g, 0, 'tank', 10, 20);
+    const through = findPath(g, tank, at(30, 20));
+    assert.ok(through.length && through.every(p => g.chars[Math.floor(p.z / CELL) * g.w + Math.floor(p.x / CELL)] !== 'O'), 'a tank drives around a wood');
+    const inf = findPath(g, rifle, at(30, 20));
+    assert.ok(inf.length <= 2, 'infantry walk straight through');
+    assert.equal(command(g, 0, { t: 'dig', ids: [rifle.id], kind: 'trench', x: at(18, 20).x, z: at(18, 20).z }), 'blocked', 'no trench among the trees');
+  }
+
+  // mines: builder squads find them, the team's routes go around them and Clear mines lifts them
+  {
+    const g = createGame(mapOf(open()), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    const layer = place(g, unitOf(g, 1, 'rifle'), 20, 22), sweeper = place(g, unitOf(g, 0, 'rifle'), 20, 5);
+    g.players[1].mp = 1000;
+    assert.equal(command(g, 1, { t: 'dig', ids: [layer.id], kind: 'mines', x: at(20, 20).x, z: at(20, 20).z, dir: 0 }), undefined);
+    run(g, 300);
+    const mines = [...g.mines.keys()];
+    assert.equal(mines.length, 4, 'four mines laid');
+    place(g, layer, 38, 38); place(g, sweeper, 20, 18);
+    const hidden = () => snapshotFor(g, 0, []).cells.filter(c => c[1] === 'N').length;
+    assert.equal(sim.terrainFor(g, 0, true).filter(c => c[1] === 'N').length, 0, 'enemy mines start hidden');
+    assert.equal(command(g, 0, { t: 'dig', ids: [sweeper.id], kind: 'demine', x: at(20, 20).x, z: at(20, 20).z, dir: 0 }), 'blocked', 'unknown mines cannot be cleared (and the answer does not give them away)');
+    run(g, 60);
+    assert.equal(sim.terrainFor(g, 0, true).filter(c => c[1] === 'N').length, 4, 'a builder squad standing near finds them');
+    assert.ok(mines.every(c => sim.mineKnown(g, c, 0)), 'the team knows them');
+    const route = findPath(g, sweeper, at(20, 24));
+    const crosses = (a, b) => { for (let k = 0; k <= 200; k++) { const c = Math.floor((a.z + (b.z - a.z) * k / 200) / CELL) * g.w + Math.floor((a.x + (b.x - a.x) * k / 200) / CELL); if (g.chars[c] === 'N') return true; } return false; };
+    assert.ok(![sweeper, ...route].some((p, i, l) => l[i + 1] && crosses(p, l[i + 1])), 'the route goes around known mines');
+    g.players[0].mp = 1000;
+    assert.equal(command(g, 0, { t: 'entrench', ids: [sweeper.id], pattern: 'line', fort: 'demine', x: at(19, 20).x, z: at(19, 20).z, x2: at(22, 20).x, z2: at(22, 20).z }), undefined, 'Clear mines is ordered as a line');
+    run(g, 600);
+    assert.equal(g.mines.size, 0, 'the mines are lifted');
+    assert.ok(sweeper.hp === UNITS.rifle.models * UNITS.rifle.hpPer, 'and nobody stepped on one');
+  }
+
+  // halftrack: a squad boards, rides hidden and unhurt, gets out on Unload, and is thrown out when it is wrecked
+  {
+    const g = createGame(mapOf(open()), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    const ht = add(g, 0, 'halftrack', 10, 10), rifle = place(g, unitOf(g, 0, 'rifle'), 13, 10), mg = place(g, unitOf(g, 0, 'mg'), 13, 12);
+    assert.equal(command(g, 0, { t: 'board', ids: [rifle.id, mg.id], target: ht.id }), undefined);
+    run(g, 100);
+    assert.equal(rifle.riding, ht.id, 'the nearest squad is in'); assert.equal(ht.cargo, rifle.id); assert.equal(mg.riding, 0, 'one squad only');
+    assert.equal(command(g, 0, { t: 'board', ids: [mg.id], target: ht.id }), 'max', 'a full carrier takes nobody');
+    command(g, 0, { t: 'move', orders: [[ht.id, at(30, 10).x, at(30, 10).z], [rifle.id, 0, 0]] });
+    run(g, 200);
+    assert.ok(Math.hypot(rifle.x - ht.x, rifle.z - ht.z) < 0.01 && ht.x > at(25, 10).x, 'the squad rides along and ignores its own orders');
+    assert.ok(snapshotFor(g, 0, []).units.find(u => u[0] === rifle.id)[12] & sim.RIDING_FLAG, 'its owner is told it is riding');
+    const foe = place(g, unitOf(g, 1, 'rifle'), 32, 10);
+    run(g, 10);
+    assert.ok(g.players[1].visible.has(ht.id) && !g.players[1].visible.has(rifle.id), 'the enemy sees the halftrack, not the squad in it');
+    place(g, foe, 38, 38);
+    assert.equal(command(g, 0, { t: 'unload', ids: [ht.id] }), undefined);
+    assert.equal(rifle.riding, 0); assert.equal(ht.cargo, 0);
+    assert.equal(command(g, 0, { t: 'board', ids: [rifle.id], target: ht.id }), undefined);
+    run(g, 100);
+    assert.equal(rifle.riding, ht.id);
+    ht.hp = 0; run(g, 3);
+    assert.equal(rifle.riding, 0, 'thrown out of the wreck');
+    assert.ok(Math.abs(rifle.hp - UNITS.rifle.models * UNITS.rifle.hpPer * (1 - CFG.aid.evict)) < 1e-6, 'and hurt');
+    // a halted halftrack reinforces infantry beside it, for manpower, slower than the HQ
+    const ht2 = add(g, 0, 'halftrack', 5, 30); place(g, rifle, 6, 31); rifle.hp = 20; g.players[0].mp = 500;
+    run(g, 200);
+    assert.ok(rifle.hp > 20 && rifle.hp < 100 && g.players[0].mp < 500 + 200 * CFG.mpBase / 20, 'squad reinforced beside the halftrack, and paid for');
+    assert.ok(ht2.hp > 0);
+  }
+
+  // medic: heals the most hurt squad nearby for free, but not one under fire
+  {
+    const g = createGame(mapOf(open()), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    const medic = add(g, 0, 'medic', 5, 30), rifle = place(g, unitOf(g, 0, 'rifle'), 6, 30), mp = () => g.players[0].mp;
+    rifle.hp = 40; step(g);
+    const before = mp();
+    run(g, 200);
+    assert.ok(rifle.hp > 40 + CFG.aid.heal * 8, 'the medic heals the squad');
+    assert.ok(Math.abs(mp() - before - 200 * g.players[0].inc / 20) < 1, 'for free');
+    rifle.hp = 40; run(g, 10); rifle.hp = 30; run(g, 20);
+    assert.ok(rifle.hp <= 30.01, 'a squad that was just hit waits');
+    assert.equal(command(g, 0, { t: 'attack', ids: [medic.id], target: unitOf(g, 1, 'rifle').id }), 'unseen');
+  }
+
+  // Field Hospital: one per player, infantry near it reinforce
+  {
+    const g = createGame(mapOf(open()), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    const rifle = place(g, unitOf(g, 0, 'rifle'), 5, 30), mg = place(g, unitOf(g, 0, 'mg'), 7, 30);
+    g.players[0].mp = 1000;
+    assert.equal(command(g, 0, { t: 'dig', ids: [rifle.id], kind: 'aid', x: at(5, 31).x, z: at(5, 31).z, dir: 0 }), undefined);
+    assert.equal(command(g, 0, { t: 'dig', ids: [rifle.id], kind: 'aid', x: at(10, 31).x, z: at(10, 31).z, dir: 0 }), 'max', 'one going up is the limit');
+    run(g, 20 * 14);
+    assert.equal(g.aid.size, 1, 'the hospital stands'); assert.equal(g.chars[31 * g.w + 5], 'A');
+    assert.equal(command(g, 0, { t: 'dig', ids: [rifle.id], kind: 'aid', x: at(10, 31).x, z: at(10, 31).z, dir: 0 }), 'max', 'one per player');
+    mg.hp = 25; run(g, 200);
+    assert.ok(mg.hp > 25, 'infantry reinforce at the hospital');
+    const foe = place(g, unitOf(g, 1, 'rifle'), 6, 32); foe.hp = 20; foe.holdFire = true; rifle.holdFire = mg.holdFire = true; const was = foe.hp;
+    run(g, 100);
+    assert.ok(foe.hp <= was, 'the enemy gets nothing from it');
+  }
+
+  // supply lines: a point across a river pays while a bridge stands and an enemy does not sit on the road
+  {
+    const rows = open(); for (let y = 0; y < 40; y++) put(rows, 12, y, 'WWW'); put(rows, 12, 20, '===');
+    const g = createGame(mapOf(rows), ['a', 'b'], false, [0, 1], [0, 1], { weather: false });
+    const p = g.points[0];
+    p.owner = 0; p.progress = 1;
+    for (const u of g.units.values()) if (u.owner === 1) place(g, u, 37, 37);
+    run(g, 45);
+    assert.equal(p.cut, false, 'a bridge keeps the point supplied');
+    assert.equal(snapshotFor(g, 0, []).points[0][4], 0);
+    const inc = g.players[0].inc;
+    const foe = place(g, unitOf(g, 1, 'rifle'), 13, 20); foe.holdFire = true;
+    for (const u of g.units.values()) if (u.owner === 0) { place(g, u, 3, 3); u.holdFire = true; }
+    run(g, 45);
+    assert.equal(p.cut, true, 'an enemy squad on the bridge cuts it');
+    assert.ok(g.players[0].inc < inc, 'a cut point pays no manpower');
+    assert.equal(snapshotFor(g, 0, []).points[0][4], 1, 'and the snapshot says so');
+    const vp = g.players[0].vp; run(g, 20);
+    assert.equal(g.players[0].vp, vp, 'nor victory points');
+    place(g, foe, 20, 21); run(g, 45);
+    assert.equal(p.cut, false, 'an enemy fighting for the point itself does not cut it');
+    place(g, foe, 37, 37);
+    for (const c of [20 * 40 + 12, 20 * 40 + 13, 20 * 40 + 14]) { g.chars[c] = 'W'; g.flags[c] = sim.TERRAIN.W; }
+    run(g, 45);
+    assert.equal(p.cut, true, 'a blown bridge cuts it');
+    const h = createGame(mapOf(rows), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    h.points[0].owner = 0; for (const c of [20 * 40 + 12, 20 * 40 + 13, 20 * 40 + 14]) { h.chars[c] = 'W'; h.flags[c] = sim.TERRAIN.W; }
+    run(h, 45);
+    assert.equal(h.points[0].cut, false, 'supply: false turns the rule off');
+  }
+
+  // computer players cope: a short match with every new unit on the field runs clean
+  {
+    const rows = open(60, 60); for (let y = 20; y < 40; y++) put(rows, 25, y, 'OOOOOOOO');
+    const g = createGame(mapOf(rows, { points: [{ x: 30, y: 15 }, { x: 30, y: 45 }] }), ['a', 'b'], false, [0, 1], [0, 2], { weather: false });
+    for (const s of [0, 1]) { add(g, s, 'halftrack', 5 + s * 48, 8 + s * 44); add(g, s, 'medic', 6 + s * 46, 8 + s * 44); }
+    for (let i = 0; i < 2400; i++) { if (i % 40 === 0) { think(g, 0); think(g, 1); } step(g); }
+    assert.ok(g.tick === 2400);
+  }
+}
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and
@@ -5365,7 +5599,9 @@ console.log('all sim checks passed');
   const flat = placementCheck(ground, place, () => true);
   assert.equal(flat.ok, true, 'flat ground permits a building');
   ground.height[flat.cells[1]] = 1;
-  assert.equal(placementCheck(ground, place, () => true).reason, 'blocked', 'a footprint across levels is rejected');
+  assert.equal(placementCheck(ground, place, () => true).ok, true, 'one level of fall is levelled by the builders');
+  ground.height[flat.cells[1]] = 2;
+  assert.equal(placementCheck(ground, place, () => true).reason, 'blocked', 'a footprint across a cliff is rejected');
   assert.equal(placementCheck(ground, place, () => false).reason, 'notVisible', 'sight is checked before hidden ground');
   ground.height[flat.cells[1]] = 0;
   assert.equal(placementCheck(ground, place, at => at.x !== 19 || at.z !== 19).ok, true, 'a visible center permits an unseen corner');
