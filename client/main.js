@@ -7,6 +7,8 @@ import { setupLight, renderFrame } from './light.js';
 import { createGround } from './ground.js';
 import { surface, roofGeometry, roofMaterials } from './surfaces.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, MOVE_COLOR } from './markers.js';
+import { audio } from './audio.js';
+import { battleFrame } from './battle-sound.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -182,7 +184,7 @@ function renderLobby(m) {
   $('result').classList.toggle('hidden', !r);
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
-  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); }
+  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); audio.end(); }
 }
 
 // ---------- renderer / scene ----------
@@ -244,6 +246,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 let lastStart = null;
 function startGame(m) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
+  if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
@@ -660,32 +663,8 @@ function removeUnit(v) {
 
 // ---------- effects + sound ----------
 
-let audio = null, noise = null, voices = 0;
-addEventListener('pointerdown', () => {
-  if (audio) return;
-  audio = new AudioContext();
-  noise = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
-  const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-}, { once: true });
-function sound(kind, x, z) {
-  if (!audio || voices > 20) return;
-  const vol = Math.max(0, 1 - Math.hypot(x - cam.x, z - cam.z) / 160) * (kind === 'tank' || kind === 'at' || kind === 'rocket' ? 0.9 : 0.25);
-  if (vol <= 0.01) return;
-  const src = audio.createBufferSource(), filt = audio.createBiquadFilter(), gain = audio.createGain(), t = audio.currentTime;
-  const heavy = kind === 'tank' || kind === 'at', len = heavy ? 0.7 : kind === 'mg' ? 0.06 : 0.12;
-  src.buffer = noise; src.playbackRate.value = heavy ? 0.5 : 1;
-  filt.type = heavy ? 'lowpass' : 'bandpass'; filt.frequency.value = heavy ? 380 : kind === 'mg' ? 1400 : 1900;
-  gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.001, t + len);
-  src.connect(filt).connect(gain).connect(audio.destination);
-  src.start(t, Math.random() * 0.5, len); voices++; src.onended = () => voices--;
-}
-function blip(freq) {
-  if (!audio) return;
-  const o = audio.createOscillator(), gn = audio.createGain(), t = audio.currentTime;
-  o.frequency.value = freq; o.type = 'square';
-  gn.gain.setValueAtTime(0.04, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-  o.connect(gn).connect(audio.destination); o.start(t); o.stop(t + 0.08);
-}
+// sound: audio.js plays it, fx.js and battle-sound.js call it; blip() is a UI sound ('click', 'recruit' or 'error', a number means click)
+function blip(kind) { audio.ui(typeof kind === 'string' ? kind : 'click'); }
 
 function marker(x, z, color) {
   const m = clickRing(color);
@@ -879,24 +858,9 @@ function nodeMark(x, z, rate, fuel) {
 }
 function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0]; }
 
-const VOICES = [
-  { lang: 'en-US', move: ['Yes sir!', 'Moving out!', 'On our way!', 'Roger that!'], attack: ['Engaging!', 'Give em hell!', 'Open fire!'], retreat: ['Fall back!', 'Pull back!'] },
-  { lang: 'de-DE', move: ['Jawohl!', 'Vorwärts!', 'Verstanden!'], attack: ['Feuer frei!', 'Angriff!'], retreat: ['Zurück!', 'Rückzug!'] },
-  { lang: 'ru-RU', move: ['Есть!', 'Вперёд!', 'Так точно!'], attack: ['Огонь!', 'В атаку!'], retreat: ['Отходим!', 'Назад!'] },
-];
-let muted = tryStore(() => localStorage.getItem('ww2-muted')) === '1', lastBark = 0;
-function bark(kind) {
-  if (muted || !window.speechSynthesis || performance.now() - lastBark < 2500 || me < 0) return;
-  lastBark = performance.now();
-  const v = VOICES[facOf(me)], lines = v[kind], u = new SpeechSynthesisUtterance(lines[Math.floor(Math.random() * lines.length)]);
-  u.lang = v.lang; u.rate = 1.15; u.volume = 0.7;
-  const voice = speechSynthesis.getVoices().find(x => x.lang.replace('_', '-').startsWith(v.lang.slice(0, 2)));
-  if (voice) u.voice = voice;
-  speechSynthesis.speak(u);
-}
-function setMuted(m) { muted = m; tryStore(() => localStorage.setItem('ww2-muted', m ? '1' : '0')); $('mute').textContent = m ? '🔇' : '🔊'; }
-$('mute').onclick = () => setMuted(!muted);
-setMuted(muted);
+// the player's faction voice answers orders (audio.js picks the voice and keeps lines 2.5 s apart)
+function bark(kind) { audio.voice(kind); }
+audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles mute
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // F: instant abilities fire now; grenades arm a targeting click
@@ -974,7 +938,7 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyI') aimSupport('cover');
   else if (e.code === 'KeyO') startBuild('airfield');
   else if (e.code === 'KeyY') startBuild('flakpos');
-  else if (e.code === 'KeyM') setMuted(!muted);
+  else if (e.code === 'KeyM') audio.toggleMute();
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean), al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) {
@@ -1198,7 +1162,7 @@ function updateFog() {
   fogTex.needsUpdate = true;
 }
 
-const effects = createEffects({ scene, camera, cam, hAt, units, sound, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT });
+const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   // camera
@@ -1228,6 +1192,7 @@ renderer.setAnimationLoop(() => {
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = v.sel.visible;
   }
+  battleFrame(cam, units, me);
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);

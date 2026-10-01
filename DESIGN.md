@@ -311,6 +311,13 @@ the HUD.
   tracers into the sky (`aa`), a flak gun firing at a passing support plane makes airbursts around that plane,
   `shotdown` and `planedown` send the plane into a burning fall. Flak firing at ground units is ordinary direct fire.
   The paratroop canopies (`chutes`) stay in main.js. Particle and decal counts drop on Graphics Low.
+- As built, slice 5 (audio): `client/audio.js` loads `client/audio/index.json` and the mp3s under `client/audio/sfx`
+  and `client/audio/voice/{us,de,ru}`, mixes them on sfx, voice and ui buses under one volume (`ww2-volume`, M
+  toggles mute), and places each sound by distance and pan from the camera. `client/fx.js` owns every effect sound
+  and plays it when the effect shows (whistles timed to the landing, one sound per MG or SMG burst, fire loops on
+  wrecks). `client/battle-sound.js` only moves the listener with the camera, drives the tank engine bed from moving
+  vehicles and plays dig and build foley. The Volume slider sits in the in-game menu and replaces the old mute
+  button. `tools/build-audio.mjs` rebuilds the mp3s and index from the raw takes (needs ffmpeg).
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

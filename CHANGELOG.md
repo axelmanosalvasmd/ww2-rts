@@ -5,6 +5,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Audio (slice 5): recorded effects and voice lines, one volume control:
+  - Recorded sound effects (ElevenLabs) for every weapon, shell, grenade, bomb and rocket, the support planes, flak,
+    plane crashes, falling houses, smoke shells, digging and building, plus a quiet battlefield ambience and a short
+    sound when the match starts. Each sound plays when its effect shows, gets quieter with distance from the camera
+    and pans left or right with it. Moving tanks and vehicles swell a shared engine rumble.
+  - Burning wrecks crackle while they burn. Artillery and mortar whistles end as the round lands. A machine gun or SMG
+    burst plays once per burst, and a Tiger's gun sounds deeper. A hedge or fence being knocked down only crunches;
+    a house falling is loud.
+  - Each faction speaks its own language with recorded voice lines (Eleven v4): two voices per faction, the player's
+    slot picks one, for move, attack, retreat, under fire and unit lost. They replace the browser's speech voice.
+  - Alerts, recruiting, orders and button clicks each have a short sound.
+  - One Volume slider in the in-game menu covers effects, voices and alerts and is remembered. M mutes and restores
+    the last level. A player who had muted the old way starts muted.
+  - Fixed: the old synthesized noise bursts are gone. Mute used to silence only the voices. Machine guns no longer
+    pile up a new sound every few tenths of a second while firing.
+  - Left for later: the Armored Car's cannon uses the tank gun sound. A hedge or fence falling still throws up the
+    full dust cloud of a house (only the sound is lighter). The Fighter Cover circle is still the old flat ring. The
+    refused-order sound (`ui_error`) is recorded but nothing plays it yet. The automated browser checks confirm which
+    sounds are played, not how they sound.
 - Combat effects (slice 4): muzzle flashes, tracers, explosions, scorch, fire and smoke:
   - Every shot has a muzzle flash at the gun and a glowing tracer to the target, with the impact landing when the
     round arrives: dust and dirt for small arms, sparks off armor, a fireball and debris for shells and bombs.

@@ -4,12 +4,16 @@
 //
 // Cost: every particle (flash, fire, smoke, dust, debris, spark, tracer) is one instance of a single billboard mesh
 // (one draw call, one shared atlas texture), scorch marks share one decal mesh, and planes come from a small pool.
-// Nothing is allocated per shot apart from the {x, z} handed to audio.play.
+// Nothing is allocated per shot apart from what is handed to audio.play.
+//
+// Sound: every effect plays its recorded sound through audio.js at the moment it shows (a gun as it flashes, a
+// whistle that ends as the round lands, a fire that burns as long as the wreck does). battle-sound.js adds what
+// is not tied to a shot: the listener, tank engines, digging and building.
 //
 // Fog of war: effects at a shooter (flash, tracer, launch, thrown grenade) only play when the shooter is in this
 // snapshot's visible set. Impacts only play for shots the server already sent us, so they show what the game shows.
 import * as THREE from 'three';
-import { UNITS, SUPPORT } from '/shared/sim.js';
+import { UNITS, SUPPORT, CELL } from '/shared/sim.js';
 import { gfx } from './gfx.js';
 import { audio } from './audio.js';
 
@@ -174,14 +178,15 @@ const STYLES = [...new Set([...Object.values(GUNS), BAZOOKA])]; // index <-> sty
 const HAND = { rifle: [0.72, 1.1, 0.2], conscript: [0.72, 1.1, 0.2], engineer: [0.6, 1.0, 0.2], ranger: [0.62, 0.9, 0.2], sniper: [1.13, 1.08, 0.2] };
 const BAZ = [0.63, 0.93, 0.25];
 
-export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}, colorOf = () => 0xdddddd, airAlt = 20 }) {
+export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 0xdddddd, airAlt = 20, mapW = () => 0 }) {
   let clock = 0;
   const v3 = new THREE.Vector3();
   const play = (() => {
     const last = new Map();
-    return (name, x, z, gap = 0) => {
+    // opts go to audio.play: gain, rate, delay, offset (seconds into the file), dur (loops)
+    return (name, x, z, gap = 0, opts) => {
       if (gap) { if (clock - (last.get(name) ?? -1e9) < gap) return; last.set(name, clock); }
-      try { audio.play(name, { x, z }); } catch { /* sound must never break the frame */ }
+      try { audio.play(name, { x, z }, opts); } catch { /* sound must never break the frame */ }
     };
   })();
 
@@ -385,8 +390,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
     evT[i] = delay; evK[i] = kind; evA[o] = a; evA[o + 1] = b; evA[o + 2] = c; evA[o + 3] = d; evA[o + 4] = e; evA[o + 5] = f; evA[o + 6] = g; evA[o + 7] = h;
   }
   const NAMES = ['rifle', 'smg', 'mg', 'sniper', 'atgun', 'tankgun', 'mortar', 'whistle', 'blast_small', 'blast_large', 'bomb', 'rockets', 'plane_flyby', 'strafe', 'bomber', 'flak', 'collapse', 'smoke', 'dig', 'build', 'vehicle_destroyed', 'ricochet'];
-  const LEGACY = ['rifle', 'mg', 'at', 'tank'];
-  const E_TRACER = 1, E_IMPACT = 2, E_SOUND = 3, E_LEGACY = 4, E_ROCKET = 5, E_BOMB = 6, E_SKY = 7, E_FLAK = 8; // 0 = cancelled
+  const E_TRACER = 1, E_IMPACT = 2, E_SOUND = 3, E_ROCKET = 5, E_BOMB = 6, E_SKY = 7, E_FLAK = 8; // 0 = cancelled
   function runEvents(dt) {
     for (let i = 0; i < evn;) {
       if ((evT[i] -= dt) > 0) { i++; continue; }
@@ -396,15 +400,16 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       const A = ARG;
       if (kind === E_TRACER) shotTracer(A[0], A[1], A[2], A[3], A[4], A[5], STYLES[A[6]], A[7]);
       else if (kind === E_IMPACT) impact(A[0], A[1], A[2], STYLES[A[3]], A[4]);
-      else if (kind === E_SOUND) play(NAMES[A[0]], A[1], A[2]);
-      else if (kind === E_LEGACY) sound(LEGACY[A[0]], A[1], A[2]);
+      else if (kind === E_SOUND) play(NAMES[A[0]], A[1], A[2], 0, A[3] || A[4] ? { offset: A[3], gain: A[4] || 1 } : undefined);
       else if (kind === E_ROCKET) launchRocket(A[0], A[1], A[2], A[3], A[4], A[5], A[6], A[7]);
       else if (kind === E_BOMB) { const o = emit(FX.bomb, A[0], A[1], A[2], A[3], 0, A[4], 0.32, A[6]); if (o >= 0) S[o + 22] = A[5]; }
       else if (kind === E_SKY) skyShot(A[0], A[1], A[2], A[3], A[4], A[5], STYLES[A[6]]);
       else if (kind === E_FLAK) burst(A[0], A[1], A[2], A[3]);
     }
   }
-  const snd = (name, delay, x, z) => later(delay, E_SOUND, NAMES.indexOf(name), x, z);
+  const snd = (name, delay, x, z, offset = 0, gain = 0) => later(delay, E_SOUND, NAMES.indexOf(name), x, z, offset, gain);
+  // a falling round's whistle (1.8 s) starts early or part way in, so that it ends as the round lands
+  const whistle = (delay, flight, x, z, gain = 0) => { const len = audio.length('whistle') || 1.76; snd('whistle', delay + Math.max(0, flight - len), x, z, Math.max(0, len - flight), gain); };
 
   // ---------- building blocks ----------
   const low = () => gfx.low;
@@ -582,15 +587,19 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
     return true;
   }
 
+  const BURST_SND = { mg: 1.25, smg: 0.7 }, lastBurst = new Map(), TIGER = { rate: 0.85 };
   function directFire(sh, from, seenTarget) {
     const to = seenTarget ? units.get(sh.t) : null, tdef = UNITS[to?.type], veh = tdef ? !tdef.infantry : false;
     const bazooka = sh.k === 'ranger' && veh;
     const st = bazooka ? BAZOOKA : GUNS[sh.k] ?? SMALL, sti = STYLES.indexOf(st);
     const flags = (sh.hit ? 1 : 0) | (veh ? 2 : 0) | (tdef?.structure ? 4 : 0);
     const ty = veh ? (tdef.structure ? 1.6 : 1.2) : 0.8;
-    // gun sound at the shooter if we can see it, else where the rounds land
-    play(st.snd, from ? from.x : sh.x, from ? from.z : sh.z);
-    sound(sh.k, sh.x, sh.z);
+    // gun sound at the shooter if we can see it, else where the rounds land. An MG fires every 0.3 s but its
+    // recording is a whole burst, so one plays per burst; rifles crack once per soldier, with his flash (below)
+    const sx = from ? from.x : sh.x, sz = from ? from.z : sh.z, burstGap = BURST_SND[st.snd];
+    if (burstGap) { if (clock - (lastBurst.get(sh.f) ?? -1e9) >= burstGap) { lastBurst.set(sh.f, clock); play(st.snd, sx, sz); } }
+    else if (st.snd !== 'rifle' || !from) play(st.snd, sx, sz, 0, sh.k === 'tiger' ? TIGER : undefined);
+    if (lastBurst.size > 400) lastBurst.clear();
     if (!from) {
       // shooter hidden: only the arrival shows
       const ex = sh.x + rr(-1, 1) * (sh.hit ? 0.6 : 2.5), ez = sh.z + rr(-1, 1) * (sh.hit ? 0.6 : 2.5);
@@ -602,6 +611,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       if (!muzzleAt(from, i, sh.x, sh.z, bazooka)) break;
       const mx = v3.x, my = v3.y, mz = v3.z;
       const shots = bazooka ? 1 : st.burst, t0 = st.n > 1 ? rand() * 0.18 : 0;
+      if (st.snd === 'rifle') snd('rifle', t0, sx, sz, 0, i ? 0.8 : 0);
       for (let b = 0; b < shots; b++) {
         const ex = sh.x + rr(-0.5, 0.5) * spread, ez = sh.z + rr(-0.5, 0.5) * spread, ey = hAt(ex, ez) + (sh.hit ? ty : 0.1);
         later(t0 + b * st.gap, E_TRACER, mx, my, mz, ex, ey, ez, sti, flags & (b === 0 ? 7 : 6));
@@ -666,6 +676,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
     explode(v.x, v.z, 3 * big);
     wrecks.push({ x: v.x, y: gy + 1.4 * big, z: v.z, t: 0, fire: 20, dur: 38, fa: 0, sa: 0, big });
     play('vehicle_destroyed', v.x, v.z);
+    play('fire_loop', v.x, v.z, 0, { delay: 0.8, dur: 14 });
   }
   function updateWrecks(dt) {
     const lo = low();
@@ -689,7 +700,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
     }
   }
 
-  function collapse(x, z, r = 4) {
+  function collapse(x, z, r = 4, sndOpts) {
     const lo = low(), q = lo ? 0.45 : 1, gy = hAt(x, z);
     for (let i = 0; i < Math.round(16 * q); i++) {
       const a = rand() * TAU, d = rand() * r;
@@ -703,7 +714,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       const a = rand() * TAU, h = rr(1.5, 5);
       emit(FX.masonry, x + rr(-r, r) * 0.5, gy + rr(2, 5), z + rr(-r, r) * 0.5, Math.cos(a) * h, rr(3, 8), Math.sin(a) * h, rr(0.15, 0.35), rr(1.5, 2.6));
     }
-    play('collapse', x, z);
+    play('collapse', x, z, 0, sndOpts);
   }
 
   // ---------- planes ----------
@@ -805,7 +816,6 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
         const off = Math.sign(gun[2]) * rr(0.6, 2.6), ex = p.x + p.dx * hitS + px * off, ez = p.z + p.dz * hitS + pz * off;
         later(0, E_TRACER, v3.x, v3.y, v3.z, ex, hAt(ex, ez) + 0.1, ez, STYLES.indexOf(GUNS.mg), 0);
       }
-      if (rand() < 0.3) sound('mg', p.x + p.dx * hitS, p.z + p.dz * hitS);
     }
   }
 
@@ -830,7 +840,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
         falls.splice(i, 1);
         explode(f.x, f.z, 3.6, { smokeK: 1.2 });
         wrecks.push({ x: f.x, y: gy + 0.8, z: f.z, t: 0, fire: 10, dur: 24, fa: 0, sa: 0, big: 0.9 });
-        play('vehicle_destroyed', f.x, f.z); sound('tank', f.x, f.z);
+        play('vehicle_destroyed', f.x, f.z); play('fire_loop', f.x, f.z, 0, { delay: 0.5, dur: 9 });
         f.done();
         continue;
       }
@@ -878,7 +888,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
     if (p) { px = p.g.position.x; py = p.g.position.y; pz = p.g.position.z; }
     for (let i = 0; i < 5; i++) later(i * 0.09 + rr(0, 0.05), E_FLAK, px + rr(-7, 7), py + rr(-3, 4), pz + rr(-7, 7), 1);
     if (from && muzzleAt(from, 0, px, pz)) skyShot(v3.x, v3.y, v3.z, px + rr(-3, 3), py, pz + rr(-3, 3), GUNS.flak);
-    play('flak', from ? from.x : px, from ? from.z : pz, 0.1); sound('at', px, pz);
+    play('flak', from ? from.x : px, from ? from.z : pz, 0.1);
   }
   function antiAir(sh, from, to) {
     let ex = sh.x, ey = hAt(sh.x, sh.z) + airAlt, ez = sh.z;
@@ -892,14 +902,14 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       for (let b = 0; b < st.burst; b++) later(b * st.gap, E_SKY, mx, my, mz, ex + rr(-2.5, 2.5), ey + rr(-1.5, 1.5), ez + rr(-2.5, 2.5), sti);
     }
     if (!fighter) later(T, E_FLAK, ex + rr(-4, 4), ey + rr(-2, 3), ez + rr(-4, 4), 0.7); // shells bursting around it
-    play(st.snd, from ? from.x : ex, from ? from.z : ez, 0.1); sound('mg', from ? from.x : ex, from ? from.z : ez);
+    play(st.snd, from ? from.x : ex, from ? from.z : ez, 0.1);
   }
 
   function syncStrikes(list) {
     const keep = new Set();
     for (const [kind, x, z, dir, t, owner] of list ?? []) {
       const key = `${kind},${x},${z}`; keep.add(key);
-      if (kind === 'artillery' && t <= 1.2 && !flights.has(key)) { flights.set(key, null); play('whistle', x, z); }
+      if (kind === 'artillery' && t <= 1.4 && !flights.has(key)) { flights.set(key, null); whistle(0, t, x, z); }
       const P = PLANE[kind];
       if (P && !flights.has(key) && t <= (P.s0() + 150) / P.speed) launchPlane(kind, x, z, dir, owner, t, key);
     }
@@ -908,6 +918,12 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
 
   // ---------- snapshot ----------
   const throws = Array.from({ length: 12 }, () => ({ x: 0, z: 0, satchel: false, t: -1e9 })); let throwI = 0;
+  const ROCKET = { gain: 0.8 }, LIGHT = { gain: 0.3, rate: 1.3 };
+  function openCell(s, x, z) {
+    const w = mapW(), c = Math.floor(z / CELL) * w + Math.floor(x / CELL);
+    if (w) for (const [cell, ch] of s.cells ?? []) if (cell === c && ch === '.') return true;
+    return false;
+  }
   function snapshot(s, seen) {
     syncStrikes(s.strikes);
     for (const sh of s.shots) {
@@ -924,17 +940,16 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       if (k === 'boom') {
         const th = throws.find(q => clock - q.t < 6 && Math.abs(q.x - sh.x) < 0.5 && Math.abs(q.z - sh.z) < 0.5);
         explode(sh.x, sh.z, th?.satchel ? 3.4 : 2.3, { debris: th?.satchel ? FX.masonry : FX.debris });
-        play(th?.satchel ? 'blast_large' : 'blast_small', sh.x, sh.z); sound('at', sh.x, sh.z);
+        play(th?.satchel ? 'blast_large' : 'blast_small', sh.x, sh.z);
         continue;
       }
-      if (k === 'shell') { explode(sh.x, sh.z, 3.2); play('blast_large', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
-      if (k === 'rocket') { explode(sh.x, sh.z, 2.3); play('blast_small', sh.x, sh.z); sound('at', sh.x, sh.z); continue; }
-      if (k === 'bomb') { explode(sh.x, sh.z, 5.2, { smokeK: 1.3 }); play('bomb', sh.x, sh.z); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
+      if (k === 'shell') { explode(sh.x, sh.z, 3.2); play('blast_large', sh.x, sh.z); continue; }
+      if (k === 'rocket') { explode(sh.x, sh.z, 2.3); play('blast_small', sh.x, sh.z, 0, ROCKET); continue; }
+      if (k === 'bomb') { explode(sh.x, sh.z, 5.2, { smokeK: 1.3 }); play('bomb', sh.x, sh.z); continue; }
       if (k === 'salvo') { salvo(sh, from); continue; }
       if (PLANE[k]) {
         const key = `${k},${Math.round(sh.x * 10) / 10},${Math.round(sh.z * 10) / 10}`; // same rounding as the strike list
         if (!flights.has(key)) launchPlane(k, sh.x, sh.z, sh.dir, sh.fo, 0, key);
-        sound('tank', sh.x, sh.z);
         continue;
       }
       if (k === 'shotdown') { shotDown(sh); continue; }
@@ -943,8 +958,9 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       if (k === 'planedown') { if (!units.has(sh.t)) spare(false, sh.x, sh.z, airAlt, sh.dir ?? 0, 15, sh.to); continue; }
       if (k === 'flak' && sh.t === undefined) { flakAt(sh, from); continue; }
       if (k === 'aa') { antiAir(sh, from, sh.t !== undefined && seen.has(sh.t) ? units.get(sh.t) : null); continue; }
-      if (k === 'collapse') { collapse(sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
-      if (k === 'smokeshells') { for (let i = 0; i < 5; i++) later(i * 0.15, E_LEGACY, 2, sh.x, sh.z); continue; }
+      // every wrecked map cell is a collapse; hedges, wire and trees (they turn to open ground '.') only crunch
+      if (k === 'collapse') { collapse(sh.x, sh.z, 4, openCell(s, sh.x, sh.z) ? LIGHT : undefined); continue; }
+      if (k === 'smokeshells') { for (let i = 0; i < 3; i++) snd('smoke', i * 0.25, sh.x + rr(-6, 6), sh.z + rr(-6, 6)); continue; }
       if (UNITS[k]) directFire(sh, from, sh.t !== undefined && seen.has(sh.t));
     }
     syncClouds(s.smokes ?? []);
@@ -953,7 +969,6 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
   function salvo(sh, from) {
     const mortar = from ? from.type === 'mortar' : sh.n <= 4, n = sh.n ?? 8;
     const w = UNITS[mortar ? 'mortar' : 'rocket'].w, flight = w.flight ?? 1.2, every = w.every ?? 0.15;
-    sound('tank', from ? from.x : sh.x, from ? from.z : sh.z);
     if (mortar) {
       for (let i = 0; i < n; i++) {
         const d = i * (w.every ?? 0.5);
@@ -963,7 +978,7 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
           later(d, E_ROCKET, v3.x, v3.y, v3.z, v3.x + (sh.x - from.x) * 0.15, v3.y + 40, v3.z + (sh.z - from.z) * 0.15, 0.6, 0);
           snd('mortar', d, from.x, from.z);
         }
-        snd('whistle', d + Math.max(0, flight - 0.7), sh.x, sh.z);
+        whistle(d, flight, sh.x, sh.z, 0.7);
       }
       return;
     }
@@ -983,12 +998,11 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
         const a = rand() * TAU, r = Math.sqrt(rand()) * w.spread, ex = sh.x + Math.cos(a) * r, ez = sh.z + Math.sin(a) * r;
         later(flight + i * every - 0.4, E_ROCKET, ex + rr(-3, 3), hAt(ex, ez) + 30, ez + rr(-3, 3), ex, hAt(ex, ez), ez, 0.4, 0);
       }
-      snd('whistle', Math.max(0, flight - 0.6), sh.x, sh.z);
+      whistle(0, flight, sh.x, sh.z);
     }
   }
 
   // ---------- per frame ----------
-  let workT = 0;
   function update(dt) {
     clock += dt;
     runEvents(dt);
@@ -1005,18 +1019,6 @@ export function createEffects({ scene, camera, cam, hAt, units, sound = () => {}
       camera.position.z += (Math.sin(clock * 63.1) + Math.sin(clock * 39.3)) * 0.5 * shake;
       shake *= Math.exp(-dt * 7);
     } else shake = 0;
-    // shovels and hammers: the nearest digging and building squads, now and then
-    if ((workT -= dt) <= 0) {
-      workT = 1.3;
-      let dig = null, build = null, dd = 90, bd = 90;
-      for (const v of units.values()) {
-        const d = Math.hypot(v.x - cam.x, v.z - cam.z);
-        if (v.flags & 16 && d < dd) { dd = d; dig = v; }
-        if (v.flags & 128 && d < bd) { bd = d; build = v; }
-      }
-      if (dig) play('dig', dig.x, dig.z);
-      if (build) play('build', build.x, build.z);
-    }
   }
 
   function reset() {
