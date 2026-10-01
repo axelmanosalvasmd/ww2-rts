@@ -300,7 +300,7 @@ export function createHud(ctx) {
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
     card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
-    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.unit }); ctx.blip(520); }));
+    card.querySelectorAll('[data-unit]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.unit }); ctx.blip('recruit'); }));
   }
   function drawRecruit(s, pop, cap) {
     for (const b of $('buy').querySelectorAll('[data-unit]')) {
@@ -330,7 +330,7 @@ export function createHud(ctx) {
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else card.innerHTML = '';
       const id = bld?.id;
-      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.train, from: id }); ctx.blip(520); }));
+      card.querySelectorAll('[data-train]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'buy', unit: b.dataset.train, from: id }); ctx.blip('recruit'); }));
       card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'cancel', id }); ctx.selected.clear(); ctx.blip(300); }));
       card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.build(b.dataset.build)));
     }
