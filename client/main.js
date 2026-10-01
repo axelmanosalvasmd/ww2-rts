@@ -4,6 +4,8 @@ import { createEffects } from './fx.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, MOVE_COLOR } from './markers.js';
+import { buildModel, animate, createBodies, mergeMeshes } from './unit-models.js';
+import { perf, renderScale } from './perf.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -59,7 +61,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.t === 'lobby') renderLobby(m);
     else if (m.t === 'start') startGame(m);
-    else if (m.t === 's') applySnapshot(m);
+    else if (m.t === 's') { perf.net(e.data.length); applySnapshot(m); }
     else if (m.t === 'pong' && Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c);
     else if (m.t === 'full') { refused = true; $('lobbyMsg').textContent = 'A match is going on in this room (or it is full). It opens again when the match ends: reload then, or make a New room.'; }
     else if (m.t === 'left') { refused = true; $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden'); $('lobbyMsg').textContent = 'You left the match; an AI took over your army. Reload to rejoin the lobby when the match is over.'; }
@@ -185,7 +187,7 @@ function renderLobby(m) {
 // ---------- renderer / scene ----------
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderScale(renderer); // pixel ratio per graphics level (client/perf.js)
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.prepend(renderer.domElement);
@@ -352,6 +354,7 @@ function paintCell(x, y) {
 // all 3D terrain pieces, rebuilt from the grid whenever a cell changes
 function buildStructures() {
   const { grid, group, w } = terrain;
+  for (const o of group.children) if (o.userData.merged) o.geometry.dispose();
   group.clear();
   const cells = { B: [], H: [], '#': [], '=': [], R: [], X: [], Y: [] };
   grid.forEach((row, y) => row.forEach((ch, x) => cells[ch]?.push([x, y])));
@@ -385,6 +388,7 @@ function buildStructures() {
     houses.push(h);
   }
   inst(cells.B, 0xb8a888, ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
+  const roofs = [];
   for (const h of houses) {
     const xs = h.cells.map(c => c[0]), ys = h.cells.map(c => c[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
@@ -394,8 +398,10 @@ function buildStructures() {
     const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false }); geo.translate(0, 0, -len / 2);
     const roof = mesh(geo, mat(0x7a3f2c), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
     if (along) roof.rotation.y = Math.PI / 2;
-    group.add(roof);
+    roofs.push(roof);
   }
+  // roofs and parapets are static: one mesh each, not one per house or trench side
+  if (roofs.length) { group.add(mergeMeshes(roofs)); for (const r of roofs) r.geometry.dispose(); }
   inst(cells.H, 0x3f5a2a, ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
   inst(cells['#'], 0x9a958a, ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25]);
   // rubble: a few broken chunks per cell
@@ -411,14 +417,15 @@ function buildStructures() {
   for (const [x, y] of cells['=']) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[y + dy]?.[x + dx] === 'W') rails.push([x, y, dx, dy]);
   inst(rails, 0x5a4028, ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
   // trench parapets on every side that isn't more trench
-  const dirt = mat(0x6b5a3e);
+  const dirt = mat(0x6b5a3e), parapets = [];
   for (const [x, y] of grid.flatMap((row, y) => row.map((ch, x) => ch === 'T' && [x, y]).filter(Boolean))) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       if (grid[y + dy]?.[x + dx] === 'T') continue;
       const cx = (x + 0.5 + dx * 0.55) * CELL, cz = (y + 0.5 + dy * 0.55) * CELL;
-      group.add(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17 + hAt(cx, cz), cz));
+      parapets.push(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17 + hAt(cx, cz), cz));
     }
   }
+  if (parapets.length) group.add(mergeMeshes(parapets));
 }
 
 // bombs and shells lower the ground: patch the map's height rows
@@ -449,12 +456,14 @@ function buildHQ(sp, slot) {
   g.position.set(sp.x, hAt(sp.x, sp.z), sp.z);
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
   g.add(flat(new THREE.CircleGeometry(R, 48), 0.18, 0.05), hqRing(R, f.color));
-  // sandbags with gaps for the exits
+  // sandbags with gaps for the exits, merged into one mesh
+  const bags = [];
   for (let i = 0; i < 36; i++) {
     if (i % 9 < 2) continue;
     const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, mat(0x9c8a60), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
-    bag.rotation.y = -a + Math.PI / 2; g.add(bag);
+    bag.rotation.y = -a + Math.PI / 2; bags.push(bag);
   }
+  g.add(mergeMeshes(bags));
   // command tent + crates
   const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
   const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
@@ -469,81 +478,6 @@ function buildHQ(sp, slot) {
 
 // ---------- units ----------
 
-// Formation slots in local space (+x = forward). Gun crews stand behind the gun.
-const SLOTS = {
-  rifle: [[0.9, 0], [0, 1], [0, -1], [-0.9, 0.55], [-0.9, -0.55]],
-  mg: [[0.2, 0], [-0.5, 0.7], [-0.5, -0.7]],
-  mortar: [[0.2, 0.6], [0.2, -0.6], [-0.6, 0]],
-  flak: [[-0.6, 0.8], [-0.6, -0.8], [-1.2, 0]],
-  sniper: [[0.4, 0], [-0.5, 0.6]],
-  engineer: [[0.6, 0], [-0.4, 0.7], [-0.4, -0.7]],
-  at: [[-0.5, 0.7], [-0.5, -0.7], [-1.2, 0.4], [-1.2, -0.4]],
-  ranger: [[0.9, 0], [0.3, 1], [0.3, -1], [-0.6, 0.6], [-0.6, -0.6], [-1.2, 0]],
-  conscript: [[1, 0], [0.4, 0.9], [0.4, -0.9], [-0.3, 1.5], [-0.3, -1.5], [-0.9, 0.5], [-0.9, -0.5]],
-};
-
-// headgear per faction: round M1 (USA), flared Stahlhelm (Germany), tall SSh-40 (USSR); conscripts wear a pilotka cap
-function headgear(man, owner, type, m) {
-  if (type === 'conscript') { man.add(mesh(GEO.box, m, 0.38, 0.13, 0.22, 0, 1.2, 0)); return; }
-  const fac = facOf(owner);
-  if (fac === 1) man.add(mesh(GEO.helmet, m, 1.05, 1, 1.05, 0, 1.28, 0), mesh(GEO.cyl, m, 0.33, 0.07, 0.33, 0, 1.25, 0));
-  else if (fac === 2) man.add(mesh(GEO.helmet, m, 1, 1.3, 1, 0, 1.26, 0));
-  else man.add(mesh(GEO.helmet, m, 1.12, 0.95, 1.12, 0, 1.28, 0));
-}
-
-// what each class carries, so squads read apart even without their badges (+x = forward)
-function gear(man, type, i, f, dark) {
-  const wood = mat(0x5e4226);
-  if (type === 'rifle' || type === 'conscript') man.add(mesh(GEO.box, wood, 1.0, 0.07, 0.07, 0.28, 0.85, 0.2).rotateZ(0.6));
-  else if (type === 'ranger' && i % 3 !== 1) man.add(mesh(GEO.box, dark, 0.6, 0.1, 0.08, 0.32, 0.82, 0.2).rotateZ(0.3)); // SMG
-  else if (type === 'sniper') {
-    man.add(mesh(GEO.box, mat(0x3c4a26), 0.75, 0.55, 0.85, -0.1, 0.95, 0)); // ghillie cape
-    if (i === 0) man.add(mesh(GEO.box, wood, 1.5, 0.06, 0.06, 0.4, 0.9, 0.2).rotateZ(0.25), mesh(GEO.box, dark, 0.35, 0.09, 0.09, 0.42, 1.0, 0.2).rotateZ(0.25)); // long rifle and scope
-  } else if (type === 'engineer') {
-    // pack and a shovel on the back
-    man.add(mesh(GEO.box, mat(f.vehicle), 0.3, 0.45, 0.5, -0.32, 0.95, 0), mesh(GEO.cyl, wood, 0.03, 1.1, 0.03, -0.4, 1.05, 0.2), mesh(GEO.box, dark, 0.06, 0.3, 0.22, -0.4, 1.65, 0.2));
-  } else if ((type === 'mg' || type === 'mortar') && i > 0) man.add(mesh(GEO.box, mat(0x4a5030), 0.3, 0.25, 0.22, -0.05, 0.55, 0.32)); // ammo box
-}
-
-// tank silhouettes: [hull l,h,w], [turret l,h,w, x, z], barrel [length, thickness], sloped glacis
-const TANKS = {
-  tank: [
-    { hull: [3.8, 1.3, 2.3], turret: [1.6, 0.9, 1.5, -0.1, 0], gun: [2.0, 0.09] },               // M5 Stuart: tall and boxy
-    { hull: [4.0, 1.0, 2.2], turret: [1.3, 0.75, 1.2, 0.2, 0.3], gun: [1.6, 0.07] },             // Panzer II: small offset turret
-    { hull: [4.2, 1.0, 2.3], turret: [1.6, 0.8, 1.5, -0.3, 0.2], gun: [2.2, 0.09], slope: 1 },   // T-70: sloped front
-  ],
-  tiger: [null, { hull: [5.4, 1.4, 3.2], turret: [2.6, 1.1, 2.2, -0.2, 0], gun: [3.8, 0.14], brake: 1 }, null],
-  medium: [
-    { hull: [4.8, 1.5, 2.7], turret: [2.0, 1.0, 1.9, -0.1, 0], gun: [2.6, 0.11], slope: 1 },           // M4 Sherman: tall, rounded
-    { hull: [5.0, 1.2, 2.7], turret: [2.3, 0.95, 1.9, -0.2, 0], gun: [3.0, 0.11] },                    // Panzer IV: boxy, long gun
-    { hull: [5.0, 1.1, 2.9], turret: [2.0, 0.9, 1.9, 0.3, 0], gun: [2.9, 0.11], slope: 1 },             // T-34: sloped, turret forward
-  ],
-  // mobile flak: M16 half-track (quad MGs), Wirbelwind (flak turret on a Panzer IV), ZSU-37 (on a light tank)
-  flaktrack: [
-    { hull: [4.2, 1.1, 2.2], turret: [1.2, 0.6, 1.4, -0.8, 0], gun: [1.2, 0.07], wheels: 2, twin: 1 },
-    { hull: [5.0, 1.2, 2.7], turret: [1.8, 1.0, 1.8, -0.2, 0], gun: [1.6, 0.07], twin: 1 },
-    { hull: [4.4, 1.1, 2.4], turret: [1.8, 0.8, 1.7, -0.6, 0], gun: [2.2, 0.08], twin: 1 },
-  ],
-  armoredcar: [
-    { hull: [3.8, 1.0, 2.1], turret: [1.3, 0.6, 1.3, 0, 0], gun: [1.0, 0.06], wheels: 3 },             // M8 Greyhound: six wheels
-    { hull: [3.6, 0.9, 1.9], turret: [1.1, 0.5, 1.2, 0, 0], gun: [0.8, 0.05], wheels: 2 },             // Sd.Kfz. 222
-    { hull: [3.2, 1.1, 1.7], turret: [0.9, 0.5, 0.9, 0, 0], gun: [0.7, 0.05], wheels: 2, slope: 1 },   // BA-64: small, sloped
-  ],
-};
-function buildTank(v, root, spec, f) {
-  const hull = mat(f.vehicle), dark = mat(0x2a2a24), [hl, hh, hw] = spec.hull, y = hh / 2 + 0.5;
-  root.add(mesh(GEO.box, hull, hl, hh, hw, 0, y, 0));
-  if (spec.wheels) for (let i = 0; i < spec.wheels; i++) for (const side of [1, -1]) root.add(mesh(GEO.cyl, dark, 0.45, 0.35, 0.45, (i / (spec.wheels - 1) - 0.5) * hl * 0.7, 0.45, side * hw / 2).rotateX(Math.PI / 2));
-  else root.add(mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, hw / 2), mesh(GEO.box, dark, hl + 0.2, 0.8, 0.6, 0, 0.45, -hw / 2));
-  if (spec.slope) root.add(mesh(GEO.box, hull, 1.2, 0.2, hw, hl / 2 - 0.2, y + 0.25, 0).rotateZ(-0.5));
-  const [tl, th, tw, tx, tz] = spec.turret, [gl, gt] = spec.gun;
-  v.turret = new THREE.Group(); v.turret.position.set(tx, y + hh / 2 + th / 2, tz);
-  v.turret.add(mesh(GEO.box, hull, tl, th, tw), mesh(GEO.cyl, dark, gt, gl, gt, tl / 2 + gl / 2, 0.05, 0).rotateZ(Math.PI / 2), mesh(GEO.box, mat(f.color), 0.4, th + 0.02, tw + 0.02, -tl / 2 + 0.3, 0, 0));
-  if (spec.twin) v.turret.add(mesh(GEO.cyl, dark, spec.gun[1], spec.gun[0], spec.gun[1], tl / 2 + spec.gun[0] / 2, 0.25, 0.3).rotateZ(Math.PI / 2 - 0.6), mesh(GEO.cyl, dark, spec.gun[1], spec.gun[0], spec.gun[1], tl / 2 + spec.gun[0] / 2, 0.25, -0.3).rotateZ(Math.PI / 2 - 0.6));
-  if (spec.brake) v.turret.add(mesh(GEO.box, dark, 0.35, 0.3, 0.35, tl / 2 + gl, 0.05, 0));
-  root.add(v.turret);
-}
-
 function makeUnit(id, type, owner) {
   const def = UNITS[type], f = look(owner), root = new THREE.Group();
   const v = { id, type, owner, root, models: [], alive: def.models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
@@ -551,117 +485,7 @@ function makeUnit(id, type, owner) {
   const base = ownerRing(def.radius + 0.4, f.color);
   Object.assign(v, selectionRing(def.radius + 1, def.w ? [def.w.range, def.w.minRange].filter(Boolean) : []));
   root.add(base, v.sel); v.base = base;
-  if (isAir(type)) {
-    // fighter: slim, long nose; ground-attack plane: bigger, rockets and a bomb under the wings
-    const big = type === 'attacker', c = mat(f.vehicle), dark = mat(0x2a2a24);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, c, big ? 7 : 6, big ? 1.1 : 0.9, big ? 1.1 : 0.9), mesh(GEO.box, c, big ? 1.8 : 1.4, 0.2, big ? 11 : 9.5, big ? 0.4 : 0.6, -0.1, 0),
-      mesh(GEO.box, c, 0.9, 0.15, 3.4, big ? -3 : -2.6, 0.1, 0), mesh(GEO.box, c, 0.9, 1.3, 0.15, big ? -3 : -2.6, 0.7, 0),
-      mesh(GEO.box, mat(f.color), 0.5, 0.22, big ? 11.2 : 9.7, big ? 0.4 : 0.6, -0.05, 0), mesh(GEO.cyl, dark, 0.15, 0.4, 0.15, big ? 3.7 : 3.2, 0, 0).rotateZ(Math.PI / 2));
-    if (big) for (const z of [-3.5, -2.5, 2.5, 3.5]) v.body.add(mesh(GEO.cyl, dark, 0.12, 1.2, 0.12, 0.6, -0.4, z).rotateZ(Math.PI / 2));
-    if (big) v.body.add(mesh(GEO.box, dark, 1.4, 0.4, 0.4, 0.3, -0.7, 0));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'airfield') {
-    // a dirt strip, a hangar and a windsock
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x6a5e44), 6, 0.1, 2.2, 0, 0.05, 0), mesh(GEO.box, mat(f.vehicle), 2.6, 2.2, 3, -1.5, 1.1, 1.6), mesh(GEO.cyl, mat(0x4a3f30), 0.06, 3, 0.06, 2.6, 1.5, -2.4),
-      mesh(GEO.box, new THREE.MeshLambertMaterial({ color: 0xe07a30 }), 0.9, 0.3, 0.3, 3, 2.8, -2.4));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'flakpos') {
-    // a sandbagged ring with a twin gun pointing up
-    const dark = mat(0x2a2a24);
-    v.body = new THREE.Group();
-    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(mesh(GEO.box, mat(0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
-    v.body.add(mesh(GEO.cyl, dark, 0.5, 0.6, 0.5, 0, 0.3, 0), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), mesh(GEO.cyl, dark, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'hq') {
-    // command post: sandbagged timber block with a radio mast
-    const wood = mat(0x7a6446), roof = mat(0x5a4a34);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, wood, 5.4, 3, 5.4, 0, 1.5, 0), mesh(GEO.box, roof, 6, 0.4, 6, 0, 3.2, 0), mesh(GEO.box, mat(f.vehicle), 5.6, 0.5, 1.2, 0, 1.2, 2.5),
-      mesh(GEO.cyl, mat(0x2a2a24), 0.06, 5, 0.06, 2, 5.6, 2), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, 0.9, 7.4, 2));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'barracks') {
-    // long timber hut with a pitched roof
-    const wood = mat(0x8a7050), roofM = mat(f.vehicle);
-    v.body = new THREE.Group();
-    const shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 1.8)]), rg = new THREE.ExtrudeGeometry(shape, { depth: 5.6, bevelEnabled: false }); rg.translate(0, 0, -2.8);
-    v.body.add(mesh(GEO.box, wood, 5.6, 2.6, 5.2, 0, 1.3, 0), mesh(rg, roofM, 1, 1, 1, 0, 2.6, 0).rotateY(Math.PI / 2), mesh(GEO.box, mat(0x3a2e20), 1.2, 1.8, 0.2, 0, 0.9, 2.62));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'motorpool') {
-    // open vehicle shed: posts, a flat roof, oil drums
-    const post = mat(0x5a4a34);
-    v.body = new THREE.Group();
-    for (const [x, z] of [[-2.7, -2.7], [2.7, -2.7], [-2.7, 2.7], [2.7, 2.7]]) v.body.add(mesh(GEO.box, post, 0.35, 3.2, 0.35, x, 1.6, z));
-    v.body.add(mesh(GEO.box, mat(f.vehicle), 6, 0.3, 6, 0, 3.3, 0), mesh(GEO.box, mat(0x4a4a44), 5.6, 0.1, 5.6, 0, 0.05, 0), mesh(GEO.box, post, 5.6, 1.4, 0.3, 0, 0.7, -2.7));
-    for (let i = 0; i < 3; i++) v.body.add(mesh(GEO.cyl, mat(0x3a4a30), 0.4, 1.1, 0.4, 2.2, 0.55, -1.6 + i * 0.85));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'depot') {
-    // supply dump: stacked crates and fuel drums
-    const crate = mat(0x6e5836), drum = mat(f.vehicle);
-    v.body = new THREE.Group();
-    v.body.add(mesh(GEO.box, mat(0x5a4a34), 3.8, 0.2, 3.8, 0, 0.1, 0), mesh(GEO.box, crate, 1.4, 1.2, 1.4, -0.9, 0.7, -0.9), mesh(GEO.box, crate, 1.4, 1.2, 1.4, 0.7, 0.7, -0.9),
-      mesh(GEO.box, crate, 1.2, 1, 1.2, -0.1, 1.8, -0.9));
-    for (let i = 0; i < 4; i++) v.body.add(mesh(GEO.cyl, drum, 0.4, 1.1, 0.4, -1.1 + i * 0.75, 0.65, 1));
-    root.add(v.body); v.models.push(root);
-  } else if (type === 'bunker') {
-    const conc = mat(0x8a8a82), dark = mat(0x1e1e1a);
-    root.add(mesh(GEO.box, conc, 5.2, 2.4, 5.2, 0, 1.2, 0), mesh(GEO.box, mat(0x74746c), 6, 0.5, 6, 0, 2.6, 0), mesh(GEO.box, dark, 0.3, 0.4, 3, 2.62, 1.6, 0));
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; root.add(mesh(GEO.box, mat(0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }
-    root.add(mesh(GEO.cyl, mat(0x4a3f30), 0.08, 4, 0.08, -1.8, 4.6, -1.8), mesh(GEO.plane, new THREE.MeshLambertMaterial({ color: f.color, side: THREE.DoubleSide }), 1.8, 1.1, 1, -0.9, 6, -1.8));
-    v.models.push(root);
-  } else if (TANKS[type]) {
-    buildTank(v, root, TANKS[type][facOf(owner)] ?? TANKS[type].find(Boolean), f);
-    v.models.push(root);
-  } else if (type === 'rocket') {
-    const body = mat(f.vehicle), dark = mat(0x2a2a24);
-    v.turret = new THREE.Group();
-    const tube = (x, y, z, len = 2.6) => mesh(GEO.cyl, dark, 0.12, len, 0.12, x, y, z).rotateZ(Math.PI / 2);
-    if (facOf(owner) === 0) {
-      // T34 Calliope: a Sherman with a box of tubes above the turret
-      buildTank(v, root, { hull: [4.4, 1.3, 2.5], turret: [1.8, 0.9, 1.6, -0.2, 0], gun: [2.0, 0.1] }, f);
-      const rack = new THREE.Group(); rack.position.set(0, 1.1, 0); rack.rotation.z = 0.25;
-      for (let i = 0; i < 12; i++) rack.add(tube(0.3, (i % 3) * 0.26, (Math.floor(i / 3) - 1.5) * 0.3, 2.8));
-      v.turret.add(rack);
-    } else if (facOf(owner) === 1) {
-      // Panzerwerfer: half-track, wheels up front, tracks behind, ten tubes in two rows
-      root.add(mesh(GEO.box, body, 4.4, 1.0, 2.1, 0, 1.2, 0), mesh(GEO.box, body, 1.4, 0.9, 2.0, 1.6, 1.9, 0));
-      for (const wz of [-1.0, 1.0]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, 1.6, 0.45, wz).rotateX(Math.PI / 2), mesh(GEO.box, dark, 2.8, 0.8, 0.5, -0.8, 0.45, wz));
-      v.turret.position.set(-0.8, 1.9, 0);
-      const rack = new THREE.Group(); rack.rotation.z = 0.45;
-      for (let i = 0; i < 10; i++) rack.add(tube(0, (i % 2) * 0.3, (Math.floor(i / 2) - 2) * 0.28, 1.8));
-      v.turret.add(rack);
-    } else {
-      // Katyusha: truck with long launch rails
-      root.add(mesh(GEO.box, body, 4.4, 0.7, 2.1, 0, 1.0, 0), mesh(GEO.box, body, 1.3, 1.2, 2.0, 1.6, 1.8, 0), mesh(GEO.box, mat(f.color), 0.5, 0.3, 2.02, 1.6, 2.45, 0));
-      for (const wx of [-1.4, 0, 1.4]) for (const wz of [-1.05, 1.05]) root.add(mesh(GEO.cyl, dark, 0.45, 0.3, 0.45, wx, 0.45, wz).rotateX(Math.PI / 2));
-      v.turret.position.set(-0.8, 1.7, 0);
-      const rack = new THREE.Group(); rack.rotation.z = 0.5;
-      for (let i = 0; i < 8; i++) rack.add(mesh(GEO.box, dark, 3.4, 0.08, 0.14, 0, (i % 2) * 0.24, (Math.floor(i / 2) - 1.5) * 0.3));
-      v.turret.add(rack);
-    }
-    root.add(v.turret);
-    v.models.push(root);
-  } else {
-    const helmet = mat(new THREE.Color(f.uniform).lerp(new THREE.Color(f.color), 0.55).getHex()), dark = mat(0x2c2b26);
-    SLOTS[type].forEach(([x, z], i) => {
-      const man = new THREE.Group(); man.position.set(x * 1.3, 0, z * 1.3); man.scale.setScalar(type === 'conscript' ? 1.25 : 1.35);
-      man.add(mesh(GEO.body, mat(f.uniform), 1, 1, 1, 0, 0.72, 0), mesh(GEO.ball, mat(0xc8a07a), 0.19, 0.19, 0.19, 0, 1.24, 0));
-      headgear(man, owner, type, helmet);
-      gear(man, type, i, f, dark);
-      if (type === 'ranger' && i % 3 === 1) man.add(mesh(GEO.cyl, dark, 0.07, 1.3, 0.07, 0, 1.1, 0.25).rotateZ(1.3)); // bazooka on the shoulder
-      root.add(man); v.models.push(man);
-    });
-    if (type === 'flak') root.add(mesh(GEO.box, mat(0x2a2a24), 1.0, 0.5, 1.0, 0.4, 0.3, 0), mesh(GEO.cyl, mat(0x2a2a24), 0.07, 2.2, 0.07, 1.0, 1.2, 0.15).rotateZ(-0.7), mesh(GEO.cyl, mat(0x2a2a24), 0.07, 2.2, 0.07, 1.0, 1.2, -0.15).rotateZ(-0.7));
-    if (type === 'mortar') root.add(mesh(GEO.cyl, dark, 0.09, 1.1, 0.09, 0.7, 0.45, 0).rotateZ(-0.7), mesh(GEO.box, dark, 0.5, 0.06, 0.5, 0.45, 0.05, 0));
-    if (type === 'mg') root.add(mesh(GEO.cyl, dark, 0.07, 1.4, 0.07, 1.0, 0.45, 0).rotateZ(Math.PI / 2), mesh(GEO.box, dark, 0.4, 0.4, 0.5, 0.5, 0.3, 0));
-    if (type === 'at') {
-      v.turret = new THREE.Group(); v.turret.position.set(0.6, 0, 0);
-      v.turret.add(mesh(GEO.box, mat(f.vehicle), 0.12, 1.1, 1.6, 0.3, 0.9, 0), mesh(GEO.cyl, dark, 0.08, 2.6, 0.08, 1.5, 0.95, 0).rotateZ(Math.PI / 2),
-        mesh(GEO.cyl, dark, 0.45, 0.2, 0.45, 0, 0.45, 0.8).rotateX(Math.PI / 2), mesh(GEO.cyl, dark, 0.45, 0.2, 0.45, 0, 0.45, -0.8).rotateX(Math.PI / 2));
-      root.add(v.turret);
-    }
-  }
+  buildModel(v, root, f, facOf(owner), def); // soldiers, vehicles, guns and structures, merged per part (client/unit-models.js)
   // billboarded health + suppression bars
   v.bars = new THREE.Group(); v.bars.position.y = barY(type);
   const bg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
@@ -678,12 +502,11 @@ function makeUnit(id, type, owner) {
   return v;
 }
 
+// pooled and capped; the oldest fade out (client/unit-models.js)
+const bodies = createBodies();
 function corpse(v, man) {
   const p = man.getWorldPosition(new THREE.Vector3());
-  const body = mesh(GEO.body, mat(0x3a372c), 1, 1, 1, p.x, hAt(p.x, p.z) + 0.3, p.z);
-  body.rotation.set(0, Math.random() * 6, Math.PI / 2);
-  world.add(body);
-  fx.push({ obj: body, life: 25, update: () => {} });
+  bodies.add(world, p.x, hAt(p.x, p.z) + 0.3, p.z);
   man.visible = false;
 }
 
@@ -1316,7 +1139,9 @@ renderer.setAnimationLoop(() => {
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = v.sel.visible;
+    animate(v, dt, camera.position); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
   }
+  bodies.update(dt);
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
@@ -1344,6 +1169,7 @@ renderer.setAnimationLoop(() => {
   for (const m of strikeMarks.values()) m.userData.mat.opacity = m.userData.t > 0 ? pulse : 0.2;
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
   renderer.render(scene, camera);
+  perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });
 
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
