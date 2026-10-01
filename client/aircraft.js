@@ -5,13 +5,15 @@
 // The plane models themselves are built in models/planes.js: ONE vertex-coloured mesh per aircraft and owner colour,
 // shared by every plane of that kind (geometry and material), so a plane costs one draw call, one per propeller for
 // the blades and one more for all its blur discs together.
-// The owner's colour is on the wing tips and the top of the tail, so you can tell whose plane it is from above.
+// The owner's colour is on the wing tips, the whole fin and rudder, a band round the rear fuselage and the spinner or
+// cowl lip, so you can tell whose plane it is from above. The body material draws the camouflage per pixel and a fill
+// light in the paint's own colour (paintMaterial in models/planes.js); bare-metal planes get a shinier copy of it.
 //
 // Smoke and flak bursts are puffs from one pooled InstancedMesh (one draw call, a fixed number of puffs). Everything
 // here only draws: the simulation decides what happens, and the shots it sends say when.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
-import { plane } from './models/planes.js';
+import { plane, paintMaterial } from './models/planes.js';
 
 const PI = Math.PI, TAU = Math.PI * 2;
 const GLASS = 0x2f4452, DARK = 0x26241f, TIP = 0xd9b43a, WHITE = 0xece6d6, BLACK = 0x1c1b18, BLUE = 0x2a4a8f, RED = 0xc23a2a;
@@ -94,21 +96,23 @@ export const ROLE_OF_SUPPORT = { recon: 'fighter', strafe: 'attacker', dive: 'at
 
 // ---------- shared materials, built models, shadows ----------
 
-const BODY_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
+const BODY_MAT = paintMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }));
+const METAL_MAT = paintMaterial(new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x3a3a3a, shininess: 26 }));
+const FIELD_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
 const BLADE_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
-const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0xe8e6da, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0x30302a, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
 const BOMB_GEO = merge([{ geo: SRC.cyl, color: 0x34362a, m: xf(0, 0, 0, 0, 0, 0, 1.5, .26, .26) }, { geo: SRC.cyl, color: TIP, m: xf(.3, 0, 0, 0, 0, 0, .15, .27, .27) }, { geo: SRC.cone, color: 0x34362a, m: xf(.95, 0, 0, 0, 0, 0, .4, .26, .26) }]);
 
 const built = new Map(), bladeGeo = new Map(), discGeo = new Map(), shadowMats = new Map();
 
-function bladesFor(n, r) {
-  const key = n + ':' + r;
+function bladesFor(n, r, tip = TIP) {
+  const key = n + ':' + r + ':' + tip;
   if (!bladeGeo.has(key)) {
     const parts = [];
     for (let i = 0; i < n; i++) {
       const a = i * TAU / n;
       parts.push({ geo: SRC.box, color: DARK, m: xf(0, 0, 0, a).multiply(xf(0, r * .42, 0, 0, 0, 0, .05, r * .84, .17)) },
-        { geo: SRC.box, color: TIP, m: xf(0, 0, 0, a).multiply(xf(0, r * .92, 0, 0, 0, 0, .055, r * .16, .17)) });
+        { geo: SRC.box, color: tip, m: xf(0, 0, 0, a).multiply(xf(0, r * .92, 0, 0, 0, 0, .055, r * .16, .17)) });
     }
     bladeGeo.set(key, merge(parts));
     discGeo.set(key, new THREE.CircleGeometry(r, 18).rotateY(PI / 2));
@@ -148,7 +152,7 @@ function model(fac, role, ownerColor) {
   let m = built.get(key);
   if (m) return m;
   const spec = plane(fac, role, ownerColor);
-  m = { key, ...spec, props: spec.props.map((p) => ({ ...p, blades: bladesFor(p.n, p.r) })) };
+  m = { key, ...spec, props: spec.props.map((p) => ({ ...p, blades: bladesFor(p.n, p.r, spec.tip ?? TIP) })) };
   // the blur discs of all the propellers as one mesh: a plain disc looks the same however far it has turned
   m.discs = merge(m.props.map((p) => ({ geo: discGeo.get(p.blades), m: new THREE.Matrix4().makeTranslation(p.x, p.y, p.z) })));
   const ext = Math.max(spec.span, spec.len) / 2 * 1.12;
@@ -264,7 +268,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   function instance(fac, role, owner, opts = {}) {
     const m = model(fac, role, ctx.colorOf(owner)), body = new THREE.Group(), props = [];
     body.rotation.order = 'ZXY';
-    const mesh = new THREE.Mesh(m.geo, BODY_MAT); mesh.onBeforeRender = rememberCamera; body.add(mesh);
+    const mesh = new THREE.Mesh(m.geo, m.metal ? METAL_MAT : BODY_MAT); mesh.onBeforeRender = rememberCamera; body.add(mesh);
     for (const p of m.props) {
       const g = new THREE.Group(); g.position.set(p.x, p.y, p.z); g.rotation.x = Math.random() * TAU;
       g.add(new THREE.Mesh(bladeGeo.get(p.blades), BLADE_MAT));
@@ -504,7 +508,7 @@ gl_Position = projectionMatrix * mvPosition;`);
       const fac = ctx.facOf(owner), own = ctx.colorOf(owner), roof = ctx.vehicleOf(owner), key = `af:${fac}:${own}:${roof}`;
       if (!built.has(key)) built.set(key, airfield(fac, own, roof));
       v.body = new THREE.Group();
-      const mesh = new THREE.Mesh(built.get(key), BODY_MAT); mesh.castShadow = true; mesh.receiveShadow = true;
+      const mesh = new THREE.Mesh(built.get(key), FIELD_MAT); mesh.castShadow = true; mesh.receiveShadow = true;
       v.body.add(mesh); root.add(v.body); v.models.push(root);
     },
 
