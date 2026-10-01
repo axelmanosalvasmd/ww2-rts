@@ -5,7 +5,7 @@ export function createOrders(ctx) {
     const troops = sel.filter(v => !ctx.defs[v.type].structure);
     const buildings = sel.filter(v => ctx.defs[v.type].building && ctx.defs[v.type].makes?.length);
     const commands = [], g = cursor.ground;
-    let at = g, color = ctx.moveColor, tone = 660, voice = 'move';
+    let at = g, color = ctx.moveColor, tone = 660, voice = 'move', after = null;
     const add = command => commands.push(command);
     if (troops.length) {
       const planes = troops.filter(v => ctx.defs[v.type].air);
@@ -38,7 +38,10 @@ export function createOrders(ctx) {
       } else if (g) {
         const attack = options.attack || event.ctrlKey;
         color = attack ? 0xff9a40 : ctx.moveColor; tone = attack ? 500 : 660; voice = attack ? 'attack' : 'move';
-        add({ t: attack ? 'amove' : 'move', orders: ctx.formation(troops, g) });
+        add({ t: attack ? 'amove' : 'move', orders: ctx.formation(troops, g, options.to) });
+        // Alt: man the spot. On arrival each infantry squad takes the nearest free trench or cover around its place
+        const inf = troops.filter(v => ctx.defs[v.type].infantry);
+        if (event.altKey && inf.length) after = { t: 'cover', ids: inf.map(v => v.id), queue: true };
       }
     }
     if (buildings.length && g) {
@@ -48,6 +51,7 @@ export function createOrders(ctx) {
     if (!commands.length) return false;
     const queue = !!event.shiftKey;
     ctx.send(commands.length === 1 ? { ...commands[0], queue } : { t: 'orders', queue, commands });
+    if (after) ctx.send(after);
     if (at) ctx.feedback(at, color, tone, voice);
     return true;
   }

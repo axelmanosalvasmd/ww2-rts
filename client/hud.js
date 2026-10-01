@@ -147,7 +147,7 @@ export function createHud(ctx) {
       el.innerHTML = lead + tids.map((t) => {
         const mem = members(t);
         return `<div class="sc-team">${mem.map((i) => `<div class="sc-p"><span class="swatch" style="background:${pc(i)}"></span>${mark(ctx.facOf(i))}` +
-          `<span class="sc-name">${esc(names[i])}</span>${i === ctx.me ? '<span class="you">you</span>' : ''}</div>` +
+          `<span class="sc-name">${esc(names[i])}</span>${i === ctx.me && !ctx.watching ? '<span class="you">you</span>' : ''}</div>` +
           `<div class="sc-sub"><span class="sc-held"></span><span class="sc-net"></span></div>`).join('')}` +
           `<div class="sc-role"></div><div class="bar"><div style="background:${pc(mem[0])}"></div></div>` +
           `<div class="sc-val"><span class="u0"></span><span class="num"></span><span class="u"></span></div></div>`;

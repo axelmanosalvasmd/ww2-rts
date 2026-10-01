@@ -6,6 +6,7 @@ import { createEffects } from './fx.js';
 import { bindings, match } from './keys.js';
 import { createSelection } from './selection.js';
 import { createOrders } from './orders.js';
+import { formation as layout, FORMATIONS } from './formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG } from '/shared/sim.js';
@@ -95,10 +96,11 @@ addEventListener('resize', positionRoomBanners);
 positionRoomBanners();
 
 let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
+let watching = false; // a spectator: no seat, the whole map, no orders (the server sends the first seat's view with the fog lifted)
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token }),
+  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching }), // a spectator who reconnects keeps watching
 });
 setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
 const sendCmd = (m) => connection.send(m);
@@ -190,11 +192,13 @@ $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
 const wx = createWeatherView({ sendCmd }); // client/weather-view.js: lobby select, score strip line
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
+$('watchBtn').onclick = () => sendCmd({ t: watching ? 'sit' : 'spectate' });
 // The host controls the match; leaving, restarting and ending need a second click.
 const menuOpen = (on) => $('menu').classList.toggle('hidden', !on);
 function renderMatchMenu() {
-  const host = lobbyState && lobbyState.you === lobbyState.host;
+  const host = !!lobbyState?.amHost;
   for (const id of ['restartBtn', 'endBtn', 'pauseBtn']) $(id).classList.toggle('hidden', !host);
+  $('leaveBtn').classList.toggle('hidden', watching); // a spectator has no army to hand over: closing the tab leaves
   $('pauseBtn').textContent = paused ? 'Resume match' : 'Pause match';
   $('offlineSeats').innerHTML = host && lobbyState.state === 'play' ? lobbyState.players.map((p, i) => !p.ai && !p.connected ? `<button data-slot="${i}">Hand ${esc(p.name)} to AI</button>` : '').join('') : '';
   $('offlineSeats').querySelectorAll('button').forEach(b => (b.onclick = () => sendCmd({ t: 'handAi', slot: +b.dataset.slot })));
@@ -256,13 +260,14 @@ async function previewMap(name, mode) {
 }
 
 function renderLobby(m) {
-  lobbyState = m; me = m.you;
+  lobbyState = m; watching = !!m.spectator; document.body.classList.toggle('watching', watching);
+  if (!(watching && m.state === 'play')) me = m.you; // a spectator's match view stays on the seat the start message named
   renderMatchMenu();
   // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
   $('overlay').classList.toggle('hidden', m.state === 'play');
-  const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
+  const n = m.players.length, host = !!m.amHost, lobby = m.state === 'lobby';
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   $('roster').innerHTML = m.players.map((p, i) => {
@@ -270,7 +275,9 @@ function renderLobby(m) {
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(', ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
-  }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
+  }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
+  $('watchBtn').textContent = watching ? 'Take a seat' : 'Watch as a spectator';
+  $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= COLORS.length));
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
@@ -296,7 +303,7 @@ function renderLobby(m) {
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
   $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${horde ? `horde, ${n} defender${n === 1 ? '' : 's'}` : assault ? 'assault' : m.mode === 'classic' || m.mode === 'annihilation' ? m.mode + ' ' + mode : mode}`;
   const tooMany = n > (m.spawns ?? 3);
-  $('start').disabled = tooMany || !assaultOk;
+  $('start').disabled = tooMany || !assaultOk || !n;
   $('lobbyMsg').textContent = tooMany ? (horde ? `Horde seats ${m.spawns} defenders: remove a player.` : `This map has ${m.spawns} spawns: pick a bigger map or remove players.`) : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? `Send the invite link, or add an AI ${horde ? 'teammate' : 'opponent'}.` : '') : 'Waiting for the host to start...';
   // the last match's result, until the next one starts (the room is back in the lobby: change map or mode freely)
   const r = m.result, w = r?.winner;
@@ -697,7 +704,7 @@ function applySnapshot(s) {
   const ending = !epilogue.active();
   epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
   if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
-  alerts.snapshot(s, lastSnap);
+  if (!watching) alerts.snapshot(s, lastSnap); // the alerts are a commander's, a spectator has no army
   lastSnap = s; drawWorks(s.works);
   updateHud(s);
   wx.snapshot(s);
@@ -773,7 +780,7 @@ function placementView() {
   return placementCache;
 }
 const hud = createHud({
-  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return lobbyState?.host === me; },
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
@@ -988,14 +995,20 @@ function throwAt(g, kind, type, queue = false) {
   who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z, queue }); marker(g.x, g.z, 0xffa030); blip(760);
 }
-// rows perpendicular to the direction of travel
-function formation(sel, g) {
-  const cx = sel.reduce((a, v) => a + v.x, 0) / sel.length, cz = sel.reduce((a, v) => a + v.z, 0) / sel.length;
-  const len = Math.hypot(g.x - cx, g.z - cz) || 1, dx = (g.x - cx) / len, dz = (g.z - cz) / len, cols = Math.ceil(Math.sqrt(sel.length)), gap = 5;
-  sel.sort((a, b) => (a.x - cx) * -dz + (a.z - cz) * dx - ((b.x - cx) * -dz + (b.z - cz) * dx));
-  return sel.map((v, i) => {
-    const col = i % cols - (Math.min(cols, sel.length) - 1) / 2, row = Math.floor(i / cols);
-    return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
+// the shape picked with Shift+V; mortars, rockets and medics stand a row behind the rest
+let formationShape = 'block';
+const formation = (sel, g, to = null) => layout(sel, g, { shape: formationShape, to, back: v => UNITS[v.type].w?.minRange || !UNITS[v.type].w?.range ? 1 : 0 });
+function cycleFormation() {
+  formationShape = FORMATIONS[(FORMATIONS.indexOf(formationShape) + 1) % FORMATIONS.length];
+  feedback.show(`Formation: ${formationShape}. Right-drag to stretch the front, Alt+right-click to man the cover there`); blip(700);
+}
+// rings where each unit will stand while a right-drag is held
+const slotRings = [];
+function showSlots(slots) {
+  while (slotRings.length < slots.length) { const m = clickRing(MOVE_COLOR); m.scale.setScalar(0.6); slotRings.push(m); }
+  slotRings.forEach((m, i) => {
+    if (i >= slots.length) { world.remove(m); return; }
+    const [, x, z] = slots[i]; m.position.set(x, hAt(x, z) + 0.3, z); world.add(m);
   });
 }
 const orders = createOrders({
@@ -1020,12 +1033,12 @@ rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag, world
 function followSelected() {
   if (rig.following != null) { rig.cancelFollow(); return; }
   let v = [...selected].map(id => units.get(id)).find(Boolean);
-  if (!v && lastSnap?.out?.[me]) v = (mouse.inside && pick(mouse.x, mouse.y, () => true)) || pick(innerWidth / 2, innerHeight / 2, () => true, Infinity);
+  if (!v && (watching || lastSnap?.out?.[me])) v = (mouse.inside && pick(mouse.x, mouse.y, () => true)) || pick(innerWidth / 2, innerHeight / 2, () => true, Infinity);
   if (v) rig.follow(v.id);
 }
 function cancelInput(clearKeys = true) {
   if (clearKeys) keys.clear();
-  mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden');
+  mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden'); endRightDrag(null);
 }
 addEventListener('mousedown', rig.introPress, { capture: true });
 
@@ -1036,14 +1049,15 @@ const centerSelection = (list) => {
   cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
-const selection = createSelection({ units, selected, groups, owner: () => me, definitions: UNITS,
+const selection = createSelection({ units, selected, groups, owner: () => (watching ? -1 : me), // a spectator selects nothing, so orders nothing
+  definitions: UNITS,
   screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
   retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
-  follow: followSelected, rally: startRally,
+  follow: followSelected, rally: startRally, formation: cycleFormation,
   home: () => {
     if (!home) return;
     rig.cancelFollow();
@@ -1172,13 +1186,30 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
-  orders.dispatch({
+  const cursor = {
     ground: groundAt(e.clientX, e.clientY), enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
     friend: pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
     building: pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), house: houseAt(e.clientX, e.clientY),
     works: worksAt(groundAt(e.clientX, e.clientY)),
-  }, e);
+  };
+  // the order goes when the button comes up, so a drag over open ground can stretch the formation's front
+  rdrag = { cursor, x: e.clientX, y: e.clientY, open: cursor.ground && !cursor.enemy && !cursor.house && cursor.works == null };
 });
+let rdrag = null;
+const myTroops = () => [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure);
+function endRightDrag(e) {
+  const d = rdrag; rdrag = null; showSlots([]);
+  if (!d || !e) return;
+  const to = d.open && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10 ? groundAt(e.clientX, e.clientY) : null;
+  orders.dispatch(d.cursor, e, { to });
+}
+addEventListener('mousemove', (e) => {
+  if (!rdrag?.open) return;
+  if (!(e.buttons & 2)) { endRightDrag(null); return; }
+  const to = Math.hypot(e.clientX - rdrag.x, e.clientY - rdrag.y) > 10 && groundAt(e.clientX, e.clientY);
+  if (to) showSlots(formation(myTroops(), rdrag.cursor.ground, to));
+});
+addEventListener('mouseup', (e) => { if (e.button === 2 && rdrag) endRightDrag(e); });
 
 // the house under the cursor (walls and roofs count), as the center of its cell
 function houseAt(mx, my) {
@@ -1325,7 +1356,7 @@ const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) 
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
 objectives.init();
 const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
-endgame.init({ me: () => me, teams: () => teams });
+endgame.init({ me: () => me, teams: () => teams, watching: () => watching });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   const sdt = epilogue.frame(dt, cam); // screen time: slower once the match is decided, and the camera glides there

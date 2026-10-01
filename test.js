@@ -3642,6 +3642,22 @@ for (const lookupFinished of [false, true]) {
   await h.close();
   console.log('match end: hold, fog lift, result and story checked over the server');
 }
+// Formations: a right-drag front is as wide as the drag and faces away from the troops; shapes keep their outline.
+{
+  const { formation, FORMATIONS } = await import('./client/formation.js');
+  const sel = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, x: 50 + (i % 4) * 3, z: 10 + Math.floor(i / 4) * 3 }));
+  const front = formation(sel, { x: 40, z: 60 }, { to: { x: 70, z: 60 } });
+  assert.equal(new Set(front.map(o => o[0])).size, 8, 'every unit gets a place');
+  assert.ok(front.every(o => o[2] <= 60 + 1e-9), 'rows form behind the front, on the troops’ side');
+  assert.deepEqual([Math.min(...front.map(o => o[1])), Math.max(...front.map(o => o[1]))], [40, 70], 'the front spans the drag');
+  const back = formation(sel, { x: 54.5, z: 60 }, { back: v => (v.id === 1 ? 1 : 0) });
+  assert.equal(back.find(o => o[0] === 1)[2], Math.min(...back.map(o => o[2])), 'a mortar stands in the back row');
+  const col = formation(sel, { x: 54.5, z: 60 }, { shape: 'column' });
+  assert.equal(new Set(col.map(o => o[1].toFixed(3))).size, 2, 'a column of 8 is two files wide');
+  assert.equal(new Set(formation(sel, { x: 54.5, z: 60 }, { shape: 'line' }).map(o => o[2].toFixed(3))).size, 1, 'a line of 8 is one rank');
+  assert.equal(FORMATIONS.length, 4);
+  console.log('formations: drag fronts, back rows and shapes checked');
+}
 // Hotkey chords remain unique in every combination of simultaneously active contexts.
 {
   const { bindings, match, rank, label, badge, FORT_KEYS, BUILD_KEYS, SUPPORT_KEYS, CARD_KEYS } = await import('./client/keys.js');
@@ -4125,17 +4141,54 @@ for (const lookupFinished of [false, true]) {
       const [ana] = await humans(code, ['Ana']);
       const { MAX_PLAYERS } = await import('./shared/sim.js');
       for (let i = 1; i < MAX_PLAYERS; i++) await ana.send({ t: 'addAi' });
-      const full = await h.connect(code, { token: code + 'invite', name: 'Invite' });
-      assert.equal(last(full, 'full').reason, 'seats', 'a full lobby reports occupied seats');
-    });
-    await check(async code => {
-      const [ana, ben] = await humans(code); await start(code, ana);
       const invite = await h.connect(code, { token: code + 'invite', name: 'Invite' });
-      assert.equal(last(invite, 'full').reason, 'started', 'an invite cannot claim a new seat during play');
+      assert.equal(last(invite, 'lobby').spectator, true, 'a full lobby seats nobody else: the invite watches');
+      assert.equal(last(invite, 'lobby').you, -1, 'a spectator has no seat');
+      for (let i = 1; i < 8; i++) await h.connect(code, { token: code + 'watch' + i, name: 'Watch' });
+      const full = await h.connect(code, { token: code + 'late', name: 'Late' });
+      assert.equal(last(full, 'full').reason, 'seats', 'a room with eight spectators turns the next one away');
+    });
+    // Spectators: a late invite watches the running match with the fog lifted, commands nothing and can sit down afterwards.
+    await check(async code => {
+      const [ana, ben] = await humans(code), room = await start(code, ana);
+      const invite = await h.connect(code, { token: code + 'invite', name: 'Invite' });
+      assert.equal(last(invite, 'lobby').spectator, true, 'an invite cannot claim a new seat during play: it watches');
+      const begin = await invite.wait('start');
+      assert.equal(begin.you, 0, 'a spectator watches from the first seat');
+      assert.equal(begin.fog, undefined, 'a spectator gets no fog mask');
+      const after = invite.messages.length; await h.tick(2);
+      const seen = await invite.wait('s', () => true, after);
+      assert.equal(seen.units.length, room.game.units.size, 'a spectator sees every unit');
+      assert.equal(seen.fog, undefined, 'a spectator gets no fog changes');
+      assert.ok(last(ana, 's').units.length < seen.units.length, 'the seat it watches from still sees only its own side');
+      const tick = room.game.tick;
+      await invite.send({ t: 'leave' }); await invite.send({ t: 'end' }); await invite.send({ t: 'pause' }); await invite.send({ t: 'stop', ids: [...room.game.units.keys()] });
+      assert.ok(room.state === 'play' && !room.pause && room.players.every(p => !p.ai), 'a spectator cannot leave for a player, end or pause the match');
+      assert.ok(!last(invite, 'deny'), 'the orders of a spectator are dropped without an answer');
+      await h.tick(); assert.equal(room.game.tick, tick + 1, 'the match runs on');
       await ben.close(); await ana.send({ t: 'end' });
-      const joined = await h.connect(code, { token: invite.token, name: 'Invite' });
-      assert.equal(last(joined, 'lobby').state, 'lobby', 'the invite joins after the match returns to lobby');
-      assert.equal(h.rooms.get(code).players.length, 2, 'the disconnected match seat was freed for the invite');
+      assert.equal(last(invite, 'lobby').state, 'lobby', 'the spectator is back in the lobby with everyone');
+      await invite.send({ t: 'sit' });
+      assert.equal(last(invite, 'lobby').spectator, false, 'a spectator can take a seat in the lobby');
+      assert.equal(room.players.length, 2, 'the disconnected match seat was freed for the invite');
+      await invite.send({ t: 'spectate' });
+      assert.deepEqual([room.players.length, room.spectators.length, last(invite, 'lobby').you], [1, 1, -1], 'a seated player can step back to watch');
+    });
+    // An all-AI room: the host steps back to watch, still hosts, and the room lives while a spectator is connected.
+    await check(async code => {
+      const [ana] = await humans(code, ['Ana']), room = h.rooms.get(code);
+      await ana.send({ t: 'spectate' }); await ana.send({ t: 'start' });
+      assert.equal(room.state, 'lobby', 'a match needs at least one seat');
+      await ana.send({ t: 'addAi' }); await ana.send({ t: 'addAi' });
+      assert.deepEqual(room.players.map(p => !!p.ai), [true, true], 'a spectator hosts a room of AIs');
+      assert.equal(last(ana, 'lobby').amHost, true, 'the spectator is told it hosts');
+      await start(code, ana);
+      const after = ana.messages.length; await h.tick(2);
+      assert.equal((await ana.wait('s', () => true, after)).units.length, room.game.units.size, 'the spectator sees both AI armies');
+      assert.equal(room.emptySince ?? null, null, 'a watched room is not empty');
+      await ana.send({ t: 'end' }); assert.equal(room.state, 'lobby', 'the spectating host can end the match');
+      await ana.close();
+      assert.ok(room.emptySince != null && !room.spectators.length, 'a spectator who disconnects is gone, and the room starts its grace period');
     });
     console.log(`Room lifecycle: ${caseId} scenarios passed`);
   }

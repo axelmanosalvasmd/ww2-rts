@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--mode conquest|classic] [--matches N] [--seed S] [--workers N]';
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N]';
 const factions = ['USA', 'Germany', 'USSR'];
 
 function seededRandom(initial) {
@@ -29,14 +29,16 @@ function median(values) {
 async function runMatches(options, indices) {
   const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
   const { think, observe } = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
-  const map = JSON.parse(await readFile(resolve(options.root, 'maps/default.json'), 'utf8'));
+  const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
+  // one AI per spawn the mode can use, every one for itself, factions cycling
+  const seats = sim.spawnsFor(map, options.mode).map((_, i) => i);
   const maxTicks = Math.round(20 * 60 / sim.TICK), originalRandom = Math.random;
   try {
     for (const index of indices) {
       // Each match has its own stream, so worker count and completion order do not affect results.
       const seed = (options.seed + index) >>> 0;
       Math.random = seededRandom(seed);
-      const g = sim.createGame(map, factions, true, [0, 1, 2], [0, 1, 2], { mode: options.mode, army: 'standard' });
+      const g = sim.createGame(map, seats.map(i => factions[i % 3]), true, seats, seats.map(i => i % 3), { mode: options.mode, army: 'standard' });
       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
       const initialCache = observe ? sim.snapshotCache?.(g) : undefined;
       const views = observe ? g.players.map((_, slot) => observe(g, slot, initialCache)) : null;
@@ -71,10 +73,10 @@ async function runMatches(options, indices) {
 if (!isMainThread) {
   await runMatches(workerData.options, workerData.indices);
 } else {
-  const options = { root: resolve(dirname(script), '..'), mode: 'conquest', matches: null, seed: 1, workers: Math.min(3, availableParallelism()) };
+  const options = { root: resolve(dirname(script), '..'), map: 'default', mode: 'conquest', matches: null, seed: 1, workers: Math.min(3, availableParallelism()) };
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
-    if (!['--root', '--mode', '--matches', '--seed', '--workers'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
+    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
     options[key.slice(2)] = process.argv[++i];
   }
   options.root = resolve(options.root);
@@ -103,13 +105,13 @@ if (!isMainThread) {
     throw error;
   }
   results.sort((a, b) => a.match - b.match);
-  const map = JSON.parse(await readFile(resolve(options.root, 'maps/default.json'), 'utf8'));
+  const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
   const ended = results.filter(r => r.winner !== null), wins = ended.filter(r => r.winner >= 0);
   const byFaction = Object.fromEntries(factions.map(faction => [faction, wins.filter(r => r.winnerFaction === faction).length]));
   const bySpawn = map.spawns.map((spawn, index) => ({ spawn: index, x: spawn.x, y: spawn.y, wins: wins.filter(r => r.winnerSpawn === index).length }));
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
-    root: options.root, mode: options.mode, map: 'default', players: 3, army: 'standard', seed: options.seed,
+    root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, army: 'standard', seed: options.seed,
     matches: options.matches, workers: options.workers, maxSeconds: 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,
