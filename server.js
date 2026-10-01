@@ -8,6 +8,7 @@ import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
+import { mapPing } from './server/map-pings.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 // the address friends use: PUBLIC_URL, else this machine's Tailscale HTTPS name (served by `tailscale serve`)
@@ -136,6 +137,7 @@ wss.on('connection', (ws, req) => {
     }
     const slot = room.players.indexOf(me);
     if (msg.t === 'ping') {
+      if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
       return send(ws, { t: 'pong', c: msg.c });
     }
