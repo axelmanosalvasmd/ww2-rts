@@ -41,6 +41,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
+| AI before difficulty levels, re-measured with `tools/ai-duel.mjs` (90 matches; lead changes counted on its 10 s samples) | 59% | 1.76 | 9.1 min |
+| + AI difficulty levels, all three at Normal (same 90 seeds; slot wins 40/34/26%, were 38/38/24%) | 58% | 1.73 | 9.1 min |
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
@@ -192,8 +194,8 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   (target 70%+), median 16.5 min (default), 17.4 (River Towns), 19.6 (Six Fronts, a bit over the 18 target on the biggest
   map). Faction wins USA/GER/USSR 32/33/25: USSR slightly weak (Conscripts now need a Barracks).
 - Slices: 1 tracer · 2 production · 3 Sudden Death, elimination, Ghosts, ally support · 4 abilities cost Munitions
-  · 5 adaptive AI: all built. Deferred: editor Node tool, hand-made Classic maps, AI difficulty levels (the lever would be
-  aiAttackRatio plus a reaction delay).
+  · 5 adaptive AI: all built. Deferred: editor Node tool, hand-made Classic maps. (AI difficulty levels came later, see
+  "AI difficulty" below.)
 
 ## New units (2026-09-30, all modes)
 - Mortar team (180 MP): one arcing shell every 8s at up to 50 m (min 12) on anything its side can see, no line of sight
@@ -415,6 +417,65 @@ the HUD.
   The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
   box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
   step) along the four sides so the cut-earth skirt follows cliffs at the edge.
+
+## AI difficulty (2026-10-01)
+- The host sets each AI seat to Easy, Normal or Hard in the lobby, next to its faction. A new AI seat starts at Normal,
+  and a player handed to the AI mid-match plays at Normal. No level gets extra income, vision or units: the levels
+  differ only in how often the AI decides and how well it plays (`AI_LEVELS` in `shared/ai.js`; the server calls
+  `think` on each seat's own beat).
+- Easy decides every 6 s (Normal every 2 s). It leaves enemy-held points alone for the first 2:30, keeps 250 MP in hand
+  before calling support (Normal 100; in Classic, where support costs Munitions, it keeps 40 Munitions spare and Normal
+  none) and waits 45 s between calls, marches on a
+  Classic base only with 10+ units (Normal 6), and skips Classic's five adaptive rules.
+- Hard decides every second. It remembers what its team saw over the last 60 s in every mode (Normal only in Classic),
+  so it builds AT guns and flak against tanks and planes it saw recently, not only ones in sight. It attacks a held point
+  with 2 units instead of 3, but not one it saw defended in the last 30 s unless the group is worth 1.2x the defenders
+  (or is 8+ units). It pulls squads back at half health (Normal at 35%) and sends free units to a point it holds when
+  enemies show up there (the nearest ones, up to 1.3x the attackers' value, and only if together they are worth at
+  least as much as the attackers, else they would just feed them). Barrages
+  and strafing runs go at the biggest group of 3+ enemies with none of its own units within 10 m. Focus fire: units
+  already in range and in the open shoot together at the target they kill the most value of per second (hurt units
+  first, up to 4 targets per decision, no AT guns on squads or rifles on tanks), then carry on with their attack-move.
+  They don't chase a focus target that walks out of range or behind cover, or a squad that is falling back.
+- Better play at every level:
+  - A squad down to its last model falls back (a sniper team at 1 of 2 used to fight on until it died).
+  - Medium tanks and Tigers count as tanks when it decides to buy AT guns; only the light tank did (and Tigers only
+    through Classic's memory), so a medium-tank army got no AT guns at all.
+  - In Classic a squad that fell back to a Barracks or Motor Pool waits there to be reinforced. The sim reinforces near
+    any Production Building, but the AI only counted its spawn as home and sent such squads out again half empty.
+  - No unit joins an assault on a point where its side is already outnumbered 1.5x by value (no trickling into a lost
+    fight).
+  - Classic: free units near a depot under attack (within 70 m, at 40%+ health) go to defend it, but only if together
+    they are worth at least as much as the attackers.
+- Measured with `tools/ai-duel.mjs` (default map, 1v1, seats swapped every other match, all 9 faction pairs, seed 1):
+
+  | Matchup | Conquest (60) | Classic (40) |
+  |---|---|---|
+  | Hard vs Normal | Hard 85% (51) | Hard 90% (36) |
+  | Easy vs Normal | Easy 22% (13) | Easy 3% (1) |
+  | Normal vs the AI before this change | 33 wins (that AI against itself: 35); 58 of 60 same winner | 15 wins (against itself: 15); 36 of 40 same winner |
+
+  Matches are seeded and both AIs share `Math.random`, so two identical AIs on the same seeds give the same split
+  (the AI before this change won 15 of 40 Classic duels against itself for the seat listed first). Compare with that,
+  not with 50%.
+- Normal vs Normal, 3-player FFA on the same seeds as before: Conquest (90) closeness 0.58 (was 0.59), lead changes
+  1.73 (1.76), length mean 9.1 and median 9.3 min (9.1, 9.4), faction wins 36/31/23 (34/34/22). Classic (30) decided
+  before Sudden Death 25/30 (was 22/30), length mean 17.7 and median 16.4 min (19.7, 18.0), faction wins 10/12/8 with
+  no draws (10/11/7 and 2 draws).
+- Tried and dropped (all against the AI before this change, 60 Conquest or 30 Classic FFA matches):
+  - Classic base attacks in waves from a rally point, with crew weapons stopping at 60% of their range behind the squads:
+    about even in 1v1 (14 of 40 wins, against 15 for the AI before this change), but 3-player Classic matches dragged
+    on: 17/30 decided before Sudden Death and a 23 min median with the depot guard, 19/30 and 19.9 min without it
+    (24/30 and 17.2 min with neither). Back to marching straight at the nearest enemy building.
+  - Gathering at a rally point before hitting a Conquest point: Hard won 40% instead of 65%.
+  - MGs, AT guns, mortars and snipers stopping short of a Conquest point behind the squads: Normal 45% instead of 58%
+    (MG teams help capture).
+  - Notes: Hard's biggest edge is deciding every second (at Normal's 2 s it won 62%, not 72%). Focus fire is about
+    neutral (Hard 72% with it, 77% without; the first version, which chased targets and ignored line of sight, was 63%).
+    It stays because Hard is meant to play that way.
+- Easy in Classic wins 1 in 40 against Normal (2 in 40 at a 4 s beat): without the adaptive rules it loses most fights
+  (kills 5.7 vs 31.7 per match) and leaves Munitions unused. Left for later: a Classic-only tuning if Easy turns out too
+  soft for new players.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

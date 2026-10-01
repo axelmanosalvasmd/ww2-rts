@@ -2105,6 +2105,28 @@ for (const lookupFinished of [false, true]) {
   await h.close();
 }
 
+// Server: the host picks each AI seat's difficulty in the lobby. Humans have none; bad values and guests are ignored.
+{
+  const h = await serverHarness(), code = 'levels';
+  const host = await h.connect(code, { token: 'host', name: 'Host' }), guest = await h.connect(code, { token: 'guest', name: 'Guest' });
+  await host.send({ t: 'addAi' });
+  const level = (slot) => host.lobby().players[slot].level;
+  assert.equal(level(2), 'normal', 'server new AI seat plays Normal');
+  assert.equal(level(0), null, 'server human seat has no difficulty');
+  await host.send({ t: 'level', slot: 2, v: 'hard' });
+  assert.equal(level(2), 'hard', 'server host sets an AI seat to Hard');
+  for (const v of ['brutal', 2, null, 'constructor']) await host.send({ t: 'level', slot: 2, v });
+  assert.equal(level(2), 'hard', 'server unknown difficulty is ignored');
+  await host.send({ t: 'level', slot: 1, v: 'easy' });
+  assert.equal(level(1), null, 'server a human seat gets no difficulty');
+  await guest.send({ t: 'level', slot: 2, v: 'easy' });
+  assert.equal(level(2), 'hard', 'server only the host sets difficulty');
+  await host.send({ t: 'start' }); await host.wait('start');
+  await host.send({ t: 'level', slot: 2, v: 'easy' });
+  assert.equal(level(2), 'hard', 'server difficulty is fixed once the match starts');
+  await h.close();
+}
+
 // Server: JSON objects masquerading as names or tokens cannot crash text conversion.
 {
   const h = await serverHarness(), code = 'badtext', invalid = { toString: null, valueOf: null };

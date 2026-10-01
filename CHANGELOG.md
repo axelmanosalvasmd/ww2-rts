@@ -5,6 +5,26 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- AI difficulty: the host picks Easy, Normal or Hard for each AI seat in the lobby. Normal is the AI you know and stays
+  the default (and still takes over a player who leaves). No level gets extra income or vision.
+  - Easy thinks every 6 s, leaves your points alone for the first 2:30, saves more before calling support and waits
+    between calls, needs a bigger army before marching on a Classic base, and skips Classic's adaptive rules.
+  - Hard thinks every second and remembers what it saw for 60 s. It attacks in pairs but not into a point it saw
+    defended unless it has the edge, pulls squads back at half health, defends the Conquest points it holds, aims
+    barrages at the biggest enemy group away from its own men, and focuses fire with units already in range.
+  - Every level now pulls a squad back at its last model, buys AT guns against medium tanks and Tigers (before, only
+    the light tank counted, so a medium-tank army got no AT guns), reinforces a squad that fell back to a Classic
+    Barracks or Motor Pool instead of sending it out half empty, stops feeding units into a point where it is outnumbered
+    1.5x, and defends its Classic depots when it can win the fight.
+  - Balance (default map, seats swapped, seed 1): Hard beats Normal 85% in Conquest (60 matches) and 90% in Classic
+    (40). Easy wins 22% in Conquest and 3% in Classic. Normal against the AI before this change: 58 of 60 Conquest and
+    36 of 40 Classic duels end with the same winner. Normal 3-player FFA: Conquest (90) closeness 0.58 (was 0.59), lead
+    changes 1.73 (1.76), mean 9.1 min (9.1), faction wins 36/31/23 (34/34/22); Classic (30) 25/30 decided before
+    Sudden Death (was 22/30), median 16.4 min (18.0), faction wins 10/12/8 and no draws (10/11/7, 2 draws).
+  - New `tools/ai-duel.mjs` runs AI-vs-AI matches on worker threads (any levels, an older AI file, per-seat tweaks).
+  - Fixed a stale comment: the Classic attack-timing ratio is 1.1x, not 1.3x.
+  - Left for later: Easy is very weak in Classic (1 win in 40). Hard's focus fire is about neutral in measurement.
+    MGs and AT guns don't hang back behind the infantry: both versions tried measured worse (see DESIGN.md).
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

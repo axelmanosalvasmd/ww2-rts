@@ -40,6 +40,7 @@ const FACTIONS = [
   { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
+const AI_LEVELS = ['easy', 'normal', 'hard']; // AI difficulty, as shared/ai.js names it
 let teams = [], factions = [];
 const facOf = (slot) => factions[slot] ?? slot % 3;
 const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
@@ -249,14 +250,16 @@ function renderLobby(m) {
   const n = m.players.length, host = m.you === m.host, lobby = m.state === 'lobby';
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  // and each AI seat's difficulty
+  const level = (p, i) => (p.ai ? ' ' + pick('level', i, AI_LEVELS.indexOf(p.level ?? 'normal'), AI_LEVELS.map(l => l[0].toUpperCase() + l.slice(1)), host).replace('<select', '<select title="AI difficulty"') : '');
   $('roster').innerHTML = m.players.map((p, i) => {
     const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
-      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
+      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host)} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}${level(p, i)}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
-  $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
+  $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: el.dataset.kind === 'level' ? AI_LEVELS[+el.value] : +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
   $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''}>${esc(prettyMap(n))}</option>`).join('');
   previewMap(m.mapName, m.mode || 'conquest');
