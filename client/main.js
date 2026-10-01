@@ -76,6 +76,7 @@ addEventListener('resize', positionRoomBanners);
 positionRoomBanners();
 
 let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
+let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
   hello: () => ({ t: 'hello', name: $('name').value, token }),
@@ -354,7 +355,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear(); epilogue.reset();
+  fx.length = 0; lastSnap = null; effects.reset(); strikeMarks.clear(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
   sun.position.set(MW / 2 + 70, 130, MH / 2 - 50); sun.target.position.set(MW / 2, 0, MH / 2);
@@ -647,6 +648,9 @@ function marker(x, z, color) {
 
 function applySnapshot(s) {
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
+  const arrived = performance.now();
+  if (snapshotAt) snapshotGap += (Math.max(60, Math.min(400, arrived - snapshotAt)) - snapshotGap) * 0.2;
+  snapshotAt = arrived;
   const seen = new Set();
   for (const [id, type, owner, x, z, rot, aim, hp, supp, tgt, cover, cd, flags, stars, built] of s.units) {
     seen.add(id);
@@ -1266,7 +1270,7 @@ renderer.setAnimationLoop(() => {
   rig.update(dt);
 
   // units: smooth toward the latest server state
-  const k = 1 - Math.exp(-sdt * 10);
+  const k = 1 - Math.exp(-sdt * 1000 / snapshotGap);
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
