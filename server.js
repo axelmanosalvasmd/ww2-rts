@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
-import { think } from './shared/ai.js';
+import { think, observe } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -124,6 +124,8 @@ async function startMatch(room) {
   if (room.starting !== starting || room.state !== 'play') return;
   room.map = map;
   room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
+  const startView = snapshotCache(room.game);
+  room.aiViews = room.players.map((p, i) => p.ai ? observe(room.game, i, startView) : null);
   lobby(room);
   room.players.forEach((_, i) => sendStart(room, i));
 }
@@ -181,6 +183,7 @@ function pauseTick(room) {
 
 function handToAi(room, player) {
   Object.assign(player, { ai: true, ws: null, token: '', name: player.name + ' (AI)' });
+  if (room.game) (room.aiViews ??= [])[room.players.indexOf(player)] = null;
   if (room.pause?.reason === 'drop' && room.pause.player === player) resumeRoom(room);
   if (!room.players.some(connected)) room.emptySince = clock.now();
   lobby(room);
@@ -353,9 +356,16 @@ function timedRoomTick(room) {
   const stepAt = process.hrtime.bigint();
   step(g);
   const thinkAt = process.hrtime.bigint();
+  const sent = g.tick % room.snapEvery === 0 || g.winner !== null;
+  // AI observations refresh only when human snapshots are due. Turns between sends use the previous view.
+  room.aiViews ??= [];
+  if (sent && room.players.some(p => p.ai)) {
+    const cache = snapshotCache(g);
+    room.players.forEach((p, i) => { if (p.ai) room.aiViews[i] = observe(g, i, cache); });
+  }
   // AIs think every 2s, staggered so they don't all act on the same tick.
-  room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
-  const snapshotAt = process.hrtime.bigint(), sent = g.tick % room.snapEvery === 0 || g.winner !== null;
+  room.players.forEach((p, i) => p.ai && room.aiViews[i] && (g.tick + i * 13) % 40 === 0 && think(g, i, { view: room.aiViews[i] }));
+  const snapshotAt = process.hrtime.bigint();
   let snapshotBuild = 0, snapshotStringify = 0;
   if (sent) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];

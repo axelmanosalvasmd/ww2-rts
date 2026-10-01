@@ -5,6 +5,23 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The computer opponents no longer cheat. They plan only from what a player in their seat could know: the same
+  snapshots a human receives (units seen right now, buildings remembered under fog, public announcements), with the
+  same rounded numbers. Leaks closed: they knew which resource nodes already held an enemy depot (it steered their
+  Engineers and how many they bought), they planned building sites and cover around enemy buildings they had never
+  seen, they knew how long a newly spotted gun had been standing still (it triggered artillery), they counted planes
+  for a few ticks after those planes landed, and they used exact health and positions where players see rounded ones.
+  They look at the world on the same beat as player snapshots and keep a 60 second memory of sightings. Their
+  economy was already identical to a player's, and now a test replays an AI seat's orders as a human to prove it.
+  Every order still goes through the normal command checks, and a test fails if the AI changes anything else.
+  Balance, same seeds before and after (default map, 3 players, 20 minute limit). Conquest, 60 matches: wins
+  USA/Germany/USSR 30/14/16 to 26/13/21, median length 8.45 to 9.59 minutes, all matches finished, runner-up VP over
+  winner VP 0.550 to 0.608. Classic, 30 matches: wins 8/8/4 to 8/9/6, finished 20 to 23 (timeouts 10 to 7), median
+  length 15.57 to 15.99 minutes. Conquest games run about a minute longer and more Classic games finish. Left for later: two Engineers can
+  pick the same building site in one turn (the second order is rejected normally), and the shared auto-targeting of
+  rocket salvos still counts hidden neighbours of a visible target, for players and AI alike. The difficulty and
+  autocast branches change `shared/ai.js` too and must move onto the same view.
+
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
   goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window

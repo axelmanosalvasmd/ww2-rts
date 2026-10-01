@@ -42,6 +42,59 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
 
+## AI information and commands (2026-10-01)
+
+The rule: an AI seat knows only what a human in that seat could know, has the economy and limits of a human, and acts
+only through `command()`.
+
+- `shared/ai-view.js` is the AI's only window onto the game. `viewFor(g, slot, memory)` runs the same `snapshotFor()`
+  a human receives and decodes its rows into plain objects. It copies units, public objectives, announcements and the
+  seat's own economy; other seats expose only public start data (spawns, teams, factions) and scores. Coordinates,
+  health, suppression, support countdowns, resources and cooldowns carry their wire values.
+- `think(g, slot, opts)` keeps its signature. It builds or accepts a view, then calls `plan(view, ...)`, which has no
+  reference to the authoritative game. Orders go through `opts.submit` (default `command(g, slot, cmd)`). Engineer
+  node assignments live in private per-seat memory, not on the units.
+- The server refreshes each AI observation on the human snapshot beat (every 2 to 4 ticks). A turn between beats uses
+  the previous view. A seat handed over from a human waits for the next beat and keeps the terrain it had discovered.
+- `seenBy(g, slot, id)` in `sim.js` is the one visibility predicate (reveal, allied, visible, and a plane counts only
+  while airborne). `snapshotFor()` and the AI both use it.
+- Terrain starts from an immutable copy of the public map (`g.initialTerrain`, taken before Classic buildings or
+  Assault fortifications) and applies only the changes the seat's `terrainFor()` delivers. Cover, trench and house
+  searches and building-site searches run on that remembered terrain, so hidden placement, cancellation and
+  destruction cannot move a plan.
+- A resource node counts as taken only when an allied depot, or a visible or remembered enemy depot (Ghost), stands
+  within 8 m. A Barracks next to a node does not claim it. Unknown nodes stay candidates, and `command()` rejects a
+  wrong guess with the normal visibility mask.
+- Sightings expire after 60 seconds in every mode. The lone-gun artillery fallback needs more than 3 seconds of
+  stillness the AI observed itself (0.1 m tolerance, reset when sight is lost).
+- Proofs in `test.js`: seeded commands for equal snapshots stay equal while hidden armies, secret depots on every
+  unseen node, hidden footprints, enemy economies, and the private state of enemies the seat can see (stationary
+  timers, paths, health and position below the wire precision) are perturbed, across Conquest, Classic and Assault
+  matches. Negative controls show that perturbing something the seat sees does change its orders. State is hashed
+  around every submit to catch writes outside `command()`, and an AI seat's orders are replayed as a human to show
+  equal income, costs, cooldowns and limits. These tests were run against the old `ai.js` logic (adapted only to take
+  `opts.submit`): the stillness, landed plane, wire precision, secret depot, footprint, delivery beat and match
+  perturbation proofs all fail there.
+- Integration: `ai.js` functions changed are `memoryOf`, `think`, `houseNear`, `trenchesNear`, `spotNear` and
+  `buildEconomy`. New: `observe`, `plan`, and the view adapters `knownBuildings` and `inCover`. The closures `trains`,
+  `affords`, `pointOf`, `can`, `call` and `send` now read the view or use `submit`. Difficulty and autocast branches
+  should plan on this view, act through `submit`, and pass the same proof tests.
+- Reproducible runs use `tools/ai-balance.mjs` (default map, 3 players, standard armies, shuffled spawns, factions by
+  slot, seeds 1 to N, 20 minute limit; medians include matches stopped at the limit). Same seeds before and after, no
+  economy or unit tuning:
+
+| Mode (matches) | Wins USA/GER/USSR | Wins by spawn 0/1/2 | Finished | Median length |
+|---|---|---|---|---|
+| Conquest (60) before | 30/14/16 | 24/17/19 | 60 | 8.45 min |
+| Conquest (60) after | 26/13/21 | 19/21/20 | 60 | 9.59 min |
+| Classic (30) before | 8/8/4 | 12/3/5 | 20 | 15.57 min |
+| Classic (30) after | 8/9/6 | 7/7/9 | 23 | 15.99 min |
+
+  Conquest runner-up VP over winner VP: mean 0.550 before, 0.608 after (median 0.543, 0.645).
+- Left for later: two Engineers can propose the same building site in one turn before the next terrain snapshot (the
+  second command is rejected normally). Shared automatic salvo targeting scores hidden neighbours of a visible target,
+  for human and AI armies alike. The uncommitted difficulty and autocast worktrees were not merged or edited.
+
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
 - Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of

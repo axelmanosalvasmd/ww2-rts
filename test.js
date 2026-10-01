@@ -1,10 +1,12 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import * as sim from './shared/sim.js';
 import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { think } from './shared/ai.js';
+import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief } from './client/relief.js';
 
@@ -29,7 +31,9 @@ import { createRelief } from './client/relief.js';
   const rifle = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   for (let i = 0; i < 2; i++) g.units.set(g.nextId, { ...rifle, id: g.nextId++, path: [] });
   for (const u of g.units.values()) if (u.owner === 0) Object.assign(u, { x: 120, z: 120 });
-  g.nodes.forEach(n => n.depot = barracks.id); // Every node is already claimed, so there is no depot to save for.
+  // Two Engineers satisfy recruitment needs without assuming hidden node occupancy.
+  const engineer = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  g.units.set(g.nextId, { ...engineer, id: g.nextId++, path: [] });
   const mode = g.mode; g.mode = null; g.players[1].mp = 1000;
   command(g, 1, { t: 'buy', unit: 'fighter' }); g.mode = mode;
   const plane = [...g.units.values()].find(u => u.type === 'fighter');
@@ -1819,6 +1823,381 @@ for (const f of readdirSync('maps')) {
   run(solo, 1); assert.equal(solo.winner, null, 'a solo test never ends by itself');
 }
 
+// AI proofs compare equal human observations, including histories, while hidden state changes.
+const aiRandom = seed => () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
+const aiDigest = g => createHash('sha256').update(JSON.stringify(g, (_key, value) => {
+  if (value instanceof Map) return { map: [...value] };
+  if (value instanceof Set) return { set: [...value] };
+  if (ArrayBuffer.isView(value)) return { array: value.constructor.name, values: [...value] };
+  if (value === undefined) return { undefined: true };
+  if (typeof value === 'number' && !Number.isFinite(value)) return { number: String(value) };
+  return value;
+})).digest('hex');
+const aiSnapshot = (g, slot) => snapshotFor({ ...g, players: g.players.map(p => ({ ...p,
+  terrainMemory: new Map(p.terrainMemory ?? []), terrainPending: new Set(p.terrainPending ?? g.cellLog.keys()),
+})) }, slot, []);
+const aiCommands = (g, slot, memory = {}, seed = 1, extra = {}) => {
+  const random = Math.random, commands = [], before = aiDigest(g);
+  let draws = 0;
+  try {
+    const seeded = aiRandom(seed); Math.random = () => { draws++; return seeded(); };
+    think(g, slot, { ...extra, memory, submit: cmd => { commands.push(structuredClone(cmd)); } });
+  } finally { Math.random = random; }
+  assert.equal(aiDigest(g), before, 'dry-run AI leaves authoritative state unchanged');
+  return { commands, draws };
+};
+const aiEquivalent = (a, b, slot = 0, memory = {}, seed = 1, message = 'hidden state does not affect AI commands') => {
+  assert.deepEqual(aiSnapshot(a, slot), aiSnapshot(b, slot), `${message}: human snapshots match`);
+  const left = aiCommands(a, slot, structuredClone(memory), seed), right = aiCommands(b, slot, structuredClone(memory), seed);
+  assert.deepEqual(right, left, message);
+  return left.commands;
+};
+const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
+  spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] });
+
+// A newly spotted gun's private stationary timer cannot authorize an artillery call.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]), memory = {};
+  const mg = massiveInternals.spawnUnit(g, 1, 'mg'); Object.assign(mg, { x: 45, z: 5, still: 0 });
+  g.players[0].visible.add(mg.id); g.players[0].mp = 1000;
+  const hiddenTimer = structuredClone(g); hiddenTimer.units.get(mg.id).still = 100;
+  const first = aiEquivalent(g, hiddenTimer, 0, {}, 37, 'artillery uses observed stillness');
+  assert.ok(!first.some(c => c.t === 'support' && c.kind === 'artillery'), 'first sight of one gun does not establish three seconds of stillness');
+  aiCommands(g, 0, memory); g.tick = 80;
+  assert.ok(aiCommands(g, 0, memory).commands.some(c => c.t === 'support' && c.kind === 'artillery'), 'four observed seconds qualify a stationary gun');
+  mg.x += 1; g.tick = 100;
+  assert.ok(!aiCommands(g, 0, memory).commands.some(c => c.t === 'support' && c.kind === 'artillery'), 'observed movement resets the timer');
+  g.players[0].visible.delete(mg.id); g.tick = 120; aiCommands(g, 0, memory);
+  g.players[0].visible.add(mg.id); mg.still = 100; g.tick = 200;
+  assert.ok(!aiCommands(g, 0, memory).commands.some(c => c.t === 'support' && c.kind === 'artillery'), 'losing sight resets the timer before rediscovery');
+}
+
+// Landed planes disappear from the AI's current view on the same tick as human snapshots.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]), plane = massiveInternals.spawnUnit(g, 1, 'fighter');
+  Object.assign(plane, { x: 8, z: 8 }); plane.air.state = 'rearm'; g.players[0].visible.add(plane.id); g.players[0].mp = 1000;
+  const clean = structuredClone(g); clean.players[0].visible.delete(plane.id);
+  aiEquivalent(clean, g, 0, {}, 98, 'a stale visible id for a landed plane is ignored');
+  const memory = {}, view = viewFor(g, 0, memory);
+  assert.ok(!view.units.has(plane.id) && !memory.seen.has(plane.id), 'landed enemy planes are absent from current units and new sightings');
+  assert.equal(sim.seenBy(g, 0, plane.id), false, 'shared visibility predicate excludes landed planes');
+}
+
+// Positions, health, economy, cooldowns and strike phases use their public wire precision.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]), tank = massiveInternals.spawnUnit(g, 1, 'tank');
+  Object.assign(tank, { x: 45.01, z: 5.01, hp: 299.1, supp: 0.1 }); g.players[0].visible.add(tank.id);
+  g.players[0].mp = 1000.01; g.players[0].sup.recon = 1.01;
+  g.strikes.push({ kind: 'strafe', owner: 1, x: 5.01, z: 5.01, dir: 0.01, t: 0.01, live: false, left: 1, next: 0 });
+  const roundedTwin = structuredClone(g);
+  Object.assign(roundedTwin.units.get(tank.id), { x: 45.04, z: 5.04, hp: 299.9, supp: 0.4 });
+  roundedTwin.players[0].mp = 1000.99; roundedTwin.players[0].sup.recon = 1.99;
+  Object.assign(roundedTwin.strikes[0], { x: 5.04, z: 5.04, dir: 0.04, t: -0.01, live: true });
+  const commands = aiEquivalent(g, roundedTwin, 0, {}, 190, 'wire-equivalent precision changes do not affect decisions');
+  assert.ok(commands.some(c => c.t === 'support' && c.kind === 'dive' && c.x === 45 && c.z === 5), 'support aims at rounded visible coordinates');
+  assert.ok(!commands.some(c => c.t === 'support' && c.kind === 'cover'), 'a zero-countdown announcement is already active in the public view');
+  const control = structuredClone(g); control.players[0].visible.delete(tank.id);
+  assert.notDeepEqual(aiCommands(control, 0, {}, 190).commands, commands, 'negative control: hiding a visible tank changes decisions');
+}
+
+// Unknown enemy depots do not claim resource nodes. A remembered depot stays claimed under fog.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const node = g.nodes.at(-1), occupied = structuredClone(g);
+  const depot = massiveInternals.placeBuilding(occupied, 1, 'depot', node.c, true); occupied.nodes.at(-1).depot = depot.id;
+  assert.ok(!teamSees(occupied, 0, depot), 'enemy depot fixture is under fog');
+  aiEquivalent(g, occupied, 0, {}, 43, 'an unseen depot does not change Engineer planning');
+  // The strongest cases need an Engineer that walks to a node it cannot see: our depots already stand on the two nodes by the HQ.
+  // An enemy then secretly takes the very node the Engineer would choose, and later every node outside the seat's vision.
+  const staged = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1], [0, 1], { mode: 'classic' });
+  for (const n of staged.nodes.slice(0, 2)) n.depot = massiveInternals.placeBuilding(staged, 0, 'depot', n.c, true).id;
+  massiveInternals.placeBuilding(staged, 0, 'barracks', 10 * staged.w + 2, true);
+  massiveInternals.placeBuilding(staged, 0, 'motorpool', 10 * staged.w + 12, true);
+  // A production building beside a node does not occupy it; only depots do.
+  const beside = structuredClone(staged);
+  let plant = null;
+  for (let dy = -4; dy <= 4 && !plant; dy++) for (let dx = -4; dx <= 4 && !plant; dx++) {
+    const trial = structuredClone(beside);
+    try {
+      const at = massiveInternals.placeBuilding(trial, 0, 'barracks', trial.nodes[2].c + dy * trial.w + dx, true);
+      if (Math.hypot(at.x - trial.nodes[2].x, at.z - trial.nodes[2].z) < 8) { plant = at; Object.assign(beside, trial); }
+    } catch { /* this spot does not fit on the map */ }
+  }
+  assert.ok(plant, 'a Barracks fits within 8 m of a free node');
+  assert.deepEqual([...viewFor(beside, 0, {}).claimedNodes].sort(), [0, 1], 'only the two depots claim nodes');
+  const engineers = new Set([...staged.units.values()].filter(u => u.owner === 0 && u.type === 'engineer').map(u => u.id));
+  const heading = aiCommands(staged, 0, {}, 43).commands.flatMap(c => c.t === 'move' ? c.orders.filter(([id]) => engineers.has(id)) : []);
+  assert.ok(heading.length, 'the Engineer fixture walks toward a resource node');
+  const chosen = staged.nodes.findIndex(n => Math.hypot(n.x - heading[0][1], n.z - heading[0][2]) < 1);
+  assert.ok(chosen >= 2 && !teamSees(staged, 0, staged.nodes[chosen]), 'the chosen node is a resource node under fog');
+  const redirected = structuredClone(staged), chosenDepot = massiveInternals.placeBuilding(redirected, 1, 'depot', redirected.nodes[chosen].c, true);
+  redirected.nodes[chosen].depot = chosenDepot.id;
+  aiEquivalent(staged, redirected, 0, {}, 43, 'a secretly taken node does not redirect the Engineer');
+  const crowded = structuredClone(staged);
+  for (const n of crowded.nodes) if (!n.depot && !teamSees(staged, 0, n)) n.depot = massiveInternals.placeBuilding(crowded, 1, 'depot', n.c, true).id;
+  assert.ok(crowded.nodes.every(n => n.depot), 'every node is occupied, the unseen ones secretly');
+  aiEquivalent(staged, crowded, 0, {}, 43, 'secretly taken nodes do not change how many Engineers the AI buys');
+  const memory = {}, known = structuredClone(occupied);
+  known.players[0].visible.add(depot.id); known.ghosts ??= new Map();
+  known.ghosts.set(0, new Map([[depot.id, { id: depot.id, type: 'depot', owner: 1, x: depot.x, z: depot.z, built: 1 }]]));
+  snapshotFor(known, 0, []);
+  assert.ok(viewFor(known, 0, memory).claimedNodes.has(known.nodes.length - 1), 'visible enemy depots claim their observed node');
+  known.players[0].visible.delete(depot.id); massiveInternals.wreckBuilding(known, known.units.get(depot.id)); known.units.delete(depot.id);
+  assert.ok(viewFor(known, 0, memory).claimedNodes.has(known.nodes.length - 1), 'unseen destruction retains the Ghost occupancy belief');
+  assert.equal(viewFor(known, 0, {}).chars[depot.cells[0]], 'K', 'human handover seeds the AI with the seat\'s remembered footprint');
+  known.ghosts.get(0).delete(depot.id);
+  assert.ok(!viewFor(known, 0, memory).claimedNodes.has(known.nodes.length - 1), 'revisiting the empty node clears the Ghost occupancy belief');
+}
+
+// Cover choices and site searches use remembered terrain through hidden placement and removal.
+{
+  const map = aiMap(); map.rows[39] = '.'.repeat(39) + 'TTT' + '.'.repeat(38);
+  map.rows[40] = map.rows[39]; map.rows[41] = map.rows[39];
+  const g = createGame(map, ['AI', 'enemy'], false, [0, 1]); g.players[0].mp = 0;
+  const footprint = structuredClone(g), barracks = massiveInternals.placeBuilding(footprint, 1, 'barracks', 39 * g.w + 39, true);
+  aiEquivalent(g, footprint, 0, {}, 15, 'unseen footprints do not erase remembered capture-point cover');
+  const projected = viewFor(footprint, 0, {});
+  assert.equal(projected.chars[barracks.cells[0]], 'T', 'AI terrain retains the public map beneath an unseen building');
+  massiveInternals.wreckBuilding(footprint, barracks); footprint.units.delete(barracks.id);
+  aiEquivalent(g, footprint, 0, {}, 15, 'unseen rubble does not erase remembered capture-point cover');
+
+  const classic = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const hq = [...classic.units.values()].find(u => u.owner === 0 && u.type === 'hq'); classic.units.delete(hq.id);
+  for (const u of classic.units.values()) if (u.owner === 0) Object.assign(u, { x: 130, z: 130 });
+  for (let i = 0; i < 2; i++) {
+    const id = classic.nextId++; classic.units.set(id, { ...structuredClone(hq), id, type: 'depot', x: 130 + i * 8, z: 130, hp: UNITS.depot.hpPer, queue: [] });
+  }
+  classic.players[0].mp = 1000;
+  const build = aiCommands(classic, 0, {}, 72, { adaptive: false }).commands.find(c => c.t === 'build' && c.kind === 'barracks');
+  assert.ok(build, 'lost-HQ fixture searches for a Barracks site');
+  assert.ok(!teamSees(classic, 0, build), 'fallback site is outside current team vision');
+  const blocked = structuredClone(classic), c = Math.floor((build.z - 3) / CELL) * classic.w + Math.floor((build.x - 3) / CELL);
+  const enemy = massiveInternals.placeBuilding(blocked, 1, 'barracks', c, true);
+  aiEquivalent(classic, blocked, 0, {}, 72, 'unseen footprints do not shift a fallback building site');
+  massiveInternals.wreckBuilding(blocked, enemy); blocked.units.delete(enemy.id);
+  aiEquivalent(classic, blocked, 0, {}, 72, 'unseen destruction does not shift a fallback building site');
+  for (const cell of enemy.cells) massiveInternals.setCell(blocked, cell, '.');
+  aiEquivalent(classic, blocked, 0, {}, 72, 'unseen cancellation does not shift a fallback building site');
+  const engineer = [...classic.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  assert.equal(command(blocked, 0, { ...build, ids: [engineer.id] }), 'notVisible', 'authoritative command still rejects the blind proposed site');
+}
+
+// A detached view contains no live player, unit, terrain, or visibility references.
+{
+  const g = createGame(aiMap(), ['AI', 'ally', 'enemy'], false, [0, 0, 1], [0, 1, 2]), memory = {}, before = aiDigest(g);
+  const enemy = [...g.units.values()].find(u => u.owner === 2); g.players[0].visible.add(enemy.id);
+  const state = aiDigest(g), view = viewFor(g, 0, memory);
+  assert.equal(aiDigest(g), state, 'projecting a view does not change terrain memory or authoritative units');
+  assert.equal(view.players[2].mp, undefined, 'enemy economy is absent');
+  assert.equal(view.players[1].mp, undefined, 'allied economy is absent');
+  assert.notEqual(view.units, g.units, 'unit map is detached');
+  for (const [id, unit] of view.units) assert.notEqual(unit, g.units.get(id), `unit ${id} is detached`);
+  const target = { x: 10, z: 10 }, seen = view.sees(target), owned = [...view.units.values()].find(u => u.owner === 0);
+  assert.equal(view.units.get(enemy.id).hp, Math.ceil(enemy.hp), 'enemy health uses snapshot precision');
+  const rawHp = g.units.get(owned.id).hp; owned.hp = 1;
+  assert.equal(g.units.get(owned.id).hp, rawHp, 'editing a projected unit cannot edit the simulation');
+  view.players[0].mp = -100; assert.ok(g.players[0].mp >= 0, 'editing projected economy cannot edit the simulation');
+  for (const u of g.units.values()) if (g.players[u.owner].team === 0) Object.assign(u, { x: 150, z: 150 });
+  g.chars.fill('B'); g.flags.fill(sim.TERRAIN.B);
+  assert.equal(view.sees(target), seen, 'visibility is computed solely from detached units and terrain');
+  assert.notEqual(aiDigest(g), before, 'detachment test actually changed live state');
+}
+
+// Cached projection and public terrain updates preserve the same view contract.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]), memory = {}, old = viewFor(g, 0, memory);
+  const cell = 40 * g.w + 40, oldChar = old.chars[cell]; massiveInternals.setCell(g, cell, 'T');
+  const current = viewFor(g, 0, memory);
+  assert.equal(current.chars[cell], 'T', 'nonbuilding terrain changes are public outside current vision');
+  assert.equal(old.chars[cell], oldChar, 'a terrain update cannot change an already delivered view');
+  const cache = snapshotCache(g), cached = viewFor(g, 0, {}, cache), uncached = viewFor(g, 0, {});
+  assert.deepEqual({ ...cached, sees: undefined }, { ...uncached, sees: undefined }, 'shared snapshot caches preserve the complete projected view');
+  assert.equal(cached.sees({ x: 10, z: 10 }), uncached.sees({ x: 10, z: 10 }), 'cached projection preserves visibility');
+}
+
+// Between delivered snapshots the planner must use its supplied earlier observation.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.players[0].mp = 1000;
+  const memory = {}, delivered = viewFor(g, 0, memory), before = aiCommands(g, 0, structuredClone(memory), 319, { view: delivered });
+  const tank = massiveInternals.spawnUnit(g, 1, 'tank'); Object.assign(tank, { x: 45, z: 5 }); g.players[0].visible.add(tank.id);
+  g.strikes.push({ kind: 'strafe', owner: 1, x: 5, z: 5, dir: 0, t: 4, live: false, left: 1, next: 0 });
+  assert.deepEqual(aiCommands(g, 0, structuredClone(memory), 319, { view: delivered }), before, 'an undelivered sighting and strike cannot change the next decision');
+  const refreshed = viewFor(g, 0, structuredClone(memory));
+  assert.notDeepEqual(aiCommands(g, 0, structuredClone(memory), 319, { view: refreshed }).commands, before.commands, 'delivery of the sighting and strike can change decisions');
+  g.players[0].visible.delete(tank.id); g.tick = 1200; viewFor(g, 0, memory);
+  assert.ok(!memory.still.has(tank.id), 'observed stationary tracking ends when current vision ends');
+  const sightings = {}; g.tick = 0; g.players[0].visible.add(tank.id); viewFor(g, 0, sightings);
+  g.players[0].visible.delete(tank.id); g.tick = 1200; viewFor(g, 0, sightings);
+  assert.ok(sightings.seen.has(tank.id), 'a sighting remains for sixty seconds');
+  g.tick = 1201; viewFor(g, 0, sightings);
+  assert.ok(!sightings.seen.has(tank.id), 'sightings expire after sixty seconds even without adaptive planning');
+}
+
+// Exercise the real room tick's delivery ordering without opening a server port.
+{
+  const source = readFileSync('server.js', 'utf8');
+  const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
+  for (const cadence of [2, 4]) {
+    const decisions = [], deliveries = [];
+    const tick = new Function('step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats',
+      body + '\nreturn timedRoomTick;')(
+      g => { g.tick++; },
+      (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
+      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}));
+    const game = { tick: 0, winner: null, shots: [], newCells: [] };
+    const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
+      players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true }, { ai: true }] };
+    for (let i = 0; i < 81; i++) tick(room);
+    assert.deepEqual(deliveries, Array.from({ length: Math.floor(81 / cadence) }, (_, i) => (i + 1) * cadence), 'humans keep the configured delivery beat');
+    assert.ok(decisions.length >= 4, 'both staggered AI slots took turns');
+    for (const [at, slot, viewed] of decisions) {
+      assert.equal((at + slot * 13) % 40, 0, 'AI schedule keeps the server stagger');
+      assert.equal(viewed, Math.floor(at / cadence) * cadence, 'AI sees only the most recent human delivery beat');
+    }
+    assert.ok(decisions.some(([at, , viewed]) => viewed < at), 'proof includes a turn between snapshots');
+    // Slot 3 thinks at tick 1. A newly handed-over seat waits for its first delivery.
+    const handover = { game: { tick: 0, winner: null, shots: [], newCells: [] }, snapEvery: cadence,
+      aiViews: [null, null, null, null], players: [{}, {}, {}, { ai: true }] };
+    const before = decisions.length; tick(handover);
+    assert.equal(decisions.length, before, 'handover cannot plan from an undelivered observation');
+  }
+}
+
+// Two seeds per mode exercise hidden perturbations across hundreds of real AI turns.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8')), originalRandom = Math.random;
+  const counts = { comparisons: 0, commands: 0, hiddenUnits: 0, footprints: 0, depots: 0, visibleUnits: 0 };
+  try {
+    for (const mode of ['conquest', 'classic', 'assault']) for (const seed of [617, 902]) {
+      Math.random = aiRandom(seed);
+      const g = createGame(map, ['AI 0', 'AI 1', 'AI 2'], true, [0, 1, 2], [0, 1, 2], { mode, defenderTeam: 0 });
+      const memories = [{}, {}, {}], views = memories.map((m, slot) => viewFor(g, slot, m));
+      for (let tick = 0; tick < 1600 && g.winner === null; tick++) {
+        step(g);
+        if (g.tick % 2 === 0) for (let slot = 0; slot < 3; slot++) views[slot] = viewFor(g, slot, memories[slot]);
+        for (let slot = 0; slot < 3; slot++) if ((g.tick + slot * 13) % 40 === 0) {
+          const altered = structuredClone(g), visible = new Set(aiSnapshot(g, slot).units.map(u => u[0])), team = g.players[slot].team;
+          for (const p of altered.players) if (p.team !== team) {
+            p.mp += 12345.67; p.mun = (p.mun ?? 0) + 891.2; p.fuel = (p.fuel ?? 0) + 765.4;
+            for (const kind of Object.keys(p.sup)) p.sup[kind] += 97;
+          }
+          let index = 0;
+          for (const [id, u] of [...altered.units]) if (altered.players[u.owner].team !== team && !visible.has(id)) {
+            counts.hiddenUnits++;
+            u.x = -10000 - index; u.z = -10000; u.hp = index % 2 ? 1 : UNITS[u.type].hpPer * UNITS[u.type].models;
+            u.still = 1000; u.path = [{ x: 150, z: 150 }]; u.orders = [{ t: 'move', x: 140, z: 140 }];
+            u.targetId = 999999; u.attackId = 999998; u.cd = 999; u.prog = 999;
+            if (u.queue) u.queue = ['rifle', 'mg', 'tank'];
+            if (u.air) Object.assign(u.air, { state: 'rearm', fuel: 0, ammo: 0, timer: 999 });
+            if (!UNITS[u.type].building && index++ % 3 === 0) altered.units.delete(id);
+          }
+          // Enemies the seat can see still keep private state: stationary timers, queued paths and the digits below the wire precision.
+          const exact = [];
+          for (const u of altered.units.values()) if (altered.players[u.owner].team !== team && visible.has(u.id)) {
+            exact.push([u, u.x, u.z, u.hp]);
+            Object.assign(u, { still: UNITS[u.type].camo ? u.still : 1000 - u.still, path: [{ x: 150, z: 150 }], orders: [{ t: 'move', x: 140, z: 140 }], retarget: 77, repath: 77, stuck: 3 });
+            u.x = Math.round(u.x * 10) / 10; u.z = Math.round(u.z * 10) / 10; u.hp = Math.max(0.01, Math.ceil(u.hp) - 0.45);
+            counts.visibleUnits++;
+          }
+          try { assert.deepEqual(aiSnapshot(altered, slot), aiSnapshot(g, slot)); }
+          catch { for (const [u, x, z, hp] of exact) Object.assign(u, { x, z, hp }); } // a camouflage flag or cover edge made the digits public
+          const foe = altered.players.find(p => p.team !== team);
+          if (foe) {
+            const added = massiveInternals.spawnUnit(altered, foe.slot, 'tank'); Object.assign(added, { x: -20000, z: -20000, hp: 1, still: 777 });
+            for (const node of altered.nodes ?? []) if (!node.depot && !teamSees(g, team, node)) {
+              node.depot = massiveInternals.placeBuilding(altered, foe.slot, 'depot', node.c, true).id; counts.depots++;
+            }
+            const hiddenBuilding = [...g.units.values()].find(u => UNITS[u.type].building && g.players[u.owner].team !== team && !visible.has(u.id) && !teamSees(g, team, u));
+            if (hiddenBuilding) {
+              for (const cell of hiddenBuilding.cells) massiveInternals.setCell(altered, cell, 'R'); counts.footprints++;
+            }
+          }
+          aiEquivalent(g, altered, slot, memories[slot], seed * 10000 + g.tick * 3 + slot, `${mode} seed ${seed} tick ${g.tick} seat ${slot}`);
+          counts.comparisons++;
+          let expected = aiDigest(g);
+          think(g, slot, { memory: memories[slot], view: views[slot], submit: cmd => {
+            assert.equal(aiDigest(g), expected, 'AI changes no authoritative state before submitting a command');
+            const result = command(g, slot, cmd); expected = aiDigest(g); counts.commands++; return result;
+          } });
+          assert.equal(aiDigest(g), expected, 'AI changes no authoritative state after its last command');
+        }
+      }
+    }
+  } finally { Math.random = originalRandom; }
+  assert.ok(counts.comparisons >= 500, `checked ${counts.comparisons} paired turns`);
+  assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100,
+    'proof exercised actual orders, hidden armies, private footprints, secret depots and visible enemies\' private state');
+  console.log(`AI fog proofs: ${counts.comparisons} paired turns, ${counts.commands} command-only orders, ${counts.hiddenUnits} hidden-unit, ${counts.visibleUnits} visible-unit and ${counts.depots} secret-depot perturbations`);
+}
+
+// Replay an AI seat's actual commands as a human: income, payments, queues and limits stay equal.
+{
+  const originalRandom = Math.random;
+  try {
+    for (const mode of ['conquest', 'classic', 'assault']) {
+      const ai = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1], [0, 1], { mode, defenderTeam: 0 });
+      Object.assign(ai.players[0], { mp: 5000, mun: 1000, fuel: 1000 });
+      if (mode === 'classic') {
+        const hq = [...ai.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+        massiveInternals.placeBuilding(ai, 0, 'barracks', 10 * ai.w + 2, true);
+        massiveInternals.placeBuilding(ai, 0, 'motorpool', 10 * ai.w + 12, true);
+        const node = ai.nodes[0], depot = massiveInternals.placeBuilding(ai, 0, 'depot', node.c, true); node.depot = depot.id;
+        assert.ok(hq.queue, 'Classic parity fixture has production buildings');
+      }
+      const human = structuredClone(ai), memory = {};
+      const submit = cmd => {
+        const a = command(ai, 0, cmd), b = command(human, 0, structuredClone(cmd));
+        assert.equal(a, b, `${mode}: human and AI get the same command result`);
+        assert.equal(aiDigest(ai), aiDigest(human), `${mode}: human and AI commands have identical costs and state changes`);
+        return a;
+      };
+      for (let tick = 0; tick < 400; tick++) {
+        Math.random = aiRandom(7700 + tick); step(ai);
+        Math.random = aiRandom(7700 + tick); step(human);
+        assert.equal(aiDigest(ai), aiDigest(human), `${mode}: controller has no effect on income or cooldowns`);
+        if (ai.tick % 40 === 0) think(ai, 0, { memory, submit });
+      }
+      const rifle = [...ai.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+      submit({ t: 'stop', ids: [rifle.id] });
+      rifle.cd = human.units.get(rifle.id).cd = 0;
+      const ability = { t: 'ability', ids: [rifle.id], x: Math.min(ai.w * CELL - 1, rifle.x + 4), z: rifle.z };
+      const munBefore = ai.players[0].mun;
+      assert.equal(submit(ability), undefined, `${mode}: both controllers can request a ready grenade`);
+      Math.random = aiRandom(8300); step(ai);
+      Math.random = aiRandom(8300); step(human);
+      assert.equal(aiDigest(ai), aiDigest(human), `${mode}: grenade payment and cooldown are identical`);
+      assert.ok(rifle.cd > 0, `${mode}: a thrown grenade starts its normal cooldown`);
+      assert.equal(submit(ability), 'cooldown', `${mode}: ability cooldown blocks both controllers`);
+      if (mode === 'classic') {
+        assert.ok(ai.players[0].mun < munBefore, 'Classic: both controllers paid Munitions for the grenade');
+        rifle.cd = human.units.get(rifle.id).cd = 0;
+        ai.players[0].mun = human.players[0].mun = 0;
+        assert.equal(submit(ability), 'mun', 'Classic: neither controller can use a paid ability without Munitions');
+        ai.players[0].mun = human.players[0].mun = 1000;
+      } else assert.equal(ai.players[0].mun, munBefore, `${mode}: abilities use the same free price`);
+      ai.players[0].sup.recon = human.players[0].sup.recon = 0;
+      assert.equal(submit({ t: 'support', kind: 'recon', x: 10, z: 10 }), undefined, `${mode}: support is paid normally`);
+      assert.equal(submit({ t: 'support', kind: 'recon', x: 10, z: 10 }), 'cooldown', `${mode}: support cooldown blocks both controllers`);
+      ai.players[0].mp = human.players[0].mp = 0;
+      assert.equal(submit({ t: 'buy', unit: 'rifle' }), 'mp', `${mode}: neither controller buys without manpower`);
+      ai.players[0].mp = human.players[0].mp = 10000;
+      if (mode === 'classic') {
+        ai.players[0].fuel = human.players[0].fuel = 0;
+        assert.equal(submit({ t: 'buy', unit: 'tank' }), 'fuel', 'Classic: neither controller bypasses fuel');
+        const hq = [...ai.units.values()].find(u => u.owner === 0 && u.type === 'hq');
+        hq.queue = Array(5).fill('rifle'); human.units.get(hq.id).queue = [...hq.queue];
+        assert.equal(submit({ t: 'buy', unit: 'engineer' }), 'queueFull', 'Classic: neither controller bypasses the production queue limit');
+      }
+      const template = [...ai.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+      while (popOf(ai, 0) < popCap(ai)) {
+        const id = ai.nextId++; human.nextId = ai.nextId;
+        const unit = { ...structuredClone(template), id }; ai.units.set(id, unit); human.units.set(id, structuredClone(unit));
+      }
+      assert.equal(submit({ t: 'buy', unit: 'rifle' }), 'pop', `${mode}: army cap applies to both controllers`);
+    }
+  } finally { Math.random = originalRandom; }
+}
+
 // Real map loads for 3 players, all spawns start with their force.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
@@ -2187,9 +2566,10 @@ for (const lookupFinished of [false, true]) {
   // win and loss: Ann (team 0) against Ben and an AI (team 1)
   {
     const { room, g, people: [ann, ben] } = await setUp('endwin', ['Ann', 'Ben']);
-    // count the AI's thinking: think() first reads its player's out flag
+    // Count AI command attempts. Observation refreshes can also run while thinking is idle.
     let thinks = 0;
-    Object.defineProperty(g.players[2], 'out', { get() { if (/\/ai\.js:/.test(new Error().stack)) thinks++; return undefined; }, set() {}, configurable: true });
+    let aiMp = g.players[2].mp;
+    Object.defineProperty(g.players[2], 'mp', { get() { if (/at think /.test(new Error().stack)) thinks++; return aiMp; }, set(value) { aiMp = value; }, configurable: true, enumerable: true });
     await ticksUntil(() => thinks > 0, 'the AI thinks during the match');
     const mine = () => [...g.units.values()].filter(u => u.owner === 0).length, before = mine();
     await ann.send({ t: 'buy', unit: 'rifle' }); assert.equal(mine(), before + 1, 'orders work during the match');
