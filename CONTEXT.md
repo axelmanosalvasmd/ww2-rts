@@ -80,6 +80,12 @@ _Avoid_: stealth, invisibility
 A capture location on the map. In Classic it earns Munitions rather than VP.
 _Avoid_: flag, objective
 
+## Orders
+
+**Take Cover**:
+The order that sends the selected infantry to the best cover within reach. Idle infantry under fire do the same on their own; crewed weapons only on the order.
+_Avoid_: hide, duck
+
 ## Air
 
 **Sortie**:

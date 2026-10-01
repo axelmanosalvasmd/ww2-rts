@@ -7,6 +7,7 @@ export const bindings = [
   binding('retreat', 'KeyR', 'R', 'Retreat selected units'),
   binding('ability', 'KeyF', 'F', 'Use the first ready selected ability'),
   binding('amove', 'KeyG', 'G', 'Aim an attack-move order'),
+  binding('cover', 'KeyC', 'Shift+C', 'Selected infantry take cover', 'global', { shift: true }),
   binding('mute', 'KeyM', 'M', 'Toggle audio'),
   binding('alert', 'Space', 'Space', 'Jump to the newest alert, or center the selection'),
   binding('follow', 'Space', 'Shift+Space', 'Follow the selection', 'global', { shift: true }),

@@ -25,6 +25,8 @@ export const CFG = {
   armies: { standard: { pop: 1, income: 1 }, large: { pop: 2.5, income: 3 }, massive: { pop: 5, income: 6 }, endless: { pop: 5, income: 20 } },
   air: { seeRange: 60, station: 50, rearm: 30, orbit: 18, seek: 60, bail: 0.35, offmap: 40 },
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
+  // seeking cover: how far a squad will walk for it (metres), and how long an idle squad under fire waits between looks
+  coverSeek: 10, coverRetry: 2,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
   terrainHp: { B: 400, H: 60, '#': 150, '=': 200, X: 40, Y: 250 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.' }, crush: { H: '.', '#': 'R', X: '.' },
   fordSpeed: 0.5,
@@ -582,6 +584,43 @@ function nearCover(g, u) {
 export const vet = (u) => (UNITS[u.type].cost ? CFG.vetXp.filter(k => u.xp >= k * UNITS[u.type].cost).length : 0); // free units (the bunker) never rank up
 const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
 
+// ---------- seeking cover ----------
+// how well a spot protects infantry from a threat at `from` (may be null): 0 trench, 1 cover cell,
+// 2 behind something solid on the threat's side, 3 open ground
+const coverRank = (g, at, from) => { const f = flagsAt(g, at.x, at.z); return f & TRENCH ? 0 : f & COVER ? 1 : from && behindCover(g, at, from) ? 2 : 3; };
+// squads in cover are not pushed out of it by others crowding past
+const shovedFromCover = (g, u, x, z) => inCover(g, u) && !(flagsAt(g, x, z) & COVER);
+// Sends a squad to the nearest spot within CFG.coverSeek that protects it better than where it stands (a trench is
+// worth a 4 m longer walk than plain cover). Spots another squad stands on or has just claimed are left alone.
+// Returns whether it set off.
+function seekCover(g, u, from) {
+  const now = coverRank(g, u, from);
+  if (now === 0) return false;
+  const r = Math.ceil(CFG.coverSeek / CELL), cx = Math.floor(u.x / CELL), cy = Math.floor(u.z / CELL), claims = g.coverClaims ??= new Map(), spots = [];
+  for (let y = Math.max(0, cy - r); y <= Math.min(g.h - 1, cy + r); y++) for (let x = Math.max(0, cx - r); x <= Math.min(g.w - 1, cx + r); x++) {
+    const c = y * g.w + x;
+    if (g.flags[c] & (MOVE | WIRE)) continue;
+    const at = cellCenter(g, c), d = dist(u, at), rank = d <= CFG.coverSeek ? coverRank(g, at, from) : 3;
+    if (rank >= now) continue;
+    const claim = claims.get(c);
+    if (claim && claim.id !== u.id && g.tick - claim.tick < 100 && g.units.get(claim.id)?.hp > 0) continue;
+    spots.push({ c, at, score: d + rank * 4 });
+  }
+  spots.sort((a, b) => a.score - b.score);
+  let tries = 0;
+  for (const { c, at } of spots) {
+    if (gridFor(g).candidates(at, CELL, false, v => v !== u && !v.air && v.garrison < 0 && cellOf(g, v.x, v.z) === c).length) continue;
+    if (tries++ >= 3) break; // ponytail: three path searches at most; cover behind a river or cliff is simply skipped
+    const path = findPath(g, u, at);
+    let len = 0, p = u;
+    for (const q of path) { len += dist(p, q); p = q; }
+    if (!path.length || len > CFG.coverSeek * 1.5) continue;
+    u.path = path; claims.set(c, { id: u.id, tick: g.tick });
+    return true;
+  }
+  return false;
+}
+
 // leave a building onto the nearest open cell
 function exitBuilding(g, u) {
   if (u.garrison < 0) return;
@@ -1092,6 +1131,26 @@ export function command(g, slot, cmd) {
       Object.assign(u, { retreating: true, attackId: 0, targetId: 0, nade: null, dig: null, stuck: 0, enter: -1, amove: null, fireAt: -1, build: 0 });
       u.path = findPath(g, u, homeOf(g, u));
     }
+  } else if (cmd.t === 'cover') {
+    // Take Cover: every selected infantry squad drops what it is doing and runs to the best cover within reach,
+    // judged against the nearest enemy its team can see. Squads already in a trench or a house stay put.
+    const squads = ids.map(mine).filter(u => u && UNITS[u.type].infantry);
+    if (!squads.length) return 'needs';
+    const foes = [...g.players[slot].visible].map(id => g.units.get(id)).filter(e => e && !e.air && e.hp > 0);
+    let went = false, reason = 'noCover';
+    for (const u of squads) {
+      if (u.retreating) { reason = 'retreating'; continue; }
+      if (u.garrison >= 0) { went = true; continue; }
+      let from = null, bd = 60;
+      for (const e of foes) if (dist(u, e) < bd) { bd = dist(u, e); from = e; }
+      from ??= u.hitAt >= g.tick - 100 ? u.hitFrom : null;
+      const path = u.path;
+      u.path = [];
+      if (seekCover(g, u, from)) Object.assign(u, { orders: [], attackId: 0, targetId: 0, stuck: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 });
+      else { u.path = path; if (coverRank(g, u, from) === 3) continue; }
+      went = true;
+    }
+    if (!went) return reason;
   } else if (cmd.t === 'ability') {
     const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
     let used = false, reason = 'needs';
@@ -1268,6 +1327,7 @@ function fire(g, u, t, moving) {
   const before = t.hp;
   t.hp -= dmg * hits;
   if (hits) t.lastHit = u.owner;
+  if (inf) { t.hitAt = g.tick; t.hitFrom = { x: u.x, z: u.z }; } // shot at, hit or not: idle squads look for cover
   u.xp += Math.min(before, dmg * hits) + (t.hp <= 0 && before > 0 ? UNITS[t.type].cost * 0.2 : 0);
   if (inf && !t.retreating && !(t.sprint > 0)) t.supp = Math.min(100, t.supp + supp * cover * (w.perModel ? shots / UNITS[u.type].models : 1));
   u.cooldown = w.interval * rate; u.shotAt = g.tick;
@@ -1490,6 +1550,12 @@ export function step(g) {
       else if (u.repath <= 0) requestStepPath(g, u, t, 'attackId');
     }
 
+    // under fire with nothing to do: idle infantry shift to the nearest cover (crewed weapons keep their position)
+    if (def.infantry && !w.setup && u.hitAt >= g.tick - 40 && (u.coverTry ?? 0) <= g.tick && u.garrison < 0 && !u.retreating
+      && !u.path.length && !u.orders.length && !u.attackId && !u.dig && !u.nade && !u.amove && !u.build && u.enter < 0 && u.fireAt < 0) {
+      u.coverTry = g.tick + CFG.coverRetry / TICK; seekCover(g, u, u.hitFrom);
+    }
+
     // movement
     const before = { x: u.x, z: u.z };
     const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
@@ -1560,8 +1626,8 @@ export function step(g) {
       const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
       if (sa && sb) continue;
       const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-      if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-      if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+      if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1 && !shovedFromCover(g, a, a.x - px, a.z - pz)) { a.x -= px; a.z -= pz; }
+      if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1 && !shovedFromCover(g, b, b.x + px, b.z + pz)) { b.x += px; b.z += pz; }
       updateGrid(g, a); updateGrid(g, b);
       // Unvisited units have not moved during this i pass. The candidate cells remain
       // complete until a push changes the query bounds. No displacement padding is needed.

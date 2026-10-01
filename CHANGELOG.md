@@ -5,6 +5,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Unit control, part 1: cover.
+  - Infantry look after themselves: a squad with no orders that gets shot at walks to the nearest better cover within
+    10 m (a trench first, then a cover cell such as a wall, rubble, a hedge or a shell hole, then a spot behind
+    something solid on the shooter's side) and stays there. Squads you gave an order keep following it. Crewed weapons
+    (MG, AT gun, mortar, flak) never move on their own, so a gun line stays where you set it up.
+  - New order: Take cover (Shift+C, or the button in Orders). Every selected infantry squad, crewed weapons included,
+    drops what it is doing and runs to the best cover within 10 m, judged against the nearest enemy you can see. Each
+    squad takes its own cell. Squads already in a trench or a house stay; "No cover within reach" if there is none.
+  - Squads standing in cover are no longer shoved out of it by other units crowding past.
+  - Computer players get the automatic part too (it is in the game rules, not the AI).
+  - Balance: Conquest, default map, 300 three-way AI matches with rotated factions: USA/GER/USSR won 41/36/23% (39/33/28% before this change on the same script), average match 561 s (552 s). USSR lost about 5 points, at the edge of the noise for 300 matches; left alone until the rebalance in the last part. The Classic run is recorded with part 2.
 - New army size in the lobby: Endless. Same unit limit as Massive (5x) but 20x income and starting MP instead of 6x,
   so losses are replaced almost at once and the battle never thins out. Not balance-tested with AI runs; the unit
   limit is unchanged, so server load should match Massive.

@@ -9,6 +9,7 @@ export const DENY_SENTENCES = Object.freeze({
   max: 'That unit or position is at its limit', suddenDeath: 'Not during Sudden Death',
   queueFull: 'The training queue is full', ordersFull: 'This unit already has 8 queued orders',
   retreating: 'That squad is retreating', noBuilders: 'Select a builder squad',
+  noCover: 'No cover within reach',
 });
 // The server answers queueFull for both a full training queue (buy) and a full order queue (every other command).
 export const denySentence = (code, cmd) =>
@@ -75,6 +76,11 @@ export function availability(s, cfg = CFG, action = {}) {
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
     if (crew.every((v) => v.flags & 1)) return no(DENY_SENTENCES.retreating);
     return action.queue ? yes() : resources(s, FORTS[action.kind].cost); // a queued dig is paid when it starts
+  }
+  if (action.t === 'cover') {
+    const squads = selected.filter((v) => UNITS[v.type].infantry);
+    if (!squads.length) return no('Select an infantry squad');
+    return squads.every((v) => v.flags & 1) ? no(DENY_SENTENCES.retreating) : yes();
   }
   if (action.t === 'ability') {
     const crew = selected.filter((v) => v.type === action.unit);

@@ -8,7 +8,7 @@
 import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
 import { symbolSVG } from './symbols.js';
 import { unitRole } from './unit-roles.js';
-import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
+import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label, badge } from './keys.js';
 import { availability, cooldownSeconds } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
 
@@ -69,6 +69,7 @@ const ICON = {
   retreat: '<path d="M24 27V14a7 7 0 0 0-14 0v6"/><path d="M5.5 15.5 10 21l4.5-5.5"/>',
   amove: '<circle cx="21" cy="11" r="6"/><path d="M21 2.5v4M21 15.5v4M12.5 11h4M25.5 11h4"/><path d="M4 28l12.5-12.5"/>',
   stop: '<path d="M11 4h10l7 7v10l-7 7H11l-7-7V11z"/><path d="M11 16h10"/>',
+  takecover: '<path d="M3 27h26M18 27V13h9v14"/><circle cx="10" cy="17.5" r="3"/><path d="M5.5 27c0-4 2-5.5 4.5-5.5s4.5 1.5 4.5 5.5"/>',
   trench: '<path d="M3 12h6v8h7v-8h7v8h6"/>',
   sandbags: '<rect x="3.5" y="19" width="12" height="7" rx="3.5"/><rect x="16.5" y="19" width="12" height="7" rx="3.5"/><rect x="10" y="11" width="12" height="7" rx="3.5"/>',
   wire: '<path d="M2 21h28"/><circle cx="8" cy="15.5" r="4.5"/><circle cx="16" cy="15.5" r="4.5"/><circle cx="24" cy="15.5" r="4.5"/>',
@@ -281,19 +282,22 @@ export function createHud(ctx) {
     const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}`;
+    const inf = sel.some((v) => UNITS[v.type].infantry);
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
         orderBtn('data-a="retreat"', 'retreat', label('retreat'), `Retreat (${label('retreat')}): run back to base, heal and reinforce there`) +
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
+        (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m`) : '') +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown`, t); }).join('') +
         '</div>';
       el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
         const a = b.dataset.a;
         if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
+        else if (a === 'cover') ctx.takeCover();
         else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
       }));
     }
@@ -303,6 +307,7 @@ export function createHud(ctx) {
       const a = b.dataset.a, val = b.lastElementChild;
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
+      else if (a === 'cover') result = check({ t: 'cover' });
       else if (UNITS[a]) {
         // same squads the reason sentence counts: retreating squads cannot use the ability
         const all = sel.filter((v) => v.type === a), us = all.some((v) => !(v.flags & 1)) ? all.filter((v) => !(v.flags & 1)) : all;

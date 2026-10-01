@@ -691,7 +691,7 @@ function placementView() {
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
-  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
+  retreat: () => retreat(), takeCover: () => takeCover(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -769,6 +769,7 @@ audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles m
 function toggleMute() { audio.toggleMute(); } // the M key (client/keys.js); the slider follows
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
+function takeCover() { if (!selected.size || explainUnavailable(available({ t: 'cover' }))) return; sendCmd({ t: 'cover', ids: [...selected] }); blip(420); }
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
 let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
@@ -867,7 +868,7 @@ const selection = createSelection({ units, selected, groups, owner: () => me, de
   screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
-  retreat, ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
+  retreat, cover: takeCover, ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
   follow: followSelected, rally: startRally,

@@ -460,3 +460,27 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
   40 hp) and VBLOCK (vehicles' paths treat it as a wall; infantry pass and get cover; 250 hp). findPath picks the
   blocking mask from the moving unit's type.
 - Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.
+
+## Unit control and unit AI (decided 2026-10-01, four slices)
+Decisions from the planning interview:
+- Cover: both automatic (idle infantry under fire) and a Take Cover order. Hold Position (slice 3) means hold: no
+  auto-cover and no chasing.
+- Mass entrenchment: every selected digger works one shared pattern (line, zigzag, double line, arc, ring,
+  strongpoint with wire). Short of MP or diggers: dig what can be paid for, middle outward; the rest as MP comes in.
+- Stances (free fire, hold fire, hold position), auto-retreat when broken (a toggle, off by default), vehicles turn
+  their front to the threat, groups spread their fire. New units behave as before until the player changes them.
+- Computer players use all of it. Order of work: cover, trenches, extras, AI and rebalance.
+
+Slice 1, cover (`seekCover`, `coverRank` in sim.js):
+- Spots are ranked 0 trench, 1 cover cell, 2 behind something solid on the threat's side (`behindCover`), 3 open. A
+  squad only moves to a strictly better rank within `CFG.coverSeek` (10 m), scoring distance + 4 m per rank, and only
+  if the walk is under 15 m (so not to cover across a river). A cell another squad stands on, or claimed in the last
+  5 s (`g.coverClaims`), is skipped, so a platoon spreads along a wall instead of piling onto one cell.
+- Automatic: infantry without `setup` weapons, idle (no path, order, target order, dig, build), shot at by direct fire
+  in the last 2 s (`u.hitAt`, `u.hitFrom`, set in `fire` whether it hit or not), one look every `CFG.coverRetry` (2 s).
+  Blasts do not trigger it: cover does not help against them and there is no direction to hide from.
+- Crewed weapons are left out of the automatic part on purpose: moving costs them their setup time and their field of
+  fire, which is the thing players set by hand. The Take Cover order still moves them.
+- Separation no longer pushes a squad in a cover cell onto a cell without cover (`shovedFromCover`). Found while
+  testing: a squad walking past shoved the one already behind the wall out into the open.
+- Balance: Conquest, default map, 300 three-way AI matches with rotated factions: USA/GER/USSR won 41/36/23% (39/33/28% before this change on the same script), average match 561 s (552 s). USSR lost about 5 points, at the edge of the noise for 300 matches; left alone until the rebalance in the last part. The Classic run is recorded with part 2.

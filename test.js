@@ -764,6 +764,42 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(units.filter(u => u.retreating).length, units.length, 'Massive retreat reaches every selected unit');
 }
 
+// Seeking cover: idle infantry under fire shift to cover within reach; squads with orders and crewed weapons stay put.
+{
+  const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14); // a wall cell centered on (11, 21)
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  const squad = put(g, 0, 'rifle', 15, 21), mg = put(g, 0, 'mg', 13, 25), mover = put(g, 0, 'rifle', 15, 17);
+  put(g, 1, 'rifle', 35, 21);
+  command(g, 0, { t: 'move', orders: [[mover.id, 15, 5]] });
+  for (let i = 0; i < 80; i++) { mg.hitAt = g.tick; mg.hitFrom = { x: 35, z: 21 }; mover.hitAt = g.tick; mover.hitFrom = { x: 35, z: 21 }; step(g); }
+  assert.ok(sim.inCover(g, squad), 'an idle squad under fire moves into nearby cover');
+  assert.deepEqual([mg.x, mg.z], [13, 25], 'a crewed weapon under fire keeps its position');
+  assert.ok(!sim.inCover(g, mover) && mover.z < 12, 'a squad with a move order keeps following it under fire');
+  const far = fresh(); far.players.forEach(p => (p.mp = 10000));
+  const open = put(far, 0, 'rifle', 15, 21); put(far, 1, 'rifle', 35, 21);
+  run(far, 3);
+  assert.deepEqual([open.x, open.z], [15, 21], 'with no cover in reach the squad stays where it is');
+}
+
+// Take Cover order: the selected infantry run to cover, crewed weapons included; vehicles and open ground refuse.
+{
+  const rows = [...empty]; rows[10] = '.....##' + '.'.repeat(13);
+  const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  const squad = put(g, 0, 'rifle', 17, 21), mg = put(g, 0, 'mg', 17, 23), tank = put(g, 0, 'tank', 30, 30);
+  squad.amove = { x: 30, z: 21 };
+  assert.equal(command(g, 0, { t: 'cover', ids: [tank.id] }), 'needs', 'Take Cover needs infantry');
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id, mg.id, tank.id] }), undefined, 'Take Cover is accepted');
+  assert.equal(squad.amove, null, 'Take Cover replaces the squad\'s orders');
+  run(g, 4);
+  assert.ok(sim.inCover(g, squad) && sim.inCover(g, mg), 'both squads end up in cover');
+  assert.notEqual(Math.floor(squad.x / CELL), Math.floor(mg.x / CELL), 'each squad takes its own cover cell');
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id] }), undefined, 'a squad already in cover accepts the order and stays');
+  const open = put(g, 0, 'rifle', 30, 5);
+  assert.equal(command(g, 0, { t: 'cover', ids: [open.id] }), 'noCover', 'no cover within reach is refused');
+  open.retreating = true;
+  assert.equal(command(g, 0, { t: 'cover', ids: [open.id] }), 'retreating', 'retreating squads do not take cover');
+}
+
 // Assault mode: the defender gets a bunker and fortifications; attackers must destroy it before time runs out.
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
@@ -1618,8 +1654,8 @@ const referenceSeparation = `
     const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
     if (sa && sb) continue;
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1 && !shovedFromCover(g, a, a.x - px, a.z - pz)) { a.x -= px; a.z -= pz; }
+    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1 && !shovedFromCover(g, b, b.x + px, b.z + pz)) { b.x += px; b.z += pz; }
   }
 `;
 
@@ -3622,7 +3658,10 @@ console.log('all command feedback checks passed');
   eng.retreating = true;
   assert.equal(check({ t: 'build', kind: 'barracks' }).reason, 'That squad is retreating');
   assert.equal(check({ t: 'dig', kind: 'trench' }).reason, 'That squad is retreating');
+  assert.equal(check({ t: 'cover' }).reason, 'That squad is retreating');
   eng.retreating = false;
+  assert.equal(check({ t: 'cover' }).ok, true);
+  assert.equal(check({ t: 'cover', ids: [hq.id] }).reason, 'Select an infantry squad');
   assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
   hq.queue = Array(5).fill('rifle');
   assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'The training queue is full');
