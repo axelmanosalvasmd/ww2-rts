@@ -2,6 +2,7 @@
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
 import { gridFor, rebuildGrid, updateGrid } from './grid.js';
+import { planWeather, stepWeather, sightMul, speedMul, roadMask, weatherRow } from './weather.js';
 
 export const CELL = 2;
 export const TICK = 1 / 20;
@@ -319,6 +320,9 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   }
   g.army = typeof opts.army === 'string' && Object.hasOwn(CFG.armies, opts.army) ? CFG.armies[opts.army] : CFG.armies.standard;
   for (const p of g.players) p.mp *= g.army.income;
+  // weather (shared/weather.js): the lobby's pick ('map' by default), the same plan for the same seed
+  g.weather = planWeather(opts.weather ?? 'map', map, opts.mapKey, opts.weatherSeed ?? Math.floor(Math.random() * 2 ** 31));
+  g.roads = roadMask(map);
   return g;
 }
 
@@ -462,9 +466,11 @@ export function siteNear(g, x, z, size) {
   const c = findSite(g, x - size * CELL / 2, z - size * CELL / 2, size, avoid);
   return c < 0 ? null : footCenter(g, c, size);
 }
+// how far a unit sees before height and houses: weather shortens it for everything on the ground (shared/weather.js)
+const visionOf = (g, u) => UNITS[u.type].vision * (u.air ? 1 : sightMul(g));
 // can this team see the spot right now? Airborne planes see across terrain.
 export function teamSees(g, team, at) {
-  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= UNITS[u.type].vision
+  return [...g.units.values()].some(u => g.players[u.owner].team === team && dist(u, at) <= visionOf(g, u)
     && (u.air ? airborne(u) : UNITS[u.type].building || los(g, u, at)));
 }
 
@@ -1292,8 +1298,8 @@ function updateVision(g) {
     const vis = new Set(), own = ownByTeam.get(p.team) ?? [];
     // Planes on the ground see nothing; airborne planes see across terrain.
     const sources = own.filter(u => !u.air || airborne(u)).map(u => {
-      const def = UNITS[u.type];
-      return { u, def, range: def.vision * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) };
+      const def = UNITS[u.type], base = visionOf(g, u);
+      return { u, def, base, range: base * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) };
     });
     const watchers = new Map();
     // Gather observers once, in their original order. Each target's check then visits
@@ -1318,11 +1324,11 @@ function updateVision(g) {
       // camouflage: after 3s still and 4s without firing, only seen within camoRange (recon flights still spot it)
       const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
       let seen = false;
-      for (const { u, def, range } of nearby(t)) {
+      for (const { u, def, base, range } of nearby(t)) {
         const d = dist(u, t);
         if (u.air ? d <= def.vision && (!hidden || d < CFG.camoRange * 2)
           : hidden ? d < CFG.camoRange
-            : d < 6 || (def.building && d <= def.vision) || (d <= range && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
+            : d < 6 || (def.building && d <= base) || (d <= range && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
       }
       if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
@@ -1333,7 +1339,7 @@ function updateVision(g) {
     const mem = (g.ghosts ??= new Map()).get(p.team) ?? new Map();
     g.ghosts.set(p.team, mem);
     for (const id of vis) { const t = g.units.get(id); if (UNITS[t.type].building) mem.set(id, { id, type: t.type, owner: t.owner, x: t.x, z: t.z, built: t.built }); }
-    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => (!u.air || airborne(u)) && dist(u, gh) <= UNITS[u.type].vision && (u.air || UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
+    for (const [id, gh] of mem) if (!vis.has(id) && !g.units.has(id) && own.some(u => (!u.air || airborne(u)) && dist(u, gh) <= visionOf(g, u) && (u.air || UNITS[u.type].building || los(g, u, gh) || dist(u, gh) < 8))) mem.delete(id);
   }
 }
 // the enemy buildings a player knows about: seen now, or remembered (Ghosts)
@@ -1411,6 +1417,7 @@ export function step(g) {
   rebuildGrid(g);
   g.tick++;
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure);
+  stepWeather(g);
   if (g.tick % 4 === 1) updateVision(g);
 
   beginPathTick(g);
@@ -1492,7 +1499,8 @@ export function step(g) {
 
     // movement
     const before = { x: u.x, z: u.z };
-    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
+    const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1)
+      * speedMul(g, def, cellOf(g, u.x, u.z)); // weather: mud, snow, wet fields (shared/weather.js)
     let budget = speed * dt;
     while (budget > 0 && u.path.length) {
       const wp = u.path[0], d = dist(u, wp);
@@ -1876,6 +1884,8 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     orders: cache ? cache.owners[slot].orders : [...g.units.values()].filter(u => u.owner === slot && u.orders?.length).map(u => ordersRow(g, u)),
     rally: p.rally ? [r(p.rally.x), r(p.rally.z)] : null,
     army: g.army,
+    // public weather: [now] or, just before it turns, [now, next, seconds left]
+    weather: weatherRow(g),
     mode: cache ? cache.mode : modeRow(g),
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: cache ? cache.teams.get(p.team).ghosts?.filter(gh => !seen(gh[0])) : g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,

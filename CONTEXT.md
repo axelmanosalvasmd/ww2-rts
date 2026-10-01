@@ -106,6 +106,12 @@ _Avoid_: AA (in player-facing text)
 **Shoot-down**:
 A plane destroyed by Flak or Fighter Cover before it finishes its run.
 
+## Battlefield
+
+**Weather**:
+The match's conditions (Clear, Ground fog, Rain, Mud or Snow). It shortens sight on the ground and slows movement for every side alike; planes are not affected. The host picks it in the lobby, and it changes at most once in a match, announced to everyone a few seconds before.
+_Avoid_: climate, season, conditions (in player-facing text)
+
 ## Interface
 
 **Command Card**:

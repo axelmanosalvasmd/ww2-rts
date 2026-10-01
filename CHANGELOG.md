@@ -5,6 +5,24 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Weather: the host picks it in the lobby (Map default, Clear, Fog, Rain, Mud, Snow or Random), and it changes how
+  the match plays for everyone. Ground fog cuts sight by 30%, rain by 15% and slows vehicles off the roads by 20%,
+  mud slows infantry by 10% and vehicles off the roads by 30%, and snow cuts sight by 10% and slows infantry by 10%
+  and vehicles by 15%. Planes and recon flights fly above it. Map default follows the map: the Ardennes snows, and
+  the misty river maps (Pegasus Bridge, The Polder, River Towns) start in ground fog that lifts at 4:00. Random can
+  lift its fog or turn its rain to mud partway through. Any change is announced to everyone 10 seconds ahead in a
+  quiet line under the score strip, which always says the weather and what it does. The board shows it too: thicker
+  haze and drifting fog banks, rain streaks with wet ground and puddle sheen, mud along the village streets, and snow
+  falling and lying on open ground, on Low graphics as well (with fewer drops). The AI waits for a bigger army before
+  marching on a Classic base or an Assault bunker when it can see less. Balance, AI vs AI on the default map:
+  Conquest (40 matches each) 2nd place ends at 0.59 / 0.63 / 0.62 / 0.62 of the winner's VP in Clear / Fog / Rain /
+  Snow, matches last 9.2 / 9.6 / 9.3 / 9.1 min, faction wins USA/GER/USSR 6/20/14, 14/15/11, 16/16/8, 15/13/12.
+  Classic (20 each) lasts 19.2 to 20.0 min, 14 to 17 of 20 are decided before Sudden Death, faction wins 6/7/6,
+  6/8/6, 6/9/4, 9/5/6 (2 draws in all). Found while measuring: asking for groups of 4 instead of 3 to attack a held
+  point in poor weather made Conquest one-sided (2nd place 0.26 to 0.37 of the winner), so Conquest groups stay at 3.
+  Left for later: Mud was not measured, and Clear's 6/20/14 faction split (the unchanged game) is wider than the
+  older 150-match runs. The match-end test "a new match without the old result" failed once on a busy machine: the
+  server sends the lobby update after listing the map files, so it can arrive after the start message (a rerun passed).
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

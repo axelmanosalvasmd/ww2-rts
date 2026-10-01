@@ -41,6 +41,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + trenches, digging, smoke barrage (150 matches) | 61% | 0.95 | 9.3 min |
 | + directional supports (150 matches) | 60% | 0.89 | 9.3 min |
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
+| + weather: Clear / Fog / Rain / Snow (40 each; faction wins and Classic in Weather below) | 59 / 63 / 62 / 62% | 1.88 / 1.93 / 2.05 / 1.80 (checked every 10 s) | 9.2 / 9.6 / 9.3 / 9.1 min |
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
@@ -238,6 +239,40 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
   Browser cost at 250+ units hasn't been measured on the friends' PCs.
 
+## Weather (lobby setting, 2026-10-01, all modes)
+- One state at a time, the same for every side. Clear: no effect. Ground fog: sight -30%. Rain: sight -15%, vehicles
+  -20% off roads. Mud: infantry -10%, vehicles -30% off roads. Snow: sight -10%, infantry -10%, vehicles -15%.
+  Planes, recon flights and the units' own stats are untouched: `shared/weather.js` gives the sim two multipliers,
+  `sightMul` (vision, for ground units and buildings) and `speedMul` (movement), read in one place each in sim.js.
+- Roads: the sim had no road layer, so `roadMask` follows the ground painter (client/ground.js): open ground next to a
+  house is a village street unless it lies by water, and bridges are roads. A crater ends the road there. The client
+  paints mud along the same streets.
+- Lobby: the host picks Map default / Clear / Fog / Rain / Mud / Snow / Random (`room.weather`, message `weather`).
+  Map default reads a `weather` field in the map file, else the map's mood: snowy maps (Ardennes) snow, misty river
+  dawns (Pegasus, Polder, River Towns) start in ground fog that lifts at 4:00, every other map is clear. A host's pick
+  holds all match. Random is seeded per match: any state, and half the time fog lifts at 3:30 to 4:30 or rain turns
+  to mud at 5:00 to 7:00. At most one change per match, announced to everyone 10 seconds before in every snapshot
+  (`weather: [now, next, seconds]`).
+- Screen: one line under the score strip in plain words ("Rain: sight -15%, vehicles -20% off roads"), brass while
+  it is about to change. `client/atmosphere.js` eases the haze, fog color, sun and shadows over a few seconds, and
+  adds fog banks, rain streaks, falling snow, wet ground with puddle sheen, mud along the streets and snow cover
+  (one ground layer shader). Rain and snow stay on Graphics Low with a third of the drops. The light mood is fixed
+  per match: snow brings the winter light, rain and mud an overcast sky, fog and clear keep the map's mood.
+- AI: `aiCaution` (1 in clear weather, 1.2 in mud and snow, 1.3 in rain, 1.43 in fog) raises the army margin and
+  size it wants before marching on a Classic base or an Assault bunker (6 units in clear weather, 9 in fog), since it
+  has seen less of the enemy and its tanks arrive late. Conquest point attacks keep groups of 3: scaling those to 4 made Conquest one-sided (2nd place VP
+  0.26 of the winner's and 6.3 min matches with Clear stats; 0.34 to 0.37 and 7 min in fog, rain and snow).
+- Balance (default map, 3 AIs, factions USA/GER/USSR by slot, spawns shuffled; leader changes checked every 10 s):
+  | Weather | Conquest (40 each): 2nd place VP vs winner, leader changes, length, faction wins | Classic (20 each): length, decided before Sudden Death, winner's HQ health left, faction wins |
+  |---|---|---|
+  | Clear | 0.59, 1.88, 9.2 min, 6/20/14 | 19.7 min, 17/20, 88%, 6/7/6 and 1 draw |
+  | Fog | 0.63, 1.93, 9.6 min, 14/15/11 | 19.9 min, 14/20, 76%, 6/8/6 |
+  | Rain | 0.62, 2.05, 9.3 min, 16/16/8 | 20.0 min, 16/20, 85%, 6/9/4 and 1 draw |
+  | Snow | 0.62, 1.80, 9.1 min, 15/13/12 | 19.2 min, 15/20, 76%, 9/5/6 |
+  No weather comes out one-sided: closeness and length stay within the noise of Clear. The faction splits swing by
+  about 3 wins either way at 40 matches; Clear (the unchanged game) has the widest one, in line with the older
+  150-match Germany lead (45/63/42). Mud was not measured.
+
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
 is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
@@ -396,14 +431,15 @@ the HUD.
   paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
   5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
   and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
-  on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
+  on Low turns off cloud shade, blowing dust and birds, and keeps the table props, the lamp pool, fewer mist sheets
+  and fog banks, and the match weather's rain or snow with a third of the drops.
 - Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
   sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
   It never changes gameplay cells. The five base buildings are one merged, vertex-colored model per type and team
   (`buildingModel`). Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
   `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
-- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
-  drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
+- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust)
+  and the match weather (see Weather; the name rules live in `shared/weather.js` so Map default agrees), drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
   birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
   ground darkens it too.
 - As merged with rounds 1 to 3: main.js keeps `relief` and `hAt` delegates to it. The round 3 smoothed height field

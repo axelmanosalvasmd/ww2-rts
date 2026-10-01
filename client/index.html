@@ -116,6 +116,11 @@
   #util, #scores, #status, #econ { background: #22251b; }
   #scores > div { padding: 0 12px; min-width: 0; }
   #scores > div + div { border-left: 1px solid var(--edge); }
+  /* client/weather-view.js: the match weather and what it does, one plain line under the teams; brass while it turns.
+     contain: inline-size keeps its text out of the strip's width, so the strip stays as wide as the teams need */
+  #scores > .sc-wx { flex: 0 0 100%; margin: 0; padding: 5px 12px 0; border-top: 1px solid var(--edge); font-size: 13px; line-height: 1.2; color: var(--dim);
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; contain: inline-size; }
+  #scores > .sc-wx.turning { color: var(--brass); }
   /* hud.js sets --lead to the clock block width: wider in Assault, whose mode line is longer, and it never wraps */
   .sc-lead { flex: none; width: var(--lead, 150px); display: grid; align-content: center; justify-items: center; text-align: center; }
   .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); white-space: nowrap; }
@@ -258,6 +263,7 @@
         <div id="mapPrev"><canvas id="mapCanvas" width="280" height="280"></canvas><div id="mapInfo" class="muted"></div></div>
         <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option></select></div>
         <div class="row"><label for="armySel">Army size</label><select id="armySel" title="Unit limit and income for everyone"></select></div>
+        <div class="row"><label for="weatherSel">Weather</label><select id="weatherSel"></select></div>
         <div id="modeInfo" class="muted"></div>
         <div class="row"><select id="defSel" class="hidden"></select></div>
       </section>

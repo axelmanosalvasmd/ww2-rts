@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
 import { think } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
@@ -106,7 +107,7 @@ async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
-    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard',
+    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
     // a finished match's result carries this player's own outcome (you); a match the host ended has none
     result: room.result ? { ...room.result, you: room.result.story ? p.lastMatch ?? null : null } : null,
     players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
@@ -123,13 +124,14 @@ async function startMatch(room) {
   const map = await loadMap(room.mapName);
   if (room.starting !== starting || room.state !== 'play') return;
   room.map = map;
-  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
+  room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army,
+    weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
   lobby(room);
   room.players.forEach((_, i) => sendStart(room, i));
 }
 
 function sendStart(room, i) {
-  send(room.players[i].ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(room.game, i, true), names: room.players.map(p => p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction) });
+  send(room.players[i].ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(room.game, i, true), names: room.players.map(p => p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction), weather: weatherRow(room.game) });
   if (room.pause) send(room.players[i].ws, pauseMessage(room));
 }
 
@@ -288,6 +290,8 @@ wss.on('connection', (ws, req) => {
       room.mode = msg.v; lobby(room);
     } else if (msg.t === 'army' && slot === hostOf(room) && room.state !== 'play' && ['standard', 'large', 'massive'].includes(msg.v)) {
       room.army = msg.v; lobby(room);
+    } else if (msg.t === 'weather' && slot === hostOf(room) && room.state !== 'play' && WEATHER_CHOICES.includes(msg.v)) {
+      room.weather = msg.v; lobby(room);
     } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
       room.defenderTeam = msg.v; lobby(room);
     } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= seats(room) && assaultReady(room)) {

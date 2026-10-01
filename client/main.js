@@ -10,6 +10,7 @@ import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelO
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
+import { createWeatherView } from './weather-view.js';
 import { createGround } from './ground.js';
 import { surface, setFogMap } from './surfaces.js';
 import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
@@ -177,6 +178,7 @@ $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
 // army size labels come from CFG.armies, so they cannot drift from the real numbers
 $('armySel').innerHTML = Object.entries(CFG.armies).map(([key, v]) => `<option value="${esc(key)}">${esc(key[0].toUpperCase() + key.slice(1))}${v.pop === 1 && v.income === 1 ? '' : `: ${v.pop}x units, ${v.income}x income`}</option>`).join('');
 $('armySel').onchange = () => sendCmd({ t: 'army', v: $('armySel').value });
+const wx = createWeatherView({ sendCmd }); // client/weather-view.js: lobby select, score strip line, sight
 $('defSel').onchange = () => sendCmd({ t: 'defender', v: +$('defSel').value });
 $('addAi').onclick = () => sendCmd({ t: 'addAi' });
 // The host controls the match; leaving, restarting and ending need a second click.
@@ -214,6 +216,7 @@ async function previewMap(name, mode) {
     mapCache.set(name, m);
   }
   if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
+  wx.mapDefault(m, name);
   const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
   const img = new ImageData(m.w, m.h);
   m.rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -265,6 +268,7 @@ function renderLobby(m) {
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
   $('armySel').value = m.army || 'standard'; $('armySel').disabled = !host || !lobby;
+  wx.lobby(m, host && lobby);
   $('modeInfo').textContent = MODE_INFO[m.mode || 'conquest'] ?? '';
   $('defSel').classList.toggle('hidden', !assault);
   $('defSel').innerHTML = teamIds.map(t => `<option value="${t}" ${t === m.defenderTeam ? 'selected' : ''}>Team ${t + 1} defends (${m.players.filter(p => p.team === t).map(p => esc(p.name)).join(', ')})</option>`).join('');
@@ -379,7 +383,8 @@ function startGame(m, restored = null) {
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
   fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
-  atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather }); // mood, cloud shadows, table props, mist, weather, birds
+  wx.start(m.weather, atmos);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
@@ -618,6 +623,7 @@ function applySnapshot(s) {
   alerts.snapshot(s, lastSnap);
   lastSnap = s;
   updateHud(s);
+  wx.snapshot(s);
   endgame.snapshot(s);
 }
 
@@ -1130,7 +1136,7 @@ function updateFog() {
   const { w, h } = fogGrid, d = fogTex.image.data, vis = fogVis = new Uint8Array(w * h);
   for (const v of units.values()) {
     if (foe(v.owner)) continue; // allies share vision
-    const r = UNITS[v.type].vision / CELL, cx = v.x / CELL, cy = v.z / CELL;
+    const r = UNITS[v.type].vision * wx.sight(v.type) / CELL, cx = v.x / CELL, cy = v.z / CELL;
     for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(h - 1, cy + r); y++)
       for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w - 1, cx + r); x++)
         if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) vis[y * w + x] = 1;

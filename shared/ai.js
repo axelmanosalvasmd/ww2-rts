@@ -2,6 +2,7 @@
 // exactly like a human would. It only reacts to enemies its own player can see.
 import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, command, inCover, canBuild, allied, supCost, teamSees, siteNear, knownBuildings, priceOf, airborne } from './sim.js';
 import { gridFor, rebuildGrid } from './grid.js';
+import { aiCaution } from './weather.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const SUPPORT_PLANE = (kind) => kind === 'strafe' || kind === 'bombing' || kind === 'dive' || kind === 'para';
@@ -58,6 +59,9 @@ export function think(g, slot, opts = {}) {
     : !classic ? [] : known.length ? known : g.players.filter(q => q.team !== me.team && !q.out).map(q => q.spawn))
     .sort((a, b) => d(a, me.spawn) - d(b, me.spawn)); // nearest first, so nobody gangs up on whoever was created first
   const count = (t) => all.filter(u => u.type === t).length;
+  // weather (shared/weather.js): in poor sight it has seen less of the enemy than is there and its tanks arrive late,
+  // so it marches on a base or bunker only with a bigger margin and a bigger army (1 in clear weather, 1.43 in fog)
+  const caution = aiCaution(g);
   // ---- Classic adaptive AI: remember the last minute of sightings, then react ----
   const adapt = classic && opts.adaptive !== false, now = g.tick / 20, mem = memoryOf(g, slot), rule = (n) => adapt && (!opts.rules || opts.rules.includes(n));
   if (adapt) {
@@ -176,7 +180,7 @@ export function think(g, slot, opts = {}) {
   // rule 3, attack timing: march on a base only with an army worth 1.3x what that enemy was recently seen fielding
   const target = bunkers[0], myVal = mine.reduce((a, u) => a + worth(u), 0);
   const theirVal = target?.owner === undefined ? 0 : recent.filter(e => now - e.t < CFG.classic.aiSeenWindow && g.players[e.owner].team === g.players[target.owner].team).reduce((a, e) => a + e.val, 0);
-  const strongEnough = !rule(3) || myVal > CFG.classic.aiAttackRatio * theirVal;
+  const strongEnough = !rule(3) || myVal > CFG.classic.aiAttackRatio * caution * theirVal;
 
   // planes: a ready ground-attack plane goes for the nearest enemy tank or gun it can see near the army; a ready fighter
   // hunts enemy planes it can see, else covers the army. They come home on their own when fuel or ammo runs out.
@@ -245,7 +249,7 @@ export function think(g, slot, opts = {}) {
     // otherwise go for the closest point we don't hold, spreading out across targets
     let best = -1, bestScore = Infinity;
     // attackers with a big enough army go for the bunkers
-    if (bunkers.length && mine.length >= 6 && strongEnough) {
+    if (bunkers.length && mine.length >= Math.round(6 * caution) && strongEnough) {
       const b = bunkers.sort((a, c) => d(u, a) - d(u, c))[0];
       assault_.push([u.id, b.x, b.z]);
       continue;
@@ -262,6 +266,7 @@ export function think(g, slot, opts = {}) {
     pending[best].push(u);
   }
   // grab neutral points with whoever is free, but only hit enemy-held points as a group
+  // (not scaled by weather: groups of 4 in fog made Conquest one-sided, 2nd place VP 0.26 of the winner's)
   const need = Math.min(3, mine.length);
   pending.forEach((group, i) => {
     const p = g.points[i];
