@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { CELL } from '/shared/sim.js';
 import { surface, fogShader, fogged, loadTexture } from './surfaces.js';
+import { leafGeometry, leafMaterial } from './foliage.js';
 import { gfx } from './gfx.js';
 
 // stable pseudo-random per cell (same formula as main.js and ground.js), so a rebuild never reshuffles the village
@@ -29,13 +30,15 @@ const part = (geo, color, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1, ry = 0, r
   ({ geo, color, m: compose(new THREE.Matrix4(), x, y, z, sx, sy, sz, ry, rx, rz) });
 // one non-indexed geometry (position, normal, uv, color) from many parts
 function merge(parts) {
-  const geos = parts.map(({ geo, color, m }) => {
+  const geos = parts.map(({ geo, color, m, tex }) => {
     const g = geo.index ? geo.toNonIndexed() : geo.clone();
     g.applyMatrix4(m);
     const n = g.attributes.position.count, c = Array.isArray(color) ? color : lin(color ?? 0xffffff), col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) col.set(c, i * 3);
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+    // a base building part's surface id (see MODEL_MAT) rides in uv.x; other merged pieces keep their uv
+    if (tex !== undefined) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2).map((_, i) => (i & 1 ? 0 : tex)), 2));
+    else if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
     return g;
   });
   const out = new THREE.BufferGeometry();
@@ -98,9 +101,9 @@ const MOUND = merge([
   part(new THREE.CylinderGeometry(0.3, 0.5, 1, 8, 1, true), 0xffffff, 0, 0.5, 0),
   part(new THREE.CircleGeometry(0.3, 8).rotateX(-Math.PI / 2), 0xffffff, 0, 1, 0), // the top; the bottom is never seen
 ]);
-// a lumpy shrub
+// a lumpy shrub: the shaded heart of a hedgerow stretch, mostly hidden by its leaf cards
 const SHRUB = (() => {
-  const g = new THREE.SphereGeometry(1, 7, 4), p = g.attributes.position;
+  const g = new THREE.SphereGeometry(1, 6, 3), p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     P3.fromBufferAttribute(p, i);
     const k = 1 + 0.14 * Math.sin(P3.x * 4.1 + P3.y * 2.3) * Math.cos(P3.z * 3.7 - P3.y * 1.9);
@@ -132,15 +135,21 @@ const ROOF = (() => {
 })();
 // square pyramid, base 1 x 1 on y = 0, apex at y = 1 (spires, hipped roofs)
 const PYRAMID = flat(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1).rotateY(Math.PI / 4).translate(0, 0.5, 0));
-// window on a wall facing +z: frame, dark glass, glazing bars, a sill, and (with shutters) a shutter either side.
+// window on a wall facing +z: a shadowed reveal, a frame standing 5 cm proud of the wall, glass that catches a little
+// sky at the top, glazing bars, a stone sill and (with shutters) a plank shutter folded back either side.
 // The instance color is the house's trim color, so frames and shutters share one paint.
 function windowGeo(shutters) {
   const parts = [
-    part(QUAD, 0xf4eee2, 0, 0, 0.015, 0.74, 1.04, 1), part(QUAD, 0x1a2026, 0, 0.02, 0.03, 0.56, 0.86, 1),
-    part(QUAD, 0xf4eee2, 0, 0.02, 0.045, 0.05, 0.86, 1), part(QUAD, 0xf4eee2, 0, 0.12, 0.045, 0.56, 0.05, 1),
-    part(FRONT, 0xe0dacb, 0, -0.55, 0.05, 0.86, 0.07, 0.1),
+    part(QUAD, 0x24211e, 0, -0.01, 0.006, 0.84, 1.12, 1),
+    part(FRONT, 0xf4eee2, 0, 0, 0.025, 0.74, 1.04, 0.05),
+    part(QUAD, 0x161b20, 0, 0.0, 0.052, 0.58, 0.88, 1), part(QUAD, 0x3a444d, 0, 0.3, 0.053, 0.58, 0.28, 1),
+    part(QUAD, 0xf4eee2, 0, 0.0, 0.055, 0.045, 0.88, 1), part(QUAD, 0xf4eee2, 0, 0.12, 0.055, 0.58, 0.045, 1),
+    part(FRONT, 0xd8d0c0, 0, -0.56, 0.06, 0.9, 0.07, 0.13),
   ];
-  if (shutters) for (const s of [-1, 1]) parts.push(part(QUAD, 0xf4eee2, s * 0.57, 0, 0.04, 0.36, 1.04, 1));
+  if (shutters) for (const s of [-1, 1]) {
+    parts.push(part(FRONT, 0xe8e0d0, s * 0.58, 0, 0.018, 0.36, 1.04, 0.035));
+    for (const y of [-0.3, 0.3]) parts.push(part(QUAD, 0xb8b0a2, s * 0.58, y, 0.037, 0.32, 0.06, 1));
+  }
   return merge(parts);
 }
 const WINDOW = windowGeo(true), PANE = windowGeo(false);
@@ -222,6 +231,7 @@ const KINDS = {
   dark: { geo: BOX, mat: () => surface('darkwood') },
   gable: { geo: GABLE, mat: () => surface('plaster'), pick: true },
   gableWood: { geo: GABLE, mat: () => surface('wood'), pick: true },
+  gableStone: { geo: GABLE, mat: () => surface('stone'), pick: true },
   roof: { geo: ROOF, mat: () => materials().roof, pick: true },
   spire: { geo: PYRAMID, mat: () => materials().slate, pick: true },
   window: { geo: WINDOW, mat: () => materials().glass, shadow: false, pick: true },
@@ -230,8 +240,9 @@ const KINDS = {
   broken: { geo: BROKEN, mat: () => surface('plaster') },
   brokenStone: { geo: BROKEN, mat: () => surface('stone') },
   earth: { geo: MOUND, mat: () => surface('earth') },
-  shrub: { geo: SHRUB, mat: () => surface('hedge') },
-  bag: { geo: BAG, mat: () => surface('sandbag'), lowShadow: false },
+  shrub: { geo: SHRUB, mat: () => surface('hedge') }, // the dense, shaded heart of a hedgerow shrub
+  leaves: { geo: leafGeometry('hedge'), mat: leafMaterial }, // its ragged outside: leaf cards (client/foliage.js)
+  bag: { geo: BAG, mat: () => surface('burlap'), lowShadow: false },
   chunk: { geo: CHUNK, mat: () => surface('rubble'), lowShadow: false },
   hedgehog: { geo: HEDGEHOG, mat: () => surface('steel') },
   wire: { geo: WIRE, mat: () => materials().wire, shadow: false },
@@ -271,6 +282,7 @@ const PLASTER = [[1, 0.95, 0.85], [1.06, 0.9, 0.66], [1, 0.86, 0.8], [0.95, 0.95
 const ROOFS = [[1, 1, 1], [0.86, 0.72, 0.62], [1.08, 0.86, 0.72], [0.62, 0.64, 0.7], [0.95, 0.8, 0.66]];
 const TRIM = [0x7d8f6a, 0x6a7d8f, 0x7a3a30, 0x6b4e32, 0x4f7a78, 0xd8cfb0].map(lin);
 const BARN = [[1.15, 0.62, 0.48], [0.78, 0.76, 0.74], [0.95, 0.8, 0.62]];
+const STONE = [[1, 0.97, 0.9], [0.9, 0.88, 0.84], [1.06, 1, 0.88], [0.95, 0.9, 0.82]]; // fieldstone farmhouses
 const DARK = lin(0x1e1c1a);
 
 // greedy rectangles in scan order: run right, then down while the whole row fits
@@ -352,12 +364,15 @@ function frame(C, r) {
 function spec(r) {
   const kind = r.kind ?? 'house', t = (k) => rnd(r.x0, r.y0, k);
   const church = kind === 'church', barn = kind === 'barn', block = kind === 'block';
+  // a church and about two farmhouses in five are bare fieldstone; the rest are rendered and limewashed
+  const stone = church || (!barn && !block && t(25) < 0.4);
   const storeys = church || barn ? 1 : block ? 2 + Math.floor(t(9) * 2) : t(1) < 0.55 ? 2 : 1;
   return {
     kind, church, barn, block, storeys, t,
     H: church ? 6.2 : barn ? 4.4 + 0.6 * t(2) : block ? storeys * 3.1 + 0.5 : storeys === 2 ? 5.6 + 0.9 * t(2) : 3.6 + 0.8 * t(2),
     k: church ? 1.25 : barn ? 1.3 : 0.85 + 0.3 * t(10), // roof pitch: ridge height = 0.4 * span * k
-    tint: barn ? pick(BARN, t(4)) : church ? [1.04, 1, 0.92] : pick(PLASTER, t(4)),
+    stone,
+    tint: barn ? pick(BARN, t(4)) : church ? [1.04, 1, 0.92] : stone ? pick(STONE, t(4)) : pick(PLASTER, t(4)),
     roof: church ? [0.6, 0.62, 0.68] : barn ? [0.62, 0.56, 0.5] : pick(ROOFS, t(5)),
     trim: pick(TRIM, t(6)),
     shutters: !block && !church && !barn && t(18) < 0.7,
@@ -393,16 +408,38 @@ function piece(C, r) {
   const cells = [];
   for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) cells.push([x, y]);
   const sp = spec(r);
-  for (const [x, y] of cells) C.tint.set(y * C.w + x, { color: sp.tint, wood: sp.barn });
+  for (const [x, y] of cells) C.tint.set(y * C.w + x, { color: sp.tint, wood: sp.barn, stone: sp.stone });
   const standing = cells.filter(([x, y]) => C.at(x, y) === 'B');
   if (!standing.length) return; // all rubble: rubble() draws it
   if (standing.length < cells.length) ruin(C, r, sp, standing);
   else house(C, r, sp);
 }
 
+const wallKind = (sp) => (sp.barn ? 'wood' : sp.stone ? 'stone' : 'wall');
+
+// stone quoins up a rendered house's outside corners, blocks alternately long and short on each face; corners
+// that meet a neighbour (terraces) get none
+function quoins(C, r, F, H) {
+  const { S, L, base, P } = F;
+  for (const [ss, sa] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+    const [wx, wz] = F.at(ss * S / 2, sa * L / 2), gx = Math.round(wx / CELL), gz = Math.round(wz / CELL);
+    let party = false;
+    for (const [ox, oz] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+      const x = gx + ox, y = gz + oz;
+      if (!(x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1) && C.isHouse(x, y)) party = true;
+    }
+    if (party) continue;
+    for (let k = 0, y = base + 0.55; y < base + H - 0.3; k++, y += 0.44) {
+      const ws = k & 1 ? 0.62 : 0.36, wa = k & 1 ? 0.36 : 0.62;
+      P('stone', ss * (S / 2 - ws / 2 + 0.035), y + 0.2, sa * (L / 2 - wa / 2 + 0.035), ws, 0.4, wa, 1.12 + 0.12 * rnd(gx * 3 + k, gz, 160));
+    }
+  }
+}
+
 function house(C, r, sp) {
   const F = frame(C, r), { L, S, base, P } = F, { H, k, tint, t } = sp, oh = 0.35;
-  P(sp.barn ? 'wood' : 'wall', 0, base - 1 + (H + 1) / 2, 0, S, H + 1, L, tint);
+  P(wallKind(sp), 0, base - 1 + (H + 1) / 2, 0, S, H + 1, L, tint);
+  if (!sp.stone && !sp.barn) quoins(C, r, F, H);
   P('stone', 0, base - 0.5, 0, S + 0.14, 2.1, L + 0.14, 0.85); // plinth, up to base + 0.55
   if (sp.block) {
     // flat roof: cornice, tar, a stone parapet and a couple of chimney stacks
@@ -419,7 +456,7 @@ function house(C, r, sp) {
     }
   } else {
     // pitched roof: gable ends in the wall paint, a tiled roof with eaves overhanging by oh
-    P(sp.barn ? 'gableWood' : 'gable', 0, base + H, 0, S, S * k, L, tint);
+    P(sp.barn ? 'gableWood' : sp.stone ? 'gableStone' : 'gable', 0, base + H, 0, S, S * k, L, tint);
     const W = S + 2 * oh;
     P('roof', 0, base + H - 0.8 * k * oh, 0, W, W * k, L + 2 * oh, sp.roof);
     if (!sp.church && !sp.barn && t(13) < 0.8) {
@@ -427,6 +464,7 @@ function house(C, r, sp) {
       const top = base + H + 0.4 * k * (S - 2 * Math.abs(s)) + 1.0 + 0.3 * t(16), bot = base + H - 0.3;
       P('stone', s, (top + bot) / 2, a, 0.6, top - bot, 0.75, 0.8);
       P('stone', s, top + 0.06, a, 0.78, 0.12, 0.92, 0.5);
+      for (const d of t(16) < 0.5 ? [0] : [-0.18, 0.18]) P('paint', s, top + 0.27, a + d, 0.16, 0.3, 0.16, lin(0x7a4a36)); // clay pots
     }
   }
   const list = bays(C, r, F);
@@ -462,8 +500,10 @@ function house(C, r, sp) {
   }
   if (door) {
     const yd = yawOf(door.dx, door.dy), g = Math.max(base, C.hAt(door.px + door.dx * 0.4, door.pz + door.dy * 0.4));
-    put('paint', door.px, g + 1.05, door.pz, 1.0, 2.0, 0.1, yd, mul(sp.trim, 0.75));
-    put('stone', door.px, g + 2.16, door.pz, 1.3, 0.16, 0.16, yd, 1.05);
+    put('paint', door.px, g + 1.05, door.pz, 1.0, 2.0, 0.08, yd, mul(sp.trim, 0.75));
+    put('paint', door.px + door.dx * 0.045, g + 1.05, door.pz + door.dy * 0.045, 0.05, 1.96, 0.02, yd, mul(sp.trim, 0.45)); // the leaves' meeting line
+    for (const s of [-1, 1]) put('stone', door.px - door.dy * s * 0.58, g + 1.05, door.pz + door.dx * s * 0.58, 0.16, 2.1, 0.16, yd, 1.05);
+    put('stone', door.px, g + 2.16, door.pz, 1.32, 0.18, 0.18, yd, 1.05);
     put('stone', door.px + door.dx * 0.3, g + 0.06, door.pz + door.dy * 0.3, 1.4, 0.3, 0.6, yd, 0.9);
   }
 }
@@ -474,10 +514,10 @@ function ruin(C, r, sp, standing) {
   for (const q of rectangles(r.x0, r.y0, r.x1, r.y1, (x, y) => keep.has(y * C.w + x))) {
     const F = frame(C, q), { L, S, base, P } = F, t = (k) => rnd(q.x0, q.y0, 40 + k);
     const Hs = Math.max(2.6, sp.H * (0.6 + 0.25 * t(1)));
-    P(sp.barn ? 'wood' : 'wall', 0, base - 1 + (Hs + 1) / 2, 0, S, Hs + 1, L, sp.tint);
+    P(wallKind(sp), 0, base - 1 + (Hs + 1) / 2, 0, S, Hs + 1, L, sp.tint);
     P('stone', 0, base - 0.5, 0, S + 0.14, 2.1, L + 0.14, 0.85);
     P('paint', 0, base + Hs + 0.03, 0, S - 0.3, 0.06, L - 0.3, lin(0x3a342e));
-    const jag = sp.barn ? 'brokenStone' : 'broken', tint = sp.barn ? 0.8 : sp.tint;
+    const jag = sp.barn || sp.stone ? 'brokenStone' : 'broken', tint = sp.barn ? 0.8 : sp.tint;
     for (const s of [-1, 1]) {
       P(jag, s * (S / 2 - 0.15), base + Hs - 0.05, 0, L, 0.7 + 0.7 * t(2 + s), 0.3, tint, Math.PI / 2 + (t(4 + s) < 0.5 ? Math.PI : 0));
       P(jag, 0, base + Hs - 0.05, s * (L / 2 - 0.15), S, 0.6 + 0.7 * t(6 + s), 0.3, tint, t(8 + s) < 0.5 ? Math.PI : 0);
@@ -518,7 +558,7 @@ function rubble(C) {
       const nb = at(x + dx, y + dy);
       if (nb === 'R' || nb === 'B' || nb === 'K' || rnd(x, y, 50 + i) > (house ? 0.6 : 0.35)) return;
       const len = 0.9 + 1.1 * rnd(x, y, 54 + i), ht = house ? 0.6 + 0.7 * rnd(x, y, 58 + i) : 0.4 + 0.5 * rnd(x, y, 58 + i);
-      const along = (rnd(x, y, 62 + i) - 0.5) * (CELL - len), stone = !house || house.wood;
+      const along = (rnd(x, y, 62 + i) - 0.5) * (CELL - len), stone = !house || house.wood || house.stone;
       put(stone ? 'brokenStone' : 'broken', cx + dx * 0.82 - dy * along, g - 0.2, cz + dy * 0.82 + dx * along, len, ht + 0.2, 0.3,
         yawOf(dx, dy) + (rnd(x, y, 66 + i) < 0.5 ? Math.PI : 0), stone ? 0.95 : house.color);
     });
@@ -538,8 +578,12 @@ function hedges(C) {
     for (let i = 0; i < n; i++) {
       const o = n === 1 ? 0 : (i ? 0.5 : -0.5) + (rnd(x, y, 82 + i) - 0.5) * 0.3, side = (rnd(x, y, 84 + i) - 0.5) * 0.2;
       const rr = (low ? 1.0 : 0.8) + 0.2 * rnd(x, y, 86 + i), wide = low ? 1.15 : 1, v = rnd(x, y, 88 + i);
-      put('shrub', alongX ? cx + o : cx + side, top + rr * 0.3, alongX ? cz + side : cz + o, rr * wide, rr * 0.85, rr * wide, v * 6.28,
-        [0.88 + 0.2 * v, 0.95 + 0.15 * rnd(x, y, 90 + i), 0.85 + 0.15 * v]);
+      const sx = alongX ? cx + o : cx + side, sy = top + rr * 0.3, sz = alongX ? cz + side : cz + o;
+      const tint = [0.88 + 0.2 * v, 0.95 + 0.15 * rnd(x, y, 90 + i), 0.85 + 0.15 * v];
+      // the leaf cards run along the hedge (their local x), so neighbouring stretches close into one wall
+      const yaw = (alongX ? 0 : Math.PI / 2) + (v < 0.5 ? Math.PI : 0) + (v - 0.5) * 0.3;
+      put('shrub', sx, sy - rr * 0.1, sz, rr * wide * 0.82, rr * 0.75, rr * wide * 0.82, v * 6.28, mul(tint, 0.75));
+      put('leaves', sx, sy, sz, rr * (0.9 + 0.3 * v), rr * (0.85 + 0.35 * rnd(x, y, 92 + i)), rr * wide, yaw, mul(tint, 0.95));
     }
   }
 }
@@ -706,20 +750,130 @@ export function buildStructures(group, grid, orig, hAt) {
 }
 gfx.onChange(() => { if (state?.group.parent) rebuild(); });
 
-// HQ ring: rounded sandbags in two courses, with exits at the four quarter points (one InstancedMesh)
+// HQ ring: real-size rounded sandbags (about 0.8 m long) in three staggered courses, two rows deep at the bottom,
+// with exits at the four quarter points (one InstancedMesh)
 export function sandbagRing(radius) {
-  const list = [];
+  const list = [], L = 0.8, H = 0.24;
   for (let k = 0; k < 4; k++) {
-    const a0 = (k * 9 + 1.56) / 36 * Math.PI * 2, a1 = (k * 9 + 8.44) / 36 * Math.PI * 2, n = Math.round((a1 - a0) * radius / 1.35);
-    for (let c = 0; c < 2; c++) for (const off of c ? [0] : [-0.32, 0.32]) for (let i = 0; i < n - c; i++) {
-      const a = a0 + (a1 - a0) * (i + 0.5 + c * 0.5) / n, r = radius + off, j = rnd(i, k * 7 + c * 3 + off, 150);
-      list.push([Math.cos(a) * r, 0.22 + c * 0.4, Math.sin(a) * r, 1.35 * (0.95 + 0.1 * j), 0.45, 0.66, -a + Math.PI / 2 + (j - 0.5) * 0.1, pick(BAG_TINTS, j)]);
+    const a0 = (k * 9 + 1.56) / 36 * Math.PI * 2, a1 = (k * 9 + 8.44) / 36 * Math.PI * 2, n = Math.round((a1 - a0) * radius / L);
+    for (let c = 0; c < 3; c++) for (const off of c < 2 ? [-0.23, 0.23] : [0]) for (let i = 0; i < n - (c & 1); i++) {
+      const a = a0 + (a1 - a0) * (i + 0.5 + (c & 1) * 0.5) / n, r = radius + off - c * 0.04, j = rnd(i, k * 7 + c * 3 + off, 150);
+      list.push([Math.cos(a) * r, H * 0.48 + c * H * 0.9, Math.sin(a) * r, L * (0.94 + 0.1 * j), H, 0.44, -a + Math.PI / 2 + (j - 0.5) * 0.12, pick(BAG_TINTS, j)]);
     }
   }
-  const im = new THREE.InstancedMesh(BAG, surface('sandbag'), list.length), col = new THREE.Color();
+  const im = new THREE.InstancedMesh(BAG, surface('burlap'), list.length), col = new THREE.Color();
   list.forEach(([x, y, z, sx, sy, sz, ry, c], i) => { im.setMatrixAt(i, compose(TMP, x, y, z, sx, sy, sz, ry)); im.setColorAt(i, col.setRGB(...c)); });
   im.castShadow = im.receiveShadow = true;
   return im;
+}
+
+// ---------- the HQ camp: a command tent, crates, a field table and the flagpole ----------
+// A sheet of canvas over a grid of points (rows of columns), flat-shaded; each triangle faces away from inside.
+function sheet(rows, inside) {
+  const pos = [], ab = new THREE.Vector3(), ac = new THREE.Vector3(), mid = new THREE.Vector3();
+  const tri = (p, q, r) => {
+    ab.subVectors(q, p); ac.subVectors(r, p); mid.copy(p).add(q).add(r).divideScalar(3).sub(inside);
+    for (const v of ab.cross(ac).dot(mid) < 0 ? [p, r, q] : [p, q, r]) pos.push(v.x, v.y, v.z);
+  };
+  for (let i = 0; i + 1 < rows.length; i++) for (let j = 0; j + 1 < rows[i].length; j++) {
+    tri(rows[i][j], rows[i][j + 1], rows[i + 1][j + 1]); tri(rows[i][j], rows[i + 1][j + 1], rows[i + 1][j]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+// a wall tent about 4.9 m by 6.5 m: 1.7 m side walls, a ridge at 3.2 m, canvas sagging between the poles, a fly
+// overhanging the walls, an open door with its flaps tied back at the +z end and a stovepipe through the roof
+function wallTent() {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z), W = 2.4, Wb = 2.5, Hw = 1.7, Hr = 3.2, Lh = 3.25, e = 0.32;
+  const inside = V(0, 1.2, 0), canvas = [], grid = (nu, nv, at) => Array.from({ length: nv + 1 }, (_, i) => Array.from({ length: nu + 1 }, (_, j) => at(j / nu, i / nv)));
+  for (const s of [-1, 1]) {
+    // roof: eave to ridge, sagging between the three ridge poles
+    canvas.push(sheet(grid(8, 3, (u, v) => {
+      const sag = 0.1 * Math.sin(Math.PI * v) * Math.abs(Math.sin(2 * Math.PI * u));
+      return V(s * (W + e) * (1 - v), Hw - 0.16 + (Hr - Hw + 0.16) * v - sag, (u - 0.5) * (2 * Lh + 0.2));
+    }), inside));
+    // the fly's hem hanging past the eave, and the side wall staked out a little at its foot
+    canvas.push(sheet(grid(8, 1, (u, v) => V(s * (W + e), Hw - 0.16 - 0.2 * v, (u - 0.5) * (2 * Lh + 0.2))), inside));
+    canvas.push(sheet(grid(4, 1, (u, v) => V(s * (Wb - (Wb - W) * v + 0.03 * Math.sin(Math.PI * u * 2) ** 2), Hw * v, (u - 0.5) * 2 * Lh)), inside));
+  }
+  for (const z of [-Lh, Lh]) {
+    // gable ends: the wall up to the eaves, then the triangle to the ridge
+    canvas.push(sheet([[V(-Wb, 0, z), V(0, 0, z), V(Wb, 0, z)], [V(-W, Hw, z), V(0, Hw, z), V(W, Hw, z)]], inside));
+    canvas.push(sheet([[V(-W, Hw, z), V(W, Hw, z)], [V(-0.01, Hr, z), V(0.01, Hr, z)]], inside));
+  }
+  // door flaps tied back either side of the opening
+  for (const s of [-1, 1]) canvas.push(sheet([[V(s * 0.55, 0.02, Lh + 0.02), V(s * 0.95, 0.02, Lh + 0.1)], [V(s * 0.5, 1.95, Lh + 0.02), V(s * 0.75, 1.9, Lh + 0.08)]], V(0, 1, Lh - 1)));
+  return { canvas, door: { W, Hw, Hr, Lh, e } };
+}
+
+const campCache = new Map();
+// an HQ's dressing as a group of three merged meshes (canvas, timber, poles and rope); tent: false leaves only the
+// flagpole (Classic, where the HQ is a building). The flag itself is main.js's.
+export function hqCamp(f, tent = true) {
+  const key = `${f.vehicle}:${tent}`;
+  let geos = campCache.get(key);
+  if (!geos) {
+    const cloth = [], timber = [], rope = [], tint = lin(f.vehicle).map((v, i) => Math.max(0.55, Math.min(2.2, v / lin(0x59623d)[i])));
+    const V = (x, y, z) => new THREE.Vector3(x, y, z), line = (a, b, t = 0.025) => { bar(rope, a, b, t); rope[rope.length - 1].color = [1.5, 1.4, 1.15]; };
+    const box = (list, c, sx, sy, sz, x, y, z, ry = 0, rx = 0, rz = 0) => list.push(part(BOX, c, x, y, z, sx, sy, sz, ry, rx, rz));
+    const pole = (list, c, r, h, x, y, z, rx = 0, rz = 0) => list.push(cyl(c, r, h, 6, x, y, z, rx, rz));
+    // flagpole: a 15 m mast with a brass ball, three guy wires to stakes
+    pole(rope, [1.1, 1.05, 1], 0.075, 15.2, 0, 7.6, 0);
+    rope.push(part(new THREE.IcosahedronGeometry(0.13, 1), [2.2, 1.7, 0.9], 0, 15.25, 0));
+    for (let k = 0; k < 3; k++) {
+      const a = k / 3 * Math.PI * 2 + 0.4, sx = Math.cos(a) * 4.2, sz = Math.sin(a) * 4.2;
+      line(V(0, 9.5, 0), V(sx, 0.05, sz), 0.018); box(timber, [0.8, 0.8, 0.8], 0.06, 0.4, 0.06, sx, 0.12, sz, 0, 0.3);
+    }
+    if (tent) {
+      const ox = -4, oz = -3, { canvas, door: { W, Hw, Hr, Lh, e } } = wallTent();
+      for (const g of canvas) cloth.push(part(g, tint, ox, 0, oz));
+      // the door opening, dark inside, and the ridge pole ends and spikes over each end
+      box(timber, [0.12, 0.11, 0.1], 1.0, 1.92, 0.02, ox, 0.96, oz + Lh + 0.015);
+      for (const s of [-1, 1]) {
+        pole(rope, 1, 0.05, 0.35, ox, Hr + 0.12, oz + s * (Lh + 0.02));
+        pole(rope, 1, 0.045, Hr, ox, Hr / 2, oz + s * (Lh + 0.03));
+        // guy lines from the eaves and the pole tops out to stakes
+        for (const z of [-Lh, -Lh / 3, Lh / 3, Lh]) {
+          const a = V(ox + s * (W + e), Hw - 0.17, oz + z), b = V(ox + s * (W + e + 1.5), 0.05, oz + z * 1.08);
+          line(a, b); box(timber, [0.9, 0.85, 0.75], 0.05, 0.32, 0.05, b.x, 0.1, b.z, 0, 0, s * 0.35);
+        }
+        line(V(ox, Hr + 0.25, oz + s * Lh), V(ox, 0.05, oz + s * (Lh + 2.2)));
+        box(timber, [0.9, 0.85, 0.75], 0.05, 0.32, 0.05, ox, 0.1, oz + s * (Lh + 2.2), 0, -s * 0.35);
+      }
+      // stovepipe through the roof
+      pole(rope, [0.45, 0.45, 0.48], 0.07, 1.4, ox - 1.1, Hr - 0.15, oz - 1.2);
+      pole(rope, [0.4, 0.4, 0.42], 0.13, 0.08, ox - 1.1, Hr + 0.58, oz - 1.2);
+      // crates stacked by the door and by the flag, a drum, jerricans, a field table with a map
+      const crate = [0.82, 0.8, 0.66], olive = mul(tint, 0.62);
+      for (const [x, z, ry, y] of [[-1.3, 0.9, 0.1, 0], [-1.25, 1.55, -0.05, 0], [-1.3, 1.22, 0.3, 0.5]]) {
+        box(timber, crate, 0.92, 0.5, 0.56, x, 0.25 + y, z, ry); box(timber, mul(crate, 1.12), 0.96, 0.04, 0.6, x, 0.52 + y, z, ry);
+      }
+      for (const [x, z, ry, y] of [[3.1, -4.9, 0.2, 0], [3.3, -4.25, 0.15, 0], [4.05, -4.6, -0.3, 0], [3.25, -4.6, 0.6, 0.5]]) {
+        box(timber, olive, 0.95, 0.48, 0.5, x, 0.24 + y, z, ry);
+        for (const d of [-0.3, 0.3]) box(timber, mul(olive, 0.7), 0.05, 0.49, 0.52, x + d * Math.cos(ry), 0.24 + y, z - d * Math.sin(ry), ry);
+      }
+      timber.push(cyl([0.42, 0.46, 0.34], 0.29, 0.88, 12, 4.6, 0.44, -3.7));
+      for (let i = 0; i < 3; i++) box(timber, olive, 0.17, 0.46, 0.34, 4.45 + i * 0.2, 0.23, -5.2, 0.1);
+      box(timber, [0.75, 0.7, 0.6], 1.6, 0.05, 0.85, -1.6, 0.76, 2.4, 0.2);
+      box(timber, [1.25, 1.2, 1.05], 0.7, 0.012, 0.5, -1.6, 0.79, 2.4, 0.35);
+      for (const [dx, dz] of [[-0.72, -0.36], [0.72, -0.36], [-0.72, 0.36], [0.72, 0.36]]) {
+        const c = Math.cos(0.2), sn = Math.sin(0.2);
+        box(timber, [0.6, 0.56, 0.5], 0.05, 0.74, 0.05, -1.6 + dx * c + dz * sn, 0.37, 2.4 - dx * sn + dz * c);
+      }
+    }
+    geos = { cloth: cloth.length ? merge(cloth) : null, timber: merge(timber), rope: merge(rope) };
+    campCache.set(key, geos);
+  }
+  const g = new THREE.Group();
+  for (const [name, mat] of [['cloth', () => surface('canvas', true)], ['timber', () => surface('wood', true)], ['rope', () => surface('darkwood', true)]]) {
+    if (!geos[name]) continue;
+    const m = new THREE.Mesh(geos[name], mat());
+    m.castShadow = m.receiveShadow = true; m.name = `hq-${name}`;
+    g.add(m);
+  }
+  return g;
 }
 
 // ---------- base buildings (front faces +x) ----------
@@ -733,6 +887,9 @@ const HALF = half(true), HALF_END = half(false);
 const oct = (top, bottom) => flat(new THREE.CylinderGeometry(top, bottom, 1, 8, 1).rotateY(Math.PI / 8));
 const BUNKER = { body: oct(2.3, 2.75), slab: oct(2.6, 2.6), turf: oct(1.5, 2.35) };
 const SANDBAG = 0x9c8a60;
+// surfaces for base building parts, drawn from one packed detail texture (client/textures/detail.jpg)
+const CANVAS = 1, TIMBER = 2, CONCRETE = 3, SHEET_X = 4, BURLAP = 5, SHEET_Z = 6;
+const tx = (tex, ...parts) => parts.map(p => Object.assign(p, { tex }));
 const bagTint = (k) => mul(lin(SANDBAG), 0.9 + 0.2 * rnd(k, 3, 160));
 // a ring of rounded bags in arcs [from, to] (radians), two courses with the bottom two rows deep
 function bagArcs(P, radius, arcs, len, ht, depth) {
@@ -740,7 +897,7 @@ function bagArcs(P, radius, arcs, len, ht, depth) {
     const n = Math.max(2, Math.round((a1 - a0) * radius / len));
     for (let c = 0; c < 2; c++) for (const off of c ? [0] : [-depth * 0.45, depth * 0.45]) for (let i = 0; i < n - c; i++) {
       const a = a0 + (a1 - a0) * (i + 0.5 + c * 0.5) / n, r = radius + off;
-      P.push(part(BAG, bagTint(k * 31 + c * 7 + i + off), Math.cos(a) * r, ht / 2 + c * ht * 0.9, Math.sin(a) * r, len, ht, depth, -a + Math.PI / 2));
+      P.push(...tx(BURLAP, part(BAG, bagTint(k * 31 + c * 7 + i + off), Math.cos(a) * r, ht / 2 + c * ht * 0.9, Math.sin(a) * r, len, ht, depth, -a + Math.PI / 2)));
     }
   });
 }
@@ -749,15 +906,15 @@ const MODELS = {
   // command post: log blockhouse with a hipped roof, sandbagged door, radio mast and a flag
   hq: (f) => {
     const P = [], logs = 0x5e4a32, post = 0x3a2e20, slit = 0x16140f;
-    P.push(bx(0x5e5038, 5.9, 0.16, 5.9, 0, 0.08, 0), bx(0x7a6446, 4.4, 2.5, 4.4, 0, 1.41, 0));
-    for (const y of [0.55, 1.15, 1.75, 2.35]) P.push(bx(logs, 4.5, 0.13, 4.5, 0, y, 0));
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) P.push(bx(post, 0.32, 2.75, 0.32, sx * 2.2, 1.5, sz * 2.2));
-    P.push(bx(post, 5.4, 0.18, 5.4, 0, 2.72, 0), part(PYRAMID, f.vehicle, 0, 2.8, 0, 5.6, 1.5, 5.6));
-    P.push(bx(0x2e2418, 0.1, 1.85, 1.1, 2.22, 1.08, 0), bx(f.color, 0.08, 0.42, 1.7, 2.24, 2.3, 0));
+    P.push(...tx(TIMBER, bx(0x5e5038, 5.9, 0.16, 5.9, 0, 0.08, 0), bx(0x7a6446, 4.4, 2.5, 4.4, 0, 1.41, 0)));
+    for (const y of [0.55, 1.15, 1.75, 2.35]) P.push(...tx(TIMBER, bx(logs, 4.5, 0.13, 4.5, 0, y, 0)));
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) P.push(...tx(TIMBER, bx(post, 0.32, 2.75, 0.32, sx * 2.2, 1.5, sz * 2.2)));
+    P.push(...tx(TIMBER, bx(post, 5.4, 0.18, 5.4, 0, 2.72, 0)), ...tx(CANVAS, part(PYRAMID, f.vehicle, 0, 2.8, 0, 5.6, 1.5, 5.6)));
+    P.push(...tx(TIMBER, bx(0x2e2418, 0.1, 1.85, 1.1, 2.22, 1.08, 0)), bx(f.color, 0.08, 0.42, 1.7, 2.24, 2.3, 0));
     for (const z of [-1.3, 1.3]) P.push(bx(slit, 0.08, 0.4, 0.8, 2.22, 1.7, z));
     for (const s of [-1, 1]) for (const x of [-1.1, 1.1]) P.push(bx(slit, 0.9, 0.4, 0.08, x, 1.7, s * 2.22));
     for (const s of [-1, 1]) for (let c = 0; c < 2; c++) for (let i = 0; i < 3 - c; i++)
-      P.push(part(BAG, bagTint(s * 9 + c * 3 + i), 2.7, 0.18 + c * 0.3, s * (1.0 + 0.31 * c + i * 0.62), 0.6, 0.32, 0.42, Math.PI / 2));
+      P.push(...tx(BURLAP, part(BAG, bagTint(s * 9 + c * 3 + i), 2.7, 0.18 + c * 0.3, s * (1.0 + 0.31 * c + i * 0.62), 0.6, 0.32, 0.42, Math.PI / 2)));
     P.push(cyl(0x2a2a26, 0.06, 4.6, 6, -1.6, 4.9, -1.6));
     for (const y of [5.9, 6.7]) P.push(bx(0x2a2a26, 0.05, 0.05, 1.0, -1.6, y, -1.6));
     P.push(cyl(0x4a3f30, 0.05, 2.6, 6, 1.9, 4.0, -1.9), bx(f.color, 1.3, 0.8, 0.05, 1.25, 4.85, -1.9));
@@ -766,12 +923,12 @@ const MODELS = {
   // Nissen hut: corrugated half-cylinder with ribs, timber end walls, door and windows at the front, a stovepipe
   barracks: (f) => {
     const P = [], r = 2.45, rib = darker(f.vehicle, 0.68);
-    P.push(bx(0x7e7c74, 5.9, 0.2, 5.9, 0, 0.1, 0), part(HALF, f.vehicle, 0, 0.2, 0, 5.4, r, r));
-    for (const x of [-2.0, -0.68, 0.64, 1.96]) P.push(part(HALF, rib, x, 0.2, 0, 0.14, r + 0.05, r + 0.05));
-    for (const s of [-1, 1]) P.push(part(HALF_END, 0x7a6446, s * 2.72, 0.2, 0, 0.16, r - 0.02, r - 0.02));
-    P.push(bx(0x2e2418, 0.1, 1.9, 1.0, 2.82, 1.15, 0), bx(f.color, 0.08, 0.3, 1.1, 2.83, 2.3, 0));
+    P.push(...tx(CONCRETE, bx(0x7e7c74, 5.9, 0.2, 5.9, 0, 0.1, 0)), ...tx(SHEET_X, part(HALF, f.vehicle, 0, 0.2, 0, 5.4, r, r)));
+    for (const x of [-2.0, -0.68, 0.64, 1.96]) P.push(...tx(SHEET_X, part(HALF, rib, x, 0.2, 0, 0.14, r + 0.05, r + 0.05)));
+    for (const s of [-1, 1]) P.push(...tx(TIMBER, part(HALF_END, 0x7a6446, s * 2.72, 0.2, 0, 0.16, r - 0.02, r - 0.02)));
+    P.push(...tx(TIMBER, bx(0x2e2418, 0.1, 1.9, 1.0, 2.82, 1.15, 0)), bx(f.color, 0.08, 0.3, 1.1, 2.83, 2.3, 0));
     for (const z of [-1.3, 1.3]) P.push(bx(0x1e2226, 0.08, 0.55, 0.6, 2.82, 1.45, z), bx(0x1e2226, 0.08, 0.5, 0.55, -2.82, 1.45, z));
-    P.push(bx(0x6e6c64, 0.3, 0.12, 1.4, 2.85, 0.26, 0));
+    P.push(...tx(CONCRETE, bx(0x6e6c64, 0.3, 0.12, 1.4, 2.85, 0.26, 0)));
     P.push(cyl(0x2a2a26, 0.09, 1.2, 6, -1.4, 2.95, 0.9), bx(0x2a2a26, 0.26, 0.08, 0.26, -1.4, 3.58, 0.9));
     return P;
   },
@@ -779,22 +936,22 @@ const MODELS = {
   // drums, tires and a bench inside
   motorpool: (f) => {
     const P = [], wood = 0x6e5a40, post = 0x4e3e2a, steel = 0x3a3a36, rib = darker(f.vehicle, 0.72), len = 3.75, tilt = Math.atan2(0.7, len);
-    P.push(bx(0x75736b, 5.9, 0.12, 5.9, 0, 0.06, 0), bx(wood, 0.25, 2.5, 5.8, -2.8, 1.25, 0));
-    for (const s of [-1, 1]) P.push(bx(wood, 3.3, 2.1, 0.2, -1.15, 1.05, s * 2.85), bx(post, 0.3, 3.2, 0.3, 0.5, 1.6, s * 2.65));
-    P.push(bx(f.vehicle, len, 0.14, 6.0, -1.125, 2.9, 0, 0, 0, tilt), bx(f.color, 0.1, 0.26, 6.0, 0.78, 3.28, 0));
-    for (let i = 0; i < 6; i++) P.push(bx(rib, len, 0.06, 0.1, -1.125, 2.99, -2.5 + i, 0, 0, tilt));
+    P.push(...tx(CONCRETE, bx(0x75736b, 5.9, 0.12, 5.9, 0, 0.06, 0)), ...tx(TIMBER, bx(wood, 0.25, 2.5, 5.8, -2.8, 1.25, 0)));
+    for (const s of [-1, 1]) P.push(...tx(TIMBER, bx(wood, 3.3, 2.1, 0.2, -1.15, 1.05, s * 2.85), bx(post, 0.3, 3.2, 0.3, 0.5, 1.6, s * 2.65)));
+    P.push(...tx(SHEET_Z, bx(f.vehicle, len, 0.14, 6.0, -1.125, 2.9, 0, 0, 0, tilt)), bx(f.color, 0.1, 0.26, 6.0, 0.78, 3.28, 0));
+    for (let i = 0; i < 6; i++) P.push(...tx(SHEET_Z, bx(rib, len, 0.06, 0.1, -1.125, 2.99, -2.5 + i, 0, 0, tilt)));
     for (const s of [-1, 1]) P.push(bx(steel, 0.14, 3.1, 0.14, 1.55, 1.55, s * 1.7, 0, 0, -0.2), bx(steel, 0.14, 3.1, 0.14, 2.25, 1.55, s * 1.7, 0, 0, 0.2));
     P.push(bx(steel, 0.22, 0.22, 3.8, 1.9, 3.08, 0), bx(0x24241f, 0.05, 1.3, 0.05, 1.9, 2.32, 0.3), bx(0x45453f, 0.8, 0.6, 0.9, 1.9, 1.4, 0.3), bx(0x2a2a26, 0.3, 0.3, 0.5, 1.9, 1.85, 0.3));
     P.push(bx(0x3a3a34, 1.1, 0.3, 0.7, 1.7, 0.27, -1.6), cyl(0x1c1c1a, 0.42, 0.24, 10, 2.3, 0.24, 2.2));
     for (let i = 0; i < 3; i++) P.push(cyl(0x3a4a30, 0.32, 0.92, 8, -2.25, 0.58, -2.2 + i * 0.68), cyl(0x1c1c1a, 0.42, 0.24, 10, -2.15, 0.25 + i * 0.25, 2.1));
-    P.push(bx(wood, 0.7, 0.9, 1.8, -2.3, 0.51, 0.3), bx(steel, 0.25, 0.2, 0.25, -2.1, 1.06, 0.9));
+    P.push(...tx(TIMBER, bx(wood, 0.7, 0.9, 1.8, -2.3, 0.51, 0.3)), bx(steel, 0.25, 0.2, 0.25, -2.1, 1.06, 0.9));
     return P;
   },
   // supply dump: tarp-covered stack, crates, fuel drums (one lying down), jerry cans and a pennant
   depot: (f) => {
     const P = [], crate = 0x6e5836, tarp = 0x8a7d5a;
-    P.push(bx(0x5a4a34, 3.8, 0.18, 3.8, 0, 0.09, 0), bx(tarp, 1.9, 1.1, 1.6, -0.75, 0.73, -0.8), part(GABLE, tarp, -0.75, 1.28, -0.8, 1.6, 1.0, 1.9, Math.PI / 2));
-    P.push(bx(crate, 0.9, 0.7, 0.9, 0.95, 0.53, -1.05), bx(darker(crate, 0.85), 0.8, 0.6, 0.8, 0.9, 1.18, -1.0, 0.3), bx(crate, 0.6, 0.45, 0.6, 1.45, 0.4, 0.1));
+    P.push(...tx(TIMBER, bx(0x5a4a34, 3.8, 0.18, 3.8, 0, 0.09, 0)), ...tx(CANVAS, bx(tarp, 1.9, 1.1, 1.6, -0.75, 0.73, -0.8), part(GABLE, tarp, -0.75, 1.28, -0.8, 1.6, 1.0, 1.9, Math.PI / 2)));
+    P.push(...tx(TIMBER, bx(crate, 0.9, 0.7, 0.9, 0.95, 0.53, -1.05), bx(darker(crate, 0.85), 0.8, 0.6, 0.8, 0.9, 1.18, -1.0, 0.3), bx(crate, 0.6, 0.45, 0.6, 1.45, 0.4, 0.1)));
     for (let i = 0; i < 5; i++) P.push(cyl(f.vehicle, 0.29, 0.88, 8, -1.45 + i * 0.62, 0.62, 1.2));
     P.push(cyl(f.vehicle, 0.29, 0.88, 8, 0.85, 0.47, 0.25, Math.PI / 2));
     for (let i = 0; i < 4; i++) P.push(bx(darker(f.vehicle, 0.8), 0.16, 0.46, 0.34, -1.5 + i * 0.2, 0.41, 0.2));
@@ -805,19 +962,49 @@ const MODELS = {
   // antenna and flag, a ring of sandbags with three gaps
   bunker: (f) => {
     const P = [], conc = 0x8f8d84, concD = 0x76746c, alpha = Math.atan2(0.45 * Math.cos(Math.PI / 8), 2.2);
-    P.push(part(BUNKER.body, conc, 0, 1.1, 0, 1, 2.2, 1), part(BUNKER.slab, concD, 0, 2.37, 0, 1, 0.35, 1), part(BUNKER.turf, 0x66603f, 0, 2.77, 0, 1, 0.45, 1));
+    P.push(...tx(CONCRETE, part(BUNKER.body, conc, 0, 1.1, 0, 1, 2.2, 1), part(BUNKER.slab, concD, 0, 2.37, 0, 1, 0.35, 1)), ...tx(BURLAP, part(BUNKER.turf, 0x66603f, 0, 2.77, 0, 1, 0.45, 1)));
     for (const phi of [0, Math.PI / 4, -Math.PI / 4]) {
       const c = Math.cos(phi), s = Math.sin(phi);
-      P.push(part(BOX, 0x14130f, c * 2.27, 1.5, s * 2.27, 0.14, 0.3, 1.25, -phi, 0, alpha), part(BOX, concD, c * 2.3, 1.78, s * 2.3, 0.35, 0.12, 1.45, -phi, 0, alpha));
+      P.push(part(BOX, 0x14130f, c * 2.27, 1.5, s * 2.27, 0.14, 0.3, 1.25, -phi, 0, alpha), ...tx(CONCRETE, part(BOX, concD, c * 2.3, 1.78, s * 2.3, 0.35, 0.12, 1.45, -phi, 0, alpha)));
     }
-    P.push(part(BOX, concD, -2.36, 0.95, 0, 0.08, 1.95, 1.3, -Math.PI, 0, alpha), part(BOX, 0x3a3a36, -2.38, 0.95, 0, 0.1, 1.7, 1.0, -Math.PI, 0, alpha));
+    P.push(...tx(CONCRETE, part(BOX, concD, -2.36, 0.95, 0, 0.08, 1.95, 1.3, -Math.PI, 0, alpha)), part(BOX, 0x3a3a36, -2.38, 0.95, 0, 0.1, 1.7, 1.0, -Math.PI, 0, alpha));
     P.push(cyl(0x2a2a26, 0.03, 3.2, 5, -1.0, 4.2, 1.1), cyl(0x4a3f30, 0.06, 3.6, 6, -1.8, 4.4, -1.8), bx(f.color, 1.6, 1.0, 0.05, -1.0, 5.6, -1.8));
     const d = Math.PI / 180;
     bagArcs(P, 4.6, [0, 1, 2].map(k => [(k * 120 + 15) * d, (k * 120 + 105) * d]), 0.85, 0.36, 0.5);
     return P;
   },
 };
+// One material for every base building: vertex colours, and on parts that carry a surface id (uv.x), grain from one
+// channel of the packed detail texture, mapped from the model's own axes so it keeps its real size: R canvas,
+// G timber, B concrete; corrugated sheet adds 15 cm ridges that fade out before they could shimmer.
 const MODEL_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
+MODEL_MAT.onBeforeCompile = (shader) => {
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying float vDetail;\nvarying vec3 vObj;')
+    .replace('#include <uv_vertex>', `#include <uv_vertex>
+	#ifdef USE_MAP
+		vec3 dn = abs( normal );
+		vMapUv = dn.y > 0.6 ? position.xz : dn.x > dn.z ? position.zy : position.xy;
+	#endif
+	vDetail = uv.x;
+	vObj = position;`);
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vDetail;\nvarying vec3 vObj;')
+    .replace('#include <map_fragment>', `#ifdef USE_MAP
+	float id = floor( vDetail + 0.5 );
+	if ( id > 0.5 ) {
+		float perM = id < 1.5 ? 0.42 : id < 2.5 ? 0.8 : id < 3.5 ? 0.45 : id < 4.5 ? 0.5 : id < 5.5 ? 2.0 : 0.5;
+		vec3 d = texture2D( map, vMapUv * perM ).rgb;
+		float k = id < 1.5 || ( id > 4.5 && id < 5.5 ) ? d.r : id < 2.5 ? d.g : d.b;
+		if ( ( id > 3.5 && id < 4.5 ) || id > 5.5 ) {
+			float ph = ( id > 5.5 ? vObj.z : vObj.x ) * 41.9;
+			k *= 1.0 + 0.3 * sin( ph ) * clamp( 1.0 - fwidth( ph ) / 2.5, 0.0, 1.0 );
+		}
+		diffuseColor.rgb *= 2.0 * k;
+	}
+#endif`);
+};
+loadTexture('detail', (tex) => { tex.colorSpace = THREE.NoColorSpace; MODEL_MAT.map = tex; MODEL_MAT.needsUpdate = true; });
 const modelCache = new Map();
 // a base building as a group holding one mesh (scale the group's y to raise a construction site)
 export function buildingModel(type, f) {
