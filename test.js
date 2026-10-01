@@ -3850,4 +3850,56 @@ console.log('all model toolkit checks passed');
 }
 console.log('all wheeled model checks passed');
 
+// Crew-served guns (client/models/guns.js): every weapon of every faction is one shadow-casting mesh inside its triangle
+// budget with faces that agree with their normals, guns that traverse carry their muzzle in v.fxTip, the muzzles sit where
+// client/fx.js starts its tracers and shells, and the crew stands clear of the gun.
+{
+  const THREE = await import('three');
+  const { buildModel } = await import('./client/unit-models.js');
+  const { gunModel, GUN_SLOTS } = await import('./client/models/guns.js');
+  const looks = [{ uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, { uniform: 0x5c6266, vehicle: 0x50565a, color: 0xcc3a2e }, { uniform: 0x7d7250, vehicle: 0x4e5a38, color: 0xece6d6 }];
+  const nearest = (geo, p, off = [0, 0, 0], minY = -1) => {
+    const P = geo.attributes.position;
+    let best = Infinity;
+    for (let i = 0; i < P.count; i++) if (P.getY(i) >= minY) best = Math.min(best, Math.hypot(P.getX(i) + off[0] - p[0], P.getY(i) + off[1] - p[1], P.getZ(i) + off[2] - p[2]));
+    return best;
+  };
+  for (const type of ['mg', 'mortar', 'at', 'flak']) for (const fac of [0, 1, 2]) {
+    const label = `${type} (faction ${fac})`, look = looks[fac], root = new THREE.Group(), v = { type, root, models: [], turret: null };
+    buildModel(v, root, look, fac, UNITS[type]);
+    // the weapon is every mesh under the root outside the soldiers (their nodes carry a formation slot)
+    const meshes = [];
+    for (const o of root.children) if (!o.userData.slot) o.traverse((m) => { if (m.isMesh) meshes.push(m); });
+    assert.equal(meshes.length, 1, `${label}: the gun is one draw call`);
+    assert.ok(meshes[0].castShadow, `${label}: the gun casts a shadow`);
+    const geo = meshes[0].geometry, I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, tris = I.count / 3;
+    assert.ok(tris >= 400 && tris <= 2000, `${label}: ${tris} triangles (budget 2000)`);
+    assert.ok(geo.attributes.color, `${label}: painted in vertex colors`);
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+    let inward = 0;
+    for (let i = 0; i < I.count; i += 3) {
+      a.fromBufferAttribute(P, I.getX(i)); b.fromBufferAttribute(P, I.getX(i + 1)); c.fromBufferAttribute(P, I.getX(i + 2));
+      const face = b.clone().sub(a).cross(c.clone().sub(a));
+      if (face.lengthSq() < 1e-14) continue;
+      n.fromBufferAttribute(N, I.getX(i)).add(new THREE.Vector3().fromBufferAttribute(N, I.getX(i + 1))).add(new THREE.Vector3().fromBufferAttribute(N, I.getX(i + 2)));
+      if (face.dot(n) <= 0) inward++;
+    }
+    assert.equal(inward, 0, `${label}: every face points the way its normals do`);
+    const pivot = v.turret ? v.turret.position.toArray() : [0, 0, 0];
+    if (type === 'at' || type === 'flak') {
+      assert.ok(v.turret && v.fxTip?.length === 3, `${label}: traverses with its muzzle in v.fxTip`);
+      assert.ok(nearest(geo, v.fxTip) < 0.15, `${label}: v.fxTip sits on the end of the barrel (${nearest(geo, v.fxTip).toFixed(2)} m)`);
+    } else assert.ok(!v.turret, `${label}: a static weapon`);
+    if (type === 'mg') assert.ok(nearest(geo, [1.72, 0.45, 0]) < 0.08, `${label}: the muzzle is where fx.js starts the tracers`);
+    if (type === 'mortar') assert.ok(nearest(geo, [1.05, 0.87, 0]) < 0.1, `${label}: the tube mouth is where fx.js launches the shell`);
+    for (const [sx, sz] of GUN_SLOTS[type]) assert.ok(nearest(geo, [sx * 1.3, 0.3, sz * 1.3], [pivot[0], 0, pivot[2]], 0.15) >= 0.4, `${label}: crew slot ${sx},${sz} stands clear of the gun`);
+  }
+  for (const fac of [0, 1, 2]) {
+    const geo = gunModel('flakpos', fac, looks[fac]).geo;
+    for (const z of [-0.2, 0.2]) assert.ok(nearest(geo, [0.95, 2.1, z]) < 0.1, `flakpos (faction ${fac}): a barrel ends at fx.js's muzzle point`);
+    assert.ok(geo.index.count / 3 <= 2000, 'flakpos gun inside its triangle budget');
+  }
+}
+console.log('all gun model checks passed');
+
 await stopServerHarness(); // the last server check is done
