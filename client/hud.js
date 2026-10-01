@@ -5,7 +5,7 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG } from '/shared/sim.js';
 import { symbolSVG } from './symbols.js';
 import { unitRole } from './unit-roles.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label } from './keys.js';
@@ -289,13 +289,16 @@ export function createHud(ctx) {
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
-        types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown`, t); }).join('') +
+        types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
         '</div>';
-      el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
+      el.querySelectorAll('button').forEach((b) => {
         const a = b.dataset.a;
-        if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
-        else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
-      }));
+        b.onclick = () => {
+          if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
+          else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
+        };
+        if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
+      });
     }
     if (!key) return;
     const fType = ctx.fType();
@@ -310,6 +313,7 @@ export function createHud(ctx) {
         const mun = abCost(s, UNITS[a].ab);
         result = check({ t: 'ability', unit: a }); txt = !ready ? `${cd}s` : mun ? `${mun} Mun` : '';
         setText(b.querySelector('kbd'), a === fType ? label('ability') : '');
+        b.classList.toggle('auto', all.every((v) => v.flags & AUTO_FLAG)); // autocast on for every selected one
       }
       setAvailability(b, result);
       setText(val, txt);

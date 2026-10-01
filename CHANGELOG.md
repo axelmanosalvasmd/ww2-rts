@@ -5,6 +5,20 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Autocast, Warcraft 3 style: right-click an ability button to let the selected units of that type use it on their
+  own. Rifles throw grenades at infantry in cover, trenches or houses within 18 m, MGs fire Suppressive Fire at squads
+  advancing on them, AT guns load an AP round against vehicles, tanks pop smoke when badly hurt under anti-tank fire,
+  rocket trucks and mortars barrage crowds or dug-in enemies, Rangers plant satchels on a house or bunker they were
+  told to attack, and Conscripts shout Ura! when pinned on the move. Units only act on what their side can see, pay
+  the same cooldowns and Munitions as a click, never override an ability you ordered, and never fire while retreating.
+  It starts on where abilities are free and off in Classic, where they cost Munitions. A button with autocast on has a
+  dashed brass border and a small A, and the game remembers your choice per unit type for new units.
+  Balance (300 paired AI-vs-AI Conquest matches, on vs off): 2nd place VP vs winner 0.57 both, lead changes 2.24 vs
+  2.23, length 9.1 vs 9.0 min, about 98 vs 88 abilities used per match; faction wins 35/36/29% vs 39/31/30% (probably
+  noise). The Tiger rear-armor test now turns autocast off so the AT gun's AP round does not skew it.
+  Checked live: an MG fired Suppressive Fire by itself, a rifle squad threw a grenade by itself at enemy squads
+  holding a capture point, and an MG turned off stayed off in the next match. Not seen live: a rifle squad turned off holding its
+  grenade in a fight (covered by tests).
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

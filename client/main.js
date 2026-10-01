@@ -32,6 +32,7 @@ import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
+import { createAutocast } from './autocast.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -94,6 +95,7 @@ const connection = createConnection({
 });
 setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
 const sendCmd = (m) => connection.send(m);
+const autocast = createAutocast({ storage: local, send: sendCmd }); // remembered per unit type (client/autocast.js)
 connection.on('lobby', renderLobby);
 connection.on('start', receiveStart);
 connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
@@ -328,7 +330,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m, restored = null) {
-  pings.reset();
+  pings.reset(); autocast.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
@@ -578,6 +580,7 @@ function applySnapshot(s) {
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
   }
+  autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {
     if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
     if (!airShot(sh)) continue;
@@ -693,6 +696,7 @@ const hud = createHud({
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
   retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
   selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
