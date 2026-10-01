@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { createHud } from './hud.js';
+import { setPortraitSource } from './portraits.js';
+import { createLobbyView } from './lobby-view.js';
 import { createEffects } from './fx.js';
 import { bindings, match } from './keys.js';
 import { createSelection } from './selection.js';
@@ -216,6 +218,8 @@ const MODE_INFO = {
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
 // lobby map preview: terrain shaded by height, capture points, and spawns (in Assault: red defend, blue attack)
 const mapCache = new Map();
+// behind the lobby form: the selected map's battlefield, drifting slowly (client/lobby-view.js)
+const lobbyView = createLobbyView($('overlay'));
 async function previewMap(name, mode) {
   let m = mapCache.get(name);
   if (!m) {
@@ -224,6 +228,7 @@ async function previewMap(name, mode) {
   }
   if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
   wx.mapDefault(m, name);
+  lobbyView.show(name, m);
   const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
   const img = new ImageData(m.w, m.h);
   m.rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -243,9 +248,9 @@ async function previewMap(name, mode) {
     c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke();
   }
   const top = Math.max(0, ...(m.heights || []).flatMap(r => [...r].map(levelOf)));
-  $('mapInfo').innerHTML = [`<b style="color:var(--ink)">${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, horde ? `up to ${COLORS.length - 1} defenders` : `up to ${spawns.length} players`,
+  $('mapInfo').innerHTML = [`<b>${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, horde ? `up to ${COLORS.length - 1} defenders` : `up to ${spawns.length} players`,
     `${points.length} capture point${points.length === 1 ? '' : 's'}`, top >= 3 ? 'hills and cliffs' : top > 0 ? 'rolling hills' : '',
-    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (horde ? '<span style="color:#d94a3d">●</span> your HQ is one of these · <span style="color:#3d7bd9">●</span> the horde comes from here' : assault ? '<span style="color:#d94a3d">●</span> defend · <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
+    m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (horde ? '<span style="color:#d94a3d">●</span> your HQ is one of these, <span style="color:#3d7bd9">●</span> the horde comes from here' : assault ? '<span style="color:#d94a3d">●</span> defend, <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
     mode === 'assault' && m.assaultTime ? `${Math.round(m.assaultTime / 60)} minute clock` : ''].filter(Boolean).map(t => `<div>${t}</div>`).join('');
 }
 
@@ -262,7 +267,7 @@ function renderLobby(m) {
   $('roster').innerHTML = m.players.map((p, i) => {
     const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
-      <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(' · ')}</span></span>
+      <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(', ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '');
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
@@ -295,7 +300,7 @@ function renderLobby(m) {
   // the last match's result, until the next one starts (the room is back in the lobby: change map or mode freely)
   const r = m.result, w = r?.winner;
   $('result').classList.toggle('hidden', !r);
-  if (r) $('result').textContent = r.ended ? 'Match ended by the host' : r.horde ? `Overrun on wave ${r.horde.wave}: ${r.horde.kills} kills in ${mins(r.horde.time)}${r.horde.record ? ' · new record' : r.horde.best ? ` · record: wave ${r.horde.best.wave}` : ''}` : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
+  if (r) $('result').textContent = r.ended ? 'Match ended by the host' : r.horde ? `Overrun on wave ${r.horde.wave}: ${r.horde.kills} kills in ${mins(r.horde.time)}${r.horde.record ? ', a new record' : r.horde.best ? `. Record: wave ${r.horde.best.wave}` : ''}` : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
   renderReport(r, $('report'), { colors: COLORS.map(css), me: m.you }); // the chart and table under it (client/report.js)
   if (lobby) { lastStart = null; matchMemory.clear(); menuOpen(false); $('hud').classList.add('hidden'); receivePause({ paused: false }); audio.end(); epilogue.reset(); }
@@ -342,6 +347,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m, restored = null) {
+  lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
   pings.reset(); autocast.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
@@ -722,6 +728,19 @@ const hud = createHud({
   idleCount: () => selection.idle().length,
   findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },
 });
+// portraits on the recruit cards and the selection list: the same model builders as makeUnit, rendered lazily by
+// client/portraits.js (the shadow a plane casts on the battlefield stays out of it)
+setPortraitSource({
+  key: (type, slot) => `${type}|${facOf(slot)}|${look(slot).color}`,
+  build(type, slot) {
+    const root = new THREE.Group(), v = { id: -1, type, owner: slot, root, models: [], alive: UNITS[type].models, x: 0, z: 0, rot: 0, aim: 0, turret: null };
+    if (isAir(type)) { aviation.buildUnit(v, root, type, slot); v.shadow?.removeFromParent(); }
+    else if (type === 'airfield') aviation.buildAirfield(v, root, slot);
+    else buildModel(v, root, look(slot), facOf(slot), UNITS[type]);
+    return { root, models: v.models };
+  },
+  quiet: (draw) => { setFogMap(null); try { draw(); } finally { setFogMap(EDIT || !fogOfWar ? null : fogOfWar.texture, MW, MH); } },
+});
 function buildSupportBar() { hud.buildSupport(); }
 function aimSupport(k) {
   if (explainUnavailable(available({ t: 'support', kind: k }))) return;
@@ -733,10 +752,10 @@ function updateHud(s) { drawPlans(); hud.update(s); }
 // the builder squad nearest the clicked spot puts the fortification across its approach
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
-function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); }
+function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()}. Right-click cancels`; blip(600); }
 // Mass entrenchment: two clicks give the pattern its two points, and every selected builder squad digs it.
 let entrenchKind = 'line', entrenchHint = '';
-function startEntrench(kind) { if (explainUnavailable(available({ t: 'entrench' }))) return; entrenchKind = kind; entrenchHint = ''; setAim('entrench'); $('hint').textContent = `${ENTRENCH[kind]}: click where it starts · right-click cancels`; blip(600); }
+function startEntrench(kind) { if (explainUnavailable(available({ t: 'entrench' }))) return; entrenchKind = kind; entrenchHint = ''; setAim('entrench'); $('hint').textContent = `${ENTRENCH[kind]}: click where it starts. Right-click cancels`; blip(600); }
 // the segments of the armed pattern that can be built, with their cells, as the server will judge them
 function entrenchSegments(a, b) {
   const crew = diggers(), view = placementView();
@@ -750,7 +769,7 @@ function entrenchSummary(segs) {
   let mp = lastSnap?.mp ?? 0, now = 0;
   for (const c of costs.slice(0, diggers().length)) { if (mp < c) break; mp -= c; now++; }
   return !segs.length ? `${ENTRENCH[entrenchKind]}: nothing can be dug there`
-    : `${ENTRENCH[entrenchKind]}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? ` · ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
+    : `${ENTRENCH[entrenchKind]}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? `; ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
 }
 // a square on every cell the segments would dig (trench green, wire brass); the tiles are pooled on the group
 function paintTiles(group, segs, opacity) {
@@ -786,7 +805,7 @@ function worksAt(g) {
 function entrenchPreview(group, a, b) {
   const segs = entrenchSegments(a, b);
   paintTiles(group, segs, 0.5);
-  const text = `${entrenchSummary(segs)} · click ${aimCenter ? 'to dig' : 'where it starts'} · right-click cancels`;
+  const text = `${entrenchSummary(segs)}. Click ${aimCenter ? 'to dig' : 'where it starts'}. Right-click cancels`;
   if (text !== entrenchHint) { entrenchHint = text; $('hint').textContent = text; }
 }
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
@@ -863,7 +882,7 @@ function setAim(kind, unit = null) {
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
   $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
-  $('hint').textContent += ' · right-click cancels';
+  $('hint').textContent += '. Right-click cancels';
 }
 function startRally() {
   if (!lastSnap) return;
@@ -1062,7 +1081,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type, queue: e.shiftKey }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
-    if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
+    if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate, then click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     if (kind === 'entrench') {
       if (explainUnavailable(available({ t: 'entrench' }))) return;
       const a = aimCenter, segs = entrenchSegments(a, g);

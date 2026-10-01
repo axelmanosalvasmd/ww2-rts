@@ -492,10 +492,19 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
-is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
-mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
-The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
-the HUD.
+was the paperwork around it until 2026-10-01 (see below). Concepts in `docs/concepts/`: `e-mix-acetate.jpg` was the
+target, `a-sand-table.jpg` the world mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage),
+`before-conquest.jpg` where we started. The concept images show richer models than ours; the models stay procedural,
+so the look comes from paint, light and the HUD.
+
+The HUD's paperwork style (manila cards, typewriter text, stencil numbers, grease-pencil map symbols) was dropped on
+2026-10-01 because it read as a board game. The HUD is now a modern PC military RTS interface: gunmetal panels, one
+condensed sans, unit portraits and silhouette icons. Target: `docs/concepts/g-hud-gunmetal.jpg` (its coin icons by the
+costs were left out). Reference games for density and restraint: Company of Heroes 3, Men of War II, Steel Division 2.
+Rules from the user: it must not look like a mobile game, so no chunky rounded buttons or pills, glossy bevels,
+gradients or inner glows, outlined or shadowed text and icons, cartoon or saturated colors, ornate or rarity-colored
+card frames, coin or gem currency icons, red notification dots, oversized tap-sized targets, bouncy or pop-in motion
+or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body text, real hover and keyboard focus.
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
 - Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
   particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
@@ -505,27 +514,55 @@ the HUD.
   - Warm low sun, soft shadows, slightly saturated "painted miniature" colors, a light haze.
   - A slight blur only along the far (top) edge of the screen, subtle enough that units there stay readable. Off on Low.
   - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
-  - Unit markers: the class badge over each unit becomes the same military map symbol the HUD uses, drawn in the
-    owner's color. Health bar, cover shield and veterancy stay.
+  - Unit markers: the badge left of each unit's health bar is the unit's silhouette from the HUD's icon set, drawn
+    in the owner's color on a small gunmetal plate edged in that color. Health bar, cover shield and veterancy stay.
   - Order lines and range rings drawn like grease pencil on the table (slightly rough strokes, arrowheads on routes).
     Colors keep their meaning: blue move, orange attack-move, white retreat, red attack, yellow dig/build.
-- Player colors (grease pencil, they read on grass, the dark strip and manila): blue `#3b73d6`, red `#cc3a2e`, chalk
-  `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue against red. Gold and green are gone:
-  gold clashed with the brass accent and manila, green vanished on grass.
-- HUD (panel style "E"): a dark translucent olive-charcoal strip (`#22251b` at ~85%) holds everything; only the Command
-  Card's unit cards and the selected-unit list are manila cards (`#d8c69a`) with dark brown ink (`#2b2418`). Light text
-  on the strip `#e6dcc0`, brass `#d2a849` for big numbers, grease-pencil red `#b8322a` for danger.
-- Type: Courier Prime (typewriter) for all HUD text, Stardos Stencil only for big numbers (MP, VP, clock, HQ labels).
-  No all-caps labels, nothing under 13 px. IBM Plex Mono is gone.
-- Unit icons everywhere: period military map symbols (infantry box with an X, armor box with an oval, artillery box
-  with a dot, and so on), one symbol per unit type, full name and role in a tooltip. Faction markings next to player
-  names in the score panel: US star, German cross, Soviet star.
+- Player colors (they carry meaning, so the HUD redesign kept them; they read on grass and on the gunmetal panels):
+  blue `#3b73d6`, red `#cc3a2e`, chalk `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue
+  against red. Gold and green are gone: gold clashed with the brass accent, green vanished on grass.
+- HUD panels (2026-10-01, replacing panel style "E"): translucent gunmetal `rgba(25, 28, 30, 0.86)` with a 1 px warm
+  khaki hairline `rgba(176, 164, 122, 0.46)` and 2 px corners, no shadows, glows or blur. The top panels (scores,
+  resources, buttons) are near solid (0.96) so world labels never read through. Cards, buttons and list cells sit a
+  step lighter (`#24282b`) with a fainter hairline; hover lifts the cell (`#2e3337`) and lights its hairline brass,
+  keyboard focus is a 1 px brass outline. The minimap sits in a plain frame (a 4 px gunmetal band and a hairline).
+- Palette (restrained: neutrals plus one accent): text `#e2dfd3`, secondary text `#a6a292` (warm, tinted toward the
+  khaki lines), brass `#d6b25e` only on the numbers that matter (manpower, victory points, the clock) and the lobby's
+  Start button, olive `#a9b37b` for income and cover, signal red `#c8483b` (text `#ee8a7b`) for danger. Costs are plain
+  numbers with a dim "MP"; resources are plain numbers with a small silhouette icon (helmet, cartridge, jerrycan).
+- Type: Barlow Semi Condensed (Google Fonts, 400 to 700) for every word and number, tabular figures on. A straight-
+  sided, DIN-like grotesk in the family of road-sign and equipment lettering, which suits the subject; of the five
+  condensed faces tried (Sofia Sans Semi Condensed, Barlow Semi Condensed, Mona Sans, Archivo, Fira Sans Condensed)
+  its numerals read clearest at 13 to 14 px and its width fits fourteen recruit cards at 1920. Weights: 500 body, 600
+  names and numbers. Sentence case, no all-caps labels, nothing under 13 px. Courier Prime and Stardos Stencil are gone.
+- Icons (`client/symbols.js`): one set of flat, filled silhouettes in a 100 box, single color, for unit types (side
+  view facing right on a common baseline, planes from above), buildings, support calls, orders and the few UI glyphs.
+  The HUD draws them in the text color; world badges draw them in the owner's color. They replace the NATO map
+  symbols and the line icons. Full name and role stay in each tooltip. Faction markings next to player names in the
+  score panel: US star, German cross, Soviet star.
+- Portraits (`client/portraits.js`): recruit cards, train and build cards and the selection list show a small render
+  of each unit's real 3D model, made from the same builders the battlefield uses (main.js hands them in), once per type
+  and look (faction and player color), so they follow the models as those improve. A small renderer of its own
+  starts 1.2 s after the match starts and renders one portrait per frame; colors are pulled 20% toward grey so the
+  renders sit quietly on the panels. Until a portrait is ready its slot shows the silhouette icon.
 - Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
   row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
   Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
   Classic); bottom right the minimap. Nothing overlaps at 1366x768. The always-on keybinding panel is parked
   (issue #2); hotkeys show on buttons.
-- Lobby: same style, the room form as a manila order card. The map editor only takes the new fonts and colors.
+- On states share one look: a brass hairline over a faint brass tint (Capture mouse pressed, the Recruit tab on, an
+  ability with autocast on, which also shows a small A). While recruit letters are live the Command Card's hairline
+  turns brass; each card's letter sits at the left end of its cost line, clear of the name and the portrait. The
+  Command Card's group names lead with a small silhouette (rifleman, MG team, tank, fighter).
+- Lobby backdrop (`client/lobby-view.js`): behind the form, the selected map's real battlefield (the match's ground,
+  relief, houses, water and trees) seen from above at about 50 degrees, the camera gliding slowly over the middle of
+  the map on two unsynchronized sweeps (140 s and 95 s) without turning or changing height. It renders at half
+  resolution on its own small renderer, shows at half strength over the dark ground, follows the Map select, and is
+  freed when a match starts. It is built in steps in idle time; Graphics Low skips it; software rendering
+  (SwiftShader) and reduced motion get one still frame.
+- Lobby: the room form on one gunmetal panel in the HUD's style; Start is the one brass button. The match report,
+  tooltips, banners, alerts and the end-of-match notice (a quiet panel, no stamp) share the panel and type. The map
+  editor takes the same panel, type and colors.
 - Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area), point captured /
   lost, unit lost, enemy Air Support incoming, unit ready and building finished (Classic). One line each in a short list
   above the minimap (newest on top, gone after ~6 s), a minimap ping and a short sound. Space jumps to the newest alert
