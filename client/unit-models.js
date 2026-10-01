@@ -15,6 +15,7 @@ import { modelMaterial } from './model-textures.js';
 import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier } from './models/infantry.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
+import { lightHeavy } from './models/armor-lightheavy.js';
 
 // unit-sized shapes, scaled per part (body: the corpses; client/models/infantry.js builds the soldiers)
 const GEO = {
@@ -326,8 +327,14 @@ export function buildModel(v, root, f, fac, def) {
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else if (TANKS[type]) {
-    const hull = buildTank(v, root, TANKS[type][fac] ?? TANKS[type].find(Boolean), f);
-    v.fxTip = barrelTip(v.turret);
+    // the light tanks, the Tiger and the ZSU-37 come from client/models/armor-lightheavy.js as two painted geometries
+    const lh = lightHeavy(type, fac, f);
+    let hull;
+    if (lh) {
+      hull = new THREE.Group(); hull.add(part(lh.hull, 0xffffff));
+      v.turret = new THREE.Group(); v.turret.position.set(...lh.ring); v.turret.add(part(lh.turret, 0xffffff));
+      root.add(hull, v.turret); v.fxTip = lh.tip;
+    } else { hull = buildTank(v, root, TANKS[type][fac] ?? TANKS[type].find(Boolean), f); v.fxTip = barrelTip(v.turret); }
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
   } else if (type === 'rocket') {
