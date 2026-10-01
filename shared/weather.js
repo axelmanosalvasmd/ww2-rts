@@ -1,14 +1,19 @@
 // Weather (DESIGN.md, Weather): one state at a time with effects on sight and movement, picked per match from the
 // lobby setting, the map and a seed, plus at most one change during the match that everyone hears about first.
-// The sim reads two multipliers from here, sightMul() in vision and speedMul() in movement; the unit stats never change.
+// The sim reads two multipliers from here, sightMul() in vision and weatherSpeed() in movement; the unit stats never
+// change. Rain and Mud are the living ground's own rain and soaked ground (sim.js weather(), CFG.weather) held all
+// match, so their sight and off-road numbers here only describe them, to players and to the AI: the ground is slowed
+// once, by the sim's wet ground, never twice.
 
 // sight: how far ground units and buildings see (planes and recon flights are not affected).
 // inf, veh: infantry and vehicle speed everywhere. offRoad: vehicle speed off the roads, on top of veh.
 export const WEATHER = {
   clear: { name: 'Clear', sight: 1, inf: 1, veh: 1, offRoad: 1 },
   fog: { name: 'Ground fog', sight: 0.7, inf: 1, veh: 1, offRoad: 1 },
-  rain: { name: 'Rain', sight: 0.85, inf: 1, veh: 1, offRoad: 0.8 },
-  mud: { name: 'Mud', sight: 1, inf: 0.9, veh: 1, offRoad: 0.7 },
+  // the sim's rain (CFG.weather: sight 0.2, wetGround 0.2) on fully soaked ground; test.js keeps the two in step
+  rain: { name: 'Rain', sight: 0.8, inf: 1, veh: 1, offRoad: 0.8, rains: true },
+  // the sim's soaked ground (CFG.weather.wetGround) all match; infantry -10% is Mud's own
+  mud: { name: 'Mud', sight: 1, inf: 0.9, veh: 1, offRoad: 0.8, soaks: true },
   snow: { name: 'Snow', sight: 0.9, inf: 0.9, veh: 0.85, offRoad: 1 },
 };
 export const WEATHER_KINDS = Object.keys(WEATHER);
@@ -73,16 +78,17 @@ export function stepWeather(g) {
 
 // ---------- the two multipliers the sim reads ----------
 
-// vision range of a ground observer (sim.js multiplies only non-air units by this)
-export const sightMul = (g) => WEATHER[g.weather?.now]?.sight ?? 1;
+// vision range of a ground observer (sim.js multiplies only non-air units by this; rain cuts sight through g.wx)
+export const sightMul = (g) => { const w = WEATHER[g.weather?.now]; return !w || w.rains ? 1 : w.sight; };
 
-// Roads. The sim has no road layer, so this follows the ground painter (client/ground.js): open ground next to one of
-// the map's houses is a village street, unless it lies by water, and bridges are roads. A crater ends the road there.
+// Where the ground painter (client/ground.js) draws a road or a street, for the weather's look (mud and puddles along
+// them): the map's roads (D) and bridges (=), and open ground next to one of the map's houses, unless it lies by water.
+// The sim's own roads (the ROAD cells, D and =) are what weatherSpeed() is told about.
 export function roadMask(map) {
   const { w, h, rows } = map, out = new Uint8Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const ch = rows[y][x];
-    if (ch === '=') { out[y * w + x] = 1; continue; }
+    if (ch === '=' || ch === 'D') { out[y * w + x] = 1; continue; }
     if (ch !== '.') continue;
     let town = false, wet = false;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -93,14 +99,13 @@ export function roadMask(map) {
   }
   return out;
 }
-export const onRoad = (g, c) => g.roads?.[c] === 1 && (g.chars[c] === '.' || g.chars[c] === '=');
 
-// speed of a unit of this kind standing on cell c (planes fly over the weather)
-export function speedMul(g, def, c) {
+// speed of a unit of this kind (planes fly over the weather). Off-road slowing is the sim's wet ground (Rain, Mud),
+// which leaves roads alone, so nothing here depends on the road.
+export function weatherSpeed(g, def) {
   const w = WEATHER[g.weather?.now];
   if (!w || def.air) return 1;
-  if (def.infantry) return w.inf;
-  return w.offRoad < 1 && !onRoad(g, c) ? w.veh * w.offRoad : w.veh;
+  return def.infantry ? w.inf : w.veh;
 }
 
 // ---------- what players and the AI are told ----------

@@ -1,7 +1,9 @@
 // Atmosphere: a mood per map (sun height and color, sky fill, haze, river mist, blowing dust), the match weather
 // (shared/weather.js: ground fog, rain, mud, snow), slow cloud shadows drifting over the board and table, the
 // planning-table props around the board, and a few birds circling low over it. main.js calls createAtmosphere() once,
-// start() from startGame, setWeather() when the weather turns and update(dt) every frame.
+// start() from startGame, setWeather() when the weather turns, setRain() with every snapshot's showers and wet ground
+// (the living ground, shared/sim.js), and update(dt) every frame. Rain, snow, dust and cloud shade drift on the
+// server's wind (client/wind.js).
 //
 // Cost in draw calls: cloud shade 2 (board and table), props 1 (plus 1 in the shadow pass), lamp light pool 1,
 // river mist 1 (dawn maps), rain, snow or dust 1, wet ground, mud or snow cover 1 (in that weather), fog banks 1 (in
@@ -15,9 +17,10 @@ import * as THREE from 'three';
 import { gfx } from './gfx.js';
 import { sky, BOARD } from './light.js';
 import { mapMood, roadMask } from '/shared/weather.js';
+import { wind } from './wind.js';
 
 const TAU = Math.PI * 2;
-const WL = Math.hypot(0.55, 0.25), WX = 0.55 / WL, WZ = 0.25 / WL; // the way smoke drifts in fx.js
+const WL = Math.hypot(0.55, 0.25), WX = 0.55 / WL, WZ = 0.25 / WL; // the wind before the server reports one (client/wind.js)
 const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const seeded = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
 
@@ -189,6 +192,7 @@ const FALLS = {
 
 // Points live in a world-space box that follows the camera target; each one wraps around inside the box, so panning
 // never moves the flakes already on screen. They fade toward the box edges, near the camera and in the haze.
+// Rain falls in the Rain weather and in the showers of the others (snapshot.wx), as strong as it rains.
 function weatherPoints(kind) {
   const F = FALLS[kind], n = F.n, rnd = seeded(F.seed);
   const geo = new THREE.BufferGeometry();
@@ -254,7 +258,8 @@ function weatherPoints(kind) {
 // ---------- wet ground, mud and lying snow ----------
 
 // Per map cell: r how close a road is (1 on it, fading over 3 cells), g water (nothing settles there), b the road
-// itself. Linear filtering softens the cell edges. Roads follow shared/weather.js, the same ones the sim slows on.
+// itself. Linear filtering softens the cell edges. Roads and village streets are where client/ground.js paints them
+// (roadMask in shared/weather.js).
 function groundMask(map) {
   const { w, h, rows } = map, road = roadMask(map), data = new Uint8Array(w * h * 4), R = 3;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -709,6 +714,9 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   let bankAt = [];
 
   let fall = null, fallA = 0; // rain, snow or dust in the air, and how far it has faded in (0-1)
+  // showers and the wet ground they leave (the living ground, snapshot.wx), 0-1 each
+  let shower = { rain: 0, wet: 0 };
+  const drift = new THREE.Vector2();
   const BIRDS = 4, birds = birdMesh(BIRDS);
   root.add(birds);
   let flight = [];
@@ -721,8 +729,18 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
 
   function aim(kind) {
     wxNow = LOOK[kind] ? kind : 'clear';
-    Object.assign(goal, LOOK[wxNow]);
-    hazeGoal.setHex(M.haze).lerp(new THREE.Color(goal.hazeTo), goal.hazeMix);
+    blend();
+  }
+  // The look to ease toward: the match weather, moved toward rain's look as hard as a shower rains (the server keeps
+  // showers out of Snow, and in Rain it rains all match), with the ground as wet as the shower left it.
+  const hazeBase = new THREE.Color(), hazeTmp = new THREE.Color();
+  function blend() {
+    const base = LOOK[wxNow], r = LOOK.rain, k = shower.rain, wet = wxNow === 'mud' ? 0 : shower.wet; // Mud's look is its soaked ground
+    Object.assign(goal, base);
+    for (const key of ['haze', 'sun', 'shadow', 'clouds', 'banks']) goal[key] = base[key] + (r[key] - base[key]) * k;
+    for (const key of ['wet', 'sheen', 'mud']) goal[key] = Math.max(base[key], r[key] * wet);
+    hazeBase.setHex(M.haze).lerp(hazeTmp.setHex(base.hazeTo), base.hazeMix);
+    hazeGoal.setHex(M.haze).lerp(hazeTmp.setHex(r.hazeTo), r.hazeMix).lerp(hazeBase, 1 - k);
   }
 
   function applyMood() {
@@ -756,11 +774,17 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   }
   gfx.onChange(applyGfx);
 
-  // what should be in the air: the weather's rain or snow, else the mood's dust on a clear day
-  const fallKind = () => FALL[wxNow] ?? (M.weather === 'dust' && wxNow === 'clear' ? 'dust' : null);
+  // what should be in the air: the weather's rain or snow, a shower's rain, else the mood's dust on a clear day
+  const fallKind = () => FALL[wxNow] ?? (shower.rain > 0.02 ? 'rain' : M.weather === 'dust' && wxNow === 'clear' ? 'dust' : null);
   function swapFall(kind) {
     if (fall) { root.remove(fall); fall.geometry.dispose(); fall.material.dispose(); fall = null; }
-    if (kind) { fall = weatherPoints(kind); root.add(fall); }
+    if (kind) {
+      fall = weatherPoints(kind); root.add(fall);
+      // it falls on the wind it started in (client/wind.js): positions follow from speed times the clock, so the slant
+      // never changes under a fall that is already on screen
+      const F = FALLS[kind], h = Math.hypot(F.vel[0], F.vel[2]) / WL;
+      fall.material.uniforms.uVel.value.set(wind.x * h, F.vel[1], wind.z * h);
+    }
     fallA = 0;
     applyGfx();
   }
@@ -795,6 +819,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     // the editor has no match weather: a winter map still snows there, as it always has
     const kind = weather?.[0] ?? (mapMood(map, key) === 'snow' ? 'snow' : 'clear');
     moodName = moodFor(map, key, kind); M = MOODS[moodName];
+    shower = { rain: 0, wet: 0 };
     aim(kind);
     Object.assign(cur, goal); hazeNow.copy(hazeGoal); // a match starts in its weather, no easing in
     applyMood();
@@ -865,8 +890,10 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     cover.visible = on && cur.wet + cur.sheen + cur.mud + cur.cover > 0.004;
     banks.visible = on && cur.banks > 0.004 && banks.count > 0;
     if (cloudBoard.visible) {
-      const k = (CLOUD_SPEED * t) / CLOUD_SCALE;
-      cloudMat.uniforms.drift.value.set(-WX * k % 1, -WZ * k % 1, (-WX * k * 1.6 + 0.37) % 1, (-WZ * k * 1.9 + 0.61) % 1);
+      // cloud shade moves with the wind; summed up frame by frame so a change of wind does not make it jump
+      const k = (CLOUD_SPEED * dt) / CLOUD_SCALE / WL;
+      drift.x = (drift.x - wind.x * k) % 1; drift.y = (drift.y - wind.z * k) % 1;
+      cloudMat.uniforms.drift.value.set(drift.x, drift.y, (drift.x * 1.6 + 0.37) % 1, (drift.y * 1.9 + 0.61) % 1);
     }
     if (cover.visible) coverMat.uniforms.uTime.value = t;
     if (mist.visible) {
@@ -890,7 +917,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     if (fall?.visible) {
       const u = fall.material.uniforms, box = u.uBox.value, gy = cam.y ?? hAt(cam.x, cam.z), kind = fall.userData.kind;
       u.uTime.value = t;
-      u.uAlpha.value = FALLS[kind].alpha * fallA;
+      u.uAlpha.value = FALLS[kind].alpha * fallA * (FALL[wxNow] || kind !== 'rain' ? 1 : shower.rain);
       u.uBoxMin.value.set(cam.x - box.x / 2, gy - (kind === 'dust' ? 1.5 : 4), cam.z - box.z / 2);
       u.uFade.value.x = cam.x; u.uFade.value.y = cam.z;
       renderer.getDrawingBufferSize(v2);
@@ -913,6 +940,12 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
 
   return {
     start, update, setWeather,
+    // showers and the wet ground they leave, 0-1 each (snapshot.wx)
+    setRain(rain, wet) {
+      if (rain === shower.rain && wet === shower.wet) return;
+      shower = { rain, wet };
+      if (on) blend();
+    },
     get mood() { return moodName; },
     get weather() { return wxNow; },
     // debug: hide everything this module draws (for measuring its cost)

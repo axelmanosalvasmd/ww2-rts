@@ -17,6 +17,18 @@ _Avoid_: base-building mode, RTS mode
 **Annihilation**:
 A player is eliminated when they have no Production Buildings left, where a Construction Site of one still counts. A team is out when all its players are, and the last team standing wins.
 
+**Horde**:
+A co-op mode: every player shares one HQ and defends one Command Bunker against Waves. Nobody wins; the result is the Wave the bunker fell on. Also the name of the enemy side, an extra AI player no human sits in.
+_Avoid_: survival, tower defense, zombies
+
+**Wave**:
+One numbered attack of the Horde. It is dead when no horde ground unit is left on the map or in its Reserve, and only then does the break before the next one start.
+_Avoid_: round, level
+
+**Reserve**:
+The part of a Wave that has not entered the map yet. It walks on at the attacker spawns as units die and room opens up.
+_Avoid_: queue, backlog
+
 **Sudden Death**:
 Classic's endgame once the clock runs out. Production and construction stop and Production Buildings decay, so Annihilation always arrives.
 _Avoid_: overtime, time decision
@@ -80,6 +92,23 @@ _Avoid_: stealth, invisibility
 A capture location on the map. In Classic it earns Munitions rather than VP.
 _Avoid_: flag, objective
 
+## Orders
+
+**Take Cover**:
+The order that sends the selected infantry to the best cover within reach. Idle infantry under fire do the same on their own; crewed weapons only on the order.
+_Avoid_: hide, duck
+
+**Stance**:
+One of three per-unit switches the player sets: Hold Fire (shoot only on an attack order), Hold Position (never move unordered) and Auto-retreat (run for home when broken). All off by default.
+_Avoid_: mode, behaviour
+
+**Mass Entrenchment**:
+One order that sets every selected builder squad digging a shared pattern (trench line, zigzag, double line, arc, ring, strongpoint). Each squad pays for a segment as it starts it.
+_Avoid_: mass dig, auto-trench
+
+**Segment**:
+One fortification of a pattern: four trench cells, or five of barbed wire.
+
 ## Air
 
 **Sortie**:
@@ -112,11 +141,18 @@ A plane destroyed by Flak or Fighter Cover before it finishes its run.
 The match's conditions (Clear, Ground fog, Rain, Mud or Snow). It shortens sight on the ground and slows movement for every side alike; planes are not affected. The host picks it in the lobby, and it changes at most once in a match, announced to everyone a few seconds before.
 _Avoid_: climate, season, conditions (in player-facing text)
 
+**Shower**:
+A spell of rain that comes and goes during a match in Clear, Ground fog and Mud weather. It shortens sight and soaks the ground, which slows vehicles off the roads until it dries. Rain weather is rain all match; Snow has no showers.
+
 ## Interface
 
 **Command Card**:
 The panel at the bottom center of the screen that lists what you can make. Outside Classic it holds every unit you can buy; in Classic it shows what the selected building trains or what the selected Engineers can build.
 _Avoid_: buy bar, build menu, production panel
+
+**Autocast**:
+A per-unit switch, set by right-clicking an ability button, that lets the unit use its ability by itself when it judges the moment worth it. It starts on where abilities are free and off in Classic, where they cost Munitions.
+_Avoid_: auto-ability, auto mode
 
 **Alert**:
 A short notice to one side that something needs its attention: it is under attack, it captured or lost a Point, it lost a unit, enemy Air Support is coming, or (in Classic) a unit or building is ready. Unlike an Air Support announcement, which everyone sees on the map, an Alert goes only to the side it concerns.

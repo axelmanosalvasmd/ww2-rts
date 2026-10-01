@@ -1,7 +1,6 @@
-// Weather on screen: the lobby's Weather select, one quiet line under the score strip, and the sight multiplier the
-// fog overlay uses. The server decides the weather and what it does (shared/weather.js); this only shows it.
+// Weather on screen: the lobby's Weather select and one quiet line under the score strip. The server decides the
+// weather and what it does (shared/weather.js, and the living ground's showers in shared/sim.js); this only shows it.
 // main.js calls lobby() from renderLobby, mapDefault() from the map preview, start() and snapshot() during a match.
-import { UNITS } from '/shared/sim.js';
 import { WEATHER, WEATHER_CHOICES, mapWeather, weatherEffects } from '/shared/weather.js';
 
 const LABEL = { map: 'Map default', clear: 'Clear', fog: 'Ground fog', rain: 'Rain', mud: 'Mud', snow: 'Snow', random: 'Random' };
@@ -12,6 +11,12 @@ const plannedChange = (p) => `${p.next === 'clear' ? 'Lifts' : `Turns to ${WEATH
 const planShort = (p) => (p.next ? `${p.now === 'fog' ? 'Fog' : WEATHER[p.now].name} until ${clock(p.at)}` : WEATHER[p.now].name);
 // the warning line's tail: "Fog lifts in 8 s", "Mud in 8 s"
 const turnText = (now, next, s) => (next === 'clear' ? `${now === 'fog' ? 'Fog lifts' : 'Clearing'} in ${s} s` : `${WEATHER[next].name} in ${s} s`);
+// showers come and go in Clear, Fog and Mud (snapshot.wx: [rain 0-1, wet ground 0-1, ...]); Rain is one all match and
+// Snow has none. Only there when it matters.
+const SHOWERS = (kind) => kind !== 'snow' && !WEATHER[kind]?.rains;
+const showerText = (rain, wet) => (rain > 0.3 ? 'Rain: vehicles slow off the road, fords deeper, sight shorter'
+  : wet > 0.15 ? `Wet ground (${Math.round(wet * 100)}%): vehicles slow off the road` : '');
+const withShowers = (kind, text) => (SHOWERS(kind) ? `${text}. Showers come and go` : text);
 
 export function createWeatherView({ sendCmd }) {
   const $ = (id) => document.getElementById(id);
@@ -26,8 +31,8 @@ export function createWeatherView({ sendCmd }) {
     if (!sel) return;
     const v = sel.value;
     sel.title = v === 'random' ? 'Picked when the match starts. Fog may lift or rain may turn to mud partway through'
-      : v === 'map' ? (mapPlan ? `${said(mapPlan.now)}${mapPlan.next ? `. ${plannedChange(mapPlan)}` : ''}` : 'The weather this map brings')
-        : said(v);
+      : v === 'map' ? (mapPlan ? withShowers(mapPlan.now, `${said(mapPlan.now)}${mapPlan.next ? `. ${plannedChange(mapPlan)}` : ''}`) : 'The weather this map brings')
+        : withShowers(v, said(v));
   }
 
   return {
@@ -57,15 +62,18 @@ export function createWeatherView({ sendCmd }) {
         line = line ?? Object.assign(document.createElement('p'), { className: 'sc-wx' });
         strip.appendChild(line);
       }
-      const [now, next, left] = row, text = next ? `${said(now)}. ${turnText(now, next, left)}` : said(now);
+      const [now, next, left] = row, base = next ? `${said(now)}. ${turnText(now, next, left)}` : said(now);
+      // (Mud's soaked ground is Mud itself, so only a shower's rain is news there)
+      const shower = SHOWERS(now) && Array.isArray(s.wx) ? showerText(s.wx[0], WEATHER[now]?.soaks ? 0 : s.wx[1]) : '';
+      // a shower on a clear day is the whole story; on top of fog or mud it is added to it
+      const text = !shower ? base : now === 'clear' && !next ? shower : `${base} · ${shower}`;
       if (text !== shown) {
         shown = text; line.textContent = text;
         line.classList.toggle('turning', !!next);
-        line.title = next ? `Then ${said(next)}` : 'Weather for this match. Planes and recon flights fly above it';
+        // the whole line too, since a narrow strip cuts a long one short
+        line.title = `${text}. ${next ? `Then ${said(next)}` : 'Weather for this match. Planes and recon flights fly above it'}`;
       }
     },
-    // how far a unit of this type sees in the current weather (the fog overlay's circles)
-    sight(type) { return UNITS[type]?.air ? 1 : WEATHER[row[0]]?.sight ?? 1; },
     get now() { return row[0]; },
   };
 }
