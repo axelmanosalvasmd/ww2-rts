@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Tailnet members can also join by IP: http://<host's Tailscale IP>:3000 (start.cmd prints it). The server listens on
+  all interfaces; a Windows Firewall rule, "ww2-rts game (Tailscale only)", lets in only Tailscale addresses
+  (100.64.0.0/10), so the home network and the internet stay blocked. The rule has to be added once as admin.
 - start.cmd tries Tailscale Funnel first (a public link: friends can join without Tailscale) and falls back to the
   tailnet-only link. Funnel stays off until the tailnet admin allows it; the link is the same either way.
 - Conquest catch-up is stronger: trailing players get up to +6 MP/s (was 4), 1 per 60 VP behind (was 80). The new units
