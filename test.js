@@ -2220,11 +2220,13 @@ const referenceVision = g => {
 // and plain Math.hypot here), the live recon corridors and the cells under the enemy ground units the team sees. The
 // packed keyframe and deltas rebuild it on each client. Units standing still keep their cells between passes, so the
 // check runs again after a hedge, a smoke cloud and a raised patch of ground appear inside one unit's view.
+// the match weather's own sight (shared/weather.js); Rain cuts sight through the sim's rain (g.wx) instead
+const WEATHER_SIGHT = { clear: 1, fog: 0.7, mud: 1, snow: 0.9, rain: 1 };
 const fogSees = (g, u, at) => {
   const def = UNITS[u.type], d = Math.hypot(u.x - at.x, u.z - at.z);
   if (u.air) return d <= def.vision;
-  const range = def.vision * (1 + CFG.highGroundVision * massiveInternals.levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
-  return d < 6 || (!!def.building && d <= def.vision) || (d <= range && los(g, u, at));
+  const sight = def.vision * (WEATHER_SIGHT[g.weather?.now] ?? 1), range = sight * (1 + CFG.highGroundVision * massiveInternals.levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
+  return d < 6 || (!!def.building && d <= sight) || (d <= range && los(g, u, at));
 };
 const fogEyes = (g, team) => [...g.units.values()].filter(u => g.players[u.owner].team === team && (!u.air || massiveInternals.airborne(u)));
 const cellAt = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL });
@@ -2333,6 +2335,12 @@ const referenceFog = (g, team) => {
   assert.ok(wet < dry, `rain shrinks what the team sees (${dry} cells dry, ${wet} in rain)`);
   g.wx.rain = 0;
   assert.equal(pass('rain over').get(team).reduce((a, v) => a + v, 0), dry, 'the view comes back when the rain stops');
+  // ground fog (the match weather) shortens sight the same way, buildings' own circles too
+  g.weather = { now: 'fog', next: null, at: 0 };
+  const foggy = pass('ground fog').get(team).reduce((a, v) => a + v, 0);
+  assert.ok(foggy < dry, `ground fog shrinks what the team sees (${dry} cells clear, ${foggy} in fog)`);
+  g.weather = { now: 'clear', next: null, at: 0 };
+  assert.equal(pass('fog lifted').get(team).reduce((a, v) => a + v, 0), dry, 'the view comes back when the fog lifts');
   assert.ok(g.units.size === 300 && [...g.units.values()].some(u => u.air && airborne(u)), 'airborne planes took part');
 }
 
@@ -2879,6 +2887,29 @@ for (const lookupFinished of [false, true]) {
   Object.defineProperty(socket, 'readyState', { value: 2, configurable: true });
   try { assert.equal(await built(2), 0, 'server constructs no snapshot for a socket that is closing'); }
   finally { delete socket.readyState; }
+  await h.close();
+}
+
+// Server: only the host picks the weather, from the known choices, and the match starts with it.
+{
+  const h = await serverHarness(), code = 'weather';
+  const p = await h.connect(code, { token: 'host', name: 'Host' }), q = await h.connect(code, { token: 'guest', name: 'Guest' });
+  await q.wait('lobby');
+  assert.equal(p.lobby().weather, 'map', 'server lobby starts on the map default weather');
+  await p.send({ t: 'weather', v: 'fog' });
+  assert.equal(q.lobby().weather, 'fog', 'server host weather pick reaches everyone');
+  await q.send({ t: 'weather', v: 'snow' });
+  await p.send({ t: 'weather', v: 'hail' });
+  await p.send({ t: 'weather', v: { toString: null } });
+  assert.equal(p.lobby().weather, 'fog', 'server ignores a guest or unknown weather pick');
+  await p.send({ t: 'start' });
+  const start = await q.wait('start');
+  assert.deepEqual(start.weather, ['fog'], 'server start message carries the weather');
+  assert.equal(h.game(code).weather.now, 'fog', 'server match runs in the picked weather');
+  await h.tick(2);
+  assert.deepEqual(q.messages.filter(m => m.t === 's').at(-1)?.weather, ['fog'], 'server snapshots carry the weather');
+  await p.send({ t: 'weather', v: 'clear' });
+  assert.equal(h.game(code).weather.now, 'fog', 'server weather cannot change mid-match');
   await h.close();
 }
 
@@ -4255,6 +4286,127 @@ for (const lookupFinished of [false, true]) {
     }
     relief.dispose();
   }
+}
+
+// Weather (shared/weather.js): the plan is the same for the same seed, it turns on time after a public warning, and
+// the effects reach movement and sight through one multiplier each. Rain is the living ground's rain held on all
+// match, and the showers follow the match weather. Fog of war stays on the server: shorter sight sends fewer enemy rows.
+{
+  const { planWeather, weatherRow, weatherSpeed, roadMask, WEATHER, WEATHER_KINDS, WEATHER_WARN } = await import('./shared/weather.js');
+  const plain = blank(empty);
+  for (let seed = 0; seed < 50; seed++) assert.deepEqual(planWeather('random', plain, 'x', seed), planWeather('random', plain, 'x', seed), 'weather: the same seed gives the same plan');
+  const plans = Array.from({ length: 300 }, (_, seed) => planWeather('random', plain, 'x', seed));
+  for (const k of WEATHER_KINDS) assert.ok(plans.some(p => p.now === k), `weather: Random can pick ${k}`);
+  assert.ok(plans.some(p => p.next) && plans.some(p => !p.next), 'weather: Random sometimes turns once, sometimes holds');
+  for (const p of plans.filter(p => p.next)) {
+    assert.ok((p.now === 'fog' && p.next === 'clear' && p.at >= 210 * 20 && p.at <= 270 * 20) || (p.now === 'rain' && p.next === 'mud' && p.at >= 300 * 20 && p.at <= 420 * 20), `weather: only fog lifts or rain turns to mud, on time (${JSON.stringify(p)})`);
+  }
+  assert.deepEqual(planWeather('snow', plain, 'x', 7), { now: 'snow', next: null, at: 0 }, 'weather: a host pick holds all match');
+  assert.deepEqual(planWeather('map', { ...plain, name: 'Ardennes Crossing' }, 'ardennes-crossing'), { now: 'snow', next: null, at: 0 }, 'weather: a winter map snows by default');
+  assert.deepEqual(planWeather('map', { ...plain, name: 'Pegasus Bridge' }, 'pegasus-bridge'), { now: 'fog', next: 'clear', at: 240 * 20 }, 'weather: a river dawn starts in fog that lifts after 4 minutes');
+  assert.deepEqual(planWeather('map', { ...plain, weather: 'rain' }, 'x'), { now: 'rain', next: null, at: 0 }, 'weather: a map file can name its weather');
+  assert.deepEqual(planWeather('map', plain, 'x'), { now: 'clear', next: null, at: 0 }, 'weather: other maps are clear');
+  const twin = (seed) => createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'random', weatherSeed: seed }).weather;
+  assert.deepEqual(twin(12345), twin(12345), 'weather: createGame with the same seed plans the same weather');
+  assert.deepEqual(planWeather('__proto__', plain, 'x', 7), { now: 'clear', next: null, at: 0 }, 'weather: a made-up setting falls back to the map default');
+  assert.deepEqual(planWeather('map', { ...plain, weather: 'constructor' }, 'x'), { now: 'clear', next: null, at: 0 }, 'weather: a map file naming no real weather is clear');
+  // only Random draws a random number, so every other weather leaves the sim's random stream (and a seeded bench run) as it was
+  const randomCalls = (opts) => { let n = 0; const real = Math.random; Math.random = () => (n++, real()); try { createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], opts); } finally { Math.random = real; } return n; };
+  const base = randomCalls({ weather: false }); // createGame's own draws (the living ground's dice seed)
+  assert.equal(randomCalls({}), base, 'weather: Map default uses no random numbers');
+  assert.equal(randomCalls({ weather: 'fog' }), base, 'weather: a host pick uses no random numbers');
+  assert.equal(randomCalls({ weather: 'random' }), base + 1, 'weather: Random draws its seed');
+
+  // Rain is the living ground's rain all match, on soaked ground; Snow never rains; elsewhere showers come and go
+  assert.equal(WEATHER.rain.sight, 1 - CFG.weather.sight, 'weather: the Rain the lobby describes cuts sight as the sim rain does');
+  assert.equal(WEATHER.rain.offRoad, 1 - CFG.weather.wetGround, 'weather: and slows vehicles off roads as soaked ground does');
+  assert.equal(WEATHER.mud.offRoad, 1 - CFG.weather.wetGround, 'weather: Mud slows vehicles off roads as soaked ground does');
+  const bog = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'mud' });
+  assert.equal(bog.wx.wet, 1, 'weather: a Mud match starts on soaked ground');
+  bog.wx.next = 0; run(bog, 5); bog.wx.raining = false; run(bog, 30);
+  assert.equal(bog.wx.wet, 1, 'weather: and it stays soaked after a shower passes');
+  const wet = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'rain' });
+  assert.deepEqual([wet.wx.raining, wet.wx.rain, wet.wx.wet], [true, 1, 1], 'weather: a Rain match starts raining on soaked ground');
+  wet.wx.next = 0; run(wet, 30);
+  assert.deepEqual([wet.wx.raining, wet.wx.rain], [true, 1], 'weather: and the rain never lets up');
+  wet.weather = { now: 'mud', next: null, at: 0 }; run(wet, 25);
+  assert.ok(!wet.wx.raining && wet.wx.rain === 0 && wet.wx.wet === 1, 'weather: when Rain turns to mud the rain stops and the ground stays soaked');
+  const winter = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'snow' });
+  winter.wx.next = 0; run(winter, 5);
+  assert.ok(!winter.wx.raining && winter.wx.rain === 0, 'weather: no showers in snow');
+  const fair = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { weather: 'clear' });
+  fair.wx.next = 0; run(fair, 5);
+  assert.ok(fair.wx.raining && fair.wx.rain > 0, 'weather: in Clear a shower can still come');
+
+  // the one change: silent until WEATHER_WARN seconds before, then announced in every snapshot, then it happens
+  const g = fresh();
+  assert.deepEqual(snapshotFor(g, 0, []).weather, ['clear'], 'weather: the test map is clear');
+  g.weather = { now: 'fog', next: 'clear', at: g.tick + 30 * 20 };
+  run(g, 30 - WEATHER_WARN - 1);
+  assert.deepEqual(weatherRow(g), ['fog'], 'weather: no warning too early');
+  run(g, 2);
+  const warned = snapshotFor(g, 1, []).weather;
+  assert.equal(warned[0], 'fog'); assert.equal(warned[1], 'clear');
+  assert.ok(warned[2] > 0 && warned[2] <= WEATHER_WARN, 'weather: everyone hears about the change seconds ahead');
+  assert.deepEqual(snapshotFor(g, 0, []).weather, warned, 'weather: the warning is public');
+  run(g, WEATHER_WARN);
+  assert.deepEqual(snapshotFor(g, 0, []).weather, ['clear'], 'weather: the fog lifts on time');
+
+  // movement: how far a unit gets in 3 s, by weather (roads: every cell a road, the sim's own D cells)
+  const travel = (kind, type, roads = false) => {
+    const g = fresh(roads ? Array(20).fill('D'.repeat(20)) : empty); g.players[0].mp = 1000;
+    g.weather = { now: kind, next: null, at: 0 };
+    if (kind === 'rain') Object.assign(g.wx, { raining: true, rain: 1, wet: 1 }); // as createGame starts a Rain match
+    if (kind === 'mud') g.wx.wet = 1; // and a Mud match
+    const u = put(g, 0, type, 4, 20);
+    command(g, 0, { t: 'move', orders: [[u.id, 38, 20]] });
+    run(g, 3);
+    return u.x - 4;
+  };
+  const near = (a, b, what) => assert.ok(Math.abs(a - b) < 0.03, `${what}: ${a.toFixed(3)} vs ${b}`);
+  const tank = travel('clear', 'tank'), rifle = travel('clear', 'rifle'), tankRoad = travel('clear', 'tank', true);
+  assert.ok(tank > 5 && rifle > 5, 'weather: units move in clear weather');
+  // (the tank churns the soaked ground it drives on, as in the living-ground test, hence the wider margin)
+  assert.ok(Math.abs(travel('rain', 'tank') / tank - 0.8) < 0.06, 'weather: rain slows vehicles off roads by 20%');
+  near(travel('rain', 'tank', true) / tankRoad, 1, 'weather: rain does not slow vehicles on roads');
+  near(travel('rain', 'rifle') / rifle, 1, 'weather: rain does not slow infantry');
+  assert.ok(Math.abs(travel('mud', 'tank') / tank - 0.8) < 0.06, 'weather: mud slows vehicles off roads by 20% (the soaked ground)');
+  near(travel('mud', 'rifle') / rifle, 0.9, 'weather: mud slows infantry by 10%');
+  near(travel('snow', 'tank') / tank, 0.85, 'weather: snow slows vehicles by 15%');
+  near(travel('mud', 'tank', true) / tankRoad, 1, 'weather: mud does not slow vehicles on roads');
+  // no double penalty: on the map's own mud cells, Mud weather is the same soaked mud as a Clear day after a long shower
+  const sink = (kind) => {
+    const g = fresh(Array(20).fill('M'.repeat(20))); g.players[0].mp = 1000;
+    g.weather = { now: kind, next: null, at: 0 }; g.wx.wet = 1; g.wx.next = 1e9; g.wear.fill(0.5); // the same depth in both
+    const u = put(g, 0, 'tank', 4, 20); command(g, 0, { t: 'move', orders: [[u.id, 38, 20]] }); run(g, 3);
+    return u.x - 4;
+  };
+  near(sink('mud') / sink('clear'), 1, 'weather: Mud adds nothing to a mud cell that the soaked ground has not');
+  near(travel('snow', 'tank', true) / tankRoad, 0.85, 'weather: snow slows vehicles on roads too');
+  near(travel('snow', 'rifle') / rifle, 0.9, 'weather: snow slows infantry by 10%');
+  near(travel('fog', 'tank') / tank, 1, 'weather: fog does not slow anyone');
+  assert.equal(weatherSpeed({ weather: { now: 'snow' } }, UNITS.fighter), 1, 'weather: planes fly over the weather');
+  // the look's roads follow the ground painter: open ground by a house, not by water; bridges and roads
+  const village = roadMask({ w: 5, h: 3, rows: ['.B...', '.....', 'W=.D+'] });
+  assert.deepEqual([...village], [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], 'weather: road cells follow the village, the bridge and the road');
+
+  // sight: enemies 10, 20, 28 and 33 m from a rifle squad (vision 36 m); fog (25 m) sees two, rain (29 m) three
+  const sees = (kind) => {
+    const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;
+    g.weather = { now: kind, next: null, at: 0 };
+    if (kind === 'rain') Object.assign(g.wx, { raining: true, rain: 1, wet: 1 });
+    put(g, 0, 'rifle', 4, 20);
+    const foes = [10, 20, 28, 33].map(dx => put(g, 1, 'rifle', 4 + dx, 20));
+    run(g, 0.5);
+    const rows = snapshotFor(g, 0, []).units;
+    return { rows: rows.length, ids: foes.filter(f => rows.some(r => r[0] === f.id)).map(f => Math.round(f.x - 4)) };
+  };
+  const clear = sees('clear'), fog = sees('fog'), rain = sees('rain'), snow = sees('snow');
+  assert.deepEqual(clear.ids, [10, 20, 28, 33], 'weather: clear weather sees all four');
+  assert.deepEqual(fog.ids, [10, 20], 'weather: ground fog cuts sight by 30%');
+  assert.deepEqual(rain.ids, [10, 20, 28], 'weather: rain cuts sight by 20%');
+  assert.deepEqual(snow.ids, [10, 20, 28], 'weather: snow cuts sight by 10%');
+  assert.ok(fog.rows < rain.rows && rain.rows < clear.rows, 'weather: shorter sight sends fewer snapshot rows (server-side fog of war)');
 }
 // Horde: one shared HQ and bunker, waves from the attacker spawns, the break only after a wave is dead.
 {

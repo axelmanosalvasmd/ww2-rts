@@ -131,9 +131,14 @@
   #top > * { pointer-events: auto; }
   #scores { max-width: calc(100vw - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px 9px; }
   /* the top panels are near solid: world labels (+1.5 MP/s) and units must not read through them */
-  #util, #scores, #status, #wx, #econ { background: var(--panel-solid); }
+  #util, #scores, #status, #econ { background: var(--panel-solid); }
   #scores > div { padding: 0 12px; min-width: 0; }
   #scores > div + div { border-left: 1px solid var(--line-soft); }
+  /* client/weather-view.js: the match weather and what it does, one plain line under the teams; brass while it turns.
+     contain: inline-size keeps its text out of the strip's width, so the strip stays as wide as the teams need */
+  #scores > .sc-wx { flex: 0 0 100%; margin: 0; padding: 5px 12px 0; border-top: 1px solid var(--line-soft); font-size: 13px; line-height: 1.2; color: var(--dim);
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; contain: inline-size; }
+  #scores > .sc-wx.turning { color: var(--brass); }
   /* hud.js sets --lead to the clock block width: wider in Assault, whose mode line is longer, and it never wraps */
   .sc-lead { flex: none; width: var(--lead, 150px); display: grid; align-content: center; justify-items: center; text-align: center; }
   .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); white-space: nowrap; }
@@ -154,9 +159,7 @@
   .sc-val .num { font-size: 19px; line-height: 1; color: var(--brass); }
   .sc-val > span:empty { display: none; }
   #status { padding: 5px 12px; color: var(--text); }
-  #status:empty, #wx:empty { display: none; }
-  /* the weather line, only there when rain or wet ground changes how units move and see */
-  #wx { padding: 5px 12px; color: var(--text); }
+  #status:empty { display: none; }
 
   /* top right: resources, income and army size, then the support calls */
   #econ { position: absolute; top: var(--gap); right: var(--gap); padding: 7px 8px 8px; display: grid; justify-items: end; gap: 2px; }
@@ -315,6 +318,7 @@
         <div id="mapPrev"><canvas id="mapCanvas" width="280" height="280"></canvas><div id="mapInfo" class="muted"></div></div>
         <div class="row"><label for="modeSel">Mode</label><select id="modeSel"><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="annihilation">Annihilation</option><option value="classic">Classic</option><option value="horde">Horde</option></select></div>
         <div class="row"><label for="armySel">Army size</label><select id="armySel" title="Unit limit and income for everyone"></select></div>
+        <div class="row"><label for="weatherSel">Weather</label><select id="weatherSel"></select></div>
         <div id="modeInfo" class="muted"></div>
         <div class="row"><select id="defSel" class="hidden"></select></div>
       </section>
@@ -335,7 +339,7 @@
     <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M6 14L94 14L94 86L6 86ZM13 21L87 21L87 79L13 79ZM38 28L38 68L47 60L53 73L59.5 70L53.5 57.5L65 57.5Z"/></svg></button>
   </div>
   <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
-  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div><div id="wx" class="panel"></div></div>
+  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
       <span title="Manpower: buys units, fortifications and support"><svg class="ico ri" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M16 62L16.3 57.3L17.2 52.7L18.6 48.2L20.6 44L23 40.1L26 36.5L29.3 33.4L33 30.8L37 28.7L41.2 27.2L45.6 26.3L50 26L54.4 26.3L58.8 27.2L63 28.7L67 30.8L70.7 33.4L74 36.5L77 40.1L79.4 44L81.4 48.2L82.8 52.7L83.7 57.3L84 62L88 64L91 67L84 68.5L60 66.5L32 68L21 77L10 76L13 68Z"/></svg><b class="num" id="mp">0</b>MP</span>
