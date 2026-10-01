@@ -5,6 +5,24 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The computer opponents no longer cheat. They plan only from what a player in their seat could know: the same
+  snapshots a human receives (units seen right now, buildings and terrain remembered under fog, public announcements),
+  with the same rounded numbers. Leaks closed: they knew which resource nodes already held an enemy depot (it steered
+  their Engineers and how many they bought), they planned building sites, cover and trenches around enemy buildings
+  they had never seen, they knew how long a newly spotted gun had been standing still (it triggered artillery), they
+  counted planes for a few ticks after those planes landed, and they used exact health and positions where players see
+  rounded ones. They look at the world on the same beat as player snapshots and keep a 60 second memory of sightings.
+  The Horde's own seat plays by the same rules: it sees only what its units see, and its waves still march straight on
+  the always-visible bunker. Their economy was already identical to a player's, and a test now replays an AI seat's
+  orders as a human to prove it. Every order, including entrenching, mines and bridges, goes through the normal command
+  checks, and a test fails if the AI changes anything else.
+  Balance, same seeds before and after on the current game (default map, 3 players, 20 minute limit). Conquest, 60
+  matches: wins USA/Germany/USSR 23/20/17 to 19/17/24, median length 9.27 to 9.15 minutes, all matches finished,
+  runner-up VP over winner VP 0.573 to 0.533. Classic, 30 matches: wins 4/8/5 to 7/10/5, finished 17 to 22 (timeouts 13
+  to 8), median length including timeouts 19.41 to 18.39 minutes. Left for later: two Engineers can pick the same
+  building site in one turn (the second order is rejected normally), the shared auto-targeting of rocket salvos still
+  counts hidden neighbours of a visible target, and a hidden mine on a road still shifts vehicle routes (the road is cut
+  in the terrain flags), all for players and AI alike.
 - Textured units (toward a realistic look instead of painted toys):
   - Soldiers, tanks, wheeled vehicles, guns and planes now show real surface detail: worn and chipped paint on armor,
     scratched gunmetal, rusty track links, rubber tires, wool uniforms, wood and canvas, plus a dust film and dried mud

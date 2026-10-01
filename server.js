@@ -8,7 +8,7 @@ import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { think } from './shared/ai.js';
+import { think, observe } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -152,6 +152,10 @@ async function startMatch(room) {
   room.map = map;
   const game = room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army,
     weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
+  const startView = snapshotCache(room.game), startSeats = [...room.players.keys()].filter(i => room.players[i].ai);
+  if (room.game.mode?.kind === 'horde') startSeats.push(room.game.mode.slot); // the horde plays by the same view rules
+  room.aiViews = [];
+  for (const i of startSeats) room.aiViews[i] = observe(room.game, i, startView);
   // lobby() reads the map list first, so wait for it: everyone gets the lobby (playing, no old result) before the start
   await lobby(room);
   if (room.game !== game) return; // ended or restarted meanwhile
@@ -211,6 +215,7 @@ function pauseTick(room) {
 
 function handToAi(room, player) {
   Object.assign(player, { ai: true, ws: null, token: '', name: player.name + ' (AI)' });
+  if (room.game) (room.aiViews ??= [])[room.players.indexOf(player)] = null;
   if (room.pause?.reason === 'drop' && room.pause.player === player) resumeRoom(room);
   if (!room.players.some(connected)) room.emptySince = clock.now();
   lobby(room);
@@ -395,10 +400,19 @@ function timedRoomTick(room) {
   const stepAt = process.hrtime.bigint();
   step(g);
   const thinkAt = process.hrtime.bigint();
+  const sent = g.tick % room.snapEvery === 0 || g.winner !== null;
+  // The seats the server plays: the room's AIs and, in Horde, the horde itself (nobody's seat, but it gets the same view).
+  const seats = [...room.players.keys()].filter(i => room.players[i].ai);
+  if (g.mode?.kind === 'horde') seats.push(g.mode.slot);
+  // AI observations refresh only when human snapshots are due. Turns between sends use the previous view.
+  room.aiViews ??= [];
+  if (sent && seats.length) {
+    const cache = snapshotCache(g);
+    for (const i of seats) room.aiViews[i] = observe(g, i, cache);
+  }
   // AIs think every 2s, staggered so they don't all act on the same tick.
-  room.players.forEach((p, i) => p.ai && (g.tick + i * 13) % 40 === 0 && think(g, i));
-  if (g.mode?.kind === 'horde' && (g.tick + g.mode.slot * 13) % 40 === 0) think(g, g.mode.slot); // the horde is nobody's seat
-  const snapshotAt = process.hrtime.bigint(), sent = g.tick % room.snapEvery === 0 || g.winner !== null;
+  for (const i of seats) if (room.aiViews[i] && (g.tick + i * 13) % 40 === 0) think(g, i, { view: room.aiViews[i] });
+  const snapshotAt = process.hrtime.bigint();
   let snapshotBuild = 0, snapshotStringify = 0;
   if (sent) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];

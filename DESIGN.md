@@ -44,6 +44,90 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 | + elevation, overwatch hills (150 matches; per-spawn wins 37/34/29%) | 62% | 1.05 | 9.5 min |
 | + weather: Clear / Fog / Rain / Snow (40 each; faction wins and Classic in Weather below) | 59 / 63 / 62 / 62% | 1.88 / 1.93 / 2.05 / 1.80 (checked every 10 s) | 9.2 / 9.6 / 9.3 / 9.1 min |
 
+## AI information and commands (2026-10-01)
+
+The rule: an AI seat knows only what a human in that seat could know, has the economy and limits of a human, and acts
+only through `command()`.
+
+- `shared/ai-view.js` is the AI's only window onto the game. `viewFor(g, slot, memory)` runs the same `snapshotFor()`
+  a human receives and decodes its rows into plain objects. It copies units, public objectives, announcements and the
+  seat's own economy; other seats expose only public start data (spawns, teams, factions) and scores. Coordinates,
+  health, suppression, support countdowns, resources and cooldowns carry their wire values. Stances (hold fire, hold
+  position, auto-retreat), autocast and "digging a mass entrenchment" come from the unit flag bits; the stances and
+  autocast are the owner's only, so an enemy's are always off in a view.
+- `think(g, slot, opts)` keeps its signature. It builds or accepts a view, then calls `plan(view, ...)`, which has no
+  reference to the authoritative game. Orders go through `opts.submit` (default `command(g, slot, cmd)`). Engineer
+  node assignments and the squad sent to rebuild a bridge live in private per-seat memory, not on the units.
+- The server refreshes each AI observation on the human snapshot beat (every 2 to 4 ticks). A turn between beats uses
+  the previous view. A seat handed over from a human waits for the next beat and keeps the terrain it had discovered.
+- `seenBy(g, slot, id)` in `sim.js` is the one visibility predicate (reveal, allied, visible, and a plane counts only
+  while airborne). `snapshotFor()` and the AI both use it.
+- Terrain starts from an immutable copy of the public map (`g.initialTerrain`, taken before Classic buildings or
+  Assault fortifications) and applies only the changes the seat's `terrainFor()` delivers. Cover, trench and house
+  searches, building-site searches and the blown-bridge check run on that remembered terrain, so hidden placement,
+  cancellation and destruction cannot move a plan. `terrainFor()` already withholds enemy mines, so the view's `mines`
+  (the cells remembered as `N`) are the seat's own side's, which is what the AI counts before laying more.
+- A resource node counts as taken only when an allied depot, or a visible or remembered enemy depot (Ghost), stands
+  within 8 m. A Barracks next to a node does not claim it. Unknown nodes stay candidates, and `command()` rejects a
+  wrong guess with the normal visibility mask.
+- Sightings expire after 60 seconds in every mode. The lone-gun artillery fallback needs more than 3 seconds of
+  stillness the AI observed itself (0.1 m tolerance, reset when sight is lost).
+- Entrenchment, cover, stances: the AI sends `entrench`, `cover`, `stance` and `dig` (mines, bridge) through `submit`
+  like a player, and `command()` applies the same sight rules (every segment must be in the team's sight). Where it
+  entrenches is decided from remembered terrain (`trenchesNear`) and the squad's own cover value; whether it is already
+  entrenching comes from its own flag bits.
+- Weather is public: every snapshot carries the match weather (and the ten second warning of a change), so the view
+  carries it too. `aiCaution(view)` and the view's own sight (`view.sees`, which `teamSees` scales by the weather) give
+  the same answers as the game's for every weather kind. A weather change planned beyond the warning is hidden from
+  everyone, and the match proof perturbs it.
+- Horde. The horde is a scripted wave director plus one more seat. The sim itself spawns each wave and sends every
+  unit at the shared bunker, a public structure that is always visible, so nothing in that needs hidden information.
+  The horde seat's own `think()` (its off-map support, planes and abilities) is not exempt: it plans through the same
+  view as every other seat, so it knows only what its units see, and the server gives it an observation like an AI
+  defender's. The wave budget, the support allowance per wave and the free reinforcements are difficulty rules that
+  do not depend on where the defenders are, so they stay as they are. Co-op AI defenders use the same view too.
+- Proofs in `test.js`: seeded commands for equal snapshots stay equal while hidden armies, secret depots on every
+  unseen node, hidden footprints, enemy economies, and the private state of enemies the seat can see (stationary
+  timers, paths, health and position below the wire precision, stances) and enemy mines laid around the seat's units and
+  points (on open ground, mud and road) are perturbed, across Conquest (also on a
+  house-free map, where squads entrench), Classic, Assault and Horde matches, including the horde seat itself. A
+  perturbation is kept for a turn only if the human snapshot stays identical. Negative controls show that perturbing
+  something the seat sees does change its orders. State is hashed around every submit to catch writes outside
+  `command()`, and an AI seat's orders are replayed as a human to show equal income, costs, cooldowns and limits.
+  Fixtures cover entrenching beside hidden trench cover, mines (own side counted, enemy mines unknown), auto-retreat,
+  and a blown bridge. These tests were run against the old `ai.js` logic (master's, adapted only to take
+  `opts.submit` and `opts.memory`): the stillness, landed plane, wire precision, secret depot, footprint, entrenchment,
+  delivery beat and match perturbation proofs all fail there. The bridge proof passes on both, as it checks that the
+  port keeps behaviour, and the economy replay passes on both because there never was an AI-only economy. The mine
+  proof passes on the old logic as well: master's AI already counted only its own side's mines, so it guards that rule.
+- Integration: `ai.js` functions changed are `memoryOf`, `think`, `houseNear`, `trenchesNear`, `spotNear`,
+  `buildEconomy`, `minesNear` and `rebuildBridge`. New: `observe`, `plan`, and the view adapters `knownBuildings` and
+  `inCover`. The closures `trains`, `affords`, `pointOf`, `can`, `call` and `send` now read the view or use `submit`.
+  Difficulty branches should plan on this view, act through `submit`, and pass the same proof tests.
+- Reproducible runs use `tools/ai-balance.mjs` (default map, 3 players, standard armies, shuffled spawns, factions by
+  slot, seeds 1 to N, 20 minute limit; medians include matches stopped at the limit). Same seeds before and after, no
+  economy or unit tuning, both on the merged code with unit control, roads, mud, mines and bridges (master at
+  d1b7150 as "before"):
+
+| Mode (matches) | Wins USA/GER/USSR | Wins by spawn 0/1/2 | Finished | Median length |
+|---|---|---|---|---|
+| Conquest (60) before | 23/20/17 | 22/22/16 | 60 | 9.27 min |
+| Conquest (60) after | 19/17/24 | 28/17/15 | 60 | 9.15 min |
+| Classic (30) before | 4/8/5 | 12/2/3 | 17 | 19.41 min |
+| Classic (30) after | 7/10/5 | 12/3/7 | 22 | 18.39 min |
+
+  Conquest runner-up VP over winner VP: mean 0.573 before, 0.533 after (median 0.605, 0.561). Classic median length
+  among finished matches: 18.01 minutes before, 15.91 after. Before the merge (master at 4f01489, the AI without
+  stances, mines or bridges) the same check gave Conquest 30/14/16 to 26/13/21 with 8.45 to 9.59 minutes, and Classic
+  8/8/4 to 8/9/6 with 20 to 23 finished.
+- Left for later: a mine laid on a road cell turns it into `N` (no flags), which cuts the road in the authoritative
+  terrain, so a vehicle's route shifts around a hidden mine for any player, human or AI. The AI plans no paths and reads
+  no road flags, so it gains nothing, but keeping the ROAD flag under a mine would close the side channel for everyone.
+  Two Engineers can propose the same building site in one turn before the next terrain snapshot (the
+  second command is rejected normally). Shared automatic salvo targeting scores hidden neighbours of a visible target,
+  for human and AI armies alike. A mine painted in the editor belongs to nobody and is not counted. The uncommitted
+  difficulty branch has not been merged or edited.
+
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
 - Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of

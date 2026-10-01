@@ -402,6 +402,8 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.wx = opts.weather === false ? null : { rain: 0, raining: false, wet: 0, next: CFG.weather.firstRain + rng(g) * CFG.weather.dry[0] };
   g.height = Int8Array.from((map.heights || []).join(''), levelOf);
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
+  // The map clients download stays separate from later building footprints and terrain edits.
+  g.initialTerrain = Object.freeze({ chars: Object.freeze([...g.chars]), height: g.height ? Object.freeze([...g.height]) : null });
   if (opts.mode === 'classic') setupClassic(g);
   for (const p of g.players) if (!horde || p.team === 0) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, horde ? p.slot * 3 + i : i));
   if (horde) setupHorde(g, map);
@@ -2725,14 +2727,16 @@ export function snapshotCache(g) {
 }
 
 // What one player is allowed to know: own units + enemies they can see. Fog is enforced here.
+export function seenBy(g, slot, id) {
+  const u = g.units.get(id);
+  // A plane is seen only while it flies, even between vision updates. The end-of-match reveal shows everything.
+  return (g.reveal && !!u) || allied(g, u?.owner ?? -1, slot) || (g.players[slot].visible.has(id) && (!u?.air || airborne(u)));
+}
+
 export function snapshotFor(g, slot, shots, cells = [], cache) {
   if (!cache) rebuildGrid(g);
   const p = g.players[slot], r = (v) => Math.round(v * 10) / 10;
-  // A plane is seen only while it flies, even between vision updates. The end-of-match reveal shows everything.
-  const seen = (id) => {
-    const u = g.units.get(id);
-    return (g.reveal && !!u) || allied(g, u?.owner ?? -1, slot) || (p.visible.has(id) && (!u?.air || airborne(u)));
-  };
+  const seen = (id) => seenBy(g, slot, id);
   return {
     t: 's', tick: g.tick, winner: g.winner, end: g.winner === null ? undefined : { reason: g.endReason, x: g.endAt.x, z: g.endAt.z }, mp: Math.floor(p.mp), inc: r(p.inc), mun: p.mun === undefined ? undefined : Math.floor(p.mun), fuel: p.fuel === undefined ? undefined : Math.floor(p.fuel), fuelInc: p.fuelInc === undefined ? undefined : r(p.fuelInc),
     nodes: cache ? cache.nodes : g.nodes?.map(n => [r(n.x), r(n.z), n.rate, n.fuel ? 1 : 0]), upkeep: p.upkeep === undefined ? undefined : r(p.upkeep), out: cache ? cache.out : g.players.map(q => !!q.out),
@@ -2777,7 +2781,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     // Terrain comes from each player's own memory (terrainFor), so the cells argument is unused.
     cells: terrainFor(g, slot),
     // the cells this player's team started or stopped seeing since its last fog (fogFor), only when there are any
-    fog: fogFor(g, slot),
+    fog: g.skipFog ? undefined : fogFor(g, slot), // an AI seat's detached projection builds no fog masks (it never draws them)
     // A shot names only the units this player can see.
     shots: shots.filter(s => g.reveal || s.pub || allied(g, s.fo ?? -1, slot) || allied(g, s.to ?? -1, slot) || seen(s.f) || seen(s.t))
       .map(s => {
