@@ -109,6 +109,19 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.ok(path.some(p => p.z > 15 * CELL), 'path goes around the building column');
 }
 
+// Jam recovery keeps terrain corners when the next waypoint is obstructed.
+{
+  const rows = [...empty]; rows[6] = '......B' + '.'.repeat(13);
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 11, 11), corner = { x: 11, z: 15 }, end = { x: 17, z: 15 };
+  u.path = [corner, end]; u.was = { x: u.x, z: u.z }; u.jam = 3.1;
+  step(g);
+  assert.equal(u.path[0], corner, 'three seconds of crowding never skips a required corner');
+  assert.equal(u.x, 11, 'the squad keeps moving along the clear leg');
+  run(g, 3);
+  assert.ok(Math.hypot(u.x - end.x, u.z - end.z) < 1, 'the route still reaches its destination around the building');
+}
+
 // Movement: a move order gets the unit there.
 {
   const g = fresh(); g.players[0].mp = 1000;
@@ -782,6 +795,23 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.deepEqual([open.x, open.z], [15, 21], 'with no cover in reach the squad stays where it is');
 }
 
+// Take cover cancels orders to leave a trench even when no better cover exists.
+{
+  const rows = [...empty]; rows[10] = '.....T' + '.'.repeat(14);
+  for (const t of ['move', 'amove']) {
+    const g = fresh(rows); g.players[0].mp = 10000;
+    const u = put(g, 0, 'rifle', 11, 21);
+    command(g, 0, { t, orders: [[u.id, 31, 21]] });
+    command(g, 0, { t: 'move', orders: [[u.id, 31, 31]], queue: true });
+    assert.equal(command(g, 0, { t: 'cover', ids: [u.id] }), undefined);
+    assert.deepEqual(u.path, [], 'Take cover cancels the path out of the trench');
+    assert.deepEqual(u.orders, [], 'Take cover clears follow-up orders');
+    assert.equal(u.amove, null, 'Take cover cancels attack-move');
+    run(g, 3);
+    assert.deepEqual([u.x, u.z], [11, 21], 'the covered squad stays put');
+  }
+}
+
 // House corners: a squad beside a house is covered from shooters on the house's side, and can still shoot back.
 {
   const rows = [...empty]; rows[9] = '.....BB' + '.'.repeat(13); rows[8] = rows[9]; // a house over cells x 5-6, y 8-9
@@ -826,6 +856,48 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(b.hp < UNITS.rifle.models * UNITS.rifle.hpPer, 'an attack order still shoots while holding fire');
   command(g, 0, { t: 'stance', ids: [a.id], key: 'holdFire', on: false });
   assert.equal(a.holdFire, false, 'the switch turns off again');
+}
+
+// Hold fire applies to aircraft, anti-air guns and support interception, with explicit plane attacks allowed.
+{
+  const big = Array(60).fill('.'.repeat(60)), g = fresh(big); g.players.forEach(p => (p.mp = 10000));
+  const plane = put(g, 0, 'attacker', 40, 50), target = put(g, 1, 'rifle', 50, 50);
+  target.holdFire = true;
+  command(g, 0, { t: 'stance', ids: [plane.id], key: 'holdFire', on: true });
+  Object.assign(plane.air, { state: 'station', mission: { kind: 'patrol', x: 50, z: 50 } });
+  plane.attackPick = target.id; plane.retarget = 99;
+  const ammo = plane.air.ammo;
+  run(g, 0.3);
+  assert.equal(plane.air.ammo, ammo, 'a Hold fire patrol never fires at ground units');
+  assert.equal(command(g, 0, { t: 'attack', ids: [plane.id], target: target.id }), undefined);
+  run(g, 1);
+  assert.ok(plane.air.ammo < ammo, 'an explicit ground attack overrides the plane stance');
+
+  for (const type of ['mg', 'flak', 'fighter']) {
+    const a = fresh(big); a.players.forEach(p => (p.mp = 10000));
+    const gun = put(a, 0, type, 50, 50), enemy = put(a, 1, 'attacker', 60, 50);
+    command(a, 0, { t: 'stance', ids: [gun.id], key: 'holdFire', on: true });
+    enemy.holdFire = true;
+    Object.assign(enemy.air, { state: 'station', mission: { kind: 'patrol', x: 60, z: 50 } });
+    if (gun.air) Object.assign(gun.air, { state: 'station', mission: { kind: 'patrol', x: 50, z: 50 } });
+    gun.still = 3;
+    const hp = enemy.hp;
+    run(a, 0.3);
+    assert.equal(enemy.hp, hp, `${type} holds anti-air fire`);
+    if (gun.air) command(a, 0, { t: 'attack', ids: [gun.id], target: enemy.id });
+    else command(a, 0, { t: 'stance', ids: [gun.id], key: 'holdFire', on: false });
+    run(a, 0.3);
+    assert.ok(enemy.hp < hp, `${type} resumes anti-air fire when permitted`);
+  }
+  const a = fresh(big); a.players.forEach(p => (p.mp = 10000));
+  const gun = put(a, 0, 'flak', 50, 50); gun.still = 3; gun.holdFire = true;
+  const random = Math.random;
+  try {
+    Math.random = () => 0;
+    command(a, 1, { t: 'support', kind: 'dive', x: 50, z: 50 });
+    run(a, SUPPORT.dive.delay + 0.1);
+    assert.ok(!a.shots.some(s => s.k === 'shotdown' && s.by === 'flak'), 'Hold fire also prevents support interception');
+  } finally { Math.random = random; }
 }
 
 // Hold position: no seeking cover. Auto-retreat: a broken squad runs for home; without the switch it stays.
@@ -896,6 +968,70 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.deepEqual(plan('strongpoint').map(j => j.kind), ['trench', 'trench', 'trench', 'trench', 'wire', 'wire'], 'a strongpoint is a trench square with wire in front');
   assert.equal(plan('line', a).length, 1, 'a plain click is one segment');
   assert.ok(sim.ENTRENCH_TYPES.every(p => plan(p).length <= 24), 'patterns stay small enough to order at once');
+}
+
+// Entrenchment placements reveal nothing about unseen terrain and recheck sight when queued segments start.
+{
+  const big = Array(80).fill('.'.repeat(80)), g = fresh(big); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 5, 5), order = { t: 'entrench', pattern: 'line', ids: [u.id], x: 120, z: 120, queue: true };
+  for (const ch of ['.', 'K', 'W']) {
+    g.chars.fill(ch);
+    assert.equal(command(g, 0, order), 'notVisible', 'hidden open ground, buildings and water give the same refusal');
+    assert.deepEqual(snapshotFor(g, 0, []).works, [], 'unseen terrain never changes the project ghost');
+    const place = sim.placementCheck(g, { kind: 'trench', x: 120, z: 120 }, () => false);
+    assert.equal(place.reason, 'notVisible');
+    assert.deepEqual(place.cells, [], 'unseen placement cells are not exposed');
+  }
+  g.chars.fill('.');
+  assert.equal(sim.placementCheck(g, { kind: 'trench', x: 120, z: 120 }, at => at.x < 120).reason, 'notVisible', 'every cell of a segment needs sight');
+
+  const q = fresh(big); q.players[0].mp = 10000;
+  const digger = put(q, 0, 'rifle', 5, 5), scout = put(q, 0, 'rifle', 120, 130);
+  assert.equal(command(q, 0, { ...order, ids: [digger.id] }), undefined, 'a scout can provide sight when the pattern is queued');
+  q.units.delete(scout.id);
+  q.army = { ...q.army, income: 0 };
+  const mp = q.players[0].mp;
+  step(q);
+  assert.ok(!digger.dig, 'a deferred segment cannot start after its sight is lost');
+  assert.equal(q.players[0].mp, mp, 'a hidden segment is dropped without payment');
+  assert.deepEqual(snapshotFor(q, 0, []).works, [], 'the hidden segment is removed without inspecting its terrain');
+}
+
+// Full entrenchment queues cannot allocate unpaid projects or ghosts.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 40, 50);
+  for (let i = 0; i < 8; i++) command(g, 0, { t: 'move', orders: [[u.id, 40, 60]], queue: true });
+  for (let i = 0; i < 20; i++) {
+    assert.equal(command(g, 0, { t: 'entrench', pattern: 'line', ids: [u.id], x: 40, z: 40, queue: true }), 'queueFull');
+    assert.deepEqual(snapshotFor(g, 0, []).works, [], 'a refused pattern never appears in snapshots');
+    assert.equal(g.projects?.size ?? 0, 0, 'repeated refusals allocate no projects between ticks');
+  }
+  assert.equal(u.orders.length, 8, 'the full queue is unchanged');
+}
+
+// Refused replacement orders leave active entrenchments and paid segments intact.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 40, 50);
+  command(g, 0, { t: 'entrench', pattern: 'line', ids: [u.id], x: 20, z: 40, x2: 60, z2: 40 }); step(g);
+  const project = u.entrench, dig = u.dig;
+  assert.ok(project && dig, 'the squad has started a paid segment');
+  for (const order of [
+    { t: 'attack', target: 99999 },
+    { t: 'move', orders: [[u.id, NaN, 60]] },
+    { t: 'garrison', x: 40, z: 40 },
+    { t: 'cover' },
+  ]) {
+    assert.ok(command(g, 0, { ids: [u.id], ...order }), 'the replacement is refused');
+    assert.equal(u.entrench, project, 'a refusal keeps the shared project');
+    assert.equal(u.dig, dig, 'a refusal keeps the paid segment');
+  }
+  g.players[0].mp = 0;
+  assert.equal(command(g, 0, { t: 'dig', ids: [u.id], x: 40, z: 50 }), 'mp');
+  assert.equal(u.entrench, project, 'an unaffordable dig keeps the shared project');
+  assert.equal(command(g, 0, { t: 'move', orders: [[u.id, 40, 70]] }), undefined);
+  assert.equal(u.entrench, null, 'an accepted replacement detaches the squad');
 }
 
 // Mass entrenchment: every selected digger works the pattern, pays per segment and waits when the manpower runs out.
@@ -994,6 +1130,39 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(s, 0, { t: 'stop', ids: [lone.id] }); run(s, 2);
   assert.equal(s.projects.size, 0, 'a pattern nobody works on is dropped');
   assert.deepEqual(snapshotFor(s, 0, []).works, [], 'and its ghost goes with it');
+}
+
+// Shared entrenchments hold follow-up orders until the last claimed segment is finished.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const fast = put(g, 0, 'rifle', 36, 41), slow = put(g, 0, 'rifle', 52, 65);
+  fast.type = 'engineer';
+  command(g, 0, { t: 'entrench', pattern: 'line', ids: [fast.id, slow.id], x: 32, z: 40, x2: 48, z2: 40 });
+  command(g, 0, { t: 'move', orders: [[fast.id, 36, 70]], queue: true });
+  step(g);
+  assert.ok(fast.dig && slow.dig && !fast.entrench.jobs.length, 'all segments are claimed');
+  for (let i = 0; fast.dig; i++) { assert.ok(i < 400, 'the engineer finishes'); step(g); }
+  assert.ok(slow.dig, 'the distant rifle squad is still digging');
+  run(g, 1);
+  assert.equal(fast.orders.length, 1, 'the queued move waits for the other digger');
+  assert.ok(fast.entrench, 'the engineer still belongs to the unfinished pattern');
+  assert.equal(g.projects.size, 1, 'the project survives a sweep while its final segment is active');
+  run(g, 35);
+  assert.ok(!slow.dig && !fast.entrench && fast.z > 65, 'the move starts after the shared pattern finishes');
+  assert.equal(g.projects.size, 0, 'the completed project is collected');
+}
+
+// Full shelling queues report queueFull while a mixed selection can still enqueue on an available tank.
+{
+  const rows = [...empty]; rows[4] = '.'.repeat(14) + 'BB....';
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const full = put(g, 0, 'tank', 21, 21), free = put(g, 0, 'tank', 21, 31);
+  for (let i = 0; i < 8; i++) command(g, 0, { t: 'move', orders: [[full.id, 21, 31]], queue: true });
+  const order = { t: 'fireat', ids: [full.id], x: 29, z: 9, queue: true };
+  assert.equal(command(g, 0, order), 'queueFull', 'a discarded shelling order is refused');
+  assert.equal(full.orders.length, 8, 'the full queue is unchanged');
+  assert.equal(command(g, 0, { ...order, ids: [full.id, free.id] }), undefined, 'one successful enqueue accepts the group');
+  assert.equal(free.orders.at(-1).t, 'fireat', 'the available tank keeps its shelling order');
 }
 
 // Shift-queue: take cover, an aimed ability and shelling a house wait their turn like moves do.
@@ -3996,7 +4165,7 @@ for (const lookupFinished of [false, true]) {
   assert.ok(g.units.size === count && !hurtOne.retreating, 'the horde AI buys nothing and never retreats');
   g.players[2].mp = 0;
   // the last few are revealed through the fog
-  m.reserve = [];
+  m.reserve = []; m.budget = 0;
   const last = horde()[0];
   for (const u of horde()) if (u !== last) g.units.delete(u.id);
   Object.assign(last, { x: 5, z: 115, hp: UNITS[last.type].models * UNITS[last.type].hpPer, path: [], amove: null });
@@ -4017,6 +4186,73 @@ for (const lookupFinished of [false, true]) {
   const { defend, ...plain } = map;
   assert.equal(createGame(plain, ['a'], false, [0], [0], { mode: 'horde' }).mode, undefined, 'Horde needs a map with defender spawns');
   assert.equal(createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, undefined, undefined, { mode: 'horde' }).players.length, 6, 'Horde needs a free seat for the horde');
+}
+
+// Horde start and restart refuse a freshly edited map without defender spawns.
+{
+  const map = { name: 'Horde edited fixture', w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [{ x: 30, y: 30 }] };
+  const { defend, ...plain } = map;
+  assert.equal(validateMap(map), null); assert.equal(validateMap(plain), null, 'the edit keeps a valid map');
+  const h = await serverHarness(), code = 'hordeedit'; h.useMap(JSON.stringify(map));
+  const host = await h.connect(code, { token: code, name: 'Host' }), room = h.rooms.get(code);
+  await host.send({ t: 'mode', v: 'horde' });
+  await h.waitFor(() => host.lobby().mode === 'horde', 'Horde selected');
+  const guest = await h.connect(code, { token: code + 'guest', name: 'Guest' });
+  h.useMap(JSON.stringify(plain));
+  await host.send({ t: 'start' }); await h.settleServer();
+  assert.equal(room.state, 'lobby', 'an invalid Horde Start stays in the lobby');
+  assert.equal(room.game, null, 'no Conquest game is created');
+  assert.equal(host.messages.filter(m => m.t === 'start').length, 0, 'no start message is sent');
+  h.useMap(JSON.stringify(map));
+  await host.send({ t: 'start' }); await host.wait('start'); await guest.wait('start');
+  const game = room.game, matchId = room.matchId;
+  h.useMap(JSON.stringify(plain));
+  await host.send({ t: 'restart' }); await h.settleServer();
+  assert.equal(room.game, game, 'an invalid Restart preserves the running Horde game');
+  assert.equal(room.matchId, matchId, 'a refused Restart does not start a new match');
+  assert.equal(host.messages.filter(m => m.t === 'start').length, 1, 'no replacement start message is sent');
+  assert.equal(room.mode, 'horde', 'the selected mode stays Horde');
+  h.holdMaps();
+  await host.send({ t: 'restart' });
+  assert.equal(room.game, null, 'Restart is waiting for the map load');
+  await guest.close(); h.releaseMaps();
+  await h.waitFor(() => room.game === game, 'refused Restart restores the game');
+  assert.equal(room.pause?.reason, 'drop', 'a disconnect during the refused Restart still pauses the restored game');
+  await h.close();
+}
+
+// Horde reserves bound purchases per tick and memory while preserving ordinary wave strength.
+{
+  const map = { w: 60, h: 60, rows: Array(60).fill('.'.repeat(60)), spawns: [{ x: 30, y: 5 }, { x: 10, y: 54 }, { x: 50, y: 54 }], defend: [0], points: [] };
+  const make = (n, army = 'standard') => createGame(map, Array(n).fill('Defender'), false, Array(n).fill(0), Array(n).fill(0), { mode: 'horde', army });
+  const g = make(5, 'massive'), m = g.mode, random = Math.random;
+  m.wave = 39; m.timeLeft = 0;
+  let rolls = 0;
+  try { Math.random = () => { rolls++; return 0.5; }; step(g); }
+  finally { Math.random = random; }
+  assert.ok(m.reserve.length <= CFG.horde.fieldMax, 'wave 40 keeps a fixed reserve buffer');
+  assert.ok(rolls < 1000, 'a large wave makes only bounded purchases in one tick');
+  assert.ok(Number.isFinite(m.budget) && m.budget > 0, 'the rest of the wave stays as unspent budget');
+  for (let i = 0; i < 12; i++) {
+    step(g);
+    assert.ok(m.reserve.length <= CFG.horde.fieldMax, 'later ticks cannot grow the buffer past its cap');
+  }
+  for (const u of g.units.values()) if (u.owner === m.slot) g.units.delete(u.id);
+  m.reserve = []; step(g);
+  assert.ok(m.active && m.left > CFG.horde.reveal, 'unspent budget prevents early wave completion or final-three reveal');
+
+  const normal = make(3), n = normal.mode;
+  for (const u of normal.units.values()) { u.holdFire = true; u.auto = false; }
+  n.wave = 8; n.timeLeft = 0;
+  try {
+    Math.random = () => 0.5;
+    const expected = sim.hordeWave(9, 3);
+    for (let i = 0; !n.active || n.budget > 0; i++) { assert.ok(i < 100, 'normal wave generation finishes promptly'); step(normal); }
+    const actual = [...n.reserve, ...[...normal.units.values()].filter(u => u.owner === n.slot && !u.air).map(u => u.type)];
+    assert.deepEqual(actual.sort(), expected.sort(), 'ordinary waves buy the same weighted units for the same budget');
+  } finally { Math.random = random; }
+  const extreme = make(1); extreme.mode.wave = 3999; extreme.mode.timeLeft = 0; step(extreme);
+  assert.ok(Number.isFinite(extreme.mode.budget) && extreme.mode.reserve.length <= CFG.horde.fieldMax, 'overflow-sized waves still finish their tick with bounded storage');
 }
 
 // Horde over the server: lobby rules, the horde's seat, the host's early wave, and the record after the run.
@@ -4144,10 +4380,10 @@ console.log('all sim checks passed');
   let unseenFort = null;
   for (let y = 2; y < fortGame.h - 2 && !unseenFort; y++) for (let x = 2; x < fortGame.w - 2; x++) {
     const at = { kind: 'trench', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL, dir: 0 };
-    if (!teamSees(fortGame, fortGame.players[0].team, at) && placementCheck(fortGame, at, () => false).ok) { unseenFort = at; break; }
+    if (!teamSees(fortGame, fortGame.players[0].team, at) && placementCheck(fortGame, at).ok) { unseenFort = at; break; }
   }
   assert.ok(unseenFort, 'the map has an unseen valid fort site');
-  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), undefined, 'dig accepts a valid fort in fog');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'dig refuses a valid fort in fog');
   fortGame.chars.fill('W');
   assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'a rejected fort in fog masks its terrain');
   assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], kind: 'trench', x: fortEngineer.x, z: fortEngineer.z, dir: 0 }), 'blocked', 'a rejected visible fort reports blocked');
@@ -4175,6 +4411,29 @@ console.log('all sim checks passed');
   await h.close();
 }
 console.log('all command feedback checks passed');
+
+// Queued aimed ability availability defers cooldown and munitions while keeping eligibility checks.
+{
+  const { availability } = await import('./client/availability.js');
+  const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const u = [...g.units.values()].find(v => v.owner === 0 && v.type === 'rifle');
+  const check = (action) => availability(snapshotFor(g, 0, []), CFG, { slot: 0, ids: [u.id], ...action });
+  g.players[0].mun = 0; u.cd = 5;
+  for (const type of ['rifle', 'mortar', 'ranger']) {
+    u.type = type;
+    const action = { t: 'ability', unit: type, queue: true };
+    assert.equal(check(action).ok, true, `${type} can queue during cooldown without munitions`);
+    assert.equal(check({ ...action, queue: false }).ok, false, 'an immediate ability still checks readiness');
+    assert.equal(command(g, 0, { ...action, ids: [u.id], x: 20, z: 20 }), undefined, 'the server accepts the deferred ability');
+    assert.equal(u.nade, null, 'queueing does not start the ability');
+    u.retreating = true;
+    assert.equal(check(action).reason, 'That squad is retreating'); u.retreating = false;
+    assert.equal(check({ ...action, unit: 'tank' }).ok, false, 'queueing still requires the selected ability type');
+  }
+  u.type = 'mg';
+  assert.equal(check({ t: 'ability', unit: 'mg', queue: true }).ok, false, 'instant abilities cannot defer cooldown');
+  assert.equal(g.players[0].mun, 0, 'waiting abilities charge no munitions up front');
+}
 
 // Availability uses real snapshots and prices, including queued units and completed buildings.
 {

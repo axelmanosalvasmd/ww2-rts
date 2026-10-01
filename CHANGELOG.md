@@ -5,6 +5,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed entrenchment orders leaking unseen terrain or buildings: every segment needs sight when placed and when
+  it starts. Refused orders preserve the digging, full queues create no abandoned plans, and follow-up orders wait
+  for every squad's paid segment to finish.
+- Fixed Take cover letting squads leave trenches, Hold fire being ignored by aircraft and anti-air weapons, and
+  crowded units skipping required terrain corners. Full shelling queues now report a refusal, and Shift-queued
+  grenades, satchels and barrages can wait for cooldowns and munitions in the browser as they do on the server.
+- Fixed Horde starting as Conquest after a map edit removes defender spawns. Very large waves now buy at most
+  32 reserve units per tick and store at most 240, keeping the normal wave budgets and unit weights. The remaining
+  count is an upper estimate while purchases are unfinished; the final three only appear when all purchases finish.
+
 - Merging unit control with autocast: a squad on Hold fire no longer throws grenades, suppresses or barrages on its
   own (smoke, the AP round and Ura! still go off, and a satchel still needs an attack order). The autocast flag moved
   to snapshot bit 16384, because bit 1024 now marks a squad on a mass entrenchment for everyone.

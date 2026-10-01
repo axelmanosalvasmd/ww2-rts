@@ -95,6 +95,7 @@ export function availability(s, cfg = CFG, action = {}) {
     if (!crew.length) return no('Select a squad');
     const active = crew.filter((v) => !(v.flags & 1));
     if (!active.length) return no(DENY_SENTENCES.retreating);
+    if (action.queue === true && ['grenade', 'barrage', 'satchel'].includes(UNITS[action.unit].ab.id)) return yes();
     if (active.every((v) => v.cd > 0)) return no(`Cooldown ${cooldownSeconds(Math.min(...active.map((v) => v.cd)))} s`);
     return resources(s, 0, 0, abCost(s, UNITS[action.unit].ab));
   }

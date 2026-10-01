@@ -135,12 +135,19 @@ async function lobby(room) {
 // (re)start a match with the room's settings; everyone gets the new game
 async function startMatch(room) {
   const starting = room.starting = {};
-  resumeRoom(room);
-  room.autoPaused = new Set(); room.matchId = (room.matchId ?? 0) + 1; // a new match: nobody has used their auto-pause yet
-  room.state = 'play'; room.game = null; room.result = null; // claim it before the await so a double-click can't start twice
-  room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
+  const previous = { state: room.state, game: room.game };
+  room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
   const map = await loadMap(room.mapName);
   if (room.starting !== starting || room.state !== 'play') return;
+  if (room.mode === 'horde' && !map.defend?.length) {
+    Object.assign(room, previous);
+    for (const p of room.players) if (!connected(p)) autoPause(room, p);
+    lobby(room); return;
+  }
+  resumeRoom(room);
+  room.autoPaused = new Set(); room.matchId = (room.matchId ?? 0) + 1; // a new match: nobody has used their auto-pause yet
+  room.result = null;
+  room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
   room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army });
   lobby(room);

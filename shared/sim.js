@@ -403,18 +403,22 @@ function setupHorde(g, map) {
   for (const p of g.players) p.mp = p.slot === slot ? 0 : CFG.assault.defenderMp;
   fortify(g, g.players[0]);
   const gate = (i) => ({ x: (map.spawns[i].x + 0.5) * CELL, z: (map.spawns[i].y + 0.5) * CELL });
-  g.mode = { kind: 'horde', defenderTeam: 0, attackerTeam: 1, slot, defenders: slot, wave: 0, active: false, timeLeft: CFG.horde.break, reserve: [], left: 0,
+  g.mode = { kind: 'horde', defenderTeam: 0, attackerTeam: 1, slot, defenders: slot, wave: 0, active: false, timeLeft: CFG.horde.break, reserve: [], budget: 0, left: 0,
     bunker: [...g.units.values()].find(u => u.type === 'bunker').id, gates: map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i)).map(gate) };
 }
 // the units of wave n: the budget spent at random on what is unlocked by then, by weight
+function hordePick(pool, left) {
+  const can = pool.filter(([t]) => UNITS[t].cost <= left), total = can.reduce((a, c) => a + c[2], 0);
+  if (!can.length) return null;
+  let r = Math.random() * total;
+  return (can.find(c => (r -= c[2]) < 0) ?? can[0])[0];
+}
 export function hordeWave(n, defenders, income = 1) {
   const H = CFG.horde, pool = H.unlock.filter(([, from]) => n >= from), out = [];
   let left = H.budget * H.growth ** (n - 1) * defenders * income;
   for (;;) {
-    const can = pool.filter(([t]) => UNITS[t].cost <= left), total = can.reduce((a, c) => a + c[2], 0);
-    if (!can.length) return out;
-    let r = Math.random() * total;
-    const [type] = can.find(c => (r -= c[2]) < 0) ?? can[0];
+    const type = hordePick(pool, left);
+    if (!type) return out;
     out.push(type); left -= UNITS[type].cost;
   }
 }
@@ -425,10 +429,18 @@ function stepHorde(g, dt) {
   if (!m.active) {
     if ((m.timeLeft -= dt) > 0) return;
     m.wave++; m.active = true; m.timeLeft = 0;
-    m.reserve = hordeWave(m.wave, m.defenders, g.army.income);
+    m.reserve = [];
+    m.budget = Math.min(Number.MAX_SAFE_INTEGER, H.budget * H.growth ** (m.wave - 1) * m.defenders * g.army.income);
     // this wave's off-map support (the AI keeps 100 MP back) and planes; planes are not part of "wave dead"
     boss.mp = m.wave >= H.supportWave ? 100 + H.support * (m.wave - H.supportWave + 1) * m.defenders * g.army.income : 0;
     if (m.wave >= H.airWave) for (let i = 0, n = Math.min(8, (1 + Math.floor((m.wave - H.airWave) / 3)) * Math.ceil(m.defenders / 2)); i < n; i++) spawnUnit(g, m.slot, i % 3 === 2 ? 'fighter' : 'attacker');
+  }
+  const pool = H.unlock.filter(([, from]) => m.wave >= from);
+  // Buy at most 32 units per tick into a fixed buffer; the rest of the wave remains a budget.
+  for (let i = 0; i < 32 && m.budget > 0 && m.reserve.length < H.fieldMax; i++) {
+    const type = hordePick(pool, m.budget);
+    if (!type) { m.budget = 0; break; }
+    m.reserve.push(type); m.budget -= UNITS[type].cost;
   }
   let field = 0;
   for (const u of g.units.values()) if (u.owner === m.slot && !u.air && u.hp > 0) field++;
@@ -440,7 +452,7 @@ function stepHorde(g, dt) {
     updateGrid(g, u); field++;
     command(g, m.slot, { t: 'amove', orders: [[u.id, bunker.x, bunker.z]] });
   }
-  m.left = field + m.reserve.length;
+  m.left = field + m.reserve.length + Math.ceil(m.budget / Math.min(...pool.map(([t]) => UNITS[t].cost)));
   if (m.left) return;
   // wave dead: a break, the bunker is patched up, the horde's planes go home
   m.active = false; m.timeLeft = H.break;
@@ -633,7 +645,7 @@ function stepPlane(g, u, dt) {
   else if (m && m.id) { m.kind = 'patrol'; m.id = 0; }
   let center = m ?? base;
   // fighters go after enemy planes they can see near the mission
-  if (def.role === 'fighter' && a.state !== 'home') {
+  if (def.role === 'fighter' && !u.holdFire && a.state !== 'home') {
     let bd = A.seek;
     for (const e of g.units.values()) if (e.air && airborne(e) && !allied(g, e.owner, u.owner) && g.players[u.owner].visible.has(e.id) && dist(e, center) < bd) { bd = dist(e, center); center = e; }
   }
@@ -650,6 +662,7 @@ function stepPlane(g, u, dt) {
   if (a.state === 'home') { if (dist(u, base) < 6) Object.assign(a, { state: 'rearm', timer: A.rearm, mission: null }); return; }
   // guns, rockets and bombs on ground targets (the attack target first)
   const tgt = m?.kind === 'attack' && t && !allied(g, t.owner, u.owner) && canShoot(g, u, t) ? t : null;
+  if (u.holdFire && !tgt) return;
   if (!tgt && u.retarget <= 0) { u.attackPick = pickTarget(g, u); u.retarget = 0.5; }
   const shoot = tgt ?? g.units.get(u.attackPick);
   if (shoot && canShoot(g, u, shoot)) { u.targetId = shoot.id; u.aim = Math.atan2(shoot.z - u.z, shoot.x - u.x); if (u.cooldown <= 0) { fire(g, u, shoot, true); a.ammo--; } }
@@ -660,8 +673,9 @@ function antiAir(g, list, dt) {
   for (const u of list) {
     const aa = UNITS[u.type].aa;
     if (!aa?.dps || u.hp <= 0 || (aa.setup && u.still < 2) || (u.air && !airborne(u)) || (u.built !== undefined && u.built < 1)) continue;
+    if (u.holdFire && (!u.air || u.air.mission?.kind !== 'attack')) continue;
     let best = null, bd = aa.range;
-    for (const t of gridFor(g).candidates(u, aa.range, true, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
+    for (const t of gridFor(g).candidates(u, aa.range, true, t => t.air && airborne(t) && t.hp > 0 && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id) && (!u.holdFire || u.air.mission.id === t.id))) if (dist(u, t) <= bd) { bd = dist(u, t); best = t; }
     if (!best) continue;
     best.hp -= aa.dps * dt; best.lastHit = u.owner;
     u.xp += Math.min(aa.dps * dt, Math.max(0, best.hp + aa.dps * dt));
@@ -1112,9 +1126,10 @@ export function placementCheck(g, { kind, x, z, dir = 0 }, sees = () => true) {
     const at = (along, fwd) => cellOf(g, x + (sx * along + sz * fwd) * CELL, z + (sz * along - sx * fwd) * CELL);
     const plan = f.nest ? [[0, 0], [-1, 1], [0, 1], [1, 1], [-1, 0], [1, 0]].map(([s, w]) => at(s, w))
       : Array.from({ length: f.n }, (_, i) => at(i - (f.n - 1) / 2, 0));
+    if (plan.some(c => c >= 0 && !sees(cellCenter(g, c)))) return fail('notVisible', { cells: [] });
     const cells = fortCells(g, f, x, z, dir);
     if (cells.length) return { ok: true, reason: undefined, cells, x, z };
-    return fail(plan.some(c => c >= 0 && !sees(cellCenter(g, c))) ? 'notVisible' : 'blocked', { cells });
+    return fail('blocked', { cells });
   }
   if (!BUILDABLE.includes(kind)) return fail('blocked');
   const def = UNITS[kind];
@@ -1148,13 +1163,14 @@ function takeDigJob(g, u) {
   const jobs = u.entrench.jobs, p = g.players[u.owner];
   let k = 0;
   for (let i = 1; i < Math.min(jobs.length, u.entrench.crew); i++) if (dist(u, jobs[i]) < dist(u, jobs[k])) k = i;
-  const job = jobs[k], place = placementCheck(g, job);
+  const job = jobs[k], place = placementCheck(g, job, at => teamSees(g, p.team, at));
   if (!place.ok) { jobs.splice(k, 1); return; }
   const cost = segmentCost(job.kind, place.cells.length);
   if (p.mp < cost) return;
   jobs.splice(k, 1);
   p.mp -= cost; tally(g, u.owner, 'mpSpent', cost);
-  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0 }; u.repath = 0;
+  u.entrench.active++;
+  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0, project: u.entrench }; u.repath = 0;
 }
 
 // Per-unit switches the player sets. holdFire: shoot only on an attack order. holdPos: never move unordered (no
@@ -1232,10 +1248,6 @@ export function command(g, slot, cmd, auto = false) {
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
-  // any new order takes a digger off its mass entrenchment
-  const retasked = cmd.queue === true ? [] : cmd.t === 'move' || cmd.t === 'amove' ? (Array.isArray(cmd.orders) ? cmd.orders.slice(0, limit).map(o => o?.[0]) : [])
-    : ['fireat', 'garrison', 'attack', 'stop', 'retreat', 'dig', 'build', 'assist', 'cover'].includes(cmd.t) ? ids : [];
-  for (const id of retasked) { const u = mine(id); if (u) u.entrench = null; }
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     let moved = false, full = false;
     for (const o of cmd.orders.slice(0, limit)) {
@@ -1243,7 +1255,7 @@ export function command(g, slot, cmd, auto = false) {
       if (!u || x === null || z === null) continue;
       if (cmd.queue === true) { if (enqueueOrder(u, { t: cmd.t, orders: [[u.id, x, z]], x, z })) moved = true; else full = true; continue; }
       moved = true;
-      u.orders = [];
+      u.orders = []; u.entrench = null;
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
       exitBuilding(g, u);
       Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null });
@@ -1254,12 +1266,14 @@ export function command(g, slot, cmd, auto = false) {
     const c = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
     if (c < 0 || !(g.cellHp[c] > 0)) return c < 0 || teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'blocked' : 'notVisible';
     if (!ids.some(id => { const u = mine(id); return u && (UNITS[u.type].w.shellTerrain || UNITS[u.type].w.salvo); })) return teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'needs' : 'notVisible';
+    let ordered = false;
     for (const id of ids) {
       const u = mine(id);
       if (!u || !(UNITS[u.type].w.shellTerrain || UNITS[u.type].w.salvo)) continue;
-      if (cmd.queue === true) enqueueOrder(u, { t: 'fireat', ids: [u.id], ...cellCenter(g, c) });
-      else Object.assign(u, { orders: [], fireAt: c, attackId: 0, amove: null, retreating: false, repath: 0, path: [] });
+      if (cmd.queue === true) { if (enqueueOrder(u, { t: 'fireat', ids: [u.id], ...cellCenter(g, c) })) ordered = true; }
+      else { Object.assign(u, { orders: [], entrench: null, fireAt: c, attackId: 0, amove: null, retreating: false, repath: 0, path: [] }); ordered = true; }
     }
+    if (!ordered) return 'queueFull';
   } else if (cmd.t === 'garrison') {
     const c0 = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
     if (c0 < 0 || g.chars[c0] !== 'B') return c0 < 0 || teamSees(g, g.players[slot].team, cellCenter(g, c0)) ? 'blocked' : 'notVisible';
@@ -1273,7 +1287,7 @@ export function command(g, slot, cmd, auto = false) {
       if (c < 0) { reason = 'max'; break; } // house is full
       exitBuilding(g, u);
       taken.add(c);
-      Object.assign(u, { orders: [], enter: c, attackId: 0, nade: null, dig: null, amove: null, fireAt: -1, build: 0, repath: 0, path: findPath(g, u, cellCenter(g, c)) });
+      Object.assign(u, { orders: [], entrench: null, enter: c, attackId: 0, nade: null, dig: null, amove: null, fireAt: -1, build: 0, repath: 0, path: findPath(g, u, cellCenter(g, c)) });
       entered = true;
     }
     if (!entered) return teamSees(g, g.players[slot].team, cellCenter(g, c0)) ? reason : 'notVisible';
@@ -1287,7 +1301,7 @@ export function command(g, slot, cmd, auto = false) {
       const u = mine(id); if (!u || (t.air && !u.air)) continue;
       if (cmd.queue === true) { if (enqueueOrder(u, { t: 'attack', ids: [u.id], target: t.id, x: t.x, z: t.z })) ordered = true; continue; }
       ordered = true;
-      u.orders = [];
+      u.orders = []; u.entrench = null;
       if (u.air) { sendPlane(u, { kind: 'attack', id: t.id, x: t.x, z: t.z }); continue; }
       if (!canShoot(g, u, t)) exitBuilding(g, u);
       Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [] });
@@ -1295,7 +1309,7 @@ export function command(g, slot, cmd, auto = false) {
     if (!ordered) return 'queueFull';
   } else if (cmd.t === 'stop') {
     if (!ids.some(mine)) return 'needs';
-    for (const id of ids) { const u = mine(id); if (u?.air) { u.orders = []; if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { orders: [], path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
+    for (const id of ids) { const u = mine(id); if (u?.air) { u.orders = []; if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { orders: [], entrench: null, path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
   } else if (cmd.t === 'escort') {
     // planes circle a friendly unit (fighters guard it from enemy planes)
     const t = g.units.get(cmd.target);
@@ -1326,14 +1340,14 @@ export function command(g, slot, cmd, auto = false) {
         if (enqueueOrder(u, { t: 'cover', ids: [u.id], x: last.x, z: last.z })) went = true; else reason = 'queueFull';
         continue;
       }
-      if (u.garrison >= 0) { went = true; continue; }
+      if (u.garrison >= 0) { Object.assign(u, { orders: [], entrench: null, path: [], attackId: 0, targetId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); went = true; continue; }
       let from = null, bd = 60;
       for (const e of foes) if (dist(u, e) < bd) { bd = dist(u, e); from = e; }
       from ??= u.hitAt >= g.tick - 100 ? u.hitFrom : null;
       const path = u.path;
       u.path = [];
-      if (seekCover(g, u, from)) Object.assign(u, { orders: [], attackId: 0, targetId: 0, stuck: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 });
-      else { u.path = path; if (coverRank(g, u, from) === 3) continue; }
+      if (!seekCover(g, u, from) && coverRank(g, u, from) === 3) { u.path = path; continue; }
+      Object.assign(u, { orders: [], entrench: null, attackId: 0, targetId: 0, stuck: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 });
       went = true;
     }
     if (!went) return reason;
@@ -1381,7 +1395,7 @@ export function command(g, slot, cmd, auto = false) {
     const cells = place.cells;
     p.mp -= f.cost; tally(g, slot, 'mpSpent', f.cost);
     exitBuilding(g, u);
-    Object.assign(u, { orders: [], dig: { x, z, cells, t: 0 }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
+    Object.assign(u, { orders: [], entrench: null, dig: { x, z, cells, t: 0 }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
   } else if (cmd.t === 'entrench') {
     // Mass entrenchment: all the selected diggers share one pattern. Nothing is paid here: each digger pays for a
     // segment as it takes it, so a pattern bigger than the purse gets dug as the manpower comes in.
@@ -1392,6 +1406,7 @@ export function command(g, slot, cmd, auto = false) {
     if (cmd.join !== undefined && (!project || !project.jobs.length || !allied(g, project.owner, slot))) return 'blocked';
     if (!project && (typeof cmd.pattern !== 'string' || !Object.hasOwn(ENTRENCH, cmd.pattern) || x === null || z === null)) return 'blocked';
     if (!able.length) return crew.length ? 'retreating' : 'noBuilders';
+    if (cmd.queue === true && able.every(u => (u.orders?.length ?? 0) >= 8)) return 'queueFull';
     if (project) return joinProject(g, project, able, cmd.queue === true);
     const back = { x: able.reduce((a, u) => a + u.x, 0) / able.length, z: able.reduce((a, u) => a + u.z, 0) / able.length };
     let reason = 'blocked', cheapest = Infinity;
@@ -1402,7 +1417,7 @@ export function command(g, slot, cmd, auto = false) {
     });
     if (!jobs.length) return reason;
     if (p.mp < cheapest) return 'mp';
-    project = { id: g.projectSeq = (g.projectSeq ?? 0) + 1, owner: slot, jobs, crew: 0 };
+    project = { id: g.projectSeq = (g.projectSeq ?? 0) + 1, owner: slot, jobs, crew: 0, active: 0 };
     (g.projects ??= new Map()).set(project.id, project);
     return joinProject(g, project, able, cmd.queue === true);
   } else if (cmd.t === 'support' && typeof cmd.kind === 'string' && Object.hasOwn(SUPPORT, cmd.kind)) {
@@ -1429,7 +1444,7 @@ export function command(g, slot, cmd, auto = false) {
     if (node) node.depot = site.id;
     for (const u of crew) {
       if (cmd.queue === true) { enqueueOrder(u, { t: 'assist', ids: [u.id], id: site.id, x: site.x, z: site.z }); continue; }
-      exitBuilding(g, u); Object.assign(u, { orders: [], build: site.id, attackId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, site) });
+      exitBuilding(g, u); Object.assign(u, { orders: [], entrench: null, build: site.id, attackId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, site) });
     }
   } else if (cmd.t === 'assist') {
     // Engineers join a site, or repair a damaged building of their own team
@@ -1441,7 +1456,7 @@ export function command(g, slot, cmd, auto = false) {
     for (const u of crew) {
       if (cmd.queue === true) { if (enqueueOrder(u, { t: 'assist', ids: [u.id], id: b.id, x: b.x, z: b.z })) assigned = true; continue; }
       assigned = true;
-      exitBuilding(g, u); Object.assign(u, { orders: [], build: b.id, attackId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, b) });
+      exitBuilding(g, u); Object.assign(u, { orders: [], entrench: null, build: b.id, attackId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, b) });
     }
     if (!assigned) return 'queueFull';
   } else if (cmd.t === 'cancel') {
@@ -1680,7 +1695,7 @@ function updateVision(g) {
       if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
     }
     // Horde: the last few of a wave show through the fog, so nobody hunts a straggler blind
-    if (g.mode?.kind === 'horde' && p.team === g.mode.defenderTeam && g.mode.active && g.mode.left <= CFG.horde.reveal) for (const t of list) if (t.owner === g.mode.slot && !t.air) vis.add(t.id);
+    if (g.mode?.kind === 'horde' && p.team === g.mode.defenderTeam && g.mode.active && !g.mode.budget && g.mode.left <= CFG.horde.reveal) for (const t of list) if (t.owner === g.mode.slot && !t.air) vis.add(t.id);
     byTeam.set(p.team, p.visible = vis);
     // Ghosts: every enemy building this team has seen stays remembered where it was, until the team sees the spot
     // again without it (destroyed or cancelled)
@@ -1704,7 +1719,7 @@ function intercepted(g, s, list) {
   if (cover) cover.t = 0;
   for (const u of list) {
     const aa = UNITS[u.type].aa;
-    if (down || !aa?.chance || u.hp <= 0 || g.players[u.owner].team === team || dist(u, s) > aa.range || (aa.setup && u.still < 2) || (u.built !== undefined && u.built < 1)) continue;
+    if (down || !aa?.chance || u.holdFire || u.hp <= 0 || g.players[u.owner].team === team || dist(u, s) > aa.range || (aa.setup && u.still < 2) || (u.built !== undefined && u.built < 1)) continue;
     g.shots.push({ f: u.id, fo: u.owner, x: s.x, z: s.z, k: 'flak', pub: true });
     if (Math.random() < aa.chance) { down = true; by = u.owner; }
   }
@@ -1767,6 +1782,11 @@ export function step(g) {
   g.tick++;
   if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure);
   if (g.tick % 4 === 1) updateVision(g);
+  // Recount paid segments so cancelled work and dead diggers no longer hold up a project.
+  if (g.projects?.size) {
+    for (const p of g.projects.values()) p.active = 0;
+    for (const u of g.units.values()) if (u.hp > 0 && u.dig?.project) u.dig.project.active++;
+  }
   // once a second: drop entrenchments that are finished or that nobody works on (or waits to), and recount the crews
   if (g.projects?.size && g.tick % 20 === 0) {
     const crews = new Map();
@@ -1774,7 +1794,7 @@ export function step(g) {
       if (u.entrench) crews.set(u.entrench, (crews.get(u.entrench) ?? 0) + 1);
       for (const o of u.orders ?? []) { const p = o.join !== undefined && g.projects.get(o.join); if (p && !crews.has(p)) crews.set(p, 0); }
     }
-    for (const [id, p] of g.projects) { if (!p.jobs.length || !crews.has(p)) g.projects.delete(id); else p.crew = Math.max(1, crews.get(p)); }
+    for (const [id, p] of g.projects) { if ((!p.jobs.length || !crews.has(p)) && !p.active) g.projects.delete(id); else p.crew = Math.max(1, crews.get(p) ?? 0); }
   }
 
   beginPathTick(g);
@@ -1808,7 +1828,7 @@ export function step(g) {
     }
 
     // mass entrenchment: a free digger takes one of the next segments, or waits for the manpower to pay for it
-    if (u.entrench && !u.dig) { if (!u.entrench.jobs.length) u.entrench = null; else if (!busy(u) && u.garrison < 0) takeDigJob(g, u); }
+    if (u.entrench && !u.dig) { if (!u.entrench.jobs.length && !u.entrench.active) u.entrench = null; else if (u.entrench.jobs.length && !busy(u) && u.garrison < 0) takeDigJob(g, u); }
 
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
@@ -1819,7 +1839,7 @@ export function step(g) {
         // ground can change while building; tank traps never go down under a vehicle
         const under = ch === 'Y' && [...g.units.values()].some(v => !UNITS[v.type].infantry && cellOf(g, v.x, v.z) === c);
         if (BUILDABLE_GROUND.includes(g.chars[c]) && !under) setCell(g, c, ch);
-        if (!u.dig.cells.length) { u.dig = null; tally(g, u.owner, 'built'); }
+        if (!u.dig.cells.length) { if (u.dig.project) u.dig.project.active--; u.dig = null; tally(g, u.owner, 'built'); }
       }
     }
 
@@ -1877,13 +1897,12 @@ export function step(g) {
     const before = { x: u.x, z: u.z };
     const here = flagsAt(g, u.x, u.z), speed = def.speed * (u.retreating ? CFG.retreatSpeed : u.sprint > 0 ? def.ab.speed : sm.speed) * (here & FORD ? CFG.fordSpeed : 1) * (def.infantry && here & WIRE ? CFG.wireSpeed : 1);
     // jammed: units that reach one waypoint together push each other off it for good (the separation below undoes each
-    // step). After a second without real progress, a unit that can walk straight to its next waypoint skips this one;
-    // after three, standing next to the waypoint counts as reaching it (a ramp corner has no straight way on).
+    // step). After a second without real progress, a unit that can walk straight to its next waypoint skips this one.
     const net = u.was ? dist(u, u.was) : Infinity;
     u.was = before;
     if (u.path.length > 1 && net < speed * dt * 0.3) {
       u.jam = (u.jam ?? 0) + dt;
-      if ((u.jam > 1 && walkable(g, u, u.path[1], def.infantry ? MOVE | WIRE : MOVE | VBLOCK)) || (u.jam > 3 && dist(u, u.path[0]) < def.radius * 2 + CELL)) { u.path.shift(); u.jam = 0; }
+      if (u.jam > 1 && walkable(g, u, u.path[1], def.infantry ? MOVE | WIRE : MOVE | VBLOCK)) { u.path.shift(); u.jam = 0; }
     } else u.jam = 0;
     let budget = speed * dt;
     while (budget > 0 && u.path.length) {
@@ -2184,6 +2203,7 @@ function planOf(g, u) {
   if (u.nade) return [6, u.nade.x, u.nade.z];
   if (u.dig) return [7, u.dig.x, u.dig.z];
   if (u.entrench?.jobs.length) return [7, u.entrench.jobs[0].x, u.entrench.jobs[0].z]; // between segments, or waiting for manpower
+  if (u.entrench?.active) return [7, u.x, u.z]; // waiting for the other diggers to finish
   if (site) return [8, site.x, site.z];
   if (u.enter >= 0) { const c = cellCenter(g, u.enter); return [9, c.x, c.z]; }
   if (u.amove) return [2, u.amove.x, u.amove.z];

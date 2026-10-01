@@ -879,16 +879,16 @@ function fKeyType() {
 const AIMED = { grenade: 'rifle', barrage: 'rocket', satchel: 'ranger' }; // abilities that need a spot clicked
 function useAbility(type) {
   if (!type) return;
-  if (explainUnavailable(available({ t: 'ability', unit: type }))) return;
-  const ready = [...selected].map(id => units.get(id)).filter(v => v && !v.cd && !(v.flags & 1) && v.type === type);
-  if (!ready.length) return;
   const id = UNITS[type].ab.id;
+  if (explainUnavailable(available({ t: 'ability', unit: type, queue: !!AIMED[id] }))) return;
+  const ready = [...selected].map(id => units.get(id)).filter(v => v && (AIMED[id] || !v.cd) && !(v.flags & 1) && v.type === type);
+  if (!ready.length) return;
   if (AIMED[id]) setAim(id, type);
   else { sendCmd({ t: 'ability', ids: ready.map(v => v.id) }); blip(880); }
 }
 function throwAt(g, kind, type, queue = false) {
-  if (explainUnavailable(available({ t: 'ability', unit: type }))) return;
-  const who = [...selected].map(id => units.get(id)).filter(v => v && v.type === type && UNITS[v.type].ab.id === kind && !v.cd && !(v.flags & 1));
+  if (explainUnavailable(available({ t: 'ability', unit: type, queue }))) return;
+  const who = [...selected].map(id => units.get(id)).filter(v => v && v.type === type && UNITS[v.type].ab.id === kind && (queue || !v.cd) && !(v.flags & 1));
   if (!who.length) return;
   who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z, queue }); marker(g.x, g.z, 0xffa030); blip(760);
@@ -1047,7 +1047,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
       return;
     }
     if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
-    if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
+    if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type, queue: e.shiftKey }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }

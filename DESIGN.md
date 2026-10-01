@@ -98,6 +98,8 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
   it falls.
 - Maps: only maps with `defend` spawns (11 of 22); the lobby greys out the rest, and picking Horde on another map
   switches to the first horde map. The Horde enters at every other spawn, one unit per spawn twice a second.
+  Start and Restart recheck the freshly loaded map. Losing defender spawns refuses Start in the lobby or preserves
+  the existing game on Restart.
 - Waves: the 45 s break starts only when the Wave is dead (no horde ground unit on the map or in the Reserve). The
   host can send the next Wave early (`{t:'nextwave'}`, host only, handled by the server). With 3 or fewer left they
   are revealed through the fog until they die.
@@ -106,7 +108,11 @@ the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CF
   conscripts from 1, MG and mortar at 3, armored car, light tank and AT gun at 5, medium tank and rockets at 8, Tiger
   at 12 (the Horde ignores factions and the Tiger's limit of one). Never snipers.
 - Big Waves: the Horde fields at most 60 units per defender (240 in all); the rest waits in the Reserve and enters as
-  units die. HUD: "Wave 16, 41 left".
+  units die. Buy at most 32 reserve units per tick and buffer at most 240; keep the remaining MP budget as a number.
+  Purchases keep the normal affordability and random weights. Budgets above `Number.MAX_SAFE_INTEGER` are capped
+  so each purchase still reduces the budget. HUD: "Wave 16, 41 left". While purchases remain, the count includes an
+  upper estimate from the cheapest unlocked unit; it becomes exact when purchasing ends. The final-three reveal and
+  the break wait until the remaining budget is spent or cannot buy any unit.
 - Horde support: from Wave 6 it gets 150 MP of off-map support per Wave past 5, per defender, spent by the existing
   AI (no paratroopers); what it doesn't spend is lost. From Wave 10 it gets planes (1, +1 every 3 Waves, x half the
   defenders rounded up, at most 8; every third a fighter), so players need Flak. Planes don't count toward "Wave
@@ -608,6 +614,7 @@ Slice 1, cover (`seekCover`, `coverRank` in sim.js):
   Blasts do not trigger it: cover does not help against them and there is no direction to hide from.
 - Crewed weapons are left out of the automatic part on purpose: moving costs them their setup time and their field of
   fire, which is the thing players set by hand. The Take Cover order still moves them.
+  An accepted Take Cover order clears active and waiting orders even when the squad already has the best cover.
 - Separation no longer pushes a squad in a cover cell onto a cell without cover (`shovedFromCover`). Found while
   testing: a squad walking past shoved the one already behind the wall out into the open.
 - Classic, 90 three-way AI matches, default map: 37/38/26% (32/38/30% before). Same direction as Conquest, inside the noise.
@@ -620,8 +627,8 @@ Slice 2, mass entrenchment (`entrenchPlan`, `takeDigJob`, the `entrench` command
 - The order creates one project `{ jobs, crew }` that every digger points at (`u.entrench`). An idle digger takes the
   nearest job among the first `crew` jobs (the list is sorted middle outward), pays `segmentCost` and digs. No
   manpower: it waits and looks again every tick. Nothing is paid up front and nothing is refunded.
-- There is no registry of projects: when the last digger leaves or dies the object is simply dropped. Any command that
-  re-tasks a unit clears `u.entrench` at the top of `command()`.
+- The first slice had no registry of projects; the follow-up below adds one. A replacement order clears
+  `u.entrench` only for squads whose replacement is accepted.
 - Rejected: queueing the segments as each squad's waiting orders. A queued dig that cannot be paid is dropped, and the
   queue holds 8, so "the rest as MP comes in" could not work.
 - Separation and cover, second try: a squad holding cover is not pushed off it, and a friend with a path is not pushed
@@ -669,16 +676,24 @@ Slice 4, the AI and the rebalance (`shared/ai.js`):
   - One 400-match run moves a faction by 2 to 3 points on its own; smaller runs cannot tell these variants apart.
 
 Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
-- Projects now live in `g.projects` (id -> `{ id, owner, jobs, crew }`). This replaces slice 2's "no registry": a
-  ghost and a join order both need to name a project. A sweep once a second drops a project with no segments left or
-  with nobody on it and nobody queued to join it, and recounts `crew`.
+- Projects now live in `g.projects` (id -> `{ id, owner, jobs, crew, active }`). This replaces slice 2's "no registry":
+  a ghost and a join order both need to name a project. Paid digs name their project; `active` is recounted each tick
+  so cancellations and dead diggers cannot hold it open. A sweep once a second drops finished or abandoned projects
+  once their paid work ends, and recounts `crew`.
 - The `entrench` command takes `join: id` instead of a pattern. Own and allied projects only; the digger's owner pays.
 - Queueing an entrenchment creates the project at once and queues a join for each squad, so the squads share one
   project (queueing the pattern itself per squad would make one project each, digging and paying for the same cells).
-- `planOf` reports a digger as busy (kind 7) while its project has segments left, so waiting orders start after the
+  At least one squad must have queue room before creating the project; refused patterns allocate nothing.
+- Fortification placement checks sight on every planned cell before inspecting its terrain. Deferred segments
+  repeat the sight check when claimed; a segment that lost sight is dropped without payment or a terrain check.
+- `planOf` reports a digger as busy (kind 7) while its project has pending or active segments, so waiting orders start after the
   pattern, not between two segments. A squad waiting for manpower therefore holds its queue too.
 - Queued commands no longer clear `u.entrench` (they did, which made a Shift-queued move cancel the digging).
 - Snapshot `works`: [project id, 1 for wire, x, z, dir] per remaining segment, unrounded so the client computes the
   same cells with `placementCheck`. Sent to the owner's whole team.
 - Retreat is deliberately not queueable: an existing test requires Retreat and Stop to clear the queue even with
   Shift held.
+- Shelling reports `queueFull` when no selected unit can enqueue it. The browser defers cooldown and munitions
+  checks for queued grenade, satchel and barrage targets; ordinary target clicks and instant abilities check at once.
+- Hold fire applies to aircraft guns, anti-air damage and Flak interception. A plane's explicit attack permits
+  firing only at that target. Jam recovery skips a waypoint only with a walkable route to the following waypoint.
