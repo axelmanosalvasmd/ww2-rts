@@ -6,7 +6,7 @@ import { createSelection } from './selection.js';
 import { createOrders } from './orders.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck, ENTRENCH, entrenchPlan, segmentCost } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
@@ -650,7 +650,8 @@ function strikeShape(kind) {
 function aimShape(kind, color) {
   const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
+  if (kind === 'entrench') g.userData.tiles = []; // filled by entrenchPreview
+  else if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
   else if (SUPPORT[kind]?.point) { const r = SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4; g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64))); }
   else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally') {
     const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
@@ -691,7 +692,7 @@ function placementView() {
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
-  retreat: () => retreat(), takeCover: () => takeCover(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
+  retreat: () => retreat(), takeCover: () => takeCover(), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
@@ -711,6 +712,39 @@ function updateHud(s) { drawPlans(); hud.update(s); }
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
 function startDig(kind) { if (explainUnavailable(available({ t: 'dig', kind }))) return; fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); }
+// Mass entrenchment: two clicks give the pattern its two points, and every selected builder squad digs it.
+let entrenchKind = 'line', entrenchHint = '';
+function startEntrench(kind) { if (explainUnavailable(available({ t: 'entrench' }))) return; entrenchKind = kind; entrenchHint = ''; setAim('entrench'); $('hint').textContent = `${ENTRENCH[kind]}: click where it starts · right-click cancels`; blip(600); }
+// the segments of the armed pattern that can be built, with their cells, as the server will judge them
+function entrenchSegments(a, b) {
+  const crew = diggers(), view = placementView();
+  if (!crew.length || !view) return [];
+  const back = { x: crew.reduce((s, v) => s + v.x, 0) / crew.length, z: crew.reduce((s, v) => s + v.z, 0) / crew.length };
+  return entrenchPlan(entrenchKind, a, b, back).map(j => ({ ...j, place: placementCheck(view.game, j, (spot) => view.sees(me, spot)) })).filter(j => j.place.ok);
+}
+// what the armed pattern costs, and how much of it starts right away with the squads and manpower at hand
+function entrenchSummary(segs) {
+  const costs = segs.map(j => segmentCost(j.kind, j.place.cells.length)), total = costs.reduce((s, c) => s + c, 0);
+  let mp = lastSnap?.mp ?? 0, now = 0;
+  for (const c of costs.slice(0, diggers().length)) { if (mp < c) break; mp -= c; now++; }
+  return !segs.length ? `${ENTRENCH[entrenchKind]}: nothing can be dug there`
+    : `${ENTRENCH[entrenchKind]}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? ` · ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
+}
+// green squares on every cell the pattern would dig (wire in brass), redrawn as the mouse moves
+function entrenchPreview(group, a, b) {
+  const segs = entrenchSegments(a, b), w = placementView()?.game.w ?? 1, tiles = group.userData.tiles;
+  let n = 0;
+  for (const j of segs) for (const [c] of j.place.cells) {
+    let t = tiles[n];
+    if (!t) { t = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.86, CELL * 0.86), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); t.rotation.x = -Math.PI / 2; t.renderOrder = 2; tiles.push(t); group.add(t); }
+    const x = (c % w + 0.5) * CELL, z = (Math.floor(c / w) + 0.5) * CELL;
+    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(j.kind === 'wire' ? 0xd2a849 : 0x60e070);
+    n++;
+  }
+  for (let i = n; i < tiles.length; i++) tiles[i].visible = false;
+  const text = `${entrenchSummary(segs)} · click ${aimCenter ? 'to dig' : 'where it starts'} · right-click cancels`;
+  if (text !== entrenchHint) { entrenchHint = text; $('hint').textContent = text; }
+}
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
 // one layer for every match: grease-pencil strokes rewritten in place each snapshot (see markers.js)
 const plans = planLayer(hAt);
@@ -888,6 +922,7 @@ for (const { id } of bindings) {
   const [kind, value, number] = id.split(':');
   if (kind === 'support') actions[id] = () => aimSupport(value);
   else if (kind === 'fort') actions[id] = () => startDig(value);
+  else if (kind === 'entrench') actions[id] = () => startEntrench(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
   else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
 }
@@ -960,7 +995,16 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type }))) return; cancelAim(); throwAt(g, kind, type); return; }
     if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
     // first click: pin the center, then the mouse rotates it
-    if (!aimCenter) { aimCenter = g; $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
+    if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate · click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
+    if (kind === 'entrench') {
+      if (explainUnavailable(available({ t: 'entrench' }))) return;
+      const a = aimCenter, segs = entrenchSegments(a, g);
+      if (!segs.length) { feedback.show(denySentence('blocked')); return; }
+      cancelAim();
+      sendCmd({ t: 'entrench', ids: diggers().map(v => v.id), pattern: entrenchKind, x: a.x, z: a.z, x2: g.x, z2: g.z });
+      marker(a.x, a.z, 0xc8a060); blip(600); bark('move');
+      return;
+    }
     const c = aimCenter, dir = Math.hypot(g.x - c.x, g.z - c.z) > 1.5 ? Math.atan2(g.z - c.z, g.x - c.x) : defaultDir(kind, c);
     if (kind === 'dig') {
       // Shift queues the dig behind the squad's orders (paid when it starts) and keeps the placement armed
@@ -1186,7 +1230,8 @@ renderer.setAnimationLoop(() => {
   if (targeting && world) {
     if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
-    if (aimCenter) {
+    if (targeting === 'entrench') { if (aimCenter || g) entrenchPreview(aimMesh, aimCenter ?? g, g ?? aimCenter); }
+    else if (aimCenter) {
       aimMesh.position.set(aimCenter.x, hAt(aimCenter.x, aimCenter.z), aimCenter.z);
       if (g && Math.hypot(g.x - aimCenter.x, g.z - aimCenter.z) > 1.5) aimMesh.rotation.y = -Math.atan2(g.z - aimCenter.z, g.x - aimCenter.x);
     } else if (g && UNITS[targeting]?.building) {

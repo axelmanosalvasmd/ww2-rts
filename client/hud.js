@@ -5,7 +5,7 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf } from '/shared/sim.js';
 import { symbolSVG } from './symbols.js';
 import { unitRole } from './unit-roles.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, label, badge } from './keys.js';
@@ -25,6 +25,9 @@ const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shell
   cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)' };
 const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infantry', wire: 'Slows infantry; tanks flatten it', traps: 'Stops vehicles; cover for infantry',
   nest: 'A trench pit behind a horseshoe of sandbags' };
+const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
+  double: 'Two rows, the second 6 m behind the first', arc: 'A crescent around the first click, bowed toward the second',
+  ring: 'A circle around the first click, out to the second', strongpoint: 'A trench square with barbed wire on the side of the second click' };
 const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
   airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
@@ -71,6 +74,12 @@ const ICON = {
   stop: '<path d="M11 4h10l7 7v10l-7 7H11l-7-7V11z"/><path d="M11 16h10"/>',
   takecover: '<path d="M3 27h26M18 27V13h9v14"/><circle cx="10" cy="17.5" r="3"/><path d="M5.5 27c0-4 2-5.5 4.5-5.5s4.5 1.5 4.5 5.5"/>',
   trench: '<path d="M3 12h6v8h7v-8h7v8h6"/>',
+  e_line: '<path d="M4 16h24M4 11v10M28 11v10"/>',
+  e_zigzag: '<path d="M3 21l6.5-10 6.5 10 6.5-10L29 21"/>',
+  e_double: '<path d="M4 11h24M4 21h24"/>',
+  e_arc: '<path d="M4 23a12 12 0 0 1 24 0"/>',
+  e_ring: '<circle cx="16" cy="16" r="10.5"/><circle cx="16" cy="16" r="1.5"/>',
+  e_strongpoint: '<rect x="9" y="13" width="14" height="14"/><path d="M4 6h24"/><circle cx="10" cy="6" r="2.5"/><circle cx="16" cy="6" r="2.5"/><circle cx="22" cy="6" r="2.5"/>',
   sandbags: '<rect x="3.5" y="19" width="12" height="7" rx="3.5"/><rect x="16.5" y="19" width="12" height="7" rx="3.5"/><rect x="10" y="11" width="12" height="7" rx="3.5"/>',
   wire: '<path d="M2 21h28"/><circle cx="8" cy="15.5" r="4.5"/><circle cx="16" cy="15.5" r="4.5"/><circle cx="24" cy="15.5" r="4.5"/>',
   traps: '<path d="M6 27 22 5M10 5l16 22M4 17.5h24"/>',
@@ -231,7 +240,7 @@ export function createHud(ctx) {
     if (v.flags & 4) t.push(['pin', 'AP round loaded']);
     if (v.supp >= 90) t.push(['pin', 'Pinned']); else if (v.supp >= 50) t.push(['sup', 'Suppressed']);
     if (!v.garr) { if (v.cover === 2) t.push(['cov', 'In trench']); else if (v.cover === 3) t.push(['cov', 'By cover']); else if (v.cover) t.push(['cov', 'In cover']); }
-    if (v.flags & 16) t.push(['', 'Digging']);
+    if (v.flags & 16) t.push(['', 'Digging']); else if (v.flags & 1024) t.push(['', 'Waiting for MP to dig']);
     if (v.flags & 32) t.push(['cov', 'Garrisoned']);
     if (v.flags & 64) t.push(['', 'Attack-move']);
     if (UNITS[v.type].building && v.built < 1) t.push(['', `Building ${Math.round(v.built * 100)}%`]);
@@ -292,12 +301,14 @@ export function createHud(ctx) {
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m`) : '') +
         (dig ? Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. Click where; the nearest builder squad puts it across its approach`)).join('') : '') +
+        (dig ? ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
+          `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started`)).join('') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown`, t); }).join('') +
         '</div>';
       el.querySelectorAll('button').forEach((b) => (b.onclick = () => {
         const a = b.dataset.a;
         if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
-        else if (a === 'cover') ctx.takeCover();
+        else if (a === 'cover') ctx.takeCover(); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
         else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
       }));
     }
@@ -308,6 +319,7 @@ export function createHud(ctx) {
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
       else if (a === 'cover') result = check({ t: 'cover' });
+      else if (a.startsWith('ent:')) { result = check({ t: 'entrench' }); txt = `${FORTS.trench.cost}/seg`; }
       else if (UNITS[a]) {
         // same squads the reason sentence counts: retreating squads cannot use the ability
         const all = sel.filter((v) => v.type === a), us = all.some((v) => !(v.flags & 1)) ? all.filter((v) => !(v.flags & 1)) : all;

@@ -800,6 +800,73 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(command(g, 0, { t: 'cover', ids: [open.id] }), 'retreating', 'retreating squads do not take cover');
 }
 
+// Mass entrenchment: the pattern planner. Segments come middle first and face away from the diggers.
+{
+  const a = { x: 20, z: 40 }, b = { x: 60, z: 40 }, back = { x: 40, z: 50 }, plan = (p, q = b) => sim.entrenchPlan(p, a, q, back);
+  assert.equal(plan('line').length, 5, 'a 40 m line is five trench segments');
+  assert.deepEqual([plan('line')[0].x, plan('line')[0].z], [40, 40], 'the middle segment comes first');
+  assert.equal(plan('double').length, 10, 'a double line is two rows');
+  assert.ok(plan('double').some(j => j.z === 46) && !plan('double').some(j => j.z < 40), 'the second row is behind the first, on the diggers\' side');
+  assert.equal(plan('zigzag').length, 6, 'a zigzag packs more segments into the same frontage');
+  assert.ok(new Set(plan('zigzag').map(j => j.dir.toFixed(2))).size === 2, 'zigzag segments alternate between two directions');
+  assert.equal(plan('ring', { x: 30, z: 40 }).length, 8, 'a 10 m ring is eight segments');
+  assert.ok(plan('ring', { x: 30, z: 40 }).every(j => Math.abs(Math.hypot(j.x - 20, j.z - 40) - 10) < 1e-9), 'ring segments sit on the circle');
+  assert.ok(plan('arc', { x: 20, z: 20 }).every(j => j.z < 40), 'an arc bows toward the second point');
+  assert.deepEqual(plan('strongpoint').map(j => j.kind), ['trench', 'trench', 'trench', 'trench', 'wire', 'wire'], 'a strongpoint is a trench square with wire in front');
+  assert.equal(plan('line', a).length, 1, 'a plain click is one segment');
+  assert.ok(sim.ENTRENCH_TYPES.every(p => plan(p).length <= 24), 'patterns stay small enough to order at once');
+}
+
+// Mass entrenchment: every selected digger works the pattern, pays per segment and waits when the manpower runs out.
+{
+  const big = Array(40).fill('.'.repeat(40)), trenches = (g) => g.chars.filter(ch => ch === 'T').length;
+  const g = fresh(big); g.players[0].mp = 10000;
+  const crew = [put(g, 0, 'rifle', 36, 50), put(g, 0, 'rifle', 40, 50), put(g, 0, 'rifle', 44, 50)], tank = put(g, 0, 'tank', 10, 10);
+  const order = { t: 'entrench', pattern: 'line', x: 20, z: 40, x2: 60, z2: 40 };
+  assert.equal(command(g, 0, { ...order, ids: [tank.id] }), 'noBuilders', 'a tank cannot entrench');
+  assert.equal(command(g, 0, { ...order, ids: crew.map(u => u.id), pattern: 'toString' }), 'blocked', 'an unknown pattern is refused');
+  const mp = g.players[0].mp;
+  assert.equal(command(g, 0, { ...order, ids: [...crew.map(u => u.id), tank.id] }), undefined, 'the entrench order is accepted');
+  assert.equal(g.players[0].mp, mp, 'nothing is paid up front');
+  step(g);
+  assert.ok(crew.every(u => u.dig), 'every digger takes a segment at once');
+  assert.equal(new Set(crew.map(u => `${u.dig.x},${u.dig.z}`)).size, 3, 'each digger takes a different segment');
+  assert.ok(crew.some(u => u.dig.x === 40), 'the middle segment is among the first');
+  assert.ok(snapshotFor(g, 0, []).units.find(v => v[0] === crew[0].id)[12] & 1024, 'the snapshot flags a digger on a mass entrenchment');
+  run(g, 60);
+  assert.equal(trenches(g), 20, 'five segments of four cells are dug');
+  assert.equal(g.players[0].mp > mp - 150 - 1 && g.players[0].mp < mp + 400, true, 'the line cost five segments');
+  assert.ok(crew.every(u => !u.entrench && !u.dig), 'the diggers are free again when the pattern is done');
+
+  const poor = fresh(big); poor.players[0].mp = 10000;
+  const two = [put(poor, 0, 'rifle', 38, 50), put(poor, 0, 'rifle', 42, 50)];
+  poor.players[0].mp = 45; poor.players[0].inc = 0;
+  const income = poor.army.income; poor.army = { ...poor.army, income: 0 };
+  assert.equal(command(poor, 0, { ...order, ids: two.map(u => u.id) }), undefined, 'a pattern bigger than the purse is accepted');
+  run(poor, 30);
+  assert.equal(trenches(poor), 4, 'only the segment that could be paid for is dug');
+  assert.ok(two.every(u => u.entrench && !u.dig), 'the diggers wait for manpower');
+  poor.players[0].mp = 10000; run(poor, 60);
+  assert.equal(trenches(poor), 20, 'the rest is dug once the manpower is there');
+  poor.army = { ...poor.army, income };
+
+  const moved = fresh(big); moved.players[0].mp = 10000;
+  const one = put(moved, 0, 'rifle', 40, 50);
+  command(moved, 0, { ...order, ids: [one.id] }); step(moved);
+  command(moved, 0, { t: 'move', orders: [[one.id, 40, 70]] });
+  run(moved, 40);
+  assert.ok(!one.entrench && one.z > 60, 'a new order takes the digger off the entrenchment for good');
+  assert.ok(trenches(moved) < 20, 'and the pattern is left unfinished');
+
+  const fort = fresh(big); fort.players[0].mp = 10000;
+  const team = [put(fort, 0, 'rifle', 38, 54), put(fort, 0, 'rifle', 42, 54)];
+  assert.equal(command(fort, 0, { t: 'entrench', pattern: 'strongpoint', ids: team.map(u => u.id), x: 40, z: 40, x2: 40, z2: 20 }), undefined);
+  run(fort, 90);
+  assert.equal(trenches(fort), 12, 'the strongpoint is a closed square of twelve trench cells');
+  assert.equal(fort.chars.filter(ch => ch === 'X').length, 10, 'with two runs of wire in front');
+  assert.ok(fort.chars.findIndex(ch => ch === 'X') < fort.chars.findIndex(ch => ch === 'T'), 'the wire is on the side the strongpoint faces');
+}
+
 // Assault mode: the defender gets a bunker and fortifications; attackers must destroy it before time runs out.
 {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
@@ -1654,8 +1721,10 @@ const referenceSeparation = `
     const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
     if (sa && sb) continue;
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-    if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1 && !shovedFromCover(g, a, a.x - px, a.z - pz)) { a.x -= px; a.z -= pz; }
-    if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1 && !shovedFromCover(g, b, b.x + px, b.z + pz)) { b.x += px; b.z += pz; }
+    // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
+    const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
+    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
 `;
 
@@ -3661,6 +3730,8 @@ console.log('all command feedback checks passed');
   assert.equal(check({ t: 'cover' }).reason, 'That squad is retreating');
   eng.retreating = false;
   assert.equal(check({ t: 'cover' }).ok, true);
+  assert.equal(check({ t: 'entrench' }).ok, true, 'Engineers can entrench, and nothing is charged up front');
+  assert.equal(check({ t: 'entrench', ids: [hq.id] }).reason, 'Select a builder squad');
   assert.equal(check({ t: 'cover', ids: [hq.id] }).reason, 'Select an infantry squad');
   assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
   hq.queue = Array(5).fill('rifle');

@@ -198,6 +198,47 @@ export function fortCells(g, f, x, z, a) {
   for (const [c, ch] of plan) if (c >= 0 && BUILDABLE_GROUND.includes(g.chars[c]) && !out.some(o => o[0] === c)) out.push([c, ch]);
   return out;
 }
+// Mass entrenchment: every selected digger works one shared pattern. The player gives two points (a click, then a
+// second click): a line runs from a to b; an arc, a ring and a strongpoint are centered on a and face or reach to b.
+export const ENTRENCH = { line: 'Trench line', zigzag: 'Zigzag trench', double: 'Double line', arc: 'Arc', ring: 'Ring', strongpoint: 'Strongpoint' };
+export const ENTRENCH_TYPES = Object.keys(ENTRENCH);
+// The pattern as fortification segments [{ kind, x, z, dir }], middle first. back: where the diggers are, so the works
+// face away from them (a plain click, with no second point, also runs a line across their approach).
+export function entrenchPlan(pattern, a, b, back) {
+  const SEG = CFG.digCells * CELL, len = Math.hypot(b.x - a.x, b.z - a.z), drawn = len >= 2, linear = pattern === 'line' || pattern === 'zigzag' || pattern === 'double';
+  const away = back && Math.hypot(a.x - back.x, a.z - back.z) > 0.5 ? Math.atan2(a.z - back.z, a.x - back.x) : 0;
+  const dir = drawn ? Math.atan2(b.z - a.z, b.x - a.x) : linear ? away + Math.PI / 2 : away;
+  const dx = Math.cos(dir), dz = Math.sin(dir), clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), out = [];
+  const seg = (kind, x, z, d) => out.push({ kind, x, z, dir: d });
+  if (linear) {
+    const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, L = drawn ? len : SEG;
+    // the front is the side away from the diggers
+    const side = back && (mx - back.x) * dz + (mz - back.z) * -dx < 0 ? -1 : 1, nx = dz * side, nz = -dx * side;
+    const row = (off) => { const n = clamp(Math.round(L / SEG), 1, 12); for (let i = 0; i < n; i++) { const t = (i - (n - 1) / 2) * SEG; seg('trench', mx + dx * t + nx * off, mz + dz * t + nz * off, dir); } };
+    if (pattern === 'zigzag') {
+      // a sawtooth: each segment turns 0.6 rad off the line, alternately forward and back
+      const w = SEG * Math.cos(0.6), h = SEG * Math.sin(0.6), n = clamp(Math.round(L / w), 1, 16);
+      const v = (i) => ({ x: mx + dx * (i - n / 2) * w + nx * (i % 2 ? h / 2 : -h / 2), z: mz + dz * (i - n / 2) * w + nz * (i % 2 ? h / 2 : -h / 2) });
+      for (let i = 0; i < n; i++) { const p = v(i), q = v(i + 1); seg('trench', (p.x + q.x) / 2, (p.z + q.z) / 2, Math.atan2(q.z - p.z, q.x - p.x)); }
+    } else { row(0); if (pattern === 'double') row(-3 * CELL); }
+  } else if (pattern === 'arc' || pattern === 'ring') {
+    const ring = pattern === 'ring', R = drawn ? clamp(len, ring ? 6 : 8, ring ? 24 : 30) : ring ? 10 : 12, span = ring ? Math.PI * 2 : Math.PI * 2 / 3;
+    const n = clamp(Math.round(R * span / SEG), ring ? 4 : 2, 20), step = ring ? span / n : SEG / R;
+    for (let i = 0; i < n; i++) { const t = dir + (i - (n - 1) / 2) * step; seg('trench', a.x + Math.cos(t) * R, a.z + Math.sin(t) * R, t + Math.PI / 2); }
+  } else if (pattern === 'strongpoint') {
+    // a trench square around a, with barbed wire across the side it faces
+    const h = SEG / 2 - CELL / 2, px = -dz, pz = dx;
+    seg('trench', a.x + dx * h, a.z + dz * h, dir + Math.PI / 2); seg('trench', a.x - dx * h, a.z - dz * h, dir + Math.PI / 2);
+    seg('trench', a.x + px * h, a.z + pz * h, dir); seg('trench', a.x - px * h, a.z - pz * h, dir);
+    const f = h + 3 * CELL, wl = FORTS.wire.n * CELL / 2;
+    seg('wire', a.x + dx * f + px * wl, a.z + dz * f + pz * wl, dir + Math.PI / 2); seg('wire', a.x + dx * f - px * wl, a.z + dz * f - pz * wl, dir + Math.PI / 2);
+    return out; // trenches before wire
+  }
+  const cx = out.reduce((s, j) => s + j.x, 0) / out.length, cz = out.reduce((s, j) => s + j.z, 0) / out.length;
+  return out.map((j, i) => [Math.hypot(j.x - cx, j.z - cz), i, j]).sort((p, q) => p[0] - q[0] || p[1] - q[1]).map(p => p[2]);
+}
+// what a segment costs: the fortification's price, less for the cells that cannot be built (already a trench, a road)
+export const segmentCost = (kind, cells) => Math.max(1, Math.round(FORTS[kind].cost * cells / FORTS[kind].n));
 const SUPPORT_SRC = new Set(Object.values(SUPPORT));
 // Classic prices support in Munitions (mun) instead of manpower
 Object.assign(SUPPORT.recon, { mun: 25 }); Object.assign(SUPPORT.artillery, { mun: 60 }); Object.assign(SUPPORT.strafe, { mun: 80 });
@@ -588,6 +629,8 @@ const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.
 // how well a spot protects infantry from a threat at `from` (may be null): 0 trench, 1 cover cell,
 // 2 behind something solid on the threat's side, 3 open ground
 const coverRank = (g, at, from) => { const f = flagsAt(g, at.x, at.z); return f & TRENCH ? 0 : f & COVER ? 1 : from && behindCover(g, at, from) ? 2 : 3; };
+// nothing ordered and nothing under way
+const idle = (u) => !u.path.length && !u.orders.length && !u.attackId && !u.dig && !u.nade && !u.amove && !u.build && u.enter < 0 && u.fireAt < 0 && !u.retreating;
 // squads in cover are not pushed out of it by others crowding past
 const shovedFromCover = (g, u, x, z) => inCover(g, u) && !(flagsAt(g, x, z) & COVER);
 // Sends a squad to the nearest spot within CFG.coverSeek that protects it better than where it stands (a trench is
@@ -1013,6 +1056,21 @@ export function placementCheck(g, { kind, x, z, dir = 0 }, sees = () => true) {
   return canStamp(g, cells) ? { ok: true, reason: undefined, ...extra } : fail('blocked', extra);
 }
 
+// A digger on a mass entrenchment picks the segment nearest to it among the next ones (as many as there are
+// diggers, so the middle is dug first) and pays for it on the way. Segments that can no longer be built are dropped.
+function takeDigJob(g, u) {
+  const jobs = u.entrench.jobs, p = g.players[u.owner];
+  let k = 0;
+  for (let i = 1; i < Math.min(jobs.length, u.entrench.crew); i++) if (dist(u, jobs[i]) < dist(u, jobs[k])) k = i;
+  const job = jobs[k], place = placementCheck(g, job);
+  if (!place.ok) { jobs.splice(k, 1); return; }
+  const cost = segmentCost(job.kind, place.cells.length);
+  if (p.mp < cost) return;
+  jobs.splice(k, 1);
+  p.mp -= cost; tally(g, u.owner, 'mpSpent', cost);
+  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0 }; u.repath = 0;
+}
+
 // Waiting orders are separate from a Production Building's training queue.
 // Returns false when the unit already has 8 waiting orders.
 function enqueueOrder(u, order) {
@@ -1060,6 +1118,10 @@ export function command(g, slot, cmd) {
   if (cmd.t === 'orders' && Array.isArray(cmd.commands)) return dispatchOrderGroups(g, slot, cmd);
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
   const limit = Math.max(50, g.units.size), ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, limit) : [];
+  // any new order takes a digger off its mass entrenchment
+  const retasked = cmd.t === 'move' || cmd.t === 'amove' ? (Array.isArray(cmd.orders) ? cmd.orders.slice(0, limit).map(o => o?.[0]) : [])
+    : ['fireat', 'garrison', 'attack', 'stop', 'retreat', 'dig', 'build', 'assist', 'cover'].includes(cmd.t) ? ids : [];
+  for (const id of retasked) { const u = mine(id); if (u) u.entrench = null; }
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
     let moved = false, full = false;
     for (const o of cmd.orders.slice(0, limit)) {
@@ -1180,6 +1242,27 @@ export function command(g, slot, cmd) {
     p.mp -= f.cost; tally(g, slot, 'mpSpent', f.cost);
     exitBuilding(g, u);
     Object.assign(u, { orders: [], dig: { x, z, cells, t: 0 }, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
+  } else if (cmd.t === 'entrench') {
+    // Mass entrenchment: all the selected diggers share one pattern. Nothing is paid here: each digger pays for a
+    // segment as it takes it, so a pattern bigger than the purse gets dug as the manpower comes in.
+    const p = g.players[slot], crew = ids.map(mine).filter(u => u && CFG.fortBuilders.includes(u.type)), able = crew.filter(u => !u.retreating);
+    const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), x2 = num(cmd.x2, g.w * CELL) ?? x, z2 = num(cmd.z2, g.h * CELL) ?? z;
+    if (typeof cmd.pattern !== 'string' || !Object.hasOwn(ENTRENCH, cmd.pattern) || x === null || z === null) return 'blocked';
+    if (!able.length) return crew.length ? 'retreating' : 'noBuilders';
+    const back = { x: able.reduce((a, u) => a + u.x, 0) / able.length, z: able.reduce((a, u) => a + u.z, 0) / able.length };
+    let reason = 'blocked', cheapest = Infinity;
+    const jobs = entrenchPlan(cmd.pattern, { x, z }, { x: x2, z: z2 }, back).filter(j => {
+      const place = placementCheck(g, j, at => teamSees(g, p.team, at));
+      if (place.ok) cheapest = Math.min(cheapest, segmentCost(j.kind, place.cells.length)); else if (place.reason === 'notVisible') reason = 'notVisible';
+      return place.ok;
+    });
+    if (!jobs.length) return reason;
+    if (p.mp < cheapest) return 'mp';
+    const project = { jobs, crew: able.length };
+    for (const u of able) {
+      exitBuilding(g, u);
+      Object.assign(u, { orders: [], entrench: project, dig: null, attackId: 0, targetId: 0, nade: null, enter: -1, amove: null, fireAt: -1, build: 0, path: [], repath: 0 });
+    }
   } else if (cmd.t === 'support' && typeof cmd.kind === 'string' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return x === null || z === null ? 'blocked' : p.sup[cmd.kind] > 0 ? 'cooldown' : cur;
@@ -1492,6 +1575,9 @@ export function step(g) {
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, s, 'build');
     }
 
+    // mass entrenchment: a free digger takes one of the next segments, or waits for the manpower to pay for it
+    if (u.entrench && !u.dig) { if (!u.entrench.jobs.length) u.entrench = null; else if (idle(u) && u.garrison < 0) takeDigJob(g, u); }
+
     // digging: walk to the spot, then turn one cell into trench every digTime seconds
     if (u.dig) {
       if (dist(u, u.dig) > 3) { if (u.repath <= 0 && !u.path.length) requestStepPath(g, u, u.dig, 'dig'); }
@@ -1551,8 +1637,7 @@ export function step(g) {
     }
 
     // under fire with nothing to do: idle infantry shift to the nearest cover (crewed weapons keep their position)
-    if (def.infantry && !w.setup && u.hitAt >= g.tick - 40 && (u.coverTry ?? 0) <= g.tick && u.garrison < 0 && !u.retreating
-      && !u.path.length && !u.orders.length && !u.attackId && !u.dig && !u.nade && !u.amove && !u.build && u.enter < 0 && u.fireAt < 0) {
+    if (def.infantry && !w.setup && u.hitAt >= g.tick - 40 && (u.coverTry ?? 0) <= g.tick && u.garrison < 0 && idle(u)) {
       u.coverTry = g.tick + CFG.coverRetry / TICK; seekCover(g, u, u.hitFrom);
     }
 
@@ -1626,8 +1711,10 @@ export function step(g) {
       const sa = UNITS[a.type].structure, sb = UNITS[b.type].structure;
       if (sa && sb) continue;
       const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
-      if (!sa && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1 && !shovedFromCover(g, a, a.x - px, a.z - pz)) { a.x -= px; a.z -= pz; }
-      if (!sb && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1 && !shovedFromCover(g, b, b.x + px, b.z + pz)) { b.x += px; b.z += pz; }
+      // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
+      const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
+      if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+      if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
       updateGrid(g, a); updateGrid(g, b);
       // Unvisited units have not moved during this i pass. The candidate cells remain
       // complete until a push changes the query bounds. No displacement padding is needed.
@@ -1879,7 +1966,7 @@ const rounded = (v) => Math.round(v * 10) / 10;
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-    Math.max(0, Math.ceil(u.cd)), (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0), vet(u), u.built ?? 1];
+    Math.max(0, Math.ceil(u.cd)), (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0), vet(u), u.built ?? 1];
 }
 // a unit's waiting orders as its owner sees them: [id, count, kind, x, z, ...]
 function ordersRow(g, u) { return [u.id, u.orders.length, ...u.orders.flatMap(o => queuedPlan(g, u.owner, o).map(rounded))]; }
@@ -1946,10 +2033,10 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     // enemy buildings remembered under fog: [id, type, owner, x, z, how far built]
     ghosts: cache ? cache.teams.get(p.team).ghosts?.filter(gh => !seen(gh[0])) : g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
-    // 128 building a site. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
+    // 128 building a site, 256 hidden, 512 plane on the ground, 1024 on a mass entrenchment. Then veterancy stars, then how far a building is built (0-1). Cooldowns only for your own units.
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
-        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0), vet(u), u.built ?? 1]),
+        u.owner === slot ? Math.max(0, Math.ceil(u.cd)) : 0, (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0), vet(u), u.built ?? 1]),
     smokes: cache ? cache.smokes : g.smokes.map(q => [r(q.x), r(q.z), q.r]),
     // incoming and active strikes are public: that's the counterplay
     strikes: cache ? cache.strikes : g.strikes.map(q => [q.kind, r(q.x), r(q.z), r(q.dir), Math.max(0, r(q.t)), q.owner]),

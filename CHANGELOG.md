@@ -5,6 +5,28 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Unit control, part 2: mass entrenchment.
+  - Six new orders next to the single fortifications, for every selected builder squad at once (rifles, conscripts,
+    engineers): Trench line (Shift+T), Zigzag trench, Double line, Arc, Ring and Strongpoint. Click where it starts,
+    then where it ends: a line runs between the two clicks; an arc, a ring and a strongpoint are centered on the first
+    click and face or reach to the second. Green squares show every cell that will be dug before you commit, and the
+    hint says how many segments it is and what it costs.
+  - The squads share the work: each takes the nearest of the next segments, the middle of the pattern first, and goes
+    on to the next one when it is done. A segment is four trench cells for 30 MP, as before, and is paid when a squad
+    starts it. If you are short of manpower the squads dig what you can pay for and wait ("Waiting for MP to dig") for
+    the rest. Cells that cannot be dug (already a trench, a road) are not charged.
+  - The patterns: a zigzag puts more trench on the same frontage (no special rule against shells: a trench cell is a
+    trench cell); a double line adds a second row 6 m behind, on your squads' side; an arc is a third of a circle bowed
+    toward the second click; a ring has a 6 to 24 m radius; a strongpoint is an 8 m trench square with two runs of
+    barbed wire on the side it faces (170 MP).
+  - Any other order (move, attack, stop, retreat, a single fortification) takes a squad off the pattern for good; the
+    others carry on.
+  - Fixed along the way: a squad standing in cover blocked friends walking through it (part 1 stopped it being pushed
+    out, which also made it a wall). Friends now walk past it.
+  - Classic balance for part 1 (90 three-way AI matches, default map): USA/GER/USSR 37/38/26% (32/38/30% before).
+  - Left for later: the planned pattern is only drawn while you place it, not afterwards, and an entrench order cannot
+    be shift-queued. The computer does not use patterns yet (part 4).
+
 - Unit control, part 1: cover.
   - Infantry look after themselves: a squad with no orders that gets shot at walks to the nearest better cover within
     10 m (a trench first, then a cover cell such as a wall, rubble, a hedge or a shell hole, then a spot behind

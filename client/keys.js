@@ -24,6 +24,7 @@ export const bindings = [
     .map(([kind, key]) => binding(`support:${kind}`, `Key${key}`, key, `Aim ${kind} support`)),
   ...Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' })
     .map(([kind, key]) => binding(`fort:${kind}`, `Key${key}`, kind === 'trench' ? key : `Shift+${key}`, `Place ${kind}`, 'global', { shift: kind !== 'trench' })),
+  binding('entrench:line', 'KeyT', 'Shift+T', 'All selected builders dig a trench line', 'global', { shift: true }),
   ...Object.entries({ depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' })
     .map(([kind, key]) => binding(`build:${kind}`, `Key${key}`, key, `Place a ${kind}`, 'classic')),
   ...Object.entries({ KeyW: 'W', ArrowUp: 'Up', KeyS: 'S', ArrowDown: 'Down', KeyA: 'A', ArrowLeft: 'Left', KeyD: 'D', ArrowRight: 'Right', KeyQ: 'Q', KeyE: 'E' })

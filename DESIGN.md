@@ -483,4 +483,22 @@ Slice 1, cover (`seekCover`, `coverRank` in sim.js):
   fire, which is the thing players set by hand. The Take Cover order still moves them.
 - Separation no longer pushes a squad in a cover cell onto a cell without cover (`shovedFromCover`). Found while
   testing: a squad walking past shoved the one already behind the wall out into the open.
+- Classic, 90 three-way AI matches, default map: 37/38/26% (32/38/30% before). Same direction as Conquest, inside the noise.
 - Balance: Conquest, default map, 300 three-way AI matches with rotated factions: USA/GER/USSR won 41/36/23% (39/33/28% before this change on the same script), average match 561 s (552 s). USSR lost about 5 points, at the edge of the noise for 300 matches; left alone until the rebalance in the last part. The Classic run is recorded with part 2.
+
+Slice 2, mass entrenchment (`entrenchPlan`, `takeDigJob`, the `entrench` command):
+- A pattern is a list of ordinary fortification segments (`FORTS.trench`, plus `FORTS.wire` for the strongpoint), so
+  digging, pricing per cell and what ground takes a trench are the existing rules. `entrenchPlan` is pure geometry and
+  is shared with the client, which draws the cells it would dig.
+- The order creates one project `{ jobs, crew }` that every digger points at (`u.entrench`). An idle digger takes the
+  nearest job among the first `crew` jobs (the list is sorted middle outward), pays `segmentCost` and digs. No
+  manpower: it waits and looks again every tick. Nothing is paid up front and nothing is refunded.
+- There is no registry of projects: when the last digger leaves or dies the object is simply dropped. Any command that
+  re-tasks a unit clears `u.entrench` at the top of `command()`.
+- Rejected: queueing the segments as each squad's waiting orders. A queued dig that cannot be paid is dropped, and the
+  queue holds 8, so "the rest as MP comes in" could not work.
+- Separation and cover, second try: a squad holding cover is not pushed off it, and a friend with a path is not pushed
+  back by it either (it walks through). With only the first half, a digger walking along a finished trench stopped
+  dead behind the squad standing in it.
+- The zigzag has no rule of its own. Blast damage in a trench is `trenchBlastMul` whatever the shape; its only gain
+  is more trench cells per metre of front (6 segments on 40 m against 5).

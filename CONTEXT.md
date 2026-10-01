@@ -86,6 +86,13 @@ _Avoid_: flag, objective
 The order that sends the selected infantry to the best cover within reach. Idle infantry under fire do the same on their own; crewed weapons only on the order.
 _Avoid_: hide, duck
 
+**Mass Entrenchment**:
+One order that sets every selected builder squad digging a shared pattern (trench line, zigzag, double line, arc, ring, strongpoint). Each squad pays for a segment as it starts it.
+_Avoid_: mass dig, auto-trench
+
+**Segment**:
+One fortification of a pattern: four trench cells, or five of barbed wire.
+
 ## Air
 
 **Sortie**:
