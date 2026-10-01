@@ -1,20 +1,24 @@
-// Medium tanks as painted miniatures: the M4 Sherman (USA), the Panzer IV Ausf. H (Germany) and the T-34/76 of 1943
-// (USSR), plus the two conversions on those chassis, the T34 Calliope rocket Sherman and the Wirbelwind flak Panzer IV.
+// Medium tanks as realistic wartime vehicles: the M4 Sherman (USA), the Panzer IV Ausf. H (Germany) and the T-34/76 of
+// 1943 (USSR), plus the two conversions on those chassis, the T34 Calliope rocket Sherman and the Wirbelwind flak
+// Panzer IV.
 //
 // Each model is two vertex-colored geometries: the hull with its running gear, and the turret. client/unit-models.js
 // bakes each into one mesh of its shared PAINT material, like the other tanks, so a medium tank stays two draw calls.
 // The turret geometry sits around its turret ring: v.turret is placed on the ring and turns there, and v.fxTip is
-// the muzzle in turret space. Sizes run about 0.9 of the real tanks. The lower hull and running gear are darker
-// (geom.ao), faces turned up a little lighter, like a dry-brushed miniature; the owner's color is a turret band.
+// the muzzle in turret space. Sizes run about 0.9 of the real tanks. Every part says what it is made of (cast
+// armor, gunmetal, rubber, track steel, wood, canvas) for the model textures (client/model-textures.js); the paint
+// is muted and the wear comes from the textures. The lower hull and running gear are a little darker (geom.ao). The
+// owner's color is small: a tactical number plate on each side of the turret and a stripe across its roof.
 // Axes as in the other unit models: +x forward, +y up, +z the tank's right side.
 import * as THREE from 'three';
 import * as G from './geom.js';
 
 const TAU = Math.PI * 2;
-const RUBBER = 0x2b2a27, STEEL = 0x45443e, DARK = 0x1f1e1b, WOOD = 0x7a5a38, RUST = 0x4a3a2e, WHITE = 0xe4dfcf;
-// track links in dark worn steel, alternately a touch darker, each with a lighter grouser stripe; the link edges
-// are lit at the start of each link and dark at its end. Spare links on the hulls use the same steel.
-const TRACK = [0x3a3833, 0x34322e], GROUSER = 0x5c584f, EDGE = [0x67625a, 0x34322e], LINK = 0x3a3833;
+const RUBBER = 0x2b2a27, STEEL = 0x45443e, DARK = 0x1f1e1b, WOOD = 0x382e22, RUST = 0x4a3a2e, WHITE = 0xe4dfcf, BARREL = 0x2f3031, CANVAS = 0x4f4a38;
+// track links in dark, cool worn steel (the track steel texture warms it), alternately a touch darker, each with a
+// slightly lighter grouser stripe; the link edges are lit at the start of each link and dark at its end. The track
+// stays darker than the hull deck. Spare links on the hulls use the same steel.
+const TRACK = [0x222221, 0x1c1c1b], GROUSER = 0x2e2f2e, EDGE = [0x363735, 0x1c1c1b], LINK = 0x242423;
 const tone = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 const smooth = (t) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k); };
 
@@ -22,10 +26,13 @@ const smooth = (t) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3
 
 // Indexed triangles with a normal and a color per vertex. tri() turns each triangle to face along its vertex
 // normals, so callers only list corners; degenerate triangles are skipped.
+// use(name) sets what the vertices added after it are made of (a MATS name or 'plain'; none: the part's own).
 function mesh() {
-  const pos = [], nor = [], col = [], idx = [], c = new THREE.Color();
+  const pos = [], nor = [], col = [], idx = [], mid = [], c = new THREE.Color();
+  let cur = G.UNSET;
   const m = {
-    v(x, y, z, nx, ny, nz, color) { pos.push(x, y, z); nor.push(nx, ny, nz); c.set(color); col.push(c.r, c.g, c.b); return pos.length / 3 - 1; },
+    use(name) { cur = G.matId(name); return m; },
+    v(x, y, z, nx, ny, nz, color) { pos.push(x, y, z); nor.push(nx, ny, nz); c.set(color); col.push(c.r, c.g, c.b); mid.push(cur); return pos.length / 3 - 1; },
     tri(a, b, d) {
       const ux = pos[3 * b] - pos[3 * a], uy = pos[3 * b + 1] - pos[3 * a + 1], uz = pos[3 * b + 2] - pos[3 * a + 2];
       const vx = pos[3 * d] - pos[3 * a], vy = pos[3 * d + 1] - pos[3 * a + 1], vz = pos[3 * d + 2] - pos[3 * a + 2];
@@ -48,6 +55,7 @@ function mesh() {
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
       g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.setAttribute('matId', new THREE.Float32BufferAttribute(mid, 1));
       g.setIndex(idx);
       return g;
     },
@@ -58,10 +66,12 @@ function mesh() {
 // A solid of revolution around +z, S segments around: the profile [[r, z], ...] walks with the solid on its left
 // (out from the axis at the back, along the rim, in over the front face), so a wheel's face looks toward +z.
 // color: one color, one per band, or (band, segment) => color for painted patterns (vision blocks, perforations).
-// flat: faceted sides (the Wirbelwind's nine-sided tub) instead of round shading.
-function spin(profile, color, S = 10, { flat = false, a0 = 0 } = {}) {
+// flat: faceted sides (the Wirbelwind's eight-sided tub) instead of round shading. mats: what each band is made of
+// (a MATS name per band; null leaves it to the part).
+function spin(profile, color, S = 10, { flat = false, a0 = 0, mats = null } = {}) {
   const m = mesh();
   for (let b = 0; b + 1 < profile.length; b++) {
+    m.use(mats ? mats[Math.min(b, mats.length - 1)] : null);
     const [r0, z0] = profile[b], [r1, z1] = profile[b + 1];
     let nr = z1 - z0, nz = r0 - r1;
     const l = Math.hypot(nr, nz) || 1; nr /= l; nz /= l;
@@ -85,8 +95,14 @@ function BOX(w, h, d) {
   if (!g) { g = new THREE.BoxGeometry(w, h, d); g.deleteAttribute('uv'); boxes.set(k, g); }
   return g;
 }
-const box = (w, h, d, color, x, y, z, rx = 0, ry = 0, rz = 0) => ({ geo: BOX(w, h, d), color, matrix: G.xf(x, y, z, rx, ry, rz) });
-const at = (geo, color, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => ({ geo, color, matrix: G.xf(x, y, z, rx, ry, rz) });
+// mat: what the part is made of (a MATS name; left out, the hull's painted armor, or near-black paint as gunmetal)
+const box = (w, h, d, color, x, y, z, rx = 0, ry = 0, rz = 0, mat) => ({ geo: BOX(w, h, d), color, matrix: G.xf(x, y, z, rx, ry, rz), mat });
+const at = (geo, color, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, mat) => ({ geo, color, matrix: G.xf(x, y, z, rx, ry, rz), mat });
+// a steady pseudo-random number in [0, 1) from three coordinates, for plate-to-plate tone and tilt
+const CAST = 0.86; // the cast armor texture is lighter than the painted plate: the paint on cast parts goes a little darker
+const rnd = (a, b = 0, c = 0) => { const v = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453; return v - Math.floor(v); };
+// the paint a touch lighter or darker per plate (by +/- k), so welded plates and hatches do not read as one tone
+const jit = (color, a, b = 0, k = 0.07) => tone(color, 1 + (rnd(a, b, 3.7) - 0.5) * 2 * k);
 // a thin bar l long, h tall and d deep at (x, y, z), turned rz about z, built only with the faces that show from
 // +z: its front and its top and bottom (6 triangles, half a box)
 function strut(l, h, d, color, x, y, z, rz) {
@@ -104,7 +120,7 @@ function strut(l, h, d, color, x, y, z, rz) {
 function wheel(R, w, paint, { rubber = 0.05, holes = 0, S = 8, hub = 0.32, ring = 0.62, hole = 0.11, sides = 6, a0 = 0, face = 1.1 } = {}) {
   const steel = rubber <= 0, rub = steel ? Math.min(0.04, R * 0.15) : rubber, cap = Math.min(0.06, R * 0.24);
   const prof = [[R, -w / 2], [R, w * 0.3], [R - rub, w / 2], [R * hub, w / 2], [0, w / 2 + cap]];
-  const g = spin(prof, steel ? [tone(paint, 0.8), tone(paint, 1.22), tone(paint, face), paint] : [RUBBER, RUBBER, tone(paint, face), paint], S);
+  const g = spin(prof, steel ? [tone(paint, 0.8), tone(paint, 1.22), tone(paint, face), paint] : [RUBBER, RUBBER, tone(paint, face), paint], S, { mats: steel ? null : ['rubber', 'rubber', null, null] });
   if (!holes) return g;
   const m = mesh(), dark = tone(paint, 0.28), z = w / 2 + 0.006;
   for (let k = 0; k < holes; k++) {
@@ -114,7 +130,7 @@ function wheel(R, w, paint, { rubber = 0.05, holes = 0, S = 8, hub = 0.32, ring 
   return G.merge([{ geo: g }, { geo: m.geo() }]);
 }
 // a small return roller facing +z: rubber tread, a flat painted face
-const roller = (r, w, paint) => spin([[r, -w / 2], [r, w / 2], [0, w / 2 + 0.02]], [RUBBER, paint], 6);
+const roller = (r, w, paint) => spin([[r, -w / 2], [r, w / 2], [0, w / 2 + 0.02]], [RUBBER, paint], 6, { mats: ['rubber', null] });
 
 // A drive sprocket facing +z: a toothed plate (teeth points) and a hub cap.
 function sprocket(R, teeth, w, paint) {
@@ -245,7 +261,7 @@ function plan(front, rear, hw, { pf = 3, pr = 2.4, n = 16 } = {}) {
 // A gun barrel along +x from x = 0: [r, x] stations from the breech to the muzzle, bored at the end.
 function gun(stations, color, S = 8) {
   const L = stations[stations.length - 1][1], r = stations[stations.length - 1][0];
-  return { geo: alongX(spin([[0, 0], ...stations, [r * 0.45, L], [0, L - 0.04]], color, S)), color: 0xffffff };
+  return { geo: G.tag(alongX(spin([[0, 0], ...stations, [r * 0.45, L], [0, L - 0.04]], color, S)), 'gunmetal'), color: 0xffffff };
 }
 
 // A row of n spare track links hung on a plate that faces +x at x, centered on (y, z): dark steel plates `pitch`
@@ -272,31 +288,52 @@ function grille(x0, x1, z0, z1, y, n, base, slat) {
   return m.geo();
 }
 
-// Paint the merged parts like a miniature: darker toward the ground (to `dark` at the floor) and under overhangs,
-// faces turned up lighter by `lift`, sloped edges between top and side lighter still.
-function finish(items, { floor = 0, height = 1.1, dark = 0.68, lift = 0.16 } = {}) {
+// Bake the shading into the colors: darker toward the ground (to `dark` at the floor) and under overhangs (by
+// `under`), faces turned up a little lighter by `lift`, sloped edges between top and side lighter still. The model
+// textures add the wear on top of this.
+// nose: x past which the plates that face forward and down (a nose that sits in its own shadow) are lit up by that factor
+function finish(items, { floor = 0, height = 1.1, dark = 0.78, lift = 0.1, under = 0.2, nose = null } = {}) {
   return G.ao(G.merge(items), {
-    falloff: (p, n) => (dark + (1 - dark) * smooth((p.y - floor) / height)) * (1 - 0.32 * Math.max(0, -n.y)) * (1 + lift * Math.max(0, n.y) + (n.y > 0.3 && n.y < 0.92 ? 0.06 : 0)),
+    falloff: (p, n) => (dark + (1 - dark) * smooth((p.y - floor) / height)) * (1 - under * Math.max(0, -n.y)) * (1 + lift * Math.max(0, n.y) + (n.y > 0.3 && n.y < 0.92 ? 0.04 : 0)) * (nose && p.x > nose[0] && p.y < 0.9 && n.y < -0.2 && n.x > 0.2 ? nose[1] : 1),
   });
 }
 // the German grey needs a lighter floor and stronger top lights to read at game zoom
-const GREY = { dark: 0.8, lift: 0.26 };
+const GREY = { dark: 0.88, lift: 0.18 };
 // the running gear of one side, built at +z and mirrored to the other
 const bothSides = (items) => G.mirrorZ(G.merge(items));
 
 // a marking laid on a surface (geom.place), lifted a hair off it
-const mark = (geo, x, y, z, normal, scale = 1, up = [0, 1, 0]) => ({ geo, matrix: G.place([x + normal[0] * 0.012, y + normal[1] * 0.012, z + normal[2] * 0.012], normal, up, scale) });
+const mark = (geo, x, y, z, normal, scale = 1, up = [0, 1, 0]) => ({ geo, matrix: G.place([x + normal[0] * 0.012, y + normal[1] * 0.012, z + normal[2] * 0.012], normal, up, scale), mat: 'plain' });
+// A flat w by h rectangle facing +z, in the owner's color and a dark outline: the stenciled tactical number block
+// on a turret side or the stripe across a roof (laid with mark(), up = [1, 0, 0] on a roof so w runs across it).
+function plate(w, h, owner, outline = 0.012) {
+  const m = mesh().use('plain'), x = w / 2, y = h / 2, o = outline;
+  m.face([[-x - o, -y - o, 0], [x + o, -y - o, 0], [x + o, y + o, 0], [-x - o, y + o, 0]], [0, 0, 1], tone(DARK, 1.4));
+  m.face([[-x, -y, 0.004], [x, -y, 0.004], [x, y, 0.004], [-x, y, 0.004]], [0, 0, 1], new THREE.Color(owner).multiplyScalar(0.82));
+  return m.geo();
+}
+// the owner's marks on a turret: a number block on each side at (x, y) (zs: how far out the side is there, normal
+// leaning n up) and the stripe across the roof at x, y over half-width hz
+function ownerMarks(owner, { side: [sx, sy, zs, n = 0.04], roof: [rx, ry, hz], w = 0.3, h = 0.15, stripe = 0.08 }) {
+  const out = [], block = plate(w, h, owner), strip = plate(hz * 2, stripe, owner);
+  if (zs) for (const s of [-1, 1]) out.push(mark(block, sx, sy, s * zs, [0, n, s]));
+  if (hz) out.push(mark(strip, rx, ry, 0, [0, 1, 0], 1, [1, 0, 0]));
+  return out;
+}
 
 // ---------------------------------------------------------------- M4 Sherman (and the Calliope on it)
 
-function shermanHull(paint) {
+function shermanHull(paint, { cans = true } = {}) {
   const P = paint, lite = tone(P, 1.1), items = [];
   // upper hull, its sponsons over the inner half of the tracks: 56 degree glacis, flat deck, sloped rear deck
   items.push(at(G.extrudeProfile([[2.6, 1.0], [1.55, 1.66], [-2.25, 1.66], [-2.62, 1.5], [-2.62, 1.0]], 2.4, 0.05, { segments: 1 }), P));
   // lower hull between the tracks with the rounded transmission cover at the nose
   items.push(at(G.extrudeProfile([[2.2, 0.42], [2.52, 0.5], [2.7, 0.68], [2.74, 0.86], [2.64, 1.03], [-2.55, 1.03], [-2.62, 0.74], [-2.42, 0.42]], 1.84, 0.05, { segments: 1 }), P));
-  // bolting flanges on the cover, tow hooks
-  for (const z of [-0.45, 0.45]) items.push(box(0.05, 0.42, 0.05, lite, 2.72, 0.78, z, 0, 0, -0.25), box(0.1, 0.1, 0.06, STEEL, 2.6, 0.5, z * 1.5));
+  // the cast final drive housings bulging out of the cover to either side, bolting flanges between, tow hooks
+  const lump = G.loft([{ x: 2.45, w: 0.58, h: 0.5, p: 2.8 }, { x: 2.7, w: 0.56, h: 0.48, p: 2.8 }, { x: 2.78, w: 0.46, h: 0.38, p: 2.6 }], { segments: 10, normals: 50 });
+  for (const z of [-0.64, 0.64]) items.push(at(lump, tone(P, CAST), 0, 0.77, z, 0, 0, 0, 'cast-armor'));
+  for (const z of [-0.2, 0.2]) items.push(box(0.05, 0.4, 0.04, lite, 2.74, 0.8, z, 0, 0, -0.2, 'cast-armor'));
+  for (const z of [-0.3, 0.3]) items.push(box(0.1, 0.1, 0.06, STEEL, 2.72, 0.5, z * 1.1, 0, 0, 0, 'gunmetal'));
   // glacis: point at t along it, its normal, plate angle
   const gl = (t) => [2.6 - 1.05 * t, 1.0 + 0.66 * t], gn = [0.532, 0.847, 0], ga = -0.56;
   for (const z of [-0.5, 0.5]) {
@@ -313,7 +350,7 @@ function shermanHull(paint) {
   }
   // headlights with brush guards, front fenders over the sprockets
   for (const z of [-0.95, 0.95]) items.push(box(0.12, 0.12, 0.12, STEEL, 2.6, 1.1, z), box(0.04, 0.16, 0.2, P, 2.68, 1.1, z));
-  for (const z of [-1.14, 1.14]) items.push(box(0.5, 0.03, 0.46, lite, 2.5, 1.08, z, 0, 0, -0.18));
+  for (const z of [-1.14, 1.14]) items.push(box(0.46, 0.035, 0.42, lite, 2.46, 1.1, z, 0, 0, -0.1));
   // sand shield rails along the sponsons
   for (const z of [-1.22, 1.22]) items.push(box(4.7, 0.05, 0.05, lite, -0.02, 1.02, z));
   // engine deck: two hinged doors, the wide grille behind them, two fuel caps, the air recognition star
@@ -322,13 +359,14 @@ function shermanHull(paint) {
   items.push({ geo: grille(-2.15, -1.47, -0.78, 0.78, 1.665, 7, tone(P, 0.35), tone(P, 0.8)) });
   for (const z of [-1.0, 1.0]) items.push({ geo: upright(spin([[0.08, 0], [0.08, 0.03], [0, 0.04]], STEEL, 6)), matrix: G.xf(-0.72, 1.66, z) });
   items.push(mark(G.star(1, { color: WHITE, ring: WHITE, segments: 20 }), -1.15, 1.69, 0, [0, 1, 0], 0.3, [1, 0, 0]));
-  // the short exhaust deflector tight to the rear plate, air cleaners beside it
+  // the short exhaust deflector tight to the rear plate, air cleaners beside it, jerry cans in a rack on the plate
   items.push(box(0.04, 0.26, 1.9, P, -2.655, 1.36, 0, 0, 0, 0.12));
   for (const z of [-0.78, 0.78]) items.push({ geo: upright(spin([[0.11, -0.2], [0.11, 0.2], [0, 0.2]], P, 6)), matrix: G.xf(-2.72, 1.18, z) });
+  if (cans) for (const z of [-0.3, 0, 0.3]) items.push(box(0.1, 0.34, 0.2, jit(tone(P, 0.95), z, 5), -2.76, 1.2, z * 1.1, 0, 0, 0.04));
   // pioneer tools on the upper hull sides: shovel and axe on the right, crowbar and sledge on the left
-  items.push(box(1.0, 0.045, 0.04, WOOD, -1.05, 1.3, 1.225), box(0.24, 0.16, 0.03, STEEL, -0.42, 1.3, 1.225));
-  items.push(box(0.8, 0.045, 0.04, WOOD, -1.62, 1.45, 1.225), box(0.08, 0.18, 0.03, STEEL, -1.2, 1.45, 1.225));
-  items.push(box(1.4, 0.035, 0.035, STEEL, -1.1, 1.42, -1.225), box(0.8, 0.045, 0.04, WOOD, -1.35, 1.27, -1.225), box(0.14, 0.09, 0.07, STEEL, -0.9, 1.27, -1.225));
+  items.push(box(1.0, 0.045, 0.04, WOOD, -1.05, 1.3, 1.225, 0, 0, 0, 'wood'), box(0.24, 0.16, 0.03, STEEL, -0.42, 1.3, 1.225, 0, 0, 0, 'gunmetal'));
+  items.push(box(0.8, 0.045, 0.04, WOOD, -1.62, 1.45, 1.225, 0, 0, 0, 'wood'), box(0.08, 0.18, 0.03, STEEL, -1.2, 1.45, 1.225, 0, 0, 0, 'gunmetal'));
+  items.push(box(1.4, 0.035, 0.035, STEEL, -1.1, 1.42, -1.225, 0, 0, 0, 'gunmetal'), box(0.8, 0.045, 0.04, WOOD, -1.35, 1.27, -1.225, 0, 0, 0, 'wood'), box(0.14, 0.09, 0.07, STEEL, -0.9, 1.27, -1.225, 0, 0, 0, 'gunmetal'));
   // stars on the sponson sides
   const side = G.star(1, { color: WHITE });
   for (const s of [-1, 1]) items.push(mark(side, 0.35, 1.33, s * 1.2, [0, 0, s], 0.24));
@@ -356,48 +394,58 @@ function shermanHull(paint) {
 
 // The cast turret: a flat front, a flat roof with rounded edges and a bustle hanging out over the back of the ring.
 const SHERMAN_BODY = [
-  { h: 0, pts: plan(0.86, 0.62, 0.88) }, { h: 0.16, pts: plan(0.9, 1.18, 0.95) }, { h: 0.44, pts: plan(0.88, 1.3, 0.97) },
-  { h: 0.62, pts: plan(0.76, 1.18, 0.86, { pr: 2.2 }) }, { h: 0.72, pts: plan(0.58, 1.0, 0.64) },
+  { h: 0, pts: plan(0.86, 0.62, 0.88) }, { h: 0.18, pts: plan(0.92, 1.2, 0.96) }, { h: 0.5, pts: plan(0.9, 1.32, 0.99) },
+  { h: 0.72, pts: plan(0.78, 1.2, 0.9, { pr: 2.2 }) }, { h: 0.84, pts: plan(0.6, 1.0, 0.68) },
 ];
 // the 75 mm gun: where its breech sits, its length
-const SHERMAN_GUN = { x: 1.1, y: 0.38, L: 1.74 };
+const SHERMAN_GUN = { x: 1.0, y: 0.42, L: 1.5 };
 const SHERMAN = { ring: [0.15, 1.66, 0], tip: [SHERMAN_GUN.x + SHERMAN_GUN.L, SHERMAN_GUN.y, 0] };
 // a half-round profile in (x, y), round side forward: the rotor and gun shields seen from the side
 const dee = (r, n = 6) => Array.from({ length: n + 1 }, (_, k) => { const a = -Math.PI / 2 + (Math.PI * k) / n; return [r * Math.cos(a), r * Math.sin(a)]; });
-function shermanTurret(paint, owner, { roofGun = true } = {}) {
-  const P = paint, lite = tone(P, 1.1), items = [];
-  items.push(at(tower(SHERMAN_BODY), P));
-  items.push(at(band(SHERMAN_BODY, 0.18, 0.24, 1.012), owner));
-  // the curved rotor shield, the gun shield on it, the 75 mm gun with its muzzle swell and the coaxial gun
-  items.push(at(G.extrudeProfile(dee(0.25), 0.95, 0, { crease: 40 }), P, 0.8, SHERMAN_GUN.y, 0));
-  items.push(at(G.extrudeProfile(dee(0.21), 0.6, 0, { crease: 40 }), lite, 0.9, SHERMAN_GUN.y, 0));
+function shermanTurret(paint, owner, { roofGun = true, stowage = true } = {}) {
+  const P = paint, lite = tone(P, 1.08), items = [];
+  const cast = (g, c, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => at(g, tone(c, CAST), x, y, z, rx, ry, rz, 'cast-armor');
+  items.push(cast(tower(SHERMAN_BODY), P));
+  // the curved rotor shield wrapping the front of the turret, the gun shield on it, the 75 mm gun with its muzzle
+  // swell and the coaxial gun
+  items.push(cast(G.extrudeProfile(dee(0.31), 1.12, 0, { crease: 40 }), P, 0.74, SHERMAN_GUN.y, 0));
+  items.push(cast(G.extrudeProfile(dee(0.23), 0.62, 0, { crease: 40 }), lite, 0.9, SHERMAN_GUN.y, 0));
   const L = SHERMAN_GUN.L;
-  items.push(at(gun([[0.12, 0], [0.1, 0.12], [0.078, 0.2], [0.076, L - 0.18], [0.086, L - 0.12], [0.086, L]], P).geo, 0xffffff, SHERMAN_GUN.x, SHERMAN_GUN.y, 0));
-  items.push(box(0.14, 0.035, 0.035, DARK, 1.14, 0.32, 0.2));
+  items.push(at(gun([[0.13, 0], [0.112, 0.1], [0.094, 0.2], [0.09, L - 0.22], [0.1, L - 0.15], [0.106, L - 0.1], [0.106, L]], P).geo, 0xffffff, SHERMAN_GUN.x, SHERMAN_GUN.y, 0));
+  items.push(box(0.16, 0.04, 0.04, DARK, 1.12, 0.35, 0.23));
   // commander's cupola with its vision blocks, loader's hatch, periscopes
-  items.push({ geo: upright(spin([[0.24, 0], [0.24, 0.06], [0.22, 0.12], [0.17, 0.15], [0, 0.16]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : lite), 8)), matrix: G.xf(-0.15, 0.7, 0.42) });
-  items.push(box(0.42, 0.04, 0.34, lite, -0.3, 0.72, -0.33));
-  for (const z of [-0.3, 0.3]) items.push(box(0.1, 0.07, 0.13, DARK, 0.3, 0.73, z));
+  items.push({ geo: upright(spin([[0.25, 0], [0.25, 0.06], [0.23, 0.12], [0.18, 0.15], [0, 0.16]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : lite), 8)), matrix: G.xf(-0.15, 0.82, 0.42) });
+  if (roofGun) items.push({ geo: upright(spin([[0.2, 0], [0.2, 0.045], [0.16, 0.06], [0.16, 0.03], [0, 0.03]], jit(lite, 1, 2), 10)), matrix: G.xf(-0.32, 0.84, -0.33) });
+  else items.push(box(0.4, 0.04, 0.34, jit(lite, 1, 2), -0.32, 0.855, -0.33));
+  items.push(box(0.2, 0.05, 0.04, DARK, -0.32, 0.9, -0.17));
+  for (const z of [-0.3, 0.3]) items.push(box(0.1, 0.07, 0.13, DARK, 0.43, 0.86, z));
   if (roofGun) {
     // the .50 cal on its cradle post at the back of the roof: receiver, perforated jacket, barrel, ammo can, grips
-    const gx = -0.72, gy = 1.02, gz = 0.45;
-    items.push(box(0.05, 0.32, 0.05, DARK, gx, 0.86, gz), box(0.24, 0.11, 0.09, DARK, gx + 0.06, gy, gz));
-    items.push({ geo: alongX(spin([[0, 0], [0.032, 0], [0.032, 0.34], [0, 0.34]], (b, s) => (b === 1 && s % 2 ? DARK : STEEL), 6)), matrix: G.xf(gx + 0.18, gy + 0.01, gz) });
+    const gx = -0.72, gy = 1.14, gz = 0.45;
+    items.push(box(0.05, 0.32, 0.05, DARK, gx, 0.98, gz), box(0.24, 0.11, 0.09, DARK, gx + 0.06, gy, gz));
+    items.push({ geo: alongX(spin([[0, 0], [0.032, 0], [0.032, 0.34], [0, 0.34]], (b, s) => (b === 1 && s % 2 ? DARK : STEEL), 6)), matrix: G.xf(gx + 0.18, gy + 0.01, gz), mat: 'gunmetal' });
     items.push(box(0.5, 0.024, 0.024, DARK, gx + 0.72, gy + 0.01, gz), box(0.12, 0.1, 0.07, 0x4a4f2c, gx + 0.04, gy - 0.08, gz + 0.09), box(0.03, 0.09, 0.03, DARK, gx - 0.1, gy - 0.05, gz));
     // the aerial on its base
-    items.push(box(0.06, 0.05, 0.06, DARK, -0.62, 0.72, -0.56), box(0.018, 0.8, 0.018, 0x3c4028, -0.62, 1.12, -0.56));
+    items.push(box(0.06, 0.05, 0.06, DARK, -0.62, 0.84, -0.56), box(0.018, 0.8, 0.018, 0x3c4028, -0.62, 1.24, -0.56));
+  }
+  // stowage on the bustle: a rolled tarp and a bedroll on the rack over the turret's rear end
+  if (stowage) {
+    items.push({ geo: spin([[0, -0.5], [0.11, -0.5], [0.11, 0.5], [0, 0.5]], CANVAS, 8), matrix: G.xf(-1.28, 0.42, 0), mat: 'canvas' });
+    items.push(box(0.1, 0.34, 1.0, tone(P, 0.9), -1.34, 0.3, 0), box(0.3, 0.05, 1.0, tone(P, 0.9), -1.3, 0.54, 0));
   }
   // white stars on the turret sides
-  const star = G.star(1, { color: WHITE }), zs = sideZ(SHERMAN_BODY, 0.42, -0.25);
-  for (const s of [-1, 1]) items.push(mark(star, -0.25, 0.42, s * zs, [0, 0.04, s], 0.15));
+  const star = G.star(1, { color: WHITE }), zs = sideZ(SHERMAN_BODY, 0.46, -0.3);
+  for (const s of [-1, 1]) items.push(mark(star, -0.3, 0.46, s * zs, [0, 0.04, s], 0.15));
+  // the owner's number block on each side and the stripe across the roof
+  items.push(...ownerMarks(owner, { side: [0.3, 0.3, sideZ(SHERMAN_BODY, 0.3, 0.3), -0.09], roof: [0.2, 0.846, roofGun ? 0.45 : 0] }));
   return items;
 }
 // The T34 Calliope's launcher over the turret: a block of 4.6 inch tubes, round along their tops and sides and
-// open at both ends, banded at the ends and the middle, on posts from the turret sides, and the arm that ties it to
-// the gun so the rack elevates with it.
-function calliopeRack(paint) {
-  const P = paint, rows = 4, cols = 14, W = 2.6, pz = W / cols, py = 0.15, r = 0.085, L = 2.4;
-  const X0 = 0.25, Y0 = 1.32, tilt = 0.09; // where the middle of the rack's underside sits over the turret, its elevation
+// open at the front, banded at the ends and the middle, tilted up at the front on posts from the turret sides, and
+// the arm that ties it to the gun so the rack elevates with it. The middle band is the owner's color.
+function calliopeRack(paint, owner) {
+  const P = paint, rows = 4, cols = 11, W = 2.1, pz = W / cols, py = 0.15, r = 0.09, L = 2.1;
+  const X0 = 0.2, Y0 = 1.4, tilt = 0.4; // where the middle of the rack's underside sits over the turret, its elevation
   // the bundle's outline in (z, y) with outward normals and a shade per point, light on the tube crests and dark in
   // the valleys between them: up the right column, over the top row, down the left column
   const outline = [], a1 = Math.asin(Math.min(1, py / 2 / r)), top = 0.3, zr = W / 2 - pz / 2, yr = (j) => py * (j + 0.5);
@@ -407,33 +455,36 @@ function calliopeRack(paint) {
   for (let i = cols - 2; i >= 1; i--) arc(-W / 2 + pz * (i + 0.5), yr(rows - 1), top, Math.PI - top, 2);
   arc(-zr, yr(rows - 1), top, Math.PI + a1, 4);
   for (let j = rows - 2; j >= 0; j--) arc(-zr, yr(j), Math.PI - a1, j ? Math.PI + a1 : 1.5 * Math.PI, j ? 2 : 3);
-  const m = mesh(), xa = -L / 2, xb = L / 2, N = outline.length, lit = tone(P, 1.15);
+  const m = mesh().use('gunmetal'), xa = -L / 2, xb = L / 2, N = outline.length, lit = tone(P, 1.12);
   const side = outline.map(([z, y, nz, ny, k]) => { const c = tone(P, k); return [m.v(xa, y, z, 0, ny, nz, c), m.v(xb, y, z, 0, ny, nz, c)]; });
   for (let i = 0; i < N; i++) { const [a, b] = side[i], [d, e] = side[(i + 1) % N]; m.quad(a, b, e, d); }
-  // the end faces in a lighter tone, fanned from their middles, with a dark square mouth for every tube
+  // the back closed by a plain plate, the front face in a lighter tone with a round dark mouth for every tube
   const ym = (py * rows) / 2;
-  for (const [x, dir] of [[xa, -1], [xb, 1]]) {
-    const c = m.v(x, ym, 0, dir, 0, 0, lit), ring = outline.map(([z, y]) => m.v(x, y, z, dir, 0, 0, lit));
+  { const c = m.v(xa, ym, 0, -1, 0, 0, tone(P, 0.8)), ring = outline.map(([z, y]) => m.v(xa, y, z, -1, 0, 0, tone(P, 0.8))); for (let i = 0; i < N; i++) m.tri(c, ring[i], ring[(i + 1) % N]); }
+  {
+    const c = m.v(xb, ym, 0, 1, 0, 0, lit), ring = outline.map(([z, y]) => m.v(xb, y, z, 1, 0, 0, lit));
     for (let i = 0; i < N; i++) m.tri(c, ring[i], ring[(i + 1) % N]);
-    const fx = x + dir * 0.006, h = r * 0.62;
+    const fx = xb + 0.006, h = r * 0.74, mouth = 6;
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
       const zc = -W / 2 + pz * (i + 0.5), yc = yr(j);
-      m.face([[fx, yc - h, zc - h], [fx, yc - h, zc + h], [fx, yc + h, zc + h], [fx, yc + h, zc - h]], [dir, 0, 0], DARK);
+      m.face(Array.from({ length: mouth }, (_, k) => { const t = (k / mouth) * TAU + 0.3; return [fx, yc + h * Math.sin(t), zc + h * Math.cos(t)]; }), [1, 0, 0], DARK);
     }
   }
   const rack = [{ geo: m.geo() }];
-  // frame bands round both ends and the middle, rails under the bundle
-  for (const x of [xa + 0.05, 0, xb - 0.05]) rack.push(box(0.08, rows * py + 0.08, W + 0.06, tone(P, 0.85), x, ym, 0));
+  // frame bands round both ends and the middle (the middle one in the owner's color), rails under the bundle
+  for (const x of [xa + 0.05, xb - 0.05]) rack.push(box(0.08, rows * py + 0.08, W + 0.06, tone(P, 0.85), x, ym, 0));
+  rack.push(box(0.08, rows * py + 0.1, W + 0.08, tone(owner, 0.82), 0, ym, 0, 0, 0, 0, 'plain'));
   for (const s of [-1, 1]) rack.push(box(L - 0.2, 0.08, 0.08, P, 0, -0.05, s * 0.98));
   const items = [{ geo: G.merge(rack), matrix: G.xf(X0, Y0, 0, 0, 0, tilt) }];
   // frame: stout posts up from brackets on the turret sides with a diagonal brace, the elevation arm from a clamp
   // on the gun up to the rack's front
-  const under = (x) => Y0 + (x - X0) * Math.tan(tilt) - 0.05;
+  const under = (x) => Y0 + (x - X0) * Math.tan(tilt) - 0.06;
   for (const s of [-1, 1]) {
-    for (const x of [-0.55, 0.6]) items.push(box(0.12, under(x) - 0.2, 0.12, P, x, (under(x) + 0.2) / 2, s * 1.0), box(0.18, 0.16, 0.2, P, x, 0.26, s * 0.92));
-    items.push(box(1.42, 0.07, 0.07, P, 0.025, 0.78, s * 1.0, 0, 0, 0.62));
+    for (const x of [-0.5, 0.55]) items.push(box(0.12, under(x) - 0.2, 0.12, P, x, (under(x) + 0.2) / 2, s * 1.0), box(0.18, 0.16, 0.2, P, x, 0.26, s * 0.92));
+    items.push(box(1.3, 0.07, 0.07, P, 0.025, 0.86, s * 1.0, 0, 0, 0.7));
   }
-  items.push(box(0.12, 0.2, 0.2, P, 1.75, SHERMAN_GUN.y, 0), box(1.02, 0.07, 0.07, P, 1.525, 0.915, 0, 0, 0, -1.1));
+  const gx = SHERMAN_GUN.x + 0.7, gy = SHERMAN_GUN.y, fx = X0 + (L / 2) * Math.cos(tilt) - 0.1, fy = Y0 + (L / 2) * Math.sin(tilt) - 0.08;
+  items.push(box(0.12, 0.2, 0.2, P, gx, gy, 0), box(Math.hypot(fx - gx, fy - gy), 0.07, 0.07, P, (gx + fx) / 2, (gy + fy) / 2, 0, 0, 0, Math.atan2(fy - gy, fx - gx)));
   return items;
 }
 
@@ -455,55 +506,63 @@ function panzerHull(paint, skirts) {
   items.push({ geo: upright(spin([[0.14, 0], [0.13, 0.05], [0.08, 0.1], [0, 0.11]], P, 8)), color: 0xffffff, matrix: G.xf(1.85, 1.38, 0.45, 0, 0, -Math.PI / 2) });
   items.push(box(0.3, 0.035, 0.035, DARK, 2.05, 1.38, 0.45));
   // spare track links: two rows across the nose plate, one under the visor
-  items.push({ geo: linkRow(9, 0.18, 2.67, 0.72, 0) }, { geo: linkRow(9, 0.18, 2.675, 0.88, 0) }, { geo: linkRow(5, 0.18, 1.85, 1.22, -0.15) });
+  items.push({ geo: G.tag(linkRow(9, 0.18, 2.67, 0.72, 0), 'track-steel') }, { geo: G.tag(linkRow(9, 0.18, 2.675, 0.88, 0), 'track-steel') }, { geo: G.tag(linkRow(5, 0.18, 1.85, 1.22, -0.15), 'track-steel') });
   items.push(box(0.4, 0.04, 0.16, P, 2.18, 1.13, -0.6, 0, 0, -0.2), box(0.4, 0.04, 0.16, P, 2.18, 1.13, 0.6, 0, 0, -0.2)); // brake hatches
   // engine deck hatches, the slatted air intakes, the big rusted muffler on the rear plate
   for (const z of [-0.48, 0.48]) items.push(box(0.85, 0.04, 0.62, lite, -1.3, 1.59, z));
   for (const s of [-1, 1]) items.push({ geo: grille(-2.35, -1.78, s * 0.86 - 0.17, s * 0.86 + 0.17, 1.575, 6, tone(P, 0.42), tone(P, 0.78)) });
-  items.push({ geo: spin([[0, -0.4], [0.15, -0.4], [0.15, 0.4], [0, 0.4]], RUST, 8), color: 0xffffff, matrix: G.xf(-2.78, 0.95, -0.15) });
-  items.push(box(0.05, 0.3, 0.12, RUST, -2.7, 1.25, -0.15));
+  items.push({ geo: spin([[0, -0.4], [0.15, -0.4], [0.15, 0.4], [0, 0.4]], RUST, 8), color: 0xffffff, matrix: G.xf(-2.78, 0.95, -0.15), mat: 'track-steel' });
+  items.push(box(0.05, 0.3, 0.12, RUST, -2.7, 1.25, -0.15, 0, 0, 0, 'track-steel'));
   // tools and a jack on the fenders, the headlight
-  items.push(box(1.2, 0.04, 0.05, WOOD, -0.6, 1.14, 1.12), box(0.2, 0.03, 0.15, STEEL, -1.25, 1.14, 1.12));
-  items.push(box(1.4, 0.035, 0.04, STEEL, -0.4, 1.14, -1.08), box(0.25, 0.14, 0.14, P, 0.7, 1.19, -1.1));
+  items.push(box(1.2, 0.04, 0.05, WOOD, -0.6, 1.14, 1.12, 0, 0, 0, 'wood'), box(0.2, 0.03, 0.15, STEEL, -1.25, 1.14, 1.12, 0, 0, 0, 'gunmetal'));
+  items.push(box(1.4, 0.035, 0.04, STEEL, -0.4, 1.14, -1.08, 0, 0, 0, 'gunmetal'), box(0.25, 0.14, 0.14, P, 0.7, 1.19, -1.1));
   items.push({ geo: alongX(spin([[0.07, -0.08], [0.07, 0.05], [0, 0.06]], STEEL, 8)), color: 0xffffff, matrix: G.xf(1.95, 1.2, -1.02) });
   // running gear: eight small road wheels per side in leaf-sprung pairs, four return rollers, front sprocket,
   // rear idler
-  const TZ = 1.1, gear = [], wheels = [], rw = wheel(0.21, 0.26, P, { rubber: 0.05, hub: 0.38, face: 1.25 });
+  // the road wheels are 0.47 across and nearly touch, as on the real tank
+  const TZ = 1.1, gear = [], wheels = [], WY = 0.315, rw = wheel(0.235, 0.26, P, { rubber: 0.05, hub: 0.38, face: 1.05, S: 9 });
   for (const bx of [1.4, 0.47, -0.47, -1.4]) {
-    for (const dx of [0.225, -0.225]) { gear.push(at(rw, 0xffffff, bx + dx, 0.27, TZ)); wheels.push({ x: bx + dx, y: 0.27, r: 0.21 }); }
-    gear.push(box(0.5, 0.16, 0.1, lite, bx, 0.36, TZ - 0.17));
-    gear.push(box(0.44, 0.05, 0.08, STEEL, bx + 0.05, 0.5, TZ - 0.17, 0, 0, 0.12));
+    for (const dx of [0.225, -0.225]) { gear.push(at(rw, 0xffffff, bx + dx, WY, TZ)); wheels.push({ x: bx + dx, y: WY, r: 0.235 }); }
+    gear.push(box(0.5, 0.16, 0.1, lite, bx, 0.4, TZ - 0.17));
+    gear.push(box(0.44, 0.05, 0.08, STEEL, bx + 0.05, 0.54, TZ - 0.17, 0, 0, 0.12));
   }
   const rollers = [1.55, 0.6, -0.35, -1.3].map((x) => ({ x, y: 0.79, r: 0.075 }));
   for (const r of rollers) gear.push(at(roller(0.075, 0.16, P), 0xffffff, r.x, r.y, TZ));
   gear.push(at(sprocket(0.28, 12, 0.3, P), 0xffffff, 2.36, 0.6, TZ));
   gear.push(at(wheel(0.26, 0.26, P, { rubber: 0, holes: 6, S: 10, hub: 0.3, ring: 0.64, hole: 0.15, face: 1.2 }), 0xffffff, -2.42, 0.56, TZ));
   const line = beltLine([{ x: -2.42, y: 0.56, r: 0.26 }, ...wheels.sort((a, b) => a.x - b.x), { x: 2.36, y: 0.6, r: 0.28 }, ...rollers]);
-  gear.push(at(trackBelt(line, 0, 0.38, 0.085, 0.25), 0xffffff, 0, 0, TZ));
+  gear.push(at(trackBelt(line, 0, 0.38, 0.085, 0.28), 0xffffff, 0, 0, TZ));
   if (skirts) {
+    // a rolled tarp and a box on the fenders
+    items.push({ geo: alongX(spin([[0, -0.45], [0.075, -0.45], [0.075, 0.45], [0, 0.45]], CANVAS, 8)), matrix: G.xf(1.0, 1.18, 1.1), mat: 'canvas' });
+    items.push(box(0.5, 0.15, 0.26, jit(P, 2, 8), -1.95, 1.19, 1.1), box(0.4, 0.13, 0.24, jit(P, 3, 8), -1.9, 1.18, -1.1));
     // Schuerzen: five plates a side hung from a rail, from the rear idler to the sprocket, with an angled plate
     // turning in at the front; they hide the upper run and the rollers but not the road wheels. A cross on the
     // middle plate.
-    const n = 5, x0 = -2.3, len = 4.45, w = len / n, z = 1.45, y = 1.075, hh = 0.525, cut = 0.16, e = 0.012;
+    // the plates hang a touch out of true and each takes a slightly different tone
+    const n = 5, x0 = -2.3, len = 4.45, w = len / n, z = 1.38, y = 1.1, hh = 0.45, cut = 0.14, e = 0.012;
     for (let k = 0; k < n; k++) {
-      const x = x0 + w * k + w / 2, c = k % 2 ? P : tone(P, 1.05);
-      if (k === n - 1) gear.push(at(G.extrudeProfile([[-w / 2 + e, -hh], [w / 2 - cut, -hh], [w / 2 - e, -hh + cut], [w / 2 - e, hh], [-w / 2 + e, hh]], 0.025, 0), c, x, y, z));
-      else if (k === 0) gear.push(at(G.extrudeProfile([[-w / 2 + cut, -hh], [w / 2 - e, -hh], [w / 2 - e, hh], [-w / 2 + e, hh], [-w / 2 + e, -hh + cut]], 0.025, 0), c, x, y, z));
-      else gear.push(box(w - 0.024, hh * 2, 0.025, c, x, y, z));
+      const x = x0 + w * k + w / 2, c = jit(P, k, 1, 0.06), lean = (rnd(k, 9) - 0.5) * 0.03;
+      if (k === n - 1) gear.push(at(G.extrudeProfile([[-w / 2 + e, -hh], [w / 2 - cut, -hh], [w / 2 - e, -hh + cut], [w / 2 - e, hh], [-w / 2 + e, hh]], 0.025, 0), c, x, y, z, lean));
+      else if (k === 0) gear.push(at(G.extrudeProfile([[-w / 2 + cut, -hh], [w / 2 - e, -hh], [w / 2 - e, hh], [-w / 2 + e, hh], [-w / 2 + e, -hh + cut]], 0.025, 0), c, x, y, z, lean));
+      else gear.push(box(w - 0.024, hh * 2, 0.025, c, x, y, z, lean));
     }
-    gear.push(at(G.extrudeProfile([[-0.15, -hh + cut], [0.15, -hh + cut * 1.6], [0.15, hh - 0.04], [-0.15, hh]], 0.025, 0), tone(P, 1.05), x0 + len + 0.125, y, z - 0.085, 0, 0.6, 0));
+    gear.push(at(G.extrudeProfile([[-0.15, -hh + cut], [0.15, -hh + cut * 1.6], [0.15, hh - 0.04], [-0.15, hh]], 0.025, 0), jit(P, 7, 1, 0.06), x0 + len + 0.125, y, z - 0.085, 0, 0.6, 0));
     gear.push(box(len, 0.04, 0.05, lite, x0 + len / 2, y + hh - 0.03, z - 0.04));
-    for (let k = 0; k < 4; k++) gear.push(box(0.05, 0.04, 0.3, P, x0 + 0.5 + k * 1.15, y + hh - 0.06, z - 0.18));
-    gear.push(mark(G.balkenkreuz(1), x0 + w * 2.5, y, z + 0.013, [0, 0, 1], 0.22));
+    for (let k = 0; k < 4; k++) gear.push(box(0.05, 0.04, 0.2, P, x0 + 0.5 + k * 1.15, y + hh - 0.06, z - 0.12));
+    gear.push(mark(G.balkenkreuz(1), x0 + w * 2.5, y, z + 0.013, [0, 0, 1], 0.2));
   } else {
     gear.push(mark(G.balkenkreuz(1), -0.9, 1.36, 1.12, [0, 0, 1], 0.17));
+    // a rolled tarp across the engine deck behind the turret, the cable along the right fender
+    items.push({ geo: spin([[0, -0.55], [0.1, -0.55], [0.1, 0.55], [0, 0.55]], CANVAS, 8), matrix: G.xf(-1.0, 1.67, 0), mat: 'canvas' });
+    items.push(box(2.6, 0.03, 0.04, DARK, 0.3, 1.13, 1.2, 0, 0, 0, 'gunmetal'));
   }
   items.push({ geo: bothSides(gear) });
   return finish(items, { height: 1.15, ...GREY });
 }
 const PANZER_BODY = [
   { h: 0, pts: [[0.94, 0.56], [0.49, 0.84], [-0.98, 0.84], [-1.2, 0.6], [-1.2, -0.6], [-0.98, -0.84], [0.49, -0.84], [0.94, -0.56]] },
-  { h: 0.76, pts: [[0.83, 0.45], [0.39, 0.65], [-0.94, 0.65], [-1.09, 0.48], [-1.09, -0.48], [-0.94, -0.65], [0.39, -0.65], [0.83, -0.45]] },
+  { h: 0.7, pts: [[0.83, 0.45], [0.39, 0.65], [-0.94, 0.65], [-1.09, 0.48], [-1.09, -0.48], [-0.94, -0.65], [0.39, -0.65], [0.83, -0.45]] },
 ];
 const PANZER_GUN = { x: 1.06, y: 0.38, L: 2.7 };
 const PANZER = { ring: [0.14, 1.62, -0.05], tip: [PANZER_GUN.x + PANZER_GUN.L, PANZER_GUN.y, 0] };
@@ -523,55 +582,56 @@ function thicken(line, t) {
 // the turret skirts' plan: round the sides and back, their front corners bent in beside the mantlet
 const SKIRT = [[1.0, 0.86], [0.82, 1.04], [-1.24, 1.04], [-1.45, 0.82], [-1.45, -0.82], [-1.24, -1.04], [0.82, -1.04], [1.0, -0.86]];
 function panzerTurret(paint, owner) {
-  const P = paint, lite = tone(P, 1.1), items = [];
+  const P = paint, lite = tone(P, 1.08), items = [];
   items.push(at(tower(PANZER_BODY, { normals: 'flat' }), P));
-  // turret skirts on brackets, the top strip in the owner's color, crosses on the sides
-  items.push(at(wall(thicken(SKIRT, 0.025), 0.1, 0.66), P), at(wall(thicken(SKIRT, 0.035), 0.66, 0.74), owner));
+  // turret skirts on brackets, crosses and the owner's number block on the sides
+  items.push(at(wall(thicken(SKIRT, 0.025), 0.12, 0.6), tone(P, 0.97)));
   for (const s of [-1, 1]) for (const x of [-0.4, -1.0]) items.push(box(0.05, 0.05, 0.32, P, x, 0.5, s * 0.87));
   const cross = G.balkenkreuz(1);
-  for (const s of [-1, 1]) items.push(mark(cross, -0.5, 0.38, s * 1.04, [0, 0, s], 0.16));
+  for (const s of [-1, 1]) items.push(mark(cross, -0.55, 0.36, s * 1.04, [0, 0, s], 0.16));
   // mantlet and the long 7.5 cm gun with its double-baffle muzzle brake
-  items.push(box(0.26, 0.42, 0.66, tone(P, 1.16), 1.01, PANZER_GUN.y, 0));
+  items.push(at(G.bevelBox(0.3, 0.44, 0.7, 0.07, 2), tone(lite, CAST), 1.01, PANZER_GUN.y, 0, 0, 0, 0, 'cast-armor'));
   for (const z of [-0.43, 0.43]) items.push(box(0.06, 0.05, 0.1, DARK, 0.875, 0.5, z, 0, 0, 0.14)); // vision ports
   items.push(at(gun([[0.12, 0], [0.08, 0.2], [0.06, 0.5], [0.055, 2.35], [0.105, 2.38], [0.105, 2.5], [0.065, 2.53], [0.065, 2.56], [0.105, 2.59], [0.105, 2.7]], P).geo, 0xffffff, PANZER_GUN.x, PANZER_GUN.y, 0));
   items.push(box(0.14, 0.04, 0.04, DARK, 1.18, 0.44, -0.22));
   // commander's cupola at the back: vision blocks round its wall, the hatch ring on top; roof hatch and a vent
-  items.push({ geo: upright(spin([[0.26, 0], [0.29, 0.08], [0.29, 0.15], [0.24, 0.19], [0.19, 0.2], [0.19, 0.24], [0, 0.24]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : b === 4 ? P : b === 0 ? P : lite), 8)), matrix: G.xf(-0.82, 0.76, 0) });
-  items.push(box(0.36, 0.04, 0.3, lite, 0.25, 0.78, 0.3), box(0.1, 0.05, 0.1, STEEL, 0.35, 0.79, -0.25));
+  items.push({ geo: upright(spin([[0.26, 0], [0.29, 0.08], [0.29, 0.15], [0.24, 0.19], [0.19, 0.2], [0.19, 0.24], [0, 0.24]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : b === 4 ? P : b === 0 ? P : lite), 8)), matrix: G.xf(-0.82, 0.7, 0) });
+  items.push(box(0.36, 0.04, 0.3, jit(lite, 4, 4), 0.25, 0.72, 0.3), box(0.1, 0.05, 0.1, STEEL, 0.35, 0.73, -0.25));
+  items.push(...ownerMarks(owner, { side: [0.3, 0.36, 1.04, 0], roof: [-0.28, 0.706, 0.45], w: 0.34 }));
   return items;
 }
-// The Wirbelwind's open nine-sided turret and its four 2 cm guns, raised for aircraft. Returns the muzzle too.
+// The Wirbelwind's open eight-sided turret and its four 2 cm guns, raised for aircraft. Returns the muzzle too.
 function wirbelwindTurret(paint, owner) {
-  const P = paint, items = [], a0 = -Math.PI / 9, inside = tone(P, 0.7);
-  // tub walls 1.14 high: a short skirt flaring out to r 1.32, then leaning in to 1.08 at the rim; lighter rim,
-  // darker inside and floor
-  const tub = spin([[1.18, 0], [1.32, 0.38], [1.08, 1.14], [1.03, 1.14], [1.15, 0.38], [1.03, 0.12], [0, 0.12]], [P, P, tone(P, 1.15), inside, inside, tone(P, 0.45)], 9, { flat: true, a0 });
+  const P = paint, items = [], a0 = Math.PI / 8, inside = 0x8b8266, floor = tone(inside, 0.62);
+  // tub walls 1.14 high with flat faces front, back and sides: a short skirt flaring out to r 1.14, then leaning in
+  // to 0.96 at the rim; lighter rim (the owner's color on the front and back faces), warm tan inside like the real
+  // turret, and a darker floor. The tub sits inside the hull's width.
+  const tub = spin([[1.0, 0], [1.14, 0.38], [0.96, 1.14], [0.91, 1.14], [1.0, 0.38], [0.9, 0.12], [0, 0.12]], (b, s) => (b === 2 ? (s === 7 || s === 3 ? owner : tone(P, 1.12)) : [P, P, 0, inside, inside, floor][b]), 8, { flat: true, a0 });
   items.push({ geo: upright(tub) });
-  // a thin owner's band high on the outer wall
-  const wr = (y) => (1.32 - ((y - 0.38) / 0.76) * 0.24) * 1.01;
-  items.push({ geo: upright(spin([[wr(0.88), 0.88], [wr(0.93), 0.93]], owner, 9, { flat: true, a0 })) });
-  // crosses on the two side faces (the faces around 80 and 280 degrees face the sides)
-  for (const a of [(80 * Math.PI) / 180, (280 * Math.PI) / 180]) {
-    const n = [Math.cos(a), 0.316, -Math.sin(a)], r = 1.175; // the flat face sits r * cos(20 deg) out at that height
-    items.push(mark(G.balkenkreuz(1), r * Math.cos(a), 0.6, -r * Math.sin(a), n, 0.22));
+  // the flat faces are apothem = r * cos(22.5 degrees) out, the walls lean in 0.18 over 0.76: a cross and, behind it,
+  // the owner's number block on each of the two side faces
+  const ap = Math.cos(Math.PI / 8), wr = (y) => 1.14 - ((y - 0.38) / 0.76) * 0.18, lean = 0.18 / 0.76 / ap, block = plate(0.26, 0.14, owner);
+  for (const s of [-1, 1]) {
+    const r = wr(0.6) * ap, n = [0, lean, s];
+    items.push(mark(G.balkenkreuz(1), 0.2, 0.6, s * r, n, 0.2), mark(block, -0.27, 0.6, s * r, n, 1));
   }
   // Flakvierling: pedestal, cradle, four barrels in two stacked pairs, each pair in its receiver with its
   // magazines, raised for aircraft. The upper barrels sit a little wider than the lower ones, so all four show
-  // from the front.
-  const el = 0.5, px = 0.05, py = 0.82, c = Math.cos(el), s = Math.sin(el), len = 2.1;
-  items.push(at(new THREE.CylinderGeometry(0.2, 0.28, 0.6, 8), STEEL, px, 0.42, 0));
-  items.push(box(0.6, 0.28, 0.3, STEEL, px, py, 0, 0, 0, el));
-  for (const dz of [-0.5, 0.5]) items.push(box(0.6, 0.12, 0.05, STEEL, px - 0.05, py + 0.05, dz, 0, 0, el)); // cradle sides
-  const barrel = gun([[0.06, 0], [0.05, 0.15], [0.048, len - 0.24], [0.055, len - 0.22], [0.08, len]], STEEL, 6).geo;
+  // from the front. Dark blued barrels against the light interior so the guns read.
+  const el = 0.5, px = 0.0, py = 0.82, c = Math.cos(el), s = Math.sin(el), len = 2.1, REC = 0x55565a, MAG = 0x2a2b2d;
+  items.push(at(new THREE.CylinderGeometry(0.2, 0.28, 0.6, 8), tone(inside, 0.55), px, 0.42, 0, 0, 0, 0, 'gunmetal'));
+  items.push(box(0.6, 0.28, 0.3, REC, px, py, 0, 0, 0, el, 'gunmetal'));
+  for (const dz of [-0.5, 0.5]) items.push(box(0.6, 0.12, 0.05, REC, px - 0.05, py + 0.05, dz, 0, 0, el, 'gunmetal')); // cradle sides
+  const barrel = gun([[0.06, 0], [0.05, 0.15], [0.048, len - 0.24], [0.055, len - 0.22], [0.08, len]], BARREL, 6).geo;
   for (const sz of [-1, 1]) {
-    items.push(box(0.6, 0.38, 0.22, tone(STEEL, 1.15), px - 0.06 * c, py - 0.06 * s, sz * 0.28, 0, 0, el)); // receiver
+    items.push(box(0.6, 0.38, 0.22, tone(REC, 1.2), px - 0.06 * c, py - 0.06 * s, sz * 0.28, 0, 0, el, 'gunmetal')); // receiver
     for (const [dy, dz] of [[-0.12, 0.22], [0.12, 0.34]]) {
       const bx = px - 0.3 * c - dy * s, by = py - 0.3 * s + dy * c;
       items.push({ geo: barrel, matrix: G.xf(bx, by, sz * dz, 0, 0, el) });
-      items.push(box(0.16, 0.2, 0.06, DARK, bx + 0.3 * c - 0.04 * s, by + 0.3 * s + 0.04 * c, sz * 0.43, 0, 0, el)); // magazine
+      items.push(box(0.16, 0.2, 0.06, MAG, bx + 0.3 * c - 0.04 * s, by + 0.3 * s + 0.04 * c, sz * 0.43, 0, 0, el, 'gunmetal')); // magazine
     }
   }
-  items.push(box(0.24, 0.08, 0.28, DARK, -0.55, 0.5, 0)); // gunner's seat
+  items.push(box(0.24, 0.08, 0.28, tone(inside, 0.5), -0.55, 0.5, 0, 0, 0, 0, 'leather')); // gunner's seat
   const tip = [px - 0.3 * c - 0.12 * s + len * c, py - 0.3 * s + 0.12 * c + len * s, 0.34];
   return { items, tip };
 }
@@ -607,7 +667,7 @@ function t34Hull(paint) {
   items.push({ geo: grille(-1.7, -0.8, -0.55, 0.55, 1.402, 6, tone(P, 0.35), tone(P, 0.85)) });
   items.push(box(0.6, 0.04, 0.7, lite, -0.35, 1.415, 0));
   items.push({ geo: upright(spin([[0.24, 0], [0.24, 0.03], [0.2, 0.05], [0, 0.06]], lite, 10)), color: 0xffffff, matrix: G.xf(-2.45, 1.25, 0, 0, 0, 0.64) });
-  for (const z of [-0.55, 0.55]) items.push({ geo: alongX(spin([[0.07, -0.12], [0.07, 0.1], [0.04, 0.1], [0, 0.06]], RUST, 7)), color: 0xffffff, matrix: G.xf(-2.62, 0.82, z, 0, 0, -0.35) }, box(0.1, 0.22, 0.2, P, -2.6, 0.82, z, 0, 0, -0.35));
+  for (const z of [-0.55, 0.55]) items.push({ geo: alongX(spin([[0.07, -0.12], [0.07, 0.1], [0.04, 0.1], [0, 0.06]], RUST, 7)), color: 0xffffff, matrix: G.xf(-2.62, 0.82, z, 0, 0, -0.35), mat: 'track-steel' }, box(0.1, 0.22, 0.2, P, -2.6, 0.82, z, 0, 0, -0.35));
   // one long fuel tank on the back of each sloped sponson, held by three flat straps; a toolbox
   const sn = [0, 0.64, 0.768], tank = alongX(spin([[0, -0.5], [0.16, -0.5], [0.16, 0.5], [0, 0.5]], lite, 9)), strap = alongX(spin([[0.168, -0.03], [0.168, 0.03]], STEEL, 9));
   for (const s of [-1, 1]) {
@@ -616,6 +676,9 @@ function t34Hull(paint) {
     for (const dx of [-0.36, 0, 0.36]) items.push({ geo: strap, matrix: G.xf(-1.72 + dx, ty, tz) });
   }
   items.push(box(0.7, 0.2, 0.3, lite, 0.6, 1.1, 1.2));
+  // the unditching log chained along the left fender
+  items.push({ geo: alongX(spin([[0, -1.1], [0.1, -1.1], [0.1, 1.1], [0, 1.1]], WOOD, 8)), matrix: G.xf(0.3, 1.1, -1.2), mat: 'wood' });
+  for (const x of [-0.5, 0.2, 0.9]) items.push(box(0.04, 0.05, 0.25, STEEL, x, 1.1, -1.2, 0, 0, 0, 'gunmetal'));
   // running gear: five big Christie road wheels with spoked faces, no return rollers, the front idler and the rear
   // drive wheel; the wide track with its alternating horned links
   const TZ = 1.1, gear = [], bottom = [], top = [], rw = wheel(0.37, 0.34, P, { rubber: 0.08, holes: 6, S: 10, hub: 0.26, ring: 0.6, hole: 0.1 });
@@ -629,47 +692,53 @@ function t34Hull(paint) {
   const line = beltLine([{ x: -2.42, y: 0.56, r: 0.32 }, ...bottom.slice().reverse(), { x: 2.42, y: 0.5, r: 0.3 }, ...top], 0.05);
   gear.push(at(trackBelt(line, 0, 0.52, 0.11, 0.26, { spuds: 0.05 }), 0xffffff, 0, 0, TZ));
   items.push({ geo: bothSides(gear) });
-  return finish(items, { height: 1.1 });
+  return finish(items, { height: 1.1, dark: 0.84, under: 0.06, nose: [2.2, 5] });
 }
 const T34_BODY = [
   { h: 0, pts: [[1.05, 0.5], [0.15, 0.95], [-1.25, 0.68], [-1.25, -0.68], [0.15, -0.95], [1.05, -0.5]] },
-  { h: 0.78, pts: [[0.72, 0.34], [0.08, 0.76], [-1.12, 0.54], [-1.12, -0.54], [0.08, -0.76], [0.72, -0.34]] },
+  { h: 0.64, pts: [[0.72, 0.34], [0.08, 0.76], [-1.12, 0.54], [-1.12, -0.54], [0.08, -0.76], [0.72, -0.34]] },
 ];
 const T34_GUN = { x: 1.3, y: 0.34, L: 1.55 };
 const T34 = { ring: [0.55, 1.4, 0], tip: [T34_GUN.x + T34_GUN.L, T34_GUN.y, 0] };
 function t34Turret(paint, owner) {
-  const P = paint, lite = tone(P, 1.1), items = [];
-  items.push(at(tower(T34_BODY, { normals: 'flat' }), P));
-  items.push(at(band(T34_BODY, 0.5, 0.6, 1.015), owner));
+  const P = paint, lite = tone(P, 1.08), items = [];
+  items.push(at(tower(T34_BODY, { normals: 'flat' }), tone(P, CAST), 0, 0, 0, 0, 0, 0, 'cast-armor'));
   // the rounded cast mantlet (the "pig snout") tapering into the 76 mm F-34
   const snout = G.loft([{ x: 0, w: 0.56, h: 0.44, p: 3.2 }, { x: 0.18, w: 0.52, h: 0.4, p: 3 }, { x: 0.34, w: 0.36, h: 0.3, p: 2.6 }, { x: 0.46, w: 0.2, h: 0.2, p: 2 }], { segments: 12, normals: 50 });
-  items.push(at(snout, lite, 0.86, T34_GUN.y, 0));
+  items.push(at(snout, tone(lite, CAST), 0.86, T34_GUN.y, 0, 0, 0, 0, 'cast-armor'));
   const L = T34_GUN.L;
   items.push(at(gun([[0.075, 0], [0.062, 0.2], [0.054, L - 0.06], [0.064, L - 0.04], [0.064, L]], P).geo, 0xffffff, T34_GUN.x, T34_GUN.y, 0));
   // the two round roof hatches, periscopes, a vent; red stars on the rear side faces
-  for (const z of [-0.3, 0.3]) items.push({ geo: upright(spin([[0.21, 0], [0.21, 0.04], [0.17, 0.07], [0, 0.08]], lite, 8)), matrix: G.xf(-0.4, 0.78, z) });
-  for (const z of [-0.4, 0.4]) items.push(box(0.12, 0.07, 0.08, DARK, 0.3, 0.8, z));
-  items.push(box(0.14, 0.05, 0.14, STEEL, 0.15, 0.8, 0));
-  const star = G.star(1, { color: 0xb02a20, border: WHITE, edge: 0.08 }), zs = sideZ(T34_BODY, 0.34, -0.5);
+  for (const z of [-0.3, 0.3]) items.push({ geo: upright(spin([[0.21, 0], [0.21, 0.04], [0.17, 0.07], [0, 0.08]], jit(lite, z, 6), 8)), matrix: G.xf(-0.4, 0.64, z) });
+  for (const z of [-0.4, 0.4]) items.push(box(0.12, 0.07, 0.08, DARK, 0.3, 0.66, z));
+  items.push(box(0.14, 0.05, 0.14, STEEL, 0.15, 0.665, 0, 0, 0, 0, 'gunmetal'));
+  const star = G.star(1, { color: 0xb02a20, border: WHITE, edge: 0.08 }), zs = sideZ(T34_BODY, 0.28, -0.5);
   // the rear side face's outward normal tilts back (its plan runs in toward the rear) and up (the walls lean in)
-  for (const s of [-1, 1]) items.push(mark(star, -0.5, 0.34, s * zs, [-0.19, 0.24, s * 0.96], 0.2));
+  for (const s of [-1, 1]) items.push(mark(star, -0.5, 0.28, s * zs, [-0.19, 0.24, s * 0.96], 0.2));
+  // the owner's number block on each front side face (those faces turn forward about 27 degrees) and the stripe across the roof
+  const zf = sideZ(T34_BODY, 0.3, 0.62);
+  items.push(...ownerMarks(owner, { side: [0.62, 0.3, 0, 0], roof: [-0.08, 0.646, 0.42], stripe: 0.07 }));
+  const block = plate(0.3, 0.15, owner);
+  for (const s of [-1, 1]) items.push(mark(block, 0.62, 0.3, s * zf, [0.41, 0.41, s * 0.82], 1));
   return items;
 }
 
 // ---------------------------------------------------------------- the unit types
 
 const TURRET = { height: 0.4, dark: 0.75 };
+// The faction's grey leans warm here: a cool blue-grey turns navy in the shade and loses its value against the ground.
+const german = (P) => new THREE.Color(P).lerp(new THREE.Color(0x5b574d), 0.32);
 const MODELS = {
   medium: [
     (P, C) => ({ hull: shermanHull(P), turret: finish(shermanTurret(P, C), TURRET), ring: SHERMAN.ring, tip: SHERMAN.tip }),
-    (P, C) => ({ hull: panzerHull(P, true), turret: finish(panzerTurret(P, C), { ...TURRET, ...GREY }), ring: PANZER.ring, tip: PANZER.tip }),
+    (P, C) => ({ hull: panzerHull(german(P), true), turret: finish(panzerTurret(german(P), C), { ...TURRET, ...GREY }), ring: PANZER.ring, tip: PANZER.tip }),
     (P, C) => ({ hull: t34Hull(P), turret: finish(t34Turret(P, C), TURRET), ring: T34.ring, tip: T34.tip }),
   ],
-  rocket: [(P, C) => ({ hull: shermanHull(P), turret: finish([...shermanTurret(P, C, { roofGun: false }), ...calliopeRack(P)], TURRET), ring: SHERMAN.ring, tip: SHERMAN.tip })],
+  rocket: [(P, C) => ({ hull: shermanHull(P, { cans: false }), turret: finish([...shermanTurret(P, C, { roofGun: false, stowage: false }), ...calliopeRack(P, C)], TURRET), ring: SHERMAN.ring, tip: SHERMAN.tip })],
   flaktrack: [null, (P, C) => {
-    const t = wirbelwindTurret(P, C);
+    const t = wirbelwindTurret(german(P), C);
     // the open turret sits on the hull's center line, a little behind the Panzer IV's turret
-    return { hull: panzerHull(P, false), turret: finish(t.items, { height: 0.5, ...GREY }), ring: [0.1, PANZER.ring[1], 0], tip: t.tip };
+    return { hull: panzerHull(german(P), false), turret: finish(t.items, { height: 0.5, ...GREY }), ring: [0.1, PANZER.ring[1], 0], tip: t.tip };
   }],
 };
 
