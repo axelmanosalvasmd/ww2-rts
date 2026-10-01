@@ -255,8 +255,9 @@ still merges into one vertex-colored mesh on the shared paint material, so detai
   their hue; paint is faded a little and mottled with broad blotches, and some layers (track steel, wood, leather)
   bring part of their own color. Grime is baked per vertex at merge time by height: a dust film everywhere and dried
   mud clumps on lower hulls, wheels, tracks and boots (none on planes). No extra draw calls; on Low, and until the
-  textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade) is in
-  `LAYERS` at the top of the module.
+  textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade, and
+  film: how much grime it holds) is in `LAYERS` at the top of the module. Grime is greyed and never much brighter than
+  the part under it, so dark tracks, tires and gunmetal stay dark instead of turning into an orange band.
 - Tagging what a part is made of: `part(geo, paint, sx, sy, sz, x, y, z, mat)` in `client/unit-models.js`,
   `{ geo, color, matrix, mat }` items in `geom.merge()`, or `tag(geo, mat)`. `mat` is a name from `MATS` in
   `client/models/geom.js` or `'plain'` (no texture: faces, glass, the soldier's base). A shape's own tags win over the

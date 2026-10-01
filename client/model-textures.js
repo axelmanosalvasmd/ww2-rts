@@ -21,13 +21,14 @@ const SIZE = 512; // each layer is drawn into SIZE x SIZE texels
 // Per layer: texels per metre (the 512 texels cover 512 / texels metres; a soldier's metre is 1 / 1.35 of the
 // world's, he is scaled up), strength (0 leaves the vertex color alone, 1 the full texture detail), hue (0: the
 // texture's light and dark on the vertex color; 1: the texture's own color at the vertex color's brightness, for
-// rust and grain whose color is the point) and fade (how much of the paint's saturation the weather took).
+// rust and grain whose color is the point), fade (how much of the paint's saturation the weather took) and film (how
+// much of the grime's dust film it holds; dark bare steel and rubber shed most of it, so it does not read as rust).
 export const LAYERS = {
   'armor-paint': { texels: 170, strength: 0.85, hue: 0.12, fade: 0.35 },
   'cast-armor': { texels: 210, strength: 0.85, hue: 0.06, fade: 0.35 },
-  gunmetal: { texels: 480, strength: 0.7, hue: 0.12, fade: 0.1 },
-  'track-steel': { texels: 420, strength: 0.9, hue: 0.35, fade: 0 },
-  rubber: { texels: 480, strength: 0.7, hue: 0, fade: 0.3 },
+  gunmetal: { texels: 480, strength: 0.7, hue: 0.12, fade: 0.1, film: 0.35 },
+  'track-steel': { texels: 420, strength: 0.9, hue: 0.2, fade: 0, film: 0.35 },
+  rubber: { texels: 480, strength: 0.7, hue: 0, fade: 0.3, film: 0.35 },
   wood: { texels: 600, strength: 0.75, hue: 0.35, fade: 0.1 },
   canvas: { texels: 420, strength: 0.8, hue: 0.15, fade: 0.2 },
   wool: { texels: 1100, strength: 0.75, hue: 0, fade: 0.25 },
@@ -45,6 +46,7 @@ const shared = {
   uModelTex: { value: null },
   uModelLayer: { value: MATS.map((name) => { const l = LAYERS[name]; return new THREE.Vector4(l.texels / SIZE, l.strength, l.hue, l.fade); }) },
   uModelMean: { value: MATS.map(() => new THREE.Vector3(0.5, 0.5, 0.5)) },
+  uModelFilm: { value: MATS.map((name) => LAYERS[name].film ?? 1) },
   uModelMud: { value: new THREE.Vector4(MATS.indexOf('mud'), MUD.texels / SIZE, MOTTLE.scale, MOTTLE.amount) },
 };
 const patched = []; // [{ material, grime }]
@@ -157,6 +159,7 @@ varying vec3 vModelNormal;
 uniform sampler2DArray uModelTex;
 uniform vec4 uModelLayer[ ${MATS.length} ];
 uniform vec3 uModelMean[ ${MATS.length} ];
+uniform float uModelFilm[ ${MATS.length} ];
 uniform vec4 uModelMud;
 uniform float uModelDefault;
 flat varying float vModelMat;
@@ -204,17 +207,23 @@ float modelMottle( vec3 p ) {
 	#ifdef MODEL_GRIME
 		// a pale dust film that thickens toward the ground (patchy with the surface's own light and dark), then
 		// clumps of dried mud where the grime is high: the mud's light and dark decide which spots take it first, so
-		// it comes in as splashes, not a band. Only the clumps read the mud layer.
-		float g = vModelGrime;
+		// it comes in as splashes, not a band. Only the clumps read the mud layer. Film and clumps are greyed and
+		// never much brighter than the part under them, and each layer holds its own share (film), so dark tracks,
+		// tires and gunmetal stay dark steel and rubber with dusty, earthy patches instead of an orange band.
+		float g = vModelGrime, film = uModelFilm[ layer ];
 		vec3 mm = uModelMean[ int( uModelMud.x + 0.5 ) ];
 		float lmm = dot( mm, LUMA );
-		diffuseColor.rgb = mix( diffuseColor.rgb, mix( mm, vec3( lmm ), 0.4 ) * 1.6, clamp( g * ( 0.25 + 0.2 * lt / lm ), 0.0, 0.6 ) );
+		vec3 dust = mix( mm, vec3( lmm ), 0.55 ) * 1.5;
+		dust *= min( 1.0, ( lv * 2.0 + 0.015 ) / dot( dust, LUMA ) );
+		diffuseColor.rgb = mix( diffuseColor.rgb, dust, clamp( g * ( 0.25 + 0.2 * lt / lm ), 0.0, 0.6 ) * film );
 		if ( g > 0.3 && log2( max( px * uModelMud.y * ${SIZE}.0, 1e-6 ) ) < 7.0 ) {
 			vec3 mud = modelTriplanar( uModelMud.x, vModelPos * uModelMud.y, dx * uModelMud.y, dy * uModelMud.y, w );
-			float h = dot( mud, LUMA ) / lmm, edge = mix( 2.1, 0.6, g );
-			float clump = smoothstep( edge - 0.2, edge + 0.2, h ) * smoothstep( 0.3, 0.55, g );
+			float h = dot( mud, LUMA ) / lmm, edge = mix( 2.3, 0.9, g );
+			float clump = smoothstep( edge - 0.2, edge + 0.2, h ) * smoothstep( 0.3, 0.55, g ) * ( 0.5 + 0.5 * film );
 			vec3 caked = mix( mm * 1.1, mud, 0.6 );
-			diffuseColor.rgb = mix( diffuseColor.rgb, mix( caked, vec3( dot( caked, LUMA ) ), 0.35 ) * 0.8, clump );
+			caked = mix( caked, vec3( dot( caked, LUMA ) ), 0.55 ) * 0.8;
+			caked *= min( 1.0, ( lv * 2.5 + 0.02 ) / max( dot( caked, LUMA ), 1e-4 ) );
+			diffuseColor.rgb = mix( diffuseColor.rgb, caked, clump );
 		}
 	#endif
 	}
