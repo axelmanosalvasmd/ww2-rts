@@ -1,8 +1,14 @@
+// Scenery props: trees, bushes, meadow grass, rocks, fences, haystacks and supply heaps, placed from the map file
+// (candidates) and filtered by the live grid (visible). Each kind is one or two InstancedMeshes for the whole map.
+// Trees, bushes and grass come from client/foliage.js at real size; the rest are textured with client/surfaces.js.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
+import { treeGeometry, leafGeometry, leafMaterial, barkMaterial } from './foliage.js';
+import { surface } from './surfaces.js';
+import { fieldCells } from './ground.js';
 
-const KINDS = ['deciduous', 'poplar', 'pine', 'bush', 'rocks', 'fence', 'haystack', 'supplies'];
+const KINDS = ['deciduous', 'poplar', 'pine', 'bush', 'grass', 'crop', 'rocks', 'fence', 'haystack', 'supplies'];
 const TALL = new Set(['deciduous', 'poplar', 'pine', 'fence', 'haystack']);
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
@@ -43,7 +49,7 @@ function distanceToSegment(x, z, { ax, az, bx, bz }) {
 
 // This filter uses only live state. Removing an obstacle restores the cached props.
 export function visible(c, grid, { heights, nodes = [], low = false } = {}) {
-  if (low && (c.seed & 1)) return false;
+  if (low && (c.seed & 1) && c.kind !== 'crop') return false; // a crop field stays whole
   if (c.cx < 2 || c.cy < 2 || c.cx >= grid[0].length - 2 || c.cy >= grid.length - 2) return false;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     if (grid[c.cy + dy]?.[c.cx + dx] !== '.') return false;
@@ -165,6 +171,13 @@ export function candidates(map) {
     for (let k = 0; k < n; k++) add('poplar', x + (vertical ? 0 : k * 2), y + (vertical ? k * 2 : 0), 0, null, 0.92 + fraction(x, y, 108) * 0.12);
   }
 
+  // standing wheat on about half of the ploughed fields (client/ground.js), a patch per cell in the furrows' direction
+  const fields = fieldCells(map);
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+    const f = fields[y * w + x];
+    if (f && fraction(Math.floor(x / 10), Math.floor(y / 8), 130) < 0.5) add('crop', x, y, f === 2 ? Math.PI / 2 : 0, null, 0.92 + fraction(x, y, 131) * 0.16);
+  }
+
   let hay = 0;
   const hayCap = Math.min(16, Math.max(3, Math.round(w * h / 2200)));
   for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
@@ -178,102 +191,149 @@ export function candidates(map) {
         add('rocks', x, y, undefined, null, 0.8 + fraction(x, y, 116) * 0.3)) continue;
     if (hay < hayCap && d > 0.22 && fraction(x, y, 117) < 0.0012 && add('haystack', x, y)) hay++;
   }
+  // meadow grass on the open cells left over, thicker in hedged country, kept off the paths
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+    if (occupied.has(y * w + x) || fraction(x, y, 120) > 0.1 + 0.16 * country(x, y)) continue;
+    if (!corridor((x + 0.5) * CELL, (y + 0.5) * CELL, 0.4)) add('grass', x, y, undefined, null, 0.8 + fraction(x, y, 121) * 0.5);
+  }
   const trees = list.filter(c => ['deciduous', 'pine', 'poplar'].includes(c.kind)).sort((a, b) => a.seed - b.seed);
   const capped = new Set(trees.slice(1200));
   return list.filter(c => !capped.has(c));
 }
 
-// Merge painted parts ourselves; only the core three.js module is served.
-function geometry(kind) {
-  const positions = [], colours = [], colour = new THREE.Color();
-  const part = (geo, paint, scale, position, rotation = 0) => {
-    geo.scale(...scale); if (rotation) geo.rotateZ(rotation); geo.translate(...position);
-    const flat = geo.index ? geo.toNonIndexed() : geo;
-    colour.set(paint);
-    const p = flat.attributes.position;
-    for (let i = 0; i < p.count; i++) { positions.push(p.getX(i), p.getY(i), p.getZ(i)); colours.push(colour.r, colour.g, colour.b); }
-    if (flat !== geo) flat.dispose(); geo.dispose();
-  };
-  const box = (paint, scale, position, rotation) => part(new THREE.BoxGeometry(1, 1, 1), paint, scale, position, rotation);
-  const blob = (paint, scale, position, detail = 0) => part(new THREE.IcosahedronGeometry(1, detail), paint, scale, position);
-  const cylinder = (paint, top, bottom, height, position, sides = 6) => part(new THREE.CylinderGeometry(top, bottom, height, sides), paint, [1, 1, 1], position);
-  const trunk = (height) => cylinder(0x705033, 0.13, 0.22, height, [0, height / 2, 0]);
-  if (kind === 'deciduous') {
-    trunk(2.8);
-    blob(0x5e7837, [1.35, 1.35, 1.25], [0, 2.9, 0], 1);
-    blob(0x6f873f, [0.98, 0.96, 1.02], [-0.65, 2.55, 0.2]);
-    blob(0x4f6a32, [0.96, 1.02, 0.92], [0.6, 2.6, -0.25]);
-  } else if (kind === 'poplar') {
-    trunk(3.5);
-    blob(0x66833e, [0.79, 2.05, 0.78], [0, 3.7, 0], 1);
-    blob(0x7c9147, [0.65, 1.55, 0.65], [0.1, 4.05, 0.04]);
-  } else if (kind === 'pine') {
-    trunk(2.6);
-    for (const [r, ht, y, paint] of [[1.4, 2.25, 2.15, 0x395d48], [1.13, 2.1, 3.15, 0x446950], [0.8, 1.85, 4.15, 0x52775a]]) {
-      part(new THREE.ConeGeometry(r, ht, 7), paint, [1, 1, 1], [0, y, 0]);
+// Rocks, fences, haystacks and supply heaps: parts merged by hand (only the core three.js module is served). Parts keep
+// their own normals, smooth on round shapes and flat on boxes; a part's paint multiplies the kind's texture.
+function merged(parts) {
+  const position = [], normal = [], color = [];
+  for (const { geo, paint } of parts) {
+    const flat = geo.index ? geo.toNonIndexed() : geo, p = flat.attributes.position, n = flat.attributes.normal;
+    const c = Array.isArray(paint) ? paint : [paint, paint, paint];
+    for (let i = 0; i < p.count; i++) {
+      position.push(p.getX(i), p.getY(i), p.getZ(i)); normal.push(n.getX(i), n.getY(i), n.getZ(i)); color.push(c[0], c[1], c[2]);
     }
-  } else if (kind === 'bush') {
-    blob(0x647944, [0.6, 0.55, 0.57], [0, 0.48, 0]);
-    blob(0x74864a, [0.46, 0.38, 0.46], [-0.46, 0.32, 0.1]);
-    blob(0x52673b, [0.46, 0.43, 0.45], [0.42, 0.35, -0.1]);
-  } else if (kind === 'rocks') {
-    blob(0x979081, [0.52, 0.38, 0.43], [-0.25, 0.26, 0]);
-    blob(0xb0a795, [0.37, 0.29, 0.35], [0.3, 0.2, 0.15]);
-    blob(0x827e70, [0.24, 0.2, 0.29], [0.07, 0.12, -0.42]);
-  } else if (kind === 'fence') {
-    for (const x of [-0.92, 0.92]) box(0x8b7049, [0.12, 1.02, 0.14], [x, 0.43, 0]);
-    for (const y of [0.32, 0.74]) box(0xa18a5c, [2, 0.12, 0.11], [0, y, 0]);
-  } else if (kind === 'haystack') {
-    cylinder(0xb69a57, 0.72, 0.96, 0.9, [0, 0.42, 0], 9);
-    part(new THREE.ConeGeometry(0.99, 1.35, 9), 0xc6ad66, [1, 1, 1], [0, 1.02, 0]);
-    box(0x816c3e, [0.1, 1.9, 0.1], [0, 0.87, 0]);
-  } else if (kind === 'supplies') {
-    box(0x967347, [0.7, 0.7, 0.66], [-0.43, 0.32, -0.23]);
-    box(0xb0935e, [0.72, 0.075, 0.68], [-0.43, 0.65, -0.23]);
-    for (const x of [-0.68, -0.18]) box(0x6b573b, [0.06, 0.66, 0.69], [x, 0.33, -0.23]);
-    box(0x7e6846, [0.5, 0.48, 0.5], [-0.2, 0.23, 0.43]);
-    cylinder(0x68714a, 0.31, 0.31, 0.8, [0.48, 0.38, 0.08], 9);
-    for (const y of [0.17, 0.61]) cylinder(0x444d36, 0.326, 0.326, 0.065, [0.48, y, 0.08], 9);
+    if (flat !== geo) flat.dispose();
+    geo.dispose();
   }
-  const merged = new THREE.BufferGeometry();
-  merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  merged.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
-  merged.computeVertexNormals(); merged.computeBoundingSphere();
-  return merged;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(color, 3));
+  g.computeBoundingSphere();
+  return g;
+}
+// scale, tilt (x then z), turn, then move
+const placed = (geo, [sx, sy, sz], [x, y, z], ry = 0, rx = 0, rz = 0) => geo.scale(sx, sy, sz).rotateX(rx).rotateZ(rz).rotateY(ry).translate(x, y, z);
+
+// a weathered boulder: a lumpy, faceted icosahedron with its foot in the ground
+function boulder(seed, [sx, sy, sz], position, ry) {
+  const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const k = 1 + 0.2 * Math.sin(v.x * 3.1 + v.z * 1.7 + seed) * Math.cos(v.y * 2.3 - v.z * 2.9) + 0.1 * Math.sin(v.x * 6.7 - v.y * 5.3 + seed * 2);
+    v.multiplyScalar(k);
+    if (v.y < -0.3) v.y = -0.3 + (v.y + 0.3) * 0.2; // a flatter underside, half buried
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); // non-indexed: each facet keeps its own flat normal
+  return placed(g, [sx, sy, sz], position, ry);
+}
+
+function geometry(kind) {
+  const parts = [], add = (geo, paint) => parts.push({ geo, paint });
+  const box = (paint, scale, position, ry, rx, rz) => add(placed(new THREE.BoxGeometry(1, 1, 1), scale, position, ry, rx, rz), paint);
+  const post = (paint, r0, r1, h, position, sides = 6, rx = 0, rz = 0) =>
+    add(placed(new THREE.CylinderGeometry(r0, r1, h, sides), [1, 1, 1], position, 0, rx, rz), paint);
+  if (kind === 'rocks') {
+    // three field stones, the biggest about 0.9 m across
+    add(boulder(1.3, [0.48, 0.3, 0.4], [-0.22, 0.1, 0], 0.4), [0.8, 0.78, 0.74]);
+    add(boulder(4.1, [0.3, 0.22, 0.27], [0.36, 0.06, 0.2], 1.9), [0.9, 0.87, 0.82]);
+    add(boulder(2.7, [0.18, 0.13, 0.2], [0.08, 0.03, -0.42], 0.8), [0.72, 0.7, 0.68]);
+  } else if (kind === 'fence') {
+    // weathered post-and-rail: split posts and two sagging rails nailed on one side
+    for (const [x, rz] of [[-0.92, 0.04], [0.92, -0.03]]) post([0.62, 0.6, 0.56], 0.055, 0.07, 1.25, [x, 0.5, 0], 5, 0.03, rz);
+    box([0.7, 0.68, 0.64], [2.02, 0.09, 0.05], [0, 0.88, 0.075], 0, 0, 0.02);
+    box([0.66, 0.64, 0.6], [2.02, 0.09, 0.05], [0, 0.46, 0.075], 0, 0, -0.025);
+  } else if (kind === 'haystack') {
+    // a domed stack about 2.1 m tall and 2 m across, settling a little to one side
+    const profile = [[0.95, -0.05], [1.02, 0.45], [0.96, 1.0], [0.72, 1.55], [0.36, 1.95], [0.06, 2.12], [0, 2.14]].map(([r, y]) => new THREE.Vector2(r, y));
+    add(placed(new THREE.LatheGeometry(profile, 14), [1, 1, 0.94], [0, 0, 0], 0, 0.02, 0.05), [1, 1, 1]);
+  } else if (kind === 'supplies') {
+    // a stack of wooden crates (about 0.9 m long), a jerrican and a 200-litre drum
+    const crate = [0.86, 0.8, 0.7], lid = [0.95, 0.9, 0.8], drum = [0.42, 0.46, 0.34];
+    box(crate, [0.9, 0.5, 0.55], [-0.4, 0.25, -0.25], 0.08);
+    box(lid, [0.94, 0.05, 0.58], [-0.4, 0.52, -0.25], 0.08);
+    box(crate, [0.9, 0.5, 0.55], [-0.36, 0.25, 0.36], -0.05);
+    box([0.8, 0.75, 0.66], [0.84, 0.46, 0.52], [-0.38, 0.77, 0.04], 0.3);
+    box([0.5, 0.52, 0.4], [0.17, 0.46, 0.34], [0.2, 0.23, 0.62], 0.4);
+    post(drum, 0.29, 0.29, 0.88, [0.5, 0.44, -0.05], 12);
+    for (const y of [0.3, 0.6]) post([0.34, 0.37, 0.28], 0.3, 0.3, 0.04, [0.5, y, -0.05], 12);
+  }
+  return merged(parts);
+}
+
+const geometries = new Map();
+// the meshes for a kind: [geometry, material, role]; trees draw bark and leaves as two meshes over the same matrices
+function meshesFor(kind) {
+  if (kind === 'deciduous' || kind === 'pine' || kind === 'poplar') {
+    const t = treeGeometry(kind === 'deciduous' ? 'broadleaf' : kind);
+    return [[t.bark, barkMaterial(), 'bark'], [t.leaves, leafMaterial(), 'leaves']];
+  }
+  if (kind === 'bush' || kind === 'grass' || kind === 'crop') return [[leafGeometry(kind), leafMaterial(), 'leaves']];
+  const geo = geometries.get(kind) ?? geometries.set(kind, geometry(kind)).get(kind);
+  return [[geo, surface({ rocks: 'stone', fence: 'wood', haystack: 'straw', supplies: 'wood' }[kind], true), 'solid']];
 }
 
 export function createProps({ map, grid, hAt, parent }) {
   const cached = candidates(map), group = new THREE.Group(), meshes = new Map();
-  group.name = 'painted-props'; parent.add(group);
-  const material = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
+  group.name = 'scenery-props'; parent.add(group);
   for (const kind of KINDS) {
     // Deciduous trees can become pines when live elevation favours that species.
     const capacity = cached.filter(c => c.kind === kind || (kind === 'pine' && c.kind === 'deciduous')).length;
     if (!capacity) continue;
-    const mesh = new THREE.InstancedMesh(geometry(kind), material, capacity);
-    mesh.name = kind; mesh.count = 0; mesh.receiveShadow = true;
-    // A mesh spans the whole map; disabling culling avoids stale instance bounds.
-    mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.setColorAt(0, new THREE.Color(1, 1, 1)); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    group.add(mesh); meshes.set(kind, mesh);
+    const list = meshesFor(kind).map(([geo, material, role]) => {
+      const mesh = new THREE.InstancedMesh(geo, material, capacity);
+      mesh.name = role === 'bark' ? `${kind}-bark` : kind; mesh.userData.role = role;
+      mesh.count = 0; mesh.receiveShadow = true;
+      // A mesh spans the whole map; disabling culling avoids stale instance bounds.
+      mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.setColorAt(0, new THREE.Color(1, 1, 1)); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+      group.add(mesh);
+      return mesh;
+    });
+    meshes.set(kind, list);
   }
   let nodes = [], disposed = false;
-  const matrix = new THREE.Matrix4(), colour = new THREE.Color(), scale = new THREE.Vector3();
+  const matrix = new THREE.Matrix4(), colour = new THREE.Color(), barkColour = new THREE.Color(), scale = new THREE.Vector3(), turn = new THREE.Quaternion(), at = new THREE.Vector3();
+  const UP = new THREE.Vector3(0, 1, 0);
   function refresh() {
     if (disposed) return;
-    for (const mesh of meshes.values()) { mesh.count = 0; mesh.castShadow = !gfx.low; }
-    for (const c of cached) {
-      if (!visible(c, grid, { heights: map.heights, nodes, low: gfx.low })) continue;
-      const kind = kindFor(c, map.heights), mesh = meshes.get(kind), i = mesh.count++;
-      matrix.makeRotationY(c.angle).scale(scale.setScalar(c.scale));
-      matrix.setPosition(c.x, hAt(c.x, c.z) - 0.035, c.z); mesh.setMatrixAt(i, matrix);
-      const tint = 0.9 + ((c.seed >>> 8) % 101) / 500;
-      colour.setRGB(tint, tint, tint);
-      if (kind === 'deciduous' && (c.seed >>> 16) % 9 === 0) colour.setRGB(tint * 1.5, tint * 1.12, tint * 0.58);
-      else colour.setRGB(tint * (0.97 + ((c.seed >>> 18) % 7) / 100), tint, tint * 0.97);
-      mesh.setColorAt(i, colour);
+    for (const [kind, list] of meshes) for (const mesh of list) {
+      mesh.count = 0;
+      // grass and crops are too low to shade anything; Low drops tree and bush shadows too
+      mesh.castShadow = kind !== 'grass' && kind !== 'crop' && !gfx.low;
     }
-    for (const mesh of meshes.values()) { mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
+    for (const c of cached) {
+      if (c.kind === 'grass' && gfx.low) continue;
+      if (!visible(c, grid, { heights: map.heights, nodes, low: gfx.low })) continue;
+      const kind = kindFor(c, map.heights), list = meshes.get(kind), i = list[0].count, crop = kind === 'crop';
+      // each tree or bush its own height, girth and heading; leafy kinds also their own shade of green
+      const f = (k) => ((c.seed >>> k) & 255) / 255, leafy = kind !== 'rocks' && kind !== 'fence' && kind !== 'haystack' && kind !== 'supplies';
+      const girth = leafy && !crop ? 0.9 + 0.2 * f(4) : 1, tall = leafy ? 0.88 + 0.24 * f(12) : 1;
+      scale.set(c.scale * girth, c.scale * tall, c.scale * girth);
+      turn.setFromAxisAngle(UP, c.angle);
+      matrix.compose(at.set(c.x, hAt(c.x, c.z) - 0.035, c.z), turn, scale);
+      const tint = 0.88 + ((c.seed >>> 8) % 101) / 600;
+      if (!leafy) colour.setRGB(tint, tint, tint);
+      else if (crop) colour.setRGB(tint * 1.3, tint * 1.06, tint * 0.56); // ripe wheat
+      else if (kind === 'deciduous' && (c.seed >>> 16) % 9 === 0) colour.setRGB(tint * 1.08, tint * 1.0, tint * 0.72); // a tree turning
+      else colour.setRGB(tint * (0.94 + f(18) * 0.1), tint * (0.97 + f(20) * 0.05), tint * (0.86 + f(22) * 0.12));
+      for (const mesh of list) {
+        mesh.setMatrixAt(i, matrix);
+        mesh.setColorAt(i, mesh.userData.role === 'bark' ? barkColour.setRGB(tint, tint, tint) : colour);
+        mesh.count = i + 1;
+      }
+    }
+    for (const list of meshes.values()) for (const mesh of list) { mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
   }
   const unsubscribe = gfx.onChange(refresh);
   refresh();
@@ -282,9 +342,10 @@ export function createProps({ map, grid, hAt, parent }) {
     setNodes(next) { if (disposed) return; nodes = next ?? []; refresh(); },
     dispose() {
       if (disposed) return;
+      // geometries and materials are shared between matches (client/foliage.js, client/surfaces.js)
       disposed = true; unsubscribe(); group.removeFromParent();
-      for (const mesh of meshes.values()) { mesh.dispose(); mesh.geometry.dispose(); }
-      material.dispose(); group.clear(); meshes.clear();
+      for (const list of meshes.values()) for (const mesh of list) mesh.dispose();
+      group.clear(); meshes.clear();
     },
   };
 }

@@ -18,7 +18,8 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Directional aiming for every targeted ability except the grenade: click the center, move the mouse to rotate, click to launch.
   Each is a rectangle along the chosen line: strafe 36x8 (the plane flies that way), artillery 24x10 (creeping barrage),
   smoke wall 36x14, recon corridor 80x30, trench line 4 cells. Without a direction the server falls back to 'out from your HQ'.
-- Each spawn is a visible HQ: tinted reinforce zone, sandbags, tent, tall flag, name label. H jumps home.
+- Each spawn is a visible HQ: tinted reinforce zone, a ring of real-size sandbags, a canvas wall tent with guy lines,
+  crates and a field table, a guyed flagpole with the team flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
 - Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawns are listed in order around the map; teammates
   get neighbouring spawns and fewer players spread out (spawnSlots). The host sets teams, each player picks a faction.
@@ -318,10 +319,25 @@ the HUD.
   wrecks). `client/battle-sound.js` only moves the listener with the camera, drives the tank engine bed from moving
   vehicles and plays dig and build foley. The Volume slider sits in the in-game menu and replaces the old mute
   button. `tools/build-audio.mjs` rebuilds the mp3s and index from the raw takes (needs ffmpeg).
-- As built, round 2 (props): `client/props.js` (`createProps({ map, grid, hAt, parent })`) places painted scenery
-  from integer hash seeds, so every browser and late joiner sees the same trees, poplar rows, pines, bushes, rocks,
-  fences, haystacks and crates. One InstancedMesh per kind, kept clear of spawns, points, the paths between points and
-  resource nodes (`setNodes`); `refresh()` after terrain changes, and Graphics Low shows half of them.
+- As built, round 2 (props): `client/props.js` (`createProps({ map, grid, hAt, parent })`) places scenery
+  from integer hash seeds, so every browser and late joiner sees the same trees, poplar rows, pines, bushes, meadow
+  grass, standing wheat (about half the ploughed fields from `fieldCells` in `client/ground.js`), rocks, fences,
+  haystacks and crates. One InstancedMesh per kind (trees two: bark and leaves), kept clear of spawns, points, the paths
+  between points and resource nodes (`setNodes`); `refresh()` after terrain changes. Graphics Low shows half of them,
+  keeps crop fields whole, drops the grass and turns off tree and bush shadows.
+- Realistic scenery (October 2026): everything at real size, as in the Company of Heroes 3 reference
+  (`/tmp/ww2-hud/world-target.png` at the time). `client/foliage.js` builds broadleaf trees about 12.5 m tall with
+  9 to 10 m crowns, spruces about 14 m, Lombardy poplars about 17 m, bushes about 1.5 m, hedgerow stretches, grass
+  tufts and wheat. Trunks and limbs are tapered bark tubes; crowns are clumps of alpha-tested leaf cards cut from one
+  atlas (`client/textures/foliage.webp`, generated with gpt-image-2), each card lit with its crown's normal so a crown
+  shades as one mass. The alpha is raised with the mip level so distant crowns stay full, and fog of war darkens
+  foliage instead of greying it. Per instance: heading, height, girth and shade of green. Houses: two in five
+  farmhouses and every church are fieldstone, the rest limewashed render with stone quoins on outside corners; flat
+  clay-tile roofs; windows with a shadowed reveal, a frame proud of the wall, sky in the glass and plank shutters;
+  stone door jambs; clay chimney pots. Base buildings keep one merged mesh and one material: each part carries a
+  surface id in `uv.x` that picks canvas, timber or concrete grain from one packed detail texture
+  (`client/textures/detail.jpg`), and corrugated sheet gets ridges that fade out before they could shimmer. Mobile-game
+  tells are out: no saturated greens, no fat trunks or puffy round crowns, no oversized props.
 - As built, round 2 (water): `client/water.js` (`createWater(grid, map)`) is one see-through mesh over river, ford and
   bridge cells, painted from a mask texture (shoreline, depth guess, fords, bridges) with a per-vertex flow
   direction. It draws first in the see-through pass and writes no depth, so fog of war, smoke and effects draw over
@@ -426,8 +442,10 @@ the HUD.
   on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
 - Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
   sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
-  It never changes gameplay cells. The five base buildings are one merged, vertex-colored model per type and team
-  (`buildingModel`). Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
+  A hedgerow stretch is a shaded lumpy core inside leaf cards that run along the hedge, so neighbours close into one
+  wall. It never changes gameplay cells. The five base buildings are one merged model per type and team
+  (`buildingModel`), textured through the detail map above. `hqCamp(f, tent)` builds the HQ's tent, crates, table and
+  flagpole as three merged meshes (canvas, timber, poles and rope); main.js adds the flag. Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
   `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
 - Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
   drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few

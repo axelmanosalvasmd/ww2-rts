@@ -12,7 +12,7 @@ import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
 import { createGround } from './ground.js';
 import { surface, setFogMap } from './surfaces.js';
-import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
+import { buildStructures as buildPieces, sandbagRing, hqCamp, buildingModel } from './structures.js';
 import { createRelief } from './relief.js';
 import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
@@ -432,7 +432,7 @@ function applyCells(cells) {
   mmImage = null;
 }
 
-// Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
+// Each player's HQ: tinted reinforce zone, sandbag ring, command tent, flagpole and flag, name.
 // A spawn near the board edge would hang its ring over the table: the zone and ring are cut at the edge and the
 // bags past it are left out (the reinforce zone itself is unchanged).
 function buildHQ(sp, slot) {
@@ -444,14 +444,10 @@ function buildHQ(sp, slot) {
   const ring = hqRing(R, f.color, edge);
   g.add(zone, ring);
   g.add(onBoard(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
-  // command tent + crates
-  const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
-  const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
-  if (!classicMode()) g.add(mesh(tg, mat(tent), 1, 1, 1, -4, 0, -3));
-  if (!classicMode()) g.add(mesh(GEO.box, mat(0x6e5836), 1.4, 1.2, 1.4, 3, 0.6, -5), mesh(GEO.box, mat(0x6e5836), 1.4, 1.2, 1.4, 4.6, 0.6, -4.4), mesh(GEO.box, mat(0x5f4c2f), 1.2, 1, 1.2, 3.8, 1.7, -4.7));
+  // command tent, crates and the flagpole (client/structures.js); Classic's HQ is a building, so only the pole
+  g.add(hqCamp(f, !classicMode()));
   // tall flag you can spot from across the map
-  const flag = mesh(GEO.plane, flagMat(f.color), 4.5, 2.8, 1, 2.3, 13, 0);
-  g.add(mesh(GEO.cyl, mat(0x4a3f30), 0.12, 15, 0.12, 0, 7.5, 0), flag);
+  g.add(mesh(GEO.plane, flagMat(f.color), 4.5, 2.8, 1, 2.3, 13, 0));
   const tag = label(`${names[slot] ?? f.name} HQ`, { style: 'hq', color: f.color }); tag.position.y = 17; g.add(tag);
   return g;
 }

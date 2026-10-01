@@ -5,6 +5,33 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The scenery looks like real places instead of toys, everything at real size (checked against a Company of Heroes 3
+  style reference). Trees are real trees: broadleaf oaks about 12.5 m tall with 9 to 10 m crowns, spruces about 14 m,
+  Lombardy poplars about 17 m, with bark trunks and limbs and crowns of photographed leaf clusters, each tree its own
+  height, girth, heading and shade of green. Bushes and the bocage hedgerows are dense, ragged leaf masses instead of
+  green balls, meadow grass grows in tufts across open ground, and about half the ploughed fields stand in ripe wheat.
+  Rocks are weathered field stones, fences weathered post-and-rail.
+- Houses: two in five farmhouses and every church are fieldstone, the rest limewashed render with stone quoins up the
+  corners; flat Normandy clay-tile roofs replace the orange Spanish tiles; windows have depth (a shadowed reveal, a frame
+  proud of the wall, a sill, sky in the glass, plank shutters); doors get stone jambs; chimneys get clay pots. Damage
+  states and footprints are unchanged.
+- The HQ is a real camp: a canvas wall tent with sagging roof, guy lines, an open door and a stovepipe, crates, a drum,
+  jerricans and a field table with a map, a 15 m guyed flagpole, and a ring of real-size sandbags (about 0.8 m long, three
+  courses) instead of the green box and oversized bags. The barracks, motor pool, depot, command bunker and Classic HQ
+  show canvas, timber, concrete and corrugated-sheet grain.
+- New textures, generated with gpt-image-2 and made seamless: leaf, spruce and grass sprites (one atlas), bark, plaster,
+  roof tiles, canvas and burlap.
+- Cost, measured with renderer.info in the same views (before, after): Three Crossroads HQ view 119 draw calls and 195k
+  triangles, 128 and 245k; village 92 and 192k, 93 and 239k; zoomed out 154 and 202k, 158 and 273k. Bocage HQ view
+  121 and 275k, 132 and 346k; zoomed out 190 and 280k, 194 and 367k. Graphics Low hides the grass, keeps half the
+  trees and turns off tree and bush shadows (bocage HQ view 98 calls, 193k triangles). Frame rate could only be
+  measured in headless Chrome on a software renderer (SwiftShader, 0.6 to 0.9 fps before and after on a heavily loaded
+  machine), so the cost on real laptop graphics is not yet checked.
+- Trees, bushes and hedgerow leaves darken under the fog of war as the ground does (before, trees ignored the fog and
+  hedges turned grey).
+- Left for later: real laptop fps with 250+ units; wind sway in the crowns; the haystack texture (burlap stands in for
+  straw); a second broadleaf shape to break up repeats in big woods.
+
 - Edge scrolling works like Warcraft III. The band at the screen edge is wider (32 px at 1920x1080, 24 to 48 px by
   window size; it was 8 px), scrolling gets faster the closer you push to the edge, starts with a short ease-in and
   goes diagonal in corners, and the cursor turns into an arrow pointing the way. Pushing the mouse out of the window
