@@ -837,6 +837,17 @@ for (const name of ['default', 'river-towns', 'six-fronts', 'hill-112']) {
   }
 }
 
+// XL assault maps: 6 spawns (3 defend), and a map can set its own assault clock.
+for (const name of ['pegasus-bridge-xl', 'hill-112-xl', 'seawall-xl']) {
+  const map = JSON.parse(readFileSync(`maps/${name}.json`, 'utf8'));
+  assert.equal(validateMap(map), null, name + ' is valid');
+  assert.equal(map.spawns.length, 6, name + ' has 6 spawns'); assert.deepEqual(map.defend, [0, 1, 2]);
+  const g = createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, [0, 0, 0, 1, 1, 1], [0, 1, 2, 0, 1, 2], { mode: 'assault', defenderTeam: 0 });
+  assert.equal(g.mode.timeLeft, map.assaultTime ?? CFG.assault.time, name + ' uses its own clock');
+  assert.equal([...g.units.values()].filter(u => u.type === 'bunker').length, 3, name + ': a bunker per defender');
+}
+assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8')), assaultTime: 5 }), 'assaultTime must be 300-3600 seconds');
+
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.
 {
   const g = fresh(); g.players[0].mp = g.players[1].mp = 1000;

@@ -177,6 +177,7 @@ export function validateMap(m) {
   const at = (p) => m.rows[p.y][p.x];
   if (!Array.isArray(m.spawns) || m.spawns.length < 2 || m.spawns.length > MAX_PLAYERS) return 'needs 2-' + MAX_PLAYERS + ' spawns';
   for (const sp of m.spawns) if (!sp || !int(sp.x, 0, m.w - 1) || !int(sp.y, 0, m.h - 1) || TERRAIN[at(sp)] & MOVE) return 'spawns must be on open ground inside the map';
+  if (m.assaultTime !== undefined && !(Number.isInteger(m.assaultTime) && m.assaultTime >= 300 && m.assaultTime <= 3600)) return 'assaultTime must be 300-3600 seconds';
   if (m.defend !== undefined && (!Array.isArray(m.defend) || !m.defend.length || m.defend.length >= m.spawns.length
     || m.defend.some(i => !int(i, 0, m.spawns.length - 1)) || new Set(m.defend).size !== m.defend.length)) return 'defend must list some (not all) spawn numbers';
   if (!Array.isArray(m.points) || m.points.length < 1 || m.points.length > 9) return 'needs 1-9 capture points';
@@ -234,13 +235,14 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   if (g.height.length !== g.w * g.h) g.height = null; // flat map: skip all elevation math
   if (opts.mode === 'classic') setupClassic(g);
   for (const p of g.players) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, i));
-  if (assault) setupAssault(g, opts.defenderTeam);
+  if (assault) setupAssault(g, opts.defenderTeam, map.assaultTime);
   return g;
 }
 
-function setupAssault(g, defenderTeam) {
+// time: the map's own clock in seconds (big maps take longer to cross), else the default
+function setupAssault(g, defenderTeam, time) {
   const A = CFG.assault;
-  g.mode = { kind: 'assault', defenderTeam, attackerTeam: g.players.find(p => p.team !== defenderTeam)?.team ?? -1, timeLeft: A.time };
+  g.mode = { kind: 'assault', defenderTeam, attackerTeam: g.players.find(p => p.team !== defenderTeam)?.team ?? -1, timeLeft: time ?? A.time };
   const cx = g.w * CELL / 2, cz = g.h * CELL / 2;
   for (const p of g.players) {
     const defending = p.team === defenderTeam;

@@ -70,6 +70,9 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   The AI defender only holds points within 70 m of home, which here is just the summit, so the summit's MP
   decides the balance: AI 1v1 assault, attacker wins 13/20 at summit mp 1, 14/20 at 1.25, 7/30 at 1.5 (kept:
   the hill should favour the defender). Small samples; the swing between 1.25 and 1.5 is large.
+- XL maps (tools/genmap-xl.js, 6 spawns, 3 defend): Pegasus Bridge XL, Hill 112 XL, Seawall XL. A map can carry
+  `assaultTime` (seconds) because crossing takes longer: 20 min / 16 min / default 15. AI 3v3 attacker wins over 40:
+  58% / 45% / 25%. Assault results swing a lot at 20 matches (2/20 and 7/12 for the same map), so measure with 40+.
 - Bug found while testing: veterancy thresholds are multiples of unit cost, so the free bunker counted as a 3-star
   veteran. Free units never rank up now.
 
