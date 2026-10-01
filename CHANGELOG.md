@@ -5,6 +5,26 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Combat effects (slice 4): muzzle flashes, tracers, explosions, scorch, fire and smoke:
+  - Every shot has a muzzle flash at the gun and a glowing tracer to the target, with the impact landing when the
+    round arrives: dust and dirt for small arms, sparks off armor, a fireball and debris for shells and bombs.
+    Explosions are sized by the weapon (grenade, mortar, tank gun, artillery, bomb) and leave scorch marks on the
+    ground that fade after a while.
+  - Destroyed vehicles burn and smoke, then smoulder. Smoke screens are thick drifting smoke, all smoke drifts with
+    the same wind, and houses that fall down throw up a cloud of dust. Big blasts near the camera give a very small
+    screen shake (off on Graphics Low and with reduced motion).
+  - The support planes fly over and drop what they carry: recon, strafing, bombing, the dive bomber (one steep dive
+    and one bomb) and the paratroop transport.
+  - Air war: flak guns and Mobile Flak fire tracers up at planes, with black airbursts around them; when a flak gun
+    opens up on a passing support plane, the bursts walk around that plane. Fighters fire from both wings in turn and
+    the Ground-attack Plane fires rockets. A plane shot down rolls over and falls trailing fire and smoke, then
+    blows up and burns where it lands; a support plane that is shot down cancels the bombs it hadn't dropped yet.
+  - Fixed: a Flak Emplacement firing at ground units drew puffs in the sky instead of tracers to the target. A Fighter
+    or Ground-attack Plane that was killed stayed frozen in the air as a wreck for 40 s. Shots no longer make and free
+    GPU objects each time: all particles are one mesh and the planes come from a small pool.
+  - Left for later: the old synthesized battle sounds still play next to the new effect sound hooks until the audio
+    slice. If every pooled plane is in use, a support plane shot down shows only an airburst. The Fighter Cover
+    circle is still the old flat ring.
 - World look (slice 3): painted ground, warm light, a planning table and map-symbol markers:
   - The ground is painted from real textures per cell (grass, dirt, mud, ploughed field, road, water, rubble,
     shelled earth, trench earth) with soft edges, and keeps the contour lines; shell holes and trenches are painted

@@ -304,6 +304,13 @@ the HUD.
   capture points, tags). Player colors are blue, red, chalk, orange, violet and cyan. The aviation types got map
   symbols in `client/symbols.js` (plane, dome over armor, installation bar), since the 3D badges now use the same
   symbols as the HUD and the old pictograms for flak and planes went away.
+- As built, slice 4 (effects): `client/fx.js` (`createEffects`) reads each snapshot's shots, strikes and smokes and
+  draws everything from one instanced billboard mesh, one scorch decal mesh and a pool of plane models. main.js only
+  calls `effects.snapshot`, `effects.update`, `effects.wreck` and `effects.downPlane`. The aviation effects that lived
+  in main.js (support planes, flak puffs, planes falling) moved into fx.js: flak and fighters firing at planes draw
+  tracers into the sky (`aa`), a flak gun firing at a passing support plane makes airbursts around that plane,
+  `shotdown` and `planedown` send the plane into a burning fall. Flak firing at ground units is ordinary direct fire.
+  The paratroop canopies (`chutes`) stay in main.js. Particle and decal counts drop on Graphics Low.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
