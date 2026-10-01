@@ -1,13 +1,13 @@
-// Aircraft look for the sand table: painted-miniature planes for each faction (a fighter, a ground-attack plane, a
-// twin-engine bomber and a transport), spinning propellers, a soft ground shadow, damage smoke, shoot-downs, flak bursts
-// and the Classic airfield. main.js creates one instance with createAviation() and calls the small API it returns.
+// Aircraft: the planes of each faction (a fighter, a ground-attack plane, a twin-engine bomber and a transport) in
+// their real paint, spinning propellers, a soft ground shadow, damage smoke, shoot-downs, flak bursts and the Classic
+// airfield. main.js creates one instance with createAviation() and calls the small API it returns.
 //
 // The plane models themselves are built in models/planes.js: ONE vertex-coloured mesh per aircraft and owner colour,
 // shared by every plane of that kind (geometry and material), so a plane costs one draw call, one per propeller for
 // the blades and one more for all its blur discs together.
-// The owner's colour is on the wing tips, the whole fin and rudder, a band round the rear fuselage and the spinner or
-// cowl lip, so you can tell whose plane it is from above. The body material draws the camouflage per pixel and a fill
-// light in the paint's own colour (paintMaterial in models/planes.js); bare-metal planes get a shinier copy of it.
+// The owner's colour is kept to a unit marking: a narrow band round the rear fuselage and the spinner or cowl lips,
+// so the camouflage stays the real one. The body material draws the camouflage, panel and hinge lines per pixel and a
+// fill light in the paint's own colour (paintMaterial in models/planes.js); bare-metal planes get a shinier copy of it.
 //
 // Smoke and flak bursts are puffs from one pooled InstancedMesh (one draw call, a fixed number of puffs). Everything
 // here only draws: the simulation decides what happens, and the shots it sends say when.
@@ -105,22 +105,46 @@ export const ROLE_OF_SUPPORT = { recon: 'fighter', strafe: 'attacker', dive: 'at
 const BODY_MAT = modelMaterial(paintMaterial(new THREE.MeshLambertMaterial({ vertexColors: true })), { mat: 'aircraft-paint' });
 const METAL_MAT = modelMaterial(paintMaterial(new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x3a3a3a, shininess: 26 })), { mat: 'aluminum' });
 const FIELD_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
-const BLADE_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'gunmetal' });
+const BLADE_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
 const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0x30302a, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
 const BOMB_GEO = merge([{ geo: SRC.cyl, color: 0x34362a, m: xf(0, 0, 0, 0, 0, 0, 1.5, .26, .26) }, { geo: SRC.cyl, color: TIP, m: xf(.3, 0, 0, 0, 0, 0, .15, .27, .27) }, { geo: SRC.cone, color: 0x34362a, m: xf(.95, 0, 0, 0, 0, 0, .4, .26, .26) }]);
 
 const built = new Map(), bladeGeo = new Map(), discGeo = new Map(), shadowMats = new Map();
 
-function bladesFor(n, r, tip = TIP) {
-  const key = n + ':' + r + ':' + tip;
+// A propeller blade along +y, its root inside the spinner: a thin section (the leading edge, the thickest point a third
+// of the chord back on each face, the trailing edge) that twists from steep at the root to shallow at the tip, a
+// narrow shank widening to a paddle about two thirds out and rounding off at the tip. Stations as fractions of the
+// radius r: chord and thickness over r and the blade angle (radians from the disc). Built from station i0 to i1, so
+// the tip can be a part of its own colour; caps closes the root and the outer end (the two parts meet without them).
+const BLADE_U = [0.1, 0.24, 0.42, 0.7, 0.86, 0.93, 0.98, 1.0], BLADE_C = [0.07, 0.08, 0.17, 0.21, 0.19, 0.16, 0.1, 0.03];
+const BLADE_T = [0.06, 0.05, 0.03, 0.02, 0.016, 0.014, 0.01, 0.006], BLADE_B = [1.1, 1.0, 0.75, 0.5, 0.4, 0.37, 0.35, 0.35];
+function bladePart(r, i0, i1, caps = [true, true]) {
+  const pos = [], idx = [];
+  for (let i = i0; i <= i1; i++) {
+    const y = BLADE_U[i] * r, c = BLADE_C[i] * r, t = BLADE_T[i] * r, b = BLADE_B[i];
+    const cx = -Math.sin(b), cz = Math.cos(b), tx = Math.cos(b), tz = Math.sin(b);
+    for (const [u, v] of [[0.5, 0], [0.17, 0.5], [-0.5, 0], [0.17, -0.5]]) pos.push(c * u * cx + t * v * tx, y, c * u * cz + t * v * tz);
+  }
+  const n = i1 - i0;
+  for (let i = 0; i < n; i++) for (let j = 0; j < 4; j++) { const a = i * 4 + j, b = i * 4 + (j + 1) % 4; idx.push(a, b, a + 4, b, b + 4, a + 4); }
+  if (caps[0]) idx.push(0, 2, 1, 0, 3, 2);
+  if (caps[1]) idx.push(n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+function bladesFor(n, r, tip = TIP, blade = DARK) {
+  const key = n + ':' + r + ':' + tip + ':' + blade;
   if (!bladeGeo.has(key)) {
-    const parts = [];
+    const parts = [], shank = bladePart(r, 0, 5, [true, false]), end = bladePart(r, 5, 7, [false, true]);
     for (let i = 0; i < n; i++) {
-      const a = i * TAU / n;
-      parts.push({ geo: SRC.box, color: DARK, m: xf(0, 0, 0, a).multiply(xf(0, r * .42, 0, 0, 0, 0, .05, r * .84, .17)) },
-        { geo: SRC.box, color: tip, m: xf(0, 0, 0, a).multiply(xf(0, r * .92, 0, 0, 0, 0, .055, r * .16, .17)) });
+      const m = xf(0, 0, 0, i * TAU / n);
+      parts.push({ geo: shank, color: blade, m }, { geo: end, color: tip, m });
     }
     bladeGeo.set(key, merge(parts));
+    shank.dispose(); end.dispose();
     discGeo.set(key, new THREE.CircleGeometry(r, 18).rotateY(PI / 2));
   }
   return key;
@@ -158,7 +182,7 @@ function model(fac, role, ownerColor) {
   let m = built.get(key);
   if (m) return m;
   const spec = plane(fac, role, ownerColor);
-  m = { key, ...spec, props: spec.props.map((p) => ({ ...p, blades: bladesFor(p.n, p.r, spec.tip ?? TIP) })) };
+  m = { key, ...spec, props: spec.props.map((p) => ({ ...p, blades: bladesFor(p.n, p.r, spec.tip ?? TIP, spec.blade ?? DARK) })) };
   // the blur discs of all the propellers as one mesh: a plain disc looks the same however far it has turned
   m.discs = merge(m.props.map((p) => ({ geo: discGeo.get(p.blades), m: new THREE.Matrix4().makeTranslation(p.x, p.y, p.z) })));
   const ext = Math.max(spec.span, spec.len) / 2 * 1.12;
