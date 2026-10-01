@@ -22,6 +22,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     while its squad walks over and builds it. Allies see it, enemies do not.
   - Right-click to help still joins only a pattern that has segments left to hand out. A segment that already has a
     squad on it cannot take a second one.
+- Flooding: a crater next to a river or ford fills with water.
+  - It becomes a ford as deep as the crater was: everyone wades through it slowly, it gives no cover any more and
+    nothing can be built on it. A flooded crater floods the crater next to it, one cell every half second, so water
+    creeps down a line of shell holes. It never drains.
+  - A crater on ground higher than the water stays dry. Craters that touch water on the map at the start of a match
+    fill in the first second.
+  - Left for later: trenches do not flood, a deep crater does not become impassable river, rain does not fill craters.
+  - Not checked in a browser, and no AI balance run yet (shelling a riverbank now removes cover instead of making it).
+  - Found, not fixed: `node test.js` fails about one run in three on the lobby check "a new match without the old
+    result" (once on "an explicit ground attack overrides the plane stance" with flooding switched off).
 - The computer opponents no longer cheat. They plan only from what a player in their seat could know: the same
   snapshots a human receives (units seen right now, buildings and terrain remembered under fog, public announcements),
   with the same rounded numbers. Leaks closed: they knew which resource nodes already held an enemy depot (it steered

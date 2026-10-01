@@ -398,6 +398,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.wear = Float32Array.from(g.chars, startWear); g.burnt = new Uint8Array(g.chars.length);
   g.cellState = Uint8Array.from(g.chars, startState);
   g.fires = new Map(); // burning cell -> seconds left
+  g.soak = new Set(g.chars.keys()); // cells to look at for flooding (see flood)
   // wind, weather and fire roll their own dice, so they do not disturb the order of the combat rolls
   g.seed = Math.floor(Math.random() * 2 ** 32);
   g.wind = { a: rng(g) * Math.PI * 2, v: 0.3 + rng(g) * 0.5 };
@@ -900,6 +901,7 @@ function setCell(g, c, ch) {
   if (g.chars[c] === 'N') g.mines.delete(c);
   g.flags[c] = next; g.chars[c] = ch; g.cellHp[c] = CFG.terrainHp[ch] ?? 0;
   g.fires?.delete(c);
+  if (g.soak) for (const n of [c, c - 1, c + 1, c - g.w, c + g.w]) g.soak.add(n); // flood() sorts out which of them count
   if (g.wear) { g.wear[c] = startWear(ch, c); g.cellState[c] = stateOf(g, c); }
   g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   // Cover and wire edits leave the region graph unchanged. Only movement bits relabel it.
@@ -913,7 +915,7 @@ function dent(g, c) {
   g.height ??= new Int8Array(g.w * g.h);
   const L = g.height[c] - 1, x = c % g.w;
   if (L < CFG.minLevel || [c - g.w, c + g.w, x > 0 ? c - 1 : -1, x < g.w - 1 ? c + 1 : -1].some(n => n >= 0 && n < g.height.length && g.height[n] - L > 1)) return;
-  g.height[c] = L;
+  g.height[c] = L; g.soak?.add(c);
   g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.infantryRegionVersion = (g.infantryRegionVersion ?? 0) + 1;
   g.vehicleRegionVersion = (g.vehicleRegionVersion ?? 0) + 1;
@@ -2161,6 +2163,18 @@ function burn(g, list, dt) {
     if (ch === 'H') wreckCell(g, list, c, '.'); else touch(g, c);
   }
 }
+// Twice a second: a crater beside a river, a ford or a flooded crater fills up, unless it lies higher than the water.
+// It becomes a ford as deep as the crater was: wade through it, no cover. One cell a go, so water creeps down a line
+// of craters. Only cells that changed (and their neighbours) are looked at.
+function flood(g) {
+  const fill = [...g.soak].filter(c => {
+    if (g.chars[c] !== '+') return false;
+    const x = c % g.w;
+    return [c - g.w, c + g.w, x > 0 ? c - 1 : -1, x < g.w - 1 ? c + 1 : -1].some(n => (g.chars[n] === 'W' || g.chars[n] === 'F') && level(g, n) >= level(g, c));
+  });
+  g.soak.clear();
+  for (const c of fill) { const deep = g.wear[c]; setCell(g, c, 'F'); g.wear[c] = deep; touch(g, c); }
+}
 // The wind wanders. Showers come and go: the ground soaks and dries more slowly than the rain starts and stops.
 function weather(g, dt) {
   g.wind.a += (rng(g) - 0.5) * 0.6 * dt; g.wind.v = Math.min(1, Math.max(0.15, g.wind.v + (rng(g) - 0.5) * 0.3 * dt));
@@ -2516,6 +2530,7 @@ export function step(g) {
   for (const s of g.smokes) s.t -= dt * (1 + 0.5 * (g.wx?.rain ?? 0));
   weather(g, dt);
   if (g.fires.size && g.tick % 10 === 0) burn(g, list, dt * 10);
+  if (g.soak.size && g.tick % 10 === 0) flood(g);
   g.smokes = g.smokes.filter(s => s.t > 0);
 
   // reinforce / repair near your own spawn (Classic: near any own or allied Production Building), paid in manpower

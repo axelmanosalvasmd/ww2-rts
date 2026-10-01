@@ -619,6 +619,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.ok(!g.units.has(t.id) || t.hp < 360 * 0.5, 'tank under the bombs is wrecked or badly hurt');
 }
 
+// Flooding: water creeps from a river down a line of craters, but not uphill and not to a crater that is apart.
+{
+  const rows = [...empty]; rows[5] = '.....W++.+..........'; rows[8] = '.....W+.............';
+  const heights = empty.map((_, y) => '0'.repeat(6) + (y === 8 ? '1' : '0') + '0'.repeat(13));
+  const g = createGame({ ...blank(rows), heights }, ['a', 'b'], false), at = (x, y) => g.chars[y * 20 + x], deep = g.wear[5 * 20 + 7];
+  run(g, 0.5);
+  assert.equal(at(6, 5) + at(7, 5), 'F+', 'the crater on the bank fills first');
+  run(g, 1);
+  assert.equal(at(7, 5), 'F', 'then the one behind it');
+  assert.equal(g.wear[5 * 20 + 7], deep, 'as deep as the crater was');
+  assert.equal(at(9, 5), '+', 'a crater apart from the water stays dry');
+  assert.equal(at(6, 8), '+', 'a crater above the water stays dry');
+}
+
 // Tank shells: ordered to fire at a house, the tank knocks it down.
 {
   const rows = [...empty]; rows[10] = '.'.repeat(9) + 'B' + '.'.repeat(10);

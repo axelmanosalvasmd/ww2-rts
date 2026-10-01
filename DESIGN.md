@@ -911,6 +911,11 @@ the sand-table look, move the rules away from the board a little.
 - Starting depth comes from `cellNoise(c)`, a hash of the cell index: mud and fords 0.2-0.8, craters 0.3-0.6. Cheap
   and stable, but it is not symmetric, so it can favour a spawn (River Towns moved from 43/29/28 to 30/43/27).
   If that matters, mirror the hash through the map's symmetry or let map files carry depths.
+- Flooding: `flood(g)` runs twice a second. A `+` cell with a `W` or `F` 4-neighbour that is not lower than it
+  becomes `F` and keeps its wear as the ford's depth. `g.soak` holds the cells to look at (every cell `setCell` or
+  `dent` changed, and its neighbours), so a quiet map costs nothing. Chosen over a real fluid sim (water volume per
+  cell): on a 2 m grid it would look the same and cost synced state and tuning. The client needed no change: a new
+  `F` cell joins its neighbour's body in `water-levels.js` and takes its water line. Balance not rerun.
 - Cover: `coverQ` scales a cover cell's protection (hp share for walls and hedges, depth for craters);
   `coverBehind` returns 0-1 by distance to the first solid cell toward the shooter (full to 2.2 m, zero at 3.8 m)
   times that cell's `coverQ`. `behindCover` (cover seeking, cover rank) is `coverBehind > 0.4`.
