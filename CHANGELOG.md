@@ -5,6 +5,58 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Living ground: the board wears, burns and gets rained on, and nothing snaps at a tile edge any more.
+  - Soft edges: a unit's speed is the average of the ground under its whole footprint, so a tank half on a road gets
+    half the bonus. Cover behind a wall, house, hedge or vehicle is full within about 2 m and fades to nothing at
+    3.8 m (it used to switch off at 2.2 m).
+  - Wear from traffic: every vehicle that drives over open ground cuts it up a little (about 10 tank passes when dry,
+    light vehicles count half). Churned ground slows vehicles by up to 30%, then turns into shallow mud, and mud that
+    keeps getting driven on gets deeper. Roads do not wear from traffic.
+  - Wear from shelling: explosions break up a road step by step (less speed bonus each time) until the cell is a
+    crater. A crater that is hit again gets deeper.
+  - Depth: every mud, ford and crater cell has its own depth. Mud runs from 70% vehicle speed (shallow) to 35% (deep),
+    a ford from 75% to 35% for everyone, and a deeper crater is better cover (from about 40% protection to 70%;
+    it was a flat 50%).
+  - Shot-up cover: walls, sandbags and hedges show two stages of damage before they fall, and protect less as they go
+    (down to half their protection when nearly gone).
+  - Slope: going uphill slows a unit in proportion to how steep the next metre is, up to 20% for infantry and 45% for
+    vehicles. Crossing a slope at an angle is faster than driving straight up it. Downhill costs nothing.
+  - Wind: each match has a wind that slowly shifts. Smoke screens drift with it (up to 1.2 m/s), so a screen laid
+    upwind covers an advance and one laid downwind blows away from it. Cloud shade, particle smoke and rain follow
+    the same wind.
+  - Dust: a vehicle moving over dry ground trails dust and is spotted from 30% further away. No dust in the wet or
+    in mud.
+  - Fire: heavy explosions (artillery, bombs, rockets, satchels) can set hedges, houses and dry grass alight. Fire
+    spreads to neighbouring cells, much faster downwind. A hedge burns for 14 s and is gone, a house burns for 25 s
+    and ends as rubble, grass burns for 5 s and does not burn twice. Infantry in a burning cell (or a burning house)
+    lose 8 hp a second and get pinned; an idle squad steps out by itself. Burning hedges and houses throw up a smoke
+    cloud that blocks sight. Units route around fire.
+  - Rain: showers come and go (the first no sooner than 3 minutes in, 1.5 to 3 minutes long, 4 to 8 minutes apart).
+    Rain cuts sight by 20%, thins smoke faster, puts fires out four times faster and stops them spreading. The ground
+    soaks over 90 s and dries over 4 minutes: wet ground slows vehicles off the road by up to 20% (40% on ground
+    below level 0), triples traffic wear, and slows fords by up to another 30%. Roads are unaffected, so they matter
+    most in the wet. A line under the scores says when it is raining or the ground is wet.
+  - Look: worn ground shows as mud creeping into the grass, broken roads as shelled earth, burnt ground as black
+    earth, deep mud and fords darker than shallow ones. Fires use the existing flame, ember and smoke effects and
+    leave a scorch mark; rain is thin streaks on the wind with a dimmer sun and heavier cloud shade (streaks are off
+    on Graphics Low, like snow). All of it uses the existing painted textures and models; nothing was replaced.
+  - Computer players get all of it through the game rules; their vehicles weigh wear, mud, roads and fire when they
+    pick a route.
+  - Balance: Conquest, 120 three-way AI matches per map, wins per spawn. Three Crossroads 42/33/25% (30/34/36% before,
+    44/33/23% the round before that: within the noise of this script). Crossroads Village 51/49%. Hill 112 30/27/13/30%
+    (27/27/15/32% before). River Towns 30/43/27% over 240 matches (43/29/28% before): the favoured spawn moved from
+    the top one to the second one, most likely because its fords drew shallower depths. Spawns are shuffled per
+    match, so no player is favoured, but the map is no fairer than it was.
+  - In an average 9-minute AI match on Three Crossroads: about 65 of 360 road cells shelled into craters, 130 fires
+    started, 170 cells burnt, 15 hedge cells lost, and only a handful of cells churned toward mud (standard armies
+    have few vehicles; River Towns, with its bridge approaches, wore about 100 cells and made 5 new mud cells).
+  - Smoke clouds now carry an id in snapshots, so a drifting cloud is the same cloud to the client.
+  - Performance: a wear or scorch change repaints only the ground tiles around it. The 3D pieces, scenery, relief and
+    water are rebuilt only when a cell's type, height or damage stage changes.
+  - Left for later: no lobby switch for weather (the rules take `weather: false`, nothing in the lobby sets it).
+    Fire does not spread through the painted crop fields any differently from grass. No rain sound. Wet ground is
+    not drawn darker. Houses do not show damage stages. Depth is random per cell, which can favour a spawn on a
+    symmetric map (see River Towns above).
 - Terrain: roads, mud, buildable bridges and mines.
   - Roads: vehicles drive 35% faster on a road or a bridge and plan their routes along roads. Infantry are unaffected.
     A trench, wire or tank traps can be built across a road, which cuts it.

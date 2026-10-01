@@ -135,7 +135,8 @@
   .sc-val .num { font-size: 18px; line-height: 1; color: var(--brass); }
   .sc-val > span:empty { display: none; }
   #status { padding: 6px 12px; color: var(--brass); }
-  #status:empty { display: none; }
+  #status:empty, #wx:empty { display: none; }
+  #wx { padding: 6px 12px; background: #22251b; color: #a9c0cc; }
 
   /* top right: resources, income and army size, then the support calls */
   #econ { position: absolute; top: var(--gap); right: var(--gap); padding: 8px 10px 10px; display: grid; justify-items: end; gap: 2px; }
@@ -277,7 +278,7 @@
     <button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7"/></svg></button>
   </div>
   <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="panBtn">Pan speed: Normal</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
-  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
+  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div><div id="wx" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
       <span title="Manpower: buys units, fortifications and support"><b class="num" id="mp">0</b>MP</span>

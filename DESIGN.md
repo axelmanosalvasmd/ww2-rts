@@ -464,10 +464,10 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
 ## Roads, mud, bridges and mines (2026-10-01)
 - Three terrain cells: `D` road (flag ROAD), `M` mud (flag MUD), `N` mine (no flags). `=` bridge also carries ROAD.
   The flags array is 16 bits now (MUD is 256).
-- Vehicles only: speed x `CFG.roadSpeed` (1.35) on ROAD, x `CFG.mudSpeed` (0.5) in MUD. In `findPath` a road step
-  costs `roadCost` (0.75) and a mud cell adds `mudCost` (1), so the cost matches the travel time. On a map with roads
-  (`g.roads`) the A* estimate is scaled by 0.75 to stay admissible; maps without roads pay nothing. String-pulling does
-  not cross mud and does not skip past the next road cell, so a vehicle stays on the road it chose.
+- Vehicles only: speed x `CFG.roadSpeed` (1.35) on ROAD, mud between 0.7 and 0.35 by depth (see Living ground below).
+  In `findPath` a vehicle's step costs 1 / the cell's speed, so the cost is the travel time. On a map with roads
+  (`g.roads`) the A* estimate is scaled by 1 / 1.35 to stay admissible; maps without roads pay nothing. String-pulling
+  does not cross mud and does not skip past the next road cell, so a vehicle stays on the road it chose.
 - Infantry ignore both. One rule per terrain kept the HUD free of new tooltips; revisit if roads feel dull on foot.
 - Roads and mud are buildable ground: a fortification replaces the cell, and it wrecks to open ground, not back to road.
 - Bridge and Minefield are two more `FORTS`, so the dig command, queueing, previews and the Orders buttons came free.
@@ -492,6 +492,48 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
 - Balance (120 three-way AI matches per map, wins per spawn, with / without roads, AI not using them): Three Crossroads
   44/33/23 vs 44/29/27, River Towns 39/30/31 vs 43/28/29. With the AI laying mines and rebuilding bridges: Three
   Crossroads 30/34/36 (120), River Towns 43/29/28 (360).
+
+## Living ground (2026-10-01): less board, more ground
+The owner's brief: the game felt like a board game because tiles have fixed effects that switch at their edges. Keep
+the sand-table look, move the rules away from the board a little.
+- One number per cell, `g.wear` (0-1), read according to the cell's type: churn on open ground, depth for mud, fords
+  and craters, damage on a road. `groundMul(g, c, veh)` turns it into a speed; `speedMul` averages it over five points
+  of the unit's footprint (centre and four at 0.6 x radius), skipping water and walls. That average is the whole
+  "soft edges" rule for movement.
+- Traffic: `CFG.traffic` (0.05) wear per metre a tank drives, half for vehicles that do not crush, half again in mud,
+  x (1 + 3 x wetness). Open ground at wear 1 becomes `M` with wear 0, so the speed is continuous across the change
+  (0.7 either side). First tried 0.02: a standard 9-minute AI match then churned under 10 cells, invisible.
+- Shelling: `damageCells` adds hit / 200 to a road's wear (crater at 1) and hit / 500 to a crater's.
+- Starting depth comes from `cellNoise(c)`, a hash of the cell index: mud and fords 0.2-0.8, craters 0.3-0.6. Cheap
+  and stable, but it is not symmetric, so it can favour a spawn (River Towns moved from 43/29/28 to 30/43/27).
+  If that matters, mirror the hash through the map's symmetry or let map files carry depths.
+- Cover: `coverQ` scales a cover cell's protection (hp share for walls and hedges, depth for craters);
+  `coverBehind` returns 0-1 by distance to the first solid cell toward the shooter (full to 2.2 m, zero at 3.8 m)
+  times that cell's `coverQ`. `behindCover` (cover seeking, cover rank) is `coverBehind > 0.4`.
+- Slope: `heightAt` interpolates the cell levels; the grade of the next metre along the path scales speed by
+  `CFG.slope` ([0.2 infantry, 0.45 vehicles]). Levels stay whole numbers: only the movement reads them smoothly.
+- Clients learn a cell's state as a 4th element in the terrain log entry: wear in quarters (bits 0-1), burnt (bit 2),
+  damage stage (bits 3-4). `touch` logs a cell only when that byte changes, so wear costs four messages per cell
+  over its life. `startState(ch, c)` is exported so the client can draw map cells nobody has mentioned yet.
+- Wind, weather and fire roll their own dice (`g.seed`, `rng`), so they do not shift the combat rolls that some
+  tests script through Math.random. The seed is a plain number so a game can still be cloned.
+- Wind: `g.wind` { a, v } random-walks. `weather()` moves every smoke cloud by v x `CFG.windSpeed`. Smoke clouds
+  got ids because the client keyed them by position and would have re-burst a drifting cloud every snapshot.
+- Rain: `g.wx` { rain, wet, raining, next }. rain ramps over 20 s, wet follows over `soak` / `dryOut`. Effects are
+  listed in the changelog; all of them read `g.wx` where they apply, there is no weather system beyond that.
+  `createGame(..., { weather: false })` gives a game without it.
+- Fire: `g.fires` maps cell -> seconds left; `burn()` runs twice a second. Spread chance per second per neighbour:
+  hedge 0.25, house 0.03, grass 0.022, x max(0.1, 1 + 1.5 x wind along the step) x (1 - rain). Grass is tuned to
+  under one new cell per burning cell in still air, so a grass fire dies out unless the wind carries it; hedgerows
+  burn end to end. Only blasts with a terrain value of 60+ can ignite (hedge 0.3, house 0.15, grass 0.03 per cell).
+- Dust: `u.dust` is the tick a vehicle last moved on dry ground; `updateVision` multiplies the viewer's range by
+  `CFG.dustSeen` (1.3) for such a target. Unit flag 1024 tells the client to draw the trail.
+- Client: `client/wind.js` holds the wind for fx.js and atmosphere.js (it was a constant in both). ground.js maps the
+  state byte onto the existing material blend (mud share for wear, shelled earth for burnt and for broken road).
+  structures.js lowers a damaged stone wall and drops its capstones, removes sandbag courses, and thins a hedge.
+  fx.js draws fires with the existing flame, ember and wreck smoke particles and leaves the existing scorch decal.
+  atmosphere.js adds rain as a third kind of weather points (the snow system with a streak fragment) and dims the sun.
+- Balance and wear numbers: see the changelog entry.
 
 ## Unit control and unit AI (decided 2026-10-01, four slices)
 Decisions from the planning interview:

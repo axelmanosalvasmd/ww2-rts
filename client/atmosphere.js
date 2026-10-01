@@ -12,9 +12,10 @@
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
 import { sky, BOARD } from './light.js';
+import { wind } from './wind.js';
 
 const TAU = Math.PI * 2;
-const WL = Math.hypot(0.55, 0.25), WX = 0.55 / WL, WZ = 0.25 / WL; // the way smoke drifts in fx.js
+const WL = Math.hypot(0.55, 0.25), WX = 0.55 / WL, WZ = 0.25 / WL; // the wind before the server reports one (client/wind.js)
 const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const seeded = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
 
@@ -171,7 +172,9 @@ function flowAngle(water, p, r) {
 
 // Points live in a world-space box that follows the camera target; each one wraps around inside the box, so panning
 // never moves the flakes already on screen. They fade toward the box edges, near the camera and in the haze.
+// 'rain' is the game's own weather (snapshot.wx): thin streaks, drawn over any mood, as strong as the rain is.
 function weatherPoints(kind) {
+  if (kind === 'rain') return rainPoints();
   const snow = kind === 'snow', n = snow ? 2600 : 800, rnd = seeded(snow ? 5 : 9);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(Float32Array.from({ length: n * 3 }, rnd), 3));
@@ -229,6 +232,19 @@ function weatherPoints(kind) {
   const pts = new THREE.Points(geo, mat);
   pts.frustumCulled = false; pts.renderOrder = 0.8; pts.raycast = () => {};
   pts.userData.kind = kind;
+  return pts;
+}
+
+function rainPoints() {
+  const pts = weatherPoints('snow'), u = pts.material.uniforms;
+  u.uAlpha.value = 0; u.uSway.value = 0.05; u.uBox.value.set(200, 50, 200); u.uVel.value.set(0, -26, 0);
+  u.uSizeM.value.set(1.1, 1.9); u.uPxMax.value = 30; u.uColor.value.setHex(0xc6ced6);
+  // a streak instead of a flake: narrow across, long down the screen
+  pts.material.fragmentShader = pts.material.fragmentShader.replace(
+    'float a = vAlpha * ( 1.0 - smoothstep( 0.06, 0.25, dot( c, c ) ) );',
+    'float a = vAlpha * ( 1.0 - smoothstep( 0.0, 0.03, abs( c.x ) ) ) * ( 1.0 - smoothstep( 0.2, 0.5, abs( c.y ) ) );');
+  pts.material.needsUpdate = true;
+  pts.userData.kind = 'rain';
   return pts;
 }
 
@@ -587,7 +603,8 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
   root.add(mist);
   let sites = [];
 
-  let weather = null;
+  let weather = null, rain = null, wx = { rain: 0, wet: 0 }, shown = -1;
+  const drift = new THREE.Vector2();
   const BIRDS = 4, birds = birdMesh(BIRDS);
   root.add(birds);
   let flight = [];
@@ -611,6 +628,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     sun.shadow.radius = low ? 1 : 2.5 * M.soft;
     cloudBoard.visible = cloudTable.visible = on && !low && M.clouds > 0;
     if (weather) weather.visible = on && !low && !reduceMotion && weather.userData.kind === M.weather;
+    if (rain) rain.visible = on && !low && !reduceMotion && wx.rain > 0.02;
     birds.visible = on && !low && !reduceMotion && flight.length > 0;
     mist.visible = on && !!M.mist && sites.length > 0;
     mist.count = Math.min(sites.length, low ? 18 : MIST_CAP);
@@ -644,7 +662,7 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
     const cell = MW / map.w;
     measureGround();
     moodName = moodFor(map, key); M = MOODS[moodName];
-    applyMood();
+    applyMood(); wx = { rain: 0, wet: 0 }; shown = -1;
 
     cloudBoard.geometry = g.geometry;
     cloudBoard.position.copy(g.position); cloudBoard.position.y += 0.06; cloudBoard.rotation.copy(g.rotation);
@@ -687,9 +705,21 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
       const before = tableY; measureGround();
       if (tableY !== before) placeTable();
     }
+    // the game's weather: rain dims the sun, thickens the cloud shade and falls as streaks on the wind
+    if (wx.rain !== shown) {
+      shown = wx.rain;
+      sun.intensity = M.sunI * (1 - 0.45 * wx.rain); hemi.intensity = M.hemiI * (1 + 0.12 * wx.rain);
+      cloudMat.uniforms.strength.value = M.clouds + 0.16 * wx.rain;
+      if (wx.rain > 0.02 && !rain) { rain = weatherPoints('rain'); root.add(rain); }
+      // each shower keeps the slant it started with (the streaks' positions follow from their speed times the clock)
+      if (rain && !rain.visible) rain.material.uniforms.uVel.value.set(wind.x * 9, -26, wind.z * 9);
+      applyGfx();
+    }
     if (cloudBoard.visible) {
-      const k = (CLOUD_SPEED * t) / CLOUD_SCALE;
-      cloudMat.uniforms.drift.value.set(-WX * k % 1, -WZ * k % 1, (-WX * k * 1.6 + 0.37) % 1, (-WZ * k * 1.9 + 0.61) % 1);
+      // cloud shade moves with the wind; summed up frame by frame so a change of wind does not make it jump
+      const k = (CLOUD_SPEED * dt) / CLOUD_SCALE / WL;
+      drift.x = (drift.x - wind.x * k) % 1; drift.y = (drift.y - wind.z * k) % 1;
+      cloudMat.uniforms.drift.value.set(drift.x, drift.y, (drift.x * 1.6 + 0.37) % 1, (drift.y * 1.9 + 0.61) % 1);
     }
     if (mist.visible) {
       for (let i = 0; i < mist.count; i++) {
@@ -699,8 +729,9 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
       }
       mist.instanceMatrix.needsUpdate = true;
     }
-    if (weather?.visible) {
-      const u = weather.material.uniforms, box = u.uBox.value, gy = cam.y ?? hAt(cam.x, cam.z), snow = weather.userData.kind === 'snow';
+    if (rain?.visible) rain.material.uniforms.uAlpha.value = 0.42 * wx.rain;
+    for (const pts of [weather, rain]) if (pts?.visible) {
+      const u = pts.material.uniforms, box = u.uBox.value, gy = cam.y ?? hAt(cam.x, cam.z), snow = pts.userData.kind !== 'dust';
       u.uTime.value = t;
       u.uBoxMin.value.set(cam.x - box.x / 2, gy - (snow ? 4 : 1.5), cam.z - box.z / 2);
       u.uFade.value.x = cam.x; u.uFade.value.y = cam.z;
@@ -724,6 +755,8 @@ export function createAtmosphere({ scene, renderer, camera, cam, sun, hemi }) {
 
   return {
     start, update,
+    // the game's weather, 0-1 each: how hard it rains, how wet the ground is
+    setWeather(rainNow, wet) { wx = { rain: rainNow, wet }; },
     get mood() { return moodName; },
     // debug: hide everything this module draws (for measuring its cost)
     setEnabled(v) { enabled = !!v; root.visible = on && enabled; },

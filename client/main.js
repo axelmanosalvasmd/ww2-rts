@@ -6,11 +6,12 @@ import { createSelection } from './selection.js';
 import { createOrders } from './orders.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
-import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
 import { createGround } from './ground.js';
+import { setWind } from './wind.js';
 import { surface, setFogMap } from './surfaces.js';
 import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
 import { createRelief } from './relief.js';
@@ -348,8 +349,10 @@ function startGame(m, restored = null) {
   const gp = createGround(map, renderer);
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
-  for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
-  gp.paint(terrain.grid);
+  // what the server says about a cell besides its type: wear, burnt, damage stage (see startState in shared/sim.js)
+  terrain.state = Uint8Array.from(map.rows.join(''), startState);
+  for (const [cell, ch, lv, st] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
+  gp.paint(terrain.grid, terrain.state);
   // the fog overlay shares the relief's live geometry, which a crater replaces
   relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
@@ -406,7 +409,13 @@ function startGame(m, restored = null) {
 let terrain = null;
 let props = null;
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt); }
+function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state); }
+
+// the weather line under the scores: only there when it matters
+function showWeather(rain, wet) {
+  const text = rain > 0.3 ? 'Rain: vehicles slow off the road, fords deeper, sight shorter' : wet > 0.15 ? `Wet ground (${Math.round(wet * 100)}%): vehicles slow off the road` : '';
+  if ($('wx').textContent !== text) $('wx').textContent = text;
+}
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -417,17 +426,21 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
-  for (const [cell, ch, lv] of cells) {
-    const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
-    terrain.grid[y][x] = ch;
+  // Ground wear and scorching only change the paint. The relief, the 3D pieces, the scenery and the water are redone
+  // only for cells whose type, height or damage stage changed: traffic wears many cells in a big battle.
+  const shaped = [];
+  let pieces = false;
+  for (const entry of cells) {
+    const [cell, ch, lv, st = 0] = entry, x = cell % terrain.w, y = Math.floor(cell / terrain.w), heights = lastStart.map.heights;
+    const moved = terrain.grid[y][x] !== ch || (lv !== undefined && levelOf(heights?.[y]?.[x] ?? '0') !== lv);
+    if (moved) shaped.push(entry);
+    pieces ||= moved || (terrain.state[cell] ^ st) >> 3 > 0;
+    terrain.grid[y][x] = ch; terrain.state[cell] = st;
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
-  relief.update(cells); // reshapes the cells around the change; the fog overlay follows through onGeometry
-  buildStructures();
-  props?.refresh();
-  water?.changed(cells);
-  mmImage = null;
+  terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
+  if (shaped.length) { relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; } // the fog overlay follows the relief through onGeometry
+  if (pieces) buildStructures();
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, tall flag, name.
@@ -595,7 +608,10 @@ function applySnapshot(s) {
   }
   // flashes, tracers, blasts and smoke for the ground war and their sounds (client/fx.js); the air shots and the
   // planes' strike warnings are left out so nothing is drawn twice
-  effects.snapshot({ ...s, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
+  // the wind first: it carries this snapshot's smoke, dust and flames
+  if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setWeather(s.wx[0], s.wx[1]); showWeather(s.wx[0], s.wx[1]); }
+  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL]);
+  effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   for (const [id, kind, tx, tz, ...path] of s.plans ?? []) { const v = units.get(id); if (v) v.plan = { kind, tx, tz, path }; }

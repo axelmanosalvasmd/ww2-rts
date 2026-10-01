@@ -3,7 +3,7 @@
 // so cell edges come out soft instead of square. Contour lines, shell holes and trench cuts are drawn on top.
 // When cells change mid-match only the 4x4-cell tiles around them are repainted and sent to the GPU.
 import * as THREE from 'three';
-import { levelOf, CELL } from '/shared/sim.js';
+import { levelOf, CELL, startState } from '/shared/sim.js';
 import { gfx } from './gfx.js';
 
 // material ids; FIELD_V is the ploughed field turned 90 degrees
@@ -127,12 +127,15 @@ function fieldsOf(map) {
   return f;
 }
 
+// S.state: per cell, what the server says besides the type (wear in quarters, burnt, damage stage); a map cell the
+// server has not mentioned is in its starting state
 function cellAttrs(S, grid) {
   const { w, h, map, fields } = S, rows = map.rows, n = w * h;
   const prim = new Uint8Array(n), sec = new Uint8Array(n), amt = new Float32Array(n), lev = new Float32Array(n), ov = new Uint8Array(n), key = new Uint8Array(n);
   const at = (x, y) => grid[y]?.[x];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x, ch = grid[y][x], L = levelOf(map.heights?.[y]?.[x] ?? '0');
+    const st = S.state ? S.state[i] : startState(ch, i), worn = st & 3;
     lev[i] = L;
     let p = GRASS, s = DIRT, a = 0;
     if (ch === '.') {
@@ -147,22 +150,25 @@ function cellAttrs(S, grid) {
       else if (town) { p = ROAD; s = GRASS; a = 0.3; }
       else if (L < 0) { s = MUD; a = Math.min(0.6, 0.25 + 0.12 * -L); }
       else a = 0.1 + 0.3 * (nA(x * 3 + 41, y * 3 + 77) * 0.5 + 0.5);
+      // tracks cut the ground up step by step until it is mud; burnt ground is black earth
+      if (worn) { s = MUD; a = Math.max(a, 0.24 * worn); }
+      if (st & 4) { s = SHELL; a = 0.78; }
     }
     else if (ch === 'B' || ch === 'K') { p = DIRT; s = ROAD; a = 0.3; }
     else if (ch === 'R') { p = RUBBLE; s = DIRT; a = 0.3; }
-    else if (ch === '+') { p = SHELL; s = MUD; a = 0.3; ov[i] = 1; }
+    else if (ch === '+') { p = SHELL; s = MUD; a = 0.18 + 0.1 * worn; ov[i] = 1; } // a deeper hole holds more mud
     else if (ch === 'T') {
       p = EARTH; s = MUD; a = 0.3; ov[i] = 16;
       DIRS.forEach(([dx, dy], k) => { if (at(x + dx, y + dy) === 'T') ov[i] |= 1 << k; });
     }
     else if (ch === 'W' || ch === '=') p = WATER;
-    else if (ch === 'F') { p = WATER; s = ROAD; a = 0.45; }
+    else if (ch === 'F') { p = WATER; s = ROAD; a = 0.6 - 0.13 * worn; } // the shallows show their gravel
     else if (ch === 'H') { s = MUD; a = 0.35; }
     else if (ch === 'X') { s = MUD; a = 0.45; }
     else if (ch === 'Y') a = 0.4;
     else if (ch === '#') a = 0.5;
-    else if (ch === 'D') { p = ROAD; a = 0.12; }
-    else if (ch === 'M') { p = MUD; a = 0.25; }
+    else if (ch === 'D') { p = ROAD; s = worn ? SHELL : DIRT; a = 0.12 + 0.2 * worn; } // a shelled road breaks up
+    else if (ch === 'M') { p = MUD; a = 0.42 - 0.12 * worn; } // shallow mud still shows the dirt
     else if (ch === 'N') a = 0.3;
     if (!a) s = p;
     prim[i] = p; sec[i] = s; amt[i] = a; key[i] = p | s << 4;
@@ -431,6 +437,6 @@ export function createGround(map, renderer) {
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
-  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid) => paint(S, grid),
+  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state) => { S.state = state; paint(S, grid); },
     isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading };
 }
