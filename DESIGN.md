@@ -215,6 +215,59 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Classic balance with Fuel and the new units (30 per map): 74% decided before Sudden Death (23/25/19 of 30), median 15.9
   (default), 18.1 (River Towns), 23.2 min (Six Fronts, long), faction wins 24/33/31 with 2 draws.
 
+## Look and feel (decided 2026-10-01)
+Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
+is the paperwork around it. Concepts in `docs/concepts/`: `e-mix-acetate.jpg` is the target, `a-sand-table.jpg` the world
+mood, `c-clean-modern.jpg` the restraint (slim panels, small screen coverage), `before-conquest.jpg` where we started.
+The concept images show richer models than ours; the models stay procedural, so the look comes from paint, light and
+the HUD.
+- Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
+- Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
+  particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.
+- World:
+  - Ground painted from tileable textures (grass, dirt, mud, road, field) generated with gpt-image-2 and blended per
+    cell; contour lines stay. Craters and scorch marks are painted into the ground.
+  - Warm low sun, soft shadows, slightly saturated "painted miniature" colors, a light haze.
+  - A slight blur only along the far (top) edge of the screen, subtle enough that units there stay readable. Off on Low.
+  - Beyond the map edge: a dark wooden planning table with the terrain board's cut earth edge showing (no grey void).
+  - Unit markers: the class badge over each unit becomes the same military map symbol the HUD uses, drawn in the
+    owner's color. Health bar, cover shield and veterancy stay.
+  - Order lines and range rings drawn like grease pencil on the table (slightly rough strokes, arrowheads on routes).
+    Colors keep their meaning: blue move, orange attack-move, white retreat, red attack, yellow dig/build.
+- Player colors (grease pencil, they read on grass, the dark strip and manila): blue `#3b73d6`, red `#cc3a2e`, chalk
+  `#ece6d6`, orange `#e2832b`, violet `#9b5cd4`, cyan `#35b6c0`. A 1v1 is blue against red. Gold and green are gone:
+  gold clashed with the brass accent and manila, green vanished on grass.
+- HUD (panel style "E"): a dark translucent olive-charcoal strip (`#22251b` at ~85%) holds everything; only the Command
+  Card's unit cards and the selected-unit list are manila cards (`#d8c69a`) with dark brown ink (`#2b2418`). Light text
+  on the strip `#e6dcc0`, brass `#d2a849` for big numbers, grease-pencil red `#b8322a` for danger.
+- Type: Courier Prime (typewriter) for all HUD text, Stardos Stencil only for big numbers (MP, VP, clock, HQ labels).
+  No all-caps labels, nothing under 13 px. IBM Plex Mono is gone.
+- Unit icons everywhere: period military map symbols (infantry box with an X, armor box with an oval, artillery box
+  with a dot, and so on), one symbol per unit type, full name and role in a tooltip. Faction markings next to player
+  names in the score panel: US star, German cross, Soviet star.
+- Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
+  row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
+  Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
+  Classic); bottom right the minimap. Nothing overlaps at 1366x768. The always-on keybinding panel is parked
+  (issue #2); hotkeys show on buttons.
+- Lobby: same style, the room form as a manila order card. The map editor only takes the new fonts and colors.
+- Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area), point captured /
+  lost, unit lost, enemy Air Support incoming, unit ready and building finished (Classic). One line each in a short list
+  above the minimap (newest on top, gone after ~6 s), a minimap ping and a short sound. Space jumps to the newest alert
+  while one is showing, otherwise it focuses the selection as before. No kill feed, no damage numbers.
+- Combat effects: muzzle flashes, glowing tracers, particle explosions with dust and debris, lasting scorch marks, fire
+  on wrecks, better smoke. A very small screen shake on big nearby blasts, off on Low.
+- Audio (ElevenLabs, generated 2026-10-01; raw takes and manifests in `~/.local/share/ww2-rts/audio-raw/2026-10-01/`):
+  35 sound effects (`eleven_text_to_sound_v2`, four takes each, best take picked by onset, clipping and loudness) and
+  voice lines in Eleven v4 for each faction in its own language, two voices per faction, 12 lines each (move, attack,
+  retreat, under fire, unit lost), two takes per line, directed with v4 audio tags. They replace the browser's speech
+  synthesis. One volume control covers effects, voices and alerts (mute used to silence only the voices). No music.
+- Slices, each its own commit with its changelog entry: 1 HUD (layout, panels, colors, type, symbols, and the bugs
+  below), 2 alerts, 3 world (ground, light, table edge, graphics setting), 4 combat effects, 5 audio.
+- Bugs found while looking (fixed in slice 1): at 1600x900 the orders panel covers the recruit bar; Classic's
+  "MP · Mun · Fuel" readout wraps to two lines; the lobby form spills past its card; the orders panel's HTML is rebuilt
+  on every snapshot (10 Hz), which can eat clicks; mute only silences the voices.
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz.
