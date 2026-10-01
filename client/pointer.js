@@ -260,6 +260,7 @@ export function createPointer({ view, playing, tryStore, captureButton, captureN
     },
     // call from the fullscreen button before requestFullscreen, which uses up the click's activation
     beforeFullscreen() { if (!document.fullscreenElement && mode !== 'off') { suspended = false; capture(); } },
+    release() { release(false); },
     // debug: a captured mouse without pointer lock, moved by the real pointer's motion or by move(dx, dy)
     simulate(on = true) { on = !!on; if (on === sim) return; sim = on; if (!locked) switched(on); },
     move(dx, dy) { if (captured()) moveBy(dx, dy, null); },

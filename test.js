@@ -5,11 +5,40 @@ import { readFileSync, readdirSync } from 'node:fs';
 import * as sim from './shared/sim.js';
 import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
-import { think } from './shared/ai.js';
+import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
 import { createRelief } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
+import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
+import { createOrders } from './client/orders.js';
+
+// Sight rays ending on a cell border must stop at the destination, including mixed-sign diagonals.
+{
+  const map = { w: 64, h: 64, rows: Array(64).fill('.'.repeat(64)), spawns: [{ x: 1, y: 1 }, { x: 60, y: 60 }], points: [] };
+  const g = createGame(map, ['a', 'b'], false);
+  const end = { x: 62, z: 92 };
+  for (const dx of [-23, -22, -11, -2, -1, 0, 1, 2, 11, 22, 23]) for (const dz of [-23, -22, -11, -2, -1, 0, 1, 2, 11, 22, 23]) {
+    const start = { x: end.x + dx, z: end.z + dz };
+    assert.ok(los(g, start, end), `open border ray ${dx},${dz}`);
+    assert.ok(los(g, end, start), `reverse open border ray ${dx},${dz}`);
+  }
+  const start = { x: 85, z: 69 };
+  g.flags[40 * g.w + 37] |= sim.SIGHT;
+  assert.equal(los(g, start, end), false, 'a wall on a border-ending ray still blocks sight');
+  g.flags[40 * g.w + 37] &= ~sim.SIGHT;
+  g.flags[45 * g.w + 30] |= sim.SIGHT;
+  assert.ok(los(g, start, end), 'a wall beyond the endpoint must not block sight');
+}
+
+// Editor reachability uses terrain without a match's player or mine state.
+{
+  const g = { w: 20, h: 20, flags: new Uint16Array(400), height: new Int8Array(400) };
+  const from = { x: 3, z: 3 }, to = { x: 35, z: 35 };
+  assert.ok(findPath(g, from, to).length, 'the editor validates connected terrain without players');
+  for (let y = 0; y < g.h; y++) g.flags[y * g.w + 10] = sim.MOVE;
+  assert.equal(findPath(g, from, to).length, 0, 'the editor still rejects a blocked route');
+}
 
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
@@ -848,7 +877,8 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (let i = 0; i < popCap(g); i++) put(g, 0, 'rifle', 5, 5);
   const units = [...g.units.values()];
   command(g, 0, { t: 'amove', orders: units.map(u => [u.id, 30, 30]) });
-  assert.equal(units.filter(u => u.amove?.x === 30 && u.amove?.z === 30).length, units.length, 'Massive attack-move reaches every selected unit');
+  // one shared spot spreads into a formation (unit behavior), so each unit has its own attack-move end
+  assert.equal(units.filter(u => u.amove && u.path.length).length, units.length, 'Massive attack-move reaches every selected unit');
 }
 
 // Massive commands apply to every selected ID, including armies inherited above the population cap.
@@ -868,6 +898,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 {
   const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14); // a wall cell centered on (11, 21)
   const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
+  g.points.length = 0; // a squad on a capture point never walks out of its circle (unit behavior), and this wall is outside it
   const squad = put(g, 0, 'rifle', 15, 21), mg = put(g, 0, 'mg', 13, 25), mover = put(g, 0, 'rifle', 15, 17);
   put(g, 1, 'rifle', 35, 21);
   command(g, 0, { t: 'move', orders: [[mover.id, 15, 5]] });
@@ -904,7 +935,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
   // the squad stands just below the house's lower right corner cell (6, 9): cell (7, 10), the house is diagonal to it
   const corner = put(g, 0, 'rifle', 15, 21), open = put(g, 0, 'rifle', 15, 31);
-  corner.coverTry = open.coverTry = Infinity; // stay put: this checks the cover rule, not the walking
+  corner.holdPos = open.holdPos = true; // stay put: this checks the cover rule, not the walking
   const north = put(g, 1, 'rifle', 15, 3), south = put(g, 1, 'rifle', 15, 39);
   for (let i = 0; i < 4; i++) step(g);
   assert.ok(los(g, north, corner), 'the squad at the corner can be seen (and can see) past the house');
@@ -1025,6 +1056,9 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   const rows = [...empty]; rows[10] = '.....##' + '.'.repeat(13);
   const g = fresh(rows); g.players.forEach(p => (p.mp = 10000));
   const squad = put(g, 0, 'rifle', 17, 21), mg = put(g, 0, 'mg', 17, 23), tank = put(g, 0, 'tank', 30, 30);
+  // the squads stand on the capture point at (21, 21) and the wall is outside its circle: they stay on the point
+  assert.equal(command(g, 0, { t: 'cover', ids: [squad.id, mg.id] }), 'noCover', 'Take Cover never leaves a capture circle');
+  g.points.length = 0;
   squad.amove = { x: 30, z: 21 };
   assert.equal(command(g, 0, { t: 'cover', ids: [tank.id] }), 'needs', 'Take Cover needs infantry');
   assert.equal(command(g, 0, { t: 'cover', ids: [squad.id, mg.id, tank.id] }), undefined, 'Take Cover is accepted');
@@ -1273,6 +1307,7 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 {
   const rows = [...empty]; rows[10] = '.....#' + '.'.repeat(14); rows[4] = '.'.repeat(14) + 'BB....';
   const g = fresh(rows); g.players[0].mp = 10000;
+  g.points.length = 0; // the move ends on the capture point and the wall is outside its circle (unit behavior keeps squads on it)
   const squad = put(g, 0, 'rifle', 31, 21), tank = put(g, 0, 'tank', 21, 31);
   command(g, 0, { t: 'move', orders: [[squad.id, 15, 21], [tank.id, 21, 21]] });
   assert.equal(command(g, 0, { t: 'ability', ids: [squad.id], x: 15, z: 15, queue: true }), undefined, 'a grenade can be queued');
@@ -2243,12 +2278,618 @@ for (const flying of [false, true]) {
   } finally { Math.random = orig; }
 }
 
+// ---------- Unit behavior (DESIGN.md "Unit behavior") ----------
+// An 80 x 60 m field; `edit` gets the rows as character arrays. Passive enemies are seen but never pick a target or
+// shoot, so only the unit under test decides anything.
+const field = (edit = () => {}) => { const rows = Array.from({ length: 30 }, () => Array(40).fill('.')); edit(rows); return rows.map(r => r.join('')); };
+// (a shot wakes up a passive unit's target search, so the units under test hold their fire)
+const passive = u => Object.assign(u, { retarget: 1e9, cooldown: 1e9 }), holdFire = u => Object.assign(u, { cooldown: 1e9 });
+const covered = (g, p) => (g.flags[Math.floor(p.z / CELL) * g.w + Math.floor(p.x / CELL)] & sim.COVER) > 0;
+const hedge = rows => { for (let y = 3; y < 27; y++) rows[y][20] = 'H'; }; // x 40 to 42 m, z 6 to 54 m
+// sheltered from the east: in the hedge or close behind it (the sim counts solid ground within 2.2 m toward the shooter)
+const behindHedge = p => p.x >= 40 - 2.2 && p.x < 42 && p.z > 6 && p.z < 54;
+
+// Targets by job: snipers hunt heavy-weapon crews, mortars dug-in squads, AT guns vehicles.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const sniper = holdFire(put(g, 0, 'sniper', 5, 21)), rifle = passive(put(g, 1, 'rifle', 17, 21)), mg = passive(put(g, 1, 'mg', 35, 21));
+  run(g, 1);
+  assert.equal(sniper.targetId, mg.id, 'a sniper picks the MG crew 30 m away over a rifle squad 12 m away');
+  assert.ok(rifle.hp > 0);
+}
+{
+  const g = fresh(field(r => { r[20][16] = 'T'; })); g.players[0].mp = g.players[1].mp = 5000;
+  const mortar = holdFire(put(g, 0, 'mortar', 5, 41)), open = passive(put(g, 1, 'rifle', 22, 41)), dug = passive(put(g, 1, 'rifle', 33, 41));
+  run(g, 1);
+  assert.ok(inTrench(g, dug) && !inTrench(g, open));
+  assert.equal(mortar.targetId, dug.id, 'a mortar shells the squad in a trench 28 m away over one in the open 17 m away');
+}
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const at = holdFire(put(g, 0, 'at', 5, 21)), rifle = passive(put(g, 1, 'rifle', 12, 21)), tank = passive(put(g, 1, 'tank', 33, 21));
+  tank.rot = Math.PI; // front to the gun
+  run(g, 1);
+  assert.equal(at.targetId, tank.id, 'an AT gun picks the tank over a rifle squad at a quarter of the range');
+  assert.ok(rifle.hp > 0);
+}
+
+// Targets by threat, with hysteresis: a squad keeps its target unless another one is clearly better, answers whoever
+// is shooting at it first, and a player-ordered target beats both.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const u = holdFire(put(g, 0, 'rifle', 10, 21)), a = passive(put(g, 1, 'rifle', 30, 21)), b = passive(put(g, 1, 'rifle', 10, 46));
+  const moveTo = (t, x, z) => { Object.assign(t, { x, z }); updateGrid(g, t); };
+  run(g, 1);
+  assert.equal(u.targetId, a.id, 'the nearer of two equal squads first (20 m against 25 m)');
+  moveTo(b, 10, 38); run(g, 1);
+  assert.equal(u.targetId, a.id, 'a squad a little closer (17 m against 20 m) does not take over');
+  moveTo(b, 10, 34); run(g, 1);
+  assert.equal(u.targetId, b.id, 'a clearly closer squad (13 m against 20 m) does');
+  Object.assign(u, { hitBy: a.id, hitAt: g.tick, hitFrom: { x: a.x, z: a.z }, retarget: 0 }); step(g);
+  assert.equal(u.targetId, a.id, 'the squad that just shot at it comes first, though it is farther away');
+  command(g, 0, { t: 'attack', ids: [u.id], target: b.id }); run(g, 1);
+  Object.assign(u, { hitBy: a.id, hitAt: g.tick, retarget: 0 }); run(g, 1);
+  assert.equal(u.targetId, b.id, 'an ordered target stays the target while another squad shoots at it');
+}
+
+// Cover at the end of a move: a squad sent to open ground 5 m short of a hedge (heading east, so the enemy is
+// probably east) settles right behind it, but never into a spot another squad holds.
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 10, 21);
+  command(g, 0, { t: 'move', orders: [[u.id, 35, 21]] });
+  run(g, 10);
+  assert.ok(behindHedge(u) && Math.hypot(u.x - 35, u.z - 21) <= CFG.behavior.coverSeek, `settles behind the hedge (${u.x}, ${u.z})`);
+  const v = put(g, 0, 'rifle', 10, 31);
+  command(g, 0, { t: 'move', orders: [[v.id, 36, 24]] });
+  run(g, 10);
+  assert.ok(behindHedge(v), `the second squad finds its own spot at the hedge (${v.x}, ${v.z})`);
+  assert.ok(Math.hypot(v.x - u.x, v.z - u.z) >= CFG.behavior.spacing - 0.25, 'and keeps its distance from the squad already there');
+}
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 10, 21);
+  command(g, 0, { t: 'move', orders: [[u.id, 38, 21]] });
+  run(g, 10);
+  assert.ok(Math.hypot(u.x - 38, u.z - 21) < 1, 'with no cover nearby the squad goes exactly where it was sent');
+}
+
+// Under fire: an idle squad in the open shifts into cover within a few metres if it can shoot back, and farther if
+// it can't (out of range or unseen).
+{
+  const g = fresh(field(hedge)); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0;
+    const u = put(g, 0, 'rifle', 45, 21); put(g, 1, 'mg', 70, 21);
+    run(g, 6);
+    assert.ok(covered(g, u), `a squad under MG fire moves 4 m into the hedge (${u.x}, ${u.z})`);
+  } finally { Math.random = orig; }
+}
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 48, 21);
+  Object.assign(u, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 21 } });
+  run(g, 3);
+  assert.ok(covered(g, u), `a squad shot at from out of its reach moves 7 m into the hedge (${u.x}, ${u.z})`);
+  const w = put(g, 0, 'rifle', 52, 21);
+  Object.assign(w, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 21 } });
+  run(g, 3);
+  assert.ok(Math.hypot(w.x - 52, w.z - 21) < 1, 'cover farther than CFG.coverSeek is out of reach: the squad stays put');
+}
+
+// Return fire: a fresh squad walking to its rally point stops to answer a shooter; a squad under a plain move
+// order keeps walking.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0.99; // misses only: nobody dies or gets pinned
+    const u = put(g, 0, 'rifle', 10, 31), v = put(g, 0, 'rifle', 10, 11);
+    const a = put(g, 1, 'rifle', 30, 45), b = put(g, 1, 'rifle', 30, 1);
+    u.path = findPath(g, u, { x: 75, z: 31 }); u.drift = 'rally';
+    command(g, 0, { t: 'move', orders: [[v.id, 75, 11]] });
+    command(g, 1, { t: 'attack', ids: [a.id], target: u.id }); command(g, 1, { t: 'attack', ids: [b.id], target: v.id });
+    run(g, 2);
+    assert.ok(u.amove && u.targetId === a.id, 'the rally walker turns its walk into an attack-move and answers the shooter');
+    const x = u.x; run(g, 1);
+    assert.ok(Math.abs(u.x - x) < 0.5, 'and halts while the shooter is in range');
+    assert.ok(v.path.length && v.x > 20 && !v.amove, 'a squad under a move order keeps walking');
+  } finally { Math.random = orig; }
+}
+
+// Facing: a stationary tank turns its front to incoming fire it can't answer, and keeps it on the target it fights.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const tank = put(g, 0, 'tank', 40, 20); tank.rot = 0;
+  Object.assign(tank, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 5, z: 20 } });
+  run(g, 2.5);
+  assert.ok(Math.cos(tank.rot - Math.PI) > 0.95, `the hull turns to the shot from behind (rot ${tank.rot})`);
+  const foe = passive(put(g, 1, 'tank', 40, 52));
+  run(g, 2);
+  assert.equal(tank.targetId, foe.id);
+  assert.ok(Math.cos(tank.rot - Math.PI / 2) > 0.95, `the hull turns to the tank it engages (rot ${tank.rot})`);
+}
+
+// Short retreats: a tank in a fight backs up a short way with its front to the enemy; out of a fight it turns around.
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const fighting = put(g, 0, 'tank', 50, 15), calm = put(g, 0, 'tank', 50, 45);
+  fighting.rot = calm.rot = 0;
+  Object.assign(fighting, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 15 } });
+  command(g, 0, { t: 'move', orders: [[fighting.id, 40, 15], [calm.id, 40, 45]] });
+  run(g, 1.5);
+  assert.ok(fighting.x < 48 && Math.cos(fighting.rot) > 0.99, `the engaged tank reverses, front still east (${fighting.x}, rot ${fighting.rot})`);
+  assert.ok(Math.cos(calm.rot) < -0.9, 'the tank out of a fight turns around and drives');
+  run(g, 4);
+  assert.ok(Math.hypot(fighting.x - 40, fighting.z - 15) < 1, 'the reversing tank still gets there');
+}
+
+// A hurt vehicle shot at from beyond its reach backs off, front first, unless it is holding a capture point.
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const tank = put(g, 0, 'tank', 50, 40); tank.rot = 0; tank.hp = 100;
+  Object.assign(tank, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 40 } });
+  run(g, 4);
+  assert.ok(tank.x < 46 && Math.cos(tank.rot) > 0.95, `pulls back with its front to the fire (${tank.x}, rot ${tank.rot})`);
+  const holder = put(g, 0, 'tank', g.points[0].x + 2, g.points[0].z); holder.hp = 100;
+  Object.assign(holder, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: g.points[0].z } });
+  run(g, 2);
+  assert.ok(Math.hypot(holder.x - g.points[0].x - 2, holder.z - g.points[0].z) < 1, 'a vehicle on a capture point holds it');
+}
+
+// Spreading: squads sent to one spot (as the AI does) get their own end spots; idle squads on top of each other
+// spread to the spacing.
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const squads = Array.from({ length: 6 }, (_, i) => put(g, 0, 'rifle', 10, 15 + i * 3));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60, 30]) });
+  const ends = squads.map(u => u.path.at(-1));
+  const gaps = ends.flatMap((p, i) => ends.slice(i + 1).map(q => Math.hypot(p.x - q.x, p.z - q.z)));
+  assert.ok(Math.min(...gaps) >= CFG.behavior.spacing, `distinct end spots (closest pair ${Math.min(...gaps).toFixed(2)} m)`);
+  assert.ok(ends.every(p => Math.hypot(p.x - 60, p.z - 30) < 12), 'all around the ordered spot');
+  const a = put(g, 0, 'rifle', 30, 50), b = put(g, 0, 'rifle', 30.5, 50);
+  run(g, 4);
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= CFG.behavior.spacing - 0.25, `idle squads spread out (${Math.hypot(a.x - b.x, a.z - b.z).toFixed(2)} m)`);
+}
+// Squads sent to a capture point's center all end inside its circle (the AI sends whole groups there).
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const p = g.points[0], squads = Array.from({ length: 9 }, (_, i) => put(g, 0, 'rifle', 60, 10 + i * 5));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, p.x, p.z]) });
+  const far = Math.max(...squads.map(u => Math.hypot(u.path.at(-1).x - p.x, u.path.at(-1).z - p.z)));
+  assert.ok(far <= CFG.pointRadius, `every end spot is on the point (farthest ${far.toFixed(1)} m)`);
+}
+// A formation spot across water or a cliff from the click falls back to the near side: nobody walks the long way
+// round, and nobody is left without a path.
+for (const [name, edit, heights] of [['river', r => { for (let x = 0; x < 39; x++) r[20][x] = 'W'; }], ['cliff', () => {}, true]]) {
+  const map = blank(field(edit));
+  if (heights) map.heights = Array.from({ length: 30 }, (_, y) => (y >= 20 ? '2' : '0').repeat(40));
+  const g = createGame(map, ['a', 'b'], false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }, p.mp = 5000));
+  const squads = Array.from({ length: 9 }, (_, i) => put(g, 0, 'rifle', 5.3, 10.3 + i * 3));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60.3, 37.3]) });
+  assert.ok(squads.every(u => u.path.length && u.path.at(-1).z < 40), `${name}: every squad gets a spot on the near side`);
+}
+
+// Crossfire: a squad or tank shot at by two squads keeps its target instead of swapping each time the other lands a
+// shot (every recent shooter counts as a threat, not only the last one).
+for (const type of ['rifle', 'tank']) {
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0.99; // misses only
+    const u = put(g, 0, type, 40.3, 40.3), a = put(g, 1, 'rifle', 22.3, 32.3), b = put(g, 1, 'rifle', 58.3, 32.3);
+    command(g, 1, { t: 'attack', ids: [a.id, b.id], target: u.id }); b.cooldown = 0.7;
+    let last = 0, switches = 0;
+    for (let i = 0; i < 20 * 20; i++) { step(g); if (u.targetId && last && u.targetId !== last) switches++; if (u.targetId) last = u.targetId; }
+    assert.ok(last && switches === 0, `${type}: holds one target under crossfire (${switches} switches in 20 s)`);
+  } finally { Math.random = orig; }
+}
+
+// Fog: an enemy the side can't see, standing on the clicked spot, does not move where the squad ends.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const u = put(g, 0, 'rifle', 3, 50), e = put(g, 1, 'rifle', 76, 50);
+  step(g);
+  assert.ok(!g.players[0].visible.has(e.id));
+  command(g, 0, { t: 'move', orders: [[u.id, 76, 50]] });
+  assert.ok(Math.hypot(u.path.at(-1).x - 76, u.path.at(-1).z - 50) < 0.5, 'the squad heads for the exact spot');
+}
+
+// Stances govern the automatic moves (merged with PR #11). Hold position: no settling into cover after a move, no
+// spreading out, no shift to cover or pull-back under fire. Hold fire: a rally walker does not stop to answer fire.
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const held = put(g, 0, 'rifle', 10, 21); held.holdPos = true;
+  command(g, 0, { t: 'move', orders: [[held.id, 35, 21]] });
+  run(g, 8);
+  assert.ok(Math.hypot(held.x - 35, held.z - 21) < 1, `Hold position: the squad stops where it was sent (${held.x}, ${held.z})`);
+  const a = put(g, 0, 'rifle', 20, 50), b = put(g, 0, 'rifle', 20.5, 50); a.holdPos = b.holdPos = true;
+  const shot = put(g, 0, 'rifle', 48, 15); shot.holdPos = true;
+  Object.assign(shot, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 15 } });
+  const tank = put(g, 0, 'tank', 60, 40); Object.assign(tank, { holdPos: true, rot: 0, hp: 100, hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 40 } });
+  run(g, 4);
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < CFG.behavior.spacing - 0.25, `Hold position: squads on top of each other only get pushed apart, they don't walk to the spacing (${Math.hypot(a.x - b.x, a.z - b.z).toFixed(2)} m)`);
+  assert.ok(Math.hypot(shot.x - 48, shot.z - 15) < 0.5, 'Hold position: a squad under fire does not walk to the hedge');
+  assert.ok(Math.hypot(tank.x - 60, tank.z - 40) < 0.5, 'Hold position: a hurt tank under fire does not pull back');
+}
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const orig = Math.random;
+  try {
+    Math.random = () => 0.99; // misses only
+    const u = put(g, 0, 'rifle', 10, 31), a = put(g, 1, 'rifle', 30, 45);
+    u.holdFire = true; u.path = findPath(g, u, { x: 75, z: 31 }); u.drift = 'rally';
+    command(g, 1, { t: 'attack', ids: [a.id], target: u.id });
+    run(g, 2);
+    assert.ok(!u.amove && !u.targetId && u.path.length && u.x > 15, 'Hold fire: the rally walker keeps walking and does not shoot back');
+  } finally { Math.random = orig; }
+}
+
+// Hull facing (merged with PR #11): a tank fighting a squad turns its front to an anti-tank gun it can't see, and keeps
+// it there between the gun's shots; rifle fire does not swing the hull.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const tank = put(g, 0, 'tank', 50, 20); Object.assign(tank, { rot: 0, hp: 1e5 });
+  const squad = passive(put(g, 1, 'rifle', 70, 20)), gun = put(g, 1, 'at', 8, 20);
+  passive(put(g, 1, 'rifle', 50, 55.5)); // a spotter just out of the tank's range, so the gun can see the tank
+  gun.still = 10; squad.hp = 1e5;
+  run(g, 4);
+  let worst = 1;
+  for (let i = 0; i < 8 * 20; i++) { step(g); worst = Math.min(worst, Math.cos(tank.rot - Math.PI)); }
+  assert.equal(tank.targetId, squad.id, 'the tank fights the squad it can see');
+  assert.ok(!g.players[0].visible.has(gun.id), 'and cannot see the gun');
+  assert.ok(worst > 0.95, `its front stays on the gun across reloads (worst cos ${worst.toFixed(2)})`);
+  const h = fresh(field()); h.players[0].mp = h.players[1].mp = 5000;
+  const quiet = put(h, 0, 'tank', 40, 20); Object.assign(quiet, { rot: 0, hp: 1e5, holdFire: true });
+  put(h, 1, 'rifle', 40, 32);
+  run(h, 3);
+  assert.ok(Math.cos(quiet.rot) > 0.99, 'a tank shot at by rifles keeps its hull where it was');
+}
+
+// Take Cover (merged with PR #11) uses the same spot rule as the rest: squads spread to the spacing when the cover has
+// room for it, else one squad to a cell.
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const squads = [21, 22, 23].map(z => put(g, 0, 'rifle', 46, z));
+  assert.equal(command(g, 0, { t: 'cover', ids: squads.map(u => u.id) }), undefined);
+  run(g, 4);
+  const gaps = squads.flatMap((p, i) => squads.slice(i + 1).map(q => Math.hypot(p.x - q.x, p.z - q.z)));
+  assert.ok(squads.every(u => covered(g, u)), 'every squad reaches the hedge');
+  assert.ok(Math.min(...gaps) >= CFG.behavior.spacing - 0.25, `spread along it (closest pair ${Math.min(...gaps).toFixed(2)} m)`);
+}
+
+// A waiting order does not wait for a step a squad took on its own: shift-queued during a shift into cover, it starts.
+{
+  const g = fresh(field(hedge)); g.players[0].mp = 5000;
+  const u = put(g, 0, 'rifle', 46, 21);
+  Object.assign(u, { hitBy: 0, hitAt: g.tick, hitFrom: { x: 78, z: 21 } });
+  step(g);
+  assert.equal(u.drift, 'cover', 'the squad sets off for the hedge on its own');
+  command(g, 0, { t: 'move', orders: [[u.id, 60, 40]], queue: true });
+  step(g);
+  assert.ok(!u.drift && !u.orders.length && Math.hypot(u.path.at(-1).x - 60, u.path.at(-1).z - 40) < 4, 'the queued move takes over at once');
+  // only the first waiting order starts: a queued garrison is not overwritten by the move queued behind it
+  const h = fresh(field(r => { hedge(r); r[10][30] = r[10][31] = 'B'; })); h.players[0].mp = 5000;
+  const v = put(h, 0, 'rifle', 46, 21);
+  Object.assign(v, { hitBy: 0, hitAt: h.tick, hitFrom: { x: 78, z: 21 } });
+  step(h);
+  assert.equal(v.drift, 'cover');
+  command(h, 0, { t: 'garrison', ids: [v.id], x: 61, z: 21, queue: true });
+  command(h, 0, { t: 'move', orders: [[v.id, 60, 40]], queue: true });
+  step(h);
+  assert.ok(v.enter >= 0 && v.orders.length === 1, 'the garrison order starts and the move waits behind it');
+}
+
+// Squads sent one at a time to the same spot from far away still end apart (a path's end holds its spot wherever the
+// squad is now).
+{
+  const g = fresh(field()); g.players[0].mp = 5000;
+  const a = put(g, 0, 'rifle', 5, 5), b = put(g, 0, 'rifle', 5, 15);
+  command(g, 0, { t: 'move', orders: [[a.id, 70, 50]] });
+  command(g, 0, { t: 'move', orders: [[b.id, 70, 50]] });
+  const gap = Math.hypot(a.path.at(-1).x - b.path.at(-1).x, a.path.at(-1).z - b.path.at(-1).z);
+  assert.ok(gap >= CFG.behavior.spacing, `separate orders to one spot end ${gap.toFixed(2)} m apart`);
+}
+
+// Spacing at a crowded move destination still prefers shelter over a closer open cell.
+{
+  const g = fresh(field(r => { r[10][20] = '#'; r[12][20] = '#'; })); g.points = [];
+  g.players[0].mp = 5000;
+  const holder = put(g, 0, 'rifle', 41, 21); holder.holdPos = true;
+  const moving = put(g, 0, 'rifle', 5, 21);
+  command(g, 0, { t: 'move', orders: [[moving.id, 41, 21]] });
+  const end = moving.path.at(-1);
+  assert.ok(end && covered(g, end), 'a crowded covered destination retains cover');
+  assert.ok(Math.hypot(end.x - holder.x, end.z - holder.z) >= CFG.behavior.spacing, 'the covered destination has room for the squad');
+}
+
+// Formation facing validation.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const a = put(g, 0, 'rifle', 10, 20), b = put(g, 0, 'tank', 10, 35);
+  assert.equal(a.face, null, 'new units have no ordered facing');
+  command(g, 0, { t: 'move', orders: [[a.id, 30, 20], [b.id, 30, 35]] });
+  command(g, 0, { t: 'move', orders: [[a.id, 50, 20], [b.id, 50, 35]], queue: true });
+  for (const face of [NaN, Infinity, '1', {}, null]) for (const t of ['move', 'amove']) for (const queue of [false, true]) {
+    const before = structuredClone([...g.units.values()]);
+    assert.equal(command(g, 0, { t, orders: [[a.id, 60, 20], [b.id, 60, 35]], face, queue }), 'blocked', 'invalid facing refuses the whole command');
+    assert.deepEqual([...g.units.values()], before, 'invalid facing leaves every unit untouched');
+    assert.equal(normalizeFace(face), null, 'invalid facing has no normalized angle');
+  }
+  for (const face of [7, -7]) {
+    assert.equal(command(g, 0, { t: 'move', orders: [[a.id, 30, 20], [b.id, 30, 35]], face }), undefined);
+    const expected = Math.atan2(Math.sin(face), Math.cos(face));
+    for (const u of [a, b]) {
+      assert.equal(u.face.a, expected, 'finite facing is normalized');
+      assert.ok(u.face.a > -Math.PI && u.face.a <= Math.PI, 'stored facing is inside the angle range');
+    }
+  }
+  command(g, 0, { t: 'move', orders: [[a.id, 30, 20], [b.id, 30, 35]] });
+  assert.equal(a.face, null, 'a move without facing leaves infantry with no facing');
+  assert.equal(b.face, null, 'a move without facing leaves vehicles with no facing');
+  const plane = put(g, 0, 'attacker', 20, 50);
+  command(g, 0, { t: 'move', orders: [[plane.id, 60, 50]], face: 7 });
+  assert.equal(plane.face, null, 'aircraft ignore the ordered facing');
+  assert.deepEqual(plane.air.mission, { kind: 'patrol', x: 60, z: 50 }, 'aircraft keep the patrol order');
+  const row = snapshotFor(g, 0, []).units.find(v => v[0] === a.id);
+  assert.equal(row.length, 15, 'facing does not add a unit snapshot field');
+  assert.deepEqual(snapshotFor(g, 0, [], [], snapshotCache(g)).units, snapshotFor(g, 0, []).units, 'facing keeps cached and uncached unit snapshots equal');
+}
+
+// Formation facing arrival and hull turning.
+{
+  const face = Math.PI / 2;
+  for (const type of ['rifle', 'mg', 'tank']) {
+    const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+    const u = put(g, 0, type, 10, 20); u.rot = 0;
+    command(g, 0, { t: 'move', orders: [[u.id, 30, 20]], face });
+    let movingRot = u.rot, ticks = 0;
+    while (u.path.length && ticks++ < 400) { movingRot = u.rot; step(g); }
+    assert.ok(!u.path.length && Math.hypot(u.x - 30, u.z - 20) < 0.5, `${type}: reaches the facing destination`);
+    step(g);
+    assert.deepEqual(u.face, { a: face, x: 30, z: 20 }, `${type}: keeps the ordered end spot`);
+    if (type === 'tank') {
+      assert.ok(Math.abs(normalizeFace(u.rot - face)) > 0.5, 'the hull does not turn to its facing instantly');
+      assert.ok(Math.abs(normalizeFace(u.rot - movingRot)) <= CFG.behavior.hullTurn / 20 + 1e-9, 'the hull turns at the configured speed on arrival');
+      run(g, Math.PI / CFG.behavior.hullTurn + 1);
+      assert.ok(Math.abs(normalizeFace(u.rot - face)) < 1e-9, 'the hull finishes turning within its turn time');
+    } else assert.equal(u.rot, face, `${type}: faces the order on arrival`);
+    assert.equal(u.aim, u.rot, `${type}: an idle unit aims along its facing`);
+    if (type === 'mg') { run(g, UNITS.mg.w.setup); assert.ok(u.still >= UNITS.mg.w.setup, 'an arrived MG crew sets up while holding its facing'); }
+  }
+}
+
+// Formation facing target and incoming fire priority.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = g.players[1].mp = 10000;
+  const tank = put(g, 0, 'tank', 40, 20); tank.cooldown = 1e9;
+  command(g, 0, { t: 'move', orders: [[tank.id, 40, 20]], face: 0 });
+  const enemy = put(g, 1, 'tank', 40, 45); enemy.holdFire = true;
+  run(g, 2);
+  assert.equal(tank.targetId, enemy.id, 'a tank still acquires a target while holding a facing');
+  assert.ok(Math.abs(normalizeFace(tank.rot - Math.PI / 2)) < 1e-9, 'the target takes priority over ordered facing');
+  Object.assign(tank, { hitAt: g.tick, hitFrom: { x: 5, z: 20 } });
+  run(g, 0.2);
+  assert.ok(Math.abs(normalizeFace(tank.rot - Math.PI / 2)) < 1e-9, 'the target also takes priority over incoming fire');
+  g.units.delete(enemy.id);
+  run(g, 0.2);
+  assert.ok(tank.rot > Math.PI / 2, 'recent incoming fire takes priority after the target disappears');
+  assert.equal(tank.face.a, 0, 'combat preserves the ordered facing');
+  run(g, CFG.behavior.threatTime + Math.PI / CFG.behavior.hullTurn + 1);
+  assert.ok(Math.abs(normalizeFace(tank.rot)) < 1e-9, 'the tank returns to its facing after combat and incoming fire end');
+}
+
+// Formation facing exact spots and crowding.
+{
+  const rows = Array(40).fill('.'.repeat(40)); rows[10] = '.'.repeat(20) + '#' + '.'.repeat(19); rows[15] = rows[10];
+  const g = fresh(rows); g.players[0].mp = 10000;
+  const a = put(g, 0, 'rifle', 10, 21), b = put(g, 0, 'rifle', 10, 31);
+  command(g, 0, { t: 'move', orders: [[a.id, 37, 21], [b.id, 37, 31]], face: 0 });
+  assert.deepEqual(a.path.at(-1), { x: 37, z: 21 }, 'a facing spot near a wall keeps its exact position');
+  assert.deepEqual(b.path.at(-1), { x: 37, z: 31 }, 'distinct facing spots keep their layout');
+  run(g, 10);
+  assert.ok(Math.hypot(a.x - 37, a.z - 21) < 0.5 && Math.hypot(b.x - 37, b.z - 31) < 0.5, 'infantry arrive at the supplied facing spots');
+  const plain = fresh(rows); plain.players[0].mp = 10000;
+  const squad = put(plain, 0, 'rifle', 10, 21);
+  command(plain, 0, { t: 'move', orders: [[squad.id, 37, 21]] });
+  assert.notDeepEqual(squad.path.at(-1), { x: 37, z: 21 }, 'a plain move still finds nearby cover');
+  run(plain, 10);
+  assert.ok(sim.inCover(plain, squad) || squad.x > 37, 'a plain move still settles at the wall');
+  const crowded = fresh(rows); crowded.players[0].mp = 10000;
+  const held = put(crowded, 0, 'rifle', 37, 21), incoming = put(crowded, 0, 'rifle', 10, 21);
+  command(crowded, 0, { t: 'move', orders: [[incoming.id, 37, 21]], face: 0 });
+  const end = incoming.path.at(-1);
+  assert.ok(Math.hypot(end.x - held.x, end.z - held.z) >= CFG.behavior.spacing, 'an occupied facing spot shifts to a free one');
+  assert.deepEqual(incoming.face, { a: 0, ...end }, 'facing records the free end spot after crowding');
+}
+
+// Formation facing shared spots and pure layout.
+{
+  const rifleSize = slotSize(UNITS.rifle), tankSize = slotSize(UNITS.tank), face = 0.7, at = { x: 100, z: 100 };
+  assert.ok(tankSize > rifleSize, 'a tank takes more frontage than a rifle squad');
+  assert.equal(slotSize({ radius: 0, infantry: true }), CFG.behavior.spacing, 'small infantry keep the infantry spacing minimum');
+  assert.equal(slotSize({ radius: 0, infantry: false }), CFG.behavior.vehicleSpacing, 'small vehicles keep the vehicle spacing minimum');
+  const items = [{ id: 1, x: 15, z: 20, size: rifleSize }, { id: 2, x: 5, z: 5, size: tankSize }, { id: 3, x: 10, z: 10, size: rifleSize }], saved = structuredClone(items);
+  const natural = items.reduce((n, u) => n + u.size, 0), sizeById = new Map(items.map(u => [u.id, u.size]));
+  const width = spots => { const p = spots[0], q = spots.at(-1); return Math.hypot(q[1] - p[1], q[2] - p[2]) + (sizeById.get(p[0]) + sizeById.get(q[0])) / 2; };
+  const spots = facingSpots(items, at, face, 0), f = { x: Math.cos(face), z: Math.sin(face) };
+  assert.deepEqual(facingSpots(items, at, face, 0), spots, 'the same input gives the same facing spots');
+  assert.deepEqual(items, saved, 'formation layout leaves the input unchanged');
+  for (let i = 1; i < spots.length; i++) {
+    const p = spots[i - 1], q = spots[i], dx = q[1] - p[1], dz = q[2] - p[2];
+    assert.ok(Math.abs(dx * f.x + dz * f.z) < 1e-9, 'the formation line is perpendicular to its facing');
+    assert.ok(Math.hypot(dx, dz) >= (sizeById.get(p[0]) + sizeById.get(q[0])) / 2 - 1e-9, 'mixed unit slots do not overlap');
+    const a = items.find(u => u.id === p[0]), b = items.find(u => u.id === q[0]);
+    assert.ok(-a.x * f.z + a.z * f.x <= -b.x * f.z + b.z * f.x, 'units keep their left to right order');
+  }
+  assert.ok(Math.abs(width(spots) - natural) < 1e-9, 'a short drag keeps the natural frontage');
+  assert.ok(Math.abs(width(facingSpots(items, at, face, 2 * natural)) - 2 * natural) < 1e-9, 'a longer drag widens the frontage');
+  assert.ok(Math.abs(width(facingSpots(items, at, face, 10 * natural)) - 3 * natural) < 1e-9, 'frontage stops widening at three times its natural width');
+  const many = Array.from({ length: 23 }, (_, i) => ({ id: i, x: 0, z: i * 10, size: i % 3 === 0 ? tankSize : rifleSize }));
+  const ranks = new Map();
+  for (const spot of facingSpots(many, at, 0, 0)) { const depth = spot[1] - at.x; if (!ranks.has(depth)) ranks.set(depth, []); ranks.get(depth).push(spot); }
+  const depths = [...ranks.keys()].sort((a, b) => b - a);
+  assert.equal(depths.length, 3, 'more than ten units form several ranks');
+  assert.equal(depths[0], 0, 'the first rank centers on the press point');
+  assert.ok(depths.slice(1).every(d => d < 0) && [...ranks.values()].every(rank => rank.length <= 10), 'later ranks stand behind the front rank and hold at most ten units');
+  for (let i = 1; i < depths.length; i++) assert.ok(depths[i - 1] - depths[i] > Math.max(...ranks.get(depths[i - 1]).map(s => many[s[0]].size)), 'ranks leave the deepest slot above them clear');
+  const g = fresh(Array(60).fill('.'.repeat(60))); g.players[0].mp = 10000;
+  const squads = Array.from({ length: 4 }, (_, i) => put(g, 0, 'rifle', 10, 15 + i * 6));
+  command(g, 0, { t: 'move', orders: squads.map(u => [u.id, 60, 50]), face: 0 });
+  const ends = squads.map(u => u.path.at(-1)).sort((a, b) => a.z - b.z);
+  assert.ok(ends.every(p => Math.abs(p.x - 60) < 1e-9), 'units sharing a facing spot line up perpendicular to the facing');
+  for (let i = 1; i < ends.length; i++) assert.ok(ends[i].z - ends[i - 1].z >= rifleSize - 1e-9, 'shared facing spots keep a full slot between neighbours');
+}
+
+// Formation facing queued orders.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 10, 20), face = 1.1;
+  command(g, 0, { t: 'move', orders: [[u.id, 30, 20]] });
+  command(g, 0, { t: 'move', orders: [[u.id, 50, 20]], face, queue: true });
+  assert.equal(u.face, null, 'a queued facing does not change the first leg');
+  assert.equal(u.orders[0].face, normalizeFace(face), 'the waiting move stores its facing');
+  run(g, 1);
+  assert.ok(u.x < 30 && u.path.length && u.face === null, 'the first leg continues without a facing');
+  let ticks = 0; while (u.orders.length && ticks++ < 400) step(g);
+  assert.deepEqual(u.path.at(-1), { x: 50, z: 20 }, 'the queued move starts its second leg');
+  assert.equal(u.face.a, normalizeFace(face), 'queue replay restores the facing');
+  run(g, 10);
+  assert.ok(!u.path.length && Math.hypot(u.x - 50, u.z - 20) < 0.5, 'the queued facing move reaches its spot');
+  assert.equal(u.rot, normalizeFace(face), 'the second leg finishes with the queued facing');
+  command(g, 0, { t: 'move', orders: [[u.id, 30, 20]], face: Math.PI / 2 });
+  command(g, 0, { t: 'move', orders: [[u.id, 10, 20]], queue: true });
+  assert.equal(u.face.a, Math.PI / 2, 'queueing a plain move keeps the current facing until replay');
+  ticks = 0; while (u.orders.length && ticks++ < 400) step(g);
+  assert.equal(u.face, null, 'a queued move without facing clears the previous facing on replay');
+  run(g, 10);
+  assert.ok(Math.hypot(u.x - 10, u.z - 20) < 0.5 && u.face === null, 'the queued plain move finishes without an old facing');
+  const group = fresh(Array(60).fill('.'.repeat(60))); group.players[0].mp = 10000;
+  const squads = Array.from({ length: 3 }, (_, i) => put(group, 0, 'rifle', 10, 20 + i * 7));
+  command(group, 0, { t: 'move', orders: squads.map((u, i) => [u.id, 30, 20 + i * 7]), face: 0.4 });
+  const current = structuredClone(squads.map(u => [u.path, u.face]));
+  command(group, 0, { t: 'move', orders: squads.map(u => [u.id, 60, 45]), face: 0, queue: true });
+  assert.deepEqual(squads.map(u => [u.path, u.face]), current, 'queueing a shared facing spot keeps the current moves and facings');
+  const waiting = squads.map(u => ({ id: u.id, x: u.orders[0].x, z: u.orders[0].z })).sort((a, b) => a.z - b.z);
+  assert.ok(waiting.every(p => p.x === 60), 'queued shared facing spots form a perpendicular line');
+  for (let i = 1; i < waiting.length; i++) assert.ok(waiting[i].z - waiting[i - 1].z >= slotSize(UNITS.rifle), 'queued shared facing spots keep distinct slots');
+  run(group, 20);
+  for (const p of waiting) {
+    const squad = group.units.get(p.id);
+    assert.ok(!squad.path.length && Math.hypot(squad.x - p.x, squad.z - p.z) < 0.5, 'a queued formation reaches its stored slot');
+    assert.equal(squad.rot, 0, 'a queued formation finishes with its stored facing');
+  }
+}
+
+// Formation facing attack-move arrival.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = 10000;
+  const u = put(g, 0, 'rifle', 10, 20), face = -1.2;
+  command(g, 0, { t: 'amove', orders: [[u.id, 40, 20]], face });
+  run(g, 12);
+  assert.ok(!u.path.length && !u.amove && Math.hypot(u.x - 40, u.z - 20) < 0.5, 'an attack-move with facing completes its move');
+  assert.equal(u.rot, normalizeFace(face), 'an attack-move applies facing after arrival');
+}
+
+// Formation facing retreat and replacement orders.
+{
+  const g = fresh(Array(40).fill('.'.repeat(40))); g.players[0].mp = g.players[1].mp = 10000;
+  const u = put(g, 0, 'rifle', 40, 20), face = Math.PI / 2;
+  g.players[0].spawn = { x: 3, z: 20 };
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face }); step(g);
+  assert.equal(u.rot, face, 'the squad first holds its ordered facing');
+  command(g, 0, { t: 'retreat', ids: [u.id] });
+  assert.equal(u.face, null, 'retreat drops the ordered facing');
+  run(g, 0.5);
+  assert.ok(u.retreating && Math.cos(u.rot) < -0.9 && u.face === null, 'a retreating squad runs home without turning to its old facing');
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face }); step(g);
+  command(g, 0, { t: 'move', orders: [[u.id, 50, 20]] });
+  assert.equal(u.face, null, 'a plain move drops the old facing');
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face }); step(g);
+  command(g, 0, { t: 'stop', ids: [u.id] });
+  assert.equal(u.face, null, 'Stop drops the old facing');
+  command(g, 0, { t: 'move', orders: [[u.id, u.x, u.z]], face });
+  const enemy = put(g, 1, 'rifle', 55, 20); enemy.holdFire = true; u.cooldown = 1e9;
+  run(g, 0.3);
+  assert.equal(command(g, 0, { t: 'attack', ids: [u.id], target: enemy.id }), undefined);
+  assert.equal(u.face, null, 'an attack order drops the old facing');
+}
+
+// Formation facing client dispatch.
+{
+  const ground = { x: 35, z: 25 }, face = 0.8, reach = 22;
+  const make = (types = ['rifle', 'tank']) => {
+    const units = new Map(types.map((type, i) => [i + 1, { id: i + 1, owner: 0, type, x: 10, z: 10 + i * 8 }])), sent = [], calls = [], feedback = [];
+    const ctx = { selected: new Set(units.keys()), units, me: 0, defs: UNITS, diggers: ['rifle', 'conscript', 'engineer'], moveColor: 0x6fa8f0,
+      formation: (...args) => { calls.push(args); return args[0].map((u, i) => [u.id, args[1].x, args[1].z + i * 8]); }, send: cmd => sent.push(cmd), feedback: (...args) => feedback.push(args) };
+    return { ctx, sent, calls, feedback, orders: createOrders(ctx) };
+  };
+  const plain = make();
+  assert.equal(plain.orders.wouldMove({ ground }), true, 'plain ground clicks can start a facing gesture');
+  plain.orders.dispatch({ ground }, {});
+  const ordinary = { t: 'move', orders: [[1, 35, 25], [2, 35, 33]], queue: false };
+  assert.equal(JSON.stringify(plain.sent[0]), JSON.stringify(ordinary), 'a plain click sends the same command bytes');
+  assert.equal(plain.calls[0].length, 2, 'a plain click keeps the original formation call');
+  assert.deepEqual(plain.feedback[0], [ground, plain.ctx.moveColor, 660, 'move'], 'a plain click keeps its feedback');
+  const shift = make(); shift.orders.dispatch({ ground }, { shiftKey: true });
+  assert.equal(JSON.stringify(shift.sent[0]), JSON.stringify({ ...ordinary, queue: true }), 'a plain Shift click keeps the same queued command bytes');
+  const faced = make(); faced.orders.dispatch({ ground }, { shiftKey: true }, { face, reach });
+  assert.deepEqual(faced.sent[0], { ...ordinary, face, queue: true }, 'facing moves include the angle and queue flag');
+  assert.deepEqual(faced.calls[0], [[...faced.ctx.units.values()], ground, face, reach], 'facing dispatch gives the angle and reach to formation');
+  for (const [event, options] of [[{ ctrlKey: true }, { face, reach }], [{}, { attack: true, face, reach }]]) {
+    const a = make(); a.orders.dispatch({ ground }, event, options);
+    assert.equal(a.sent[0].t, 'amove', 'Ctrl and attack mode produce attack-move');
+    assert.equal(a.sent[0].face, face, 'attack-move dispatch includes facing');
+  }
+  const invalid = make(); invalid.orders.dispatch({ ground }, {}, { face: NaN, reach });
+  assert.deepEqual(invalid.sent[0], ordinary, 'a non-finite client facing leaves a plain move');
+  const cases = [
+    { types: ['rifle'], cursor: { ground, enemy: { id: 9, x: 40, z: 25 } }, t: 'attack' },
+    { types: ['rifle'], cursor: { ground, house: { x: 31, z: 21 } }, t: 'garrison' },
+    { types: ['rifle'], cursor: { ground, friend: { id: 9, owner: 0, type: 'halftrack' } }, t: 'board' },
+    { types: ['fighter'], cursor: { ground, friend: { id: 9, x: 40, z: 25 } }, t: 'escort' },
+    { types: ['engineer'], cursor: { ground, building: { id: 9, type: 'barracks', built: 0, hp: 1, x: 40, z: 25 } }, t: 'assist' },
+    { types: ['rifle'], cursor: { ground, works: 9 }, t: 'entrench' },
+    { types: ['barracks'], cursor: { ground }, t: 'rally' }
+  ];
+  for (const { types, cursor, t } of cases) {
+    const a = make(types);
+    assert.equal(a.orders.wouldMove(cursor), false, `${t}: the special order dispatches without a facing gesture`);
+    a.orders.dispatch(cursor, {}, { face, reach });
+    assert.equal(a.sent[0].t, t, `${t}: keeps its order kind`);
+    assert.ok(!Object.hasOwn(a.sent[0], 'face'), `${t}: ignores facing`);
+    assert.equal(a.calls.length, 0, `${t}: does not request a facing formation`);
+  }
+  const mixed = make(['rifle', 'barracks']); mixed.orders.dispatch({ ground }, { shiftKey: true }, { face, reach });
+  assert.equal(mixed.sent[0].t, 'orders', 'troops and a production building keep their command group');
+  assert.equal(mixed.sent[0].queue, true, 'a grouped facing dispatch queues both orders');
+  assert.equal(mixed.sent[0].commands[0].face, face, 'a grouped ground move includes its facing');
+  assert.ok(!Object.hasOwn(mixed.sent[0].commands[1], 'face'), 'the grouped rally ignores facing');
+}
+
 // A copy of shared/sim.js loaded from a data: URL (to reach its internals). Its relative imports (story.js, grid.js)
 // point at the real files, so the copy shares those modules with the normal import.
 const simCopy = (source) => import('data:text/javascript;base64,' + Buffer.from(source.replace(/from '\.\/([\w-]+\.js)'/g, (_, file) => `from '${new URL(`./shared/${file}`, import.meta.url)}'`)).toString('base64'));
 // Fixed Massive fixture for exact comparisons and repeatable subsystem timings.
 const massiveInternals = await simCopy(readFileSync('shared/sim.js', 'utf8')
-  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell };');
+  + '\nexport { updateVision, nearCover, behindCover, aimPoint, flagsAt, dist, spawnUnit, placeBuilding, wreckBuilding, setCell, logCell, pickTarget };');
+// Salvo target clusters use visible squads only, so hidden neighbors cannot change automatic target choice.
+{
+  const g = fresh(field()); g.players[0].mp = g.players[1].mp = 5000;
+  const mortar = put(g, 0, 'mortar', 10, 30);
+  const left = put(g, 1, 'rifle', 40, 15), right = put(g, 1, 'rifle', 40, 45);
+  g.players[0].visible = new Set([left.id, right.id]); snapshotCache(g);
+  const before = massiveInternals.pickTarget(g, mortar);
+  assert.equal(before, left.id, 'equal visible clusters keep the first target');
+  const hidden = put(g, 1, 'rifle', 41, 45); snapshotCache(g);
+  assert.equal(massiveInternals.pickTarget(g, mortar), before, 'an unseen squad near another target changes nothing');
+  g.players[0].visible.add(hidden.id);
+  assert.equal(massiveInternals.pickTarget(g, mortar), right.id, 'a visible cluster can change the target');
+  hidden.riding = 123;
+  assert.equal(massiveInternals.pickTarget(g, mortar), before, 'a passenger cannot enlarge a salvo target cluster');
+}
+
 const massiveFixture = () => {
   const map = JSON.parse(readFileSync('maps/six-fronts.json', 'utf8'));
   const g = createGame(map, ['a', 'b', 'c', 'd', 'e', 'f'], false, [0, 1, 2, 3, 4, 5], [0, 1, 2, 0, 1, 2], { mode: 'classic', army: 'massive' });
@@ -2519,6 +3160,127 @@ const referenceNearCover = (g, u) => {
   }
 }
 
+// The cover preview (client/cover-preview.js) reads cover with the sim's own rules: what each cell gives, which house
+// cells a squad can garrison, and directional cover from walls and vehicles toward a shooter.
+{
+  const preview = await import('./client/cover-preview.js');
+  const real = await simCopy(readFileSync('shared/sim.js', 'utf8') + '\nexport { behindCover, entryCell };');
+  const rows = [...empty];
+  rows[3] = '...#....H....R......'; rows[5] = '....BBB...TTT..+....'; rows[6] = '....BBB.....Y...X...';
+  rows[7] = '....BB....F=....##..'; rows[15] = '...O.....Q..........'; rows[9] = '..H.H....WWW........'; rows[12] = '.........#.#........';
+  const g = fresh(rows); g.players[0].mp = 5000;
+  g.chars[14 * 20 + 15] = 'K'; g.flags[14 * 20 + 15] = sim.TERRAIN.K; // a Classic building's footprint (never in map files)
+  const at = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h ? '' : g.chars[y * g.w + x]);
+  const tank = put(g, 0, 'tank', 25, 25), dead = put(g, 0, 'tank', 31, 11), plane = put(g, 0, 'fighter', 13, 29);
+  dead.hp = 0;
+  for (const u of [tank, dead, plane]) updateGrid(g, u);
+  g.wrecks.push({ id: 99, type: 'tank', x: 21, z: 35 });
+  const veh = [...g.units.values()].filter(v => !UNITS[v.type].air && !UNITS[v.type].infantry && v.hp > 0).flatMap(v => [v.x, v.z]).concat(g.wrecks.flatMap(v => [v.x, v.z]));
+  // the ground's own cover, as coverMul sees a squad standing on the cell
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const ch = at(x, y), sq = { type: 'rifle', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL }, kind = preview.cellCover(at, x, y);
+    if (ch === 'B' || g.flags[y * g.w + x] & sim.MOVE) continue;
+    const want = inTrench(g, sq) ? preview.HEAVY : sim.inCover(g, sq) ? preview.LIGHT : preview.OPEN;
+    assert.equal(kind, want, `cover preview kind for ${ch} at ${x},${y}`);
+  }
+  assert.equal(preview.cellCover(at, 9, 9), preview.NONE, 'no marks on the river');
+  // garrison: every house cell entryCell can hand out, and nothing else, is heavy cover
+  const edges = new Set();
+  for (let c; (c = real.entryCell(g, 5 * g.w + 4, { x: 0, z: 0 }, edges)) >= 0;) edges.add(c);
+  for (let c = 0; c < g.chars.length; c++) if (g.chars[c] === 'B') {
+    const x = c % g.w, y = Math.floor(c / g.w);
+    assert.equal(preview.cellCover(at, x, y) === preview.HEAVY, edges.has(c), `house cell ${x},${y} garrison edge`);
+    assert.equal(preview.cellCover(at, x, y, false), preview.NONE, 'squads that cannot garrison get no house marks');
+  }
+  assert.ok(edges.size >= 6 && edges.size < 11, `house edges found (${edges.size})`);
+  // directional cover from each open cell toward shooters all round
+  let covered = 0, checked = 0;
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (preview.cellCover(at, x, y) !== preview.OPEN) continue;
+    const t = { x: (x + 0.5) * CELL, z: (y + 0.5) * CELL };
+    for (let k = 0; k < 24; k++) {
+      const from = { x: t.x + Math.cos(k * Math.PI / 12 + 0.05) * 20, z: t.z + Math.sin(k * Math.PI / 12 + 0.05) * 20 };
+      const a = Math.atan2(from.z - t.z, from.x - t.x), ca = Math.cos(a), sa = Math.sin(a);
+      const mine = preview.solidToward(at, t.x, t.z, ca, sa) || preview.vehicleToward(veh, veh.length / 2, t.x, t.z, ca, sa);
+      assert.equal(mine, real.behindCover(g, t, from), `directional cover at ${x},${y} toward ${k * 15}°`);
+      covered += mine; checked++;
+    }
+  }
+  assert.ok(covered > 100 && covered < checked / 4, `directional cover is the exception, not the rule (${covered}/${checked})`);
+  // cover fades with distance and damage: a hedge first met 2.9 m out covers while whole, not once nearly shot away
+  const far = fresh(empty.map((r, y) => y === 10 ? r.slice(0, 12) + 'H' + r.slice(13) : r)), hedge = 10 * far.w + 12;
+  const farAt = (x, y) => (x < 0 || y < 0 || x >= far.w || y >= far.h ? '' : far.chars[y * far.w + x]);
+  const squad = { x: 21.5, z: 21 }, shooter = { x: 41, z: 21 };
+  assert.ok(real.behindCover(far, squad, shooter) && preview.solidToward(farAt, squad.x, squad.z, 1, 0, () => 0), 'a whole hedge 2.9 m out covers');
+  far.cellHp[hedge] = CFG.terrainHp.H * 0.2;
+  assert.ok(!real.behindCover(far, squad, shooter) && !preview.solidToward(farAt, squad.x, squad.z, 1, 0, () => 2), 'a nearly gone one does not');
+}
+
+// The preview marks only ground this side has explored (the server's fog of war, client/fog.js). A new match brings a
+// new fog, so the last match's ground (all of it once the fog lifted at the end) is not scouting; ground nobody has
+// seen stays unmarked; and a rejoin, whose start message carries everything explored, has its marks back at once.
+{
+  const THREE = await import('three'), { createCoverPreview } = await import('./client/cover-preview.js');
+  const noop = () => {}, handlers = {};
+  const pen = new Proxy({}, { get: (_, k) => k === 'getImageData' ? (_x, _y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }) : noop, set: () => true });
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => pen }), getElementById: () => null };
+  globalThis.addEventListener = noop;
+  try {
+    const W = 20, rows = Array.from({ length: W }, () => '.'.repeat(W).split('')), at = { x: 10, z: 10 }, mouse = { x: 1, y: 1, inside: true };
+    let mesh = null, fog = { explored: new Uint8Array(W * W).fill(1), version: 7 }; // the last match, fog lifted
+    const units = new Map([[1, { id: 1, type: 'rifle', owner: 0, x: 21, z: 21, hp: 100 }]]);
+    const cp = createCoverPreview({ scene: { add: (m) => { mesh = m; } }, camera: new THREE.PerspectiveCamera(), units, selected: new Set([1]),
+      canvas: { addEventListener: (type, fn) => { handlers[type] = fn; } }, hAt: () => 0, groundAt: () => ({ x: at.x * CELL + 1, z: at.z * CELL + 1 }),
+      gfx: { low: false, onChange: noop }, foe: slot => slot !== 0, me: () => 0, mouse: () => mouse, targeting: () => null, grid: () => rows, state: () => null, fog: () => fog });
+    const marks = () => { mouse.x++; cp.frame(0.016); return mesh.visible; }; // a moved mouse makes frame() look at the ground again
+    fog = { explored: new Uint8Array(W * W), version: 8 }; // startGame makes the new match's fog before the preview starts
+    cp.start();
+    handlers.pointermove();
+    assert.equal(marks(), false, 'the last match\'s ground does not count as scouted');
+    for (let y = 8; y < 13; y++) for (let x = 8; x < 13; x++) fog.explored[y * W + x] = 1;
+    fog.version = 9; // client/fog.js marks a change by its version
+    assert.equal(marks(), true, 'scouted ground around the cursor is marked');
+    const geo = mesh.geometry;
+    assert.ok(geo.getAttribute('aEdge') && geo.getAttribute('aLine'), 'cover shields use the terrain overlay shader');
+    for (const group of geo.groups) for (let i = group.start; i < group.start + group.count; i++) {
+      const vi = geo.index.array[i];
+      assert.ok(vi < geo.getAttribute('position').count, 'shield triangle stays inside the vertex buffer');
+      assert.ok(Number.isFinite(geo.getAttribute('position').array[vi * 3]), 'shield vertex position is finite');
+    }
+    // A hull crosses the directional-cover threshold without leaving its 2 m terrain cell.
+    units.set(2, { id: 2, type: 'tank', owner: 0, x: 24.45, z: 21, hp: 100 });
+    units.set(3, { id: 3, type: 'rifle', owner: 1, x: 51, z: 21, hp: 100 });
+    const centerColor = () => {
+      const positions = mesh.geometry.getAttribute('position'), colors = mesh.geometry.getAttribute('color');
+      for (const group of mesh.geometry.groups.slice(0, 2)) for (let i = group.start; i < group.start + group.count; i++) {
+        const vi = mesh.geometry.index.array[i];
+        if (Math.abs(positions.getX(vi) - 21) < 0.001 && Math.abs(positions.getZ(vi) - 21) < 0.001) return colors.getX(vi);
+      }
+      assert.fail('the cursor cell has a cover shield');
+    };
+    marks();
+    assert.ok(Math.abs(centerColor() - new THREE.Color(0xe5483b).r) < 0.0001, 'a hull 3.45 m away leaves the center open');
+    units.get(2).x = 24.35; cp.frame(0.016); // cursor, terrain and enemy stay still
+    assert.ok(Math.abs(centerColor() - new THREE.Color(0xe2b850).r) < 0.0001, 'same-cell hull movement refreshes the protected center');
+    units.get(3).z = 51.2; cp.frame(0.016);
+    assert.ok(Math.abs(centerColor() - new THREE.Color(0xe2b850).r) < 0.0001, 'the hull covers just inside the allowed bearing');
+    units.get(3).z = 51.8; cp.frame(0.016); // the enemy stays in the same cell but crosses the bearing limit
+    assert.ok(Math.abs(centerColor() - new THREE.Color(0xe5483b).r) < 0.0001, 'same-cell enemy movement refreshes the exposed center');
+    units.delete(2); units.delete(3); cp.frame(0.016);
+    cp.flash(21, 21); cp.frame(0.2);
+    assert.ok(geo.groups[2].count > 0 && mesh.material[2].visible, 'a move destination flashes the shield marks');
+    cp.enabled = false; cp.frame(0.016);
+    assert.equal(mesh.visible, false, 'turning off cover preview hides cursor and flash marks');
+    cp.enabled = true; cp.frame(2); // let the earlier destination flash finish before checking a different spot
+    at.x = at.z = 2;
+    assert.equal(marks(), false, 'unscouted ground away from the scouted patch is not marked');
+    fog = { explored: new Uint8Array(W * W), version: 10 };
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) fog.explored[y * W + x] = 1;
+    cp.start();
+    assert.equal(marks(), true, 'a rejoin keeps the ground explored before it');
+  } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
+}
+
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
   const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));
@@ -2686,14 +3448,48 @@ const aiCommands = (g, slot, memory = {}, seed = 1, extra = {}) => {
   assert.equal(aiDigest(g), before, 'dry-run AI leaves authoritative state unchanged');
   return { commands, draws };
 };
-const aiEquivalent = (a, b, slot = 0, memory = {}, seed = 1, message = 'hidden state does not affect AI commands') => {
+const aiEquivalent = (a, b, slot = 0, memory = {}, seed = 1, message = 'hidden state does not affect AI commands', levels = AI_LEVEL_NAMES) => {
   assert.deepEqual(aiSnapshot(a, slot), aiSnapshot(b, slot), `${message}: human snapshots match`);
-  const left = aiCommands(a, slot, structuredClone(memory), seed), right = aiCommands(b, slot, structuredClone(memory), seed);
-  assert.deepEqual(right, left, message);
-  return left.commands;
+  let commands;
+  for (const level of levels) {
+    const left = aiCommands(a, slot, structuredClone(memory), seed, { level }), right = aiCommands(b, slot, structuredClone(memory), seed, { level });
+    assert.deepEqual(right, left, `${message} (${level})`);
+    if (level === 'normal') commands = left.commands;
+  }
+  return commands;
 };
 const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] });
+
+// Supply reconnection remains immediate at every level, including Easy's opening grace period.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const squad = [0, 1].map(() => massiveInternals.spawnUnit(g, 0, 'rifle'));
+  squad.forEach((u, i) => Object.assign(u, { x: 50.5, z: 50.5 + i, cd: 999 }));
+  const view = viewFor(g, 0, {}); Object.assign(view.points[0], { owner: 0, cut: true });
+  for (const level of AI_LEVEL_NAMES) {
+    const orders = aiCommands(g, 0, {}, 37, { view, level }).commands;
+    assert.deepEqual(orders.find(c => c.t === 'amove')?.orders.map(o => o[0]), squad.map(u => u.id), `${level} reconnects an allied cut point without waiting for an enemy assault group`);
+  }
+}
+
+// Hard keeps onward orders when switching focus targets and stops chasing a retreating squad.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const squad = [0, 1].map(i => massiveInternals.spawnUnit(g, 0, 'rifle'));
+  const wounded = massiveInternals.spawnUnit(g, 1, 'rifle'), current = massiveInternals.spawnUnit(g, 1, 'rifle');
+  Object.assign(wounded, { x: 56.5, z: 50.5, hp: 1 }); Object.assign(current, { x: 56.5, z: 51.5 });
+  g.players[0].visible = new Set([wounded.id, current.id]);
+  squad.forEach((u, i) => Object.assign(u, { x: 50.5, z: 50.5 + i * 0.5, cd: 999, targetId: current.id, attackId: current.id,
+    orders: [{ t: 'amove', x: 81, z: 83 }], amove: null }));
+  const focused = aiCommands(g, 0, {}, 431, { level: 'hard' }).commands;
+  assert.ok(focused.some(c => c.t === 'attack' && c.target === wounded.id && c.ids.length === 2), 'Hard switches both shooters to the wounded visible squad');
+  assert.deepEqual(focused.find(c => c.t === 'amove' && c.queue)?.orders, squad.map(u => [u.id, 81, 83]), 'a second focus order preserves the already queued onward destination');
+  current.retreating = true; wounded.retreating = true;
+  const stopped = aiCommands(g, 0, {}, 431, { level: 'hard' }).commands;
+  assert.ok(!stopped.some(c => c.t === 'attack'), 'Hard does not issue a chase order against retreating enemies');
+  assert.deepEqual(stopped.find(c => c.t === 'amove' && !c.queue)?.orders, squad.map(u => [u.id, 81, 83]), 'a retreating focus target releases the shooters to their onward orders');
+}
 
 // A newly spotted gun's private stationary timer cannot authorize an artillery call.
 {
@@ -2951,6 +3747,10 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   g.strikes.push({ kind: 'strafe', owner: 1, x: 5, z: 5, dir: 0, t: 4, live: false, left: 1, next: 0 });
   assert.deepEqual(aiCommands(g, 0, structuredClone(memory), 319, { view: delivered }), before, 'an undelivered sighting and strike cannot change the next decision');
   const refreshed = viewFor(g, 0, structuredClone(memory));
+  for (const level of AI_LEVEL_NAMES) {
+    const beforeLevel = aiCommands(g, 0, {}, 319, { view: delivered, level });
+    assert.deepEqual(aiCommands(g, 0, { seen: new Map([[tank.id, { type: 'tank', val: 99999 }]]) }, 319, { view: delivered, level }), beforeLevel, `${level} memory uses delivered sightings only`);
+  }
   assert.notDeepEqual(aiCommands(g, 0, structuredClone(memory), 319, { view: refreshed }).commands, before.commands, 'delivery of the sighting and strike can change decisions');
   g.players[0].visible.delete(tank.id); g.tick = 1200; viewFor(g, 0, memory);
   assert.ok(!memory.still.has(tank.id), 'observed stationary tracking ends when current vision ends');
@@ -2967,19 +3767,19 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
-    const tick = new Function('step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats',
+    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats',
       body + '\nreturn timedRoomTick;')(
-      g => { g.tick++; },
+      thinkEvery, g => { g.tick++; },
       (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
       g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}));
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
-      players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true }, { ai: true }] };
-    for (let i = 0; i < 81; i++) tick(room);
-    assert.deepEqual(deliveries, Array.from({ length: Math.floor(81 / cadence) }, (_, i) => (i + 1) * cadence), 'humans keep the configured delivery beat');
+      players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
+    for (let i = 0; i < 161; i++) tick(room);
+    assert.deepEqual(deliveries, Array.from({ length: Math.floor(161 / cadence) }, (_, i) => (i + 1) * cadence), 'humans keep the configured delivery beat');
     assert.ok(decisions.length >= 4, 'both staggered AI slots took turns');
     for (const [at, slot, viewed] of decisions) {
-      assert.equal((at + slot * 13) % 40, 0, 'AI schedule keeps the server stagger');
+      assert.equal((at + slot * 13) % thinkEvery(room.players[slot].level), 0, 'AI schedule keeps the selected difficulty and server stagger');
       assert.equal(viewed, Math.floor(at / cadence) * cadence, 'AI sees only the most recent human delivery beat');
     }
     assert.ok(decisions.some(([at, , viewed]) => viewed < at), 'proof includes a turn between snapshots');
@@ -3002,7 +3802,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const counts = { comparisons: 0, commands: 0, hiddenUnits: 0, footprints: 0, depots: 0, visibleUnits: 0, digits: 0, hiddenMines: 0, dropped: 0 }, byType = {};
   const hordeSeats = new Set();
   try {
-    for (const [mode, mapName, ticks] of [['conquest', 'default', 1600], ['conquest', 'open', 1600], ['classic', 'default', 1600], ['assault', 'default', 1600], ['horde', 'hill-112', 2600]]) for (const seed of [617, 902]) {
+    for (const [mode, mapName, ticks] of [['conquest', 'default', 1600], ['conquest', 'open', 1600], ['classic', 'default', 1600], ['assault', 'default', 1600], ['horde', 'hill-112', 2600]]) for (const seed of [617, 902]) for (const level of AI_LEVEL_NAMES) {
       Math.random = aiRandom(seed);
       const names = mode === 'horde' ? ['AI 0', 'AI 1'] : ['AI 0', 'AI 1', 'AI 2'];
       const g = createGame(maps[mapName], names, true, names.map((_, i) => i), [0, 1, 2], { mode, defenderTeam: 0 });
@@ -3011,7 +3811,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
       for (let tick = 0; tick < ticks && g.winner === null; tick++) {
         step(g);
         if (g.tick % 2 === 0) for (const slot of seats) views[slot] = viewFor(g, slot, memories[slot]);
-        for (const slot of seats) if ((g.tick + slot * 13) % 40 === 0) {
+        for (const slot of seats) if ((g.tick + slot * 13) % thinkEvery(level) === 0) {
           if (mode === 'horde' && slot === g.mode.slot) hordeSeats.add(`${seed}`);
           const visible = new Set(aiSnapshot(g, slot).units.map(u => u[0])), team = g.players[slot].team;
           const perturb = {
@@ -3099,10 +3899,10 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
             }
           }
           for (const [name, n] of Object.entries(made)) if (name in counts) counts[name] += n;
-          aiEquivalent(g, altered, slot, memories[slot], seed * 10000 + g.tick * 3 + slot, `${mode} on ${mapName}, seed ${seed} tick ${g.tick} seat ${slot}`);
+          aiEquivalent(g, altered, slot, memories[slot], seed * 10000 + g.tick * 3 + slot, `${mode} on ${mapName}, seed ${seed} tick ${g.tick} seat ${slot}`, [level]);
           counts.comparisons++;
           let expected = aiDigest(g);
-          think(g, slot, { memory: memories[slot], view: views[slot], submit: cmd => {
+          think(g, slot, { level, memory: memories[slot], view: views[slot], submit: cmd => {
             assert.equal(aiDigest(g), expected, 'AI changes no authoritative state before submitting a command');
             const result = command(g, slot, cmd); expected = aiDigest(g); counts.commands++; byType[cmd.t] = (byType[cmd.t] ?? 0) + 1; return result;
           } });
@@ -3111,6 +3911,19 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
       }
     }
   } finally { Math.random = originalRandom; }
+  // Behavior changes can make these short replays finish mining before they start a trench. Guarantee that the
+  // same hidden-state proof also exercises entrenchment, with enough manpower to dig but not to mine first.
+  const holder = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
+  const squad = [...holder.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  Object.assign(squad, { x: holder.points[0].x, z: holder.points[0].z });
+  holder.points[0].owner = 0; holder.players[0].mp = 185;
+  const privateEconomy = structuredClone(holder); privateEconomy.players[1].mp += 12345;
+  const holderCommands = aiEquivalent(holder, privateEconomy, 0, {}, 5, 'the entrenching holder ignores hidden enemy resources');
+  assert.ok(holderCommands.some(cmd => cmd.t === 'entrench'), 'the deterministic holder issues entrenchment');
+  for (const cmd of holderCommands) {
+    command(holder, 0, cmd); counts.commands++; byType[cmd.t] = (byType[cmd.t] ?? 0) + 1;
+  }
+  counts.comparisons++;
   assert.ok(counts.comparisons >= 600, `checked ${counts.comparisons} paired turns`);
   assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100 && counts.digits >= 100 && counts.hiddenMines >= 100,
     'proof exercised actual orders, hidden armies, private footprints, secret depots, hidden mines and visible enemies\' private state');
@@ -3473,6 +4286,32 @@ for (const lookupFinished of [false, true]) {
   await h.close();
 }
 
+// Server: the host picks each AI seat's difficulty in the lobby. Humans have none; bad values and guests are ignored.
+{
+  const h = await serverHarness(), code = 'levels';
+  const host = await h.connect(code, { token: 'host', name: 'Host' }), guest = await h.connect(code, { token: 'guest', name: 'Guest' });
+  await host.send({ t: 'addAi' });
+  // lobby updates are sent after an async map listing, so wait for the one a change produces
+  await h.waitFor(() => host.lobby().players.length === 3, 'server the AI seat is added');
+  const level = (slot) => host.lobby().players[slot].level;
+  assert.equal(level(2), 'normal', 'server new AI seat plays Normal');
+  assert.equal(level(0), null, 'server human seat has no difficulty');
+  await host.send({ t: 'level', slot: 2, v: 'hard' });
+  await h.waitFor(() => level(2) === 'hard', 'server host sets an AI seat to Hard');
+  for (const v of ['brutal', 2, null, 'constructor', 'toString', '__proto__']) await host.send({ t: 'level', slot: 2, v });
+  assert.equal(level(2), 'hard', 'server unknown difficulty is ignored');
+  for (const slot of ['2', [2], 2.5, -1, null, true]) await host.send({ t: 'level', slot, v: 'easy' });
+  assert.equal(level(2), 'hard', 'server malformed difficulty slot is ignored');
+  await host.send({ t: 'level', slot: 1, v: 'easy' });
+  assert.equal(level(1), null, 'server a human seat gets no difficulty');
+  await guest.send({ t: 'level', slot: 2, v: 'easy' });
+  assert.equal(level(2), 'hard', 'server only the host sets difficulty');
+  await host.send({ t: 'start' }); await host.wait('start');
+  await host.send({ t: 'level', slot: 2, v: 'easy' });
+  assert.equal(level(2), 'hard', 'server difficulty is fixed once the match starts');
+  await h.close();
+}
+
 // Server: JSON objects masquerading as names or tokens cannot crash text conversion.
 {
   const h = await serverHarness(), code = 'badtext', invalid = { toString: null, valueOf: null };
@@ -3764,6 +4603,98 @@ for (const lookupFinished of [false, true]) {
   selection.findIdle(); assert.deepEqual(ids(), [1], 'new matches reset idle cursors');
   const beforeRecall = centers.length; selection.group(1, 'set'); selection.group(1, 'recall', 1100);
   assert.equal(centers.length, beforeRecall, 'new matches and group edits reset the double-tap timer');
+}
+// Visible soldiers and roof bars remain selectable when the logical squad center is outside the box.
+{
+  const { createSelection, selectionDragged } = await import('./client/selection.js');
+  const units = new Map([
+    { id: 1, type: 'rifle', owner: 0, hp: 100, flags: 0, points: [{ x: 200, y: 200, front: true }, { x: 25, y: 25, front: true, boxRadius: 12 }] },
+    { id: 2, type: 'mg', owner: 0, hp: 60, flags: 32, points: [{ x: 55, y: 25, front: true }] },
+    { id: 3, type: 'hq', owner: 0, hp: 100, points: [{ x: 25, y: 25, front: true }] },
+    { id: 4, type: 'rifle', owner: 1, hp: 100, points: [{ x: 25, y: 25, front: true }] },
+    { id: 5, type: 'rifle', owner: 0, hp: 100, flags: 262144, points: [{ x: 25, y: 25, front: true }] },
+    { id: 6, type: 'rifle', owner: 0, hp: 0, points: [{ x: 25, y: 25, front: true }] },
+    { id: 7, type: 'rifle', owner: 0, hp: 100, flags: 0, points: [{ x: 200, y: 200, front: true }, { x: 70, y: 60, front: true }] },
+    { id: 8, type: 'rifle', owner: 0, hp: 100, flags: 0, points: [{ x: 20, y: 20, front: false }] },
+    { id: 9, type: 'fighter', owner: 0, hp: 100, flags: 512, points: [{ x: 25, y: 25, front: true }] },
+  ].map(v => [v.id, v]));
+  const selected = new Set();
+  const selection = createSelection({ units, selected, groups: {}, owner: () => 0, definitions: UNITS,
+    screenOf: v => v.points[0], screenPointsOf: v => v.points, viewport: () => ({ width: 100, height: 100 }), center() {} });
+  assert.equal(selection.pick(25, 25).id, 1, 'visible soldier wins over a building, enemy, dead squad and passengers');
+  assert.equal(selection.pick(55, 25).id, 2, 'roof bar selects a garrison');
+  selection.box({ x0: 20, x1: 60, y0: 20, y1: 30 });
+  assert.deepEqual([...selected], [1, 2], 'one box selects mixed troops at visible soldiers and roof bars without a prior selection');
+  selection.box({ x0: 30, x1: 35, y0: 30, y1: 35 });
+  assert.deepEqual([...selected], [1], 'a box intersecting the soldier target selects the squad without including nearby troops');
+  selection.box({ x0: 38, x1: 40, y0: 24, y1: 26 });
+  assert.deepEqual([...selected], [], 'box targets stay tighter than click forgiveness');
+  selection.click(units.get(7));
+  selection.box({ x0: 20, x1: 60, y0: 20, y1: 30 }, { shiftKey: true });
+  assert.deepEqual([...selected], [7, 1, 2], 'Shift preserves another type when adding visible targets');
+  selection.doubleClick(units.get(1));
+  assert.deepEqual([...selected], [1, 7], 'double-click includes squads whose visible soldiers are on screen');
+  selection.doubleClick(units.get(1), { ctrlKey: true });
+  assert.deepEqual([...selected], [1, 7, 8], 'map-wide type selection excludes dead squads and passengers');
+  selection.click(units.get(5)); assert.equal(selected.size, 0, 'a passenger cannot be selected by a stale direct click');
+  assert.equal(selection.pick(600, 600), null, 'scenery and empty space do not select a unit');
+  assert.equal(selectionDragged({ x: 10, y: 10 }, { clientX: 50, clientY: 50 }), true, 'release distance identifies a drag even without a move event');
+  assert.equal(selectionDragged({ x: 10, y: 10 }, { clientX: 13, clientY: 14 }), false, 'small mouse jitter remains a click');
+}
+// Rendered bounds cover posed sniper boots and the ends of rooftop bars, without selecting gaps or rings.
+{
+  const THREE = await import('three');
+  const { selectionPoints } = await import('./client/selection-view.js');
+  const { createSelection } = await import('./client/selection.js');
+  const { buildModel, animate } = await import('./client/unit-models.js');
+  const { rigOf } = await import('./client/models/infantry.js');
+  const camera = new THREE.PerspectiveCamera(42, 1920 / 1080, 1, 2200);
+  camera.position.set(0, 25 * Math.sin(0.95), 25 * Math.cos(0.95)); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
+  const root = new THREE.Group(), bars = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial());
+  bar.scale.set(2.4, 0.42, 1); bars.position.y = 7.5; bars.quaternion.copy(camera.quaternion); bars.add(bar);
+  const v = { id: 1, owner: 0, type: 'sniper', hp: 100, flags: 0, root, models: [], bars, x: 0, z: 0, supp: 95, cover: 0 };
+  buildModel(v, root, { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, 0, UNITS.sniper);
+  animate(v, 1, camera.position);
+  const center = () => ({ x: 960, y: 506.168, front: true });
+  const projected = () => selectionPoints(v, camera, center, 1920, 1080);
+  const units = new Map([[1, v]]), selected = new Set(), groups = { 1: [1] };
+  const selection = createSelection({ units, selected, groups, owner: () => 0, definitions: UNITS,
+    screenOf: center, screenPointsOf: projected, viewport: () => ({ width: 1920, height: 1080 }), center() {} });
+  const screen = p => { p.project(camera); return { x: (p.x + 1) * 960, y: (1 - p.y) * 540 }; };
+  const leader = v.models[0], slot = leader.userData.slot;
+  const foot = screen(rigOf('sniper', 0, 0, 2).legs[0].ankle.clone().multiplyScalar(leader.scale.x).add(new THREE.Vector3(slot[0], 0, slot[1])));
+  selection.box({ x0: foot.x - 4, x1: foot.x + 4, y0: foot.y - 4, y1: foot.y + 4 });
+  assert.deepEqual([...selected], [1], 'a narrow box around the actual prone sniper boot selects the squad');
+  assert.equal(selection.pick(foot.x, foot.y), v, 'the actual prone boot is clickable');
+  const before = projected().map(p => p.bounds);
+  v.sel = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial()); root.add(v.sel);
+  assert.deepEqual(projected().map(p => p.bounds), before, 'owner and selection rings never enlarge selectable bounds');
+  const right = Math.max(...projected().filter(p => p.bounds).map(p => p.bounds.x1));
+  assert.equal(selection.pick(right + 100, foot.y), null, 'empty ground outside the displayed geometry misses');
+  v.garr = true;
+  const roof = projected();
+  assert.equal(roof.length, 1, 'garrison target contains only the displayed roof bar');
+  const barEnd = screen(new THREE.Vector3(0.49, 0, 0).applyMatrix4(bar.matrixWorld));
+  selection.box({ x0: barEnd.x - 2, x1: barEnd.x + 2, y0: barEnd.y - 2, y1: barEnd.y + 2 });
+  assert.deepEqual([...selected], [1], 'a narrow box at the end of a roof bar selects its squad');
+  assert.equal(selection.pick(barEnd.x, barEnd.y), v, 'the roof bar end is clickable');
+  bars.visible = false; assert.deepEqual(projected(), [], 'hidden roof bars are not selectable');
+  bars.visible = true;
+  const passenger = { ...v, id: 2, type: 'rifle', flags: 262144 }, plane = { ...v, id: 3, type: 'fighter', flags: 512 };
+  units.set(2, passenger); units.set(3, plane); groups[2] = [1, 2, 3];
+  selection.group(2); assert.deepEqual([...selected], [1], 'recall skips passengers and parked planes');
+  assert.deepEqual(groups[2], [1, 2, 3], 'recall retains IDs so units return after unloading or launching');
+  passenger.flags = plane.flags = 0;
+  selection.group(2); assert.deepEqual([...selected], [1, 2, 3], 'unloaded squads and launched planes return on recall');
+  const nearCamera = new THREE.PerspectiveCamera(42, 1, 1, 100); nearCamera.updateMatrixWorld();
+  const behind = new THREE.Group(); behind.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial())); behind.position.z = 4;
+  const hidden = { root: behind, models: [behind], bars: new THREE.Group(), garr: false };
+  assert.equal(selectionPoints(hidden, nearCamera, () => ({ x: 0, y: 0, front: false }), 800, 800).filter(p => p.bounds).length, 0,
+    'geometry behind the camera produces no mirrored selection bounds');
+  behind.position.z = -1;
+  const clipped = selectionPoints(hidden, nearCamera, () => ({ x: 0, y: 0, front: false }), 800, 800).filter(p => p.bounds);
+  assert.ok(clipped.length && clipped.every(p => Object.values(p.bounds).every(Number.isFinite)), 'near-plane intersections produce finite clipped bounds');
 }
 // Camera: a mouse press during the opening glide ends it and still reaches the board, so the first click or box drag
 // of a match selects (it used to be swallowed). A right-click is still dropped: its order was aimed at a moving view.
@@ -4535,7 +5466,7 @@ for (const lookupFinished of [false, true]) {
 // soldier as one draw, postures blend and keep the weapon above ground, and corpses stay under the cap.
 {
   const THREE = await import('three');
-  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT } = await import('./client/unit-models.js');
+  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
   const box = new THREE.BoxGeometry(1, 1, 1);
   const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
   assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
@@ -4557,7 +5488,7 @@ for (const lookupFinished of [false, true]) {
     const root = new THREE.Group(), v = { type, root, models: [], turret: null };
     buildModel(v, root, look, fac, def);
     assert.ok(v.models.length, `${type}: has a model`);
-    root.traverse((o) => { if (o.isMesh && o.material === PAINT) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
+    root.traverse((o) => { if (o.isMesh && (o.material === PAINT || o.material === VEHICLE_PAINT)) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
     if (v.squad) {
       assert.ok(v.models.length >= def.models && v.models.length % def.models === 0, `${type}: whole ranks, a multiple of its ${def.models} models (battalion blocks draw more men)`);
       for (const man of v.models) {
@@ -4584,9 +5515,64 @@ for (const lookupFinished of [false, true]) {
   const man = v.models[0];
   man.updateMatrixWorld(true);
   const muzzle = new THREE.Vector3(0.72, 1.1, 0.2).applyMatrix4(man.matrixWorld); // client/fx.js HAND.rifle
-  assert.ok(man.userData.pose.rotation.z < -1.3 && muzzle.y > 0.3 && muzzle.y < 1, `lying down, weapon just above ground (${muzzle.y.toFixed(2)})`);
+  assert.ok(man.userData.pose.rotation.z < -1.3 && muzzle.y > 0.2 && muzzle.y < 0.5, `lying down, weapon just above ground (${muzzle.y.toFixed(2)})`);
   animate(v, 0.016, new THREE.Vector3(0, 0, LOD.high + 10));
   assert.ok(v.squad.far && !man.userData.hi[0].visible && man.userData.lo[0].visible, 'far model beyond the LOD distance');
+
+  // Real travel drives separate stride frames and world-space followers, without changing the squad center.
+  const marchRoot = new THREE.Group(), march = { id: 17, type: 'rifle', root: marchRoot, models: [], x: 0, z: 0, supp: 0, flags: 0, cover: 0 };
+  buildModel(march, marchRoot, look, 0, UNITS.rifle);
+  animate(march, 1 / 60, eye);
+  assert.equal(march.models[0].userData.hi[0].morphTargetInfluences.length, 23, 'three suppression/retreat targets plus walk, aim, crouch and crawl frames');
+  for (let i = 0; i < 120; i++) { marchRoot.position.x += 0.03; march.x = marchRoot.position.x; animate(march, 1 / 60, eye); }
+  const leader = march.models[0].userData, rear = march.models[5].userData;
+  assert.ok(leader.motion.blend > 0.9, 'walking enables actual limb locomotion');
+  assert.notEqual(leader.motion.phase, rear.motion.phase, 'soldiers have independent stride phases');
+  const stride = leader.hi[0].morphTargetInfluences.slice(3);
+  marchRoot.position.x += 0.18; march.x = marchRoot.position.x; animate(march, 0.1, eye);
+  assert.notDeepEqual(leader.hi[0].morphTargetInfluences.slice(3), stride, 'translation changes the leg/arm frames');
+  const beforeTurn = march.models.map((m) => [m.userData.motion.x, m.userData.motion.z]);
+  marchRoot.rotation.y = -Math.PI / 2;
+  marchRoot.position.z += 0.03; march.z = marchRoot.position.z; animate(march, 1 / 60, eye);
+  march.models.forEach((m, i) => assert.ok(Math.hypot(m.userData.motion.x - beforeTurn[i][0], m.userData.motion.z - beforeTurn[i][1]) < 0.9, 'a corner does not spin the whole rank into new slots'));
+  assert.ok(new Set(march.models.map((m) => m.userData.motion.localYaw.toFixed(3))).size > 1, 'men turn at individual rates');
+  for (let i = 0; i < 60; i++) animate(march, 1 / 60, eye);
+  assert.equal(leader.motion.blend, 0, 'idle stops walking');
+  const idlePhase = leader.motion.phase;
+  animate(march, 0.1, eye); assert.equal(leader.motion.phase, idlePhase, 'idle never marches in place');
+  for (const [suppression, posture, firstFrame] of [[50, 1, 15], [95, 2, 19]]) {
+    march.supp = suppression;
+    for (let i = 0; i < 30; i++) { marchRoot.position.z += 0.015; march.z = marchRoot.position.z; animate(march, 1 / 60, eye); }
+    assert.equal(march.squad.w[posture], 1, 'moving suppressed men retain the low posture');
+    assert.ok(leader.hi[0].morphTargetInfluences.slice(firstFrame, firstFrame + 4).some((w) => w > 0.1), 'low movement uses crouch walking or crawling limb frames');
+    for (let i = 0; i < 60; i++) animate(march, 1 / 60, eye);
+    assert.equal(leader.hi[0].morphTargetInfluences[posture - 1], 1, 'idle low figures return to their planted suppression pose');
+  }
+  const { rigOf, AIM_SHIFT } = await import('./client/models/infantry.js');
+  march.cover = 2; march.supp = 100; march.trench = march.models.map(() => [0, 0]);
+  animate(march, POSTURE.blend + 0.01, eye);
+  assert.equal(march.squad.w[1], 1, 'trench keeps the crouching posture');
+  assert.equal(leader.motion.blend, 0, 'trench seating does not shuffle');
+  assert.ok(Math.abs(march.models[0].position.y - (-0.6 + AIM_SHIFT[1][1] * march.models[0].scale.x)) < 0.001, 'trench remains sunk to its existing height');
+  const originalSlot = [...leader.slot];
+  leader.slot = [originalSlot[0] + 3, originalSlot[1] + 2];
+  animate(march, 1 / 60, eye);
+  leader.slot = originalSlot; march.trench = null; march.cover = 0; march.supp = 0;
+  animate(march, POSTURE.blend + 0.01, eye);
+  assert.ok(Math.abs(leader.motion.localX - originalSlot[0]) < 0.000001, 'leaving a destroyed trench restores the stationary home slot');
+  march.tgt = 42; march.aim = Math.PI / 2;
+  for (let i = 0; i < 30; i++) { marchRoot.position.z += 0.03; march.z = marchRoot.position.z; animate(march, 1 / 60, eye); }
+  assert.ok(leader.hi[0].morphTargetInfluences.slice(11, 15).some((w) => w > 0.1), 'moving fire uses aiming gait frames');
+  assert.ok(Math.abs(leader.motion.yaw + march.aim) < 0.01, 'moving shooters face their authoritative aim');
+  for (const phase of [0, 0.25, 0.5, 0.75]) {
+    const aimed = rigOf('rifle', 0, 0, 0, phase), tip = new THREE.Vector3(aimed.info.L, 0, 0).applyMatrix4(aimed.W);
+    assert.ok(tip.distanceTo(new THREE.Vector3(0.72, 1.1, 0.2)) < 0.000001, 'the aimed gait keeps the muzzle on the existing flash point');
+  }
+  for (const phase of [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]) {
+    const rig = rigOf('rifle', 0, 0, 3, phase);
+    assert.ok(Math.min(...rig.legs.map((l) => l.ankle.y)) < 0.08, 'one boot remains planted throughout the stride');
+    assert.ok(rig.legs.every((l) => l.ankle.y >= 0.04 && l.ankle.y < 0.22), 'boots have bounded ground clearance');
+  }
 
   const bodies = createBodies(), scene = new THREE.Scene(), world = new THREE.Group();
   scene.add(world);
@@ -4630,7 +5616,7 @@ for (const lookupFinished of [false, true]) {
 // Live separation must discover later pairs brought into range by an earlier push.
 {
   const g = fresh(empty, 1); g.players[0].mp = 100000; g.army = { pop: 100, income: 1 };
-  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2);
+  for (let i = 0; i < 50; i++) put(g, 0, i % 4 ? 'rifle' : 'tank', 19 + (i % 7) * 0.2, 19 + Math.floor(i / 7) * 0.2).react = 1e9; // no spacing walks: separation alone
   const expected = [...g.units.values()].map(u => ({ ...u }));
   for (let i = 0; i < expected.length; i++) for (let j = i + 1; j < expected.length; j++) {
     const a = expected[i], b = expected[j], min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
@@ -5052,7 +6038,8 @@ for (const lookupFinished of [false, true]) {
   assert.ok(!m.active && m.wave === 0 && snapshotFor(g, 0, []).mode.timeLeft === Math.ceil(H.break - 0.05), 'Horde opens with a break');
   m.timeLeft = 0; for (let i = 0; i < 40; i++) step(g);
   assert.ok(m.active && m.wave === 1 && m.left > 0 && horde().length > 0, 'wave 1 walks on when the break ends');
-  assert.ok(horde().every(u => u.amove && Math.hypot(u.amove.x - bunker.x, u.amove.z - bunker.z) < 1), 'every horde unit attack-moves on the bunker');
+  // each takes its own spot around the bunker (unit behavior: settle within coverSeek, then step off a held spot)
+  assert.ok(horde().every(u => u.amove && Math.hypot(u.amove.x - bunker.x, u.amove.z - bunker.z) <= 2 * CFG.behavior.coverSeek + 2), 'every horde unit attack-moves on the bunker');
   assert.equal(g.players[2].inc, 0, 'the horde has no income');
   // the wave's make-up: within budget, only what is unlocked, never snipers
   const cost = (list) => list.reduce((a, t) => a + UNITS[t].cost, 0);
@@ -5950,6 +6937,46 @@ console.log('all availability checks passed');
 }
 console.log('all model toolkit checks passed');
 
+// Armor keeps one hull and one traversing draw, outward faces and muzzle points, inside the model budgets.
+{
+  const THREE = await import('three');
+  const { buildModel, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
+  const looks = [{ vehicle: 0x59623d, color: 0x3b73d6 }, { vehicle: 0x50565a, color: 0xcc3a2e }, { vehicle: 0x4e5a38, color: 0xece6d6 }];
+  const cases = [['tank', 0, 3000], ['tank', 1, 3000], ['tank', 2, 3000], ['tiger', 1, 5000],
+    ['medium', 0, 4000], ['medium', 1, 4000], ['medium', 2, 4000], ['rocket', 0, 4000], ['flaktrack', 1, 4000], ['flaktrack', 2, 3000]];
+  for (const [type, fac, budget] of cases) {
+    const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
+    buildModel(v, root, looks[fac], fac, UNITS[type]);
+    const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push(o); });
+    assert.equal(meshes.length, 2, `${label}: one hull and one turret draw`);
+    assert.ok(meshes.every(m => m.material === VEHICLE_PAINT), `${label}: shares the vehicle fill material`);
+    const tris = meshes.reduce((sum, m) => sum + m.geometry.index.count / 3, 0);
+    assert.ok(tris <= budget, `${label}: ${tris} triangles within ${budget}`);
+    let tipDistance = Infinity;
+    for (const mesh of meshes) {
+      const geo = mesh.geometry, P = geo.attributes.position, N = geo.attributes.normal, I = geo.index;
+      assert.ok(geo.attributes.color && geo.attributes.matId && P.array.every(Number.isFinite), `${label}: finite textured geometry`);
+      const a = new THREE.Vector3(), b = a.clone(), c = a.clone(), face = a.clone(), normal = a.clone();
+      for (let i = 0; i < I.count; i += 3) {
+        const ids = [I.getX(i), I.getX(i + 1), I.getX(i + 2)];
+        a.fromBufferAttribute(P, ids[0]); b.fromBufferAttribute(P, ids[1]); c.fromBufferAttribute(P, ids[2]);
+        face.subVectors(b, a).cross(c.sub(a)); normal.set(0, 0, 0);
+        for (const id of ids) normal.add(new THREE.Vector3().fromBufferAttribute(N, id));
+        assert.ok(face.lengthSq() > 1e-15 && face.dot(normal) >= -1e-8, `${label}: visible faces agree with their normals`);
+      }
+      if (mesh.parent === v.turret) for (let i = 0; i < P.count; i++) tipDistance = Math.min(tipDistance, a.fromBufferAttribute(P, i).distanceTo(new THREE.Vector3(...v.fxTip)));
+    }
+    assert.ok(tipDistance < 0.1, `${label}: muzzle point stays on the gun`);
+  }
+  const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
+  VEHICLE_PAINT.onBeforeCompile(shader);
+  assert.ok(shader.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb') && shader.fragmentShader.includes('modelTriplanar'), 'vehicle fill keeps the model texture shader');
+  const ordinary = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
+  PAINT.onBeforeCompile(ordinary);
+  assert.ok(!ordinary.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb'), 'soldiers and guns retain their own lighting');
+}
+console.log('all armor model checks passed');
+
 // Wheeled and half-tracked models (client/models/wheeled.js): the armored cars, the M16 and the two rocket trucks are two
 // shadow-casting draws with a traversing part, stay close to the footprint of the boxes they replaced and within their
 // triangle budgets, carry their own vertex colors, and put the muzzle point where the traversing part is.
@@ -6081,5 +7108,53 @@ console.log('all gun model checks passed');
   }
 }
 console.log('all aircraft model checks passed');
+
+// Infantry rigs must keep complete morph targets, one body per LOD, and usable prone firing poses.
+{
+  const { soldier, soldierKit, rigOf } = await import('./client/models/infantry.js');
+  const THREE = await import('three');
+  const { buildModel } = await import('./client/unit-models.js');
+  const types = ['rifle', 'conscript', 'ranger', 'engineer', 'sniper', 'mg', 'mortar', 'at', 'flak'];
+  for (const fac of [0, 1, 2]) for (const type of types) {
+    const seen = new Set();
+    for (let i = 0; i < 5; i++) {
+      const kit = soldierKit(type, i);
+      if (seen.has(kit)) continue;
+      seen.add(kit);
+      const s = soldier(type, fac, i, { color: 0xff00ff });
+      for (const [lod, budget] of [['near', 900], ['far', 150]]) {
+        assert.equal(s[lod].children.length, 1, `${type}/${fac}/${kit}: one ${lod} body`);
+        const g = s[lod].children[0].userData.geo, p = g.attributes.position;
+        assert.ok(g.index.count / 3 <= budget, `${type}/${fac}/${kit}: ${lod} fits ${budget} triangles`);
+        assert.equal(g.userData.poses.length, 3, `${type}/${fac}/${kit}: all suppression and retreat poses`);
+        for (const pose of g.userData.poses) {
+          assert.equal(pose.position.count, p.count, `${type}/${fac}/${kit}: morph vertex count`);
+          assert.equal(pose.normal.count, p.count, `${type}/${fac}/${kit}: morph normal count`);
+          assert.ok(pose.position.array.every(Number.isFinite) && pose.normal.array.every(Number.isFinite), `${type}/${fac}/${kit}: finite pose attributes`);
+        }
+      }
+      const prone = rigOf(type, fac, i, 2);
+      assert.ok(prone.legs.every(l => l.ankle.y < 0.2 && l.knee.y < 0.2), `${type}/${fac}/${kit}: prone legs rest near the ground`);
+      assert.ok(prone.arms.every(a => a.err < 0.045), `${type}/${fac}/${kit}: prone hands within reach`);
+      if (type === 'rifle' && kit !== 'leader') {
+        const barrel = new THREE.Vector3(1, 0, 0).transformDirection(prone.W);
+        assert.ok(Math.abs(barrel.y) < 0.08, `${fac}/${kit}: prone rifle stays level`);
+        assert.ok(prone.arms.every(a => a.elbow.y > 0.02 && a.elbow.y < 0.15), `${fac}/${kit}: prone elbows support the rifle`);
+      }
+    }
+  }
+  for (const fac of [0, 1, 2]) {
+    const v = { type: 'medic', owner: fac, models: [] }, root = new THREE.Group();
+    buildModel(v, root, { color: 0xff00ff, uniform: 0x777755, vehicle: 0x555544 }, fac, UNITS.medic);
+    assert.equal(v.models.length, 2, 'medics retain their two figures');
+    for (const man of v.models) for (const lod of ['hi', 'lo']) {
+      assert.equal(man.userData[lod].length, 1, 'each medic remains one draw per LOD');
+      assert.ok(man.userData[lod][0].geometry.morphAttributes.position.length >= 3, 'medics retain suppression and retreat morphs');
+    }
+  }
+  const poses = [1, 2, 3].map(i => rigOf('rifle', 0, i, 0));
+  assert.equal(new Set(poses.map(r => r.s.stance)).size, 3, 'riflemen use stride, brace and standing stances');
+}
+console.log('all infantry model checks passed');
 
 await stopServerHarness(); // the last server check is done

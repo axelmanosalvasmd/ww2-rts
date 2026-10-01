@@ -1,0 +1,2507 @@
+{
+  "baselineRevision": "41eefe8c45dc84f7ac14323f81b8b3f0908edc96",
+  "aiSha256": "1614db36fd3086d579fcbeb3d46694e66a9719151734dc0a279f03f84760e16f",
+  "seed": 1,
+  "matchesPerComparison": 18,
+  "map": "default",
+  "army": "standard",
+  "method": "Two seats, swapped every other match, all nine faction pairs repeated twice, one worker. Both AIs use the same baseline simulation and delivered observations.",
+  "runs": [
+    {
+      "mode": "conquest",
+      "map": "default",
+      "players": 2,
+      "seats": [
+        "hard",
+        "normal"
+      ],
+      "rotate": true,
+      "winsBySeat": [
+        14,
+        4
+      ],
+      "army": "standard",
+      "seed": 1,
+      "matches": 18,
+      "workers": 1,
+      "maxSeconds": 1800,
+      "winsByFaction": {
+        "USA": 6,
+        "Germany": 7,
+        "USSR": 5
+      },
+      "winsBySpawn": [
+        {
+          "spawn": 0,
+          "x": 40,
+          "y": 6,
+          "wins": 5
+        },
+        {
+          "spawn": 1,
+          "x": 69,
+          "y": 57,
+          "wins": 8
+        },
+        {
+          "spawn": 2,
+          "x": 11,
+          "y": 57,
+          "wins": 5
+        }
+      ],
+      "ended": 18,
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 369.3,
+      "medianEndedSeconds": 369.3,
+      "runnerUpVpOverWinnerVp": {
+        "mean": 0.385,
+        "median": 0.32,
+        "matches": 18
+      },
+      "elapsedSeconds": 95.838,
+      "results": [
+        {
+          "match": 1,
+          "seed": 100003,
+          "ticks": 6933,
+          "seconds": 346.65,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            285.45
+          ],
+          "runnerUpVpRatio": 0.2378353607732117
+        },
+        {
+          "match": 2,
+          "seed": 107922,
+          "ticks": 8115,
+          "seconds": 405.75,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            564.9,
+            1200.1
+          ],
+          "runnerUpVpRatio": 0.4707107741021544
+        },
+        {
+          "match": 3,
+          "seed": 115841,
+          "ticks": 5888,
+          "seconds": 294.4,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.05,
+            68.45
+          ],
+          "runnerUpVpRatio": 0.05703929002958017
+        },
+        {
+          "match": 4,
+          "seed": 123760,
+          "ticks": 7482,
+          "seconds": 374.1,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            369.4
+          ],
+          "runnerUpVpRatio": 0.3078076826931332
+        },
+        {
+          "match": 5,
+          "seed": 131679,
+          "ticks": 6450,
+          "seconds": 322.5,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.25,
+            181.65
+          ],
+          "runnerUpVpRatio": 0.15134347011039848
+        },
+        {
+          "match": 6,
+          "seed": 139598,
+          "ticks": 10026,
+          "seconds": 501.3,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            884.8,
+            1200.05
+          ],
+          "runnerUpVpRatio": 0.7373026123910871
+        },
+        {
+          "match": 7,
+          "seed": 147517,
+          "ticks": 7290,
+          "seconds": 364.5,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.05,
+            399.3
+          ],
+          "runnerUpVpRatio": 0.33273613599433116
+        },
+        {
+          "match": 8,
+          "seed": 155436,
+          "ticks": 8288,
+          "seconds": 414.4,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            538.7,
+            1200
+          ],
+          "runnerUpVpRatio": 0.4489166666666434
+        },
+        {
+          "match": 9,
+          "seed": 163355,
+          "ticks": 6948,
+          "seconds": 347.4,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            199.75
+          ],
+          "runnerUpVpRatio": 0.16644446296142526
+        },
+        {
+          "match": 10,
+          "seed": 171274,
+          "ticks": 8213,
+          "seconds": 410.65,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200,
+            564.1
+          ],
+          "runnerUpVpRatio": 0.47008333333326
+        },
+        {
+          "match": 11,
+          "seed": 179193,
+          "ticks": 6753,
+          "seconds": 337.65,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.25,
+            249.95
+          ],
+          "runnerUpVpRatio": 0.20824828160801703
+        },
+        {
+          "match": 12,
+          "seed": 187112,
+          "ticks": 9149,
+          "seconds": 457.45,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.15,
+            851.95
+          ],
+          "runnerUpVpRatio": 0.7098695996331991
+        },
+        {
+          "match": 13,
+          "seed": 195031,
+          "ticks": 6109,
+          "seconds": 305.45,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.05,
+            166.6
+          ],
+          "runnerUpVpRatio": 0.13882754885213702
+        },
+        {
+          "match": 14,
+          "seed": 202950,
+          "ticks": 9927,
+          "seconds": 496.35,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            936.35,
+            1200.15
+          ],
+          "runnerUpVpRatio": 0.7801941423988015
+        },
+        {
+          "match": 15,
+          "seed": 210869,
+          "ticks": 6124,
+          "seconds": 306.2,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.15,
+            169
+          ],
+          "runnerUpVpRatio": 0.14081573136692085
+        },
+        {
+          "match": 16,
+          "seed": 218788,
+          "ticks": 9254,
+          "seconds": 462.7,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            908.55,
+            1200.2
+          ],
+          "runnerUpVpRatio": 0.7569988335277459
+        },
+        {
+          "match": 17,
+          "seed": 226707,
+          "ticks": 6782,
+          "seconds": 339.1,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200,
+            289.4
+          ],
+          "runnerUpVpRatio": 0.24116666666668757
+        },
+        {
+          "match": 18,
+          "seed": 234626,
+          "ticks": 8812,
+          "seconds": 440.6,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200,
+            695
+          ],
+          "runnerUpVpRatio": 0.5791666666665447
+        }
+      ],
+      "comparison": "Hard / Normal"
+    },
+    {
+      "mode": "conquest",
+      "map": "default",
+      "players": 2,
+      "seats": [
+        "easy",
+        "normal"
+      ],
+      "rotate": true,
+      "winsBySeat": [
+        2,
+        16
+      ],
+      "army": "standard",
+      "seed": 1,
+      "matches": 18,
+      "workers": 1,
+      "maxSeconds": 1800,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 5,
+        "USSR": 6
+      },
+      "winsBySpawn": [
+        {
+          "spawn": 0,
+          "x": 40,
+          "y": 6,
+          "wins": 7
+        },
+        {
+          "spawn": 1,
+          "x": 69,
+          "y": 57,
+          "wins": 3
+        },
+        {
+          "spawn": 2,
+          "x": 11,
+          "y": 57,
+          "wins": 8
+        }
+      ],
+      "ended": 18,
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 327.025,
+      "medianEndedSeconds": 327.025,
+      "runnerUpVpOverWinnerVp": {
+        "mean": 0.213,
+        "median": 0.171,
+        "matches": 18
+      },
+      "elapsedSeconds": 53.677,
+      "results": [
+        {
+          "match": 1,
+          "seed": 100003,
+          "ticks": 5623,
+          "seconds": 281.15,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            1,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            64.95,
+            1200.2
+          ],
+          "runnerUpVpRatio": 0.05411598066988741
+        },
+        {
+          "match": 2,
+          "seed": 107922,
+          "ticks": 5886,
+          "seconds": 294.3,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.05,
+            98.1
+          ],
+          "runnerUpVpRatio": 0.08174659389191977
+        },
+        {
+          "match": 3,
+          "seed": 115841,
+          "ticks": 6588,
+          "seconds": 329.4,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            189.1,
+            1200.05
+          ],
+          "runnerUpVpRatio": 0.15757676763468695
+        },
+        {
+          "match": 4,
+          "seed": 123760,
+          "ticks": 9453,
+          "seconds": 472.65,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            946.9,
+            1200.2
+          ],
+          "runnerUpVpRatio": 0.788951841359799
+        },
+        {
+          "match": 5,
+          "seed": 131679,
+          "ticks": 7984,
+          "seconds": 399.2,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.15,
+            586.25
+          ],
+          "runnerUpVpRatio": 0.4884806065907899
+        },
+        {
+          "match": 6,
+          "seed": 139598,
+          "ticks": 6493,
+          "seconds": 324.65,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.25,
+            221.4
+          ],
+          "runnerUpVpRatio": 0.18446157050615133
+        },
+        {
+          "match": 7,
+          "seed": 147517,
+          "ticks": 6248,
+          "seconds": 312.4,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            92.8,
+            1200.1
+          ],
+          "runnerUpVpRatio": 0.07732688942587936
+        },
+        {
+          "match": 8,
+          "seed": 155436,
+          "ticks": 6795,
+          "seconds": 339.75,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            253.05
+          ],
+          "runnerUpVpRatio": 0.21085742854763226
+        },
+        {
+          "match": 9,
+          "seed": 163355,
+          "ticks": 6813,
+          "seconds": 340.65,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            225.45,
+            1200.25
+          ],
+          "runnerUpVpRatio": 0.18783586752761455
+        },
+        {
+          "match": 10,
+          "seed": 171274,
+          "ticks": 6171,
+          "seconds": 308.55,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            85.95
+          ],
+          "runnerUpVpRatio": 0.07161306448924985
+        },
+        {
+          "match": 11,
+          "seed": 179193,
+          "ticks": 6881,
+          "seconds": 344.05,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            290.9,
+            1200.05
+          ],
+          "runnerUpVpRatio": 0.24240656639306396
+        },
+        {
+          "match": 12,
+          "seed": 187112,
+          "ticks": 7169,
+          "seconds": 358.45,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            354.9
+          ],
+          "runnerUpVpRatio": 0.2957007165472491
+        },
+        {
+          "match": 13,
+          "seed": 195031,
+          "ticks": 7788,
+          "seconds": 389.4,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            448.2,
+            1200.05
+          ],
+          "runnerUpVpRatio": 0.3734844381484235
+        },
+        {
+          "match": 14,
+          "seed": 202950,
+          "ticks": 5720,
+          "seconds": 286,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200,
+            52.65
+          ],
+          "runnerUpVpRatio": 0.04387499999999872
+        },
+        {
+          "match": 15,
+          "seed": 210869,
+          "ticks": 5845,
+          "seconds": 292.25,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            83.4,
+            1200.1
+          ],
+          "runnerUpVpRatio": 0.0694942088159303
+        },
+        {
+          "match": 16,
+          "seed": 218788,
+          "ticks": 5702,
+          "seconds": 285.1,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.05,
+            90.15
+          ],
+          "runnerUpVpRatio": 0.07512186992208413
+        },
+        {
+          "match": 17,
+          "seed": 226707,
+          "ticks": 5798,
+          "seconds": 289.9,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            60.75,
+            1200.1
+          ],
+          "runnerUpVpRatio": 0.05062078160153234
+        },
+        {
+          "match": 18,
+          "seed": 234626,
+          "ticks": 8365,
+          "seconds": 418.25,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            460.9
+          ],
+          "runnerUpVpRatio": 0.3840193301116955
+        }
+      ],
+      "comparison": "Easy / Normal"
+    },
+    {
+      "mode": "conquest",
+      "map": "default",
+      "players": 2,
+      "seats": [
+        "normal",
+        "alt:normal"
+      ],
+      "rotate": true,
+      "winsBySeat": [
+        9,
+        9
+      ],
+      "army": "standard",
+      "seed": 1,
+      "matches": 18,
+      "workers": 1,
+      "maxSeconds": 1800,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 7,
+        "USSR": 4
+      },
+      "winsBySpawn": [
+        {
+          "spawn": 0,
+          "x": 40,
+          "y": 6,
+          "wins": 7
+        },
+        {
+          "spawn": 1,
+          "x": 69,
+          "y": 57,
+          "wins": 6
+        },
+        {
+          "spawn": 2,
+          "x": 11,
+          "y": 57,
+          "wins": 5
+        }
+      ],
+      "ended": 18,
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 349.475,
+      "medianEndedSeconds": 349.475,
+      "runnerUpVpOverWinnerVp": {
+        "mean": 0.393,
+        "median": 0.236,
+        "matches": 18
+      },
+      "elapsedSeconds": 42.608,
+      "results": [
+        {
+          "match": 1,
+          "seed": 100003,
+          "ticks": 6161,
+          "seconds": 308.05,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            1,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            89.15,
+            1200.2
+          ],
+          "runnerUpVpRatio": 0.07427928678553385
+        },
+        {
+          "match": 2,
+          "seed": 107922,
+          "ticks": 8771,
+          "seconds": 438.55,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            727.55,
+            1200.2
+          ],
+          "runnerUpVpRatio": 0.6061906348941022
+        },
+        {
+          "match": 3,
+          "seed": 115841,
+          "ticks": 9231,
+          "seconds": 461.55,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            801.75,
+            1200.2
+          ],
+          "runnerUpVpRatio": 0.6680136643892355
+        },
+        {
+          "match": 4,
+          "seed": 123760,
+          "ticks": 6160,
+          "seconds": 308,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            192.35
+          ],
+          "runnerUpVpRatio": 0.1602649558407044
+        },
+        {
+          "match": 5,
+          "seed": 131679,
+          "ticks": 5864,
+          "seconds": 293.2,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.25,
+            71.05
+          ],
+          "runnerUpVpRatio": 0.05919600083315841
+        },
+        {
+          "match": 6,
+          "seed": 139598,
+          "ticks": 5801,
+          "seconds": 290.05,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.15,
+            66
+          ],
+          "runnerUpVpRatio": 0.05499312585926644
+        },
+        {
+          "match": 7,
+          "seed": 147517,
+          "ticks": 10152,
+          "seconds": 507.6,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            1123.35
+          ],
+          "runnerUpVpRatio": 0.9360469960836622
+        },
+        {
+          "match": 8,
+          "seed": 155436,
+          "ticks": 6217,
+          "seconds": 310.85,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.05,
+            152.95
+          ],
+          "runnerUpVpRatio": 0.1274530227907198
+        },
+        {
+          "match": 9,
+          "seed": 163355,
+          "ticks": 10394,
+          "seconds": 519.7,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            929.1
+          ],
+          "runnerUpVpRatio": 0.7741854845428776
+        },
+        {
+          "match": 10,
+          "seed": 171274,
+          "ticks": 6808,
+          "seconds": 340.4,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            263.35
+          ],
+          "runnerUpVpRatio": 0.21942176303949826
+        },
+        {
+          "match": 11,
+          "seed": 179193,
+          "ticks": 5921,
+          "seconds": 296.05,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            75.2
+          ],
+          "runnerUpVpRatio": 0.06266144487959194
+        },
+        {
+          "match": 12,
+          "seed": 187112,
+          "ticks": 9771,
+          "seconds": 488.55,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            987.95
+          ],
+          "runnerUpVpRatio": 0.823154474254338
+        },
+        {
+          "match": 13,
+          "seed": 195031,
+          "ticks": 9316,
+          "seconds": 465.8,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            858.8
+          ],
+          "runnerUpVpRatio": 0.7155474087651651
+        },
+        {
+          "match": 14,
+          "seed": 202950,
+          "ticks": 6325,
+          "seconds": 316.25,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.25,
+            157.6
+          ],
+          "runnerUpVpRatio": 0.1313059779212737
+        },
+        {
+          "match": 15,
+          "seed": 210869,
+          "ticks": 7171,
+          "seconds": 358.55,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.15,
+            303.3
+          ],
+          "runnerUpVpRatio": 0.25271841019873625
+        },
+        {
+          "match": 16,
+          "seed": 218788,
+          "ticks": 9198,
+          "seconds": 459.9,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            899.6,
+            1200.25
+          ],
+          "runnerUpVpRatio": 0.749510518641939
+        },
+        {
+          "match": 17,
+          "seed": 226707,
+          "ticks": 5973,
+          "seconds": 298.65,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.2,
+            74.4
+          ],
+          "runnerUpVpRatio": 0.061989668388600455
+        },
+        {
+          "match": 18,
+          "seed": 234626,
+          "ticks": 8826,
+          "seconds": 441.3,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "vp",
+          "vp": [
+            1200.1,
+            718.85
+          ],
+          "runnerUpVpRatio": 0.5989917506873774
+        }
+      ],
+      "comparison": "Normal / current master"
+    },
+    {
+      "mode": "classic",
+      "map": "default",
+      "players": 2,
+      "seats": [
+        "hard",
+        "normal"
+      ],
+      "rotate": true,
+      "winsBySeat": [
+        11,
+        7
+      ],
+      "army": "standard",
+      "seed": 1,
+      "matches": 18,
+      "workers": 1,
+      "maxSeconds": 2400,
+      "winsByFaction": {
+        "USA": 5,
+        "Germany": 5,
+        "USSR": 8
+      },
+      "winsBySpawn": [
+        {
+          "spawn": 0,
+          "x": 40,
+          "y": 6,
+          "wins": 5
+        },
+        {
+          "spawn": 1,
+          "x": 69,
+          "y": 57,
+          "wins": 4
+        },
+        {
+          "spawn": 2,
+          "x": 11,
+          "y": 57,
+          "wins": 9
+        }
+      ],
+      "ended": 18,
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 798.75,
+      "medianEndedSeconds": 798.75,
+      "runnerUpVpOverWinnerVp": null,
+      "elapsedSeconds": 138.142,
+      "results": [
+        {
+          "match": 1,
+          "seed": 100003,
+          "ticks": 19516,
+          "seconds": 975.8,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            1,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 2,
+          "seed": 107922,
+          "ticks": 13711,
+          "seconds": 685.55,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 3,
+          "seed": 115841,
+          "ticks": 15695,
+          "seconds": 784.75,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 4,
+          "seed": 123760,
+          "ticks": 16045,
+          "seconds": 802.25,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 5,
+          "seed": 131679,
+          "ticks": 21803,
+          "seconds": 1090.15,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 6,
+          "seed": 139598,
+          "ticks": 14714,
+          "seconds": 735.7,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 7,
+          "seed": 147517,
+          "ticks": 14694,
+          "seconds": 734.7,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 8,
+          "seed": 155436,
+          "ticks": 16788,
+          "seconds": 839.4,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 9,
+          "seed": 163355,
+          "ticks": 12474,
+          "seconds": 623.7,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 10,
+          "seed": 171274,
+          "ticks": 13025,
+          "seconds": 651.25,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 11,
+          "seed": 179193,
+          "ticks": 15037,
+          "seconds": 751.85,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 1,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 12,
+          "seed": 187112,
+          "ticks": 19280,
+          "seconds": 964,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 13,
+          "seed": 195031,
+          "ticks": 16260,
+          "seconds": 813,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 14,
+          "seed": 202950,
+          "ticks": 19240,
+          "seconds": 962,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 15,
+          "seed": 210869,
+          "ticks": 24965,
+          "seconds": 1248.25,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 16,
+          "seed": 218788,
+          "ticks": 15816,
+          "seconds": 790.8,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 17,
+          "seed": 226707,
+          "ticks": 24887,
+          "seconds": 1244.35,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 18,
+          "seed": 234626,
+          "ticks": 15905,
+          "seconds": 795.25,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        }
+      ],
+      "comparison": "Hard / Normal"
+    },
+    {
+      "mode": "classic",
+      "map": "default",
+      "players": 2,
+      "seats": [
+        "easy",
+        "normal"
+      ],
+      "rotate": true,
+      "winsBySeat": [
+        3,
+        15
+      ],
+      "army": "standard",
+      "seed": 1,
+      "matches": 18,
+      "workers": 1,
+      "maxSeconds": 2400,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 5,
+        "USSR": 6
+      },
+      "winsBySpawn": [
+        {
+          "spawn": 0,
+          "x": 40,
+          "y": 6,
+          "wins": 5
+        },
+        {
+          "spawn": 1,
+          "x": 69,
+          "y": 57,
+          "wins": 2
+        },
+        {
+          "spawn": 2,
+          "x": 11,
+          "y": 57,
+          "wins": 11
+        }
+      ],
+      "ended": 18,
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 696.025,
+      "medianEndedSeconds": 696.025,
+      "runnerUpVpOverWinnerVp": null,
+      "elapsedSeconds": 120.741,
+      "results": [
+        {
+          "match": 1,
+          "seed": 100003,
+          "ticks": 13867,
+          "seconds": 693.35,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            1,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 2,
+          "seed": 107922,
+          "ticks": 13172,
+          "seconds": 658.6,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 3,
+          "seed": 115841,
+          "ticks": 17155,
+          "seconds": 857.75,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 4,
+          "seed": 123760,
+          "ticks": 14715,
+          "seconds": 735.75,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 5,
+          "seed": 131679,
+          "ticks": 13974,
+          "seconds": 698.7,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 6,
+          "seed": 139598,
+          "ticks": 10890,
+          "seconds": 544.5,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 7,
+          "seed": 147517,
+          "ticks": 16941,
+          "seconds": 847.05,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 8,
+          "seed": 155436,
+          "ticks": 17305,
+          "seconds": 865.25,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 9,
+          "seed": 163355,
+          "ticks": 12172,
+          "seconds": 608.6,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 10,
+          "seed": 171274,
+          "ticks": 16978,
+          "seconds": 848.9,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 11,
+          "seed": 179193,
+          "ticks": 9438,
+          "seconds": 471.9,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 12,
+          "seed": 187112,
+          "ticks": 9373,
+          "seconds": 468.65,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 13,
+          "seed": 195031,
+          "ticks": 14660,
+          "seconds": 733,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 14,
+          "seed": 202950,
+          "ticks": 11723,
+          "seconds": 586.15,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 15,
+          "seed": 210869,
+          "ticks": 27354,
+          "seconds": 1367.7,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 16,
+          "seed": 218788,
+          "ticks": 13771,
+          "seconds": 688.55,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 17,
+          "seed": 226707,
+          "ticks": 22560,
+          "seconds": 1128,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 1,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 18,
+          "seed": 234626,
+          "ticks": 12409,
+          "seconds": 620.45,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        }
+      ],
+      "comparison": "Easy / Normal"
+    },
+    {
+      "mode": "classic",
+      "map": "default",
+      "players": 2,
+      "seats": [
+        "normal",
+        "alt:normal"
+      ],
+      "rotate": true,
+      "winsBySeat": [
+        6,
+        12
+      ],
+      "army": "standard",
+      "seed": 1,
+      "matches": 18,
+      "workers": 1,
+      "maxSeconds": 2400,
+      "winsByFaction": {
+        "USA": 7,
+        "Germany": 5,
+        "USSR": 6
+      },
+      "winsBySpawn": [
+        {
+          "spawn": 0,
+          "x": 40,
+          "y": 6,
+          "wins": 8
+        },
+        {
+          "spawn": 1,
+          "x": 69,
+          "y": 57,
+          "wins": 0
+        },
+        {
+          "spawn": 2,
+          "x": 11,
+          "y": 57,
+          "wins": 10
+        }
+      ],
+      "ended": 18,
+      "draws": 0,
+      "timeouts": 0,
+      "medianSeconds": 757.95,
+      "medianEndedSeconds": 757.95,
+      "runnerUpVpOverWinnerVp": null,
+      "elapsedSeconds": 116.512,
+      "results": [
+        {
+          "match": 1,
+          "seed": 100003,
+          "ticks": 14191,
+          "seconds": 709.55,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            1,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 2,
+          "seed": 107922,
+          "ticks": 14140,
+          "seconds": 707,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 3,
+          "seed": 115841,
+          "ticks": 12701,
+          "seconds": 635.05,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 4,
+          "seed": 123760,
+          "ticks": 16042,
+          "seconds": 802.1,
+          "winner": 1,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 5,
+          "seed": 131679,
+          "ticks": 15539,
+          "seconds": 776.95,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 6,
+          "seed": 139598,
+          "ticks": 17563,
+          "seconds": 878.15,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 7,
+          "seed": 147517,
+          "ticks": 13454,
+          "seconds": 672.7,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 8,
+          "seed": 155436,
+          "ticks": 17549,
+          "seconds": 877.45,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 9,
+          "seed": 163355,
+          "ticks": 13401,
+          "seconds": 670.05,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 10,
+          "seed": 171274,
+          "ticks": 15432,
+          "seconds": 771.6,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 11,
+          "seed": 179193,
+          "ticks": 17019,
+          "seconds": 850.95,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 12,
+          "seed": 187112,
+          "ticks": 17320,
+          "seconds": 866,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USA",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            0
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 13,
+          "seed": 195031,
+          "ticks": 22187,
+          "seconds": 1109.35,
+          "winner": 1,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 2,
+          "spawns": [
+            1,
+            2
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 14,
+          "seed": 202950,
+          "ticks": 11893,
+          "seconds": 594.65,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 15,
+          "seed": 210869,
+          "ticks": 14031,
+          "seconds": 701.55,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 16,
+          "seed": 218788,
+          "ticks": 18857,
+          "seconds": 942.85,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 17,
+          "seed": 226707,
+          "ticks": 14886,
+          "seconds": 744.3,
+          "winner": 0,
+          "winnerSeat": 0,
+          "winnerFaction": "Germany",
+          "winnerSpawn": 0,
+          "spawns": [
+            0,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        },
+        {
+          "match": 18,
+          "seed": 234626,
+          "ticks": 12056,
+          "seconds": 602.8,
+          "winner": 0,
+          "winnerSeat": 1,
+          "winnerFaction": "USSR",
+          "winnerSpawn": 2,
+          "spawns": [
+            2,
+            1
+          ],
+          "endReason": "hq",
+          "vp": [
+            0,
+            0
+          ],
+          "runnerUpVpRatio": null
+        }
+      ],
+      "comparison": "Normal / current master"
+    }
+  ]
+}

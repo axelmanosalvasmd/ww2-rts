@@ -1,4 +1,4 @@
-// Reproducible three-faction FFA matches, using the server's AI schedule.
+// Reproducible faction FFA matches or rotated difficulty duels, using the server's AI schedule.
 import { readFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--mode conquest|classic] [--matches N] [--seed S] [--workers N]';
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate]';
 const factions = ['USA', 'Germany', 'USSR'];
 
 function seededRandom(initial) {
@@ -28,26 +28,33 @@ function median(values) {
 
 async function runMatches(options, indices) {
   const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
-  const { think, observe } = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
+  const current = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
+  const alternate = options.alt ? await import(pathToFileURL(resolve(options.alt)).href) : null;
   const map = JSON.parse(await readFile(resolve(options.root, 'maps/default.json'), 'utf8'));
-  const maxTicks = Math.round(20 * 60 / sim.TICK), originalRandom = Math.random;
+  const maxSeconds = options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200;
+  const maxTicks = Math.round(maxSeconds / sim.TICK), originalRandom = Math.random;
   try {
     for (const index of indices) {
       // Each match has its own stream, so worker count and completion order do not affect results.
-      const seed = (options.seed + index) >>> 0;
+      const seed = options.seats ? (options.seed * 100003 + index * 7919) >>> 0 : (options.seed + index) >>> 0;
       Math.random = seededRandom(seed);
-      const g = sim.createGame(map, factions, true, [0, 1, 2], [0, 1, 2], { mode: options.mode, army: 'standard' });
+      const seats = options.seats ?? ['normal', 'normal', 'normal'];
+      const order = options.rotate && index % 2 ? [1, 0] : seats.map((_, i) => i);
+      const pair = [index % 3, Math.floor(index / 3) % 3];
+      const factionIds = options.rotate ? order.map(i => pair[i]) : order.map((_, i) => i % 3);
+      const brains = order.map(i => ({ level: seats[i].replace(/^alt:/, ''), mod: seats[i].startsWith('alt:') ? alternate : current }));
+      const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, order.map((_, i) => i), factionIds, { mode: options.mode, army: 'standard' });
       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
-      const initialCache = observe ? sim.snapshotCache?.(g) : undefined;
-      const views = observe ? g.players.map((_, slot) => observe(g, slot, initialCache)) : null;
+      const initialCache = sim.snapshotCache(g);
+      const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
       for (let tick = 0; tick < maxTicks && g.winner === null; tick++) {
         sim.step(g);
         // New AIs consume the latest view on the same two-tick delivery beat as humans.
-        if (observe && (g.tick % 2 === 0 || g.winner !== null)) {
+        if (g.tick % 2 === 0 || g.winner !== null) {
           const cache = sim.snapshotCache?.(g);
-          g.players.forEach((_, slot) => { views[slot] = observe(g, slot, cache); });
+          brains.forEach((b, slot) => { views[slot] = b.mod.observe?.(g, slot, cache); });
         }
-        g.players.forEach((p, slot) => { if ((g.tick + slot * 13) % 40 === 0) think(g, slot, views ? { view: views[slot] } : undefined); });
+        brains.forEach((b, slot) => { if ((g.tick + slot * 13) % (b.mod.thinkEvery?.(b.level) ?? 40) === 0) b.mod.think(g, slot, { level: b.level, view: views[slot] }); });
         // The all-AI server has no WebSocket recipients, but clears these transient lists on its snapshot beat.
         if (g.tick % 2 === 0 || g.winner !== null) { g.shots = []; g.newCells = []; }
       }
@@ -56,7 +63,7 @@ async function runMatches(options, indices) {
       const runnerUpVp = winnerSlot >= 0 ? Math.max(...vp.filter((_, slot) => slot !== winnerSlot)) : null;
       const result = {
         match: index + 1, seed, ticks: g.tick, seconds: round(g.tick * sim.TICK),
-        winner: g.winner, winnerFaction: winnerSlot >= 0 ? factions[g.players[winnerSlot].faction] : null,
+        winner: g.winner, winnerSeat: winnerSlot >= 0 ? order[winnerSlot] : null, winnerFaction: winnerSlot >= 0 ? factions[g.players[winnerSlot].faction] : null,
         winnerSpawn: winnerSlot >= 0 ? spawns[winnerSlot] : null, spawns,
         endReason: g.endReason ?? null, vp: vp.map(round),
         runnerUpVpRatio: options.mode === 'conquest' && winnerSlot >= 0 && vp[winnerSlot] > 0 ? runnerUpVp / vp[winnerSlot] : null,
@@ -71,13 +78,20 @@ async function runMatches(options, indices) {
 if (!isMainThread) {
   await runMatches(workerData.options, workerData.indices);
 } else {
-  const options = { root: resolve(dirname(script), '..'), mode: 'conquest', matches: null, seed: 1, workers: Math.min(3, availableParallelism()) };
+  const options = { root: resolve(dirname(script), '..'), mode: 'conquest', matches: null, seed: 1, workers: Math.min(2, availableParallelism()), seats: null, alt: null, rotate: false };
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
-    if (!['--root', '--mode', '--matches', '--seed', '--workers'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
+    if (key === '--rotate') { options.rotate = true; continue; }
+    if (!['--root', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
     options[key.slice(2)] = process.argv[++i];
   }
   options.root = resolve(options.root);
+  if (options.seats) {
+    options.seats = options.seats.split(',');
+    if (options.seats.length !== 2 || options.seats.some(s => !/^(alt:)?(easy|normal|hard)$/.test(s))) throw new Error('--seats requires two valid difficulties');
+    if (options.seats.some(s => s.startsWith('alt:')) && !options.alt) throw new Error('alternate seat needs --alt');
+  }
+  if (options.rotate && !options.seats) throw new Error('--rotate requires --seats');
   if (!['conquest', 'classic'].includes(options.mode)) throw new Error('--mode must be conquest or classic');
   options.matches = Number(options.matches ?? (options.mode === 'classic' ? 30 : 60));
   options.seed = Number(options.seed);
@@ -109,8 +123,8 @@ if (!isMainThread) {
   const bySpawn = map.spawns.map((spawn, index) => ({ spawn: index, x: spawn.x, y: spawn.y, wins: wins.filter(r => r.winnerSpawn === index).length }));
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
-    root: options.root, mode: options.mode, map: 'default', players: 3, army: 'standard', seed: options.seed,
-    matches: options.matches, workers: options.workers, maxSeconds: 1200,
+    root: options.root, mode: options.mode, map: 'default', players: options.seats?.length ?? 3, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: 'standard', seed: options.seed,
+    matches: options.matches, workers: options.workers, maxSeconds: options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,
     medianSeconds: median(results.map(r => r.seconds)), medianEndedSeconds: median(ended.map(r => r.seconds)),
@@ -118,6 +132,7 @@ if (!isMainThread) {
     elapsedSeconds: round((performance.now() - started) / 1000), results,
   };
   console.log(`${result.mode}: ${result.matches} matches, seed ${result.seed}, ${result.ended} ended, ${result.draws} draws, ${result.timeouts} timeouts`);
+  if (result.winsBySeat) console.log(`  seat wins: ${options.seats.map((s, i) => `${s} ${result.winsBySeat[i]}`).join(', ')}`);
   console.log(`  faction wins: ${factions.map(faction => `${faction} ${byFaction[faction]}`).join(', ')}`);
   console.log(`  spawn wins: ${bySpawn.map(spawn => `${spawn.spawn} (${spawn.x},${spawn.y}) ${spawn.wins}`).join(', ')}`);
   console.log(`  median length including ${result.maxSeconds}s timeouts: ${result.medianSeconds}s (${result.medianEndedSeconds ?? 'none'}s among ended matches)`);

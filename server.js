@@ -8,7 +8,7 @@ import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { think, observe } from './shared/ai.js';
+import { think, observe, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -129,7 +129,7 @@ async function lobby(room) {
     mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
     // a finished match's result carries this player's own outcome (you); a match the host ended has none
     result: room.result ? { ...room.result, you: room.result.story ? p.lastMatch ?? null : null } : null,
-    players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
+    players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction, level: q.ai ? q.level ?? 'normal' : null })),
   }));
 }
 
@@ -304,8 +304,10 @@ wss.on('connection', (ws, req) => {
     }
     if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
     else if (msg.t === 'addAi' && slot === hostOf(room) && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
-      addSeat(room, newPlayer(room, { token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true }));
+      addSeat(room, newPlayer(room, { token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true, level: 'normal' }));
       lobby(room);
+    } else if (msg.t === 'level' && slot === hostOf(room) && room.state === 'lobby' && Number.isInteger(msg.slot) && room.players[msg.slot]?.ai && AI_LEVEL_NAMES.includes(msg.v)) {
+      room.players[msg.slot].level = msg.v; lobby(room);
     } else if (msg.t === 'kick' && slot === hostOf(room) && room.state === 'lobby' && Number.isInteger(msg.slot) && msg.slot >= 0 && room.players[msg.slot] && (room.players[msg.slot].ai || !connected(room.players[msg.slot]))) {
       retainSeats(room, room.players.filter((_, i) => i !== msg.slot));
       lobby(room);
@@ -410,8 +412,8 @@ function timedRoomTick(room) {
     const cache = snapshotCache(g);
     for (const i of seats) room.aiViews[i] = observe(g, i, cache);
   }
-  // AIs think every 2s, staggered so they don't all act on the same tick.
-  for (const i of seats) if (room.aiViews[i] && (g.tick + i * 13) % 40 === 0) think(g, i, { view: room.aiViews[i] });
+  // AI decisions follow the selected difficulty, staggered by seat. The Horde and human handovers use Normal.
+  for (const i of seats) if (room.aiViews[i] && (g.tick + i * 13) % thinkEvery(room.players[i]?.level) === 0) think(g, i, { view: room.aiViews[i], level: room.players[i]?.level });
   const snapshotAt = process.hrtime.bigint();
   let snapshotBuild = 0, snapshotStringify = 0;
   if (sent) {

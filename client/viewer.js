@@ -9,6 +9,7 @@ import { loadModelTextures, modelTexturesOn } from './model-textures.js';
 import { createAviation } from './aircraft.js';
 import { ownerRing } from './markers.js';
 import { setupLight, sky } from './light.js';
+import { MOODS, DEFAULT_MOOD } from './moods.js';
 import { surface } from './surfaces.js';
 import { buildingModel } from './structures.js';
 import { gfx } from './gfx.js';
@@ -30,8 +31,8 @@ const facOf = () => fac;
 
 // ---------- the game camera and sun (client/camera.js, client/light.js) ----------
 const GAME = { fov: 42, pitch: 0.95, dist: 40, w: 1920, h: 1080 }; // the cell crops a 1920x1080 frame at 1:1
-const SUN_SIDE = 60 * Math.PI / 180, HAZE = 0xbcae96; // light.js
-const GRASS = 0x6e6a54; // ground.js painted grass, flat: its texture average after the grass tint and saturation
+const SUN_SIDE = 60 * Math.PI / 180, HAZE = MOODS[DEFAULT_MOOD].haze; // light.js and moods.js
+const GRASS = 0x6c6c45; // ground.js painted grass, flat: its texture average after the grass tint and saturation
 const SUN_DIR = new THREE.Vector3(); // light.js aimSun(0): the opening view of yaw 0
 {
   const az = Math.PI - SUN_SIDE, up = sky.sunUp * Math.PI / 180;
@@ -53,7 +54,8 @@ const POSTURES = ['standing', 'crouched', 'prone', 'retreating'];
 const bg = hex(q.get('bg')) ?? HAZE;
 const aim = (Number(q.get('aim')) || 0) * Math.PI / 180;
 const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1', textures = q.get('tex') !== '0';
-const noCrew = q.get('crew') === '0';
+const noCrew = q.get('crew') === '0', moving = q.get('motion') === '1';
+let motionUnit = null, motionTime = 0, motionLast = 0;
 
 // ---------- page ----------
 const $ = (id) => document.getElementById(id);
@@ -97,7 +99,7 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const gameCam = new THREE.PerspectiveCamera(GAME.fov, GAME.w / GAME.h, 1, 1000); // main.js camera
 const closeCam = new THREE.PerspectiveCamera(30, 1, 0.05, 3000);
-const { sun } = setupLight(renderer, scene, gameCam); // tone mapping, shadows, hemisphere fill, the warm sun, haze
+const { sun } = setupLight(renderer, scene, gameCam); // tone mapping, shadows, hemisphere fill, the sun, haze (the default mood)
 scene.background = new THREE.Color(bg);
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: GRASS }));
@@ -270,6 +272,7 @@ function singleUnit() {
   if (def.faction >= 0 && def.faction !== fac) warnings.push(`In the game only ${FACTIONS[def.faction].name} fields ${type}; this is what the model code builds for ${FACTIONS[fac].name}`);
   const v = makeUnit(type), air = !!def.air;
   pose(v); placeShadow(v);
+  if (moving && v.squad) motionUnit = v;
   // close views lift a plane so its lowest point is 1.5 m over the ground; the game view flies it at AIR_ALT
   const lift = air ? 1.5 - bounds([v.root]).min.y : 0;
   const man = v.squad ? v.models[0] : null;
@@ -292,7 +295,14 @@ function singleUnit() {
         state(false, isSolo);
         scene.fog.near = 1e4; scene.fog.far = 2e4;
         sunOn(box);
-        return fit(closeCam, pts, view.dir, view.up ?? UP, rect.w / rect.h);
+        const framing = moving && isSolo ? boxCorners(new THREE.Box3(new THREE.Vector3(-0.65, 0, -0.5), new THREE.Vector3(0.85, 1.8, 0.5))) : pts;
+        const cam = fit(closeCam, framing, view.dir, view.up ?? UP, rect.w / rect.h, moving ? 1.5 : 1.14);
+        if (moving) {
+          cam.position.x += isSolo ? man.userData.motion.x : v.x;
+          cam.position.z += isSolo ? man.userData.motion.z : v.z;
+          cam.updateMatrixWorld();
+        }
+        return cam;
       },
     };
   };
@@ -300,7 +310,7 @@ function singleUnit() {
   views.push({
     label: `in-game camera: ${GAME.fov}° FOV, pitch ${GAME.pitch}, distance ${GAME.dist}, 1:1 with a 1920x1080 window`,
     game: true,
-    setup(rect) { state(true, false); return gameView(rect, 0, 0, air ? AIR_ALT : 0); },
+    setup(rect) { state(true, false); return gameView(rect, v.x, v.z, air ? AIR_ALT : 0); },
   });
   if (man) { rows = 3; views.push(...[CLOSE[0], CLOSE[1], CLOSE[3]].map((view) => close(view, solo, true))); }
 
@@ -441,7 +451,22 @@ function placeTags(tags) {
   if (!box) { box = document.createElement('div'); box.id = 'tags'; document.body.append(box); }
   box.innerHTML = tags.map((t) => `<div class="tag" style="left:${t.x.toFixed(0)}px;top:${t.y.toFixed(0)}px">${t.html}</div>`).join('');
 }
-function frame() {
+function frame(now) {
+  if (motionUnit && ready) {
+    const dt = motionLast ? Math.min(0.1, (now - motionLast) / 1000) : 0;
+    motionLast = now; motionTime += dt;
+    const v = motionUnit, t = motionTime % 10;
+    // Four seconds moving, a stop, then a quarter turn and another walk. This is a visual test, not a sim order.
+    if (t < 4) { v.x = t * 1.8; v.z = 0; v.rot = 0; }
+    else if (t < 5) { v.x = 7.2; v.z = 0; v.rot = 0; }
+    else if (t < 9) { v.x = 7.2; v.z = (t - 5) * 1.8; v.rot = Math.PI / 2; }
+    else { v.x = 7.2; v.z = 7.2; v.rot = Math.PI / 2; }
+    v.root.position.set(v.x, 0, v.z); v.root.rotation.y = -v.rot;
+    v.models.forEach((m) => { m.visible = true; });
+    animate(v, dt, farLod ? farEye(v) : nearEye(v));
+    window.__viewer.motion = v.models.map((m) => ({ ...m.userData.motion }));
+    dirty = true;
+  }
   if (!dirty) return;
   if (!ready && pending > 0) return; // wait for textures; itemEnd marks the frame dirty
   dirty = false; draw(); frames++;
