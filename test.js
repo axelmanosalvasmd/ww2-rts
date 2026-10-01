@@ -2,10 +2,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import * as sim from './shared/sim.js';
-import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees } from './shared/sim.js';
+import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { think } from './shared/ai.js';
 import { unitRole } from './client/unit-roles.js';
+import { createRelief } from './client/relief.js';
 
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
@@ -3422,6 +3423,52 @@ for (const lookupFinished of [false, true]) {
   assert.equal(interrupted.snapEvery, 3, 'recovery starts again after interrupted low-load period');
 }
 
+// Relief preserves the sim's plateaus and boundaries on every shipped map.
+{
+  for (const file of readdirSync('maps').filter(f => f.endsWith('.json'))) {
+    const map = JSON.parse(readFileSync('maps/' + file, 'utf8')), grid = map.rows.map(r => [...r]);
+    const relief = createRelief(map, grid, { low: false }), geo = relief.geometry, p = geo.attributes.position.array, idx = geo.index.array;
+    const lv = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0') * CFG.levelHeight;
+    const plain = new Uint8Array(map.w * map.h);
+    for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
+      let bank = false;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ('WF='.includes(grid[y + dy]?.[x + dx] ?? '!')) bank = true;
+      plain[y * map.w + x] = bank ? 0 : 1;
+      const height = relief.hAt((x + 0.5) * CELL, (y + 0.5) * CELL);
+      assert.ok(Number.isFinite(height), `${file}: finite centre ${x},${y}`);
+      if (!bank || grid[y][x] === '=') assert.ok(Math.abs(height - lv(x, y)) <= 0.1, `${file}: nominal centre ${x},${y}`);
+    }
+    for (const attr of Object.values(geo.attributes)) assert.ok(attr.array.every(Number.isFinite), `${file}: finite geometry`);
+    let degenerate = false;
+    for (let i = 0; i < idx.length; i += 3) {
+      const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+      const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+      if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) <= 1e-9) { degenerate = true; break; }
+    }
+    assert.ok(!degenerate, `${file}: nondegenerate triangles`);
+    assert.ok(idx.length / 3 <= 150000, `${file}: terrain triangle ceiling`);
+    for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= map.w || ny >= map.h) continue;
+      const a = lv(x, y), b = lv(nx, ny), diff = Math.abs(b - a), sample = t => relief.hAt((x + 0.5 + dx * t) * CELL, (y + 0.5 + dy * t) * CELL);
+      if (diff < 2 * CFG.levelHeight) for (let k = 1; k < 4; k++) {
+        const ex = (x + (dx ? 1 : k / 4)) * CELL, ez = (y + (dy ? 1 : k / 4)) * CELL;
+        assert.ok(Math.abs(relief.hAt(ex - dx * 1e-7, ez - dy * 1e-7) - relief.hAt(ex + dx * 1e-7, ez + dy * 1e-7)) <= 1e-4, `${file}: closed noncliff edge ${x},${y}`);
+      }
+      if (!plain[y * map.w + x] || !plain[ny * map.w + nx]) continue;
+      if (diff >= 2 * CFG.levelHeight) {
+        assert.ok(Math.abs(sample(0.4999) - a) <= 0.1 && Math.abs(sample(0.5001) - b) <= 0.1, `${file}: cliff boundary ${x},${y}`);
+      } else if (diff === CFG.levelHeight) {
+        const sign = Math.sign(b - a); let previous = sample(0);
+        for (let k = 1; k <= 8; k++) { const next = sample(k / 8); assert.ok((next - previous) * sign >= -1e-4, `${file}: monotonic slope ${x},${y}`); previous = next; }
+        assert.ok(Math.abs(sample(0.5) - (a + b) / 2) <= 0.1, `${file}: centred slope ${x},${y}`);
+      } else {
+        assert.ok(Math.abs(sample(0.4999) - sample(0.5001)) <= 0.01, `${file}: shared noncliff edge ${x},${y}`);
+      }
+    }
+    relief.dispose();
+  }
+}
 console.log('all sim checks passed');
 
 // Command feedback: exact denials, partial ability success, shared placement and

@@ -17,10 +17,13 @@ for (const id of ['lambert', 'phong', 'toon', 'standard', 'physical']) {
 
 // The sun sits up and to the right of each player's opening view, so shadows fall toward the lower left of the screen
 // (as in the concept) whichever spawn you get. It stays put in the world when you rotate.
-const SUN_UP = 37 * Math.PI / 180, SUN_SIDE = 60 * Math.PI / 180;
+const SUN_SIDE = 60 * Math.PI / 180;
 const SUN_DIR = new THREE.Vector3(); // from the ground toward the sun
 const HAZE = 0xbcae96;
-const BOARD = 9; // board thickness below its lowest point, in meters (deep enough that the soil layers read)
+export const BOARD = 9; // board thickness below its lowest point, in meters (deep enough that the soil layers read)
+// The map's mood (client/atmosphere.js) sets these: sun height in degrees (read when a match starts) and how much
+// closer the haze sits (1 = the default distances).
+export const sky = { sunUp: 37, haze: 1 };
 const WOOD_TILE = 44; // meters per wood texture repeat (four planks)
 const SOIL_PROFILE = 8, SOIL_DEEP = 2.5; // the full soil profile spans 8 m; below it dark soil repeats every 2.5 m
 const SOIL_U = (SOIL_PROFILE / 0.8) * 3.17; // horizontal meters per soil repeat (texture is 3.17:1, profile = top 80%)
@@ -88,7 +91,8 @@ export function renderFrame(cam, ground) {
     watchFps(dt, notice);
     // a new match (new ground mesh) re-aims the sun for this player's view; the editor keeps one sun per map size
     if (ground !== board.mesh) {
-      const key = `${ground.geometry.parameters?.width}x${ground.geometry.parameters?.height}`;
+      const prm = ground.geometry.parameters, box = ground.geometry.boundingBox;
+      const key = prm ? `${prm.width}x${prm.height}` : `${box?.max.x}x${box?.max.z}`;
       if (!EDIT || key !== board.key) aimSun(cam?.yaw ?? 0);
       board.mesh = ground; board.key = key;
     }
@@ -104,13 +108,14 @@ const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]], foot = corners.map(() => n
 const center = new THREE.Vector3(), lx = new THREE.Vector3(), ly = new THREE.Vector3();
 function aimSun(yaw) {
   const az = yaw + Math.PI - SUN_SIDE; // the camera looks along -(sin yaw, cos yaw); turn right of that by SUN_SIDE
-  SUN_DIR.set(Math.sin(az) * Math.cos(SUN_UP), Math.sin(SUN_UP), Math.cos(az) * Math.cos(SUN_UP));
+  const up = sky.sunUp * Math.PI / 180;
+  SUN_DIR.set(Math.sin(az) * Math.cos(up), Math.sin(up), Math.cos(az) * Math.cos(up));
   lx.crossVectors(new THREE.Vector3(0, 1, 0), SUN_DIR).normalize(); ly.crossVectors(SUN_DIR, lx); // shadow camera axes
 }
 aimSun(0);
 function followView(cam) {
   const dist = cam?.dist ?? 85, gy = cam?.y ?? 0;
-  scene.fog.near = dist * 0.7; scene.fog.far = dist * 4.5;
+  scene.fog.near = dist * 0.7 / sky.haze; scene.fog.far = dist * 4.5 / sky.haze;
 
   camera.updateMatrixWorld();
   center.set(0, 0, 0);
@@ -151,25 +156,46 @@ const board = { mesh: null, key: '', geo: null, table: null, skirt: null, contac
 
 function buildBoard(ground) {
   board.geo = ground.geometry;
-  const prm = board.geo.parameters, pos = board.geo.attributes.position;
-  if (!prm || prm.widthSegments === undefined) return; // not a PlaneGeometry: nothing to frame
+  const prm = board.geo.parameters, pos = board.geo.attributes.position, edge = ground.userData.edge;
+  const plane = prm?.widthSegments !== undefined;
+  if (!plane && !edge) return; // neither a PlaneGeometry nor the relief (client/relief.js): nothing to frame
   board.woodTex ??= texture('table-wood.jpg', THREE.RepeatWrapping);
   board.soilTex ??= texture('board-soil.jpg', THREE.ClampToEdgeWrapping);
   board.woodTex.anisotropy = board.soilTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
   ground.updateWorldMatrix(true, false);
-  const W = prm.widthSegments, H = prm.heightSegments, world = (ix, iy) => new THREE.Vector3().fromBufferAttribute(pos, iy * (W + 1) + ix).applyMatrix4(ground.matrixWorld);
   let low = Infinity, high = -Infinity;
   for (let i = 0; i < pos.count; i++) { const y = v3.fromBufferAttribute(pos, i).applyMatrix4(ground.matrixWorld).y; low = Math.min(low, y); high = Math.max(high, y); }
   const bottom = low - BOARD;
-  const c00 = world(0, 0), c11 = world(W, H), mid = c00.clone().add(c11).multiplyScalar(0.5);
 
   // four sides walked around the edge; each side is a strip of columns from the ground edge down to the table
-  const range = (n, rev) => Array.from({ length: n + 1 }, (_, i) => (rev ? n - i : i));
-  const sides = [
-    range(W).map(ix => world(ix, 0)), range(H).map(iy => world(W, iy)),
-    range(W, true).map(ix => world(ix, H)), range(H, true).map(iy => world(0, iy)),
-  ];
+  let c00, c11, sides;
+  if (plane) {
+    const W = prm.widthSegments, H = prm.heightSegments, world = (ix, iy) => new THREE.Vector3().fromBufferAttribute(pos, iy * (W + 1) + ix).applyMatrix4(ground.matrixWorld);
+    const range = (n, rev) => Array.from({ length: n + 1 }, (_, i) => (rev ? n - i : i));
+    c00 = world(0, 0); c11 = world(W, H);
+    sides = [
+      range(W).map(ix => world(ix, 0)), range(H).map(iy => world(W, iy)),
+      range(W, true).map(ix => world(ix, H)), range(H, true).map(iy => world(0, iy)),
+    ];
+  } else {
+    // the relief's geometry is in world space over x 0..w, z 0..h: sample its exact surface at every vertex step,
+    // twice where a cliff meets the edge (the heights just before and just after the cell boundary)
+    const box = board.geo.boundingBox, x0 = box.min.x, z0 = box.min.z, x1 = box.max.x, z1 = box.max.z, E = 1e-4;
+    const walk = (ax, az, bx, bz) => {
+      const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(len / edge.step)), dx = (bx - ax) / len, dz = (bz - az) / len, pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = len * i / n, x = ax + dx * t, z = az + dz * t;
+        const before = edge.hAt(x - dx * E, z - dz * E), after = edge.hAt(x + dx * E, z + dz * E);
+        if (i > 0) pts.push(new THREE.Vector3(x, before, z));
+        if (i === 0 || (i < n && Math.abs(after - before) > 1e-3)) pts.push(new THREE.Vector3(x, after, z));
+      }
+      return pts;
+    };
+    c00 = new THREE.Vector3(x0, 0, z0); c11 = new THREE.Vector3(x1, 0, z1);
+    sides = [walk(x0, z0, x1, z0), walk(x1, z0, x1, z1), walk(x1, z1, x0, z1), walk(x0, z1, x0, z0)];
+  }
+  const mid = c00.clone().add(c11).multiplyScalar(0.5);
   // rows at fixed depths below each column's top: the soil profile first, then repeating deep soil
   const rows = [0, SOIL_PROFILE];
   for (let d = SOIL_PROFILE + SOIL_DEEP; d < high - bottom + SOIL_DEEP; d += SOIL_DEEP) rows.push(d);

@@ -376,6 +376,46 @@ the HUD.
   meshes because `mergeMeshes` keeps one material and a roof has two. `client/fx.js` still owns every effect sound and
   `client/battle-sound.js` exports only `battleFrame`, so there is still one Volume slider and no mute button.
 
+## Relief, structures and atmosphere (round 4, 2026-10-01)
+- Relief module: `client/relief.js` (`createRelief(map, grid, { texture, isRoad, gfx, low, onGeometry, material })`)
+  builds the board surface from the sim's cell levels and returns `{ mesh, geometry, hAt, update(cells), stats,
+  dispose }`. The geometry is in world space (y up, x and z from 0 to the map size) with a fixed bounding box, and its
+  UVs match the ground canvas and the fog texture (`v = 1 - z / MH`). `hAt(x, z)` is the one ground height for units,
+  props, water, the camera, the minimap and picking (the mesh raycasts by marching against `hAt`). `update(cells)`
+  rebuilds only the cells around a change (about 4 ms per crater) and calls `onGeometry` when the geometry is
+  replaced, so the fog overlay shares it. Each cell is split into up to 4 x 4 quads (`S = 4`); flat cells merge into
+  row runs of up to 32 cells. It imports `../shared/sim.js` by relative path, so test.js runs it in Node.
+- Cliff and slope rules: cell centres keep their exact sim height (`level x CFG.levelHeight`). A step of two or more
+  levels between connected cells is a cliff: the sides get separate vertices and a vertical rock strip between them,
+  painted as warm strata with a pale lip and a soil foot. A one-level step is an eased ramp (smoothstep) between the two
+  cell centres, steepest at the boundary, painted with dry earth on the steep part. Cliffs are a heightfield, so there are no overhangs. Roads
+  sink 0.1 m with a shallow centre fan, and building cells are never sunk. Water cells are carved below the frozen
+  water line of their body (`client/water-levels.js`): fords 0.15 m so they stay wadeable, channels 0.42 m at the
+  bank row and 0.38 m deeper per row inward, with sloping banks. Bridge cells keep their deck height.
+- Low path: the relief material compiles with `RELIEF_LOW`, which drops the noise patches, strata detail, cracks and
+  paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
+  5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
+  and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
+  on Low turns off cloud shade, weather and birds, and keeps the table props, the lamp pool and fewer mist sheets.
+- Structures: `client/structures.js` rebuilds the map pieces (houses, church, barns, bocage banks, capped walls,
+  sandbags, trenches, rubble, wire, tank traps, bridges) from the grid as one InstancedMesh per kind, seated on `hAt`.
+  It never changes gameplay cells. The five base buildings are one merged, vertex-colored model per type and team
+  (`buildingModel`). Map pieces darken in the fog through `fogShader` and `setFogMap(tex, MW, MH)` in
+  `client/surfaces.js`. It imports `/shared/sim.js` by absolute path, so it is browser only.
+- Atmosphere: `client/atmosphere.js` picks a mood from the map name (warm, dawn with river mist, overcast, snow, dust),
+  drifts cloud shadows over the board and table, sets out the planning-table props and the desk lamp, and flies a few
+  birds on High. Everything over the board is transparent, writes no depth and draws before the fog overlay, so unseen
+  ground darkens it too.
+- As merged with rounds 1 to 3: main.js keeps `relief` and `hAt` delegates to it. The round 3 smoothed height field
+  (`buildField`, `terrainGeometry`) and its house, roof and parapet builder are gone; `applyCells` now paints the
+  ground, calls `relief.update(cells)`, rebuilds the structures, refreshes the props and updates the water.
+  `createWater(grid, map, hAt)` takes the relief height. `client/ground.js` returns `isRoad` for the relief's road
+  sink. `client/unit-models.js` keeps the round 3 one-draw units and Node tests keep its box buildings; main.js
+  injects `buildingModel` through `setBuildings`, and the command bunker keeps no `v.body` because it is never built.
+  The HQ uses `sandbagRing` from structures.js. `client/light.js` and `client/atmosphere.js` read the relief's bounding
+  box when the ground has no plane parameters, and the board edge samples `mesh.userData.edge` (`hAt` and the quad
+  step) along the four sides so the cut-earth skirt follows cliffs at the edge.
+
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4

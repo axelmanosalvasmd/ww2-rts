@@ -3,12 +3,12 @@
 // effects all still draw on top of it. A mask texture (4 texels per cell) holds the soft shoreline, a depth guess,
 // the fords and the bridges; a per-vertex flow direction drives the slow drift. gfx.low freezes it (no animation).
 import * as THREE from 'three';
-import { CELL, CFG, levelOf } from '/shared/sim.js';
+import { CELL, CFG, levelOf } from '../shared/sim.js';
+import { WET, WATER_LIFT, createWaterLevels } from './water-levels.js';
 import { gfx } from './gfx.js';
 
-const WET = new Set(['W', 'F', '=']);
 const SUB = 4; // mask texels per cell
-const LIFT = 0.06; // the surface sits this far above a flat bank
+const LIFT = WATER_LIFT; // the surface sits this far above a flat bank
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 // Separable box blur, run 3 times (close to a Gaussian). Edges repeat, so water that reaches the map edge stays full.
@@ -170,7 +170,7 @@ totalEmissiveRadiance += uSky * (0.015 + 0.25 * wFres * wFres * wFres) * (1.0 - 
 `;
 
 // grid: the live terrain grid (rows of chars, updated in place by the caller); map: { w, h, heights }
-export function createWater(grid, map) {
+export function createWater(grid, map, groundHeight) {
   const w = map.w, h = map.h, n = w * h;
   const wetAt = (c) => WET.has(grid[Math.floor(c / w)][c % w]);
   let any = false;
@@ -178,8 +178,7 @@ export function createWater(grid, map) {
   if (!any) return null;
 
   // levels are read once: later dents dig the bed or the bank but never move the water line
-  const lv0 = new Int8Array(n);
-  for (let c = 0; c < n; c++) lv0[c] = levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0');
+  const waterLevels = createWaterLevels(map);
 
   const MWs = w * SUB, MHs = h * SUB;
   const maskData = new Uint8Array(MWs * MHs * 4);
@@ -239,31 +238,10 @@ export function createWater(grid, map) {
 
   // surface height and flow per vertex, and triangles over the wet cells plus one cell of bank around them
   function rebuildGeometry() {
-    const comp = new Int32Array(n).fill(-1), compLevel = [];
-    for (let c = 0; c < n; c++) {
-      if (!wet[c] || comp[c] >= 0) continue;
-      const id = compLevel.length, d = bfs(w, h, [c], (k) => wet[k] && comp[k] < 0);
-      let water = Infinity, any = Infinity;
-      for (let k = 0; k < n; k++) if (d[k] >= 0) {
-        comp[k] = id; any = Math.min(any, lv0[k]);
-        if (!bridges[k]) water = Math.min(water, lv0[k]);
-      }
-      compLevel.push((water === Infinity ? any : water) * CFG.levelHeight);
-    }
-    // water line per cell: its body of water for wet cells, the lowest neighbouring water for the bank around it
-    const wl = new Float32Array(n).fill(NaN);
-    for (let c = 0; c < n; c++) {
-      if (wet[c]) { wl[c] = compLevel[comp[c]]; continue; }
-      const x = c % w, y = (c - x) / w;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const nx = x + dx, ny = y + dy, k = ny * w + nx;
-        if (nx >= 0 && ny >= 0 && nx < w && ny < h && wet[k] && !(wl[c] <= compLevel[comp[k]])) wl[c] = compLevel[comp[k]];
-      }
-    }
-    // wet cells above their water line (the polder's bridges on raised dikes, and the spans left when they blow)
-    // would hide the water under their mound: there the surface lies on the ground instead
-    raised = new Uint8Array(n);
-    for (let c = 0; c < n; c++) if (wet[c] && lv0[c] * CFG.levelHeight > compLevel[comp[c]]) raised[c] = 1;
+    const water = waterLevels.read(grid);
+    const { comp, compLevel, wl } = water;
+    // Raised spans drape on the current ground while each body's water line stays fixed.
+    raised = water.raised;
 
     // flow: toward one end of each body of water (the end on the map edge, if only one is), slower far from the banks
     const shore = bfs(w, h, [...Array(n).keys()].filter((c) => !wet[c]), (k) => wet[k]);
@@ -313,8 +291,8 @@ export function createWater(grid, map) {
         if (wet[c]) { sx += fx[c]; sz += fz[c]; m++; }
         ground += groundAt(c); cells++; drape ||= !!raised[c];
       }
-      // same average as the ground mesh (main.js buildField) and the same diagonals, so the draped water sits LIFT above it
-      if (drape) y = Math.max(y, ground / cells);
+      // Relief supplies the visible surface; the nominal corner average remains the fallback.
+      if (drape) y = Math.max(y, groundHeight ? groundHeight(vx * CELL, vy * CELL) : ground / cells);
       pos[v * 3] = vx * CELL; pos[v * 3 + 1] = (y === Infinity ? 0 : y) + LIFT; pos[v * 3 + 2] = vy * CELL;
       nor[v * 3 + 1] = 1;
       if (m) { flow[v * 2] = sx / m; flow[v * 2 + 1] = sz / m; }
@@ -353,7 +331,7 @@ export function createWater(grid, map) {
       channel(2, (c) => grid[Math.floor(c / w)][c % w] === 'F', 2); // B: fords
     }
     if (wetChanged || bridgesChanged) { channel(3, (c) => bridges[c], 2); mask.needsUpdate = true; } // A: bridges
-    if (wetChanged || relevel) rebuildGeometry();
+    if (wetChanged || bridgesChanged || relevel) rebuildGeometry();
   }
   rebuild();
 

@@ -9,8 +9,12 @@ import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, placementCheck } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
+import { createAtmosphere } from './atmosphere.js';
 import { createGround } from './ground.js';
-import { surface, roofGeometry, roofMaterials } from './surfaces.js';
+import { surface, setFogMap } from './surfaces.js';
+import { buildStructures as buildPieces, sandbagRing, buildingModel } from './structures.js';
+import { createRelief } from './relief.js';
+import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
 import { pings } from './pings.js';
 import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, MOVE_COLOR } from './markers.js';
@@ -23,7 +27,7 @@ import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
-import { buildModel, animate, createBodies, mergeMeshes, setSurfaces } from './unit-models.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings } from './unit-models.js';
 import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
@@ -287,12 +291,13 @@ function renderLobby(m) {
 // ---------- renderer / scene ----------
 
 setSurfaces(surface); // structure models take the textured wood and sandbag (client/surfaces.js)
+setBuildings(buildingModel); // HQ, barracks, motor pool, depot and command bunker: one merged model each (client/structures.js)
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderScale(renderer); // pixel ratio per graphics level (client/perf.js); shadows are set in client/light.js
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
+const lights = setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -315,31 +320,9 @@ const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
 let world, MW = 0, MH = 0, fogTex, fogGrid, points = [], groundMesh = null, fogMesh = null, water = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
-// Smooth ground height: vertex heights average the cells around them, sampled bilinearly.
-let field = null;
-function buildField(map) {
-  const w = map.w, h = map.h, lv = (x, y) => levelOf(map.heights?.[y]?.[x] ?? '0') * CFG.levelHeight;
-  const vert = new Float32Array((w + 1) * (h + 1));
-  for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) {
-    let sum = 0, n = 0;
-    for (const [cx, cy] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]]) if (cx >= 0 && cy >= 0 && cx < w && cy < h) { sum += lv(cx, cy); n++; }
-    vert[y * (w + 1) + x] = sum / n;
-  }
-  field = { w, h, vert };
-}
-function hAt(x, z) {
-  if (!field) return 0;
-  const fx = Math.min(field.w, Math.max(0, x / CELL)), fz = Math.min(field.h, Math.max(0, z / CELL));
-  const x0 = Math.min(field.w - 1, Math.floor(fx)), z0 = Math.min(field.h - 1, Math.floor(fz)), tx = fx - x0, tz = fz - z0, W = field.w + 1, v = field.vert;
-  return (v[z0 * W + x0] * (1 - tx) + v[z0 * W + x0 + 1] * tx) * (1 - tz) + (v[(z0 + 1) * W + x0] * (1 - tx) + v[(z0 + 1) * W + x0 + 1] * tx) * tz;
-}
-// a flat plane bent over the height field (row 0 of vertices = map row 0)
-function terrainGeometry() {
-  const geo = new THREE.PlaneGeometry(MW, MH, field.w, field.h), pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) pos.setZ(i, field.vert[i]);
-  geo.computeVertexNormals();
-  return geo;
-}
+// Ground height and the board surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
+let relief = null;
+function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
@@ -348,6 +331,7 @@ function startGame(m, restored = null) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
+  relief?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogTex?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
   units.clear(); selected.clear(); selection.reset();
@@ -364,14 +348,15 @@ function startGame(m, restored = null) {
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   for (const [cell, ch, lv] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; if (lv !== undefined) setLevel(map, cell, lv); }
-  buildField(map);
-  const ground = new THREE.Mesh(terrainGeometry(), gp.material);
-  ground.rotation.x = -Math.PI / 2; ground.position.set(MW / 2, 0, MH / 2); ground.receiveShadow = true;
+  gp.paint(terrain.grid);
+  // the fog overlay shares the relief's live geometry, which a crater replaces
+  relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
+    onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
+  const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
 
-  gp.paint(terrain.grid);
   buildStructures();
-  water?.dispose(); water = createWater(terrain.grid, map); if (water) world.add(water.mesh);
+  water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
 
   props?.dispose(); props = EDIT ? null : createProps({ map, grid: terrain.grid, hAt, parent: world });
 
@@ -389,9 +374,11 @@ function startGame(m, restored = null) {
   fogGrid = { w: map.w, h: map.h };
   fogTex = new THREE.DataTexture(new Uint8Array(map.w * map.h * 4), map.w, map.h);
   fogTex.magFilter = fogTex.minFilter = THREE.LinearFilter;
+  setFogMap(EDIT ? null : fogTex, MW, MH); // walls and roofs darken in the fog too
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  fog.rotation.x = -Math.PI / 2; fog.position.set(MW / 2, 0.12, MH / 2); fog.renderOrder = 1; fog.visible = !EDIT;
+  fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt }); // mood, cloud shadows, table props, mist, weather, birds
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
@@ -416,87 +403,8 @@ function startGame(m, restored = null) {
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
 let props = null;
-// stable pseudo-random per cell, so rebuilding after a change doesn't reshuffle everything
-const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
-
-// all 3D terrain pieces, rebuilt from the grid whenever a cell changes
-function buildStructures() {
-  const { grid, group, w } = terrain;
-  disposeTree(group, SHARED_GEOS); group.clear();
-  const cells = { B: [], H: [], '#': [], '=': [], R: [], X: [], Y: [] };
-  grid.forEach((row, y) => row.forEach((ch, x) => cells[ch]?.push([x, y])));
-  // kind: a textured surface from client/surfaces.js (world-planar texture, so instancing still works)
-  const inst = (list, kind, fn, per = 1) => {
-    if (!list.length) return;
-    const im = new THREE.InstancedMesh(GEO.box, surface(kind), list.length * per);
-    const m4 = new THREE.Matrix4(), col = new THREE.Color();
-    list.forEach((cell, i) => {
-      for (let k = 0; k < per; k++) {
-        const [sx, sy, sz, y, tint, base, ox = 0, oz = 0] = fn(cell, k), cx = (cell[0] + 0.5) * CELL + ox, cz = (cell[1] + 0.5) * CELL + oz;
-        m4.makeScale(sx, sy, sz).setPosition(cx, y + (base ?? hAt(cx, cz) - 0.2), cz);
-        im.setMatrixAt(i * per + k, m4); im.setColorAt(i * per + k, col.setScalar(tint));
-      }
-    });
-    im.castShadow = im.receiveShadow = true; group.add(im);
-  };
-  // houses: flood-fill into components, one floor level + roof each
-  const comp = new Map(), houses = [];
-  for (const [x, y] of cells.B) {
-    if (comp.has(y * w + x)) continue;
-    const h = { cells: [], height: 4 + rnd(x, y, 2) * 3, tint: 0.8 + rnd(x, y, 3) * 0.35 }, q = [[x, y]];
-    comp.set(y * w + x, h);
-    while (q.length) {
-      const [cx, cy] = q.pop(); h.cells.push([cx, cy]);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = cx + dx, ny = cy + dy;
-        if (grid[ny]?.[nx] === 'B' && !comp.has(ny * w + nx)) { comp.set(ny * w + nx, h); q.push([nx, ny]); }
-      }
-    }
-    // the lowest corner, so nothing floats on a slope
-    h.base = Math.min(...h.cells.map(([cx, cy]) => Math.min(hAt(cx * CELL, cy * CELL), hAt((cx + 1) * CELL, cy * CELL), hAt(cx * CELL, (cy + 1) * CELL), hAt((cx + 1) * CELL, (cy + 1) * CELL))));
-    houses.push(h);
-  }
-  inst(cells.B, 'plaster', ([x, y]) => { const h = comp.get(y * w + x); return [CELL, h.height + 1, CELL, (h.height + 1) / 2, h.tint, h.base - 1]; });
-  const roofs = [];
-  for (const h of houses) {
-    const xs = h.cells.map(c => c[0]), ys = h.cells.map(c => c[1]);
-    const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
-    if ((x1 - x0) * (y1 - y0) !== h.cells.length) continue; // flat roof for odd (or half-collapsed) shapes
-    const along = x1 - x0 >= y1 - y0, span = (along ? y1 - y0 : x1 - x0) * CELL + 0.6, len = (along ? x1 - x0 : y1 - y0) * CELL + 0.6;
-    const roof = mesh(roofGeometry(span, len), roofMaterials(), 1, 1, 1, (x0 + x1) / 2 * CELL, h.base + h.height, (y0 + y1) / 2 * CELL);
-    if (along) roof.rotation.y = Math.PI / 2;
-    roofs.push(roof);
-  }
-  // roofs keep their own meshes: each has two materials (plaster gables, tiled slopes) and mergeMeshes keeps one
-  for (const r of roofs) group.add(r);
-  inst(cells.H, 'hedge', ([x, y]) => [CELL * 1.05, 1.7 + rnd(x, y) * 0.5, CELL * 1.05, 0.9, 0.8 + rnd(x, y, 1) * 0.4]);
-  // '#' from the map file is a stone wall; '#' added in play (Assault, Fortify) is a sandbag wall
-  const wall = ([x, y]) => [CELL * 0.9, 0.9, CELL * 0.9, 0.45, 0.85 + rnd(x, y) * 0.25], stone = ([x, y]) => lastStart.map.rows[y]?.[x] === '#';
-  inst(cells['#'].filter(stone), 'stone', wall);
-  inst(cells['#'].filter(c => !stone(c)), 'sandbag', wall);
-  // rubble: a few broken chunks per cell
-  inst(cells.R, 'rubble', ([x, y], k) => { const s = 0.5 + rnd(x, y, k) * 0.7; return [s, s * 0.6, s, s * 0.3, 0.7 + rnd(x, y, k + 5) * 0.4, undefined, (rnd(x, y, k + 9) - 0.5) * 1.4, (rnd(x, y, k + 13) - 0.5) * 1.4]; }, 3);
-  // barbed wire: two posts and a criss-cross of strands per cell
-  inst(cells.X, 'darkwood', ([x, y], k) => [[0.14, 1.1, 0.14, 0.55, 1, undefined, -0.6, -0.6], [0.14, 1.1, 0.14, 0.55, 1, undefined, 0.6, 0.6],
-    [CELL, 0.05, 0.05, 0.85, 0.6], [CELL, 0.05, 0.05, 0.45, 0.6], [0.05, 0.05, CELL, 0.65, 0.6], [0.05, 0.05, CELL, 0.3, 0.6]][k], 6);
-  // tank traps: two steel hedgehogs (three crossed beams each) per cell
-  inst(cells.Y, 'steel', ([x, y], k) => { const j = k % 3, o = k < 3 ? -0.45 : 0.45, L = 1.5; return [j === 0 ? L : 0.18, j === 1 ? L : 0.18, j === 2 ? L : 0.18, 0.75, 0.9 + rnd(x, y, k) * 0.2, undefined, o, -o]; }, 6);
-  // bridges: a plank deck, with rails on the sides that face the water
-  inst(cells['='], 'wood', () => [CELL * 1.02, 0.35, CELL * 1.02, 0.35, 1]);
-  const rails = [];
-  for (const [x, y] of cells['=']) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[y + dy]?.[x + dx] === 'W') rails.push([x, y, dx, dy]);
-  inst(rails, 'darkwood', ([, , dx, dy]) => [dx ? 0.2 : CELL, 0.8, dx ? CELL : 0.2, 0.75, 1, undefined, dx * 0.9, dy * 0.9]);
-  // trench parapets on every side that isn't more trench
-  const dirt = surface('earth'), parapets = [];
-  for (const [x, y] of grid.flatMap((row, y) => row.map((ch, x) => ch === 'T' && [x, y]).filter(Boolean))) {
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      if (grid[y + dy]?.[x + dx] === 'T') continue;
-      const cx = (x + 0.5 + dx * 0.55) * CELL, cz = (y + 0.5 + dy * 0.55) * CELL;
-      parapets.push(mesh(GEO.box, dirt, dx ? 0.5 : CELL, 0.35, dx ? CELL : 0.5, cx, 0.17 + hAt(cx, cz), cz));
-    }
-  }
-  if (parapets.length) group.add(mergeMeshes(parapets));
-}
+// all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
+function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt); }
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -507,14 +415,13 @@ function setLevel(map, cell, lv) {
 
 function applyCells(cells) {
   if (!cells?.length || !terrain) return;
-  let dug = false;
   for (const [cell, ch, lv] of cells) {
     const x = cell % terrain.w, y = Math.floor(cell / terrain.w);
     terrain.grid[y][x] = ch;
-    if (lv !== undefined) { setLevel(lastStart.map, cell, lv); dug = true; }
+    if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
-  if (dug) { buildField(lastStart.map); groundMesh.geometry.dispose(); groundMesh.geometry = fogMesh.geometry = terrainGeometry(); }
   terrain.ground.paint(terrain.grid); // repaints only the tiles around changed cells
+  relief.update(cells); // reshapes the cells around the change; the fog overlay follows through onGeometry
   buildStructures();
   props?.refresh();
   water?.changed(cells);
@@ -528,14 +435,7 @@ function buildHQ(sp, slot) {
   const flat = (geo, opacity, y) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: f.color, transparent: true, opacity, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
   const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
   g.add(zone, hqRing(R, f.color));
-  // sandbags with gaps for the exits, merged into one mesh
-  const bags = [];
-  for (let i = 0; i < 36; i++) {
-    if (i % 9 < 2) continue;
-    const a = i / 36 * Math.PI * 2, bag = mesh(GEO.box, surface('sandbag'), 2.4, 0.9, 1.1, Math.cos(a) * (R + 0.8), 0.45, Math.sin(a) * (R + 0.8));
-    bag.rotation.y = -a + Math.PI / 2; bags.push(bag);
-  }
-  g.add(mergeMeshes(bags));
+  g.add(sandbagRing(R + 0.8)); // sandbags with gaps for the exits (client/structures.js)
   // command tent + crates
   const tent = f.vehicle, shape = new THREE.Shape([new THREE.Vector2(-3, 0), new THREE.Vector2(3, 0), new THREE.Vector2(0, 3.2)]);
   const tg = new THREE.ExtrudeGeometry(shape, { depth: 7, bevelEnabled: false }); tg.translate(0, 0, -3.5);
@@ -1095,7 +995,7 @@ function mmTerrain() {
   const w = terrain.w, h = terrain.grid.length, c = document.createElement('canvas'); c.width = w; c.height = h;
   const x2 = c.getContext('2d'), img = x2.createImageData(w, h);
   terrain.grid.forEach((row, y) => row.forEach((ch, x) => {
-    const lv = field ? field.vert[y * (w + 1) + x] / CFG.levelHeight : 0, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
+    const lv = hAt((x + 0.5) * CELL, (y + 0.5) * CELL) / CFG.levelHeight, [r, g, b] = MM_COLORS[ch] ?? MM_COLORS['.'], k = 1 + lv * 0.12, i = (y * w + x) * 4;
     img.data[i] = r * k; img.data[i + 1] = g * k; img.data[i + 2] = b * k; img.data[i + 3] = 255;
   }));
   x2.putImageData(img, 0, 0);
@@ -1157,7 +1057,7 @@ function drawMinimap() {
   alerts.drawPings(c, S);
   pings.drawMinimap(c, S);
   // what the camera sees
-  const corners = rig.corners(field);
+  const corners = rig.corners(relief?.geometry);
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
 }
 {
@@ -1212,6 +1112,7 @@ function updateFog() {
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
 objectives.init();
+const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
 endgame.init({ me: () => me, teams: () => teams });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
@@ -1241,7 +1142,7 @@ renderer.setAnimationLoop(() => {
     const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
-  objectives.frame(sdt); effects.update(sdt);
+  objectives.frame(sdt); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
   if ((fogTimer -= dt) <= 0) { fogTimer = 0.2; updateFog(); }
   alerts.frame();
@@ -1274,7 +1175,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

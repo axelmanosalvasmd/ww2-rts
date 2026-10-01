@@ -5,6 +5,57 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Terrain relief, miniature structures and map moods (round 4):
+  - Terrain reads as a sculpted painted model. Cliffs are warm stratified rock faces with a pale lip and a soil foot,
+    1-level slopes are eased ramps painted with dry earth and a darker foot, height tints the ground (lower is greener
+    and damper, higher is drier), roads sink slightly, and river and canal beds are carved below the water line with
+    sloping banks. Cell centres keep their exact simulation heights, so units still stand on the visible ground. On
+    the round 4 branch, terrain triangles on Hill 112 went from 17.6k to 37k, Kasserine Pass dropped from 64k to 29k
+    and flat maps shrank 10x or more. The fog of war overlay follows craters and darkens the rock faces, a crater
+    rebuild takes about 4 ms, and Graphics Low uses a simpler shader and a coarser mesh.
+  - Map structures are miniature models. Houses have roof overhangs, ridge tiles, chimneys and inset windows and
+    doors, and each map gets a church with a tower and some barns. Wrecked houses are broken walls on rubble, stone
+    walls have capstones, hedgerows are bocage earth banks with shrubs, and bridges have railings and piers. Sandbags
+    are rounded and stacked, tank traps are steel hedgehogs, wire is concertina on posts, trenches have revetments
+    and duckboards, and MG nests are easy to read. The HQ, Barracks, Motor Pool, Supply Depot and Command Bunker each
+    have their own shape. Map structures darken under fog of war, and footprints and cover are unchanged. On the round
+    4 branch the default map's whole-map view went from 463 to 200 draw calls and from 47.3k to 105.1k triangles.
+  - Each map has a mood. Most keep the warm afternoon. Pegasus Bridge and The Polder get a low dawn sun with mist over
+    the river, Bocage and Monte Cassino are overcast with softer shadows, the Ardennes gets falling snow, and
+    Kasserine Pass gets blowing dust. Faint cloud shadows drift across the board. The planning table now has a folded
+    field map, a ruler, a pencil, an "HQ 1944" coffee mug, an open brass compass, map pins with paper flags, and a
+    desk lamp casting a warm pool of light at one corner. On High, a few birds circle above the board. Graphics Low
+    turns off the clouds, weather and birds. No gameplay changes.
+  - Merged with rounds 1 to 3: the relief mesh replaces the round 3 smoothed height field. Units, scenery props, the
+    camera, the minimap shading, the HQ and the water all read the same ground height. Props refresh after the relief
+    reshapes a crater and still keep off every structure cell. The water surface takes the relief's height so it sits
+    in the carved beds, and bridges keep their deck height. The fog overlay shares the relief's live geometry, so it
+    follows craters too. Structures darken in the fog through the `setFogMap` hook in the round 1 surfaces module,
+    which main.js calls once the fog texture exists. The round 3 one-draw unit models stay, and the five base
+    buildings and the HQ sandbag ring now come from the round 4 models.
+  - Integration fixes: with the relief ground, every match crashed at start because the atmosphere read the size of
+    the old flat ground plane, and the board edge, table shadow and contact shadow disappeared. Both now read the
+    relief mesh (its bounds, and height as the up axis), and the cut-earth board edge follows the relief height along
+    all four sides, including where a cliff meets the edge.
+  - Left for later:
+    - The birds fly about 30 m above the board, so they only show when they pass under the view. Cloud shadows
+      darken only the ground and table, not units, structures or trees. Snow maps have falling snow but no snow lying
+      on the ground. The desk lamp's arm and shade are mostly off-screen, so players mainly see its shadow and pool.
+    - Cloud shadows reuse the full ground mesh (about 12.8k triangles on the default map, more on big maps).
+    - Triangle count about doubled with the new structures (about 212k on Monte Cassino XL at the whole-map view).
+      Low drops duckboards, half the shrubs and small-part shadows but keeps the house detail. Instanced meshes have
+      bounds that cover the whole map, so close-up views do not cull triangles (a village view still draws about 99k).
+      The fog overlay draws the terrain a second time.
+    - The base-building models use the shared unit material and do not darken in the fog the way terrain pieces do
+      (the server already hides enemy units outside vision).
+    - The church roof is the terracotta texture with a slate tint. Bridge railings are thin and hard to see from the
+      default camera. Destruction of the new structures in a long live match was not watched end to end.
+    - Cliffs are a heightfield with no overhangs, and painted contour lines still draw a thin dark line where a cliff
+      meets the plateau.
+    - Capture point, HQ and structure anchors only refresh when the world is rebuilt, so a crater under an existing
+      flag base does not re-seat it.
+    - Rendering was checked only with the headless browser's software renderer, so there are no real GPU timings.
+
 - Rooms, controls, match endings and performance (round 3):
   - Keys and selection: Shift+Y, Shift+U, Shift+I and Shift+O now place sandbags, wire, tank traps and an MG nest (T
     still digs a trench), and the fort buttons show the Shift key. Shift+click adds or removes a squad. Double-click

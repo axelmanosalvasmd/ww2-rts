@@ -41,6 +41,11 @@ const cloth = (color) => cloths.get(color) || cloths.set(color, new THREE.MeshLa
 // (the tests run in Node, where textures cannot load) each part keeps its plain color
 let skin = (_key, color) => color;
 export function setSurfaces(surface) { skin = (key) => surface(key); }
+// base buildings (HQ, barracks, motor pool, depot, command bunker): main.js passes client/structures.js buildingModel(),
+// one merged miniature per type and team; without it (the Node tests) the box models below stand in
+const BUILDINGS = new Set(['hq', 'barracks', 'motorpool', 'depot', 'bunker']);
+let building = null;
+export function setBuildings(model) { building = model; }
 
 // a part before baking: shape, color (a number) or material, then scale and position like the old mesh() helper
 function part(geo, paint, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) {
@@ -244,6 +249,11 @@ export function buildModel(v, root, f, fac, def) {
     for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; if (i === 7) continue; v.body.add(part(GEO.box, skin('sandbag', 0x9c8a60), 1.2, 0.7, 0.6, Math.cos(a) * 1.7, 0.35, Math.sin(a) * 1.7).rotateY(-a + Math.PI / 2)); }
     v.body.add(part(GEO.cyl, DARK, 0.5, 0.6, 0.5, 0, 0.3, 0), part(GEO.cyl, DARK, 0.08, 2, 0.08, 0.4, 1.3, 0.2).rotateZ(-0.6), part(GEO.cyl, DARK, 0.08, 2, 0.08, 0.4, 1.3, -0.2).rotateZ(-0.6));
     root.add(bake(v.body, key, true)); v.models.push(root);
+  } else if (building && BUILDINGS.has(type)) {
+    // the command bunker stands from the first second (never built), so it keeps no v.body to scale
+    const model = building(type, f);
+    if (type !== 'bunker') v.body = model;
+    root.add(model); v.models.push(root);
   } else if (type === 'hq') {
     // command post: sandbagged timber block with a radio mast
     v.body = new THREE.Group();
