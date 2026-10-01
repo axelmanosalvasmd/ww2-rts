@@ -89,6 +89,64 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
   6+ units. AI runs, time to finish: 1v1 Three Crossroads 4:47-26:43 (8 games), River Towns 5:41-23:45 (4),
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
 
+## Horde mode (decided and built 2026-10-01)
+Co-op: 1-5 players (humans or AI teammates) defend against Waves from the Horde, an extra AI player that
+`createGame` adds after the last name (so no room seat maps to it; the server thinks for it). There is no winning:
+the result is the Wave the bunker fell on. Terms are in CONTEXT.md, knobs in `CFG.horde`.
+- Defend: one shared Command Bunker. Every player spawns, reinforces and retreats at the same HQ (the middle one of
+  the map's `defend` spawns), and `fortify()` runs once there (the first player owns the bunker). The bunker has
+  3000 hp per defender, done as damage divided by the number of defenders so its bar stays 0-100%. The run ends when
+  it falls.
+- Maps: only maps with `defend` spawns (11 of 22); the lobby greys out the rest, and picking Horde on another map
+  switches to the first horde map. The Horde enters at every other spawn, one unit per spawn twice a second.
+  Start and Restart recheck the freshly loaded map. Losing defender spawns refuses Start in the lobby or preserves
+  the existing game on Restart.
+- Waves: the 45 s break starts only when the Wave is dead (no horde ground unit on the map or in the Reserve). The
+  host can send the next Wave early (`{t:'nextwave'}`, host only, handled by the server). With 3 or fewer left they
+  are revealed through the fog until they die.
+- Escalation: a Wave is an MP budget, 300 x 1.25^(wave - 1) x defenders x the army size's income factor, spent at
+  random by weight on the normal roster at normal prices (`hordeWave`). No stat buffs. Unlocks: rifles and
+  conscripts from 1, MG and mortar at 3, armored car, light tank and AT gun at 5, medium tank and rockets at 8, Tiger
+  at 12 (the Horde ignores factions and the Tiger's limit of one). Never snipers.
+- Big Waves: the Horde fields at most 60 units per defender (240 in all); the rest waits in the Reserve and enters as
+  units die. Buy at most 32 reserve units per tick and buffer at most 240; keep the remaining MP budget as a number.
+  Purchases keep the normal affordability and random weights. Budgets above `Number.MAX_SAFE_INTEGER` are capped
+  so each purchase still reduces the budget. HUD: "Wave 16, 41 left". While purchases remain, the count includes an
+  upper estimate from the cheapest unlocked unit; it becomes exact when purchasing ends. The final-three reveal and
+  the break wait until the remaining budget is spent or cannot buy any unit.
+- Horde support: from Wave 6 it gets 150 MP of off-map support per Wave past 5, per defender, spent by the existing
+  AI (no paratroopers); what it doesn't spend is lost. From Wave 10 it gets planes (1, +1 every 3 Waves, x half the
+  defenders rounded up, at most 8; every third a fighter), so players need Flak. Planes don't count toward "Wave
+  dead" and are removed when it is cleared.
+- Horde brain: `think()` with a horde branch. Every unit attack-moves on the bunker from spawn. No shopping, no
+  retreat (auto-retreat is ignored for it), no reinforcing, no capturing points, no Kill Bounty, no income. It keeps
+  abilities, smoke, mortars and support.
+- Player economy: the Assault defender's (250 MP, +3.5/s) plus the Kill Bounty and MP from held points.
+- Bunker repair: +10% max hp per cleared Wave. No paid repair.
+- Army size: scales the players as usual and the Wave budget by the same income factor. Endless is refused.
+- AI teammates: allowed, use the defender AI (they stay within 70 m of the HQ), and count as defenders for the
+  budget and the record.
+- Records: best Wave per map, team size and army size in `horde-records.json` beside server.js (not in git), with
+  names, kills and time; a tie on the Wave goes to the longer run. The lobby shows the record for the current
+  settings, the result line shows Wave, kills and time.
+- Balance (AI defenders only, `node tools/horde.mjs <map> <defenders> <runs>`, Standard, 3 runs each, the Wave the
+  run ended on): Hill 112 solo 11/9/11, three 12/12/11, five 14/14/9; Seawall 11/11/13 and 12/12/12; Pegasus
+  13/14/11 and 13/11/15; Monte Cassino 13/12/12 and 12/14/11; Bocage 11/10/8 and 13/11/11; Stalingrad 13/11/11 and
+  13/14/13; Kasserine 13/15/14 and 14/15/14; the four XL maps 8-14. Runs last 22-36 minutes. So the budget x
+  defenders rule holds from 1 to 5 defenders, and runs end by themselves: a 12-unit army can't stop Wave 12+
+  (4400 MP per defender). Humans should get further than the AI. Massive (2 runs, three defenders): Waves 4 and 8,
+  308 units at the peak, worst server tick 16 ms. Massive is harder than Standard and is not tuned.
+- Bug found while testing, in the shared movement code: units that reach one waypoint together pushed each other off
+  it for good, because the "stuck" check measured movement before units are pushed apart and so never fired. Horde
+  units spawn in a clump with the same route, so whole groups froze near their spawn (Monte Cassino with three
+  defenders: 4 of 6 runs never ended). A unit with no real progress for a second now skips a waypoint it can walk
+  past, and after three seconds counts standing next to it as reaching it.
+- Known, left for later: AI teammates don't leave home to hunt a mortar or rocket truck shelling the bunker from
+  range. A horde unit with no route to the bunker (vehicles behind a closed ring of tank traps) waits where it is
+  until the players kill it. No regression test reproduces the waypoint jam in isolation; `tools/horde.mjs` reports
+  runs cut off at 90 minutes (none in the 68 runs above).
+- Deferred: difficulty levels, a hand-built horde map, paid repair, a Horde that takes points.
+
 ## Command & readability (slice after destruction)
 - Recruitment cards and tooltips share role descriptions, including Flak's role against enemy air support.
   A unit without role copy shows its name in both the buy bar and Classic training cards.
@@ -135,7 +193,7 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - It goes through the same ability command as a player's click, so cooldowns, Munitions and the usual checks apply.
   An autocast grenade or barrage in range goes off without stopping the unit's current orders; a satchel charge walks
   up first and the squad stays where it planted it. A player's own ability order is never replaced while it is in flight.
-- The flag reaches the owner only (snapshot flag 1024, stripped for everyone else). The HUD marks an ability button
+- The flag reaches the owner only (snapshot flag 16384, stripped for everyone else). The HUD marks an ability button
   whose selected units all have autocast on with a dashed brass border and a small A, and the tooltip says
   "Right-click: autocast on/off". Right-clicking toggles it for the selected units of that type: on unless all are on.
 - The client remembers each player's last choice per unit type, separately for Classic and the free modes (local
@@ -271,6 +329,8 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   more than the limit, or armies never fill it (Massive at 3.5x income: 98 units with 6 AIs; at 6x: ~240 Conquest,
   ~270 Classic). The server cost stays well inside the 50 ms tick budget at that size (avg under 8 ms, worst 24 ms).
   Browser cost at 250+ units hasn't been measured on the friends' PCs.
+- Endless: Massive's unit limit (x5) with income x20, for players who want the cap full all match. Money stops being a
+  constraint, so it is a sandbox setting, not a balanced one (no AI runs behind it).
 
 ## Look and feel (decided 2026-10-01)
 Art direction: **sand table**. The battlefield reads as a painted terrain model on a commander's planning table; the HUD
@@ -536,8 +596,8 @@ the HUD.
 8. ~~Faction flavor~~ (procedural models, no asset files): per-faction helmets, tanks (Stuart / Panzer II / T-70) and rocket
    carriers (Calliope on a Sherman / Panzerwerfer half-track / Katyusha truck). Units answer orders in their language via
    the browser's speech synthesis (mute: M). One unique unit each:
-   - USA Ranger Squad (185): 6 elite men with bazookas; Satchel Charge demolishes a house, wall or bridge.
-   - Germany Tiger (620, max 1): 900 hp, big gun, front armor takes 70%.
+   - USA Ranger Squad (200, was 185 until the unit control rebalance): 6 elite men with bazookas; Satchel Charge demolishes a house, wall or bridge.
+   - Germany Tiger (560, was 620 until the unit control rebalance; max 1): 900 hp, big gun, front armor takes 70%.
    - USSR Conscripts (80): 7 cheap men; Ura! = 6s sprint that ignores suppression.
    300 AI matches per map, wins by faction USA/GER/USSR: 37/33/30% (default), 36/35/30% (River Towns).
    Before tuning: USSR won 74% (conscripts at 60 MP were too efficient) and the German AI stalled saving for the Tiger.
@@ -551,3 +611,107 @@ Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
   40 hp) and VBLOCK (vehicles' paths treat it as a wall; infantry pass and get cover; 250 hp). findPath picks the
   blocking mask from the moving unit's type.
 - Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.
+
+## Unit control and unit AI (decided 2026-10-01, four slices)
+Decisions from the planning interview:
+- Cover: both automatic (idle infantry under fire) and a Take Cover order. Hold Position (slice 3) means hold: no
+  auto-cover and no chasing.
+- Mass entrenchment: every selected digger works one shared pattern (line, zigzag, double line, arc, ring,
+  strongpoint with wire). Short of MP or diggers: dig what can be paid for, middle outward; the rest as MP comes in.
+- Stances (free fire, hold fire, hold position), auto-retreat when broken (a toggle, off by default), vehicles turn
+  their front to the threat, groups spread their fire. New units behave as before until the player changes them.
+- Computer players use all of it. Order of work: cover, trenches, extras, AI and rebalance.
+
+Slice 1, cover (`seekCover`, `coverRank` in sim.js):
+- Spots are ranked 0 trench, 1 cover cell, 2 behind something solid on the threat's side (`behindCover`), 3 open. A
+  squad only moves to a strictly better rank within `CFG.coverSeek` (10 m), scoring distance + 4 m per rank, and only
+  if the walk is under 15 m (so not to cover across a river). A cell another squad stands on, or claimed in the last
+  5 s (`g.coverClaims`), is skipped, so a platoon spreads along a wall instead of piling onto one cell.
+- Automatic: infantry without `setup` weapons, idle (no path, order, target order, dig, build), shot at by direct fire
+  in the last 2 s (`u.hitAt`, `u.hitFrom`, set in `fire` whether it hit or not), one look every `CFG.coverRetry` (2 s).
+  Blasts do not trigger it: cover does not help against them and there is no direction to hide from.
+- Crewed weapons are left out of the automatic part on purpose: moving costs them their setup time and their field of
+  fire, which is the thing players set by hand. The Take Cover order still moves them.
+  An accepted Take Cover order clears active and waiting orders even when the squad already has the best cover.
+- Separation no longer pushes a squad in a cover cell onto a cell without cover (`shovedFromCover`). Found while
+  testing: a squad walking past shoved the one already behind the wall out into the open.
+- Classic, 90 three-way AI matches, default map: 37/38/26% (32/38/30% before). Same direction as Conquest, inside the noise.
+- Balance: Conquest, default map, 300 three-way AI matches with rotated factions: USA/GER/USSR won 41/36/23% (39/33/28% before this change on the same script), average match 561 s (552 s). USSR lost about 5 points, at the edge of the noise for 300 matches; left alone until the rebalance in the last part. The Classic run is recorded with part 2.
+
+Slice 2, mass entrenchment (`entrenchPlan`, `takeDigJob`, the `entrench` command):
+- A pattern is a list of ordinary fortification segments (`FORTS.trench`, plus `FORTS.wire` for the strongpoint), so
+  digging, pricing per cell and what ground takes a trench are the existing rules. `entrenchPlan` is pure geometry and
+  is shared with the client, which draws the cells it would dig.
+- The order creates one project `{ jobs, crew }` that every digger points at (`u.entrench`). An idle digger takes the
+  nearest job among the first `crew` jobs (the list is sorted middle outward), pays `segmentCost` and digs. No
+  manpower: it waits and looks again every tick. Nothing is paid up front and nothing is refunded.
+- The first slice had no registry of projects; the follow-up below adds one. A replacement order clears
+  `u.entrench` only for squads whose replacement is accepted.
+- Rejected: queueing the segments as each squad's waiting orders. A queued dig that cannot be paid is dropped, and the
+  queue holds 8, so "the rest as MP comes in" could not work.
+- Separation and cover, second try: a squad holding cover is not pushed off it, and a friend with a path is not pushed
+  back by it either (it walks through). With only the first half, a digger walking along a finished trench stopped
+  dead behind the squad standing in it.
+- The zigzag has no rule of its own. Blast damage in a trench is `trenchBlastMul` whatever the shape; its only gain
+  is more trench cells per metre of front (6 segments on 40 m against 5).
+
+House corners (asked for during slice 2):
+- `behindCover` used to sample the line to the shooter at 1.2 and 2.2 m. For a house that never fired while the squad
+  could be shot at all: a house cell on that line also blocks the line of sight. So houses gave cover only from inside.
+- Now a house or building cell (`WALLS`: B, K) in any of the 8 cells around the squad counts when it lies within 60
+  degrees of the shooter (cosine above 0.5). Same multiplier as other directional cover (`coverMul` 0.5), no new number.
+- `seekCover` adds 3 m to a rank 2 spot that cannot see the threat, so corners win over blind spots behind the wall.
+
+Slice 3, stances and the rest (`STANCES`, `retreatUnit`, `claim`/`retarget`, the hull-turn block in `step`):
+- Three independent booleans on the unit (`holdFire`, `holdPos`, `autoRetreat`) set by the `stance` command, instead
+  of one enum: the interview's "hold fire" and "hold position" are both wanted at once on an ambush gun. Sent as flag
+  bits 2048/4096/8192, masked for everyone but the owner.
+- Units never chased on their own in this game (auto-targeting only picks what is in range), so Hold position has one
+  job: switching off auto-cover. It does not stop an explicit order, Take cover included.
+- Auto-retreat threshold `CFG.autoRetreat` 0.35 is the number the AI already used for pulling squads back.
+- Hull turn: `CFG.hullTurn` 1.2 rad/s, only while not moving. A shooter counts when its `w.veh` is 20 or more (the
+  same line that separates guns from small arms against buildings) and it is not a plane.
+- Spread fire: `g.claims` is rebuilt every tick from current targets (team and target -> expected volley damage) and
+  kept current as units switch. `pickTarget` multiplies a target's score by max(1, others' claims / target hp). Below
+  one volley's worth of overkill nothing changes, so small fights pick targets exactly as before. Salvo weapons
+  (rockets, mortar) keep their own clustering rule.
+- Balance after slices 1 to 3, Conquest 300 matches: 42/33/26% (39/33/28% before).
+
+Slice 4, the AI and the rebalance (`shared/ai.js`):
+- The point holder orders `entrench` (arc toward the nearest enemy HQ; strongpoint at 600 MP or more) where it used to
+  order one `dig`. Any `fortBuilders` squad may be the holder, so conscripts dig. A holder outside cover orders `cover`.
+- `autoRetreat` is switched on for every AI ground unit each decision. The AI's own retreat rule stays for the case
+  auto-retreat does not cover (pinned and under 60%).
+- Hold fire and hold position are left unused by the AI on purpose (decided against the interview's "everything"):
+  without an ambush plan they only stop guns shooting. Revisit if the AI ever gets one.
+- Balance log, Conquest three-way AI matches, USA/GER/USSR, same script throughout (factions rotated over spawns):
+  - before the four slices: default 39/33/28% (300), River Towns 37/34/29% (700)
+  - River Towns by slice (400 each): cover 40/31/28, entrench and corners 42/31/27, stances and fire 43/29/28,
+    AI 44/26/29 (700). A steady drift to the USA, about 2 points a slice; no single change stands out.
+  - default after slice 4: 38/32/30 (700). Pooled over both maps: 41/29/30 (1400).
+  - tried alone, 800 matches each: Ranger 185 -> 200: 40/31/29. Tiger 620 -> 560: 40/31/28. Both together, 1400
+    matches: 36/35/29 (default 38/34/27, River Towns 34/35/31). Kept both.
+  - One 400-match run moves a faction by 2 to 3 points on its own; smaller runs cannot tell these variants apart.
+
+Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
+- Projects now live in `g.projects` (id -> `{ id, owner, jobs, crew, active }`). This replaces slice 2's "no registry":
+  a ghost and a join order both need to name a project. Paid digs name their project; `active` is recounted each tick
+  so cancellations and dead diggers cannot hold it open. A sweep once a second drops finished or abandoned projects
+  once their paid work ends, and recounts `crew`.
+- The `entrench` command takes `join: id` instead of a pattern. Own and allied projects only; the digger's owner pays.
+- Queueing an entrenchment creates the project at once and queues a join for each squad, so the squads share one
+  project (queueing the pattern itself per squad would make one project each, digging and paying for the same cells).
+  At least one squad must have queue room before creating the project; refused patterns allocate nothing.
+- Fortification placement checks sight on every planned cell before inspecting its terrain. Deferred segments
+  repeat the sight check when claimed; a segment that lost sight is dropped without payment or a terrain check.
+- `planOf` reports a digger as busy (kind 7) while its project has pending or active segments, so waiting orders start after the
+  pattern, not between two segments. A squad waiting for manpower therefore holds its queue too.
+- Queued commands no longer clear `u.entrench` (they did, which made a Shift-queued move cancel the digging).
+- Snapshot `works`: [project id, 1 for wire, x, z, dir] per remaining segment, unrounded so the client computes the
+  same cells with `placementCheck`. Sent to the owner's whole team.
+- Retreat is deliberately not queueable: an existing test requires Retreat and Stop to clear the queue even with
+  Shift held.
+- Shelling reports `queueFull` when no selected unit can enqueue it. The browser defers cooldown and munitions
+  checks for queued grenade, satchel and barrage targets; ordinary target clicks and instant abilities check at once.
+- Hold fire applies to aircraft guns, anti-air damage and Flak interception. A plane's explicit attack permits
+  firing only at that target. Jam recovery skips a waypoint only with a walkable route to the following waypoint.

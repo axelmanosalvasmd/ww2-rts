@@ -7,6 +7,10 @@ export const bindings = [
   binding('retreat', 'KeyR', 'R', 'Retreat selected units'),
   binding('ability', 'KeyF', 'F', 'Use the first ready selected ability'),
   binding('amove', 'KeyG', 'G', 'Aim an attack-move order'),
+  binding('cover', 'KeyC', 'Shift+C', 'Selected infantry take cover', 'global', { shift: true }),
+  binding('stance:holdFire', 'KeyF', 'Shift+F', 'Toggle hold fire', 'global', { shift: true }),
+  binding('stance:holdPos', 'KeyG', 'Shift+G', 'Toggle hold position', 'global', { shift: true }),
+  binding('stance:autoRetreat', 'KeyX', 'Shift+X', 'Toggle auto-retreat', 'global', { shift: true }),
   binding('mute', 'KeyM', 'M', 'Toggle audio'),
   binding('alert', 'Space', 'Space', 'Jump to the newest alert, or center the selection'),
   binding('follow', 'Space', 'Shift+Space', 'Follow the selection', 'global', { shift: true }),
@@ -23,6 +27,7 @@ export const bindings = [
     .map(([kind, key]) => binding(`support:${kind}`, `Key${key}`, key, `Aim ${kind} support`)),
   ...Object.entries({ trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' })
     .map(([kind, key]) => binding(`fort:${kind}`, `Key${key}`, kind === 'trench' ? key : `Shift+${key}`, `Place ${kind}`, 'global', { shift: kind !== 'trench' })),
+  binding('entrench:line', 'KeyT', 'Shift+T', 'All selected builders dig a trench line', 'global', { shift: true }),
   ...Object.entries({ depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' })
     .map(([kind, key]) => binding(`build:${kind}`, `Key${key}`, key, `Place a ${kind}`, 'classic')),
   ...Object.entries({ KeyW: 'W', ArrowUp: 'Up', KeyS: 'S', ArrowDown: 'Down', KeyA: 'A', ArrowLeft: 'Left', KeyD: 'D', ArrowRight: 'Right', KeyQ: 'Q', KeyE: 'E' })
