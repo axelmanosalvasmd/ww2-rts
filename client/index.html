@@ -102,8 +102,8 @@
 
 <div id="hud" class="hidden">
   <div id="scores" class="panel"></div>
-  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="mute" title="Unit voices (M)" style="float:left;padding:2px 7px;margin-left:4px">🔊</button><button id="menuBtn" title="Menu: restart, end or leave the match" style="float:left;padding:2px 7px;margin-left:4px">☰</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div></div>
-  <div id="menu" class="panel hidden" style="position:absolute;top:60px;right:10px;display:grid;gap:6px;z-index:20"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button></div>
+  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="menuBtn" title="Menu: restart, end or leave the match" style="float:left;padding:2px 7px;margin-left:4px">☰</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div></div>
+  <div id="menu" class="panel hidden" style="position:absolute;top:60px;right:10px;display:grid;gap:6px;z-index:20"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button><label title="Effects, voices and alerts. M mutes" style="display:flex;align-items:center;gap:8px">Volume<input id="volume" type="range" min="0" max="100" step="1" style="flex:1;accent-color:var(--accent);padding:0"></label></div>
   <div id="buy" class="panel"></div>
   <div id="lowerleft"><div id="abil"></div><div id="selection" class="panel"></div></div>
   <div id="help" class="panel">

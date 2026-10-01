@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
+import { audio } from './audio.js';
+import { battleShots, battleFrame, battleGone } from './battle-sound.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -130,7 +132,7 @@ function renderLobby(m) {
   $('result').classList.toggle('hidden', !r);
   if (r) $('result').textContent = r.ended ? 'Match ended by the host' : w === -1 ? 'Draw' : w === r.teams[me] ? 'Victory'
     : `${r.names.filter((_, i) => r.teams[i] === w).join(' & ') || 'Enemy'} win${r.teams.filter(t => t === w).length > 1 ? '' : 's'}`;
-  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); }
+  if (lobby) { menuOpen(false); $('hud').classList.add('hidden'); audio.end(); }
 }
 
 // ---------- renderer / scene ----------
@@ -201,6 +203,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 let lastStart = null;
 function startGame(m) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
+  if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   if (world) scene.remove(world);
   world = new THREE.Group(); scene.add(world);
@@ -669,6 +672,7 @@ function corpse(v, man) {
 }
 
 function removeUnit(v) {
+  battleGone(v);
   world.remove(v.bars);
   if (v.killed && isVeh(v.type)) {
     // leave a burnt-out wreck for a while
@@ -701,32 +705,8 @@ function boom(x, z, size) {
   }
 }
 
-let audio = null, noise = null, voices = 0;
-addEventListener('pointerdown', () => {
-  if (audio) return;
-  audio = new AudioContext();
-  noise = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
-  const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-}, { once: true });
-function sound(kind, x, z) {
-  if (!audio || voices > 20) return;
-  const vol = Math.max(0, 1 - Math.hypot(x - cam.x, z - cam.z) / 160) * (kind === 'tank' || kind === 'at' || kind === 'rocket' ? 0.9 : 0.25);
-  if (vol <= 0.01) return;
-  const src = audio.createBufferSource(), filt = audio.createBiquadFilter(), gain = audio.createGain(), t = audio.currentTime;
-  const heavy = kind === 'tank' || kind === 'at', len = heavy ? 0.7 : kind === 'mg' ? 0.06 : 0.12;
-  src.buffer = noise; src.playbackRate.value = heavy ? 0.5 : 1;
-  filt.type = heavy ? 'lowpass' : 'bandpass'; filt.frequency.value = heavy ? 380 : kind === 'mg' ? 1400 : 1900;
-  gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.001, t + len);
-  src.connect(filt).connect(gain).connect(audio.destination);
-  src.start(t, Math.random() * 0.5, len); voices++; src.onended = () => voices--;
-}
-function blip(freq) {
-  if (!audio) return;
-  const o = audio.createOscillator(), gn = audio.createGain(), t = audio.currentTime;
-  o.frequency.value = freq; o.type = 'square';
-  gn.gain.setValueAtTime(0.04, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-  o.connect(gn).connect(audio.destination); o.start(t); o.stop(t + 0.08);
-}
+// sound lives in audio.js and battle-sound.js; blip() is a UI sound ('click', 'recruit' or 'error', a number means click)
+function blip(kind) { audio.ui(typeof kind === 'string' ? kind : 'click'); }
 
 function marker(x, z, color) {
   const m = new THREE.Mesh(GEO.ring, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false }));
@@ -764,16 +744,17 @@ function applySnapshot(s) {
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
   }
+  battleShots(s, units, terrain?.w);
   for (const sh of s.shots) {
     if (sh.k === 'throw') { const from = units.get(sh.f); if (from) lob(from, sh.x, sh.z); continue; }
-    if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); sound('at', sh.x, sh.z); continue; }
-    if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); sound('tank', sh.x, sh.z); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); sound('tank', from?.x ?? sh.x, from?.z ?? sh.z); continue; }
+    if (sh.k === 'boom') { boom(sh.x, sh.z, 2.4); continue; }
+    if (sh.k === 'shell') { boom(sh.x, sh.z, 2.8); continue; }
+    if (sh.k === 'rocket') { boom(sh.x, sh.z, 1.8); continue; }
+    if (sh.k === 'bomb') { boom(sh.x, sh.z, 5); continue; }
+    if (sh.k === 'salvo') { const from = units.get(sh.f); if (from) salvo(from, sh.x, sh.z, sh.n); continue; }
     if (sh.k === 'strafe' || sh.k === 'recon' || sh.k === 'bombing') { plane(sh); continue; }
-    if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); sound('tank', sh.x, sh.z); continue; }
-    if (sh.k === 'smokeshells') { for (let i = 0; i < 5; i++) setTimeout(() => sound('at', sh.x, sh.z), i * 150); continue; }
+    if (sh.k === 'collapse') { boom(sh.x, sh.z, 2); const d = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color: 0x9a9080, transparent: true, depthWrite: false })); d.position.set(sh.x, hAt(sh.x, sh.z) + 2, sh.z); world.add(d); fx.push({ obj: d, life: 2.5, max: 2.5, update: (f) => { d.scale.setScalar(4 + (1 - f) * 4); d.material.opacity = f * 0.7; }, dispose: () => d.material.dispose() }); continue; }
+    if (sh.k === 'smokeshells') continue;
     if (sh.k === 'hurt') { if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true; continue; }
     const from = units.get(sh.f), to = units.get(sh.t), heavy = sh.k === 'at' || sh.k === 'tank';
     const miss = sh.hit ? 0 : 3, tx = sh.x + (Math.random() - 0.5) * miss, tz = sh.z + (Math.random() - 0.5) * miss;
@@ -787,7 +768,6 @@ function applySnapshot(s) {
       }
     }
     if (heavy) boom(tx, tz, sh.hit ? 1.6 : 1);
-    sound(sh.k, sh.x, sh.z);
     if (sh.kill && to) to.killed = true;
   }
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
@@ -874,10 +854,9 @@ function plane(sh) {
     // guns rake the strip as it passes over
     for (let i = 0; i < 10; i++) {
       const a = (i / 9 - 0.5) * SUPPORT.strafe.len;
-      setTimeout(() => { boom(sh.x + dx * a + (Math.random() - 0.5) * 3, sh.z + dz * a + (Math.random() - 0.5) * 3, 0.8); sound('mg', sh.x + dx * a, sh.z + dz * a); }, 1300 + i * 40);
+      setTimeout(() => boom(sh.x + dx * a + (Math.random() - 0.5) * 3, sh.z + dz * a + (Math.random() - 0.5) * 3, 0.8), 1300 + i * 40);
     }
   }
-  sound('tank', sh.x, sh.z);
 }
 
 // rocket salvo: eight streaks arcing from the launcher onto the target area
@@ -917,7 +896,7 @@ function buildBuyBar() {
   if (classicMode()) { $('buy').innerHTML = ''; $('buy').classList.add('hidden'); return; } // Classic: command card instead
   $('buy').classList.remove('hidden');
   $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${ROLE[t]}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${ROLE[t]}</small></button>`).join('');
-  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
+  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip('recruit'); }));
 }
 
 function updateHud(s) {
@@ -1013,7 +992,7 @@ function drawCard(s, pop) {
     else if (eng) card.innerHTML = BUILDABLE.map(k => `<button data-build="${k}"><b>${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd></b><span>${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span><small class="muted" data-note>${BUILD_ROLE[k]}</small></button>`).join('');
     else card.innerHTML = '';
     const id = bld?.id;
-    card.querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: id }); blip(520); }));
+    card.querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: id }); blip('recruit'); }));
     card.querySelectorAll('[data-cancel]').forEach(b => (b.onclick = () => { sendCmd({ t: 'cancel', id }); selected.clear(); blip(300); }));
     card.querySelectorAll('[data-build]').forEach(b => (b.onclick = () => startBuild(b.dataset.build)));
   }
@@ -1131,24 +1110,9 @@ function nodeMark(x, z, rate, fuel) {
 }
 function nearestDigger(g) { return diggers().sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0]; }
 
-const VOICES = [
-  { lang: 'en-US', move: ['Yes sir!', 'Moving out!', 'On our way!', 'Roger that!'], attack: ['Engaging!', 'Give em hell!', 'Open fire!'], retreat: ['Fall back!', 'Pull back!'] },
-  { lang: 'de-DE', move: ['Jawohl!', 'Vorwärts!', 'Verstanden!'], attack: ['Feuer frei!', 'Angriff!'], retreat: ['Zurück!', 'Rückzug!'] },
-  { lang: 'ru-RU', move: ['Есть!', 'Вперёд!', 'Так точно!'], attack: ['Огонь!', 'В атаку!'], retreat: ['Отходим!', 'Назад!'] },
-];
-let muted = tryStore(() => localStorage.getItem('ww2-muted')) === '1', lastBark = 0;
-function bark(kind) {
-  if (muted || !window.speechSynthesis || performance.now() - lastBark < 2500 || me < 0) return;
-  lastBark = performance.now();
-  const v = VOICES[facOf(me)], lines = v[kind], u = new SpeechSynthesisUtterance(lines[Math.floor(Math.random() * lines.length)]);
-  u.lang = v.lang; u.rate = 1.15; u.volume = 0.7;
-  const voice = speechSynthesis.getVoices().find(x => x.lang.replace('_', '-').startsWith(v.lang.slice(0, 2)));
-  if (voice) u.voice = voice;
-  speechSynthesis.speak(u);
-}
-function setMuted(m) { muted = m; tryStore(() => localStorage.setItem('ww2-muted', m ? '1' : '0')); $('mute').textContent = m ? '🔇' : '🔊'; }
-$('mute').onclick = () => setMuted(!muted);
-setMuted(muted);
+// the player's faction voice answers orders (audio.js picks the voice and keeps lines 2.5 s apart)
+function bark(kind) { audio.voice(kind); }
+audio.bind($('volume')); // the volume slider in the menu (0 mutes); M toggles mute
 
 function retreat() { if (selected.size) { sendCmd({ t: 'retreat', ids: [...selected] }); blip(260); bark('retreat'); } }
 // F: instant abilities fire now; grenades arm a targeting click
@@ -1221,7 +1185,7 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'KeyF') useAbility(fKeyType());
   else if (e.code === 'KeyG' && selected.size) setAim('amove');
   else if (e.code === 'KeyN') aimSupport('bombing');
-  else if (e.code === 'KeyM') setMuted(!muted);
+  else if (e.code === 'KeyM') audio.toggleMute();
   else if (e.code === 'Space') { const s = [...selected].map(id => units.get(id)).filter(Boolean); if (s.length) { cam.x = s.reduce((a, v) => a + v.x, 0) / s.length; cam.z = s.reduce((a, v) => a + v.z, 0) / s.length; } e.preventDefault(); }
   else if (e.code === 'Escape') { if (targeting) cancelAim(); else selected.clear(); }
   else if (e.code === 'KeyH' && home) {
@@ -1468,6 +1432,7 @@ renderer.setAnimationLoop(() => {
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = v.sel.visible;
   }
+  battleFrame(cam, units, me);
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= dt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
