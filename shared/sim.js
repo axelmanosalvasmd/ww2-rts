@@ -749,48 +749,98 @@ export function findPath(g, from, to) {
 
 const num = (v, max) => (Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : null);
 
+// Shared by placement previews and commands. Sight masks blocked building reasons.
+export function placementCheck(g, { kind, x, z, dir = 0 }, sees = () => true) {
+  const fail = (reason, extra = {}) => ({ ok: false, reason, x: Number.isFinite(x) ? x : 0, z: Number.isFinite(z) ? z : 0, ...extra });
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return fail('blocked');
+  if (Object.hasOwn(FORTS, kind)) {
+    const f = FORTS[kind], sx = Math.cos(dir), sz = Math.sin(dir);
+    const at = (along, fwd) => cellOf(g, x + (sx * along + sz * fwd) * CELL, z + (sz * along - sx * fwd) * CELL);
+    const plan = f.nest ? [[0, 0], [-1, 1], [0, 1], [1, 1], [-1, 0], [1, 0]].map(([s, w]) => at(s, w))
+      : Array.from({ length: f.n }, (_, i) => at(i - (f.n - 1) / 2, 0));
+    const cells = fortCells(g, f, x, z, dir);
+    if (cells.length) return { ok: true, reason: undefined, cells, x, z };
+    return fail(plan.some(c => c >= 0 && !sees(cellCenter(g, c))) ? 'notVisible' : 'blocked', { cells });
+  }
+  if (!BUILDABLE.includes(kind)) return fail('blocked');
+  const def = UNITS[kind];
+  let c, node;
+  if (kind === 'depot') {
+    node = (g.nodes ?? []).filter(n => !n.depot && dist(n, { x, z }) <= 8)
+      .sort((a, b) => dist(a, { x, z }) - dist(b, { x, z }))[0];
+    if (!node) {
+      const hidden = (g.nodes ?? []).some(n => dist(n, { x, z }) <= 8 && !sees(footCenter(g, n.c, def.size)));
+      return fail(hidden ? 'notVisible' : 'blocked');
+    }
+    c = node.c;
+  } else {
+    const cx = Math.round(x / CELL - def.size / 2), cy = Math.round(z / CELL - def.size / 2);
+    if (cx < 0 || cy < 0 || cx >= g.w || cy >= g.h) return fail('blocked');
+    c = cy * g.w + cx;
+  }
+  const cells = footprint(g, c, def.size), center = footCenter(g, c, def.size), extra = { c, node, cells, ...center };
+  if (!cells) return fail('blocked', extra);
+  if (!sees(center)) return fail('notVisible', extra);
+  if (kind !== 'depot') {
+    const taken = new Set((g.nodes ?? []).flatMap(n => footprint(g, n.c, 2) ?? []));
+    if (cells.some(k => taken.has(k))) return fail('blocked', extra);
+  }
+  return canStamp(g, cells) ? { ok: true, reason: undefined, ...extra } : fail('blocked', extra);
+}
+
 export function command(g, slot, cmd) {
-  if (g.winner !== null || !cmd || typeof cmd !== 'object') return;
+  if (g.winner !== null || !cmd || typeof cmd !== 'object') return 'blocked';
   const mine = (id) => { const u = g.units.get(id); return u && u.owner === slot && !UNITS[u.type].structure ? u : null; };
   const ids = Array.isArray(cmd.ids) ? cmd.ids.slice(0, 50) : [];
   if ((cmd.t === 'move' || cmd.t === 'amove') && Array.isArray(cmd.orders)) {
+    let moved = false;
     for (const o of cmd.orders.slice(0, 50)) {
       const u = Array.isArray(o) && mine(o[0]), x = num(o?.[1], g.w * CELL), z = num(o?.[2], g.h * CELL);
       if (!u || x === null || z === null) continue;
+      moved = true;
       if (u.air) { sendPlane(u, { kind: 'patrol', x, z }); continue; }
       exitBuilding(g, u);
       Object.assign(u, { attackId: 0, targetId: 0, stuck: 0, retreating: false, nade: null, dig: null, enter: -1, fireAt: -1, build: 0, amove: cmd.t === 'amove' ? { x, z } : null });
       u.path = findPath(g, u, { x, z });
     }
+    if (!moved) return 'blocked';
   } else if (cmd.t === 'fireat') {
     const c = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
-    if (c < 0 || !(g.cellHp[c] > 0)) return;
+    if (c < 0 || !(g.cellHp[c] > 0)) return c < 0 || teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'blocked' : 'notVisible';
+    if (!ids.some(id => { const u = mine(id); return u && (UNITS[u.type].w.shellTerrain || UNITS[u.type].w.salvo); })) return teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'needs' : 'notVisible';
     for (const id of ids) { const u = mine(id); if (u && (UNITS[u.type].w.shellTerrain || UNITS[u.type].w.salvo)) Object.assign(u, { fireAt: c, attackId: 0, amove: null, retreating: false, repath: 0, path: [] }); }
   } else if (cmd.t === 'garrison') {
     const c0 = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
-    if (c0 < 0 || g.chars[c0] !== 'B') return;
+    if (c0 < 0 || g.chars[c0] !== 'B') return c0 < 0 || teamSees(g, g.players[slot].team, cellCenter(g, c0)) ? 'blocked' : 'notVisible';
     const taken = new Set([...g.units.values()].flatMap(u => [u.garrison, u.enter]).filter(c => c >= 0));
+    let entered = false, reason = 'needs';
     for (const id of ids) {
       const u = mine(id);
-      if (!u || !UNITS[u.type].garrisons || u.retreating) continue;
+      if (!u || !UNITS[u.type].garrisons || u.retreating) { reason = u?.retreating ? 'retreating' : 'needs'; continue; }
       const c = entryCell(g, c0, u, taken);
-      if (c < 0) break; // house is full
+      if (c < 0) { reason = 'max'; break; } // house is full
       exitBuilding(g, u);
       taken.add(c);
       Object.assign(u, { enter: c, attackId: 0, nade: null, dig: null, amove: null, repath: 0, path: findPath(g, u, cellCenter(g, c)) });
+      entered = true;
     }
+    if (!entered) return teamSees(g, g.players[slot].team, cellCenter(g, c0)) ? reason : 'notVisible';
   } else if (cmd.t === 'attack') {
     const t = g.units.get(cmd.target);
-    if (!t || allied(g, t.owner, slot) || !g.players[slot].visible.has(t.id)) return;
+    if (!t || allied(g, t.owner, slot) || !g.players[slot].visible.has(t.id)) return 'unseen';
+    if (!ids.some(mine)) return 'needs';
     for (const id of ids) { const u = mine(id); if (u?.air) { sendPlane(u, { kind: 'attack', id: t.id, x: t.x, z: t.z }); continue; } if (u) { if (!canShoot(g, u, t)) exitBuilding(g, u); Object.assign(u, { attackId: t.id, repath: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1 }); } }
   } else if (cmd.t === 'stop') {
+    if (!ids.some(mine)) return 'needs';
     for (const id of ids) { const u = mine(id); if (u?.air) { if (airborne(u)) sendPlane(u, { kind: 'patrol', x: u.x, z: u.z }); continue; } if (u) Object.assign(u, { path: [], attackId: 0, retreating: false, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, build: 0 }); }
   } else if (cmd.t === 'escort') {
     // planes circle a friendly unit (fighters guard it from enemy planes)
     const t = g.units.get(cmd.target);
-    if (!t || !allied(g, t.owner, slot) || UNITS[t.type].structure || t.air) return;
+    if (!t || !allied(g, t.owner, slot) || UNITS[t.type].structure || t.air) return 'unseen';
+    if (!ids.some(id => mine(id)?.air)) return 'needs';
     for (const id of ids) { const u = mine(id); if (u?.air) sendPlane(u, { kind: 'escort', id: t.id, x: t.x, z: t.z }); }
   } else if (cmd.t === 'retreat') {
+    if (!ids.some(mine)) return 'needs';
     for (const id of ids) {
       const u = mine(id); if (!u) continue;
       if (u.air) { if (airborne(u)) u.air.state = 'home'; continue; } // back to base
@@ -800,29 +850,34 @@ export function command(g, slot, cmd) {
     }
   } else if (cmd.t === 'ability') {
     const x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
+    let used = false, reason = 'needs';
     for (const id of ids) {
       const u = mine(id), ab = u && UNITS[u.type].ab;
-      if (!u || u.cd > 0 || u.retreating || !(g.players[slot].mun >= abCost(g, ab) || !abCost(g, ab))) continue;
-      if (ab.id === 'grenade' || ab.id === 'barrage' || ab.id === 'satchel') { if (x === null || z === null) continue; exitBuilding(g, u); Object.assign(u, { nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
-      else if (!payAb(g, u)) continue;
+      if (!u || u.cd > 0 || u.retreating || !(g.players[slot].mun >= abCost(g, ab) || !abCost(g, ab))) { reason = !u ? 'needs' : u.cd > 0 ? 'cooldown' : u.retreating ? 'retreating' : 'mun'; continue; }
+      if (ab.id === 'grenade' || ab.id === 'barrage' || ab.id === 'satchel') { if (x === null || z === null) { reason = 'blocked'; continue; } exitBuilding(g, u); Object.assign(u, { nade: { x, z }, attackId: 0, repath: 0, fireAt: -1 }); }
+      else if (!payAb(g, u)) { reason = 'mun'; continue; }
       else if (ab.id === 'suppress') { u.buff = ab.dur; u.cd = ab.cd; }
       else if (ab.id === 'ura') { u.sprint = ab.dur; u.supp = 0; u.cd = ab.cd; }
       else if (ab.id === 'ap') { u.ap = true; u.cd = ab.cd; }
       else if (ab.id === 'smoke') { g.smokes.push({ x: u.x, z: u.z, r: ab.radius, t: ab.dur }); u.cd = ab.cd; }
+      else continue;
+      used = true;
     }
+    if (!used) return reason;
   } else if (cmd.t === 'dig') {
     // one squad builds a field fortification (FORTS) across its line of approach
     const kind = cmd.kind ?? 'trench', f = Object.hasOwn(FORTS, kind) ? FORTS[kind] : null;
     const u = mine(ids[0]), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), p = g.players[slot];
-    if (!f || !u || !CFG.fortBuilders.includes(u.type) || u.retreating || x === null || z === null || p.mp < f.cost) return;
-    const cells = fortCells(g, f, x, z, angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2);
-    if (!cells.length) return;
+    if (!f || !u || !CFG.fortBuilders.includes(u.type) || u.retreating || x === null || z === null || p.mp < f.cost) return !f || x === null || z === null ? 'blocked' : !u || !CFG.fortBuilders.includes(u.type) ? 'noBuilders' : u.retreating ? 'retreating' : 'mp';
+    const place = placementCheck(g, { kind, x, z, dir: angle(cmd.dir) ?? Math.atan2(z - u.z, x - u.x) + Math.PI / 2 }, at => teamSees(g, p.team, at));
+    if (!place.ok) return place.reason;
+    const cells = place.cells;
     p.mp -= f.cost;
     Object.assign(u, { dig: { x, z, cells, t: 0 }, attackId: 0, nade: null, repath: 0 });
   } else if (cmd.t === 'support' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
-    if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return;
-    if (sp.unit && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) >= popCap(g))) return;
+    if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return x === null || z === null ? 'blocked' : p.sup[cmd.kind] > 0 ? 'cooldown' : cur;
+    if (sp.unit && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) >= popCap(g))) return !teamSees(g, p.team, { x, z }) ? 'unseen' : 'pop';
     p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
@@ -831,22 +886,11 @@ export function command(g, slot, cmd) {
     // Paid up front; the team must see the spot.
     const p = g.players[slot], def = UNITS[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
     const crew = ids.map(mine).filter(u => u?.type === 'engineer' && !u.retreating);
-    if (!crew.length || x === null || z === null || p.mp < def.cost) return;
-    if (def.needs && ![...g.units.values()].some(b => b.owner === slot && b.type === def.needs && b.built >= 1)) return;
-    let c, node;
-    if (cmd.kind === 'depot') {
-      node = g.nodes.filter(n => !n.depot && dist(n, { x, z }) <= 8).sort((a, b) => dist(a, { x, z }) - dist(b, { x, z }))[0];
-      if (!node) return;
-      c = node.c;
-    } else {
-      const cx = Math.round(x / CELL - def.size / 2), cy = Math.round(z / CELL - def.size / 2);
-      if (cx < 0 || cy < 0 || cx >= g.w || cy >= g.h) return;
-      c = cy * g.w + cx;
-      // keep resource nodes free for depots
-      const cells = footprint(g, c, def.size), taken = new Set(g.nodes.flatMap(n => footprint(g, n.c, 2)));
-      if (!cells || cells.some(k => taken.has(k))) return;
-    }
-    if (!canStamp(g, footprint(g, c, def.size)) || !teamSees(g, p.team, footCenter(g, c, def.size))) return;
+    if (!crew.length || x === null || z === null || p.mp < def.cost) return !crew.length ? (ids.map(mine).some(u => u?.type === 'engineer' && u.retreating) ? 'retreating' : 'noBuilders') : x === null || z === null ? 'blocked' : 'mp';
+    if (def.needs && ![...g.units.values()].some(b => b.owner === slot && b.type === def.needs && b.built >= 1)) return 'needs';
+    const place = placementCheck(g, { kind: cmd.kind, x, z }, at => teamSees(g, p.team, at));
+    if (!place.ok) return place.reason;
+    const { c, node } = place;
     p.mp -= def.cost;
     const site = placeBuilding(g, slot, cmd.kind, c, false);
     if (node) node.depot = site.id;
@@ -854,12 +898,13 @@ export function command(g, slot, cmd) {
   } else if (cmd.t === 'assist') {
     // Engineers join a site, or repair a damaged building of their own team
     const b = g.units.get(cmd.id);
-    if (!b || !UNITS[b.type].building || !allied(g, b.owner, slot) || (b.built >= 1 && b.hp >= UNITS[b.type].hpPer)) return;
+    if (!b || !UNITS[b.type].building || !allied(g, b.owner, slot) || (b.built >= 1 && b.hp >= UNITS[b.type].hpPer)) return 'unseen';
+    if (!ids.some(id => { const u = mine(id); return u?.type === 'engineer' && !u.retreating; })) return ids.some(id => mine(id)?.type === 'engineer' && mine(id).retreating) ? 'retreating' : 'noBuilders';
     for (const u of ids.map(mine).filter(u => u?.type === 'engineer' && !u.retreating)) { exitBuilding(g, u); Object.assign(u, { build: b.id, attackId: 0, nade: null, dig: null, enter: -1, amove: null, fireAt: -1, repath: 0, path: findPath(g, u, b) }); }
   } else if (cmd.t === 'cancel') {
     // tear down your own unfinished site for 75% back
     const b = g.units.get(cmd.id);
-    if (!b || b.owner !== slot || !UNITS[b.type].building || b.built >= 1) return;
+    if (!b || b.owner !== slot || !UNITS[b.type].building || b.built >= 1) return 'unseen';
     g.players[slot].mp += UNITS[b.type].cost * 0.75;
     g.units.delete(b.id);
     for (const c of b.cells) setCell(g, c, '.');
@@ -867,24 +912,25 @@ export function command(g, slot, cmd) {
   } else if (cmd.t === 'rally') {
     const b = g.units.get(cmd.id), x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
     if (b && b.owner === slot && UNITS[b.type].makes && x !== null && z !== null) b.rally = { x, z };
+    else return !b || b.owner !== slot ? 'unseen' : x === null || z === null ? 'blocked' : 'needs';
   } else if (cmd.t === 'buy' && Object.hasOwn(UNITS, cmd.unit) && canBuild(cmd.unit, g.players[slot].faction)) {
     const p = g.players[slot], def = UNITS[cmd.unit], classic = g.mode?.kind === 'classic';
-    if (def.classic && !classic) return; // Engineers exist only in Classic
+    if (def.classic && !classic) return 'needs'; // Engineers exist only in Classic
     const own = [...g.units.values()].filter(u => u.owner === slot);
     // Classic: training queues count toward the pop cap and the unit limit
     const queued = own.flatMap(b => b.queue ?? []);
     const pop = own.filter(u => !UNITS[u.type].structure).length + queued.length;
     const have = own.filter(u => u.type === cmd.unit).length + queued.filter(t => t === cmd.unit).length;
     const price = priceOf(g, cmd.unit);
-    if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop >= popCap(g) || have >= (def.max ?? Infinity)) return;
+    if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop >= popCap(g) || have >= (def.max ?? Infinity)) return p.mp < price.mp ? 'mp' : price.fuel && !(p.fuel >= price.fuel) ? 'fuel' : pop >= popCap(g) ? 'pop' : 'max';
     if (!classic) { p.mp -= price.mp; spawnUnit(g, slot, cmd.unit); return; }
     // queue it at the building asked for, else the one with the shortest queue
-    if (g.mode.suddenDeath) return;
+    if (g.mode.suddenDeath) return 'suddenDeath';
     const makers = own.filter(b => b.built >= 1 && UNITS[b.type].makes?.includes(cmd.unit) && b.queue.length < 5);
     const b = makers.find(m => m.id === cmd.from) ?? makers.sort((a, c) => a.queue.length - c.queue.length)[0];
-    if (!b) return;
+    if (!b) return own.some(m => m.built >= 1 && UNITS[m.type].makes?.includes(cmd.unit)) ? 'queueFull' : 'needs';
     p.mp -= price.mp; p.fuel -= price.fuel; b.queue.push(cmd.unit);
-  }
+  } else return cmd.t === 'build' && g.mode?.suddenDeath ? 'suddenDeath' : 'blocked';
 }
 
 // ---------- simulation ----------

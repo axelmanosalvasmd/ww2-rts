@@ -8,6 +8,7 @@ import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
+import { allowDeny } from './shared/command-feedback.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
 // the address friends use: PUBLIC_URL, else this machine's Tailscale HTTPS name (served by `tailscale serve`)
@@ -170,7 +171,10 @@ wss.on('connection', (ws, req) => {
       send(ws, { t: 'left' }); ws.close();
       if (!room.players.some(p => p.ws)) room.emptySince = Date.now();
       lobby(room);
-    } else if (room.state === 'play' && room.game) command(room.game, slot, msg);
+    } else if (room.state === 'play' && room.game) {
+      const reason = command(room.game, slot, msg);
+      if (reason && allowDeny(me)) send(ws, { t: 'deny', cmd: msg.t, reason });
+    }
   });
 
   ws.on('close', () => {

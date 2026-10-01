@@ -1086,3 +1086,213 @@ for (const f of readdirSync('maps')) {
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
 }
 console.log('all sim checks passed');
+
+// Command feedback: exact denials, partial ability success, shared placement and
+// the same per-player throttle used by the server, with a deterministic clock.
+{
+  const { placementCheck, popCap, teamSees } = await import('./shared/sim.js');
+  const { allowDeny } = await import('./shared/command-feedback.js');
+  const g = fresh();
+  g.players[0].mp = 0;
+  assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), 'mp');
+  assert.equal(g.units.size, 0, 'denied purchase does not create a unit');
+  g.players[0].mp = 10000;
+  for (let i = 0; i < popCap(g); i++) assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined);
+  assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), 'pop');
+  g.players[0].sup.recon = 23;
+  assert.equal(command(g, 0, { t: 'support', kind: 'recon', x: 10, z: 10 }), 'cooldown');
+  g.players[1].mp = 10000;
+  assert.equal(command(g, 1, { t: 'buy', unit: 'tiger' }), undefined);
+  assert.equal(command(g, 1, { t: 'buy', unit: 'tiger' }), 'max');
+  const a = [...g.units.values()].find(u => u.owner === 0), hidden = [...g.units.values()].find(u => u.owner === 1);
+  g.players[0].visible.clear();
+  const hiddenReason = command(g, 0, { t: 'attack', ids: [a.id], target: hidden.id });
+  assert.equal(hiddenReason, 'unseen');
+  assert.equal(command(g, 0, { t: 'attack', ids: [a.id], target: 999999 }), hiddenReason, 'missing and hidden targets are indistinguishable');
+  assert.equal(a.attackId, 0, 'denied target does not change the order');
+  a.cd = 10;
+  assert.equal(command(g, 0, { t: 'ability', ids: [a.id], x: 10, z: 10 }), 'cooldown');
+  const ready = [...g.units.values()].find(u => u.owner === 0 && u !== a);
+  assert.equal(command(g, 0, { t: 'ability', ids: [a.id, ready.id], x: 10, z: 10 }), undefined, 'one ready squad accepts a mixed selection');
+  assert.deepEqual(ready.nade, { x: 10, z: 10 });
+
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const classic = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const p = classic.players[0], own = [...classic.units.values()].filter(u => u.owner === 0);
+  const eng = own.find(u => u.type === 'engineer'), hq = own.find(u => u.type === 'hq');
+  p.mp = 10000;
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'mg' }), 'needs');
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'tank' }), 'fuel');
+  assert.equal(command(classic, 0, { t: 'support', kind: 'recon', x: 10, z: 10 }), 'mun');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'motorpool', x: eng.x, z: eng.z }), 'needs');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: hq.x, z: hq.z }), 'blocked');
+  assert.equal(command(classic, 0, { t: 'build', ids: [], kind: 'barracks', x: hq.x, z: hq.z }), 'noBuilders');
+  eng.retreating = true;
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: hq.x, z: hq.z }), 'retreating');
+  eng.retreating = false;
+  hq.queue = Array(5).fill('rifle');
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'rifle' }), 'queueFull');
+  classic.mode.suddenDeath = true;
+  assert.equal(command(classic, 0, { t: 'buy', unit: 'rifle' }), 'suddenDeath');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], kind: 'barracks', x: eng.x, z: eng.z }), 'suddenDeath');
+
+  const ground = fresh(); ground.nodes = []; ground.height = new Int8Array(ground.w * ground.h);
+  const place = { kind: 'barracks', x: 21, z: 21 };
+  const flat = placementCheck(ground, place, () => true);
+  assert.equal(flat.ok, true, 'flat ground permits a building');
+  ground.height[flat.cells[1]] = 1;
+  assert.equal(placementCheck(ground, place, () => true).reason, 'blocked', 'a footprint across levels is rejected');
+  assert.equal(placementCheck(ground, place, () => false).reason, 'notVisible', 'sight is checked before hidden ground');
+  ground.height[flat.cells[1]] = 0;
+  assert.equal(placementCheck(ground, place, at => at.x !== 19 || at.z !== 19).ok, true, 'a visible center permits an unseen corner');
+  assert.equal(placementCheck(ground, { kind: 'trench', x: 21, z: 21, dir: 0 }, () => false).ok, true, 'a valid fort needs no sight');
+  const blockedFort = fresh(); blockedFort.chars.fill('W');
+  const trench = { kind: 'trench', x: 21, z: 21, dir: 0 };
+  assert.equal(placementCheck(blockedFort, trench, () => false).reason, 'notVisible', 'fog masks a rejected fort');
+  assert.equal(placementCheck(blockedFort, trench, () => true).reason, 'blocked', 'a visible rejected fort reports blocked');
+  ground.nodes = [{ c: 8 * ground.w + 8, x: 18, z: 18, depot: 0 }, { c: 8 * ground.w + 11, x: 24, z: 18, depot: 0 }];
+  const depotClick = { kind: 'depot', x: 21, z: 18 }, depotSees = at => at.x >= 20;
+  const hiddenFree = placementCheck(ground, depotClick, depotSees);
+  assert.equal(hiddenFree.reason, 'notVisible', 'the nearest free node needs a visible center');
+  ground.nodes[0].depot = 999;
+  const hiddenOccupied = placementCheck(ground, depotClick, depotSees);
+  assert.equal(hiddenOccupied.ok, true, 'a taken nearer node is skipped');
+  assert.equal(placementCheck(ground, { kind: 'depot', x: 19, z: 18 }, depotSees).ok, true, 'the click itself needs no sight');
+  const depotFog = fresh();
+  depotFog.nodes = [{ c: 8 * depotFog.w + 8, x: 18, z: 18, depot: 999 }, { c: 8 * depotFog.w + 17, x: 36, z: 18, depot: 0 }];
+  const takenClick = { kind: 'depot', x: 18, z: 18 }, freeClick = { kind: 'depot', x: 36, z: 18 };
+  const hiddenTaken = placementCheck(depotFog, takenClick, () => false);
+  const hiddenAvailable = placementCheck(depotFog, freeClick, () => false);
+  assert.equal(hiddenTaken.reason, 'notVisible', 'a hidden taken node does not reveal its depot');
+  assert.equal(hiddenAvailable.reason, hiddenTaken.reason, 'hidden taken and free nodes give the same denial');
+  assert.equal(placementCheck(depotFog, takenClick, () => true).reason, 'blocked', 'a visible taken node reports blocked');
+  for (const rejected of [{ kind: 'barracks', x: -10, z: -10 }, { kind: 'depot', x: 2, z: 2 }, { kind: 'barracks', x: NaN, z: Infinity }]) {
+    const result = placementCheck(ground, rejected);
+    assert.equal(result.ok, false);
+    assert.ok(Number.isFinite(result.x) && Number.isFinite(result.z), 'every invalid placement has finite preview coordinates');
+  }
+  classic.mode.suddenDeath = false;
+  const outside = { kind: 'barracks', x: classic.w * CELL - 8, z: classic.h * CELL - 8 };
+  assert.equal(placementCheck(classic, outside, at => teamSees(classic, p.team, at)).reason, 'notVisible');
+  assert.equal(command(classic, 0, { t: 'build', ids: [eng.id], ...outside }), 'notVisible', 'server uses the same visibility check as the preview');
+
+  const fortGame = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const fortEngineer = [...fortGame.units.values()].find(u => u.owner === 0 && u.type === 'engineer');
+  fortGame.players[0].mp = 10000;
+  let unseenFort = null;
+  for (let y = 2; y < fortGame.h - 2 && !unseenFort; y++) for (let x = 2; x < fortGame.w - 2; x++) {
+    const at = { kind: 'trench', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL, dir: 0 };
+    if (!teamSees(fortGame, fortGame.players[0].team, at) && placementCheck(fortGame, at, () => false).ok) { unseenFort = at; break; }
+  }
+  assert.ok(unseenFort, 'the map has an unseen valid fort site');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), undefined, 'dig accepts a valid fort in fog');
+  fortGame.chars.fill('W');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], ...unseenFort }), 'notVisible', 'a rejected fort in fog masks its terrain');
+  assert.equal(command(fortGame, 0, { t: 'dig', ids: [fortEngineer.id], kind: 'trench', x: fortEngineer.x, z: fortEngineer.z, dir: 0 }), 'blocked', 'a rejected visible fort reports blocked');
+
+  const serverHarness = (player, game = g) => {
+    const replies = [];
+    return { replies, receive(msg, now) {
+      const reason = command(game, 0, msg);
+      if (reason && allowDeny(player, now)) replies.push({ t: 'deny', cmd: msg.t, reason });
+    } };
+  };
+  const first = serverHarness({}), second = serverHarness({});
+  for (let i = 0; i < 20; i++) first.receive({ t: 'buy', unit: 'rifle' }, 100);
+  assert.equal(first.replies.length, 4, 'at most four denials per player in one second');
+  assert.deepEqual(first.replies[0], { t: 'deny', cmd: 'buy', reason: 'pop' });
+  second.receive({ t: 'buy', unit: 'rifle' }, 100);
+  assert.equal(second.replies.length, 1, 'another player has a separate allowance');
+  first.receive({ t: 'buy', unit: 'rifle' }, 1099);
+  assert.equal(first.replies.length, 4, 'burst allowance does not reset at a wall-clock boundary');
+  first.receive({ t: 'buy', unit: 'rifle' }, 1100);
+  assert.equal(first.replies.length, 5, 'allowance returns after one full second');
+  first.receive({ t: 'stop', ids: [a.id] }, 1100);
+  assert.equal(first.replies.length, 5, 'only a denial adds a reply');
+}
+console.log('all command feedback checks passed');
+
+// Availability uses real snapshots and prices, including queued units and completed buildings.
+{
+  const { availability, placementState, denySentence } = await import('./client/availability.js');
+  const { createFeedback, setAvailability } = await import('./client/feedback.js');
+  const { priceOf, popCap, placementCheck, teamSees } = await import('./shared/sim.js');
+  const g = createGame(blank(empty), ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const p = g.players[0], eng = [...g.units.values()].find(v => v.owner === 0 && v.type === 'engineer');
+  const hq = [...g.units.values()].find(v => v.owner === 0 && v.type === 'hq');
+  const check = (action) => availability(snapshotFor(g, 0, []), CFG, { slot: 0, ids: [eng.id], ...action });
+  p.mp = 0;
+  assert.deepEqual(check({ t: 'buy', unit: 'rifle' }), { ok: false, reason: `Needs ${priceOf(g, 'rifle').mp} MP` });
+  p.mp = 10000;
+  assert.deepEqual(check({ t: 'buy', unit: 'mg' }), { ok: false, reason: 'Needs a Barracks' });
+  assert.deepEqual(check({ t: 'build', kind: 'motorpool' }), { ok: false, reason: 'Needs a Barracks' });
+  assert.deepEqual(check({ t: 'buy', unit: 'tank' }), { ok: false, reason: `Needs ${priceOf(g, 'tank').fuel} fuel` });
+  p.sup.artillery = 22.1;
+  assert.deepEqual(check({ t: 'support', kind: 'artillery' }), { ok: false, reason: 'Cooldown 23 s' });
+  p.sup.artillery = 0;
+  assert.deepEqual(check({ t: 'support', kind: 'artillery' }), { ok: false, reason: `Needs ${SUPPORT.artillery.mun} munitions` });
+  eng.retreating = true;
+  assert.equal(check({ t: 'build', kind: 'barracks' }).reason, 'That squad is retreating');
+  assert.equal(check({ t: 'dig', kind: 'trench' }).reason, 'That squad is retreating');
+  eng.retreating = false;
+  assert.equal(check({ t: 'build', kind: 'barracks' }).ok, true);
+  hq.queue = Array(5).fill('rifle');
+  assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'The training queue is full');
+  hq.queue = Array(popCap(g) - [...g.units.values()].filter(v => v.owner === 0 && !UNITS[v.type].structure).length).fill('rifle');
+  assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, `Army at its limit (${popCap(g)}/${popCap(g)})`);
+  hq.queue = [];
+  g.mode.suddenDeath = true;
+  assert.equal(check({ t: 'buy', unit: 'rifle' }).reason, 'Not during Sudden Death');
+  assert.equal(check({ t: 'build', kind: 'barracks' }).reason, 'Not during Sudden Death');
+  g.mode.suddenDeath = false;
+  command(g, 0, { t: 'buy', unit: 'rifle' }); run(g, UNITS.rifle.train + 1);
+  const rifle = [...g.units.values()].find(v => v.owner === 0 && v.type === 'rifle');
+  rifle.cd = 3.2; p.mun = 100;
+  assert.equal(check({ t: 'ability', unit: 'rifle', ids: [rifle.id] }).reason, 'Cooldown 4 s');
+  rifle.cd = 0; p.mun = 0;
+  assert.equal(check({ t: 'ability', unit: 'rifle', ids: [rifle.id] }).reason, 'Needs 15 munitions');
+  p.mun = 100;
+  assert.equal(check({ t: 'ability', unit: 'rifle', ids: [rifle.id] }).ok, true);
+  rifle.type = 'mortar'; p.mun = 15;
+  assert.equal(check({ t: 'ability', unit: 'mortar', ids: [rifle.id] }).ok, true, 'Mortar Barrage uses the mortar price');
+  assert.equal(check({ t: 'ability', unit: 'rocket', ids: [rifle.id] }).ok, false, 'a mortar selection is not a rocket selection');
+  rifle.type = 'rocket';
+  assert.equal(check({ t: 'ability', unit: 'rocket', ids: [rifle.id] }).reason, 'Needs 25 munitions');
+  rifle.type = 'rifle';
+
+  const snapshot = snapshotFor(g, 0, []), map = blank(empty);
+  // Terrain after initial HQ footprints is the same terrain the client receives.
+  const grid = Array.from({ length: g.h }, (_, y) => g.chars.slice(y * g.w, (y + 1) * g.w));
+  const view = placementState(snapshot, map, grid, [0, 1]);
+  const order = { kind: 'barracks', x: hq.x, z: hq.z };
+  assert.equal(placementCheck(view.game, order, at => view.sees(0, at)).reason,
+    placementCheck(g, order, at => teamSees(g, p.team, at)).reason, 'preview and server share blocked footprint and sight rules');
+
+  const oldSet = globalThis.setTimeout, oldClear = globalThis.clearTimeout;
+  const pending = new Map(); let next = 0, sounds = 0;
+  globalThis.setTimeout = (fn, ms) => { assert.equal(ms, 2000); pending.set(++next, fn); return next; };
+  globalThis.clearTimeout = (id) => pending.delete(id);
+  try {
+    const hint = { textContent: 'Click where to build' }, feedback = createFeedback(hint, () => sounds++);
+    feedback.show(denySentence('blocked'));
+    assert.equal(hint.textContent, 'That spot is blocked or uneven');
+    feedback.show(denySentence('unseen'));
+    assert.equal(pending.size, 1, 'a second denial replaces the timer');
+    assert.equal(sounds, 2, 'each denial plays the error sound');
+    [...pending.values()][0](); pending.clear();
+    assert.equal(hint.textContent, 'Click where to build', 'armed placement prompt returns after two seconds');
+    feedback.show(denySentence('notVisible')); feedback.reset(); hint.textContent = '';
+    assert.equal(pending.size, 0, 'canceling placement clears pending feedback');
+    const button = { disabled: true, title: 'Rifle Squad', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+    setAvailability(button, { ok: false, reason: 'Needs 100 MP' });
+    assert.equal(button.disabled, false, 'unavailable cards remain clickable');
+    assert.equal(button.attrs['aria-disabled'], 'true');
+    assert.equal(button.title, 'Needs 100 MP');
+    setAvailability(button, { ok: true, reason: '' });
+    assert.equal(button.title, 'Rifle Squad', 'affordable card restores its description');
+    const hovered = { ...button, title: '', _baseTip: undefined, _tooltip: 'Mortar Team', _tipActive: true };
+    setAvailability(hovered, { ok: true, reason: '' });
+    assert.equal(hovered._tooltip, 'Mortar Team', 'hover before the first availability update preserves its description');
+  } finally { globalThis.setTimeout = oldSet; globalThis.clearTimeout = oldClear; }
+}
+console.log('all availability checks passed');
