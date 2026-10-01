@@ -75,7 +75,6 @@ function sound(kind) {
 function push(kind, text, x, z, n = 1) {
   const el = document.createElement('div');
   el.className = 'alert k-' + kind;
-  el.style.setProperty('--rule', COLOR[kind]);
   el.textContent = text;
   el.title = 'Space or click: look there';
   const a = { kind, text, x, z, born: now(), el, n };

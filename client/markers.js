@@ -202,7 +202,8 @@ function screenSized(shader) {
 }
 const labels = new Map();
 function paintLabel(e) {
-  const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, bar = e.color != null ? 14 : 0, pad = 14;
+  // an owner's label (the HQ sign) leads with the owner's HQ map symbol instead of a colored side stripe
+  const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, sym = Math.round((H - 12) * 0.95), bar = e.color != null ? sym + 12 : 0, pad = 14;
   c.clearRect(0, 0, W, H);
   if ('letterSpacing' in c) c.letterSpacing = st.spacing + 'px';
   let px = st.px; c.font = st.font(px);
@@ -210,7 +211,7 @@ function paintLabel(e) {
   const bw = Math.min(W - 4, c.measureText(e.text).width + 2 * pad + bar), bh = H - 12, x0 = (W - bw) / 2, y0 = 6;
   c.fillStyle = 'rgba(34, 37, 27, 0.86)'; c.fillRect(x0, y0, bw, bh);
   c.strokeStyle = 'rgba(236, 230, 214, 0.35)'; c.lineWidth = 2; c.strokeRect(x0 + 1, y0 + 1, bw - 2, bh - 2);
-  if (bar) { c.fillStyle = css(e.color); c.fillRect(x0, y0, bar, bh); }
+  if (bar) drawSymbol(c, 'hq', x0 + 8 + sym / 2, H / 2, sym, { color: lum(e.color) > 0.7 ? INK : '#f4efe2', fill: css(e.color), halo: 'rgba(18,18,12,0.9)', stroke: 9 });
   c.fillStyle = '#e6dcc0'; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText(e.text, x0 + bar + (bw - bar) / 2, H / 2 + (e.style === 'hq' ? 4 : 2));
 }

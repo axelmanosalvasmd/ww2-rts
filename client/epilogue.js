@@ -30,9 +30,9 @@ function stamp(outcome, text) {
     const st = document.createElement('style');
     st.textContent = `
       #epStamp { position: fixed; left: 50%; top: 30%; z-index: 9; pointer-events: none; padding: 14px 36px 16px; text-align: center;
-        color: var(--ink, #2b2418); background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.06)), var(--manila, #d8c69a);
+        color: var(--ink, #2b2418); background: var(--manila, #d8c69a);
         border: 3px solid currentColor; outline: 1px solid var(--manila-edge, #a08c5f); outline-offset: 4px; box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55);
-        transform: translate(-50%, -50%) rotate(-3deg); animation: epStamp 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+        transform: translate(-50%, -50%) rotate(-3deg); animation: epStamp 0.45s cubic-bezier(0.25, 1, 0.5, 1) both; }
       #epStamp.defeat { color: var(--red, #b8322a); }
       #epStamp .word { font: 700 76px/1 var(--stencil, 'Stardos Stencil', Impact, sans-serif); letter-spacing: 0.05em; }
       #epStamp .why { max-width: 440px; margin-top: 8px; font: 400 17px/1.3 var(--type, 'Courier Prime', 'Courier New', monospace); color: var(--ink, #2b2418); }
