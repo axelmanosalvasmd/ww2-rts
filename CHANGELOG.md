@@ -5,6 +5,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New XL map, Monte Cassino XL (135x165, 6 spawns): the monastery on the summit and three tiers, now with two ramps per
+  cliff (flanks below, either side of the monastery above). AI 3v3 assault with a 23 min clock: attackers won 45% of
+  40 (22% at 20 min, 60% at 25).
+- Stalingrad Factory: in Conquest and Classic one player started inside the factory in the middle of the map. The
+  factory spawn is now Assault-only (the defender still holds it there) and there's a fourth edge spawn, so other modes
+  start everyone at the edges (N, E, S, W). 4-way Conquest wins by spawn: 4/8/6/6 of 24. The fix is in the map pack's
+  generator, which is still waiting to be committed with the pack.
+- Maps can mark a spawn Assault-only (`"assault": true`): other modes skip it, and the lobby counts seats per mode.
+  The editor has an "Assault only" box for a selected spawn.
+- Map editor: a Preview dropdown shows the map as each mode sets it up: Assault's added trenches, walls and bunkers and
+  the points it leaves out, Classic's HQs and its MP (yellow) and Fuel (orange) nodes, which spawns each mode uses and
+  who defends or attacks, for any number of players. Editing pauses while previewing.
 - Three XL maps for up to 6 players (3v3 Assault: three defenders, three bunkers), about 1.5x the size of the originals:
   - Pegasus Bridge XL (140x150): a bigger town, two stone bridges, a ford on each flank and one in the middle.
   - Hill 112 XL (120x160): the terraced climb with three ramps up the escarpment instead of one.

@@ -1,6 +1,6 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
 import * as THREE from 'three';
-import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS } from '/shared/sim.js';
+import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor } from '/shared/sim.js';
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'],
@@ -18,7 +18,9 @@ export async function start(api) {
   let stroke = new Set();   // cells a height stroke already changed (one step per cell per drag)
   let picked = null;        // select tool: { cells: [[x,y]], ch } structure, or { marker: 'spawn'|'point', i }
   let dragFrom = null, dragOffset = [0, 0];
+  let previewMode = '';     // '' = editing; else the mode the map is shown as the game would set it up
   const hl = new THREE.Group(); api.scene.add(hl);
+  const pv = new THREE.Group(); api.scene.add(pv); // preview markers: bunkers, resource nodes
 
   const ui = document.createElement('div');
   ui.id = 'editor'; ui.className = 'panel';
@@ -28,6 +30,9 @@ export async function start(api) {
     <div class="row"><select id="edSize"><option>60</option><option selected>80</option><option>100</option><option>150</option><option>200</option></select><button id="edNew">New blank</button></div>
     <div class="ed-tools">${TOOLS.map(([k, label], i) => `<button data-tool="${k}" title="${i < 10 ? `key ${(i + 1) % 10}` : ""}">${label}</button>`).join('')}</div>
     <div class="row">Brush <select id="edBrush"><option>1</option><option>2</option><option>3</option></select><span class="muted">right-drag erases / lowers</span></div>
+    <div class="row">Preview <select id="edMode" title="Show the map as each mode sets it up (editing is paused)"><option value="">Editing</option><option value="conquest">Conquest</option><option value="assault">Assault</option><option value="classic">Classic</option></select>
+      players <select id="edPlayers"></select></div>
+    <div id="edModeInfo" class="muted"></div>
     <div id="edSel" class="muted"></div>
     <div id="edPoint"></div>
     <div id="edCheck" class="muted"></div>
@@ -60,7 +65,9 @@ export async function start(api) {
   const toWorld = (p) => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL });
   function rebuild(first = false) {
     const cam = { ...api.cam }, m = snapshot();
-    api.startGame({ map: m, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => 'Spawn ' + (i + 1)) });
+    pv.clear();
+    if (previewMode && validateMap(m) === null) showPreview(m);
+    else api.startGame({ map: m, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => 'Spawn ' + (i + 1) + (m.spawns[i].assault ? ' (Assault only)' : '')) });
     if (!first) Object.assign(api.cam, cam);
     else { api.cam.x = m.w; api.cam.z = m.h; api.cam.dist = 120; api.cam.yaw = 0; }
     check(m);
@@ -68,6 +75,42 @@ export async function start(api) {
     highlight();
   }
   const later = () => { clearTimeout(timer); timer = setTimeout(() => rebuild(), 60); };
+
+  // ---------- mode preview: run the game's own setup for the mode and show what it builds ----------
+  function playersSelect(m) {
+    const max = spawnsFor(m, previewMode || 'conquest').length, cur = +$('edPlayers').value || max;
+    $('edPlayers').innerHTML = Array.from({ length: max - 1 }, (_, i) => `<option ${i + 2 === Math.min(cur, max) ? 'selected' : ''}>${i + 2}</option>`).join('');
+  }
+  function showPreview(m) {
+    playersSelect(m);
+    const mode = previewMode, n = +$('edPlayers').value, assault = mode === 'assault';
+    // Assault: the map's defend spawns (or spawn 1) defend, the rest attack; other modes: everyone for themselves
+    const defenders = assault ? Math.max(1, Math.min(n - 1, m.defend?.length ?? 1)) : 0;
+    const teams = Array.from({ length: n }, (_, i) => (assault ? (i < defenders ? 0 : 1) : i));
+    const g = createGame(m, teams.map((_, i) => 'P' + (i + 1)), false, teams, teams.map((_, i) => i % 3), { mode, defenderTeam: 0 });
+    const cellOf = (p) => ({ x: Math.floor(p.x / CELL), y: Math.floor(p.z / CELL) });
+    // which spawn each player got
+    const used = m.spawns.map(s => g.players.findIndex(p => { const c = cellOf(p.spawn); return c.x === s.x && c.y === s.y; }));
+    const role = (i) => (used[i] < 0 ? `not used in ${mode}` : assault ? (g.players[used[i]].team === 0 ? 'defends' : 'attacks') : `player ${used[i] + 1}`);
+    // building footprints show as buildings; everything Assault or Classic added is in the game's cells
+    const rows = Array.from({ length: m.h }, (_, y) => g.chars.slice(y * m.w, (y + 1) * m.w).map(ch => (ch === 'K' ? 'B' : ch)).join(''));
+    const shown = { ...m, rows, points: g.points.map(p => ({ ...cellOf(p), vp: p.vp, mp: p.mp })) };
+    api.startGame({ map: shown, you: 0, spawn: toWorld(m.spawns[0]), spawns: m.spawns.map(toWorld), cells: [], names: m.spawns.map((_, i) => `Spawn ${i + 1}: ${role(i)}`) });
+    const mark = (p, color, w, h, y = 0.4) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 })); b.position.set(p.x, api.hAt(p.x, p.z) + y + h / 2, p.z); pv.add(b); };
+    for (const u of g.units.values()) if (u.type === 'bunker') mark(u, 0x9a9a92, 5, 2.6, 0);
+    for (const nd of g.nodes ?? []) mark(nd, nd.fuel ? 0xe07a30 : 0xe8c860, 3.4, 0.5);
+    const cut = m.points.length - g.points.length, added = g.cellLog.filter(([, ch]) => ch === 'T' || ch === '#').length;
+    const unused = used.map((u, i) => (u < 0 ? i + 1 : 0)).filter(Boolean);
+    $('edModeInfo').innerHTML = [
+      `${spawnsFor(m, mode).length} spawns usable${unused.length ? `; spawn ${unused.join(', ')} not used here` : ''}`,
+      assault && `${defenders} defend, ${n - defenders} attack · ${[...g.units.values()].filter(u => u.type === 'bunker').length} bunker(s) (grey) · ${added} trench/wall cells added · clock ${Math.round(g.mode.timeLeft / 60)} min${cut ? ` · ${cut} VP-only point(s) left out` : ''}`,
+      mode === 'classic' && `an HQ on every player's spawn · ${g.nodes.filter(nd => !nd.fuel).length} MP nodes (yellow), ${g.nodes.filter(nd => nd.fuel).length} Fuel nodes (orange) · points pay Munitions`,
+      mode === 'conquest' && `first to ${g.winVp} VP`,
+      'Editing is paused: pick Editing to change the map.',
+    ].filter(Boolean).join('<br>');
+  }
+  $('edMode').onchange = () => { previewMode = $('edMode').value; picked = null; sel = -1; if (!previewMode) $('edModeInfo').textContent = ''; rebuild(); };
+  $('edPlayers').onchange = () => rebuild();
 
   // validity + every spawn can walk to every point
   function check(m) {
@@ -137,7 +180,9 @@ export async function start(api) {
   const NAMES = { B: 'building', H: 'hedgerow', '#': 'wall', '+': 'craters', T: 'trench', W: 'river', F: 'ford', '=': 'bridge', R: 'rubble' };
   function highlight() {
     hl.clear();
-    $('edSel').textContent = picked?.marker === 'spawn' ? `Spawn ${picked.i + 1} · drag to move · Delete removes it (later spawns renumber)` : '';
+    const sp = picked?.marker === 'spawn' && map.spawns[picked.i];
+    $('edSel').innerHTML = sp ? `Spawn ${picked.i + 1} · drag to move · Delete removes it (later spawns renumber)<br><label style="display:flex;gap:6px"><input type="checkbox" id="edAssaultOnly" ${sp.assault ? 'checked' : ''}> Assault only (e.g. inside the defenders' fortress; other modes skip it)</label>` : '';
+    if (sp) $('edAssaultOnly').onchange = (e) => { if (e.target.checked) sp.assault = true; else delete sp.assault; rebuild(); };
     if (!picked?.cells) return;
     const m = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.45, depthTest: false });
     for (const [x, y] of picked.cells) {
@@ -170,6 +215,7 @@ export async function start(api) {
   }
   const canvas = api.renderer.domElement;
   canvas.addEventListener('mousedown', (e) => {
+    if (previewMode) return; // previews are read-only
     const c = cellAt(e); if (!c) return;
     stroke = new Set();
     if (HEIGHT_TOOLS[tool]) { painting = e.button === 2 ? 4 : 3; paint(c, e.button === 2 ? -HEIGHT_TOOLS[tool] : HEIGHT_TOOLS[tool]); return; }
@@ -208,6 +254,7 @@ export async function start(api) {
     if (e.target.tagName === 'INPUT') return;
     const n = /^Digit(\d)$/.exec(e.code)?.[1];
     if (n) pickTool(TOOLS[(+n + 9) % 10][0]);
+    if (previewMode) return;
     if (e.code === 'Delete' || e.code === 'Backspace') {
       if (deletePicked()) return;
       if (sel >= 0) { map.points.splice(sel, 1); sel = -1; picked = null; rebuild(); }

@@ -73,6 +73,11 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - XL maps (tools/genmap-xl.js, 6 spawns, 3 defend): Pegasus Bridge XL, Hill 112 XL, Seawall XL. A map can carry
   `assaultTime` (seconds) because crossing takes longer: 20 min / 16 min / default 15. AI 3v3 attacker wins over 40:
   58% / 45% / 25%. Assault results swing a lot at 20 matches (2/20 and 7/12 for the same map), so measure with 40+.
+  Monte Cassino XL: 23 min, 45%.
+- Assault-only spawns (`"assault": true` on a spawn): for maps whose defenders start inside a fortress in the middle
+  (Stalingrad Factory). Other modes skip them, so nobody starts surrounded; the lobby seats players per mode.
+- The map editor previews each mode by running createGame for it and drawing the result (cells, bunkers, nodes, which
+  spawns are used), so the preview can't drift from what the game really builds.
 - Bug found while testing: veterancy thresholds are multiples of unit cost, so the free bunker counted as a 3-star
   veteran. Free units never rank up now.
 

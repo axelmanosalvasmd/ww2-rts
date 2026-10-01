@@ -177,6 +177,8 @@ export function validateMap(m) {
   const at = (p) => m.rows[p.y][p.x];
   if (!Array.isArray(m.spawns) || m.spawns.length < 2 || m.spawns.length > MAX_PLAYERS) return 'needs 2-' + MAX_PLAYERS + ' spawns';
   for (const sp of m.spawns) if (!sp || !int(sp.x, 0, m.w - 1) || !int(sp.y, 0, m.h - 1) || TERRAIN[at(sp)] & MOVE) return 'spawns must be on open ground inside the map';
+  if (m.spawns.some(sp => sp.assault !== undefined && typeof sp.assault !== 'boolean')) return 'spawn assault flag must be true or false';
+  if (m.spawns.filter(sp => !sp.assault).length < 2) return 'needs 2+ spawns that every mode can use';
   if (m.assaultTime !== undefined && !(Number.isInteger(m.assaultTime) && m.assaultTime >= 300 && m.assaultTime <= 3600)) return 'assaultTime must be 300-3600 seconds';
   if (m.defend !== undefined && (!Array.isArray(m.defend) || !m.defend.length || m.defend.length >= m.spawns.length
     || m.defend.some(i => !int(i, 0, m.spawns.length - 1)) || new Set(m.defend).size !== m.defend.length)) return 'defend must list some (not all) spawn numbers';
@@ -186,6 +188,8 @@ export function validateMap(m) {
 }
 
 export const MAX_PLAYERS = 6;
+// spawns a mode can use: an `assault: true` spawn (say, inside the defenders' fortress) only exists in Assault
+export const spawnsFor = (map, mode) => map.spawns.map((s, i) => i).filter(i => mode === 'assault' || !map.spawns[i].assault);
 // team VP needed to win: scaled by average team size, so a 3v3 lasts about as long as a 1v1
 export const winVp = (teams) => CFG.vpToWin * teams.length / new Set(teams).size;
 
@@ -208,7 +212,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
   }
-  const spawnIdx = spawnSlots(map.spawns.length, teams, shuffle);
+  const usable = spawnsFor(map, opts.mode), spawnIdx = spawnSlots(usable.length, teams, shuffle).map(k => usable[k]);
   // assault maps can reserve spawns for the defenders (a hilltop, a town); attackers get the rest
   if (assault && map.defend?.length) {
     const att = map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i));

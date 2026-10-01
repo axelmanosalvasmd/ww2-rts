@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, validateMap, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { think } from './shared/ai.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
@@ -83,12 +83,14 @@ const hostOf = (room) => room.players.findIndex(p => !p.ai);
 // assault needs someone on the defending team and someone attacking it
 const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
 const newPlayer = (room, p) => ({ ...p, team: room.players.length, faction: room.players.length % 3 });
-const setMap = async (room, name) => { room.mapName = name; room.spawns = (await loadMap(name)).spawns.length; };
+// how many players the room's map seats in the room's mode (Assault-only spawns count only in Assault)
+const setMap = async (room, name) => { room.mapName = name; room.mapSpawns = (await loadMap(name)).spawns; };
+const seats = (room) => spawnsFor({ spawns: room.mapSpawns }, room.mode).length;
 
 async function lobby(room) {
   const maps = await listMaps();
   room.players.forEach((p, i) => send(p.ws, {
-    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: room.spawns, publicUrl: PUBLIC_URL,
+    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
     mode: room.mode, defenderTeam: room.defenderTeam, result: room.result ?? null,
     players: room.players.map(q => ({ name: q.name, connected: !!q.ws || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction })),
   }));
@@ -153,7 +155,7 @@ wss.on('connection', (ws, req) => {
       room.mode = msg.v; lobby(room);
     } else if (msg.t === 'defender' && slot === hostOf(room) && room.state !== 'play' && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < MAX_PLAYERS) {
       room.defenderTeam = msg.v; lobby(room);
-    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= room.spawns && assaultReady(room)) {
+    } else if (msg.t === 'start' && slot === hostOf(room) && room.state !== 'play' && room.players.length <= seats(room) && assaultReady(room)) {
       await startMatch(room);
     } else if (msg.t === 'restart' && slot === hostOf(room) && room.state === 'play' && room.game) {
       await startMatch(room); // same map, mode and teams, from scratch

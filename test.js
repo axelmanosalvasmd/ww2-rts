@@ -838,7 +838,7 @@ for (const name of ['default', 'river-towns', 'six-fronts', 'hill-112']) {
 }
 
 // XL assault maps: 6 spawns (3 defend), and a map can set its own assault clock.
-for (const name of ['pegasus-bridge-xl', 'hill-112-xl', 'seawall-xl']) {
+for (const name of ['pegasus-bridge-xl', 'hill-112-xl', 'seawall-xl', 'monte-cassino-xl']) {
   const map = JSON.parse(readFileSync(`maps/${name}.json`, 'utf8'));
   assert.equal(validateMap(map), null, name + ' is valid');
   assert.equal(map.spawns.length, 6, name + ' has 6 spawns'); assert.deepEqual(map.defend, [0, 1, 2]);
@@ -847,6 +847,19 @@ for (const name of ['pegasus-bridge-xl', 'hill-112-xl', 'seawall-xl']) {
   assert.equal([...g.units.values()].filter(u => u.type === 'bunker').length, 3, name + ': a bunker per defender');
 }
 assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8')), assaultTime: 5 }), 'assaultTime must be 300-3600 seconds');
+// Assault-only spawns: a spawn inside the defenders' fortress is skipped by every other mode
+{
+  const m = { ...JSON.parse(readFileSync('maps/default.json', 'utf8')) };
+  m.spawns = [{ ...m.spawns[0], assault: true }, ...m.spawns.slice(1), { x: 40, y: 40 }];
+  m.spawns[3] = { x: 40, y: 44 };
+  for (let i = 0; i < 20; i++) {
+    const g = createGame(m, ['a', 'b', 'c'], true);
+    assert.ok(g.players.every(p => Math.abs(p.spawn.x - (m.spawns[0].x + 0.5) * CELL) > 1 || Math.abs(p.spawn.z - (m.spawns[0].y + 0.5) * CELL) > 1), 'Conquest never uses the Assault-only spawn');
+  }
+  const a = createGame({ ...m, defend: [0] }, ['d', 'a'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 0 });
+  assert.deepEqual([a.players[0].spawn.x, a.players[0].spawn.z], [(m.spawns[0].x + 0.5) * CELL, (m.spawns[0].y + 0.5) * CELL], 'Assault defends from it');
+  assert.equal(validateMap({ ...m, spawns: [{ ...m.spawns[0], assault: true }, { ...m.spawns[1], assault: true }, m.spawns[2]] }), 'needs 2+ spawns that every mode can use');
+}
 
 // Plans: snapshots carry your own units' routes and locked targets, never anyone else's.
 {

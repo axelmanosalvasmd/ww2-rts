@@ -110,3 +110,33 @@ function save(file, name, m, spawns, points, extra = {}) {
     [{ x: 65, y: 26, vp: 2, mp: 1.5 }, { x: 24, y: 56, mp: 1 }, { x: 65, y: 56, mp: 1 }, { x: 106, y: 56, mp: 1 },
       { x: 40, y: 100, mp: 0.5 }, { x: 90, y: 100, mp: 0.5 }]);
 }
+
+// Monte Cassino XL: the monastery on the summit, three tiers (0, 2, 4) with cliffs between them. Two ramps per cliff:
+// the lower ones out at the flanks, the upper ones either side of the monastery, so the climb still zigzags
+// (flank, across the middle terrace, centre) but three attackers aren't stuck in one lane.
+{
+  const m = canvas(135, 165, 19440);
+  const lowRamp = (x) => (x >= 18 && x <= 27) || (x >= 108 && x <= 117), highRamp = (x) => (x >= 40 && x <= 48) || (x >= 87 && x <= 95);
+  m.heights((x, y) => {
+    if (highRamp(x) && y >= 44 && y <= 48) return 3;
+    if (lowRamp(x) && y >= 89 && y <= 93) return 1;
+    return y <= 45 ? 4 : y <= 90 ? 2 : 0;
+  });
+  // the monastery: walls with a gate on each side, a long hall, two wings, a courtyard
+  m.line(45, 9, 90, 9, '#'); m.line(45, 39, 63, 39, '#'); m.line(72, 39, 90, 39, '#');
+  m.line(45, 9, 45, 20, '#'); m.line(45, 27, 45, 39, '#'); m.line(90, 9, 90, 20, '#'); m.line(90, 27, 90, 39, '#');
+  m.box(67, 15, 30, 5, 'B'); m.box(52, 30, 5, 8, 'B'); m.box(83, 30, 5, 8, 'B');
+  // farms on the summit flanks
+  m.box(18, 30, 5, 4, 'B'); m.box(117, 30, 5, 4, 'B');
+  // middle terrace: hamlets, olive terraces (hedges), ruins
+  for (const [x, y] of [[30, 62], [42, 58], [36, 74], [99, 62], [111, 58], [105, 74]]) m.box(x, y, 4, 3, 'B');
+  for (let y = 56; y <= 82; y += 6) { m.line(58, y, 77, y, 'H'); }
+  for (let i = 0; i < 50; i++) m.set(m.rnd() * 135, 50 + m.rnd() * 38, i % 3 ? '+' : 'R');
+  // the town at the foot, half ruined
+  for (let bx = 22; bx <= 112; bx += 12) for (let by = 106; by <= 142; by += 12) m.box(bx, by, 6, 5, m.rnd() < 0.3 ? 'R' : 'B');
+  for (let i = 0; i < 50; i++) m.set(m.rnd() * 135, 96 + m.rnd() * 60, '+');
+  save('monte-cassino-xl', 'Monte Cassino XL', m,
+    [{ x: 26, y: 14 }, { x: 67, y: 5 }, { x: 108, y: 14 }, { x: 102, y: 158 }, { x: 67, y: 160 }, { x: 32, y: 158 }],
+    [{ x: 67, y: 27, vp: 2, mp: 1.5 }, { x: 36, y: 66 }, { x: 99, y: 66 }, { x: 67, y: 70 }, { x: 22, y: 100, mp: 1 }, { x: 113, y: 100, mp: 1 }, { x: 67, y: 124, mp: 1 }],
+    { assaultTime: 1380 }); // 23 min: attackers won 45% over 40 AI 3v3s (22% at 20 min, 60% at 25)
+}
