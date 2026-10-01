@@ -32,6 +32,49 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     mobile flak beat rifles and conscripts by about 70 points at equal cost, since rifles barely scratch vehicles.
     MG teams still lose to equal-cost conscripts in the open. Planes, off-map support, cover and houses were not
     part of these tests.
+
+### 2026-10-01. Individual soldiers and troop selection (`c55fd0f`, `69575e3`, `c27bcef`)
+
+- Soldiers now walk, crouch-walk, crawl and retreat with moving limbs and individual stride timing. Men follow and turn separately inside their squad, keep their boots on the ground, and stop stepping when they stop. Moving shooters aim at their target, with flashes attached to the animated weapon. Squads return to normal spacing when a trench disappears.
+- Troop selection follows visible soldiers and health bars, including squads spread along trenches and inside houses. Box selection works across mixed troop types without selecting a squad first. Small boxes cover the full posed soldier and rooftop bar, including prone boots. Saved groups skip passengers and parked aircraft, then include them again after unloading or launching. Dead squads stay excluded.
+
+### 2026-10-01. Behavior and formation facing (`5b8783c`)
+
+- Units choose targets by weapon role and incoming fire, keep space between squads, settle plain moves into nearby cover, and turn vehicle armor toward anti-tank threats. Automatic cover moves respect Hold position and Hold fire. Crowded destinations keep available shelter instead of choosing closer open ground just for spacing.
+- Right-drag a destination to arrange selected units and set their facing. Shift queues the facing, and Ctrl-drag or G then left-drag attack-moves. Infantry and guns face on arrival; vehicles turn their hulls. Halftrack boarding and other special right-click orders still work.
+- Mortars and rockets count only visible squads when choosing a cluster to fire on. Hidden squads and halftrack passengers cannot influence that choice.
+- Fixed sight rays ending exactly on cell borders and the map editor's route check when it has terrain without player state.
+- Diagnostic matches found that target choice changes the share of hits taken on cover tiles. That measure differs from time spent in cover. Seeded comparisons and the independent cover-time measure are recorded in DESIGN.md. No faction costs, weapons or health were retuned.
+- Paired balance runs completed 300 Conquest and 120 Classic games per build. USA/GER/USSR wins changed from 102/91/107 to 98/101/101 in Conquest, and 41/39/40 to 30/43/45 in Classic, with two final Classic draws. Conquest crowding fell from 44.5% to 11.7%; sampled infantry time in cover changed from 27.3% to 25.8%. These results include both behavior and AI changes. See the committed balance evidence for the full comparison.
+
+### 2026-10-01. AI difficulty (`bbd170a`)
+
+- Hosts can choose Easy, Normal or Hard for each AI seat before a match. Difficulty changes reaction time and tactics, with the same income and fog rules at every level. Squads fall back at their last model, wait for reinforcements at forward Classic production buildings, and recognize medium tanks and Tigers when buying AT guns.
+- Hard keeps onward move orders when changing focus targets and stops chasing retreating squads. Supply reconnection stays immediate at every difficulty.
+- AI pilots, 18 matches per comparison: Conquest Hard / Normal 14/4, Easy / Normal 2/16, Normal / master 9/9; Classic Hard / Normal 11/7, Easy / Normal 3/15, Normal / master 6/12. All 108 games ended without draws or timeouts. These small samples do not establish Normal-versus-master parity in Classic.
+
+### 2026-10-01. Controls and cover overlays (`b6fa1df`, `4faefee`)
+
+- Controls are in a `?` / `F1` sheet, with mouse instructions and current hotkeys. It appears on your first match in this browser and closes with your first click. Map-edge scrolling pauses while the sheet is open.
+- Infantry preview cover around the cursor with green shields for heavy cover, yellow for light cover and red for open ground. Direction marks show protected sides, and a move briefly shows the destination's cover. The menu's Cover preview switch saves its setting. Marks stay inside explored ground, including after a rejoin.
+- Ground rings, order lines, capture progress, strike zones, formation previews and fortification cells use thin, smooth lines that follow hills and craters. Queued orders use dashes and destinations use arrowheads. Unit cover shields share the preview colors.
+- Cover marks refresh when vehicles or enemies move inside a terrain cell. Woods and wreck cover follow the current rules. Exact wall health remains unavailable to the client, so some marks behind damaged walls can overstate protection. Categories show the kind of protection rather than its exact strength.
+
+### 2026-10-01. Grounded world and effects (`b5b7def`, `8a4a7d8`)
+
+- The battlefield continues into natural land and water beyond the playable map. Removed the wooden table, desk props, cut earth border and tilt-shift blur. Ground colors and light are more muted, with an optional golden sun through `?mood=golden`. Server vision fog, weather and changing ground extend across the world edge.
+- Fixed fog at the world edge and crater updates on previously flat edges. The combined build was checked in the map editor and on a real GPU in a Massive match. Measurements and limits are in `docs/issue-batch-verification.md`.
+- Explosions throw dirt and debris, leave craters and cool from fire into smoke. Smoke screens, burning wrecks, grass, hedges, woods, houses and aircraft share lit effects that drift with the wind. Graphics Low reduces particles and crater count. Removed the unused support-plane effect pool and fixed one-sided collapse dust on Low. Sprites still can intersect walls and units; they fade against terrain only.
+
+### 2026-10-01. Unit models (`2235ce3`, `4127dbd`, `8e47836`)
+
+- Infantry have clearer faces and helmet straps, thicker webbing and bags, a rounder Soviet greatcoat roll, and three rifle stances. Prone riflemen support level weapons on their elbows, kneeling feeders lean toward the belt, and distant helmets keep their domed shape. The unused draft is folded into the live model. Each soldier uses one draw call, at most 884 near triangles and 145 far triangles.
+- Shaded vehicle faces keep their paint and surface detail. Light tanks have clearer hull seams and rivets, Tiger wheels are separated, and the ZSU-37 has lower shields and a fuller breech. Vehicles remain within their triangle budgets and use two model draw calls.
+- German planes have smaller splinter camouflage broken into uneven angular patches. All fighters and attackers stay within the 3,500 triangle limit, including props and blur discs.
+- Left for later: medics still use the engineer figure, including its carbine, although they are unarmed in combat.
+
+### Earlier unreleased changes
+
 - Woods, mine clearing, halftracks, medics, the Field Hospital and supply lines.
   - Woods (new terrain): infantry in a wood get light cover (30% fewer hits, a wall gives 50%), sight reaches about
     three cells (6 m) into the trees and never through a wood, vehicles drive through at half speed and route around,

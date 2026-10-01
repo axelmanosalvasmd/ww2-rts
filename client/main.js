@@ -4,15 +4,18 @@ import { setPortraitSource } from './portraits.js';
 import { createLobbyView } from './lobby-view.js';
 import { createEffects } from './fx.js';
 import { bindings, match } from './keys.js';
-import { createSelection } from './selection.js';
+import { createSelection, selectionDragged } from './selection.js';
+import { selectionPoints } from './selection-view.js';
 import { createOrders } from './orders.js';
-import { formation as layout, FORMATIONS } from './formation.js';
+import { createFormationPreview } from './formation-preview.js';
+import { facingSpots, slotSize } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG } from '/shared/sim.js';
 import { alerts } from './alerts.js';
 import { setupLight, renderFrame } from './light.js';
 import { createAtmosphere } from './atmosphere.js';
+import { createApron } from './apron.js';
 import { createWeatherView } from './weather-view.js';
 import { createGround } from './ground.js';
 import { setWind } from './wind.js';
@@ -24,7 +27,7 @@ import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
 import { createPointer } from './pointer.js';
 import { pings } from './pings.js';
-import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, MOVE_COLOR } from './markers.js';
+import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, aimMarker, cellLayer, coverRings, setTerrain, refreshTerrain, MOVE_COLOR, PLAN_COLORS } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
@@ -40,6 +43,7 @@ import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
+import { createCoverPreview } from './cover-preview.js';
 import { createAutocast } from './autocast.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
@@ -49,6 +53,7 @@ const FACTIONS = [
   { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
+const AI_LEVELS = ['easy', 'normal', 'hard'];
 let teams = [], factions = [];
 const facOf = (slot) => factions[slot] ?? slot % 3;
 const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
@@ -76,6 +81,36 @@ const roomLink = (base) => base + (room === MAIN_ROOM ? '/' : '/#' + room);
 addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
 // A room keeps its seat across tabs; an explicit seat suffix lets another person use this browser.
 const local = tryStore(() => localStorage), session = tryStore(() => sessionStorage);
+const controlsSheet = $('controlsSheet');
+let consumeDismissClick = false;
+addEventListener('pointerup', (e) => {
+  if (!consumeDismissClick) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+}, { capture: true });
+for (const type of ['mousedown', 'mouseup', 'click', 'auxclick', 'contextmenu']) addEventListener(type, (e) => {
+  if (!consumeDismissClick) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (type === 'click') consumeDismissClick = false;
+}, { capture: true });
+function openControls(onboarding = false) {
+  if (controlsSheet.open) return;
+  cancelInput(); pointer.release();
+  controlsSheet.dataset.onboarding = onboarding ? 'true' : '';
+  controlsSheet.showModal();
+}
+function closeControls() { if (controlsSheet.open) controlsSheet.close(); }
+$('controlsBtn').onclick = () => openControls();
+$('controlsClose').onclick = closeControls;
+controlsSheet.addEventListener('pointerdown', (e) => {
+  if (controlsSheet.dataset.onboarding !== 'true') return;
+  consumeDismissClick = true;
+  setTimeout(() => { consumeDismissClick = false; }, 500);
+  e.preventDefault(); e.stopImmediatePropagation(); closeControls();
+});
+controlsSheet.addEventListener('close', () => {
+  if (controlsSheet.dataset.onboarding === 'true') tryStore(() => localStorage.setItem('ww2-controls-seen', '1'));
+  delete controlsSheet.dataset.onboarding;
+});
 const token = roomToken({ room, seat, local, session, create: () => Math.random().toString(36).slice(2) + Date.now().toString(36) });
 const matchMemory = matchStorage(token, local, session);
 $('name').value = tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
@@ -149,6 +184,7 @@ function receiveStart(m) {
   const saved = m.matchId != null && lastStart?.matchId === m.matchId ? matchView() : matchMemory.read();
   const resume = m.matchId != null && saved?.matchId === m.matchId;
   startGame({ ...m, resume }, resume ? saved : null);
+  if (tryStore(() => localStorage.getItem('ww2-controls-seen')) !== '1') openControls(true);
   saveMatchView();
   if (document.hidden && !resume) { // a new match, not the same one coming back after a drop
     stopTitleFlash(); document.title = 'Match started';
@@ -270,16 +306,17 @@ function renderLobby(m) {
   const n = m.players.length, host = !!m.amHost, lobby = m.state === 'lobby';
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  const level = (p, i) => p.ai ? ' ' + pick('level', i, AI_LEVELS.indexOf(p.level ?? 'normal'), ['Easy', 'Normal', 'Hard'], host).replace('<select', '<select title="AI difficulty" aria-label="AI difficulty"') : '';
   $('roster').innerHTML = m.players.map((p, i) => {
     const kick = host && lobby && (p.ai || !p.connected) ? `<button class="kick" data-slot="${i}" title="Remove ${p.ai ? 'AI' : 'offline player'}">✕</button>` : '';
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(', ')}</span></span>
-      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}</span>${kick}</div>`;
+      <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}${level(p, i)}</span>${kick}</div>`;
   }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
   $('watchBtn').textContent = watching ? 'Take a seat' : 'Watch as a spectator';
   $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= COLORS.length));
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
-  $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: +el.value })));
+  $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: el.dataset.kind === 'level' ? AI_LEVELS[+el.value] : +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
   const horde = m.mode === 'horde'; // Horde: only maps with defender spawns, never Endless
   $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''} ${horde && !m.hordeMaps?.includes(n) ? 'disabled' : ''}>${esc(prettyMap(n))}</option>`).join('');
@@ -321,12 +358,12 @@ setSurfaces(surface); // structure models take the textured wood and sandbag (cl
 setBuildings(buildingModel); // HQ, barracks, motor pool, depot and command bunker: one merged model each (client/structures.js)
 loadModelTextures(); // surface detail for soldiers, vehicles, guns and planes; they draw plain until it arrives (client/model-textures.js)
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.localClippingEnabled = true; // the HQ's ring and disc are cut at the board edge (buildHQ)
+renderer.localClippingEnabled = true; // the HQ's ring and disc are cut at the map edge (buildHQ)
 renderScale(renderer); // pixel ratio per graphics level (client/perf.js); shadows are set in client/light.js
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, 1, 1, 1000);
-const lights = setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, table, Graphics High/Low (client/light.js)
+const camera = new THREE.PerspectiveCamera(42, 1, 1, 2200);
+setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, Graphics High/Low (client/light.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -339,17 +376,17 @@ const GEO = {
   shield: new THREE.ShapeGeometry(new THREE.Shape([[-0.5, 0.5], [0.5, 0.5], [0.5, 0], [0, -0.6], [-0.5, 0]].map(([x, y]) => new THREE.Vector2(x, y)))),
 };
 // cover shield next to the health bar, by snapshot cover state: 1 cover, 2 trench, 3 cover on one side
-const COVER_LOOK = { 1: [0x7fd06a, 1], 2: [0x3fe0ff, 1], 3: [0x7fd06a, 0.45] };
+const COVER_LOOK = { 1: [0xe2b850, 1], 2: [0xb2de92, 1], 3: [0xe2b850, 0.45] };
 const mesh = (geo, material, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0) => {
   const m = new THREE.Mesh(geo, material); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.castShadow = true; return m;
 };
 
 // ---------- world ----------
 
-let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogMesh = null, water = null;
+let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogMesh = null, water = null, apron = null;
 const SHARED_GEOS = new Set(Object.values(GEO));
 
-// Ground height and the board surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
+// Ground height and the terrain surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
 let relief = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
@@ -357,13 +394,15 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 let lastStart = null;
 function startGame(m, restored = null) {
   lobbyView.hide(); // frees the backdrop's renderer before the match builds its world
+  clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
-  relief?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
+  relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogOfWar?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
+  world.add(formationPreview.group);
   units.clear(); selected.clear(); selection.reset();
   if (m.resume && restored) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
@@ -386,6 +425,9 @@ function startGame(m, restored = null) {
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
+  apron = createApron({ ground: gp, relief, grid: terrain.grid, map });
+  world.add(apron.mesh, apron.fogMesh); apron.fogMesh.visible = !EDIT;
+  setTerrain(hAt, MW, MH); // rings, order lines and zones follow this ground on the GPU (client/overlay.js)
 
   buildStructures();
   water?.dispose(); water = createWater(terrain.grid, map, hAt); if (water) world.add(water.mesh);
@@ -407,14 +449,15 @@ function startGame(m, restored = null) {
   // fog of war overlay: the server's mask of what my team sees (client/fog.js)
   fogOfWar = createFog(map.w, map.h, m.fog, EDIT);
   setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
-  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  fog.position.y = 0.12; fog.renderOrder = 1; fog.visible = !EDIT;
+  const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
+  fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
-  atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather }); // mood, cloud shadows, table props, mist, weather, birds
+  atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather, apron }); // mood, clouds, mist, weather, birds
   wx.start(m.weather, atmos);
 
   m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
+  coverPreview.start();
 
   buildBuyBar();
   buildSupportBar();
@@ -463,12 +506,17 @@ function applyCells(cells) {
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
   terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
-  if (shaped.length) { relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; } // the fog overlay follows the relief through onGeometry
+  if (shaped.length) {
+    relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; // the fog overlay follows the relief through onGeometry
+    const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
+    refreshTerrain(Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL);
+  }
   if (pieces) buildStructures();
+  coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
 
 // Each player's HQ: tinted reinforce zone, sandbag ring, command tent, flagpole and flag, name.
-// A spawn near the board edge would hang its ring over the table: the zone and ring are cut at the edge and the
+// A spawn near the map edge would hang its ring past the map: the zone and ring are cut at the edge and the
 // bags past it are left out (the reinforce zone itself is unchanged).
 function buildHQ(sp, slot) {
   const f = look(slot), R = CFG.reinforceRadius, g = new THREE.Group();
@@ -478,7 +526,7 @@ function buildHQ(sp, slot) {
   const zone = flat(new THREE.CircleGeometry(R - 0.75, 48), 0.07, 0.05); zone.material.color.set(f.color).lerp(new THREE.Color(0xf2ecdc), 0.6);
   const ring = hqRing(R, f.color, edge);
   g.add(zone, ring);
-  g.add(onBoard(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
+  g.add(insideMap(sandbagRing(R + 0.8), sp.x, sp.z, 0.75)); // sandbags with gaps for the exits (client/structures.js)
   // command tent, crates and the flagpole (client/structures.js); Classic's HQ is a building, so only the pole
   g.add(hqCamp(f, !classicMode()));
   // tall flag you can spot from across the map
@@ -487,8 +535,8 @@ function buildHQ(sp, slot) {
   return g;
 }
 
-// Keep the instances of an HQ piece at (ox, oz) whose center is at least pad inside the board.
-function onBoard(im, ox, oz, pad) {
+// Keep the instances of an HQ piece at (ox, oz) whose center is at least pad inside the map.
+function insideMap(im, ox, oz, pad) {
   const m = new THREE.Matrix4(), p = new THREE.Vector3(), c = new THREE.Color();
   let n = 0;
   for (let i = 0; i < im.count; i++) {
@@ -604,7 +652,7 @@ function marker(x, z, color) {
 // planes, airfields, flak bursts and shoot-downs (client/aircraft.js)
 // effects is made further down; explode and play only run once a match is on
 const aviation = createAviation({ hAt, UNITS, SUPPORT, units, altitude: AIR_ALT, world: () => world, facOf, colorOf: (slot) => look(slot).color, vehicleOf: (slot) => look(slot).vehicle, me: () => me,
-  explode: (x, z, size, opts) => effects.explode(x, z, size, opts), play: (name, x, z, opts) => audio.play(name, { x, z }, opts), flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
+  explode: (x, z, size, opts) => effects.explode(x, z, size, opts), air: (kind, x, y, z, k) => effects.air(kind, x, y, z, k), play: (name, x, z, opts) => audio.play(name, { x, z }, opts), flakTypes: new Set(['flak', 'flaktrack', 'flakpos']) });
 // shots aircraft.js draws instead of fx.js; a support plane's value is the engine sound it comes in with
 const SUPPORT_PLANES = { strafe: 'plane_flyby', recon: 'plane_flyby', dive: 'plane_flyby', bombing: 'bomber', para: 'bomber' };
 // ('flak' with a target or a hit flag is a flak gun firing at the ground, which stays with fx.js)
@@ -670,7 +718,7 @@ function applySnapshot(s) {
   // planes' strike warnings are left out so nothing is drawn twice
   // the wind first: it carries this snapshot's smoke, dust and flames
   if (s.wx) { setWind(s.wx[2], s.wx[3]); atmos.setRain(s.wx[0], s.wx[1]); } // showers and wet ground (the line: wx.snapshot)
-  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL]);
+  const fires = (s.fires ?? []).map(c => [(c % terrain.w + 0.5) * CELL, (Math.floor(c / terrain.w) + 0.5) * CELL, terrain.grid[Math.floor(c / terrain.w)]?.[c % terrain.w]]);
   effects.snapshot({ ...s, fires, shots: s.shots.filter(sh => !airShot(sh)), strikes: (s.strikes ?? []).filter(([k]) => !SUPPORT_PLANES[k]) }, seen);
   objectives.snapshot(s); // capture point rings, flips, building smoke and collapse banners (client/objectives.js)
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
@@ -694,9 +742,9 @@ function applySnapshot(s) {
   }
   for (const [id, prog, rx, rz, ...queue] of s.queues ?? []) { const v = units.get(id); if (v) Object.assign(v, { prog, queue, rally: rx >= 0 ? { x: rx, z: rz } : null }); }
   applyGhosts(s.ghosts);
-  coverGroup ??= (() => { const gp = new THREE.Group(); world.add(gp); return gp; })();
-  coverGroup.children.forEach(o => { o.geometry.dispose(); o.material.dispose(); }); coverGroup.clear();
-  for (const [x, z, r, t] of s.covers ?? []) { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.8, r, 64), new THREE.MeshBasicMaterial({ color: 0x9dd0ff, transparent: true, opacity: 0.2 + t / 150, depthTest: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, hAt(x, z) + 0.4, z); m.renderOrder = 2; coverGroup.add(m); }
+  coverGroup ??= coverRings(); // fighter cover rings, pooled (client/markers.js)
+  if (coverGroup.group.parent !== world) world.add(coverGroup.group);
+  coverGroup.set(s.covers ?? [], hAt);
   if (s.nodes && !nodeMarks) { props?.setNodes(s.nodes); nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; }); }
 
   syncStrikes(s.strikes);
@@ -719,7 +767,7 @@ function syncStrikes(list) {
     const key = `${kind},${x},${z}`; keep.add(key);
     let m = strikeMarks.get(key);
     if (!m) {
-      // grease-pencil outline, hatching and a faint wash on the ground (client/markers.js): red for the enemy's
+      // thin outline, faint wash and a small mark on the ground (client/markers.js): red for the enemy's
       m = strikeZone(strikeShape(kind), !foe(owner) ? look(owner).color : 0xd2321e, { x, z, rot: -dir, hAt });
       world.add(m.group); strikeMarks.set(key, m);
     }
@@ -738,24 +786,17 @@ function strikeShape(kind) {
 }
 // ring for area strikes, a long strip for a strafing run
 function aimShape(kind, color) {
-  const g = new THREE.Group(), matl = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
-  const flat = (geo) => { const m = new THREE.Mesh(geo, matl); m.rotation.x = -Math.PI / 2; m.position.y = 0.2; m.renderOrder = 2; return m; };
-  if (kind === 'entrench') g.userData.tiles = []; // filled by entrenchPreview
-  else if (UNITS[kind]?.building) g.add(flat(new THREE.PlaneGeometry(UNITS[kind].size * CELL, UNITS[kind].size * CELL)));
-  else if (SUPPORT[kind]?.point) { const r = SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4; g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64))); }
-  else if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally') {
-    const r = kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2;
-    g.add(flat(new THREE.RingGeometry(r - 0.6, r, 64)));
-  } else {
-    const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
-    g.add(flat(new THREE.PlaneGeometry(len, width)));
-    // arrow past the far end shows which way it runs
-    const tip = new THREE.Shape([new THREE.Vector2(len / 2 + 0.5, -2), new THREE.Vector2(len / 2 + 4, 0), new THREE.Vector2(len / 2 + 0.5, 2)]);
-    const arrow = flat(new THREE.ShapeGeometry(tip)); arrow.material = matl.clone(); arrow.material.opacity = 0.8;
-    g.add(arrow);
+  if (kind === 'entrench') { // the cells are filled in by entrenchPreview
+    const g = new THREE.Group(), cells = cellLayer();
+    g.add(cells.group); g.userData.cells = cells;
+    return g;
   }
-  g.userData.mat = matl;
-  return g;
+  if (UNITS[kind]?.building) return aimMarker({ len: UNITS[kind].size * CELL, width: UNITS[kind].size * CELL, arrow: false }, color);
+  if (SUPPORT[kind]?.point) return aimMarker({ r: SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4 }, color);
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally')
+    return aimMarker({ r: kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2 }, color);
+  const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
+  return aimMarker({ len, width }, color); // an arrow past the far end shows which way it runs
 }
 // paratroopers: a few canopies drifting down onto the drop
 function chutes(x, z) {
@@ -836,19 +877,12 @@ function entrenchSummary(segs) {
   return !segs.length ? `${entrenchName()}: nothing can be built there`
     : `${entrenchName()}: ${segs.length} segment${segs.length > 1 ? 's' : ''}, ${total} MP${now < segs.length ? `; ${now} of ${segs.length} start now, the rest as squads and manpower free up` : ''}`;
 }
-// a square on every cell the segments would dig (trench green, wire brass); the tiles are pooled on the group
+// Outlined cells retain the color of each current fortification kind.
 const TILE_COLOR = { wire: 0xd2a849, sandbags: 0xd8c79a, traps: 0xa9b0b8, mines: 0xd0604a, fill: 0x9a7b55, demine: 0x8fc7e8, aid: 0xf0ece0 };
-function paintTiles(group, segs, opacity) {
-  const w = placementView()?.game.w ?? 1, tiles = group.userData.tiles ??= [];
-  let n = 0;
-  for (const j of segs) for (const [c] of j.place.cells) {
-    let t = tiles[n];
-    if (!t) { t = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.86, CELL * 0.86), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); t.rotation.x = -Math.PI / 2; t.renderOrder = 2; tiles.push(t); group.add(t); }
-    const x = (c % w + 0.5) * CELL, z = (Math.floor(c / w) + 0.5) * CELL;
-    t.visible = true; t.position.set(x, hAt(x, z) + 0.2, z); t.material.color.set(TILE_COLOR[j.kind] ?? 0x60e070); t.material.opacity = opacity;
-    n++;
-  }
-  for (let i = n; i < tiles.length; i++) tiles[i].visible = false;
+function paintTiles(group, segs, ghost) {
+  const w = placementView()?.game.w ?? 1, cells = [];
+  for (const j of segs) for (const [c] of j.place.cells) cells.push({ x: (c % w + 0.5) * CELL, z: (Math.floor(c / w) + 0.5) * CELL, color: TILE_COLOR[j.kind] ?? 0x60e070 });
+  group.userData.cells.set(cells, ghost);
 }
 // The ghost of your side's ordered works: what is still to dig, including what a squad is walking to or digging now,
 // fainter than the placement preview. Redrawn when the list changes or the ground under it does.
@@ -859,8 +893,11 @@ function drawWorks(list = []) {
   const key = list.join(';') + '@' + groundVersion, view = placementView();
   if (!world || !view || (key === worksKey && worksGroup?.parent === world)) return;
   worksKey = key;
-  if (worksGroup?.parent !== world) { worksGroup = new THREE.Group(); world.add(worksGroup); }
-  paintTiles(worksGroup, list.map(([, wire, x, z, dir, kind]) => { const j = { kind: kind ?? (wire ? 'wire' : 'trench'), x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), 0.26);
+  if (worksGroup?.parent !== world) {
+    worksGroup = new THREE.Group(); world.add(worksGroup);
+    worksGroup.userData.cells = cellLayer({ depthTest: true }); worksGroup.add(worksGroup.userData.cells.group);
+  }
+  paintTiles(worksGroup, list.map(([, wire, x, z, dir, kind]) => { const j = { kind: kind ?? (wire ? 'wire' : 'trench'), x, z, dir }; return { ...j, place: placementCheck(view.game, j) }; }).filter(j => j.place.ok), true);
 }
 // the planned entrenchment under a ground click (a segment within 5 m), for sending more squads to it
 function worksAt(g) {
@@ -871,12 +908,12 @@ function worksAt(g) {
 // the placement preview, redrawn as the mouse moves
 function entrenchPreview(group, a, b) {
   const segs = entrenchSegments(a, b);
-  paintTiles(group, segs, 0.5);
+  paintTiles(group, segs, false);
   const text = `${entrenchSummary(segs)}. Click ${aimCenter ? 'to dig' : 'where it starts'}. Right-click cancels`;
   if (text !== entrenchHint) { entrenchHint = text; $('hint').textContent = text; }
 }
 // Selected units show where they're going and what they're locked onto (sent by the server for your own units)
-// one layer for every match: grease-pencil strokes rewritten in place each snapshot (see markers.js)
+// one layer for every match: route lines rewritten in place each snapshot (see markers.js)
 const plans = planLayer(hAt);
 function drawPlans() {
   if (!world) return;
@@ -948,8 +985,9 @@ function takeCover(queue = false) { if (!selected.size || explainUnavailable(ava
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
 let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
-function cancelAim() { feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
+function cancelAim() { clearFacing(); feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind, unit = null) {
+  clearFacing();
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
   $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
@@ -995,36 +1033,57 @@ function throwAt(g, kind, type, queue = false) {
   who.sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z));
   sendCmd({ t: 'ability', ids: [who[0].id], x: g.x, z: g.z, queue }); marker(g.x, g.z, 0xffa030); blip(760);
 }
-// the shape picked with Shift+V; mortars, rockets and medics stand a row behind the rest
-let formationShape = 'block';
-const formation = (sel, g, to = null) => layout(sel, g, { shape: formationShape, to, back: v => UNITS[v.type].w?.minRange || !UNITS[v.type].w?.range ? 1 : 0 });
-function cycleFormation() {
-  formationShape = FORMATIONS[(FORMATIONS.indexOf(formationShape) + 1) % FORMATIONS.length];
-  feedback.show(`Formation: ${formationShape}. Right-drag to stretch the front, Alt+right-click to man the cover there`); blip(700);
-}
-// rings where each unit will stand while a right-drag is held
-const slotRings = [];
-function showSlots(slots) {
-  while (slotRings.length < slots.length) { const m = clickRing(MOVE_COLOR); m.scale.setScalar(0.6); slotRings.push(m); }
-  slotRings.forEach((m, i) => {
-    if (i >= slots.length) { world.remove(m); return; }
-    const [, x, z] = slots[i]; m.position.set(x, hAt(x, z) + 0.3, z); world.add(m);
+// rows perpendicular to the direction of travel
+function formation(sel, g, face, reach) {
+  if (Number.isFinite(face)) return facingSpots(sel.map(v => ({ id: v.id, x: v.x, z: v.z, size: slotSize(UNITS[v.type]) })), g, face, reach)
+    .map(([id, x, z]) => [id, Math.min(MW - 1, Math.max(1, x)), Math.min(MH - 1, Math.max(1, z))]);
+  const cx = sel.reduce((a, v) => a + v.x, 0) / sel.length, cz = sel.reduce((a, v) => a + v.z, 0) / sel.length;
+  const len = Math.hypot(g.x - cx, g.z - cz) || 1, dx = (g.x - cx) / len, dz = (g.z - cz) / len, cols = Math.ceil(Math.sqrt(sel.length)), gap = 5;
+  sel.sort((a, b) => (a.x - cx) * -dz + (a.z - cz) * dx - ((b.x - cx) * -dz + (b.z - cz) * dx));
+  return sel.map((v, i) => {
+    const col = i % cols - (Math.min(cols, sel.length) - 1) / 2, row = Math.floor(i / cols);
+    return [v.id, g.x - dz * col * gap - dx * row * gap, g.z + dx * col * gap - dz * row * gap];
   });
 }
 const orders = createOrders({
   units, selected, get me() { return me; }, defs: UNITS, diggers: CFG.fortBuilders, formation, send: sendCmd, moveColor: MOVE_COLOR,
-  feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); },
+  feedback: (at, color, tone, voice) => { marker(at.x, at.z, color); blip(tone); if (voice) bark(voice); if (at.id === undefined) coverPreview.flash(at.x, at.z); },
 });
+const formationPreview = createFormationPreview({ THREE, hAt });
 
 // ---------- camera + input ----------
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
-let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null;
+let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null;
+function clearFacing() { facingGesture = null; formationPreview.hide(); }
+function beginFacing(cursor, e, attack = false) {
+  clearFacing();
+  facingGesture = { button: e.button, ground: cursor.ground, cursor, x: e.clientX, y: e.clientY, attack, ctrl: !!e.ctrlKey, event: { shiftKey: !!e.shiftKey, ctrlKey: !!e.ctrlKey } };
+  mouse = { x: e.clientX, y: e.clientY, inside: true };
+}
+function updateFacing(mx, my) {
+  const f = facingGesture;
+  if (!f) return;
+  // dragging back to the press point drops the facing: releasing there is a plain click again
+  const g = Math.hypot(mx - f.x, my - f.y) < 12 ? null : groundAt(mx, my);
+  const dx = g ? g.x - f.ground.x : 0, dz = g ? g.z - f.ground.z : 0, reach = Math.hypot(dx, dz);
+  if (!g || reach < 2) { if (g || Math.hypot(mx - f.x, my - f.y) < 12) { delete f.face; delete f.reach; } return; }
+  f.face = Math.atan2(dz, dx); f.reach = reach;
+}
+function showFacing() {
+  const f = facingGesture;
+  if (!f || !Number.isFinite(f.face) || !world) { formationPreview.hide(); return; }
+  const troops = [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure);
+  if (!troops.length) { clearFacing(); return; }
+  if (formationPreview.group.parent !== world) world.add(formationPreview.group);
+  formationPreview.show(formation(troops, f.ground, f.face, f.reach), troops.map(v => ({ id: v.id, radius: UNITS[v.type].radius })), f.face,
+    { x: f.ground.x, z: f.ground.z, reach: f.reach }, f.attack || f.event.ctrlKey || f.ctrl ? PLAN_COLORS[2] : MOVE_COLOR);
+}
 // created before the mouse listeners below: while Capture mouse is on, its window listeners must run first
 const pointer = createPointer({ view: renderer.domElement, tryStore, captureButton: $('captureBtn'), captureNow: $('captureNow'),
   playing: () => !EDIT && !$('hud').classList.contains('hidden') && $('overlay').classList.contains('hidden') });
-rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag, world: () => world,
-  blocked: () => !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
+rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag || facingGesture, world: () => world,
+  blocked: () => controlsSheet.open || !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
   units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
   // the clear band for framing: below the score and status panels, above the recruit bar
   band: () => { const t = $('top').getBoundingClientRect(), b = $('buy').getBoundingClientRect(); return { top: t.height ? t.bottom : 0, bottom: b.height ? b.top : innerHeight }; },
@@ -1038,7 +1097,7 @@ function followSelected() {
 }
 function cancelInput(clearKeys = true) {
   if (clearKeys) keys.clear();
-  mouse.inside = false; drag = null; rig.stopDrag(); $('box').classList.add('hidden'); endRightDrag(null);
+  mouse.inside = false; drag = null; clearFacing(); rig.stopDrag(); $('box').classList.add('hidden');
 }
 addEventListener('mousedown', rig.introPress, { capture: true });
 
@@ -1049,15 +1108,14 @@ const centerSelection = (list) => {
   cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
-const selection = createSelection({ units, selected, groups, owner: () => (watching ? -1 : me), // a spectator selects nothing, so orders nothing
-  definitions: UNITS,
-  screenOf: (v) => screenOf(v), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
+const selection = createSelection({ units, selected, groups, owner: () => (watching ? -1 : me), definitions: UNITS, // a spectator selects nothing, so orders nothing
+  screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
   retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
-  follow: followSelected, rally: startRally, formation: cycleFormation,
+  follow: followSelected, rally: startRally,
   home: () => {
     if (!home) return;
     rig.cancelFollow();
@@ -1086,8 +1144,13 @@ for (const { id } of bindings) {
 const inMatch = () => lobbyState?.state === 'play' && !$('hud').classList.contains('hidden') && $('menu').classList.contains('hidden');
 const keyContexts = () => [classicMode() ? 'classic' : 'army', ...(!inMatch() ? [] : hud.recruiting() ? ['recruit'] : hud.lettered() ? ['building'] : []), ...(targeting ? ['targeting'] : [])];
 addEventListener('keydown', (e) => {
-  if (rig.skipIntro()) { e.preventDefault(); return; }
+  if (e.code === 'Escape') clearFacing();
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.code === 'F1' && !$('hud').classList.contains('hidden')) {
+    e.preventDefault(); if (controlsSheet.open) closeControls(); else openControls(); return;
+  }
+  if (controlsSheet.open) return;
+  if (rig.skipIntro()) { e.preventDefault(); return; }
   keys.add(e.code);
   if (EDIT) return;
   if (e.code === 'Tab' && inMatch()) e.preventDefault();
@@ -1111,8 +1174,12 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) cance
 addEventListener('mousemove', (e) => {
   mouse = { x: e.clientX, y: e.clientY, inside: !document.hidden };
   rig.moveMiddle(e);
+  if (facingGesture) {
+    if (!(e.buttons & (facingGesture.button === 2 ? 2 : 1))) clearFacing();
+    else { facingGesture.ctrl = !!e.ctrlKey; updateFacing(e.clientX, e.clientY); }
+  }
   if (drag && !(e.buttons & 1)) { drag = null; $('box').classList.add('hidden'); }
-  if (drag && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
+  if (drag && selectionDragged(drag, e)) {
     drag.moved = true; rig.cancelFollow();
     Object.assign($('box').style, { left: Math.min(drag.x, e.clientX) + 'px', top: Math.min(drag.y, e.clientY) + 'px', width: Math.abs(e.clientX - drag.x) + 'px', height: Math.abs(e.clientY - drag.y) + 'px' });
     $('box').classList.remove('hidden');
@@ -1136,6 +1203,7 @@ const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerH
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;
+  if (facingGesture) clearFacing();
   if (e.button === 1) { rig.beginMiddle(e); return; }
   if (e.button === 0 && e.altKey && !targeting && !rig.intro) {
     e.preventDefault(); const g = groundAt(e.clientX, e.clientY); if (g) pings.send(g.x, g.z); return;
@@ -1157,7 +1225,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     }
     if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type, queue: e.shiftKey }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
-    if (kind === 'amove') { cancelAim(); orders.dispatch({ ground: g }, e, { attack: true }); return; }
+    if (kind === 'amove') { beginFacing({ ground: g }, e, true); return; }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate, then click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     if (kind === 'entrench') {
@@ -1186,30 +1254,15 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   }
   if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: false };
   if (e.button !== 2 || !selected.size || !lastSnap) return;
-  const cursor = {
-    ground: groundAt(e.clientX, e.clientY), enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
+  const ground = groundAt(e.clientX, e.clientY), cursor = {
+    ground, enemy: pick(e.clientX, e.clientY, v => foe(v.owner)),
     friend: pick(e.clientX, e.clientY, v => !foe(v.owner) && !UNITS[v.type].structure && !isAir(v.type)),
     building: pick(e.clientX, e.clientY, v => !foe(v.owner) && UNITS[v.type].building, 60), house: houseAt(e.clientX, e.clientY),
-    works: worksAt(groundAt(e.clientX, e.clientY)),
+    works: worksAt(ground),
   };
-  // the order goes when the button comes up, so a drag over open ground can stretch the formation's front
-  rdrag = { cursor, x: e.clientX, y: e.clientY, open: cursor.ground && !cursor.enemy && !cursor.house && cursor.works == null };
+  if (!rig.intro && orders.wouldMove(cursor)) beginFacing(cursor, e);
+  else orders.dispatch(cursor, e);
 });
-let rdrag = null;
-const myTroops = () => [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure);
-function endRightDrag(e) {
-  const d = rdrag; rdrag = null; showSlots([]);
-  if (!d || !e) return;
-  const to = d.open && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10 ? groundAt(e.clientX, e.clientY) : null;
-  orders.dispatch(d.cursor, e, { to });
-}
-addEventListener('mousemove', (e) => {
-  if (!rdrag?.open) return;
-  if (!(e.buttons & 2)) { endRightDrag(null); return; }
-  const to = Math.hypot(e.clientX - rdrag.x, e.clientY - rdrag.y) > 10 && groundAt(e.clientX, e.clientY);
-  if (to) showSlots(formation(myTroops(), rdrag.cursor.ground, to));
-});
-addEventListener('mouseup', (e) => { if (e.button === 2 && rdrag) endRightDrag(e); });
 
 // the house under the cursor (walls and roofs count), as the center of its cell
 function houseAt(mx, my) {
@@ -1222,13 +1275,22 @@ function houseAt(mx, my) {
 }
 addEventListener('mouseup', (e) => {
   if (e.button === 1) rig.stopDrag();
+  if (!EDIT && facingGesture?.button === e.button) {
+    updateFacing(e.clientX, e.clientY);
+    const f = facingGesture, facing = Number.isFinite(f.face);
+    clearFacing();
+    if (f.attack) cancelAim();
+    orders.dispatch(f.cursor, facing ? { shiftKey: f.event.shiftKey || !!e.shiftKey, ctrlKey: f.event.ctrlKey || !!e.ctrlKey } : f.event,
+      facing ? { face: f.face, reach: f.reach, attack: f.attack || f.event.ctrlKey || !!e.ctrlKey } : f.attack ? { attack: true } : {});
+    return;
+  }
   if (EDIT || e.button !== 0 || !drag) return;
   $('box').classList.add('hidden');
-  if (drag.moved) {
+  if (drag.moved || selectionDragged(drag, e)) {
     const x0 = Math.min(drag.x, e.clientX), x1 = Math.max(drag.x, e.clientX), y0 = Math.min(drag.y, e.clientY), y1 = Math.max(drag.y, e.clientY);
     selection.box({ x0, x1, y0, y1 }, e);
   } else {
-    const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
+    const v = selection.pick(e.clientX, e.clientY);
     selection.click(v, e);
   }
   drag = null;
@@ -1237,7 +1299,7 @@ addEventListener('mouseup', (e) => {
 
 renderer.domElement.addEventListener('dblclick', (e) => {
   if (EDIT || targeting || e.button !== 0) return;
-  const v = pick(e.clientX, e.clientY, v => v.owner === me && !UNITS[v.type].structure && !(v.flags & 512)) ?? pick(e.clientX, e.clientY, v => v.owner === me && UNITS[v.type].building, 60);
+  const v = selection.pick(e.clientX, e.clientY);
   if (!v) return;
   e.preventDefault(); selection.doubleClick(v, e);
   if (lastSnap) updateHud(lastSnap);
@@ -1355,7 +1417,10 @@ const lerpAngle = (a, b, k) => a + (Math.atan2(Math.sin(b - a), Math.cos(b - a))
 const effects = createEffects({ scene, camera, cam, hAt, units, colorOf: (slot) => look(slot).color, airAlt: AIR_ALT, mapW: () => terrain?.w ?? 0 });
 const objectives = createObjectives({ points: () => points, units, effects, hAt, camera, cam, colorOf: (slot) => look(slot).color, me: () => me, friend: (slot) => !foe(slot) });
 objectives.init();
-const atmos = createAtmosphere({ scene, renderer, camera, cam, ...lights }); // client/atmosphere.js
+const atmos = createAtmosphere({ scene, renderer, camera, cam }); // client/atmosphere.js
+// cover around the cursor while infantry is selected (client/cover-preview.js)
+const coverPreview = createCoverPreview({ scene, camera, canvas: renderer.domElement, units, selected, hAt, groundAt, gfx, foe,
+  me: () => me, mouse: () => mouse, targeting: () => targeting, grid: () => terrain?.grid, state: () => terrain?.state, wrecks: () => lastSnap?.wrecks, fog: () => fogOfWar });
 endgame.init({ me: () => me, teams: () => teams, watching: () => watching });
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
@@ -1378,7 +1443,7 @@ renderer.setAnimationLoop(() => {
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = ranges && v.sel.visible;
     if (v.trench) seatTrench(v);
-    animate(v, sdt, camera.position); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
+    animate(v, sdt, camera.position, hAt); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
   }
   battleFrame(cam, units, me);
   bodies.update(sdt);
@@ -1394,8 +1459,9 @@ renderer.setAnimationLoop(() => {
   endgame.frame();
   if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
-  if (targeting && world) {
-    if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xffe08a); aimMesh.userData.kind = targeting; world.add(aimMesh); }
+  if (facingGesture) { updateFacing(mouse.x, mouse.y); showFacing(); }
+  if (targeting && world && !Number.isFinite(facingGesture?.face)) {
+    if (aimMesh?.userData.kind !== targeting) { if (aimMesh) world.remove(aimMesh); aimMesh = aimShape(targeting, 0xf4dc90); aimMesh.userData.kind = targeting; world.add(aimMesh); }
     const g = groundAt(mouse.x, mouse.y);
     if (targeting === 'entrench') { if (aimCenter || g) entrenchPreview(aimMesh, aimCenter ?? g, g ?? aimCenter); }
     else if (aimCenter) {
@@ -1403,23 +1469,25 @@ renderer.setAnimationLoop(() => {
       if (g && Math.hypot(g.x - aimCenter.x, g.z - aimCenter.z) > 1.5) aimMesh.rotation.y = -Math.atan2(g.z - aimCenter.z, g.x - aimCenter.x);
     } else if (g && UNITS[targeting]?.building) {
       const f = footAt(targeting, g);
-      aimMesh.position.set(f.x, hAt(f.x, f.z), f.z); aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
+      aimMesh.position.set(f.x, hAt(f.x, f.z), f.z); aimMesh.userData.mat.color.set(f.ok ? 0x7acb82 : 0xdc4a3c);
     } else if (g) { aimMesh.position.set(g.x, hAt(g.x, g.z), g.z); aimMesh.rotation.y = -defaultDir(targeting, g); }
     if (targeting === 'dig' && (aimCenter || g)) {
       const at = aimCenter ?? g, dir = -aimMesh.rotation.y, f = footAt(fortKind, at, dir);
-      aimMesh.userData.mat.color.set(f.ok ? 0x60e070 : 0xe04030);
+      aimMesh.userData.mat.color.set(f.ok ? 0x7acb82 : 0xdc4a3c);
     }
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
+  coverPreview.frame(dt);
   for (const m of strikeMarks.values()) m.frame(m.t > 0, now);
   renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
-  renderFrame(cam, groundMesh); // shadows follow the view, board edge, far-edge blur on High
+  apron?.update();
+  renderFrame(cam, groundMesh); // shadows and haze follow the view
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });
 
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

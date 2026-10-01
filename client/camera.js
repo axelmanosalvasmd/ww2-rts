@@ -72,8 +72,9 @@ function band(fresh = false) {
   }
   return bandCache;
 }
-// The widest zoom: the distance and target at which the whole board, at the current heading, fits the clear band
-// with a small table margin on every side and sits in its middle. Cached until the heading, window, band or map changes.
+// The widest zoom: the distance and target at which the whole map, at the current heading, fits the clear band
+// with a small margin of the land around it (client/apron.js) on every side and sits in its middle. Cached until the
+// heading, window, band or map changes.
 const FIT_MARGIN = 0.04, MIN_WIDE = 60;
 let fitKey = '', fit = { dist: 150, x: 80, z: 80 };
 function wide() {
@@ -85,7 +86,7 @@ function wide() {
   const corners = [[0, 0], [w, 0], [w, h], [0, h]].map(([x, z]) => new THREE.Vector3(x, hooks.hAt(Math.min(x, w - 0.01), Math.min(z, h - 0.01)), z));
   const roomX = innerWidth * (1 - 2 * FIT_MARGIN), roomY = bottom - top - 2 * innerHeight * FIT_MARGIN;
   const middle = new THREE.Vector3(w / 2, hooks.hAt(w / 2, h / 2), h / 2);
-  // the board's box on screen, looking at its middle from dist
+  // the map's box on screen, looking at its middle from dist
   const box = (dist) => {
     cam.x = w / 2; cam.z = h / 2; cam.y = middle.y; cam.dist = dist; pose();
     const r = { ok: true, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
@@ -109,8 +110,8 @@ function wide() {
   Object.assign(cam, saved); pose();
   return fit;
 }
-// The target stays on the board. Zoomed out past half the widest view it is drawn toward the widest view's target,
-// so the widest view is the whole board, centered, and not a corner of it with the table filling the rest.
+// The target stays on the map. Zoomed out past half the widest view it is drawn toward the widest view's target,
+// so the widest view is the whole map, centered, and not a corner of it with the land past the edge filling the rest.
 function clamp() {
   const { cam } = hooks, { w, h } = hooks.bounds(), W = w || 160, H = h || 160, f = wide();
   const free = Math.min(1, Math.max(0, 2 * (1 - cam.dist / f.dist)));
@@ -189,7 +190,7 @@ function startIntro(skip) {
   const { cam } = hooks;
   cam.y = hooks.hAt(cam.x, cam.z);
   if (!skip) {
-    // the sweep starts on the whole board (the widest view) and settles on the start view
+    // the sweep starts on the whole map (the widest view) and settles on the start view
     const f = wide(), to = { ...cam };
     intro = { to, from: { x: f.x, z: f.z, y: hooks.hAt(f.x, f.z), dist: Math.max(f.dist, to.dist) }, age: 0 };
     Object.assign(cam, intro.from);

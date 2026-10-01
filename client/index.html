@@ -118,6 +118,8 @@
   #util button:hover { background: var(--cell-hi); border-color: var(--line); }
   #util .ico { width: 18px; height: 18px; }
   #util button[aria-pressed="true"] { background: rgba(214, 178, 94, 0.14); border-color: var(--line-hot); color: var(--brass); }
+  #util #controlsBtn { width: 42px; color: var(--brass); font-weight: 600; }
+  #util #controlsBtn kbd { margin-left: 2px; font-size: 11px; }
   #menu { position: absolute; top: calc(var(--gap) + 44px); left: var(--gap); display: grid; gap: 4px; padding: 6px; z-index: 20; background: var(--panel-solid); }
   #menu > button { text-align: left; }
   /* one volume for effects, voices and alerts (audio.js); M mutes */
@@ -287,6 +289,24 @@
   #alerts { position: absolute; right: var(--gap); bottom: calc(var(--mm) + 2 * var(--gap) + 5px); }
   #hint { position: absolute; bottom: calc(var(--card-h) + 2 * var(--gap)); left: 50%; transform: translateX(-50%); padding: 5px 12px; color: var(--text); pointer-events: none !important; white-space: nowrap; }
   #hint:empty { display: none; }
+  #controlsSheet { width: min(720px, calc(100vw - 24px)); max-width: none; max-height: min(82vh, 760px); padding: 0; overflow: hidden; color: var(--text); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 2px; }
+  #controlsSheet::backdrop { background: rgba(8, 10, 11, 0.72); }
+  #controlsSheet .sheet { max-height: min(82vh, 760px); overflow: auto; padding: 16px; }
+  #controlsSheet header { position: sticky; top: -16px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -16px -16px 12px; padding: 12px 16px; background: var(--panel-solid); border-bottom: 1px solid var(--line-soft); }
+  #controlsSheet h2 { margin: 0; font-size: 21px; }
+  #controlsSheet h3 { margin: 0 0 6px; color: var(--brass); font-size: 16px; }
+  #controlsSheet .sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; }
+  #controlsSheet section { min-width: 0; }
+  #controlsSheet dl { display: grid; grid-template-columns: minmax(92px, auto) minmax(0, 1fr); gap: 5px 10px; margin: 0; }
+  #controlsSheet dt { color: var(--dim); }
+  #controlsSheet dd { margin: 0; }
+  #controlsSheet p { margin: 0; }
+  @media (max-width: 560px) {
+    #controlsSheet { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+    #controlsSheet .sheet { max-height: calc(100dvh - 16px); padding: 12px; }
+    #controlsSheet header { top: -12px; margin: -12px -12px 10px; padding: 10px 12px; }
+    #controlsSheet .sheet-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  }
   #following { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); padding: 4px 10px; color: var(--text); font-size: 13px; pointer-events: none !important; white-space: nowrap; }
   #box { position: fixed; border: 1px solid rgba(226, 223, 211, 0.85); background: rgba(226, 223, 211, 0.08); pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
@@ -340,6 +360,7 @@
     <button id="menuBtn" title="Menu: restart, end or leave the match" aria-label="Menu"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M14 22L86 22L86 32L14 32ZM14 45L86 45L86 55L14 55ZM14 68L86 68L86 78L14 78Z"/></svg></button>
     <button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M8 8L38 8L38 17L17 17L17 38L8 38ZM92 8L92 38L83 38L83 17L62 17L62 8ZM8 92L8 62L17 62L17 83L38 83L38 92ZM92 92L62 92L62 83L83 83L83 62L92 62Z"/></svg></button>
     <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M6 14L94 14L94 86L6 86ZM13 21L87 21L87 79L13 79ZM38 28L38 68L47 60L53 73L59.5 70L53.5 57.5L65 57.5Z"/></svg></button>
+    <button id="controlsBtn" title="Controls and mouse help (F1)" aria-label="Controls, F1">? <kbd>F1</kbd></button>
   </div>
   <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
   <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
@@ -360,6 +381,59 @@
   <div id="hint" class="panel"></div>
   <div id="following" class="panel hidden"></div>
 </div>
+<dialog id="controlsSheet" aria-labelledby="controlsTitle">
+  <div class="sheet">
+    <header><h2 id="controlsTitle">Controls</h2><button id="controlsClose" type="button" aria-label="Close controls">Close <kbd>Esc</kbd></button></header>
+    <div class="sheet-grid">
+      <section><h3>Mouse</h3><dl>
+        <dt>Left click</dt><dd>Select a unit or building</dd>
+        <dt>Drag</dt><dd>Select units in a box</dd>
+        <dt>Shift + click / drag</dt><dd>Add to or remove from your selection</dd>
+        <dt>Double-click</dt><dd>Select nearby units of the same type; Ctrl/Command includes the whole map</dd>
+        <dt>Right-click</dt><dd>Move, attack, garrison, or interact with the target</dd>
+        <dt>Shift + right-click</dt><dd>Queue the order</dd>
+        <dt>Ctrl + right-click</dt><dd>Attack-move, fighting anything met along the way</dd>
+        <dt>Right-click-drag</dt><dd>Set a destination and facing for the formation; release to confirm</dd>
+        <dt>Wheel</dt><dd>Zoom at the cursor</dd>
+        <dt>Middle-drag</dt><dd>Rotate the camera</dd>
+        <dt>Map edge</dt><dd>Move the cursor to an edge to scroll</dd>
+        <dt>Minimap</dt><dd>Left-drag to move the camera; right-click to order</dd>
+        <dt>Alt + left-click</dt><dd>Ping a spot for your team</dd>
+        <dt>While aiming</dt><dd>Click to place or call in; move to aim direction. Right-click cancels</dd>
+      </dl></section>
+      <section><h3>Camera</h3><dl>
+        <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</dt><dd>Pan</dd>
+        <dt><kbd>Q</kbd> / <kbd>E</kbd></dt><dd>Rotate left / right</dd>
+        <dt><kbd>F1</kbd></dt><dd>Open or close this sheet</dd>
+        <dt><kbd>M</kbd></dt><dd>Mute or unmute audio</dd>
+      </dl></section>
+      <section><h3>Units and orders</h3><dl>
+        <dt><kbd>X</kbd> / <kbd>R</kbd></dt><dd>Stop / retreat selected units</dd>
+        <dt><kbd>F</kbd> / <kbd>G</kbd></dt><dd>Use a ready ability / aim attack-move</dd>
+        <dt><kbd>Shift+E</kbd></dt><dd>Unload the selected halftrack</dd>
+        <dt><kbd>Shift+C</kbd></dt><dd>Take cover</dd>
+        <dt><kbd>Shift+F</kbd>, <kbd>Shift+G</kbd>, <kbd>Shift+X</kbd></dt><dd>Toggle hold fire, hold position, auto-retreat</dd>
+        <dt><kbd>Ctrl+A</kbd></dt><dd>Select your whole army</dd>
+        <dt><kbd>.</kbd> / <kbd>Shift+.</kbd></dt><dd>Select next idle unit / all idle units</dd>
+        <dt><kbd>,</kbd></dt><dd>Select the next idle Engineer</dd>
+        <dt><kbd>Space</kbd> / <kbd>Shift+Space</kbd></dt><dd>Jump to newest alert or selection / follow selection</dd>
+        <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>Recall a control group; tap twice to center</dd>
+        <dt><kbd>Ctrl+1</kbd>–<kbd>Ctrl+9</kbd></dt><dd>Set a control group; Shift adds to it</dd>
+        <dt><kbd>H</kbd> / <kbd>Shift+H</kbd></dt><dd>Go home in Classic / set army rally point</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Clear selection, cancel aiming, or release captured mouse</dd>
+      </dl></section>
+      <section><h3>Recruiting and building</h3><dl>
+        <dt><kbd>Tab</kbd></dt><dd>Turn recruit letters on or off</dd>
+        <dt><kbd>QWERTASDFGZXCVB</kbd></dt><dd>Choose a card while recruiting; Shift + letter buys up to five</dd>
+        <dt><kbd>J</kbd>, <kbd>K</kbd>, <kbd>L</kbd>, <kbd>O</kbd>, <kbd>Y</kbd></dt><dd>Place Depot, Barracks, Motorpool, Airfield, Flak position in Classic</dd>
+        <dt><kbd>T</kbd> / <kbd>Shift+T</kbd></dt><dd>Place a trench / dig a trench line</dd>
+        <dt><kbd>Shift+Y/U/I/O/J/K/L/M</kbd></dt><dd>Place sandbags, wire, traps, nest, mines, bridge, fill ground, or demine</dd>
+        <dt>Field Hospital</dt><dd>Build from a builder squad's orders panel</dd>
+        <dt>Support keys</dt><dd><kbd>Z</kbd> Recon, <kbd>C</kbd> Artillery, <kbd>V</kbd> Strafe, <kbd>B</kbd> Smoke, <kbd>N</kbd> Bombing, <kbd>U</kbd> Dive, <kbd>P</kbd> Paratroops, <kbd>I</kbd> Air cover</dd>
+      </dl></section>
+    </div>
+  </div>
+</dialog>
 <div id="box" class="hidden"></div>
 <script type="module" src="/client/main.js"></script>
 </body>

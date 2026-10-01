@@ -25,8 +25,8 @@ const cylGeo = (n) => CYLS.get(n) || CYLS.set(n, new THREE.CylinderGeometry(1, 1
 const RUBBER = 0x2b3238, LINK = 0x3d444c, LINK_LIT = 0x5a626b, LINK_DARK = 0x30363d, IRON = 0x434c55, WHITE = 0xd3e3ec, BLACK = 0x17191c;
 const GUN = 0x59636c, LENS = 0xd5dde0, WOOD = 0x756d64, BRASS = 0xa99e77, INSIDE = 0x353c44, RED = 0xae555a, CANVAS = 0x6d6c58;
 // the factions' vehicle colors (main.js) as the paint that renders like them: US olive drab a little browner and
-// greyer, Soviet 4BO green cooler and darker, German panzer grey bluer
-const REPAINT = new Map([[0x59623d, 0x58634f], [0x4e5a38, 0x4b5f55], [0x50565a, 0x59626c]]);
+// greyer, Soviet 4BO green olive, German panzer grey neutral and a little warm
+const REPAINT = new Map([[0x59623d, 0x58634f], [0x4e5a38, 0x515f43], [0x50565a, 0x62615b]]);
 // what a part is made of where its color says it (iron fittings, handles, tires, links): the kit and flat() use it
 // unless a part names its material
 const MAT_OF = new Map([[IRON, 'gunmetal'], [BLACK, 'gunmetal'], [BRASS, 'gunmetal'], [WOOD, 'wood'], [RUBBER, 'rubber'], [CANVAS, 'canvas'],
@@ -303,6 +303,7 @@ function stuart(f) {
     GF.poly([[x, 1.07, 1.123], [x + 0.022, 1.07, 1.123], [x + 0.022, 1.5, 1.123], [x, 1.5, 1.123]], [0, 0, 1], dim(paint, 0.5));
     rivets(GF, [x - 0.05, 1.14, 1.123], [x - 0.05, 1.5, 1.123], 3, [0, 0, 1], dim(paint, 1.25), 0.018);
   }
+  rivets(GF, [-2.02, 1.09, 1.123], [2.08, 1.09, 1.123], 10, [0, 0, 1], dim(paint, 1.22), 0.02);
   G.add(GF.geometry());
   H.add(mirrorZ(G.geometry()));
 
@@ -473,6 +474,13 @@ function t70(f) {
   grille(HF, -1.8, -1.18, 0.26, 0.7, 1.504, 6, dim(paint, 0.82));
   grille(HF, -1.8, -1.18, -0.46, 0.1, 1.504, 6, dim(paint, 0.82));
   H.box(dim(paint, 1.06), 0.4, 0.04, 0.45, -0.86, 1.52, 0.42);
+  // weld seams on the sloping upper side plates, broken at the engine compartment joint
+  for (const side of [-1, 1]) {
+    const sideAt = (x, y) => [x, y, side * (0.88 - (y - 1.0) * 0.36 + 0.006)];
+    const normal = [0, 0.339, side * 0.941];
+    HF.poly([sideAt(-1.85, 1.06), sideAt(1.18, 1.06), sideAt(1.18, 1.082), sideAt(-1.85, 1.082)], normal, dim(paint, 0.6));
+    HF.poly([sideAt(-0.6, 1.06), sideAt(-0.578, 1.06), sideAt(-0.578, 1.43), sideAt(-0.6, 1.43)], normal, dim(paint, 0.65));
+  }
   H.add(HF.geometry());
 
   // turret: ring at x = 0.33, z = -0.24; welded octagonal walls leaning in (the front most), the cast mantlet,
@@ -548,8 +556,8 @@ function tiger(f) {
   const tz = 1.42, t = 0.14, R = 0.42, wy = t + R, stations = Array.from({ length: 8 }, (_, k) => 1.82 - k * 0.52);
   const sp = [2.65, 0.74, 0.5], id = [-2.71, 0.62, 0.34];
   // interleaved road wheels: the outer row on the even stations, the inner row half hidden behind it
-  const outer = roadWheel(R, 0.14, paint, { seg: 10, rim: 0.84, hub: 0.3 }), inner = roadWheel(R, 0.14, dim(paint, 0.78), { seg: 8, rim: 0.84, hub: 0.3 });
-  stations.forEach((x, k) => G.add(k % 2 ? inner : outer, 0xffffff, xf(x, wy, k % 2 ? tz - 0.12 : tz + 0.08)));
+  const outer = roadWheel(R, 0.14, paint, { seg: 10, rim: 0.76, hub: 0.3, tire: 0x252721 }), inner = roadWheel(R, 0.14, dim(paint, 0.68), { seg: 8, rim: 0.76, hub: 0.3, tire: 0x252721 });
+  stations.forEach((x, k) => G.add(k % 2 ? inner : outer, 0xffffff, xf(x, wy, k % 2 ? tz - 0.18 : tz + 0.15)));
   G.add(sprocketWheel(sp[2], 0.24, 18, paint), 0xffffff, xf(sp[0], sp[1], tz + 0.04));
   G.add(idler(id[2], 0.18, 8, paint), 0xffffff, xf(id[0], id[1], tz + 0.04));
   G.add(trackBelt([[sp[0], sp[1], 0.44], ...stations.map((x) => [x, wy, R]), [id[0], id[1], id[2]]], tz, 0.72, { thick: t, pitch: 0.24 }));
@@ -719,12 +727,12 @@ function zsu37(f) {
     const tilt = Math.atan(LEAN), nT = [N[0] * Math.cos(tilt), Math.sin(tilt), N[2] * Math.cos(tilt)];
     HF.poly([[a[0], Y0, a[1]], [ring[j][0], Y0, ring[j][1]], [oj[0], tj, oj[1]], [oi[0], ti, oi[1]]], nT, paint);
     // inside, darker, down to the floor
-    HF.poly([[fi[0], FLOOR, fi[1]], [fj[0], FLOOR, fj[1]], [ij[0], tj, ij[1]], [ii[0], ti, ii[1]]], [-nT[0], -nT[1], -nT[2]], dim(paint, 0.8));
+    HF.poly([[fi[0], FLOOR, fi[1]], [fj[0], FLOOR, fj[1]], [ij[0], tj, ij[1]], [ii[0], ti, ii[1]]], [-nT[0], -nT[1], -nT[2]], dim(paint, 0.9));
     // the top edge; the rear wall's carries the owner's color
     HF.poly([[oi[0], ti, oi[1]], [oj[0], tj, oj[1]], [ij[0], tj, ij[1]], [ii[0], ti, ii[1]]], [0, 1, 0], i === 2 ? f.color : dim(paint, 1.12), i === 2 ? 'plain' : undefined);
   });
   { const a = out(2, 2.28 - 0.04), b = out(3, 2.28 - 0.04), c = out(2, 2.28 - 0.16), d = out(3, 2.28 - 0.16); HF.poly([[a[0] - 0.004, 2.24, a[1]], [b[0] - 0.004, 2.24, b[1]], [d[0] - 0.004, 2.12, d[1]], [c[0] - 0.004, 2.12, c[1]]], [-1, 0, 0], f.color, 'plain'); }
-  HF.poly(ring.map((v, i) => inn(i, FLOOR)).map(([x, z]) => [x, FLOOR, z]), [0, 1, 0], dim(paint, 0.66));
+  HF.poly(ring.map((v, i) => inn(i, FLOOR)).map(([x, z]) => [x, FLOOR, z]), [0, 1, 0], dim(paint, 0.78));
   // ammunition: clip racks against the back wall, ready boxes by the gun
   for (const s of [1, -1]) {
     H.box(dim(paint, 0.72), 0.55, 0.3, 0.34, -1.25, FLOOR + 0.15, s * 0.95).box(dim(paint, 0.85), 0.24, 0.22, 0.3, -0.35, FLOOR + 0.11, s * 1.0);
@@ -750,6 +758,10 @@ function zsu37(f) {
   // the cradle with its recoil sleeve and the bulky breech
   T.box(dim(paint, 0.85), 1.3, 0.28, 0.3, ...along(0.05), 0, 0, 0, e, 'gunmetal').box(IRON, 0.62, 0.26, 0.26, ...along(-0.72), 0, 0, 0, e).cyl(IRON, 0.095, 0.7, ...along(0.78), 0, 0, e - Math.PI / 2, 8);
   T.box(BRASS, 0.32, 0.14, 0.1, ...along(-0.55, 0.19), 0, 0, 0, e).box(dim(BRASS, 0.8), 0.32, 0.04, 0.1, ...along(-0.55, 0.28), 0, 0, 0, e);
+  // breech block, sliding recoil rail and spent-case tray, visible from above the casemate
+  T.box(IRON, 0.32, 0.36, 0.38, ...along(-1.02), 0, 0, 0, e);
+  T.box(dim(paint, 1.06), 0.8, 0.06, 0.42, ...along(-0.58, -0.18), 0, 0, 0, e);
+  T.box(IRON, 0.48, 0.06, 0.46, ...along(-1.05, -0.3), 0, 0, 0, e);
   // the barrel and its slotted flash hider: a thin tube 0.42 long ringed by dark slots, open at the front
   const gL = 2.3, hL = 0.42, hr = 0.055 * 1.25;
   T.add(gunTube(gL - hL, 0.055, GUN, { lip: 0.03, lipR: 1.1 }), 0xffffff, xf(...along(0.5), 0, 0, 0, e));
@@ -759,10 +771,10 @@ function zsu37(f) {
   for (const up of [0.13, -0.11]) T.cyl(dim(paint, 0.8), 0.045, 0.9, ...along(0.85, up), 0, 0, 0, e - Math.PI / 2, 6);
   // The split shield, each half a front plate either side of the gun and a wing bent back from its outer edge, kept
   // low so the gun and its crew show over it; a sight, the hand wheels and seats.
-  const sh = 0.12, wa = 0.82, wl = 0.46, wx = 0.6 - (wl / 2) * Math.sin(wa), wz = 0.62 + (wl / 2) * Math.cos(wa), lean = 0.35 * Math.sin(sh);
+  const sh = 0.12, wa = 0.82, wl = 0.46, wx = 0.6 - (wl / 2) * Math.sin(wa), wz = 0.72 + (wl / 2) * Math.cos(wa), lean = 0.35 * Math.sin(sh);
   for (const s of [1, -1]) {
-    T.box(paint, 0.05, 0.8, 0.5, 0.6, 0.87, s * 0.37, 0, 0, sh).box(dim(paint, 1.12), 0.06, 0.03, 0.5, 0.6 - 0.4 * Math.sin(sh), 1.27, s * 0.37, 0, 0, sh);
-    T.box(dim(paint, 0.94), 0.05, 0.66, wl, wx, 0.82, s * wz, 0, -s * wa, sh).box(dim(paint, 1.12), 0.06, 0.03, wl, wx - lean * Math.cos(wa), 1.15, s * (wz - lean * Math.sin(wa)), 0, -s * wa, sh);
+    T.box(paint, 0.05, 0.58, 0.6, 0.6, 0.76, s * 0.42, 0, 0, sh).box(dim(paint, 1.12), 0.06, 0.03, 0.6, 0.6 - 0.29 * Math.sin(sh), 1.05, s * 0.42, 0, 0, sh);
+    T.box(dim(paint, 0.94), 0.05, 0.48, wl, wx, 0.71, s * wz, 0, -s * wa, sh).box(dim(paint, 1.12), 0.06, 0.03, wl, wx - lean * Math.cos(wa), 0.95, s * (wz - lean * Math.sin(wa)), 0, -s * wa, sh);
   }
   T.box(IRON, 0.2, 0.08, 0.06, ...along(0.0, 0.18), -0.22, 0, 0, e).cyl(IRON, 0.1, 0.03, -0.15, 0.62, -0.32, Math.PI / 2, 0, 0, 8).cyl(IRON, 0.08, 0.03, -0.25, 0.55, 0.32, Math.PI / 2, 0, 0, 8);
   T.box(dim(paint, 0.7), 0.22, 0.05, 0.2, -0.45, 0.5, 0.45).box(dim(paint, 0.7), 0.22, 0.05, 0.2, -0.45, 0.5, -0.45);

@@ -1,6 +1,6 @@
-// Graphics quality, 'high' or 'low', saved per browser. Low turns off the far-edge blur and screen shake and uses
-// cheaper shadows and fewer particles. High is the default; watchFps() drops to Low once (with a notice) when the game
-// runs under 45 fps for 5 seconds.
+// Graphics quality, 'high' or 'low', saved per browser. Low turns off screen shake, cloud shadows, weather and birds,
+// and uses cheaper shadows and fewer particles. High is the default; watchFps() drops to Low once (with a notice) when
+// the game runs under 45 fps for 5 seconds.
 const KEY = 'ww2-gfx', AUTO_KEY = 'ww2-gfx-auto';
 const store = (fn) => { try { return fn(); } catch { return null; } };
 const subs = new Set();

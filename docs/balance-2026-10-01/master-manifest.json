@@ -1,0 +1,19 @@
+{
+  "revision": "41eefe8",
+  "seedOption": 1,
+  "firstSeed": 100003,
+  "workersPerMode": 2,
+  "maxTotalWorkers": 4,
+  "conquestMatches": 300,
+  "classicMatches": 120,
+  "runnerRoot": "/Users/judiazm/.codex/worktrees/issues-behavior/ww2-rts",
+  "root": "/tmp/ww2-behavior-baseline",
+  "sha256": {
+    "shared/sim.js": "06020f3d789bf522a3d25478acb88d067b12bda00aa5fb07de1e1adf9d1ec977",
+    "shared/ai.js": "4120ba6c2f55afdd665b9aaa1996e3a98f8040cc480609a3de988df4246f08dd",
+    "shared/ai-view.js": "782df1e51e403e22d9ac60af9dae9cd6160fcd5312e67f6fc25913c1593571ac",
+    "shared/grid.js": "0a1678aac840b11de2da156d204e6c552b3fa0c92944edad515a68136ffc4ac5",
+    "maps/default.json": "c14d995823663d53337efb9b65d38ff3b614c8c5ca3c3f282e505dcb84a4c5ee"
+  },
+  "recordedUtc": "2026-10-01T22:07:36.283004+00:00"
+}

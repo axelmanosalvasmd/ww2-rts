@@ -1,0 +1,25 @@
+{
+  "recordedUtc": "2026-10-01T22:13:09.095495+00:00",
+  "source": "/Users/judiazm/.codex/worktrees/issues-integration/ww2-rts",
+  "frozenRoot": "/tmp/ww2-behavior-integrated-final",
+  "head": "41eefe8c45dc84f7ac14323f81b8b3f0908edc96",
+  "sharedStatus": "M  shared/ai.js\nA  shared/formation.js\nM  shared/sim.js\n",
+  "seedOption": 1,
+  "firstSeed": 100003,
+  "workersPerMode": 2,
+  "maxTotalWorkers": 4,
+  "conquestMatches": 300,
+  "classicMatches": 120,
+  "sha256": {
+    "shared/ai-view.js": "782df1e51e403e22d9ac60af9dae9cd6160fcd5312e67f6fc25913c1593571ac",
+    "shared/ai.js": "1614db36fd3086d579fcbeb3d46694e66a9719151734dc0a279f03f84760e16f",
+    "shared/command-feedback.js": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07",
+    "shared/formation.js": "f7560f8f0ee6bd320d905f4ea809376a8c2466b8f6e9652b6c1998d60b1682fe",
+    "shared/grid.js": "0a1678aac840b11de2da156d204e6c552b3fa0c92944edad515a68136ffc4ac5",
+    "shared/sim.js": "d7013427a04ee4189d9f4a4b73226870ee575bbe716be736c2f52ad0045bb61e",
+    "shared/story.js": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+    "shared/weather.js": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+    "maps/default.json": "c14d995823663d53337efb9b65d38ff3b614c8c5ca3c3f282e505dcb84a4c5ee",
+    "package.json": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+  }
+}

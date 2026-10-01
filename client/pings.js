@@ -31,7 +31,7 @@ function receive(m) {
 
 function remove(a) {
   a.mesh.removeFromParent();
-  // clickRing owns its material; its geometry and pencil texture are shared.
+  // clickRing owns its material; its geometry is shared.
   a.mesh.material.dispose();
 }
 
@@ -63,12 +63,7 @@ function drawMinimap(c, S) {
     c.globalAlpha = fade * (1 - phase);
     c.beginPath();
     const r = (4 + phase * 14) / S;
-    // Hold the uneven pencil stroke still while the ring grows.
-    for (let i = 0; i <= 40; i++) {
-      const angle = i / 40 * (Math.PI * 2 + 0.2), radius = r * (1 + 0.025 * Math.sin(3 * angle + 1.1));
-      const x = a.x + Math.cos(angle) * radius, z = a.z + Math.sin(angle) * radius;
-      if (i === 0) c.moveTo(x, z); else c.lineTo(x, z);
-    }
+    c.arc(a.x, a.z, r, 0, Math.PI * 2);
     c.strokeStyle = '#15160f'; c.lineWidth = 4 / S; c.stroke();
     c.strokeStyle = COLOR; c.lineWidth = 2 / S; c.stroke();
   }

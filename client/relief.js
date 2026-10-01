@@ -23,8 +23,6 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
   mesh.receiveShadow = true;
   mesh.castShadow = !low;
-  // client/light.js walks the board's edge with this to build the cut-earth sides (one column per surface step)
-  mesh.userData.edge = { hAt, step: CELL / S };
   const stats = { vertices: 0, triangles: 0, cliffEdges: 0, buildMs: 0, updateMs: 0, cellsUpdated: 0 };
   const baseValues = new Float32Array(25), baseDx = new Float32Array(25), baseDz = new Float32Array(25);
   const waterDx = new Float32Array(9), waterDz = new Float32Array(9);
@@ -402,7 +400,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
     rebuildGeometry(); stats.cellsUpdated = dirty.size; stats.updateMs = performance.now() - t0;
   }
 
-  // March against the exact table surface. A boundary crossing also catches vertical cliff walls.
+  // March against the exact terrain surface. A boundary crossing also catches vertical cliff walls.
   mesh.raycast = function (raycaster, hits) {
     const ray = raycaster.ray, o = ray.origin, d = ray.direction;
     let begin = Math.max(0, raycaster.near), end = raycaster.far;

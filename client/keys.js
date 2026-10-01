@@ -11,7 +11,6 @@ export const bindings = [
   binding('stance:holdFire', 'KeyF', 'Shift+F', 'Toggle hold fire', 'global', { shift: true }),
   binding('stance:holdPos', 'KeyG', 'Shift+G', 'Toggle hold position', 'global', { shift: true }),
   binding('stance:autoRetreat', 'KeyX', 'Shift+X', 'Toggle auto-retreat', 'global', { shift: true }),
-  binding('formation', 'KeyV', 'Shift+V', 'Cycle the move formation: block, line, column, wedge', 'global', { shift: true }),
   binding('mute', 'KeyM', 'M', 'Toggle audio'),
   binding('unload', 'KeyE', 'Shift+E', 'Unload the selected halftracks', 'global', { shift: true }),
   binding('alert', 'Space', 'Space', 'Jump to the newest alert, or center the selection'),
