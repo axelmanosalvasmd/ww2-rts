@@ -33,6 +33,7 @@ import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
+import { createAutocast } from './autocast.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -95,6 +96,7 @@ const connection = createConnection({
 });
 setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
 const sendCmd = (m) => connection.send(m);
+const autocast = createAutocast({ storage: local, send: sendCmd }); // remembered per unit type (client/autocast.js)
 connection.on('lobby', renderLobby);
 connection.on('start', receiveStart);
 connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
@@ -330,7 +332,7 @@ const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
 let lastStart = null;
 function startGame(m, restored = null) {
-  pings.reset();
+  pings.reset(); autocast.reset();
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
@@ -576,6 +578,7 @@ function applySnapshot(s) {
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
     v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
   }
+  autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {
     if (sh.kill && units.get(sh.t)) units.get(sh.t).killed = true;
     if (!airShot(sh)) continue;
@@ -691,6 +694,7 @@ const hud = createHud({
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
   retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
   select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
   selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
@@ -881,6 +885,8 @@ const actions = {
     if (hq) { selected.clear(); selected.add(hq.id); }
   },
   clear: () => selected.clear(), cancelAim,
+  recruitMode: () => classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()),
+  recruitOff: () => hud.setRecruit(false),
   army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
   idleEngineer: () => selection.findIdle(false, true),
   panForward: () => {}, panBack: () => {}, panLeft: () => {}, panRight: () => {}, rotateLeft: () => {}, rotateRight: () => {},
@@ -891,13 +897,22 @@ for (const { id } of bindings) {
   else if (kind === 'fort') actions[id] = () => startDig(value);
   else if (kind === 'build') actions[id] = () => startBuild(value);
   else if (kind === 'group') actions[id] = () => { selection.group(number, value, performance.now()); if (value !== 'recall') blip(990); };
+  else if (kind === 'card' || kind === 'cardMany') actions[id] = () => hud.pressCard(+value, kind === 'cardMany');
 }
+// In a match (not the lobby or the open menu) Tab belongs to the game: it toggles recruit mode and never moves focus.
+const inMatch = () => lobbyState?.state === 'play' && !$('hud').classList.contains('hidden') && $('menu').classList.contains('hidden');
+const keyContexts = () => [classicMode() ? 'classic' : 'army', ...(!inMatch() ? [] : hud.recruiting() ? ['recruit'] : hud.lettered() ? ['building'] : []), ...(targeting ? ['targeting'] : [])];
 addEventListener('keydown', (e) => {
   if (rig.skipIntro()) { e.preventDefault(); return; }
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   keys.add(e.code);
   if (EDIT) return;
-  const id = match(e, [classicMode() ? 'classic' : 'army', ...(targeting ? ['targeting'] : [])]);
+  if (e.code === 'Tab' && inMatch()) e.preventDefault();
+  const contexts = keyContexts();
+  let id = match(e, contexts);
+  if (id === 'recruitMode' && !inMatch()) return;
+  // a letter with no card under it (a Classic HQ has two, Conquest has 14 of the 15) keeps its usual meaning, camera keys included
+  if (id?.startsWith('card') && !hud.hasCard(+id.split(':')[1])) id = match(e, contexts.filter((c) => c !== 'building' && c !== 'recruit'));
   // Shortcuts that share camera codes must not also pan.
   if (id && !id.startsWith('pan') && !id.startsWith('rotate')) keys.delete(e.code);
   if (!id || !actions[id]) return;
