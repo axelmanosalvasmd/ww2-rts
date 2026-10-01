@@ -290,6 +290,11 @@ the HUD.
 - Bugs found while looking (fixed in slice 1): at 1600x900 the orders panel covers the recruit bar; Classic's
   "MP · Mun · Fuel" readout wraps to two lines; the lobby form spills past its card; the orders panel's HTML is rebuilt
   on every snapshot (10 Hz), which can eat clicks; mute only silences the voices.
+- As built, slice 1 (HUD): `client/hud.js` draws every panel; main.js hands it state and actions once (`createHud`).
+  The support calls are two rows of four (aviation added Dive Bomber, Paratroopers and Fighter Cover), with the plane
+  list (`#airPanel`) under them. The Command Card has a fourth group, Aircraft. The lobby kept the two-column layout
+  from the aviation work (map preview, army size), restyled as the manila card. Hotkeys: only T digs by key, since
+  Y, U, I and O went to the air calls and air buildings; the other forts are on the orders panel.
 
 ## Tech
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

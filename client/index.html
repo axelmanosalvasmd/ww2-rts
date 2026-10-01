@@ -5,102 +5,223 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Three Crossroads</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Stardos+Stencil:wght@400;700&display=swap" rel="stylesheet">
 <style>
+  /* Panel style E (DESIGN.md, Look and feel): a dark olive-charcoal strip holds the HUD; only the Command Card's unit
+     cards and the selection list are manila. Courier Prime for text, Stardos Stencil only for big numbers. */
   :root {
-    --ink: #e9e2cf; --dim: #a39b85; --panel: rgba(24, 24, 18, 0.86); --edge: #5b5540; --accent: #d9b44a;
+    --strip: rgba(34, 37, 27, 0.85); --strip-hi: rgba(255, 246, 214, 0.07); --edge: rgba(150, 140, 102, 0.45);
+    --text: #e6dcc0; --dim: #b4aa8e; --brass: #d2a849; --red: #b8322a; --red-hi: #e0574a;
+    --manila: #d8c69a; --manila-hi: #e7d9b4; --manila-edge: #a08c5f; --ink: #2b2418; --ink-dim: #5c4f37;
+    --type: 'Courier Prime', 'Courier New', ui-monospace, monospace; --stencil: 'Stardos Stencil', Impact, sans-serif;
+    /* layout: screen margin, minimap size, bottom-left column width, Command Card height (the hint sits above it) */
+    --gap: 8px; --mm: 184px; --left-w: 248px; --card-h: 138px;
     --p0: #3d7bd9; --p1: #e0b23a; --p2: #d94a3d;
   }
+  @media (min-width: 1600px) and (min-height: 860px) { :root { --mm: 228px; --left-w: 268px; --card-h: 146px; } }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1c16; color: var(--ink); font: 13px/1.4 'IBM Plex Mono', ui-monospace, monospace; user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1c16; color: var(--text); font: 14px/1.35 var(--type); user-select: none; }
   canvas { display: block; }
-  .stencil { font-family: 'Stardos Stencil', Impact, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; }
-  .panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 3px; }
-  button { font: inherit; color: var(--ink); background: #3b3a2c; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 12px; cursor: pointer; }
-  button:hover:not(:disabled) { background: #4d4b37; border-color: var(--accent); }
-  button:disabled { opacity: 0.4; cursor: default; }
-  select { font: inherit; color: var(--ink); background: #11110d; border: 1px solid var(--edge); border-radius: 3px; padding: 5px 6px; flex: 1; min-width: 0; }
-  a { color: var(--accent); }
-  #editor { position: fixed; top: 10px; left: 10px; width: 290px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; display: grid; gap: 8px; z-index: 5; }
-  #editor h2 { margin: 0; color: var(--accent); font-size: 20px; }
-  #editor label { display: grid; gap: 3px; }
-  .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .ed-tools button.on { border-color: var(--accent); background: #4d4b37; }
-  input { font: inherit; color: var(--ink); background: #11110d; border: 1px solid var(--edge); border-radius: 3px; padding: 6px 8px; }
+  .stencil, .num { font-family: var(--stencil); font-weight: 700; letter-spacing: 0.03em; }
+  .panel { background: var(--strip); border: 1px solid var(--edge); border-radius: 3px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35); }
+  button { font: inherit; color: var(--text); background: var(--strip-hi); border: 1px solid var(--edge); border-radius: 2px; padding: 6px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { background: rgba(255, 246, 214, 0.14); border-color: var(--brass); }
+  button:disabled { opacity: 0.42; cursor: default; }
+  select, input { font: inherit; color: var(--text); background: #16170f; border: 1px solid var(--edge); border-radius: 2px; padding: 5px 7px; }
+  select { flex: 1; min-width: 0; }
+  a { color: var(--brass); }
+  :focus { outline: none; }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  * { scrollbar-width: thin; scrollbar-color: #6e6748 transparent; }
+  kbd { display: inline-block; min-width: 17px; padding: 1px 3px; font: 700 13px/1.1 var(--type); text-align: center; color: var(--brass); background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(210, 168, 73, 0.55); border-radius: 2px; }
+  kbd:empty { display: none; }
+  .muted { color: var(--dim); }
+  .danger { color: var(--red-hi) !important; }
   .hidden { display: none !important; }
-
-  /* lobby: scrolls when taller than the window; nothing inside may grow wider than the card */
-  #overlay { position: fixed; inset: 0; display: flex; overflow: auto; background: radial-gradient(ellipse at center, rgba(40,38,28,0.7), rgba(10,10,8,0.95)); z-index: 10; padding: 16px; }
-  #overlay .card { margin: auto; width: min(860px, 100%); padding: 22px 24px; display: grid; gap: 14px; }
-  #overlay .card *, #overlay .card { min-width: 0; }
-  #overlay h1 { margin: 0; font-size: 34px; color: var(--accent); }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .cols section { display: grid; gap: 8px; align-content: start; }
-  .sec { margin: 6px 0 0; font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--edge); padding-bottom: 4px; }
-  .cols section > .sec:first-child { margin-top: 0; }
-  #mapPrev { display: flex; gap: 12px; align-items: flex-start; }
-  #mapCanvas { width: 150px; height: 150px; flex: none; border: 1px solid var(--edge); border-radius: 3px; background: #11110d; }
-  #mapInfo { display: grid; gap: 2px; font-size: 12px; }
-  #modeInfo { font-size: 12px; }
-  #start { flex: 1; font-size: 20px; padding: 10px; background: #5e4f1c; border-color: var(--accent); color: #fff3cf; }
-  #start:hover:not(:disabled) { background: #7a6624; }
-  .row > label { flex: none; min-width: 44px; }
   .row { display: flex; gap: 8px; align-items: center; }
   .row input { flex: 1; min-width: 0; }
-  #roster { display: grid; gap: 6px; }
-  .slot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: #11110d; border-radius: 3px; }
-  .slot select { flex: none; }
-  .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
-  .muted { color: var(--dim); }
-  .kick { padding: 0 6px; margin-left: 4px; }
+  .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); }
 
+  /* ---------- map editor (/?edit): only takes the fonts and colors ---------- */
+  #editor { position: fixed; top: 10px; left: 10px; width: 300px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; z-index: 5; font-size: 13px; }
+  #editor button { padding: 6px 8px; }
+  #edBrush { flex: none; }
+  #editor h2 { margin: 0; color: var(--brass); font-size: 22px; }
+  #editor label { display: grid; gap: 3px; }
+  .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .ed-tools button.on { border-color: var(--brass); background: rgba(210, 168, 73, 0.2); }
+
+  /* ---------- lobby: the room form as a manila order card ---------- */
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(46, 46, 32, 0.78), rgba(12, 12, 9, 0.96)); z-index: 10; padding: 16px; }
+  #overlay .card { width: min(880px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 26px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; color: var(--ink);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.05)), var(--manila); border: 1px solid var(--manila-edge); border-radius: 2px; box-shadow: 0 14px 50px rgba(0, 0, 0, 0.6); scrollbar-color: var(--manila-edge) transparent; }
+  #overlay h1 { margin: 0; font: 700 38px/1 var(--stencil); color: var(--ink); letter-spacing: 0.04em; }
+  #overlay #result { margin: 0; font: 700 28px/1.1 var(--stencil); color: var(--red); }
+  #overlay .muted { color: var(--ink-dim); }
+  #overlay .row > label { flex: none; width: 84px; font-weight: 700; }
+  #overlay input, #overlay select { color: var(--ink); background: var(--manila-hi); border-color: var(--manila-edge); }
+  #overlay select:disabled, #overlay input[readonly] { background: rgba(43, 36, 24, 0.07); }
+  #overlay button { color: var(--text); background: #33362a; border-color: #1f2118; }
+  #overlay button:hover:not(:disabled) { background: #444836; border-color: var(--ink); }
+  #overlay #start { flex: 1; padding: 10px; font: 700 20px/1 var(--stencil); letter-spacing: 0.04em; color: #f3e9cc; background: var(--ink); }
+  #overlay :focus-visible { outline-color: var(--red); }
+  #overlay a { color: var(--ink); }
+  #overlay hr { border: none; border-top: 1px dashed rgba(43, 36, 24, 0.45); margin: 0; }
+  #roster { display: grid; gap: 6px; }
+  .slot { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 28px; align-items: center; gap: 10px; padding: 6px 8px; background: rgba(43, 36, 24, 0.07); border: 1px dashed rgba(43, 36, 24, 0.35); border-radius: 2px; }
+  .slot.muted { display: block; }
+  .slot > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slot > span:nth-child(3) { display: flex; gap: 6px; margin-left: 0 !important; }
+  .slot select { flex: none; padding: 3px 5px; }
+  .kick { padding: 2px 8px; }
+  /* two columns: players and invite on the left, the battle (map preview, mode, army size) on the right */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .cols section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
+  .sec { margin: 6px 0 0; padding-bottom: 4px; font: 700 15px/1.1 var(--stencil); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); border-bottom: 1px dashed rgba(43, 36, 24, 0.45); }
+  .cols section > .sec:first-child { margin-top: 0; }
+  #mapPrev { display: flex; gap: 12px; align-items: flex-start; }
+  #mapCanvas { width: 150px; height: 150px; flex: none; border: 1px solid var(--manila-edge); border-radius: 2px; background: #11110d; }
+  #mapInfo { display: grid; gap: 2px; font-size: 13px; }
+  #modeInfo { font-size: 13px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---------- HUD ---------- */
   #hud { position: fixed; inset: 0; pointer-events: none; }
   #hud > * { pointer-events: auto; }
-  #scores { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px 10px; }
-  .score { width: 150px; }
-  .score .bar { height: 6px; background: #11110d; border-radius: 2px; overflow: hidden; margin-top: 4px; }
-  .score .bar > div { height: 100%; }
-  #econ { position: absolute; top: 10px; right: 10px; padding: 8px 12px; text-align: right; }
-  #econ .mp { font-size: 22px; color: var(--accent); }
-  #support { display: grid; gap: 4px; margin-top: 8px; }
-  #support button { display: flex; gap: 6px; justify-content: space-between; align-items: center; padding: 5px 8px; text-align: left; }
-  #support button span { color: var(--accent); font-size: 12px; margin-left: auto; }
-  #airPanel button { display: flex; gap: 6px; justify-content: space-between; padding: 3px 8px; font-size: 12px; }
-  #airPanel button span { color: var(--accent); } #airPanel button.on { border-color: var(--accent); }
-  #buy { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; }
-  #buy button { display: grid; gap: 2px; min-width: 104px; text-align: left; }
-  #buy button b { font-weight: 600; }
-  #buy button span { color: var(--accent); font-size: 12px; }
-  #buy .cardinfo { display: grid; gap: 2px; min-width: 150px; max-width: 220px; align-content: center; padding: 0 6px; }
-  #buy button small { font-size: 11px; }
-  #lowerleft { position: absolute; bottom: 10px; left: 10px; width: 280px; display: grid; gap: 6px; }
-  #selection { padding: 8px 10px; max-height: 40vh; overflow: auto; }
-  #abil { display: flex; gap: 6px; flex-wrap: wrap; }
-  #abil button { padding: 5px 8px; }
-  kbd { font: inherit; font-size: 11px; color: var(--accent); }
-  #selection:empty { display: none; }
-  .sel { display: flex; justify-content: space-between; gap: 8px; }
-  .tag { font-size: 11px; padding: 0 4px; border-radius: 2px; }
-  .tag.pin { background: #8a2b20; } .tag.sup { background: #7a6420; } .tag.cov { background: #2f5a2a; }
-  #help { position: absolute; top: 10px; left: 10px; padding: 8px 10px; color: var(--dim); font-size: 11px; max-width: 330px; }
-  #minimap { position: absolute; bottom: 10px; right: 10px; width: 210px; height: 210px; padding: 0; cursor: crosshair; }
-  #status { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--accent); }
+  #hud .hd { color: var(--dim); font-size: 13px; line-height: 1; margin: 0 0 6px 1px; white-space: nowrap; }
+
+  /* top left: menu, voices, fullscreen */
+  #util { position: absolute; top: var(--gap); left: var(--gap); display: flex; gap: 4px; padding: 4px; }
+  #util button { width: 32px; height: 30px; padding: 0; display: grid; place-items: center; }
+  #util .ico { width: 20px; height: 20px; }
+  /* the voices button shows an emoji set by main.js: draw it as a flat silhouette in the text color */
+  #mute { font-size: 15px; color: transparent; text-shadow: 0 0 0 var(--text); }
+  #menu { position: absolute; top: calc(var(--gap) + 46px); left: var(--gap); display: grid; gap: 6px; padding: 8px; z-index: 20; }
+
+  /* top center: score and clock */
+  /* centered between the top-left buttons and the resources. hud.js sets --n (teams) and --lead (clock block width):
+     team blocks share the room between 174px and 240px wide, and only five or more teams at 1366px wrap to a second row */
+  #top { position: absolute; top: var(--gap); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none !important; }
+  #top > * { pointer-events: auto; }
+  #scores { max-width: calc(100vw - 660px); display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 8px 4px; }
+  #scores > div { padding: 0 12px; min-width: 0; }
+  #scores > div + div { border-left: 1px solid var(--edge); }
+  .sc-lead { flex: none; width: 150px; display: grid; align-content: center; justify-items: center; text-align: center; }
+  .sc-mode { font-size: 13px; line-height: 1.2; color: var(--dim); }
+  .sc-clock { font-size: 28px; line-height: 1.05; color: var(--brass); }
+  .sc-team { flex: none; width: clamp(174px, calc((100vw - 668px - var(--lead, 0px)) / var(--n, 2)), 240px); }
+  .sc-p { display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 22px; }
+  .sc-p .mark { width: 20px; height: 20px; flex: none; }
+  .sc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .you { font-size: 13px; color: var(--brass); }
+  .sc-sub { display: flex; gap: 8px; font-size: 13px; color: var(--dim); padding-left: 18px; white-space: nowrap; }
+  .sc-held { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .sc-net { margin-left: auto; flex: none; }
+  .sc-role { font-size: 13px; color: var(--dim); }
+  .bar { height: 6px; background: rgba(0, 0, 0, 0.45); border-radius: 1px; overflow: hidden; margin-top: 5px; }
+  .bar > div { height: 100%; width: 0; transition: width 0.3s; }
+  .sc-val { display: flex; justify-content: center; align-items: baseline; gap: 6px; margin-top: 3px; font-size: 13px; color: var(--dim); white-space: nowrap; }
+  .sc-val .num { font-size: 18px; line-height: 1; color: var(--brass); }
+  .sc-val > span:empty { display: none; }
+  #status { padding: 6px 12px; color: var(--brass); }
   #status:empty { display: none; }
-  #hint { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--ink); pointer-events: none; }
+
+  /* top right: resources, income and army size, then the support calls */
+  #econ { position: absolute; top: var(--gap); right: var(--gap); padding: 8px 10px 10px; display: grid; justify-items: end; gap: 2px; }
+  .res { display: flex; gap: 14px; align-items: baseline; white-space: nowrap; }
+  .res > span { color: var(--dim); font-size: 13px; }
+  .res .num { font-size: 26px; line-height: 1; color: var(--brass); margin-right: 4px; }
+  #munRes .num, #fuelRes .num { font-size: 22px; }
+  #income { display: flex; gap: 12px; font-size: 13px; color: var(--dim); white-space: nowrap; }
+  /* eight calls since aviation: two rows of four */
+  #support { display: grid; grid-template-columns: repeat(4, 54px); gap: 4px; margin-top: 6px; }
+  /* your planes under the support calls: name, then what it is doing */
+  #airPanel { display: grid; gap: 3px; margin-top: 6px; min-width: 200px; }
+  #airPanel:empty { display: none; }
+  #airPanel button { display: flex; gap: 8px; justify-content: space-between; padding: 3px 8px; font-size: 13px; }
+  #airPanel button .st { color: var(--brass); white-space: nowrap; }
+  #airPanel button.on { border-color: var(--brass); background: rgba(210, 168, 73, 0.16); }
+
+  /* order and support buttons: an icon, its hotkey in the corner, the cost or cooldown underneath */
+  .ob { position: relative; width: 54px; height: 50px; padding: 4px 1px 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+  .ob .ico { width: 22px; height: 22px; flex: none; }
+  .ob .val:empty { display: none; }
+  .ob kbd { position: absolute; top: 2px; right: 2px; padding: 0 2px; min-width: 15px; }
+  .ob .val { font-size: 13px; line-height: 1; color: var(--brass); white-space: nowrap; min-height: 13px; }
+  .ob:disabled .val { color: var(--text); }
+  .ob .usym { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; color: var(--text); }
+  .ob .usym .sym { width: 18px; height: 18px; display: block; }
+
+  /* bottom left: the selection list (manila) and its orders */
+  #lowerleft { position: absolute; bottom: var(--gap); left: var(--gap); width: var(--left-w); max-height: calc(100vh - 64px); display: flex; flex-direction: column; gap: 6px; pointer-events: none !important; }
+  #lowerleft > * { pointer-events: auto; }
+  #selection, #abil { padding: 8px 6px 6px; }
+  #selection:empty, #abil:empty { display: none; }
+  #selection { min-height: 0; display: flex; flex-direction: column; }
+  #selection .list { min-height: 0; max-height: 40vh; overflow: auto; background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.04)), var(--manila); color: var(--ink); border: 1px solid var(--manila-edge); border-radius: 2px; scrollbar-color: var(--manila-edge) transparent; }
+  .srow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 7px; align-items: center; padding: 3px 7px; font-size: 14px; }
+  .srow + .srow { border-top: 1px dashed rgba(43, 36, 24, 0.28); }
+  .srow .sym { width: 28px; height: 28px; margin: -3px 0; }
+  .srow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .srow .ct { font-weight: 700; white-space: nowrap; }
+  .srow .tg, .srow .q { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 3px; font-size: 13px; }
+  .srow .tg:empty, .srow .q:empty { display: none; }
+  .srow .q { color: var(--ink-dim); }
+  .tag { font-size: 13px; line-height: 1.2; padding: 0 5px; border-radius: 2px; border: 1px solid rgba(43, 36, 24, 0.45); }
+  .tag.pin { background: var(--red); border-color: var(--red); color: #f6ecd6; }
+  .tag.sup { background: #a8741f; border-color: #a8741f; color: #f6ecd6; }
+  .tag.cov { background: #4f5d33; border-color: #4f5d33; color: #efe6cc; }
+  .vet { color: #8a5f0c; font-size: 13px; letter-spacing: 1px; }
+  #abil .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  #abil .ob { width: auto; }
+
+  /* bottom center: the Command Card, between the bottom-left column and the minimap */
+  #buy { position: absolute; bottom: var(--gap); left: calc(var(--left-w) + 2 * var(--gap)); right: calc(var(--mm) + 2 * var(--gap)); width: fit-content; max-width: calc(100vw - var(--left-w) - var(--mm) - 4 * var(--gap)); margin: 0 auto;
+    display: flex; align-items: flex-end; gap: 14px; padding: 8px 8px 7px; }
+  #buy:empty { display: none; }
+  #buy .grp { min-width: 0; }
+  #buy .grp + .grp { border-left: 1px solid var(--edge); padding-left: 14px; }
+  #buy .cards { display: flex; gap: 4px; }
+  .uc { width: clamp(80px, 5.9vw, 100px); padding: 4px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.05)), var(--manila); border: 1px solid var(--manila-edge); }
+  .uc:hover:not(:disabled) { background: var(--manila-hi); border-color: var(--ink); }
+  .uc:disabled { opacity: 0.55; }
+  .uc .nm { height: 2.3em; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 1.15; letter-spacing: -0.025em; overflow-wrap: anywhere; }
+  .uc .sym { width: 40px; height: 40px; flex: none; }
+  .uc .cost { font-size: 13px; font-weight: 700; line-height: 1.25; padding: 0 5px; white-space: nowrap; border: 1px solid rgba(43, 36, 24, 0.35); background: rgba(43, 36, 24, 0.1); border-radius: 2px; }
+  .uc .sub { font-size: 13px; line-height: 1.2; color: var(--ink-dim); text-align: center; }
+  .uc.broke .cost { color: var(--red); border-color: var(--red); }
+  .uc.wide { width: 136px; }
+  /* the recruit row (outside Classic) splits the room between its cards (hud.js sets --nc cards and --ng groups);
+     below about 78 px a card shows only its symbol and cost, the name stays in the tooltip */
+  #buy.fit .uc { container-type: inline-size; width: clamp(50px, calc((100vw - var(--left-w) - var(--mm) - 4 * var(--gap) - 18px - (var(--ng) - 1) * 29px - (var(--nc) - var(--ng)) * 4px) / var(--nc)), 100px); }
+  @container (max-width: 72px) { .uc .nm, .uc .cu { display: none; } }
+  .uc .nm kbd { margin-left: 6px; }
+  .uc kbd { color: var(--ink); background: rgba(43, 36, 24, 0.1); border-color: rgba(43, 36, 24, 0.5); }
+  .cinfo { width: 190px; align-self: stretch; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+  .ci-t { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+  .ci-t .sym { width: 30px; height: 30px; flex: none; }
+  .ci-s { color: var(--text); }
+  .ci-h { color: var(--dim); margin-top: auto; }
+  .cancel { display: grid; gap: 2px; align-self: center; border-color: var(--red); }
+  .cancel span { font-size: 13px; color: var(--dim); }
+
+  /* bottom right: the minimap; the alerts list (client/alerts.js) stacks just above it, so keep that slot free */
+  #minimap { position: absolute; bottom: var(--gap); right: var(--gap); width: var(--mm); height: var(--mm); padding: 0; cursor: crosshair; border: none; border-radius: 2px;
+    box-shadow: 0 0 0 4px rgba(34, 37, 27, 0.92), 0 0 0 5px var(--edge), 0 2px 14px 4px rgba(0, 0, 0, 0.4); }
+  #alerts { position: absolute; right: var(--gap); bottom: calc(var(--mm) + 3 * var(--gap)); }
+  #hint { position: absolute; bottom: calc(var(--card-h) + 2 * var(--gap)); left: 50%; transform: translateX(-50%); padding: 6px 12px; color: var(--text); pointer-events: none !important; white-space: nowrap; }
   #hint:empty { display: none; }
   #box { position: fixed; border: 1px solid #f3e7b0; background: rgba(243, 231, 176, 0.12); pointer-events: none; }
-
-  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } #help { display: none; } #minimap { width: 140px; height: 140px; bottom: 90px; } #scores { top: 64px; } .score { width: 100px; } #buy button { min-width: 0; } }
 </style>
 <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
 </head>
 <body>
 <div id="overlay">
-  <div class="card panel">
-    <div>
-      <h1 class="stencil">Three Crossroads</h1>
-      <h2 id="result" class="stencil hidden" style="margin:4px 0 0;font-size:26px"></h2>
-    </div>
+  <div class="card">
+    <h1>Three Crossroads</h1>
+    <h2 id="result" class="hidden"></h2>
     <div class="cols">
       <section>
         <h3 class="sec">Players</h3>
@@ -108,7 +229,7 @@
         <div id="roster"></div>
         <button id="addAi">+ Add AI player</button>
         <h3 class="sec">Invite</h3>
-        <div class="muted" style="font-size:12px">Send this link to friends. It always opens this room.</div>
+        <div class="muted">Send this link to friends. It always opens this room.</div>
         <div class="row"><input id="link" readonly><button id="copy">Copy</button></div>
         <div class="row"><label for="roomCode">Room</label><input id="roomCode" maxlength="12" title="Type a room code and press Join; leave it as main for the usual room"><button id="joinRoom">Join</button><button id="newRoom" title="A private room with a random code">New</button></div>
       </section>
@@ -129,22 +250,26 @@
 </div>
 
 <div id="hud" class="hidden">
-  <div id="scores" class="panel"></div>
-  <div id="econ" class="panel"><button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" style="float:left;padding:2px 7px">⛶</button><button id="mute" title="Unit voices (M)" style="float:left;padding:2px 7px;margin-left:4px">🔊</button><button id="menuBtn" title="Menu: restart, end or leave the match" style="float:left;padding:2px 7px;margin-left:4px">☰</button><div class="mp stencil" id="mp">0</div><div class="muted" id="income"></div><div id="support"></div><div id="airPanel" style="display:grid;gap:3px;margin-top:6px"></div></div>
-  <div id="menu" class="panel hidden" style="position:absolute;top:60px;right:10px;display:grid;gap:6px;z-index:20"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button></div>
-  <div id="buy" class="panel"></div>
-  <div id="lowerleft"><div id="abil"></div><div id="selection" class="panel"></div></div>
-  <div id="help" class="panel">
-    Drag: select · Right-click: move / attack / enter or shell a house<br>
-    Ctrl+right-click or G: attack-move · Minimap: click to look, right-click to move<br>
-    WASD / edges: pan · Q/E: rotate · Wheel: zoom<br>
-    R: retreat (heals at base) · F: ability · T: dig trench · X: stop · H: home<br>
-    Z: recon · C: artillery · V: strafe · B: smoke · N: bombing<br>
-    Aim: click center, move to rotate, click to launch<br>
-    Ctrl+1-9: set group (⛶ fullscreen in a browser, or Shift+1-9) · 1-9: recall · Space: focus
+  <div id="util" class="panel">
+    <button id="menuBtn" title="Menu: restart, end or leave the match" aria-label="Menu"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9h20M6 16h20M6 23h20"/></svg></button>
+    <button id="mute" title="Unit voices (M)" aria-label="Unit voices">🔊</button>
+    <button id="fullscreen" title="Fullscreen: also lets Ctrl+1-9 set groups" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7"/></svg></button>
   </div>
-  <div id="status" class="panel"></div>
-  <canvas id="minimap" width="210" height="210" class="panel"></canvas>
+  <div id="menu" class="panel hidden"><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><button id="leaveBtn">Leave game</button></div>
+  <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
+  <div id="econ" class="panel">
+    <div class="res">
+      <span title="Manpower: buys units, fortifications and support"><b class="num" id="mp">0</b>MP</span>
+      <span id="munRes" class="hidden" title="Munitions: support calls and abilities. Hold points to earn them"><b class="num" id="mun">0</b>Mun</span>
+      <span id="fuelRes" class="hidden" title="Fuel: vehicles. Depots on the contested nodes and the HQ earn it"><b class="num" id="fuel">0</b>Fuel</span>
+    </div>
+    <div id="income"><span id="incRate" title="Income per second"></span><span id="popCount" title="Army size: units fielded and in training, out of the cap"></span></div>
+    <div id="support"></div>
+    <div id="airPanel"></div>
+  </div>
+  <div id="buy" class="panel"></div>
+  <div id="lowerleft"><div id="selection" class="panel"></div><div id="abil" class="panel"></div></div>
+  <canvas id="minimap" width="240" height="240"></canvas>
   <div id="hint" class="panel"></div>
 </div>
 <div id="box" class="hidden"></div>

@@ -5,6 +5,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New HUD, "sand table" look (slice 1 of the look and feel work):
+  - A dark olive strip holds the panels; the unit cards and the selection list are manila cards. Courier Prime for
+    text, Stardos Stencil for the big numbers (MP, clock, VP).
+  - Score and clock top center, with faction markings next to player names; resources, income, army size and the
+    eight support calls (two rows of icon buttons with their hotkeys) top right; your planes and what each is doing
+    listed under them (click one to select it); selection list and an icon grid of orders bottom left; the Command
+    Card bottom center; menu, voices and fullscreen in a small bar top left.
+  - Military map symbols (infantry box with an X, armor with an oval, and so on) on the Command Card, the selection
+    list and the orders. Tooltips give the full unit name and its role; hotkeys show on the buttons.
+  - Command Card groups: Infantry, Support weapons, Vehicles and Aircraft (Fighter and Ground-attack Plane).
+  - The lobby is a manila order card and keeps its two columns (Players and Invite, Battle with the map preview, mode
+    description and army size).
+  - The always-on keybinding panel is gone; the hotkeys are on the buttons.
+  - Fixed: the HUD rebuilt its buttons 10 times a second, which could eat clicks (orders, Command Card, air panel).
+    At 1600x900 the orders panel covered the recruit bar. Classic's MP / Mun / Fuel readout wrapped to two lines.
+    Engineers now get the fortification buttons too.
+  - Left for later: Fighter, Ground-attack Plane, Mobile Flak, Airfield and Flak Emplacement have no map symbol yet
+    (blank frame). Y, U, I and O build sandbags, wire, traps and the MG nest only from the orders panel: those keys
+    were already taken by the flak emplacement, dive bomber, fighter cover and airfield, so only T digs by key.
 - Army size in the lobby (host picks): Standard (as before), Large (2.5x unit limit, 3x income) or Massive (5x unit
   limit, 6x income: MP, Munitions, Fuel and starting MP). The AI buys several units at a time in big games. With 6 AIs
   on Six Fronts, Massive peaked at about 240 units (Conquest) and 270 (Classic); the server stayed under 8 ms per tick

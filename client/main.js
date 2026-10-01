@@ -1,6 +1,6 @@
 import * as THREE from 'three';
+import { createHud } from './hud.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, TERRAIN, MOVE, BUILDABLE, levelOf, levelChar, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS } from '/shared/sim.js';
-import { unitRole } from './unit-roles.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -21,7 +21,6 @@ const isVeh = (type) => !UNITS[type].infantry;
 const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const roleText = (type) => esc(unitRole(type, UNITS[type].name));
 const $ = (id) => document.getElementById(id);
 const tryStore = (fn) => { try { return fn(); } catch { return null; } };
 
@@ -1017,141 +1016,25 @@ function lob(from, x, z) {
 
 // ---------- HUD ----------
 
-const SUPPORT_KEYS = { recon: 'Z', artillery: 'C', strafe: 'V', smoke: 'B', bombing: 'N', dive: 'U', para: 'P', cover: 'I' };
-const SUPPORT_TIP = { dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops a rifle squad where your side can see (counts toward pop)', cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)', recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward', smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks' };
-function buildSupportBar() {
-  $('support').innerHTML = SUPPORT_TYPES.map(k => `<button data-k="${k}" title="${SUPPORT_TIP[k]}">${SUPPORT[k].name} <kbd>${SUPPORT_KEYS[k]}</kbd><span></span></button>`).join('');
-  $('support').querySelectorAll('button').forEach(b => (b.onclick = () => aimSupport(b.dataset.k)));
-}
+// client/hud.js draws the panels; it reads the match state and calls back into these actions
+const hud = createHud({
+  get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; },
+  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
+  retreat: () => retreat(), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'),
+  dig: (k) => startDig(k), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
+  builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k),
+  select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
+});
+function buildSupportBar() { hud.buildSupport(); }
 function aimSupport(k) {
   const { cur, cost } = supCost(lastSnap ?? {}, k);
   if (!lastSnap || lastSnap.sup[k] > 0 || !(lastSnap[cur] >= cost)) return;
   setAim(k); blip(700);
 }
-
-function buildBuyBar() {
-  cardKey = '';
-  if (classicMode()) { $('buy').innerHTML = ''; $('buy').classList.add('hidden'); return; } // Classic: command card instead
-  $('buy').classList.remove('hidden');
-  $('buy').innerHTML = UNIT_TYPES.filter(t => canBuild(t, facOf(me)) && (!UNITS[t].classic || classicMode())).map(t => `<button data-unit="${t}" title="${roleText(t)}"><b>${look(me).names[t] ?? UNITS[t].name}</b><span>${UNITS[t].cost} MP</span><small class="muted">${roleText(t)}</small></button>`).join('');
-  $('buy').querySelectorAll('button').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.unit }); blip(520); }));
-}
-
-function updateHud(s) {
-  const held = (slot) => s.points.filter(p => p[0] === slot).length;
-  if (s.mode?.kind === 'assault') {
-    const clock = `${Math.floor(s.mode.timeLeft / 60)}:${String(s.mode.timeLeft % 60).padStart(2, '0')}`, mine = teams[me] ?? me;
-    const bunkers = [...units.values()].filter(v => v.type === 'bunker');
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">Assault · ${clock}</div>
-      <div class="muted">${mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker'}</div></div>` +
-      [...new Set(teams)].map(t => {
-        const mem = names.map((_, i) => i).filter(i => teams[i] === t), def = t === s.mode.defenderTeam;
-        const hp = bunkers.filter(b => teams[b.owner] === t).reduce((a, b) => a + b.hp, 0), max = bunkers.filter(b => teams[b.owner] === t).length * UNITS.bunker.hpPer;
-        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span></div>
-          <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-          <div class="muted">${def ? 'Defending' : 'Attacking'}</div>
-          ${def ? `<div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">Bunker ${Math.ceil(hp)} / ${max}</div>` : ''}</div>`;
-      }).join('');
-  } else if (s.mode?.kind === 'annihilation') {
-    const bunkers = [...units.values()].filter(v => v.type === 'bunker');
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">Annihilation</div><div class="muted">Destroy every enemy bunker. Last side standing wins</div></div>` +
-      [...new Set(teams)].map(t => {
-        const mem = names.map((_, i) => i).filter(i => teams[i] === t), own = bunkers.filter(b => teams[b.owner] === t);
-        const hp = own.reduce((a, b) => a + b.hp, 0), max = mem.length * UNITS.bunker.hpPer;
-        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>`).join('')}
-          ${own.length ? `<div class="bar"><div style="width:${hp / max * 100}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${own.length} bunker${own.length > 1 ? 's' : ''} · ${Math.ceil(hp)} / ${max}</div>` : '<span class="tag pin">OUT</span>'}</div>`;
-      }).join('');
-  } else if (s.mode?.kind === 'classic') {
-    const hqs = [...units.values()].filter(v => v.type === 'hq');
-    const t = s.mode.timeLeft, clock = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-    $('scores').innerHTML = `<div class="score"><div class="stencil" style="color:var(--accent)">${s.mode.suddenDeath ? 'Sudden death' : 'Classic · ' + clock}</div><div class="muted">${s.mode.suddenDeath ? 'No building or training. Bases crumble: last one standing wins' : `Destroy every enemy HQ, Barracks and Motor Pool. Sudden death in ${clock}`}</div></div>` +
-      [...new Set(teams)].map(t => {
-        const mem = names.map((_, i) => i).filter(i => teams[i] === t), mine = hqs.filter(b => teams[b.owner] === t);
-        const hp = mine.reduce((a, b) => a + b.hp, 0), max = mine.length * UNITS.hq.hpPer, hidden = !mine.length && mem.some(i => !s.out?.[i]);
-        return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span>${s.out?.[i] ? '<span class="tag pin" style="margin-left:auto">OUT</span>' : `<span class="muted" style="margin-left:auto">${held(i)}⚑</span>`}</div>
-          <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-          ${hidden ? '<div class="muted">HQ out of sight</div>' : `<div class="bar"><div style="width:${max ? hp / max * 100 : 0}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">HQ ${Math.ceil(hp)} / ${max || UNITS.hq.hpPer}</div>`}</div>`;
-      }).join('');
-  } else
-  // one card per team: its players, then the team's combined VP (that's what wins)
-  $('scores').innerHTML = [...new Set(teams)].map(t => {
-    const mem = names.map((_, i) => i).filter(i => teams[i] === t), vp = mem.reduce((a, i) => a + s.vp[i], 0);
-    return `<div class="score">${mem.map(i => `<div class="row"><span class="swatch" style="background:${css(COLORS[i])}"></span><span>${esc(names[i])}</span><span class="muted" style="margin-left:auto">${held(i)}⚑</span></div>
-    <div class="muted" style="font-size:11px">${s.online?.[i] === false ? '<span class="tag pin">OFFLINE · clock paused</span>' : s.ping?.[i] === -1 ? 'AI' : s.ping?.[i] != null ? `${s.ping[i]} ms` : ''}</div>`).join('')}
-    <div class="bar"><div style="width:${Math.min(100, vp / winVp(teams) * 100)}%;background:${css(COLORS[mem[0]])}"></div></div><div class="muted">${vp} / ${winVp(teams)} VP</div></div>`;
-  }).join('');
-  drawPlans();
-  const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
-  $('airPanel').innerHTML = (s.air ?? []).map(([id, st, fuel, ammo, timer]) => { const v = units.get(id); return v ? `<button data-plane="${id}" class="${selected.has(id) ? 'on' : ''}">${look(me).names[v.type] ?? UNITS[v.type].name} <span>${AIR_STATE[st]}${st === 2 ? ` ${fuel}s` : st === 4 ? ` ${timer}s` : ''}</span></button>` : ''; }).join('');
-  $('airPanel').querySelectorAll('[data-plane]').forEach(b => (b.onclick = () => { selected.clear(); selected.add(+b.dataset.plane); updateHud(lastSnap); }));
-  const pop = [...units.values()].filter(v => v.owner === me && !UNITS[v.type].structure).length + [...units.values()].reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
-  $('mp').textContent = s.mun !== undefined ? `${s.mp} MP · ${s.mun} Mun · ${s.fuel} Fuel` : `${s.mp} MP`;
-  $('support').querySelectorAll('button').forEach(b => {
-    const k = b.dataset.k, cd = s.sup[k], { cur, cost } = supCost(s, k);
-    b.disabled = cd > 0 || !(s[cur] >= cost);
-    b.querySelector('span').textContent = cd > 0 ? `${cd}s` : `${cost} ${cur === 'mun' ? 'Mun' : 'MP'}`;
-  });
-  $('income').textContent = `+${s.inc}/s${s.upkeep ? ` (upkeep −${s.upkeep})` : ''} · ${pop}/${popCap(s)} units`;
-  if (s.mode?.kind === 'classic') drawCard(s, pop);
-  else $('buy').querySelectorAll('button').forEach(b => (b.disabled = s.mp < UNITS[b.dataset.unit].cost || pop >= popCap(s)));
-  $('selection').innerHTML = [...selected].map(id => units.get(id)).filter(Boolean).map(v => {
-    const def = UNITS[v.type], tags = [v.flags & 256 ? '<span class="tag cov">HIDDEN</span>' : '', v.flags & 1 ? '<span class="tag">RETREAT</span>' : '', v.flags & 8 ? '<span class="tag cov">REINFORCING</span>' : '', v.flags & 2 ? '<span class="tag sup">SUPPRESSIVE</span>' : '', v.flags & 4 ? '<span class="tag pin">AP LOADED</span>' : '', v.supp >= 90 ? '<span class="tag pin">PINNED</span>' : v.supp >= 50 ? '<span class="tag sup">SUPPRESSED</span>' : '', v.garr ? '' : v.cover === 2 ? '<span class="tag cov">TRENCH</span>' : v.cover === 3 ? '<span class="tag cov">BY COVER</span>' : v.cover ? '<span class="tag cov">COVER</span>' : '', v.flags & 16 ? '<span class="tag">DIGGING</span>' : '', v.flags & 32 ? '<span class="tag cov">GARRISONED</span>' : '', v.flags & 64 ? '<span class="tag">ATTACK-MOVE</span>' : '', v.vet ? `<span style="color:#ffd24a">${'★'.repeat(v.vet)}</span>` : ''].join(' ');
-    if (def.building) return `<div class="sel"><span>${def.name}</span><span>${v.built < 1 ? `<span class="tag">BUILDING ${Math.round(v.built * 100)}%</span> ` : ''}${Math.ceil(v.hp)}hp</span></div>` +
-      (v.queue?.length ? `<div class="sel muted"><span>Training ${look(v.owner).names[v.queue[0]] ?? UNITS[v.queue[0]].name} ${Math.round(v.prog * 100)}%</span><span>${v.queue.length}/5</span></div>` : '');
-    return `<div class="sel"><span>${look(v.owner).names[v.type] ?? UNITS[v.type].name}</span><span>${tags} ${isVeh(v.type) ? Math.ceil(v.hp) + 'hp' : Math.ceil(v.hp / def.hpPer) + '/' + def.models}</span></div>`;
-  }).join('');
-  // ability bar for the current selection
-  const sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  const types = PRIORITY.filter(t => sel.some(v => v.type === t)), fType = fKeyType();
-  const amove = sel.length ? `<button data-a="amove">Attack-move <kbd>G</kbd></button>` : '';
-  const dig = types.some(t => CFG.fortBuilders.includes(t)) ? Object.entries(FORTS).map(([k, f]) => `<button data-a="fort:${k}" ${lastSnap?.mp >= f.cost ? '' : 'disabled'}>${f.name} <kbd>${FORT_KEYS[k]}</kbd> ${f.cost}</button>`).join('') : '';
-  if (sel.some(v => UNITS[v.type].building)) { $('abil').innerHTML = ''; return; } // buildings use the command card
-  $('abil').innerHTML = sel.length ? `<button data-a="retreat">Retreat <kbd>R</kbd></button>` + amove + dig + types.map(t => {
-    const ready = sel.filter(v => v.type === t && !v.cd).length, cd = Math.min(...sel.filter(v => v.type === t).map(v => v.cd || 0));
-    const mun = lastSnap ? abCost(lastSnap, UNITS[t].ab) : 0, broke = mun && !(lastSnap.mun >= mun);
-    return `<button data-a="${t}" ${ready && !broke ? '' : 'disabled'}>${UNITS[t].ab.name}${t === fType ? ' <kbd>F</kbd>' : ''}${ready ? '' : ` ${cd}s`}${mun ? ` ${mun} Mun` : ''}</button>`;
-  }).join('') : '';
-  $('abil').querySelectorAll('button').forEach(b => (b.onclick = () => (b.dataset.a === 'retreat' ? retreat() : b.dataset.a.startsWith('fort:') ? startDig(b.dataset.a.slice(5)) : BUILDABLE.includes(b.dataset.a) ? startBuild(b.dataset.a) : b.dataset.a === 'amove' ? setAim('amove') : useAbility(b.dataset.a))));
-}
-
-// Classic command card (bottom center): what the selection can make. A building shows the units it trains and its
-// queue; Engineers show the buildings they can put up. Rebuilt only when the selection changes (rebuilding it every
-// snapshot would eat clicks), otherwise just refreshed.
-let cardKey = '';
-const priceText = (s, t) => { const pr = priceOf(s, t); return `${pr.mp} MP` + (pr.fuel ? ` + ${pr.fuel} Fuel` : ''); };
-const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets', airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
-function drawCard(s, pop) {
-  const card = $('buy'), sel = [...selected].map(id => units.get(id)).filter(Boolean);
-  const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === me ? sel[0] : null, eng = !bld && builders().length > 0;
-  const name = (t) => look(me).names[t] ?? UNITS[t].name, key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : '';
-  if (key !== cardKey) {
-    cardKey = key;
-    card.classList.toggle('hidden', !key);
-    if (bld && bld.built < 1) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted">Under construction <span data-built></span></span><small class="muted">Right-click it with Engineers to help</small></div><button data-cancel><b>Cancel</b><span>75% back</span></button>`;
-    else if (bld) card.innerHTML = `<div class="cardinfo"><b>${UNITS[bld.type].name}</b><span class="muted" data-queue></span><small class="muted">Right-click the ground: rally point</small></div>`
-      + (UNITS[bld.type].makes ?? []).filter(t => canBuild(t, facOf(me))).map(t => `<button data-train="${t}" title="${roleText(t)}"><b>${name(t)}</b><span>${priceText(s, t)} · ${UNITS[t].train}s</span><small class="muted">${roleText(t)}</small></button>`).join('');
-    else if (eng) card.innerHTML = BUILDABLE.map(k => `<button data-build="${k}"><b>${UNITS[k].name} <kbd>${BUILD_KEYS[k]}</kbd></b><span>${UNITS[k].cost} MP · ${UNITS[k].buildTime}s</span><small class="muted" data-note>${BUILD_ROLE[k]}</small></button>`).join('');
-    else card.innerHTML = '';
-    const id = bld?.id;
-    card.querySelectorAll('[data-train]').forEach(b => (b.onclick = () => { sendCmd({ t: 'buy', unit: b.dataset.train, from: id }); blip(520); }));
-    card.querySelectorAll('[data-cancel]').forEach(b => (b.onclick = () => { sendCmd({ t: 'cancel', id }); selected.clear(); blip(300); }));
-    card.querySelectorAll('[data-build]').forEach(b => (b.onclick = () => startBuild(b.dataset.build)));
-  }
-  if (bld && bld.built < 1) card.querySelector('[data-built]').textContent = Math.round(bld.built * 100) + '%';
-  if (bld && bld.built >= 1) {
-    const q = bld.queue ?? [];
-    card.querySelector('[data-queue]').textContent = q.length ? `Training ${name(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(name).join(', ')}` : '') : 'Idle';
-    card.querySelectorAll('[data-train]').forEach(b => { const pr = priceOf(s, b.dataset.train); b.disabled = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel || pop >= popCap(s) || q.length >= 5; });
-  }
-  if (eng) card.querySelectorAll('[data-build]').forEach(b => {
-    const k = b.dataset.build, need = UNITS[k].needs && !owns(UNITS[k].needs);
-    b.disabled = !canPlace(k);
-    b.querySelector('[data-note]').textContent = need ? `Needs a ${UNITS[UNITS[k].needs].name}` : BUILD_ROLE[k];
-  });
-}
+function buildBuyBar() { hud.buildCard(); }
+function updateHud(s) { drawPlans(); hud.update(s); }
 
 // the builder squad nearest the clicked spot puts the fortification across its approach
-const FORT_KEYS = { trench: 'T', sandbags: 'Y', wire: 'U', traps: 'I', nest: 'O' };
 let fortKind = 'trench';
 const diggers = () => [...selected].map(id => units.get(id)).filter(v => v && CFG.fortBuilders.includes(v.type) && !(v.flags & 1));
 function startDig(kind) { if (diggers().length && lastSnap?.mp >= FORTS[kind].cost) { fortKind = kind; setAim('dig'); $('hint').textContent = `Click where to build the ${FORTS[kind].name.toLowerCase()} · right-click cancels`; blip(600); } }
@@ -1199,7 +1082,6 @@ function drawPlans() {
 
 // Engineers put Supply Depots on resource nodes: J, then click near a node
 const builders = () => [...selected].map(id => units.get(id)).filter(v => v && v.type === 'engineer' && !(v.flags & 1));
-const BUILD_KEYS = { depot: 'J', barracks: 'K', motorpool: 'L', airfield: 'O', flakpos: 'Y' };
 const owns = (type, done = true) => [...units.values()].some(v => v.owner === me && v.type === type && (!done || v.built >= 1));
 const canPlace = (k) => lastSnap?.mp >= UNITS[k].cost && (!UNITS[k].needs || owns(UNITS[k].needs));
 function startBuild(k) { if (builders().length && canPlace(k)) { setAim(k); blip(600); } }
