@@ -977,7 +977,7 @@ export function createEffects({ scene, camera, cam, hAt, units, colorOf = () => 
         const d = i * (w.every ?? 0.5);
         if (from) {
           from.root.updateWorldMatrix(true, false);
-          v3.set(1.05, 0.87, 0).applyMatrix4(from.root.matrixWorld);
+          v3.set(1.1, 1.12, 0).applyMatrix4(from.root.matrixWorld); // the top of the tube (client/models/guns.js mortarGun)
           later(d, E_ROCKET, v3.x, v3.y, v3.z, v3.x + (sh.x - from.x) * 0.15, v3.y + 40, v3.z + (sh.z - from.z) * 0.15, 0.6, 0);
           snd('mortar', d, from.x, from.z);
         }

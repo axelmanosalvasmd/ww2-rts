@@ -3852,10 +3852,11 @@ console.log('all wheeled model checks passed');
 
 // Crew-served guns (client/models/guns.js): every weapon of every faction is one shadow-casting mesh inside its triangle
 // budget with faces that agree with their normals, guns that traverse carry their muzzle in v.fxTip, the muzzles sit where
-// client/fx.js starts its tracers and shells, and the crew stands clear of the gun.
+// client/fx.js starts its tracers and shells, the crew stands clear of the gun, and a cheap far version (one mesh under 500
+// triangles) takes over with the far-away soldiers.
 {
   const THREE = await import('three');
-  const { buildModel } = await import('./client/unit-models.js');
+  const { buildModel, animate } = await import('./client/unit-models.js');
   const { gunModel, GUN_SLOTS } = await import('./client/models/guns.js');
   const looks = [{ uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, { uniform: 0x5c6266, vehicle: 0x50565a, color: 0xcc3a2e }, { uniform: 0x7d7250, vehicle: 0x4e5a38, color: 0xece6d6 }];
   const nearest = (geo, p, off = [0, 0, 0], minY = -1) => {
@@ -3865,11 +3866,11 @@ console.log('all wheeled model checks passed');
     return best;
   };
   for (const type of ['mg', 'mortar', 'at', 'flak']) for (const fac of [0, 1, 2]) {
-    const label = `${type} (faction ${fac})`, look = looks[fac], root = new THREE.Group(), v = { type, root, models: [], turret: null };
+    const label = `${type} (faction ${fac})`, look = looks[fac], root = new THREE.Group(), v = { type, root, models: [], turret: null, x: 0, z: 0 };
     buildModel(v, root, look, fac, UNITS[type]);
-    // the weapon is every mesh under the root outside the soldiers (their nodes carry a formation slot)
+    // the weapon is every visible mesh under the root outside the soldiers (their nodes carry a formation slot)
     const meshes = [];
-    for (const o of root.children) if (!o.userData.slot) o.traverse((m) => { if (m.isMesh) meshes.push(m); });
+    for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) meshes.push(m); });
     assert.equal(meshes.length, 1, `${label}: the gun is one draw call`);
     assert.ok(meshes[0].castShadow, `${label}: the gun casts a shadow`);
     const geo = meshes[0].geometry, I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, tris = I.count / 3;
@@ -3891,8 +3892,18 @@ console.log('all wheeled model checks passed');
       assert.ok(nearest(geo, v.fxTip) < 0.15, `${label}: v.fxTip sits on the end of the barrel (${nearest(geo, v.fxTip).toFixed(2)} m)`);
     } else assert.ok(!v.turret, `${label}: a static weapon`);
     if (type === 'mg') assert.ok(nearest(geo, [1.72, 0.45, 0]) < 0.08, `${label}: the muzzle is where fx.js starts the tracers`);
-    if (type === 'mortar') assert.ok(nearest(geo, [1.05, 0.87, 0]) < 0.1, `${label}: the tube mouth is where fx.js launches the shell`);
+    if (type === 'mortar') assert.ok(nearest(geo, [1.1, 1.12, 0]) < 0.1, `${label}: the tube mouth is where fx.js launches the shell`);
     for (const [sx, sz] of GUN_SLOTS[type]) assert.ok(nearest(geo, [sx * 1.3, 0.3, sz * 1.3], [pivot[0], 0, pivot[2]], 0.15) >= 0.4, `${label}: crew slot ${sx},${sz} stands clear of the gun`);
+    // far away the cheap version is the one drawn
+    const farGeo = gunModel(type, fac, look).far, farMeshes = [];
+    assert.ok(farGeo && farGeo.index.count / 3 <= 500, `${label}: a far version under 500 triangles`);
+    assert.ok(farGeo.attributes.position.array.every(Number.isFinite) && farGeo.attributes.color, `${label}: the far version is finite and painted`);
+    animate(v, 0, new THREE.Vector3(0, 160, 160));
+    for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) farMeshes.push(m); });
+    assert.ok(farMeshes.length === 1 && farMeshes[0] !== meshes[0] && farMeshes[0].geometry.index.count / 3 <= 500, `${label}: one cheap draw call far away`);
+    animate(v, 0, new THREE.Vector3(0, 8, 8));
+    const backNear = []; for (const o of root.children) if (!o.userData.slot) o.traverseVisible((m) => { if (m.isMesh) backNear.push(m); });
+    assert.ok(backNear.length === 1 && backNear[0] === meshes[0], `${label}: the full gun is back when the camera comes close`);
   }
   for (const fac of [0, 1, 2]) {
     const geo = gunModel('flakpos', fac, looks[fac]).geo;
