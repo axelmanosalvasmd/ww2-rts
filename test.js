@@ -3913,4 +3913,40 @@ console.log('all wheeled model checks passed');
 }
 console.log('all gun model checks passed');
 
+// Aircraft (client/models/planes.js): every plane of every faction fits its triangle budget with its propellers (about
+// 60 triangles a blade and a blur disc each in client/aircraft.js), its faces agree with its normals, every vertex
+// says what it is made of, and the owner's colour stays a small marking instead of covering the paint.
+{
+  const THREE = await import('three');
+  const { plane, ROLES, PLANE_NAMES } = await import('./client/models/planes.js');
+  const { MATS, PLAIN, UNSET } = await import('./client/models/geom.js');
+  const BUDGET = { fighter: 3500, attacker: 3500, bomber: 6000, transport: 6000 }, OWN = 0xff00ff;
+  for (const fac of [0, 1, 2]) for (const role of ROLES) {
+    const p = plane(fac, role, OWN), geo = p.geo, label = PLANE_NAMES[fac][role];
+    const I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, col = geo.attributes.color, mat = geo.attributes.matId;
+    const tris = I.count / 3 + p.props.reduce((s, q) => s + q.n * 60 + 36, 0) + 2;
+    assert.ok(tris <= BUDGET[role], `${label}: ${tris} triangles with its propellers (budget ${BUDGET[role]})`);
+    assert.ok(geo.attributes.camo && geo.attributes.hinge && mat, `${label}: carries the camo, hinge and matId attributes`);
+    assert.ok(mat.array.every((m) => m === PLAIN || m === UNSET || (Number.isInteger(m) && m >= 0 && m < MATS.length)), `${label}: every matId is a material, plain or the default`);
+    // the owner's colour here is magenta, darkened a little by the ambient occlusion: no paint is anything like it
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+    const own = (k) => col.getX(k) > 0.5 && col.getZ(k) > 0.5 && col.getY(k) < 0.15 && Math.abs(col.getX(k) - col.getZ(k)) < 0.05;
+    let inward = 0, area = 0, owned = 0;
+    for (let i = 0; i < I.count; i += 3) {
+      const v = [I.getX(i), I.getX(i + 1), I.getX(i + 2)];
+      a.fromBufferAttribute(P, v[0]); b.fromBufferAttribute(P, v[1]); c.fromBufferAttribute(P, v[2]);
+      const face = b.clone().sub(a).cross(c.clone().sub(a)), s = face.length() / 2;
+      area += s;
+      if (v.every(own)) owned += s;
+      if (s < 1e-7) continue;
+      n.set(0, 0, 0);
+      for (const k of v) n.add(new THREE.Vector3().fromBufferAttribute(N, k));
+      if (face.dot(n) <= 0) inward++;
+    }
+    assert.ok(inward <= I.count / 3 * 0.002, `${label}: ${inward} faces point against their normals`);
+    assert.ok(owned > 0 && owned / area < 0.06, `${label}: the owner's colour covers ${(100 * owned / area).toFixed(1)}% of the plane`);
+  }
+}
+console.log('all aircraft model checks passed');
+
 await stopServerHarness(); // the last server check is done
