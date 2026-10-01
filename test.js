@@ -3092,7 +3092,7 @@ for (const lookupFinished of [false, true]) {
 // soldier as one draw, postures blend and keep the weapon above ground, and corpses stay under the cap.
 {
   const THREE = await import('three');
-  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies } = await import('./client/unit-models.js');
+  const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT } = await import('./client/unit-models.js');
   const box = new THREE.BoxGeometry(1, 1, 1);
   const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
   assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
@@ -3114,6 +3114,7 @@ for (const lookupFinished of [false, true]) {
     const root = new THREE.Group(), v = { type, root, models: [], turret: null };
     buildModel(v, root, look, fac, def);
     assert.ok(v.models.length, `${type}: has a model`);
+    root.traverse((o) => { if (o.isMesh && o.material === PAINT) assert.ok(o.geometry.attributes.matId, `${type}: every painted mesh says what it is made of (model textures)`); });
     if (v.squad) {
       assert.equal(v.models.length, def.models, `${type}: one soldier per model`);
       for (const man of v.models) {
@@ -3777,6 +3778,22 @@ console.log('all availability checks passed');
   const grey = new THREE.Color(0x808080), tire = new THREE.Color(0x2b2a26);
   assert.ok(colorsOf(mine).has([tire.r * grey.r, tire.g * grey.g, tire.b * grey.b].map((v) => v.toFixed(4)).join()), 'merge: paint times the shape color');
   assert.equal(bb.attributes.color, undefined, 'merge leaves its inputs alone');
+
+  // materials for the model textures: a shape's own ids win, a merge item's or part's mat fills what it left unset,
+  // crease keeps them, and mergeParts bakes the grime into the fraction without changing the id
+  const id = (name) => G.MATS.indexOf(name), idsOf = (g) => new Set([...g.attributes.matId.array].map(G.baseMat));
+  assert.throws(() => G.matId('chrome'), /unknown model material/, 'matId: a misspelled material throws');
+  assert.deepEqual(idsOf(w), new Set([id('rubber'), G.UNSET]), 'wheel: a rubber tire, the disc left to the model');
+  const onHull = G.merge([{ geo: w, mat: 'armor-paint' }, { geo: G.tag(bb, 'plain'), mat: 'wood' }]);
+  assert.deepEqual(idsOf(onHull), new Set([id('rubber'), id('armor-paint'), G.PLAIN]), 'merge: mat fills only the unset vertices');
+  assert.deepEqual(idsOf(G.crease(onHull, 40)), idsOf(onHull), 'crease keeps the material ids');
+  assert.ok(G.track(4, 0.45, 40).attributes.matId.array.every((v) => v === id('track-steel')), 'track: links are track steel');
+  const baked = mergeParts([{ geo: w, matrix: G.xf(0, 0.5), color: new THREE.Color(0xffffff) }, { geo: bb, matrix: G.xf(0, 3), color: new THREE.Color(0x2a2a24) }], true, 'vehicle');
+  const M = baked.attributes.matId, PY = baked.attributes.position, grime = (i) => (M.getX(i) - G.baseMat(M.getX(i))) * 2;
+  assert.deepEqual(idsOf(baked), new Set([id('rubber'), id('armor-paint'), id('gunmetal')]), 'mergeParts: unset takes the look default, near-black paint is gunmetal');
+  let floor = 0, roof = 1;
+  for (let i = 0; i < M.count; i++) { assert.ok(grime(i) >= 0 && grime(i) < 1, 'grime stays in its fraction'); if (PY.getY(i) < 0.1) floor = Math.max(floor, grime(i)); if (PY.getY(i) > 3) roof = Math.min(roof, grime(i)); }
+  assert.ok(floor > 0.8 && roof < 0.4, `mud at the bottom (${floor.toFixed(2)}), only dust up top (${roof.toFixed(2)})`);
 
   // markings: flat at the lift, facing +z, areas add up (no overlaps), the colors asked
   const s = G.star(1, { lift: 0.02 }), S = s.attributes.position, SN = s.attributes.normal;

@@ -246,6 +246,24 @@ The concept images show richer models than ours; the models stay procedural, so 
 the HUD. Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
 lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
 still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
+- Model textures (`client/model-textures.js`): units are textured so they read as weathered real equipment, not
+  painted toys. Twelve seamless layers generated with gpt-image-2 (`client/textures/models/`, 512 px: painted armor,
+  cast armor, gunmetal, track steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint, mud) sit in one
+  texture array. The shared materials (PAINT, the plane body and blades) sample each fragment's layer with triplanar
+  mapping in the model's own space (after the posture morphs, so nothing swims on a turning turret or a prone
+  soldier). The texture's light and dark scale the vertex color, so faction paint, markings and the owner color keep
+  their hue; paint is faded a little and mottled with broad blotches, and some layers (track steel, wood, leather)
+  bring part of their own color. Grime is baked per vertex at merge time by height: a dust film everywhere and dried
+  mud clumps on lower hulls, wheels, tracks and boots (none on planes). No extra draw calls; on Low, and until the
+  textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade) is in
+  `LAYERS` at the top of the module.
+- Tagging what a part is made of: `part(geo, paint, sx, sy, sz, x, y, z, mat)` in `client/unit-models.js`,
+  `{ geo, color, matrix, mat }` items in `geom.merge()`, or `tag(geo, mat)`. `mat` is a name from `MATS` in
+  `client/models/geom.js` or `'plain'` (no texture: faces, glass, the soldier's base). A shape's own tags win over the
+  item's `mat`, so a wheel keeps its rubber tire (`wheel()` and `track()` tag their tires and links). Untagged parts
+  take the model's default from `LOOKS` (painted armor on vehicles and guns, wool on soldiers, aircraft paint on
+  planes); near-black colorless paint becomes gunmetal. A mesh drawn with PAINT without going through `mergeParts`
+  gets the default material and no grime: put its geometry in `part(geo, 0xffffff)` and bake it instead.
 - Screens: designed at 1920x1080, must fit 1366x768 without overlap. No phone layout. 60 fps target on laptop graphics.
 - Graphics setting (menu): High / Low, saved per browser. Low drops the edge blur, uses cheaper shadows and fewer
   particles. Defaults to High; switches itself to Low with a one-line notice if the game runs under 45 fps for 5 s.

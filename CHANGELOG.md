@@ -5,6 +5,31 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Textured units (toward a realistic look instead of painted toys):
+  - Soldiers, tanks, wheeled vehicles, guns and planes now show real surface detail: worn and chipped paint on armor,
+    scratched gunmetal, rusty track links, rubber tires, wool uniforms, wood and canvas, plus a dust film and dried mud
+    that build up toward the ground on hulls, wheels, tracks and boots. Faction paint, markings and owner colors keep
+    their hue; the texture adds the wear, and paint is a little faded so nothing looks candy-colored.
+  - Twelve seamless textures generated with gpt-image-2 (painted armor, cast armor, gunmetal, track steel, rubber,
+    wood, canvas, wool, leather, aluminum, aircraft paint, mud; 512 px, about 1.1 MB in all) in
+    `client/textures/models/`, packed into one texture array and mapped from three sides in each model's own space,
+    so nothing swims when a turret turns or a squad lies down.
+  - No extra draw calls or triangles: a tank is still 2 draws, a rifle squad 5, one faction's full lineup 57.
+    Graphics Low turns the textures off (models look as before and cost nothing more), and so does the moment before
+    they finish loading.
+  - Soldier uniforms on the current models are more muted (olive drab, field grey, Soviet khaki) and helmets take
+    less of the owner's color.
+  - Model building: a part can say what it is made of (`part(..., mat)`, `merge()` items with `mat`, `tag()`; names in
+    `MATS` in `client/models/geom.js`), see DESIGN.md. Toolkit wheels tag their tires as rubber and tracks their links
+    as track steel. Model viewer: `&tex=0` shows a unit without textures; the header says whether they are on.
+  - Measured in headless Chrome, which only has SwiftShader (software rendering, so texture filtering is far slower
+    than on a real GPU): a dense 42-unit battle at 1280x720 keeps 205 draw calls and 200,906 triangles and takes
+    about 2.9 s per frame with textures against 1.45 s without (2x; the first version was 2.6x before the shader
+    skipped faint triplanar sides, reads the mud layer only where mud clumps can show and skips far-off pixels).
+    Frame rate on real graphics cards is not measured yet.
+  - Left for later: the model families still have to tag their parts (faces and the infantry base as plain, cast
+    turrets, tracks built without `track()`, canvas, wood); until then those parts take the default (painted armor on
+    vehicles, wool on soldiers). The airfield uses the near-flat aircraft paint. Graphics Low has no texture at all.
 - Interface cleanup (checked with the Impeccable detector, now clean): alerts, connection banners and the match strip
   under the scores lose the colored stripe down their left side. An alert's kind now shows in its text color (light red
   for trouble, brass for a point won), a lost connection gets a red border all round, and being out of the match is a

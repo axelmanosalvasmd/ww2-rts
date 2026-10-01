@@ -6,9 +6,38 @@
 // merge and ao) also carry a linear 'color' attribute. mergeParts in client/unit-models.js multiplies a part's
 // paint with that attribute, so a painted shape goes into part() with white (0xffffff) to keep its own colors,
 // or with a paint to tint it. Plain shapes take their paint from part() like the built-in boxes.
+// What a part is made of (painted armor, rubber, wood...) rides along the same way in a 'matId' attribute: see
+// MATS below. wheel() and track() tag their rubber and track links themselves.
 // Axes follow the unit models: +x forward, +y up. Only 'three' is imported, so the browser and the Node tests
 // load this file the same way.
 import * as THREE from 'three';
+
+// ---------------------------------------------------------------- materials
+
+// What a part is made of, for the model textures (client/model-textures.js): one layer of the texture array each,
+// in this order. 'plain' takes no texture (faces, glass); a part with no material takes the model's default
+// (painted armor on vehicles and guns, wool on soldiers, aircraft paint on planes).
+// The per-vertex 'matId' attribute holds the index here, PLAIN or UNSET. merge() items take `mat` (a name) for
+// the vertices their shape left UNSET, so a wheel keeps its rubber tire whatever its disc is made of; tag() sets
+// every vertex. mergeParts in client/unit-models.js works the same way with part(..., mat).
+export const MATS = ['armor-paint', 'cast-armor', 'gunmetal', 'track-steel', 'rubber', 'wood', 'canvas', 'wool', 'leather', 'aluminum', 'aircraft-paint', 'mud'];
+export const PLAIN = -1, UNSET = -2;
+// the id of a material name (null or undefined: UNSET); unknown names throw, so a typo shows up at once
+export function matId(name) {
+  if (name == null) return UNSET;
+  if (name === 'plain') return PLAIN;
+  const i = MATS.indexOf(name);
+  if (i < 0) throw new Error(`unknown model material "${name}" (plain or one of ${MATS.join(', ')})`);
+  return i;
+}
+// A copy of geo made entirely of material `mat` (a MATS name or 'plain').
+export function tag(geo, mat) {
+  const g = geo.clone();
+  g.setAttribute('matId', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count).fill(matId(mat)), 1));
+  return g;
+}
+// a vertex's material id with any baked grime (the fraction mergeParts adds) dropped
+export const baseMat = (v) => Math.floor(v + 0.25);
 
 const TAU = Math.PI * 2;
 const v3 = (p) => (p.isVector3 ? p.clone() : new THREE.Vector3(p[0], p[1], p[2]));
@@ -29,12 +58,12 @@ export function xf(x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx,
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
 }
 
-// Indexed triangle builder: v() adds a vertex (optional normal and color), tri() and quad() take corners in
-// counter-clockwise order seen from outside.
+// Indexed triangle builder: v() adds a vertex (optional normal, color and material id), tri() and quad() take
+// corners in counter-clockwise order seen from outside.
 function builder() {
-  const pos = [], nor = [], col = [], idx = [];
+  const pos = [], nor = [], col = [], mat = [], idx = [];
   return {
-    v(x, y, z, n, c) { pos.push(x, y, z); if (n) nor.push(n.x, n.y, n.z); if (c) col.push(c.r, c.g, c.b); return pos.length / 3 - 1; },
+    v(x, y, z, n, c, m) { pos.push(x, y, z); if (n) nor.push(n.x, n.y, n.z); if (c) col.push(c.r, c.g, c.b); if (m !== undefined) mat.push(m); return pos.length / 3 - 1; },
     tri(a, b, c) { idx.push(a, b, c); },
     quad(a, b, c, d) { idx.push(a, b, c, a, c, d); },
     geometry() {
@@ -42,6 +71,7 @@ function builder() {
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       if (nor.length === pos.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
       if (col.length === pos.length) g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      if (mat.length * 3 === pos.length) g.setAttribute('matId', new THREE.Float32BufferAttribute(mat, 1));
       g.setIndex(idx);
       return g;
     },
@@ -50,10 +80,10 @@ function builder() {
 
 // Rebuild normals with a crease angle: faces that meet at less than `angle` degrees shade smoothly, sharper
 // edges stay hard. Vertices at the same spot are welded first, so lathe seams and extrude walls shade as one
-// surface. Degenerate triangles (lathe tips) are dropped. Keeps vertex colors, drops uv. 1 gives flat faces,
-// 180 smooths everything.
+// surface. Degenerate triangles (lathe tips) are dropped. Keeps vertex colors and material ids, drops uv.
+// 1 gives flat faces, 180 smooths everything.
 export function crease(geo, angle = 40) {
-  const P = geo.attributes.position, C = geo.attributes.color, I = geo.index, q = 1e5;
+  const P = geo.attributes.position, C = geo.attributes.color, M = geo.attributes.matId, I = geo.index, q = 1e5;
   const ids = new Map(), pid = new Int32Array(P.count), wp = [];
   for (let i = 0; i < P.count; i++) {
     const x = P.getX(i), y = P.getY(i), z = P.getZ(i), k = `${Math.round(x * q)},${Math.round(y * q)},${Math.round(z * q)}`;
@@ -83,9 +113,10 @@ export function crease(geo, angle = 40) {
       for (let j = 0; j < list.length; j += 2) { const g = faces[list[j]]; if (g.n.dot(f.n) >= cos) sum.addScaledVector(g.n, g.w[list[j + 1]]); }
       if (sum.lengthSq() < 1e-24) sum.copy(f.n); else sum.normalize();
       if (C) col.setRGB(C.getX(f.s[k]), C.getY(f.s[k]), C.getZ(f.s[k]));
-      const key = `${f.p[k]}|${Math.round(sum.x * 1e3)},${Math.round(sum.y * 1e3)},${Math.round(sum.z * 1e3)}` + (C ? `|${Math.round(col.r * 1e3)},${Math.round(col.g * 1e3)},${Math.round(col.b * 1e3)}` : '');
+      const m = M ? M.getX(f.s[k]) : undefined;
+      const key = `${f.p[k]}|${Math.round(sum.x * 1e3)},${Math.round(sum.y * 1e3)},${Math.round(sum.z * 1e3)}` + (C ? `|${Math.round(col.r * 1e3)},${Math.round(col.g * 1e3)},${Math.round(col.b * 1e3)}` : '') + (M ? `|${m}` : '');
       let v = seen.get(key);
-      if (v === undefined) { const w = wp[f.p[k]]; v = out.v(w.x, w.y, w.z, sum, C ? col : null); seen.set(key, v); }
+      if (v === undefined) { const w = wp[f.p[k]]; v = out.v(w.x, w.y, w.z, sum, C ? col : null, m); seen.set(key, v); }
       idx.push(v);
     }
   }
@@ -93,9 +124,10 @@ export function crease(geo, angle = 40) {
   return out.geometry();
 }
 
-// Join geometries ({geo, matrix or m, color} or bare geometries) into one indexed geometry: transforms baked in,
-// normals through the normal matrix, winding flipped for mirrored transforms. With `colored`, each vertex gets the
-// item color (default white) times the geometry's own color.
+// Join geometries ({geo, matrix or m, color, mat} or bare geometries) into one indexed geometry: transforms baked
+// in, normals through the normal matrix, winding flipped for mirrored transforms. With `colored`, each vertex gets
+// the item color (default white) times the geometry's own color, and a material id: the geometry's own, or the
+// item's `mat` where it has none (UNSET without either).
 function combine(items, colored) {
   const parts = items.map((it) => (it.isBufferGeometry ? { geo: it } : it)).map((p) => {
     if (p.geo.attributes.normal) return p;
@@ -104,16 +136,19 @@ function combine(items, colored) {
   });
   let nv = 0, ni = 0;
   for (const { geo } of parts) { const c = geo.attributes.position.count; nv += c; ni += geo.index ? geo.index.count : c; }
-  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = colored ? new Float32Array(nv * 3) : null;
+  const tagged = colored || parts.some((p) => p.mat != null || p.geo.attributes.matId);
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = colored ? new Float32Array(nv * 3) : null, mat = tagged ? new Float32Array(nv) : null;
   const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3(), c = new THREE.Color(), one = new THREE.Matrix4();
   let vo = 0, io = 0;
   for (const p of parts) {
     const m = p.matrix ?? p.m ?? one, P = p.geo.attributes.position, N = p.geo.attributes.normal, C = p.geo.attributes.color, I = p.geo.index, base = tint(p.color);
+    const M = p.geo.attributes.matId, fill = matId(p.mat);
     nm.getNormalMatrix(m);
     for (let i = 0; i < P.count; i++) {
       t.fromBufferAttribute(P, i).applyMatrix4(m).toArray(pos, (vo + i) * 3);
       t.fromBufferAttribute(N, i).applyMatrix3(nm).normalize().toArray(nor, (vo + i) * 3);
       if (col) { c.copy(base); if (C) { c.r *= C.getX(i); c.g *= C.getY(i); c.b *= C.getZ(i); } c.toArray(col, (vo + i) * 3); }
+      if (mat) { const own = M ? M.getX(i) : UNSET; mat[vo + i] = baseMat(own) === UNSET ? fill : own; }
     }
     const flip = m.determinant() < 0, n = I ? I.count : P.count;
     for (let i = 0; i < n; i += 3) {
@@ -126,14 +161,16 @@ function combine(items, colored) {
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (col) g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  if (mat) g.setAttribute('matId', new THREE.BufferAttribute(mat, 1));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   g.computeBoundingSphere();
   return g;
 }
 
-// Many parts as one vertex-colored geometry: [{geo, color, matrix}] like mergeParts(parts, true) takes, where color
-// is a number, string or THREE.Color (default white) and multiplies the geometry's own colors. `m` works for
-// `matrix`, and a bare geometry counts as an untransformed white part.
+// Many parts as one vertex-colored geometry: [{geo, color, matrix, mat}] like mergeParts(parts, true) takes, where
+// color is a number, string or THREE.Color (default white) and multiplies the geometry's own colors, and mat (a MATS
+// name or 'plain') is what the part is made of where its shape does not say. `m` works for `matrix`, and a bare
+// geometry counts as an untransformed white part.
 export function merge(list) { return combine(list, true); }
 
 // A geometry plus its mirror image across z = 0: build one side at z >= 0 and get both. Colors are kept.
@@ -342,8 +379,8 @@ export function engine(length = 0.5, radius = 0.4, { cylinders = 9, color = 0xff
   // one finned cylinder along +y, then turned out radially
   const fin = [], h = 0.4 * R, rc = 0.085 * R;
   for (let k = 0; k <= 3; k++) { const y = 0.32 * R + (h * k) / 3; fin.push([rc, y - h * 0.06], [rc * 1.4, y - h * 0.04], [rc * 1.4, y + h * 0.04], [rc, y + h * 0.06]); }
-  const head = lathe([[0, 0.3 * R], ...fin, [0, 0.32 * R + h + 0.06 * h]], 6, { crease: 70 }), parts = [{ geo: cowl, color }, { geo: front, color: face }];
-  for (let k = 0; k < cylinders; k++) parts.push({ geo: head, color: heads, matrix: new THREE.Matrix4().makeTranslation(0.62 * L, 0, 0).multiply(new THREE.Matrix4().makeRotationX((k / cylinders) * TAU)) });
+  const head = lathe([[0, 0.3 * R], ...fin, [0, 0.32 * R + h + 0.06 * h]], 6, { crease: 70 }), parts = [{ geo: cowl, color }, { geo: front, color: face, mat: 'gunmetal' }];
+  for (let k = 0; k < cylinders; k++) parts.push({ geo: head, color: heads, mat: 'gunmetal', matrix: new THREE.Matrix4().makeTranslation(0.62 * L, 0, 0).multiply(new THREE.Matrix4().makeRotationX((k / cylinders) * TAU)) });
   return combine(parts, true);
 }
 
@@ -383,9 +420,9 @@ function roundLoop(a0, a1, b0, b1, rc, steps = 3) {
 export function wheel(radius = 0.5, width = 0.3, { tire = 0.25, hub = 0.22, spokes = 0, bolts = 6, tread = 0, color = 0xffffff, tireColor = 0x2b2a26, segments = 16 } = {}) {
   const R = radius, wd = width / 2, tr = R * tire, ri = R - tr, hb = R * hub, paint = tint(color), parts = [];
   if (tr > 0) {
-    parts.push({ geo: lathe(roundLoop(ri * 0.97, R, -wd, wd, Math.min(tr, width) * 0.35, 2), segments), color: tireColor });
+    parts.push({ geo: lathe(roundLoop(ri * 0.97, R, -wd, wd, Math.min(tr, width) * 0.35, 2), segments), color: tireColor, mat: 'rubber' });
     const block = new THREE.BoxGeometry(((TAU * R) / Math.max(1, tread)) * 0.45, width * 0.8, tr * 0.16);
-    for (let k = 0; k < tread; k++) { const a = (k / tread) * TAU; parts.push({ geo: block, color: tireColor, matrix: xf(R * Math.sin(a), 0, R * Math.cos(a), 0, a, 0) }); }
+    for (let k = 0; k < tread; k++) { const a = (k / tread) * TAU; parts.push({ geo: block, color: tireColor, mat: 'rubber', matrix: xf(R * Math.sin(a), 0, R * Math.cos(a), 0, a, 0) }); }
   }
   let face;
   if (spokes > 0) {
@@ -454,9 +491,9 @@ export function track(length = 4, radius = 0.45, links = 0, { width = 0.5, thick
     const a = pts[i], b = pts[(i + 1) % pts.length], t = (s - len[i]) / Math.max(1e-12, len[i + 1] - len[i]);
     T.set(b[0] - a[0], b[1] - a[1], 0).normalize(); In.set(-T.y, T.x, 0); // in the plate's frame +y points into the loop
     const m = new THREE.Matrix4().makeBasis(T, In, Z).setPosition(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, 0);
-    parts.push({ geo: plate, color, matrix: m });
-    if (grousers) parts.push({ geo: grouser, color, matrix: m.clone().multiply(new THREE.Matrix4().makeTranslation(0, -thickness * 0.85, 0)) });
-    if (horns) parts.push({ geo: horn, color, matrix: m.clone().multiply(new THREE.Matrix4().makeTranslation(0, thickness * 1.05, 0)) });
+    parts.push({ geo: plate, color, mat: 'track-steel', matrix: m });
+    if (grousers) parts.push({ geo: grouser, color, mat: 'track-steel', matrix: m.clone().multiply(new THREE.Matrix4().makeTranslation(0, -thickness * 0.85, 0)) });
+    if (horns) parts.push({ geo: horn, color, mat: 'track-steel', matrix: m.clone().multiply(new THREE.Matrix4().makeTranslation(0, thickness * 1.05, 0)) });
   }
   if (wheels > 0) {
     const gap = (2 * c) / wheels, rw = Math.min(wheelRadius ?? radius * 0.72, gap * 0.47), floor = -radius + thickness / 2;

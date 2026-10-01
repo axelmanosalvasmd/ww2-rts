@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { UNITS, SUPPORT } from '/shared/sim.js';
 import { buildModel, animate, setSurfaces, setBuildings } from './unit-models.js';
+import { loadModelTextures, modelTexturesOn } from './model-textures.js';
 import { createAviation } from './aircraft.js';
 import { ownerRing } from './markers.js';
 import { setupLight, sky } from './light.js';
@@ -46,7 +47,7 @@ const posture = int(q.get('posture'), 0, 3, 0);
 const POSTURES = ['standing', 'crouched', 'prone', 'retreating'];
 const bg = hex(q.get('bg')) ?? HAZE;
 const aim = (Number(q.get('aim')) || 0) * Math.PI / 180;
-const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1';
+const farLod = q.get('far') === '1', showGrid = q.get('grid') !== '0', lineup = q.get('all') === '1', textures = q.get('tex') !== '0';
 
 // ---------- page ----------
 const $ = (id) => document.getElementById(id);
@@ -80,6 +81,7 @@ for (const [k, d] of [['itemStart', 1], ['itemEnd', -1], ['itemError', -1]]) {
 
 // ---------- renderer, scene and light, set up like main.js ----------
 setSurfaces(surface); setBuildings(buildingModel);
+if (textures) loadModelTextures(); // after the loading manager hooks above, so the screenshot waits for them
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.localClippingEnabled = true;
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -313,7 +315,7 @@ function singleUnit() {
     const shadow = (s) => s.shadowCalls ? ` (+${s.shadowCalls} shadow, +${fmt(s.shadowTris)} tris)` : ' (casts no sun shadow)';
     $('stats').innerHTML = `In-game camera: <b>${stats.calls}</b> draw calls, <b>${fmt(stats.tris)}</b> triangles${shadow(stats)}`
       + (stats.other ? ` | ${farLod ? 'near' : 'far'} soldier model: ${stats.other.calls} calls, ${fmt(stats.other.tris)} tris` : '')
-      + ` | ${stats.meshes} meshes, ${stats.materials} materials${air ? ' | counts include the painted ground shadow' : ' | owner ring +1 call'} | Graphics ${gfx.level}`;
+      + ` | ${stats.meshes} meshes, ${stats.materials} materials${air ? ' | counts include the painted ground shadow' : ' | owner ring +1 call'} | Graphics ${gfx.level}, model textures ${modelTexturesOn() ? 'on' : 'off'}`;
   };
 }
 
@@ -379,7 +381,7 @@ function lineupAll() {
     }
     const sum = (k) => Object.values(stats).reduce((a, s) => a + s[k], 0);
     window.__viewer.stats = stats;
-    $('stats').innerHTML = `All ${units.length}: <b>${sum('calls')}</b> draw calls, <b>${fmt(sum('tris'))}</b> triangles (+${sum('shadowCalls')} shadow calls, +${fmt(sum('shadowTris'))} tris); owner rings hidden | Graphics ${gfx.level}`;
+    $('stats').innerHTML = `All ${units.length}: <b>${sum('calls')}</b> draw calls, <b>${fmt(sum('tris'))}</b> triangles (+${sum('shadowCalls')} shadow calls, +${fmt(sum('shadowTris'))} tris); owner rings hidden | Graphics ${gfx.level}, model textures ${modelTexturesOn() ? 'on' : 'off'}`;
   };
   labelFor = (rect, cam) => units.map((v) => {
     const b = bounds([v.root]), p = new THREE.Vector3((b.min.x + b.max.x) / 2, b.max.y + 0.4, (b.min.z + b.max.z) / 2).project(cam);

@@ -12,6 +12,8 @@
 // here only draws: the simulation decides what happens, and the shots it sends say when.
 import * as THREE from 'three';
 import { gfx } from './gfx.js';
+import { modelMaterial } from './model-textures.js';
+import { matId } from './models/geom.js';
 
 const PI = Math.PI, TAU = Math.PI * 2;
 const GLASS = 0x2f4452, DARK = 0x26241f, TIP = 0xd9b43a, WHITE = 0xece6d6, BLACK = 0x1c1b18, BLUE = 0x2a4a8f, RED = 0xc23a2a;
@@ -63,21 +65,23 @@ const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 const xf = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) =>
   new THREE.Matrix4().compose(_p.set(x, y, z), _q.setFromEuler(_e.set(rx, ry, rz)), _s.set(sx, sy, sz));
 
-// Merge parts ({ geo, color, m }) into one geometry with position, normal and (linear) vertex colour.
+// Merge parts ({ geo, color, m, mat }) into one geometry with position, normal, (linear) vertex colour and what each
+// part is made of (mat: a material name from client/models/geom.js MATS; left out, the material's default).
 function merge(parts) {
-  const pos = [], nor = [], col = [], c = new THREE.Color();
+  const pos = [], nor = [], col = [], mat = [], c = new THREE.Color();
   for (const p of parts) {
     const g = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone();
     if (p.m) g.applyMatrix4(p.m);
-    const pa = g.attributes.position, na = g.attributes.normal;
+    const pa = g.attributes.position, na = g.attributes.normal, id = matId(p.mat);
     c.set(p.color);
-    for (let i = 0; i < pa.count; i++) { pos.push(pa.getX(i), pa.getY(i), pa.getZ(i)); nor.push(na.getX(i), na.getY(i), na.getZ(i)); col.push(c.r, c.g, c.b); }
+    for (let i = 0; i < pa.count; i++) { pos.push(pa.getX(i), pa.getY(i), pa.getZ(i)); nor.push(na.getX(i), na.getY(i), na.getZ(i)); col.push(c.r, c.g, c.b); mat.push(id); }
     g.dispose();
   }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  out.setAttribute('matId', new THREE.Float32BufferAttribute(mat, 1));
   return out;
 }
 
@@ -294,8 +298,9 @@ export const ROLE_OF_SUPPORT = { recon: 'fighter', strafe: 'attacker', dive: 'at
 
 // ---------- shared materials, built models, shadows ----------
 
-const BODY_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
-const BLADE_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
+// the model textures (client/model-textures.js): aircraft paint wherever a part does not say otherwise, no grime
+const BODY_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
+const BLADE_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'gunmetal' });
 const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0xe8e6da, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
 const BOMB_GEO = merge([{ geo: SRC.cyl, color: 0x34362a, m: xf(0, 0, 0, 0, 0, 0, 1.5, .26, .26) }, { geo: SRC.cyl, color: TIP, m: xf(.3, 0, 0, 0, 0, 0, .15, .27, .27) }, { geo: SRC.cone, color: 0x34362a, m: xf(.95, 0, 0, 0, 0, 0, .4, .26, .26) }]);
 
