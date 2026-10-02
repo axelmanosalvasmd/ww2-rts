@@ -7,7 +7,8 @@
 // bends and turns between the hips and the chest, and the arms reach the weapon by two-bone IK. Each soldier is built
 // four times, once per posture (standing, kneeling, lying down and running back), with the same parts in the same
 // order: the standing build is the geometry, and the other three ride along in geo.userData.poses for unit-models.js
-// to turn into morph targets. Everything merges into one vertex-colored geometry with every part tagged with what
+// to turn into morph targets. A fifth build, the fallen pose, is stored apart from those morphs and is used only
+// for corpses. Everything merges into one vertex-colored geometry with every part tagged with what
 // it is made of (wool, leather, canvas, wood, gunmetal, helmet paint, plain skin), so each soldier is one draw.
 // The owner's color is a narrow band on the left upper arm. The far model comes from the same rig with far fewer faces.
 //
@@ -314,6 +315,19 @@ const MG = [
 ];
 const MOUTH = v3(0.633, 0.644, -0.819);
 
+// The pose a corpse uses. Same parts as the living postures, so the mesh still matches, but the chest is down in
+// the dirt, the arms are slack, and a weapon lies beside the body instead of being aimed. Crews are not left
+// reaching for a gun the body does not include. This is not posture 2: that one stays the aiming prone.
+function fallenSpec(ctx) {
+  const { type, job } = ctx, base = /[BC]$/.test(job) ? job.slice(0, -1) : job;
+  // lean +0.5 rolls the chest into the dirt. The aiming prone uses about -0.3, which props the chest up to sight.
+  const lie = { stance: 'prone', turn: 0.06, lean: 0.5, yaw: 0.35, fallen: true };
+  const gun = { rifle: 'rifle', leader: 'smg', sniper: 'scoped', engineer: 'carbine', smg: 'smg', bazooka: 'bazooka', carbine: 'carbine' }[base];
+  if (gun) return { ...lie, gun: { kind: gun, hold: 'dropped' } };
+  const carry = base === 'spotter' ? 'binos' : base === 'ammo' || base === 'feeder' ? 'can' : base === 'shell' ? (type === 'flak' ? 'clip' : 'round') : base === 'loader' ? 'bomb' : null;
+  return { ...lie, sling: true, ...(carry ? { carry, down: true } : {}), ...(base === 'feeder' ? { belt: 'can' } : {}) };
+}
+
 // A pose spec for job in posture k (0 stand, 1 crouch, 2 prone, 3 retreat): stance, spine lean and turn, the man's
 // own yaw, the weapon and how it is held, where the hands go and what is carried.
 function spec(ctx, k) {
@@ -410,8 +424,8 @@ function headMatrix(body, dir, { jut = [0, 0, 0], roll = 0 } = {}) {
 // Solve a pose: the body placed so the weapon or the hands land where the spec wants them, then the legs, arms and
 // head, the weapon's frame and the carried things in the soldier's own space.
 function solve(ctx, k, phase = null) {
-  const s = spec(ctx, k);
-  if (phase !== null) {
+  const s = k === 'fallen' ? fallenSpec(ctx) : spec(ctx, k);
+  if (phase !== null && k !== 'fallen') {
     // Each boot spends half a cycle planted, travelling back as the body advances, then swings forward.
     const low = k === 1, crawl = k === 2;
     s.root = crawl ? [-0.33 + 0.025 * Math.sin(phase * Math.PI * 2), 0.11, 0] : [0, (low ? 0.47 : 0.61) + 0.018 * Math.cos(phase * Math.PI * 4), 0];
@@ -427,7 +441,9 @@ function solve(ctx, k, phase = null) {
   const F = ctx.F, info = s.gun ? weapon(s.gun.kind, F) : null, hold = s.gun?.hold;
   let M0 = RY(s.yaw ?? 0), body = makeBody({ ...s, F: M0 }), W = null;
   const shift = (d) => { M0 = T(d.x, 0, d.z).multiply(M0); body = makeBody({ ...s, F: M0 }); };
-  if (s.gun?.target) {
+  // dropped: flat on the dirt beside the right hip, muzzle out to the man's right, turned with him, not along the aim line
+  if (hold === 'dropped') W = chain(M0, T(0.05, 0.02, 0.46), RY(-Math.PI / 2), RZ(0.12));
+  else if (s.gun?.target) {
     // the muzzle on the target, the butt on the body's anchor for the hold, the body moved to fit
     const w = info.butt, Aw = V(ANCHOR[hold]).applyMatrix4(body.U), L = info.L, a = L - w[0], ya = w[1];
     const p = Math.atan2(ya, a) + Math.asin(clamp((s.gun.target.y - Aw.y) / Math.hypot(a, ya), -1, 1));
@@ -470,8 +486,8 @@ function solve(ctx, k, phase = null) {
     gaze = prone ? facing.clone() : hR.clone().add(hL).multiplyScalar(0.5).sub(neck());
   }
   // the head first (binoculars sit at the eyes), then the free hands
-  const look = s.binos ? facing.clone().add(v3(0, prone ? 0.1 : 0.05, 0)) : bomb ? bomb.clone().sub(neck()) : gaze;
-  const H = headMatrix(body, look, hold === 'aim' ? { jut: [0.035, -0.02, 0.05], roll: 0.22 } : {});
+  const look = s.fallen ? v3(0.2, -0.35, 0.9).transformDirection(M0) : s.binos ? facing.clone().add(v3(0, prone ? 0.1 : 0.05, 0)) : bomb ? bomb.clone().sub(neck()) : gaze;
+  const H = headMatrix(body, look, s.fallen ? { jut: [0.01, 0.01, 0.04], roll: 0.35 } : hold === 'aim' ? { jut: [0.035, -0.02, 0.05], roll: 0.22 } : {});
   if (s.binos) {
     things.push({ kind: 'binos', m: chain(H, T(0.095, 0, 0), RZ(0.05)) });
     hR = v3(0.11, -0.012, 0.042).applyMatrix4(H); hL = v3(0.11, -0.012, -0.042).applyMatrix4(H);
@@ -530,6 +546,14 @@ function solve(ctx, k, phase = null) {
     const can = things.find((t) => t.kind === 'can'), from = v3(0, -0.02, 0).applyMatrix4(can.m);
     const to = s.belt === 'feed' ? hL.clone() : from.clone().add(v3(0.01, 0.005, 0));
     things.push({ kind: 'belt', m: basis(from, to.clone().sub(from), v3(0, 1, 0)).multiply(SC(Math.max(0.01, from.distanceTo(to)), 1, 1)) });
+  }
+  if (s.fallen) {
+    // one hand by the helmet, the other flung out along the ground. Reach is the real arm, so the elbow does not stretch.
+    const reach = UPPER + FORE + FIST - 0.05, sho = (side) => v3(SHO[0], SHO[1], side * SHO[2]).applyMatrix4(U);
+    const put = (at, dir) => { const d = V(dir); if (d.length() > reach) d.setLength(reach); return at.clone().add(d); };
+    hL = put(sho(-1), [0.16, 0.06, -0.28]);
+    hR = put(sho(1), [0.1, 0.05, 0.38]);
+    pL = V([0.2, -0.2, -1]); pR = V([0.15, -0.2, 1]);
   }
   const arms = [arm(body, -1, hL, pL), arm(body, 1, hR, pR)];
   return { s, body, legs, arms, H, W, info, sling, things, M0 };
@@ -739,6 +763,9 @@ function figure(ctx, far) {
   const body = ao(geos[0], { falloff: shadeFalloff });
   body.userData.muzzle = muzzle(rigs[0]);
   body.userData.poses = geos.slice(1).map((g, i) => ({ position: g.attributes.position, normal: g.attributes.normal, muzzle: muzzle(rigs[i + 1]) }));
+  const fallenRig = solve(ctx, 'fallen'), fallenGeo = merge(far ? farParts(fallenRig, ctx) : nearParts(fallenRig, ctx));
+  if (fallenGeo.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: fallen pose has ${fallenGeo.attributes.position.count} vertices, not ${n}`);
+  body.userData.fallen = { position: fallenGeo.attributes.position, normal: fallenGeo.attributes.normal };
   body.userData.gait = [[3, 8], [0, 4], [1, 4], [2, 4]].flatMap(([posture, count]) => Array.from({ length: count }, (_, i) => {
     const r = solve(ctx, posture, i / count), g = merge(far ? farParts(r, ctx) : nearParts(r, ctx));
     if (g.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: gait changed topology`);
