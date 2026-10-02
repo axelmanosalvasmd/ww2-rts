@@ -678,9 +678,23 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 // The server sends only the unit rows that changed and the ids gone (dead or under fog), and the wrecks and resource
 // nodes only when they change; the full lists are put back together here, so everything after reads whole snapshots.
 const unitRows = new Map();
+let resyncAt = -Infinity;
 function applySnapshot(s) {
+  // a full resend replaces everything held; so does a snapshot without held, from a server older than the deltas that
+  // sends every row each time and never a gone list (a server left running across an update)
+  if (s.all || !s.held) unitRows.clear();
   for (const id of s.gone ?? []) unitRows.delete(id);
   for (const row of s.units) unitRows.set(row[0], row);
+  // held: what the server thinks this client now holds. A mismatch means a stale unit is drawn (dead, or fogged) or a
+  // live one is missing; ask for a full resend instead of waiting for a reload (at most once a second)
+  if (s.held) {
+    let xor = 0;
+    for (const id of unitRows.keys()) xor ^= id;
+    if ((unitRows.size !== s.held[0] || xor !== s.held[1]) && performance.now() - resyncAt > 1000) {
+      console.warn(`unit rows out of sync at tick ${s.tick}: holding ${unitRows.size}, the server sent ${s.held[0]}; asking for a full resend`);
+      resyncAt = performance.now(); sendCmd({ t: 'resync' });
+    }
+  }
   s.units = [...unitRows.values()];
   s.wrecks ??= lastSnap?.wrecks; s.nodes ??= lastSnap?.nodes;
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one

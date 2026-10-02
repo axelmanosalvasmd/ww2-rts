@@ -771,6 +771,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   broadcast, one terrain memory on the game (`g.watchPending`, fed by `logCell`), and a joining spectator makes the
   next broadcast whole. The client (and the test harness) rebuild full lists before anything reads them.
   `terrainFor` skips its pending replay until a cell changes, a mine is found or a vision pass runs.
+- Delta self-check: players saw dead or fogged units (bars and icons, "target not visible") until a reload. The cause
+  was a server process started before the deltas serving the newer client from disk: it sent every row and no gone
+  list, and the client only drops what gone names. The client now clears its rows for a snapshot without `held`
+  (an older server's full list). Each snapshot carries `held`, the count and xor of the ids the client should hold.
+  On a mismatch the client warns in the console ("unit rows out of sync") and sends `resync` (at most once a second);
+  the server marks that seat (or the spectator stream) full, and the next snapshot has `all`, which makes the client
+  replace its rows.
 - As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
   fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
   gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign

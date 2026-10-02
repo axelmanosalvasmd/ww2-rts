@@ -3329,12 +3329,17 @@ const referenceNearCover = (g, u) => {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]), sent = new Map(), rows = () => snapshotFor(g, 0, []).units;
   const first = sim.unitDelta(sent, rows());
   assert.ok(first.units.length >= 2 && first.units.length === rows().length && !first.gone, 'a fresh join gets the full set');
-  assert.deepEqual(sim.unitDelta(sent, rows()), { units: [], gone: undefined }, 'unchanged units are not resent');
+  const quiet = sim.unitDelta(sent, rows());
+  assert.deepEqual([quiet.units, quiet.gone, quiet.all], [[], undefined, undefined], 'unchanged units are not resent');
   const [moved, dead] = [...g.units.values()].filter(u => u.owner === 0);
   moved.x += 3; g.units.delete(dead.id);
   const next = sim.unitDelta(sent, rows());
   assert.deepEqual([next.units.map(r => r[0]), next.gone], [[moved.id], [dead.id]], 'only the changed row is sent, the removed unit is gone');
-  assert.equal(sim.unitDelta(sent, rows(), true).units.length, rows().length, 'full resends every row');
+  // held fingerprints what the client should hold, so a drifted client can tell
+  const xor = (ids) => ids.reduce((a, id) => a ^ id, 0), ids = rows().map(r => r[0]);
+  assert.deepEqual(next.held, [ids.length, xor(ids)], 'held: the count and xor of the rows the client holds');
+  const full = sim.unitDelta(sent, rows(), true);
+  assert.ok(full.units.length === rows().length && full.all, 'full resends every row and tells the client to replace its own');
 }
 
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.

@@ -383,6 +383,10 @@ wss.on('connection', (ws, req) => {
       room.defenderTeam = msg.v; lobby(room);
     } else if (msg.t === 'start' && host && room.state !== 'play' && room.players.length > 0 && room.players.length <= seats(room) && assaultReady(room)) {
       await startMatch(room);
+    } else if (msg.t === 'resync' && room.state === 'play') {
+      // the client's unit rows drifted from what we sent (it checks held): the next snapshot replaces them all
+      const net = seated ? me.net : room.watchNet;
+      if (net) net.full = true;
     } else if (msg.t === 'restart' && host && room.state === 'play' && room.game) {
       await startMatch(room); // same map, mode and teams, from scratch
     } else if (msg.t === 'end' && host && room.state === 'play') {

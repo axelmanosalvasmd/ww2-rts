@@ -3280,7 +3280,11 @@ export function unitDelta(sent, rows, full = false) {
     if (full || !old || row.some((v, i) => v !== old[i])) { units.push(row); sent.set(row[0], row); }
   }
   for (const id of gone) sent.delete(id);
-  return { units, gone: gone.size ? [...gone] : undefined };
+  // all: the client replaces its rows with these; held: [count, xor of ids] of what the client should now hold, so
+  // a client that drifted (a stale unit drawn, a live one missing) notices and asks for a full resend
+  let xor = 0;
+  for (const id of sent.keys()) xor ^= id;
+  return { units, gone: gone.size ? [...gone] : undefined, all: full || undefined, held: [sent.size, xor] };
 }
 
 export function snapshotFor(g, slot, shots, cells = [], cache) {
