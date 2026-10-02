@@ -6543,6 +6543,7 @@ for (const lookupFinished of [false, true]) {
     const cellAt = (u) => Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
     p.mp = 2000; p.fuel = 500;
     assert.equal(command(g, 0, { t: 'build', ids: [eng.id], kind: 'shipyard', x: at(3, 14).x, z: at(3, 14).z }), 'coast', 'a Shipyard needs open water beside it');
+    assert.ok(sim.placementCheck(g, { kind: 'shipyard', x: at(8, 25).x, z: at(8, 25).z }, () => true).ok, 'surf off a beach counts as water');
     assert.equal(command(g, 0, { t: 'build', ids: [eng.id], kind: 'shipyard', x: at(8, 7).x, z: at(8, 7).z }), undefined, 'and goes up on the shore');
     const yard = unitOf(g, 0, 'shipyard');
     run(g, 20 * 90);
@@ -6580,6 +6581,44 @@ for (const lookupFinished of [false, true]) {
     const dry = createGame(mapOf(rows, { spawns: [{ x: 2, y: 2 }, { x: 37, y: 37 }], points: [{ x: 35, y: 5 }] }), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false, mode: 'classic' });
     dry.players[0].mp = 2000;
     assert.equal(command(dry, 0, { t: 'build', ids: [unitOf(dry, 0, 'engineer').id], kind: 'shipyard', x: at(8, 7).x, z: at(8, 7).z }), 'blocked', 'no Shipyard on a map without naval: true');
+  }
+
+  // warships: a destroyer keeps to deep water, shells what its side spots beyond its own sight, is hit along its whole
+  // hull, and a gunboat's torpedo hits it hard
+  {
+    const rows = Array(40).fill('.'.repeat(10) + 'W'.repeat(70) + '.'.repeat(10)); // a 140 m sea between two coasts
+    const g = createGame(mapOf(rows, { naval: true, spawns: [{ x: 3, y: 3 }, { x: 86, y: 36 }], points: [{ x: 5, y: 20 }] }), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false, mode: 'classic' });
+    const p = g.players[0], eng = unitOf(g, 0, 'engineer');
+    p.mp = 5000; p.fuel = 2000; p.mun = 500;
+    assert.equal(command(g, 0, { t: 'build', ids: [eng.id], kind: 'shipyard', x: at(7, 12).x, z: at(7, 12).z }), undefined);
+    run(g, 20 * 90);
+    const yard = unitOf(g, 0, 'shipyard');
+    assert.equal(command(g, 0, { t: 'buy', unit: 'destroyer', from: yard.id }), undefined);
+    assert.equal(command(g, 0, { t: 'buy', unit: 'gunboat', from: yard.id }), undefined);
+    run(g, 20 * (UNITS.destroyer.train + UNITS.gunboat.train + 2));
+    const dd = unitOf(g, 0, 'destroyer'), cellAt = (u) => Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
+    assert.ok(dd && !(g.flags[cellAt(dd)] & (sim.LAND | sim.SHOAL)), 'the destroyer launches into deep water');
+    command(g, 0, { t: 'move', orders: [[dd.id, at(12, 20).x, at(12, 20).z]] });
+    run(g, 20 * 20);
+    assert.ok(dd.x >= at(20, 0).x - 0.01, 'and stops short of the shoals instead of running aground');
+    // a spotter on the far shore: the destroyer shells a squad 100 m off, well past its own 60 m sight
+    command(g, 0, { t: 'move', orders: [[dd.id, at(40, 20).x, at(40, 20).z]] });
+    run(g, 20 * 15);
+    const foe = unitOf(g, 1, 'rifle'), spotter = unitOf(g, 0, 'rifle');
+    place(g, foe, 85, 20); place(g, spotter, 82, 21); spotter.holdFire = true; foe.holdFire = true;
+    const full = foe.hp;
+    run(g, 20 * 20);
+    assert.ok(Math.hypot(foe.x - dd.x, foe.z - dd.z) > UNITS.destroyer.vision && foe.hp < full, 'shore bombardment on a spotted target');
+    // an enemy gunboat off the bow, beyond its own range of the ship's middle, still reaches the hull
+    const boat = unitOf(g, 0, 'gunboat');
+    boat.owner = 1; dd.rot = 0; dd.path = [];
+    place(g, boat, 40 + Math.round((UNITS.destroyer.hull + 10) / CELL), 20); boat.holdFire = false;
+    assert.ok(Math.hypot(boat.x - dd.x, boat.z - dd.z) > UNITS.gunboat.w.range, 'the gunboat is out of range of the middle');
+    const before = dd.hp;
+    g.players[1].mun = 100;
+    assert.equal(command(g, 1, { t: 'ability', ids: [boat.id] }), undefined, 'torpedo loaded');
+    run(g, 20 * 3);
+    assert.ok(before - dd.hp >= UNITS.gunboat.w.veh * UNITS.gunboat.ab.mult * 0.99, 'the torpedo hits the hull hard');
   }
 
   // medic: heals the most hurt squad nearby for free, but not one under fire

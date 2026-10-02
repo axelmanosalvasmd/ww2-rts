@@ -102,6 +102,7 @@ const GUNS = {
   medium: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.18, tr: FX.tracerHot, trOdds: 1, flash: 1.7, heavy: 3, smoke: 1, blast: 1.2 },
   tiger: { ...SMALL, snd: 'tankgun', n: 1, spd: 160, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 2.1, heavy: 3.4, smoke: 1, blast: 1.4 },
   halftrack: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
+  gunboat: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.12, tr: FX.tracerHot, trOdds: 1, flash: 0.8, heavy: 1.5, smoke: 0.5 },
   lcvp: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   armoredcar: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.12, tr: FX.tracerHot, trOdds: 1, flash: 0.8, heavy: 1.5, smoke: 0.5 },
   // anti-air guns turned on the ground; planes (guns = wing guns firing together)
@@ -992,17 +993,19 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
   }
 
   function salvo(sh, from) {
-    const mortar = from ? from.type === 'mortar' : sh.n <= 4, n = sh.n ?? 8;
-    const w = UNITS[mortar ? 'mortar' : 'rocket'].w, flight = w.flight ?? 1.2, every = w.every ?? 0.15;
+    // a destroyer's guns arc over like the mortar's, from its front mount
+    const ship = from?.type === 'destroyer', mortar = from ? from.type === 'mortar' || ship : sh.n <= 4, n = sh.n ?? 8;
+    const w = UNITS[ship ? 'destroyer' : mortar ? 'mortar' : 'rocket'].w, flight = w.flight ?? 1.2, every = w.every ?? 0.15;
     Object.assign(salvos[salvoI++ % salvos.length], { x: sh.x, z: sh.z, r: w.spread ?? 6, mortar, t: clock });
     if (mortar) {
       for (let i = 0; i < n; i++) {
         const d = i * (w.every ?? 0.5);
         if (from) {
-          from.root.updateWorldMatrix(true, false);
-          v3.set(1.1, 1.12, 0).applyMatrix4(from.root.matrixWorld);
+          const top = ship ? from.turret : from.root;
+          top.updateWorldMatrix(true, false);
+          v3.set(...(ship ? from.fxTip : [1.1, 1.12, 0])).applyMatrix4(top.matrixWorld);
           later(d, E_ROCKET, v3.x, v3.y, v3.z, v3.x + (sh.x - from.x) * 0.15, v3.y + 40, v3.z + (sh.z - from.z) * 0.15, 0.6, 0);
-          snd('mortar', d, from.x, from.z);
+          snd(ship ? 'tankgun' : 'mortar', d, from.x, from.z);
         }
         whistle(d, flight, sh.x, sh.z, 0.7);
       }

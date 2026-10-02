@@ -5,8 +5,22 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Warships (Classic, naval maps), trained at the Shipyard:
+  - **Gunboat** (PT Boat / S-Boot / Armored Boat, 170 MP + 40 Fuel): the fastest unit (10 m/s), a rapid autocannon
+    against boats and the shore, and a **Torpedo** (Munitions, 40 s cooldown) that hits a boat or ship for 25 times
+    a normal shell (300 damage) and is never wasted on anything ashore.
+  - **Destroyer** (Fletcher / Zerstörer 1936 / Gnevny, 520 MP + 180 Fuel, max 2): true size, 110 m long, 2400 hp.
+    It keeps to deep water (at least 20 m from any shore or surf), so it cannot run aground. Its guns reach 120 m,
+    further than anything ashore, and arc onto whatever your side spots, so it needs eyes on the ground. Flak against
+    planes. **Shore Bombardment** (40 Munitions): eight heavy shells on a spot.
+  - A ship is hit and seen along its whole length, not just at its middle.
+- Fix: a Shipyard can now go up on a beach. Before, it needed open water within 2 cells, and every beach on Three
+  Islands has 6 cells of surf, so only cliff tops were allowed and most players found nowhere to build it.
+- Left for later: a coastal battery to answer the destroyer, the AI using any boat, shells and blasts still treat a
+  ship as its middle, and the destroyer's balance is untested beyond the unit tests.
+
 - Naval warfare, first slice (Classic only, on maps marked naval). Engineers can build a **Shipyard** on the coast
-  (150 MP, needs open water beside it). It trains the **Landing Craft** (LCVP / Sturmboot / Assault Boat, 120 MP + 15
+  (150 MP, needs water or surf beside it). It trains the **Landing Craft** (LCVP / Sturmboot / Assault Boat, 120 MP + 15
   Fuel): a fast, thin-skinned boat with two light MGs that floats on water and surf only. It carries one squad like a
   halftrack: right-click it with infantry to board, Unload to land them. A squad lands only where dry ground or
   wadeable surf is within 5 m, and a squad in a boat sunk far from land drowns.

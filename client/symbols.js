@@ -224,6 +224,14 @@ const DEFS = {
   lcvp: ['Landing Craft', 'infantry', 'Landing craft: a flat boxy boat with a square bow ramp, riding on the water',
     poly([8, 56], [20, 56], [20, 48], [30, 48], [30, 56], [84, 56], [84, 50], [90, 50], [92, 70], [86, 76], [14, 76], [8, 70]) +
     poly([4, 80], [96, 80], [96, 84], [4, 84])],
+  gunboat: ['Gunboat', 'antitank', 'Gunboat: a long low motor boat with a raised bridge and a gun aft, riding on the water',
+    poly([6, 66], [70, 66], [70, 58], [82, 58], [84, 66], [94, 66], [86, 76], [12, 76]) + poly([24, 66], [24, 60], [32, 60], [32, 66]) +
+    poly([16, 61], [30, 57], [30, 59], [16, 63]) + poly([4, 80], [96, 80], [96, 84], [4, 84])],
+  destroyer: ['Destroyer', 'artillery', 'Destroyer: a long warship with gun mounts fore and aft, a bridge and two funnels',
+    poly([4, 66], [96, 64], [90, 76], [8, 76]) + poly([44, 64], [44, 52], [54, 52], [54, 44], [60, 44], [60, 64]) +
+    poly([32, 64], [32, 46], [37, 46], [37, 64]) + poly([22, 64], [22, 48], [27, 48], [27, 64]) +
+    poly([70, 64], [70, 59], [76, 59], [76, 64]) + poly([74, 61], [90, 59], [90, 61], [74, 63]) +
+    poly([10, 64], [10, 59], [16, 59], [16, 64]) + poly([4, 80], [96, 80], [96, 84], [4, 84])],
   armoredcar: ['Armored Car', 'recon', 'Armored car: an angled armored body on two axles with a small turret and a short gun',
     poly([7, 72], [7, 64], [13, 56.5], [41, 54.5], [43.5, 46], [58, 46], [61, 49], [80, 49], [80, 53], [62, 53], [63, 54.5],
       [70, 55], [90, 62], [93, 66], [93, 71], [86, 72], ...arch(73, 75.5, 12), ...arch(27, 75.5, 12), [12, 72]) +

@@ -924,8 +924,15 @@ Goal: a big-map mode where players slowly take resource nodes, fortify their coa
   it counts as a Production Building, so boats retreat to it and it keeps its owner alive. Boats ride the client's
   water line (`relief.waterAt`). Three Islands: 512 cells, islands about 350 m across, straits about 185 m, beaches
   with 6 cells of surf on three sectors of each coast and two-level cliffs between.
-- Next slices: AI that defends coasts and later invades, gunboat and destroyer with shore bombardment plus a coastal
-  battery, beach obstacles and bunkers, supply across the sea (forward depot or a captured port), Sudden Death moved
+- Slice 2 (warships): `SHOAL` marks water within `CFG.shoal` (10) cells of any non-`W` cell, once per match
+  (`markShoals`, kept through `setCell`); a `deep` unit is blocked by `LAND | SHOAL`, so the same path code keeps a
+  destroyer 20 m offshore. Ships have `hull` (half length): `hullPoint` / `reachDist` measure range and sight to the
+  nearest point of the hull's centre line, and target and sight searches reach `HULL_MAX` further on naval maps only.
+  Blasts and separation still use the middle. The destroyer's gun is a salvo weapon (spotting is enough, like the
+  mortar) with 120 m range, 25 m minimum, and its ability is the barrage (Shore Bombardment). The gunboat's Torpedo
+  is the AP round with `mult: 25` and `naval: true` (only fired at boats and ships). The Shipyard's coast test now
+  takes surf too (beaches have 6 cells of it).
+- Next slices: AI that defends coasts and later invades, a coastal battery, beach obstacles and bunkers, supply across the sea (forward depot or a captured port), Sudden Death moved
   for 60-minute games, a larger pop cap, and the zoomed-out symbol view for big maps.
 
 ## Field fortifications

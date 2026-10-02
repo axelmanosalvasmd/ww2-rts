@@ -323,6 +323,39 @@ export function buildModel(v, root, f, fac, def) {
       part(GEO.cyl, DARK, 0.05, 1.2, 0.05, -4.3, 2.2, -0.8).rotateZ(Math.PI / 2));
     root.add(bake(hull, key + '|hull', true));
     v.models.push(root);
+  } else if (type === 'gunboat') {
+    // motor torpedo boat, 24 m: a long planing hull, a pointed bow, the bridge amidships, torpedo tubes along the
+    // sides and a turning autocannon aft (v.turret)
+    const hull = new THREE.Group(), grey = 0x5f666b;
+    hull.add(part(GEO.box, grey, 19, 1.8, 5.4, -1.5, 0.5, 0), part(GEO.box, grey, 3.8, 1.8, 3.8, 8, 0.5, 0).rotateY(Math.PI / 4),
+      part(GEO.box, 0x3d3a34, 19, 0.15, 5.2, -1.5, 1.45, 0), part(GEO.box, grey, 4, 1.8, 3, 1.5, 2.3, 0), part(GEO.box, DARK, 3.6, 0.5, 3.1, 2, 2.9, 0),
+      part(GEO.cyl, 0x4a4f52, 0.3, 6, 0.3, 3, 1.9, 2.3).rotateZ(Math.PI / 2), part(GEO.cyl, 0x4a4f52, 0.3, 6, 0.3, 3, 1.9, -2.3).rotateZ(Math.PI / 2),
+      part(GEO.box, f.color, 1.2, 0.8, 0.05, -10.5, 2.4, 0), part(GEO.cyl, DARK, 0.06, 4, 0.06, 0.5, 4.4, 0));
+    v.turret = new THREE.Group(); v.turret.position.set(-6, 1.6, 0);
+    v.turret.add(part(GEO.box, grey, 1.6, 0.8, 1.6, 0, 0.4, 0), part(GEO.cyl, DARK, 0.09, 2.2, 0.09, 1.5, 0.9, 0).rotateZ(Math.PI / 2));
+    root.add(hull, v.turret); v.fxTip = [2.6, 0.9, 0];
+    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
+    v.models.push(root);
+  } else if (type === 'destroyer') {
+    // destroyer at true size: 110 m long, 11 m beam, two gun mounts forward (the front one turns: v.turret), the
+    // bridge and two funnels amidships, two mounts aft, flak in between; the owner's colour on the funnel bands
+    const hull = new THREE.Group(), grey = 0x6b7177, light = 0x868c91, deck = 0x5d5246;
+    hull.add(part(GEO.box, grey, 96, 5, 11, -5, 1.2, 0), part(GEO.box, grey, 9, 5, 9, 43, 1.2, 0).rotateY(Math.PI / 4),
+      part(GEO.box, deck, 96, 0.3, 10.6, -5, 3.8, 0), part(GEO.box, 0x2e3236, 98, 0.6, 11.2, -5, -0.9, 0),
+      part(GEO.box, light, 20, 4.5, 8, 14, 6.2, 0), part(GEO.box, light, 8, 3.5, 7, 20, 10, 0), part(GEO.box, DARK, 7.6, 0.8, 7.2, 20.5, 11.2, 0),
+      part(GEO.cyl, 0x52575c, 1.8, 7, 2.3, 4, 8.5, 0), part(GEO.cyl, 0x52575c, 1.8, 7, 2.3, -8, 8.5, 0),
+      part(GEO.cyl, f.color, 1.85, 1, 2.35, 4, 10.5, 0), part(GEO.cyl, f.color, 1.85, 1, 2.35, -8, 10.5, 0),
+      part(GEO.cyl, DARK, 0.25, 20, 0.25, 15, 16, 0), part(GEO.box, DARK, 0.2, 0.2, 6, 15, 21, 0),
+      part(GEO.box, light, 6, 2.6, 4, -22, 5.2, 0), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, 1.2).rotateZ(Math.PI / 3), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, -1.2).rotateZ(Math.PI / 3));
+    // the gun mounts that do not turn: B forward, raised; X and Y aft, facing astern
+    for (const [x, y, back] of [[25, 6.4, false], [-36, 5, true], [-44, 5, true]]) {
+      hull.add(part(GEO.box, light, 5, 2.4, 4, x, y, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, x + (back ? -4.5 : 4.5), y + 0.4, 0).rotateZ(Math.PI / 2));
+    }
+    v.turret = new THREE.Group(); v.turret.position.set(33, 4, 0);
+    v.turret.add(part(GEO.box, light, 5, 2.4, 4, 0, 1.2, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, 4.5, 1.6, 0).rotateZ(Math.PI / 2));
+    root.add(hull, v.turret); v.fxTip = [7.5, 1.6, 0];
+    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
+    v.models.push(root);
   } else if (type === 'bunker') {
     const shell = new THREE.Group();
     shell.add(part(GEO.box, 0x8a8a82, 5.2, 2.4, 5.2, 0, 1.2, 0), part(GEO.box, 0x74746c, 6, 0.5, 6, 0, 2.6, 0), part(GEO.box, 0x1e1e1a, 0.3, 0.4, 3, 2.62, 1.6, 0));

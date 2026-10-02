@@ -69,6 +69,8 @@ export const CFG = {
   aid: { radius: 12, carrier: 10, slow: 2, heal: 2, medic: 10, calm: 5, board: 4.5, evict: 0.3 },
   // a landing craft lands its squad only with ground this close (metres); a squad thrown out further from it drowns
   shoreReach: 5,
+  // a destroyer keeps this many cells of water between its centre and any shore or surf (its 11 m beam, and room to turn)
+  shoal: 10,
   // supply lines: a point pays only while a vehicle could drive to it from its side's HQ. Enemy fighting units close
   // the ground within `zoc` metres of them, except within `free` metres of a point that side holds (that is a fight
   // for the point, not a cut road). Checked every `every` ticks.
@@ -104,7 +106,7 @@ export const CFG = {
     aiAttackRatio: 1.1, aiSeenWindow: 30 },
 };
 
-export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64, ROAD = 128, MUD = 256, WOOD = 512, LAND = 1024;
+export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64, ROAD = 128, MUD = 256, WOOD = 512, LAND = 1024, SHOAL = 2048;
 // T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
 // = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
 // K = footprint of a Classic building (never in map files): solid until the building falls, then rubble
@@ -112,7 +114,8 @@ export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, 
 // LAND: everything a boat can't float on. Boats take W (open water) and F (fords, and the surf off a beach).
 for (const ch of Object.keys(TERRAIN)) if (ch !== 'W' && ch !== 'F') TERRAIN[ch] |= LAND;
 // the terrain bits that stop a unit: boats are kept off land, vehicles out of water and off tank traps, infantry out of water
-export const blockOf = (def) => (def?.naval ? LAND : def && !def.infantry ? MOVE | VBLOCK : MOVE);
+// SHOAL: water within CFG.shoal cells of the shore (set per match on naval maps), which keeps a deep-draught ship offshore
+export const blockOf = (def) => (def?.deep ? LAND | SHOAL : def?.naval ? LAND : def && !def.infantry ? MOVE | VBLOCK : MOVE);
 // X barbed wire (infantry wade through slowly, tanks flatten it) · Y tank traps (stop vehicles, cover for infantry)
 // D road (vehicles drive faster and route along it) · M mud (vehicles crawl) · N mine (hidden from the enemy)
 // O woods (light cover, sight only a few cells deep, vehicles crawl, burns) · A Field Hospital (never in map files)
@@ -190,6 +193,18 @@ UNITS.halftrack = { name: 'Halftrack', cost: 180, models: 1, hpPer: 220, speed: 
 UNITS.lcvp = { name: 'Landing Craft', classic: true, cost: 140, models: 1, hpPer: 160, speed: 7, radius: 2.5, vision: 32, infantry: false, carries: true, naval: true,
   w: { range: 26, interval: 0.4, inf: 2, veh: 0.2, accInf: 0.35, accVeh: 0.3, supp: 6, moveFire: 0.6 },
   ab: { id: 'none', name: '', cd: 1e9 } };
+// Gunboat (PT boat / S-boot / armored river boat): fast, a rapid autocannon against boats and the shore, and one
+// torpedo (the AP round of the sea: a 25x hit that only runs at boats and ships).
+UNITS.gunboat = { name: 'Gunboat', classic: true, cost: 220, models: 1, hpPer: 300, speed: 10, radius: 3, vision: 40, infantry: false, naval: true, hull: 11,
+  w: { range: 34, interval: 0.6, inf: 4, veh: 12, accInf: 0.45, accVeh: 0.5, supp: 10, moveFire: 0.7 },
+  ab: { id: 'ap', name: 'Torpedo', cd: 40, mult: 25, naval: true } };
+// Destroyer: true size (110 m), deep water only. Its guns out-range everything ashore and fire on whatever its side
+// spots (salvos, like the mortar), plus flak. Shore Bombardment: a heavy barrage on a spot. Max 2.
+UNITS.destroyer = { name: 'Destroyer', classic: true, max: 2, cost: 700, models: 1, hpPer: 2400, speed: 6, radius: 6, vision: 60, infantry: false, naval: true, deep: true, hull: 52,
+  w: { range: 120, minRange: 25, interval: 6, setup: 1, inf: 40, veh: 60, accInf: 1, accVeh: 1, supp: 60,
+    salvo: true, rockets: 2, spread: 5, blast: 4, terrain: 150, antiGarrison: 1.5, flight: 1.8, every: 0.4 },
+  aa: { range: 45, dps: 30 },
+  ab: { id: 'barrage', name: 'Shore Bombardment', cd: 45, range: 120, shells: 8, mun: 40 } };
 UNITS.medic = { name: 'Medic Team', cost: 120, models: 2, hpPer: 20, speed: 4.8, radius: 1.2, vision: 30, infantry: true, garrisons: true, medic: true,
   w: { range: 0, interval: 9, inf: 0, veh: 0, accInf: 0, accVeh: 0, supp: 0 },
   ab: { id: 'none', name: '', cd: 1e9 } };
@@ -226,13 +241,13 @@ UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, 
 UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'ranger', 'conscript'] });
 UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'rocket', 'tiger'] });
 UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3, vision: 30, size: 3, buildTime: 40, produces: true, needs: 'motorpool', makes: ['fighter', 'attacker'] });
-UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3, vision: 30, size: 3, buildTime: 30, produces: true, coast: true, makes: ['lcvp'] });
+UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3, vision: 30, size: 3, buildTime: 30, produces: true, coast: true, makes: ['lcvp', 'gunboat', 'destroyer'] });
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
 export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
 // Classic: seconds to train each unit at its building
-for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, rocket: 30, tank: 35, medium: 40, tiger: 50 })) UNITS[t].train = s;
+for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, rocket: 30, tank: 35, medium: 40, tiger: 50 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
-for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
+for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
 export const priceOf = (g, t) => (g.mode?.kind === 'classic' ? { mp: UNITS[t].classicCost ?? UNITS[t].cost, fuel: UNITS[t].fuel ?? 0 } : { mp: UNITS[t].cost, fuel: 0 });
 export const UNIT_TYPES = Object.keys(UNITS);
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
@@ -369,6 +384,16 @@ const angle = (v) => (Number.isFinite(v) ? v : null);
 
 export const alive = u => Math.ceil(u.hp / UNITS[u.type].hpPer);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+// the point of t nearest to a: a ship (def.hull = half its length) is a segment along its heading, anything else a point
+// ponytail: only targeting and spotting use it; blasts and separation still treat a ship as its middle
+function hullPoint(a, t) {
+  const h = UNITS[t.type]?.hull;
+  if (!h) return t;
+  const cx = Math.cos(t.rot ?? 0), cz = Math.sin(t.rot ?? 0), k = Math.max(-h, Math.min(h, (a.x - t.x) * cx + (a.z - t.z) * cz));
+  return { x: t.x + cx * k, z: t.z + cz * k };
+}
+const reachDist = (a, t) => dist(a, hullPoint(a, t));
+const HULL_MAX = 55; // the longest hull's half length: how much further a target search reaches on a naval map
 
 // Returns an error string, or null if the map is playable. Used by the server (trust boundary) and the editor.
 export function validateMap(m) {
@@ -454,6 +479,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.chars = [...map.rows.join('')];
   g.roads = g.chars.includes('D'); // no roads: vehicle paths skip the road arithmetic
   g.naval = map.naval === true; // boats: only maps that ask for them (a river is a chokepoint by design)
+  if (g.naval) markShoals(g);
   g.mines = new Map(); // mine cell -> the slot that laid it (a mine drawn on the map belongs to nobody)
   g.mineSeen = new Map(); // mine cell -> bits of the teams whose builder squads have found it
   g.aid = new Map(); // Field Hospital cell -> the slot that put it up
@@ -986,12 +1012,26 @@ function logCell(g, c, change) {
   g.newCells.push(change);
 }
 
+// water within CFG.shoal cells of land or surf gets SHOAL (a breadth-first pass out from the shore)
+// ponytail: worked out once per match; a bridge built later does not push destroyers further off
+function markShoals(g) {
+  const N = g.w * g.h, d = new Int16Array(N).fill(-1), q = new Int32Array(N);
+  let n = 0;
+  for (let c = 0; c < N; c++) if (g.chars[c] !== 'W') { d[c] = 0; q[n++] = c; }
+  for (let i = 0; i < n; i++) {
+    const c = q[i], x = c % g.w;
+    if (d[c] >= CFG.shoal) continue;
+    for (const k of [x > 0 ? c - 1 : -1, x < g.w - 1 ? c + 1 : -1, c - g.w, c + g.w]) if (k >= 0 && k < N && d[k] < 0) { d[k] = d[c] + 1; q[n++] = k; }
+  }
+  g.shoal = new Uint8Array(N);
+  for (let c = 0; c < N; c++) if (d[c] >= 0 && d[c] <= CFG.shoal) { g.shoal[c] = 1; g.flags[c] |= SHOAL; }
+}
 function setCell(g, c, ch) {
   const old = g.flags[c], next = TERRAIN[ch];
   if (g.chars[c] === 'N') { g.mines.delete(c); g.mineSeen.delete(c); }
   if (g.chars[c] === 'A') g.aid.delete(c);
   if (g.chars[c] === 'Q') g.wrecks = g.wrecks.filter(w => w.c !== c); // the hull goes with its cell
-  g.flags[c] = next; g.chars[c] = ch; g.cellHp[c] = maxHp(g, c);
+  g.flags[c] = next | (g.shoal?.[c] ? SHOAL : 0); g.chars[c] = ch; g.cellHp[c] = maxHp(g, c);
   g.fires?.delete(c);
   if (g.soak) for (const n of [c, c - 1, c + 1, c - g.w, c + g.w]) g.soak.add(n); // flood() sorts out which of them count
   if (g.wear) { g.wear[c] = startWear(ch, c); g.cellState[c] = stateOf(g, c); }
@@ -1165,7 +1205,7 @@ const pathRegions = new WeakMap();
 const regionDx = [-1, 1, 0, 0, -1, 1, -1, 1], regionDy = [0, 0, -1, 1, -1, -1, 1, 1];
 function regionsFor(g, block) {
   let data = pathRegions.get(g);
-  const version = block === MOVE ? g.infantryRegionVersion ?? 0 : block === LAND ? g.navalRegionVersion ?? 0 : g.vehicleRegionVersion ?? 0, W = g.w, N = W * g.h;
+  const version = block === MOVE ? g.infantryRegionVersion ?? 0 : block & LAND ? g.navalRegionVersion ?? 0 : g.vehicleRegionVersion ?? 0, W = g.w, N = W * g.h;
   if (!data || data.w !== W || data.h !== g.h) {
     data = { w: W, h: g.h, masks: new Map() }; pathRegions.set(g, data);
   }
@@ -1243,7 +1283,7 @@ function heapPop(b) {
 export function findPath(g, from, to) {
   pathFailures.delete(from); // a fresh immediate command resets earlier retry failures
   // vehicles can't cross tank traps; infantry go around wire when there's a way (straight lines don't cross it either)
-  const def = UNITS[from.type], naval = !!def?.naval, veh = def && !def.infantry && !naval, block = blockOf(def), pull = naval ? LAND : veh ? block | MUD | WOOD : MOVE | WIRE;
+  const def = UNITS[from.type], naval = !!def?.naval, veh = def && !def.infantry && !naval, block = blockOf(def), pull = naval ? block : veh ? block | MUD | WOOD : MOVE | WIRE;
   const W = g.w, N = W * g.h, goal = nearestFree(g, to.x, to.z, block), start = Math.max(0, cellOf(g, from.x, from.z));
   // enemy mines this unit's side has found: routes go around them
   const team = g.players?.[from.owner]?.team, found = team !== undefined && g.mineSeen?.size > 0;
@@ -1412,11 +1452,11 @@ export function placementCheck(g, { kind, x, z, dir = 0, team }, sees = () => tr
   if (def.coast && !(g.naval && onCoast(g, cells))) return fail(g.naval ? 'coast' : 'blocked', extra);
   return canStamp(g, cells) ? { ok: true, reason: undefined, ...extra } : fail('blocked', extra);
 }
-// open water (W) within two cells of a footprint: a Shipyard needs somewhere to launch its boats
+// water a boat floats on (open water or surf) within two cells of a footprint: a Shipyard needs somewhere to launch its boats
 function onCoast(g, cells) {
   for (const c of cells) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
     const x = c % g.w + dx, y = Math.floor(c / g.w) + dy;
-    if (x >= 0 && y >= 0 && x < g.w && y < g.h && g.chars[y * g.w + x] === 'W') return true;
+    if (x >= 0 && y >= 0 && x < g.w && y < g.h && !(g.flags[y * g.w + x] & LAND)) return true;
   }
   return false;
 }
@@ -1815,13 +1855,13 @@ const suppMul = (u) => (u.supp >= 90 ? { speed: 0.3, rate: 3, acc: 0.5 } : u.sup
 
 function canShoot(g, u, t) {
   const w = UNITS[u.type].w;
-  if (!t || t.hp <= 0 || t.air || t.riding || allied(g, t.owner, u.owner) || dist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
+  if (!t || t.hp <= 0 || t.air || t.riding || allied(g, t.owner, u.owner) || reachDist(u, t) > w.range || !g.players[u.owner].visible.has(t.id)) return false;
   if (u.air) return true;
-  return w.salvo ? dist(u, t) >= w.minRange : los(g, u, aimPoint(g, u, t)); // salvos arc over: spotting is enough
+  return w.salvo ? reachDist(u, t) >= w.minRange : los(g, u, aimPoint(g, u, t)); // salvos arc over: spotting is enough
 }
 // a building is aimed at by its nearest footprint cell (its own walls would block a line to the middle)
 function aimPoint(g, u, t) {
-  if (!t.cells) return t;
+  if (!t.cells) return hullPoint(u, t);
   let best = t, bd = Infinity;
   for (const c of t.cells) { const p = cellCenter(g, c), d = dist(u, p); if (d < bd) { bd = d; best = p; } }
   return best;
@@ -1870,7 +1910,7 @@ export function autocastTarget(g, u) {
   if (ab.id === 'ap') {
     // loaded for the vehicle it is shooting at
     const t = g.units.get(u.targetId);
-    return !u.ap && t && !UNITS[t.type].infantry && !UNITS[t.type].structure && canShoot(g, u, t) ? {} : null;
+    return !u.ap && t && !UNITS[t.type].infantry && !UNITS[t.type].structure && (!ab.naval || UNITS[t.type].naval) && canShoot(g, u, t) ? {} : null;
   }
   if (ab.id === 'smoke') return u.hp < def.models * def.hpPer * 0.5 && g.tick - (u.atHit ?? -1e9) <= 3 / TICK ? {} : null; // hurt and still taking anti-tank hits
   if (ab.id === 'ura') return u.supp >= 50 && u.path.length ? {} : null; // pinned down on the move: get up and run
@@ -1920,7 +1960,7 @@ const firedOnBy = (g, u, t) => g.tick - (t.id === u.hitBy ? u.hitAt : t.targetId
 function pickTarget(g, u) {
   const w = UNITS[u.type].w, cur = u.targetId, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity, curScore = Infinity;
-  for (const t of gridFor(g).candidates(u, w.range, true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
+  for (const t of gridFor(g).candidates(u, w.range + (g.naval ? HULL_MAX : 0), true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
@@ -2122,7 +2162,8 @@ function fire(g, u, t, moving) {
   let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg * (1 + CFG.vetAcc * vet(u));
   let dmg = inf ? w.inf : w.veh, supp = w.supp, rate = sm.rate;
   if (u.buff > 0) { dmg *= 0.5; supp *= 2.5; rate *= 0.5; } // suppressive fire: faster, pins harder, kills less
-  if (u.ap && !inf) { acc = 1; dmg *= 1.5; u.ap = false; }
+  const ab = UNITS[u.type].ab;
+  if (u.ap && !inf && (!ab.naval || def.naval)) { acc = 1; dmg *= ab.mult ?? 1.5; u.ap = false; } // a torpedo (ab.naval) only runs at boats and ships
   if (t.retreating) dmg *= CFG.retreatDamage;
   dmg *= 1 - CFG.vetArmor * vet(t); supp *= 1 - CFG.vetSupp * vet(t);
   // Classic buildings are timber: guns (anti-tank damage of 20+) hit them fully, small arms chip at them
@@ -2180,9 +2221,9 @@ function updateVision(g) {
     // only the sources near it, without querying once per team and target.
     for (const source of sources) {
       const { u, def, range } = source, reach = Math.max(6, CFG.camoRange, def.vision, range) * CFG.dustSeen;
-      for (const t of gridFor(g).candidates(u, Math.max(reach, CFG.air.seeRange), false)) {
+      for (const t of gridFor(g).candidates(u, Math.max(reach, CFG.air.seeRange) + (g.naval ? HULL_MAX : 0), false)) {
         if (g.players[t.owner].team === p.team) continue;
-        const bound = t.air ? CFG.air.seeRange : reach;
+        const bound = t.air ? CFG.air.seeRange : reach + (UNITS[t.type].hull ?? 0);
         if (Math.abs(t.x - u.x) > bound || Math.abs(t.z - u.z) > bound) continue;
         let observers = watchers.get(t.id);
         if (!observers) watchers.set(t.id, observers = []);
@@ -2199,7 +2240,7 @@ function updateVision(g) {
       const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
       let seen = false;
       for (const { u, def, base, range } of nearby(t)) {
-        const d = dist(u, t);
+        const d = reachDist(u, t);
         if (u.air ? d <= def.vision && (!hidden || d < CFG.camoRange * 2)
           : hidden ? d < CFG.camoRange
             : d < 6 || (def.building && d <= base) || (d <= range * (dusty(g, t) ? CFG.dustSeen : 1) && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
