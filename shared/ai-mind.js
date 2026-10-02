@@ -90,3 +90,40 @@ export function lesson(mind, buy, haveAt, haveMg) {
 export function pointExtra(mind, index) {
   return Math.min(3, mind.points[index]?.failed ?? 0);
 }
+
+// Armor the seat has actually seen. Anti-armor is what it can send against that, instead of rifles.
+export const ARMOR = new Set(['tank', 'medium', 'tiger']);
+export const ANTI_ARMOR = new Set(['at', 'tank', 'medium', 'tiger', 'rocket']);
+
+// A sighting that has left vision still stands until it is a minute old, or until this seat looks at that ground and it is empty.
+export function dropEmptyGround(mem, view, slot, now) {
+  if (!mem.seen) return;
+  const visible = view.players[slot].visible;
+  for (const [id, sighting] of [...mem.seen]) {
+    if (now - sighting.t > 60) { mem.seen.delete(id); continue; }
+    if (visible.has(id)) continue;
+    if (typeof view.sees === 'function' && view.sees(sighting)) mem.seen.delete(id);
+  }
+}
+
+export function liveSightings(mem, view, slot, now) {
+  const me = view.players[slot];
+  return [...(mem.seen?.values() ?? [])].filter(sighting => {
+    const owner = view.players[sighting.owner];
+    return owner && owner.team !== me.team && now - sighting.t <= 60;
+  }).sort((a, b) => a.id - b.id);
+}
+
+// The operation from the last look, while its reason is still on the table.
+// A brand-new contact is not a reason to drop it. That check stays with the caller.
+export function operationHolds(op, view, slot, mind, now, sightings) {
+  if (!op || !(now + 1e-9 < op.until)) return false;
+  const me = view.players[slot];
+  if (op.kind === 'wait') return op.threatId != null && sightings.some(s => s.id === op.threatId);
+  if (op.kind !== 'push' || op.point == null) return op.kind === 'push';
+  const point = view.points[op.point];
+  if (!point) return false;
+  const owner = point.owner >= 0 ? view.players[point.owner] : null;
+  if (owner && owner.team === me.team && !point.cut) return false;
+  return (mind.points[op.point]?.failed ?? 0) <= (op.failedAt ?? 0);
+}

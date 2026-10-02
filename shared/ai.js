@@ -1,9 +1,9 @@
 // Seat commander. Runs on the server every couple of seconds and plays through command(),
-// from a detached per-seat observation. It watches a contact before it strikes, commits to one
-// attack, and changes what it buys and where it attacks after its own squads die or take ground.
+// from a detached per-seat observation. Each look it picks one situation, wait, hold, or attack,
+// and keeps that operation while the reason for it still holds.
 import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los } from './sim.js';
 import { viewFor } from './ai-view.js';
-import { beginMind, knownSince, pointReady, lesson, pointExtra } from './ai-mind.js';
+import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
 
@@ -252,7 +252,48 @@ function plan(observation, slot, opts, mem, send) {
     const steady = all.filter(u => !u.air && !u.autoRetreat);
     if (steady.length) submit({ t: 'stance', ids: steady.map(u => u.id), key: 'autoRetreat', on: true });
   }
-  const seenTanks = Math.max([...me.visible].filter(id => HEAVY.has(view.units.get(id)?.type)).length, counters ? seenArmor : 0);
+  // One situation for this look, from the seat's own sightings and the operation it already committed to.
+  // Wait: a remembered threat it cannot answer. Hold: a watched enemy on ground it owns. Attack: one objective.
+  let sit = null;
+  let armorSightings = [];
+  const enemies = [...me.visible].map(id => view.units.get(id)).filter(Boolean);
+  const watched = (e) => !mindful || knownSince(mind, e?.id, now, L.notice);
+  if (mindful) {
+    dropEmptyGround(mem, view, slot, now);
+    const sightings = liveSightings(mem, view, slot, now);
+    armorSightings = sightings.filter(s => ARMOR.has(s.type));
+    mind.released ??= [];
+    if (mind.operation?.kind === 'wait' && mind.operation.threatId != null && !(now + 1e-9 < mind.operation.until)
+      && !mind.released.includes(mind.operation.threatId)) mind.released.push(mind.operation.threatId);
+    const onHeld = enemies.filter(e => watched(e) && !e.air && !UNITS[e.type].structure && e.hp > 0).filter(e => {
+      const onPoint = view.points.some(p => allied(view, p.owner, slot) && d(e, p) <= CFG.pointRadius + 4);
+      const onDepot = [...view.units.values()].some(u => u.type === 'depot' && u.owner === slot && d(e, u) <= 24);
+      const onBase = d(e, me.spawn) <= 32 || [...view.units.values()].some(u => u.type === 'hq' && u.owner === slot && d(e, u) <= 32);
+      return onPoint || onDepot || onBase;
+    }).sort((a, b) => d(a, me.spawn) - d(b, me.spawn) || a.id - b.id)[0];
+    if (onHeld) {
+      const until = mind.operation?.kind === 'defense' && mind.operation.threatId === onHeld.id && now + 1e-9 < mind.operation.until
+        ? mind.operation.until : now + L.commit;
+      sit = { kind: 'defense', until, point: null, threatId: onHeld.id, at: { x: onHeld.x, z: onHeld.z }, counter: null, failedAt: 0 };
+    } else if (operationHolds(mind.operation, view, slot, mind, now, sightings)) {
+      sit = mind.operation;
+    } else {
+      const answer = mine.filter(u => ANTI_ARMOR.has(u.type)).reduce((a, u) => a + worth(u), 0);
+      const armorVal = armorSightings.reduce((a, s) => a + (s.val ?? 0), 0);
+      const openArmor = armorSightings.filter(s => !mind.released.includes(s.id));
+      const crowd = sightings.filter(s => UNITS[s.type]?.infantry);
+      const crowdVal = crowd.reduce((a, s) => a + (s.val ?? 0), 0);
+      const foot = mine.filter(u => UNITS[u.type].infantry).reduce((a, u) => a + worth(u), 0);
+      if (openArmor.length && armorVal > answer + 1e-9) {
+        const s = openArmor[0];
+        sit = { kind: 'wait', until: now + L.commit, point: null, threatId: s.id, at: { x: s.x, z: s.z }, counter: count('at') < 2 ? 'at' : null, failedAt: 0 };
+      } else if (crowd.length >= 4 && crowdVal > foot + 1e-9 && count('mg') < 1 && !mind.released.includes(crowd[0].id)) {
+        const s = crowd[0];
+        sit = { kind: 'wait', until: now + L.commit, point: null, threatId: s.id, at: { x: s.x, z: s.z }, counter: 'mg', failedAt: 0 };
+      } else sit = { kind: 'push', until: now + L.commit, point: null, threatId: null, at: null, counter: null, failedAt: 0 };
+    }
+  }
+  const seenTanks = Math.max([...me.visible].filter(id => HEAVY.has(view.units.get(id)?.type)).length, counters ? seenArmor : 0, mindful ? armorSightings.length : 0);
 
   // shopping: counter tanks it has seen, get one tank once the infantry is out, a mortar for dug-in enemies, a sniper
   // against infantry crowds, an armored car to scout and raid, else 2 rifles per MG
@@ -277,9 +318,9 @@ function plan(observation, slot, opts, mem, send) {
   if (want === 'rifle' && canBuild('ranger', me.faction) && count('ranger') < 2 && count('rifle') >= 1) buy = 'ranger';
   // Tiger only when it's affordable right now: saving up for it starved the German army
   if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && affords('tiger') && (want === 'tank' || want === 'rifle')) buy = 'tiger';
-  // A tank that already wiped a squad, or a crowd that did, still changes the next buy after it leaves sight.
+  // A tank that already wiped a squad, or one this seat still remembers, changes the next buy after it leaves sight.
   if (mindful) {
-    const learned = lesson(mind, buy, count('at'), count('mg'));
+    const learned = lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null;
     if (learned) buy = learned;
   }
   // Classic: keep an Engineer while there are nodes to build on
@@ -299,10 +340,23 @@ function plan(observation, slot, opts, mem, send) {
   }
 
   const orders = [], assault_ = [], retreat = [], pending = view.points.map(() => []), heading = [...load];
-  const enemies = [...me.visible].map(id => view.units.get(id)).filter(Boolean);
   const enemyOrder = new Map(enemies.map((u, i) => [u.id, i]));
   const enemiesNear = (at, r) => grid.radius(at, r).filter(u => enemyOrder.has(u.id)).sort((a, b) => enemyOrder.get(a.id) - enemyOrder.get(b.id));
-  const watched = (e) => !mindful || knownSince(mind, e?.id, now, L.notice);
+  // The attack's objective is chosen once, before support, so a strike aims at that push and not at some other cluster.
+  if (mindful && sit?.kind === 'push' && sit.point == null) {
+    const scout = mine.find(u => !u.air && !UNITS[u.type].medic) ?? mine[0];
+    let best = -1, bestScore = Infinity;
+    if (scout) view.points.forEach((p, i) => {
+      if (allied(view, p.owner, slot) && !p.cut) return;
+      if (defending && d(p, me.spawn) > 70) return;
+      const score = d(scout, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + pointExtra(mind, i) * 40;
+      if (score < bestScore) { bestScore = score; best = i; }
+    });
+    if (best >= 0) {
+      sit = { ...sit, point: best, at: { x: view.points[best].x, z: view.points[best].z }, failedAt: mind.points[best]?.failed ?? 0 };
+      if (!mind.aim) mind.aim = { i: best, until: sit.until };
+    }
+  }
   let hands = 0, casts = 0, pushed = false, spentSupport = false;
   const takeHand = () => {
     if (!mindful) return true;
@@ -339,6 +393,8 @@ function plan(observation, slot, opts, mem, send) {
   // One support call per look. A siren (fighter cover) can be that call. A unit just spotted is not a target yet.
   const call = (kind, at, dir) => {
     if (spentSupport || !at) return;
+    // Cover answers a siren wherever it is. Every other call has to be the fight this look already chose.
+    if (mindful && kind !== 'cover' && sit?.at && d(at, sit.at) > 40) return;
     if (!submit({ t: 'support', kind, x: at.x, z: at.z, dir })) { mem.called = now; spentSupport = true; }
   };
   // bombs for tanks and for squads holed up in houses
@@ -424,6 +480,28 @@ function plan(observation, slot, opts, mem, send) {
   // that fell back to a Barracks away from the HQ used to head out again half empty)
   const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : null;
   const atBase = (u) => (bases ? bases.some(b => d(u, b) <= CFG.reinforceRadius) : d(u, me.spawn) <= CFG.reinforceRadius);
+  const idleCombat = (u) => !u.air && !u.retreating && !busy.has(u.id) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
+  // A watched threat on ground we hold: idle squads go there, and the attack loop will not open another objective.
+  if (mindful && sit?.kind === 'defense' && sit.at) {
+    for (const u of mine) {
+      if (!idleCombat(u)) continue;
+      if (!takeHand()) break;
+      assault_.push([u.id, sit.at.x, sit.at.z]);
+      arm(u);
+      busy.add(u.id);
+    }
+  }
+  // Remembered armor: the anti-tank gun goes toward it. Rifles are taken off that ground at the end of the look.
+  if (mindful && armorSightings.length && sit && sit.kind !== 'defense') {
+    const spot = armorSightings[0];
+    for (const u of mine) {
+      if (!ANTI_ARMOR.has(u.type) || !idleCombat(u)) continue;
+      if (!takeHand()) break;
+      assault_.push([u.id, spot.x, spot.z]);
+      arm(u);
+      busy.add(u.id);
+    }
+  }
   for (const u of mine) {
     if (u.air) continue; // planes are flown above
     if (busy.has(u.id)) continue;
@@ -486,7 +564,7 @@ function plan(observation, slot, opts, mem, send) {
     // otherwise go for the closest point we don't hold, spreading out across targets
     let best = -1, bestScore = Infinity;
     // attackers with a big enough army go for the bunkers
-    if (bunkers.length && mine.length >= Math.round(L.baseArmy * caution) && strongEnough) {
+    if (bunkers.length && mine.length >= Math.round(L.baseArmy * caution) && strongEnough && !(mindful && sit && sit.kind !== 'push')) {
       if (takeHand()) {
         const b = bunkers.sort((a, c) => d(u, a) - d(u, c))[0];
         assault_.push([u.id, b.x, b.z]);
@@ -520,6 +598,8 @@ function plan(observation, slot, opts, mem, send) {
       for (const u of group) { if (!takeHand()) return; const s = spotNear(view, p); orders.push([u.id, s.x, s.z]); }
       return;
     }
+    if (mindful && sit && sit.kind !== 'push') return; // waiting or holding does not open an enemy point
+    if (mindful && sit?.kind === 'push' && sit.point != null && i !== sit.point) return; // the operation already has its objective
     if (mindful && pushed) return; // one enemy point per look. The other can wait until the next decision.
     if (now < L.firstAssault || !group.length || group.length + heading[i] < Math.min(L.wave, mine.length)) return;
     const ids = new Set(group.map(u => u.id));
@@ -575,7 +655,20 @@ function plan(observation, slot, opts, mem, send) {
   }
   if (mindful) for (const u of mine) if (!u.air && !u.autoRetreat && !u.retreating && enemies.some(e => watched(e) && d(u, e) < 40)) arm(u);
   if (armSet.size) submit({ t: 'stance', ids: [...armSet], key: 'autoRetreat', on: true });
-  mind.decision = { buy, aim: mind.aim ? mind.aim.i : null };
+  // Rifles do not walk onto armor this seat still remembers. The gun, if one was ordered, stays in that order.
+  if (mindful && armorSightings.length) {
+    const hot = (x, z) => armorSightings.some(s => Math.hypot((s.x ?? 0) - x, (s.z ?? 0) - z) <= 28);
+    const soft = (id) => { const u = view.units.get(id); return !!u && !ANTI_ARMOR.has(u.type); };
+    for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (soft(list[i][0]) && hot(list[i][1], list[i][2])) list.splice(i, 1);
+  }
+  if (mindful && sit) {
+    mind.operation = {
+      kind: sit.kind, until: sit.until, point: sit.point ?? null, threatId: sit.threatId ?? null,
+      at: sit.at ? { x: sit.at.x, z: sit.at.z } : null, counter: sit.counter ?? null,
+      failedAt: sit.point != null ? (mind.points[sit.point]?.failed ?? sit.failedAt ?? 0) : (sit.failedAt ?? 0),
+    };
+    mind.decision = { situation: sit.kind, buy, aim: mind.aim ? mind.aim.i : (sit.point ?? null) };
+  } else mind.decision = { buy, aim: mind.aim ? mind.aim.i : null };
   if (retreat.length) submit({ t: 'retreat', ids: retreat });
   if (orders.length) submit({ t: 'move', orders });
   if (assault_.length) submit({ t: 'amove', orders: assault_ });

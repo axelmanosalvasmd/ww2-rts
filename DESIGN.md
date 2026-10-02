@@ -146,6 +146,16 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   A squad lost within 20 m of a point adds a failure there (cap 4). Each failure adds 40 m to that point's score and
   0.45 to the force margin the next attack needs, counting at most three. Capturing a point removes one failure and
   one point of every respect, so the commander can change its mind. The memory is wiped with the match.
+- Each look names one situation, stored on the seat's private operation: `wait`, `defense`, or `push`. Purchases,
+  the one support call, and marches follow it. Support aims at that fight, or at an announced enemy air strike.
+  A contact younger than `notice` does not cancel the operation and is not struck. Easy's `commit` is longer than Hard's.
+- Wait: armor still in the 60 second sightings, and worth more than the anti-tank guns and tanks the seat can send.
+  No rifle attack-move onto that ground. The next rifle or machine-gun buy is an anti-tank gun until two are fielded.
+  An anti-tank gun already fielded is ordered toward the armor. The same threat is not waited out forever: when
+  `commit` ends, the sighting expires, or a later look sees that ground empty, a push is allowed again. Rifles still
+  do not walk onto armor that is remembered. An infantry crowd the seat cannot match waits for a machine gun.
+- Defense: a watched enemy on a held point, a depot, or the base. Idle combat units are ordered toward it, and no
+  second enemy objective is opened in that look. The horde wave director does not use these situations.
 
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
