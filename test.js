@@ -5645,10 +5645,33 @@ for (const lookupFinished of [false, true]) {
 
   const bodies = createBodies(), scene = new THREE.Scene(), world = new THREE.Group();
   scene.add(world);
+  const deadRoot = new THREE.Group(), dead = { type: 'rifle', root: deadRoot, models: [], turret: null };
+  buildModel(dead, deadRoot, look, 0, UNITS.rifle);
+  bodies.add(world, 3, 0.2, 4, dead.models[0], 1.2);
+  const fallen = world.children.find((o) => o.isInstancedMesh);
+  fallen.geometry.computeBoundingBox();
+  const bb = fallen.geometry.boundingBox, span = (a) => bb.max[a] - bb.min[a];
+  assert.ok(fallen.geometry.attributes.color && fallen.geometry.attributes.matId, 'a corpse keeps the soldier colors and materials');
+  assert.ok(fallen.geometry.attributes.position.count > 500 && fallen.geometry.type !== 'CapsuleGeometry', 'a corpse is the soldier mesh, not a capsule');
+  assert.ok(Math.max(span('x'), span('z')) > span('y') * 2 && span('y') < 0.85, `a corpse lies down (${span('x').toFixed(2)} x ${span('y').toFixed(2)} x ${span('z').toFixed(2)})`);
+  assert.ok(bb.min.y > -0.001 && bb.min.y < 0.02, 'the body rests on the ground');
+  const placed = new THREE.Matrix4();
+  fallen.getMatrixAt(0, placed);
+  const at = new THREE.Vector3().setFromMatrixPosition(placed), facing = new THREE.Euler().setFromRotationMatrix(placed, 'YXZ');
+  assert.ok(Math.abs(at.x - 3) < 1e-4 && Math.abs(at.y - 0.2) < 1e-4 && Math.abs(at.z - 4) < 1e-4, 'the corpse is placed where the man fell');
+  assert.ok(Math.abs(facing.y - 1.2) < 1e-3, 'it keeps the facing it was given');
+  const mgRoot = new THREE.Group(), mg = { type: 'mg', root: mgRoot, models: [], turret: null };
+  buildModel(mg, mgRoot, { ...look, color: 0xc43a31 }, 1, UNITS.mg);
+  bodies.add(world, 1, 0, 1, mg.models[0], 0);
+  const pools = world.children.filter((o) => o.isInstancedMesh);
+  assert.equal(pools.length, 2, 'a different uniform gets its own pooled mesh');
+  assert.ok(pools[0].geometry !== pools[1].geometry, 'the two pools do not share one body');
+  assert.equal(bodies.count, 2, 'both men are on the field');
   let most = 0;
   for (let i = 0; i < 600; i++) { bodies.add(world, i % 50, 0.3, i / 50); bodies.update(0.02); most = Math.max(most, bodies.count); }
   assert.ok(most <= CORPSES.cap && most > CORPSES.cap - 20, `corpses stay at or under the cap (${most})`);
-  assert.equal(world.children.find((o) => o.isInstancedMesh).count, bodies.count, 'one instanced mesh draws them all');
+  const drawn = world.children.filter((o) => o.isInstancedMesh).reduce((n, o) => n + o.count, 0);
+  assert.equal(drawn, bodies.count, 'the pooled meshes draw every corpse');
   for (let s = 0; s < CORPSES.life + CORPSES.fade + 1; s += 0.5) bodies.update(0.5);
   assert.equal(bodies.count, 0, 'old bodies fade out and leave');
   bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
