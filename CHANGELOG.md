@@ -76,6 +76,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fallen soldiers stay the soldiers who fell. A dead man lies as if he fell rather than aiming from the dirt. He keeps his uniform, helmet and kit, stays where he dropped, then sinks and fades. Bodies are no longer brown capsules. Up to 200 stay on the field, in one draw per uniform.
 - Left for later: a wiped gun crew's weapon still disappears with the squad. Vehicle wrecks are still the real hull, darkened.
 
+- Computer opponents play as a commander for the match, instead of issuing every perfect order on the same look.
+  Each look is one situation: wait, hold, or attack, and that plan stays until the objective falls, the push fails,
+  a watched enemy hits something they hold, or the time they gave it runs out. Easy keeps a plan longer than Hard.
+  A tank they saw and then lost still keeps their rifles off that ground, and the next rifle or machine-gun purchase
+  becomes an anti-tank gun, until the sighting is a minute old, they look and the ground is empty, or the wait runs out.
+  If they already have an anti-tank gun, that gun goes toward the tank and the rifles stay back. The rest of the army
+  does not freeze: a point clear of that tank is still taken. A watched enemy on a
+  point, depot, or base they hold pulls idle squads there and stops a second attack for that look. A unit they have
+  only just spotted does not break the plan and is not struck yet. An announced enemy air strike is still answered
+  at once. When squads die on a point, the next push asks for a bigger margin and prefers a different point. Taking
+  a point spends some of that caution, so a lesson can fade. The memory lasts one match. It is not a language model,
+  and it still sees only what a player in that seat would see. A large AI-versus-AI balance sample was not rerun.
 - New **Formation** menu in the Orders panel: line, block, column and wedge (Shift+V cycles), Tighten and Spread (`[` and `]`) to re-form units where they stand, March together (the group moves at its slowest unit's pace) and Snap to trenches (infantry placed next to a trench step into it). Mortars, rockets and medics stand in the rear rank.
 - A wider right-drag now fits more units side by side, so a long drag gives fewer ranks. A double right-click turns the selection to face a spot without moving.
 - Control groups remember their formation: Ctrl+number saves it, recalling the group brings it back.
