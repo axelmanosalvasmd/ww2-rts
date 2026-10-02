@@ -5570,7 +5570,7 @@ for (const lookupFinished of [false, true]) {
     } else {
       let draws = 0;
       root.traverse((o) => { if (o.isMesh) { draws++; assert.ok(o.castShadow, `${type}: vehicles and structures cast shadows`); } });
-      assert.ok(draws >= 1 && draws <= 3, `${type}: ${draws} draws`);
+      assert.ok(draws >= 1 && draws <= (type === 'destroyer' ? 5 : 3), `${type}: ${draws} draws`); // a destroyer's four gun mounts each turn on their own
     }
   }
 
@@ -6619,6 +6619,20 @@ for (const lookupFinished of [false, true]) {
     assert.equal(command(g, 1, { t: 'ability', ids: [boat.id] }), undefined, 'torpedo loaded');
     run(g, 20 * 3);
     assert.ok(before - dd.hp >= UNITS.gunboat.w.veh * UNITS.gunboat.ab.mult * 0.99, 'the torpedo hits the hull hard');
+  }
+
+  // outside Classic, boats are bought like any unit on a naval map and launch on the water nearest the HQ
+  {
+    const rows = Array(40).fill('.'.repeat(10) + 'W'.repeat(70) + '.'.repeat(10));
+    const extra = { spawns: [{ x: 3, y: 20 }, { x: 86, y: 20 }], points: [{ x: 5, y: 5 }] };
+    const g = createGame(mapOf(rows, { naval: true, ...extra }), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    g.players[0].mp = 5000;
+    assert.equal(command(g, 0, { t: 'buy', unit: 'destroyer' }), undefined, 'Conquest buys a destroyer on a naval map');
+    const dd = unitOf(g, 0, 'destroyer'), c = Math.floor(dd.z / CELL) * g.w + Math.floor(dd.x / CELL);
+    assert.ok(!(g.flags[c] & (sim.LAND | sim.SHOAL)), 'launched in deep water');
+    const dry = createGame(mapOf(rows, extra), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false });
+    dry.players[0].mp = 5000;
+    assert.equal(command(dry, 0, { t: 'buy', unit: 'gunboat' }), 'needs', 'but no boats where the map has no sea');
   }
 
   // medic: heals the most hurt squad nearby for free, but not one under fire

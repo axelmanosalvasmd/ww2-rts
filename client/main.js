@@ -812,7 +812,7 @@ function chutes(x, z) {
 
 // client/hud.js draws the panels; it reads the match state and calls back into these actions
 const feedback = createFeedback($('hint'), () => blip('error'));
-const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, ids: [...selected] });
+const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, ids: [...selected], naval: lastStart?.map?.naval === true });
 const explainUnavailable = (result) => { if (!result.ok) feedback.show(result.reason); return !result.ok; };
 let placementCache = null;
 function placementView() {
@@ -822,7 +822,7 @@ function placementView() {
 }
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
-  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), send: sendCmd, blip,
+  units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
   retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
   dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
@@ -1496,6 +1496,7 @@ renderer.setAnimationLoop(() => {
     v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
     if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; aviation.tick(v, dt); }
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
+    if (v.mounts) for (const m of v.mounts) m.rotation.y = -(v.aim - v.rot); // every gun of a ship trains on the target
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
     if (v.range) v.range.visible = ranges && v.sel.visible;

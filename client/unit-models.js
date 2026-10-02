@@ -347,14 +347,16 @@ export function buildModel(v, root, f, fac, def) {
       part(GEO.cyl, f.color, 1.85, 1, 2.35, 4, 10.5, 0), part(GEO.cyl, f.color, 1.85, 1, 2.35, -8, 10.5, 0),
       part(GEO.cyl, DARK, 0.25, 20, 0.25, 15, 16, 0), part(GEO.box, DARK, 0.2, 0.2, 6, 15, 21, 0),
       part(GEO.box, light, 6, 2.6, 4, -22, 5.2, 0), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, 1.2).rotateZ(Math.PI / 3), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, -1.2).rotateZ(Math.PI / 3));
-    // the gun mounts that do not turn: B forward, raised; X and Y aft, facing astern
-    for (const [x, y, back] of [[25, 6.4, false], [-36, 5, true], [-44, 5, true]]) {
-      hull.add(part(GEO.box, light, 5, 2.4, 4, x, y, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, x + (back ? -4.5 : 4.5), y + 0.4, 0).rotateZ(Math.PI / 2));
-    }
-    v.turret = new THREE.Group(); v.turret.position.set(33, 4, 0);
-    v.turret.add(part(GEO.box, light, 5, 2.4, 4, 0, 1.2, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, 4.5, 1.6, 0).rotateZ(Math.PI / 2));
-    root.add(hull, v.turret); v.fxTip = [7.5, 1.6, 0];
-    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
+    // four gun mounts, A and B (raised) forward, X and Y aft; all of them turn (v.mounts), A doubles as v.turret
+    v.mounts = [[33, 4], [25, 5.2], [-36, 4], [-44, 4]].map(([x, y]) => {
+      const m = new THREE.Group(); m.position.set(x, y, 0);
+      m.add(part(GEO.box, light, 5, 2.4, 4, 0, 1.2, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, 4.5, 1.6, 0).rotateZ(Math.PI / 2));
+      bake(m, key + '|mount', true);
+      return m;
+    });
+    v.turret = v.mounts[0]; v.fxTip = [7.5, 1.6, 0];
+    root.add(hull, ...v.mounts);
+    bake(hull, key + '|hull', true);
     v.models.push(root);
   } else if (type === 'bunker') {
     const shell = new THREE.Group();

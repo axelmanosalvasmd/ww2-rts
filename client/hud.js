@@ -44,11 +44,11 @@ const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearmin
 const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need a spot clicked
 
 // Command Card groups, and the order of the cards inside them (types not listed go last, in table order)
-const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft'];
-const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter']; // a silhouette before each group's name
+const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft', 'Naval'];
+const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter', 'destroyer']; // a silhouette before each group's name
 const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak']);
 const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker'];
-const groupOf = (t) => (UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
+const groupOf = (t) => (UNITS[t].naval ? 4 : UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
 const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? ORDER.length + UNIT_TYPES.indexOf(t) : i; };
 // long one-word names get a soft hyphen so they break cleanly on a narrow card
 const BREAKS = { 'Scharfschützen': 'Scharf­schützen', 'Panzerwerfer': 'Panzer­werfer' };
@@ -417,7 +417,7 @@ export function createHud(ctx) {
     recruiting = false;
     if (ctx.classic()) { card.innerHTML = ''; card.classList.add('hidden'); return; }
     card.classList.remove('hidden');
-    const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic);
+    const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
     // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
     card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);

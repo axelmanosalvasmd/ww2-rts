@@ -932,6 +932,12 @@ Goal: a big-map mode where players slowly take resource nodes, fortify their coa
   mortar) with 120 m range, 25 m minimum, and its ability is the barrage (Shore Bombardment). The gunboat's Torpedo
   is the AP round with `mult: 25` and `naval: true` (only fired at boats and ships). The Shipyard's coast test now
   takes surf too (beaches have 6 cells of it).
+- Boats in every mode (2026-10-01): the naval units dropped `classic: true`. `command('buy')` refuses a `naval` unit
+  unless `g.naval`; `spawnUnit` launches it with `nearestFree(..., blockOf(def))`, so a bought destroyer appears on the
+  deep water nearest the HQ. The recruit bar gets a fifth group, Naval, shown only on naval maps.
+- Destroyer broadside: `rockets: 4` (one per mount) at 22 / 32 damage, `every: 0.1`. The client model has four mounts
+  (`v.mounts`, the first is also `v.turret`) that all follow the aim; fx.js fires shell i from mount i, with a muzzle
+  flash per mount and one broadside per 1.2 s for an eight-shell Shore Bombardment.
 - Next slices: AI that defends coasts and later invades, a coastal battery, beach obstacles and bunkers, supply across the sea (forward depot or a captured port), Sudden Death moved
   for 60-minute games, a larger pop cap, and the zoomed-out symbol view for big maps.
 

@@ -999,11 +999,13 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     Object.assign(salvos[salvoI++ % salvos.length], { x: sh.x, z: sh.z, r: w.spread ?? 6, mortar, t: clock });
     if (mortar) {
       for (let i = 0; i < n; i++) {
-        const d = i * (w.every ?? 0.5);
+        const d = ship ? Math.floor(i / from.mounts.length) * 1.2 : i * (w.every ?? 0.5); // a ship's guns fire together
         if (from) {
-          const top = ship ? from.turret : from.root;
+          // a ship fires a broadside: shell i leaves gun i, and each gun flashes on its first shell
+          const top = ship ? from.mounts[i % from.mounts.length] : from.root;
           top.updateWorldMatrix(true, false);
           v3.set(...(ship ? from.fxTip : [1.1, 1.12, 0])).applyMatrix4(top.matrixWorld);
+          if (ship && i < from.mounts.length) { const dx = sh.x - v3.x, dz = sh.z - v3.z, l = Math.hypot(dx, dz) || 1; muzzle(v3.x, v3.y, v3.z, dx / l, dz / l, 2.4, { smoke: 1 }); }
           later(d, E_ROCKET, v3.x, v3.y, v3.z, v3.x + (sh.x - from.x) * 0.15, v3.y + 40, v3.z + (sh.z - from.z) * 0.15, 0.6, 0);
           snd(ship ? 'tankgun' : 'mortar', d, from.x, from.z);
         }

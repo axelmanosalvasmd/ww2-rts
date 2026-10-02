@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Boats in every mode: on a naval map, Conquest, Assault and Annihilation now offer the Landing Craft, Gunboat and
+  Destroyer in a new **Naval** group of the recruit bar (140, 220 and 700 MP). A bought boat launches on the water
+  nearest your HQ (a destroyer on the nearest deep water). Classic still trains them at the Shipyard.
+- The destroyer fires broadsides: all four gun mounts turn to the target and each fires a shell with its own muzzle
+  flash. A salvo is now four shells of 22 (32 against vehicles) instead of two of 40 (60), about the same weight.
+
 - Warships (Classic, naval maps), trained at the Shipyard:
   - **Gunboat** (PT Boat / S-Boot / Armored Boat, 170 MP + 40 Fuel): the fastest unit (10 m/s), a rapid autocannon
     against boats and the shore, and a **Torpedo** (Munitions, 40 s cooldown) that hits a boat or ship for 25 times

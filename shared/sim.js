@@ -189,20 +189,21 @@ UNITS.halftrack = { name: 'Halftrack', cost: 180, models: 1, hpPer: 220, speed: 
   ab: { id: 'none', name: '', cd: 1e9 } };
 // Medic team: unarmed (a weapon with no range). Heals the most hurt squad nearby, slowly and for free (CFG.aid).
 // Landing craft (LCVP / Sturmboot / river boat): floats on water and surf only, carries one squad like a halftrack and
-// lands it on the nearest dry ground. Thin hull, one MG. Built at a Shipyard, Classic only, on maps marked naval.
-UNITS.lcvp = { name: 'Landing Craft', classic: true, cost: 140, models: 1, hpPer: 160, speed: 7, radius: 2.5, vision: 32, infantry: false, carries: true, naval: true,
+// lands it on the nearest dry ground. Thin hull, two light MGs. Naval maps only: a Shipyard trains it in Classic,
+// other modes buy it like any unit and it launches on the water nearest the HQ.
+UNITS.lcvp = { name: 'Landing Craft', cost: 140, models: 1, hpPer: 160, speed: 7, radius: 2.5, vision: 32, infantry: false, carries: true, naval: true,
   w: { range: 26, interval: 0.4, inf: 2, veh: 0.2, accInf: 0.35, accVeh: 0.3, supp: 6, moveFire: 0.6 },
   ab: { id: 'none', name: '', cd: 1e9 } };
 // Gunboat (PT boat / S-boot / armored river boat): fast, a rapid autocannon against boats and the shore, and one
 // torpedo (the AP round of the sea: a 25x hit that only runs at boats and ships).
-UNITS.gunboat = { name: 'Gunboat', classic: true, cost: 220, models: 1, hpPer: 300, speed: 10, radius: 3, vision: 40, infantry: false, naval: true, hull: 11,
+UNITS.gunboat = { name: 'Gunboat', cost: 220, models: 1, hpPer: 300, speed: 10, radius: 3, vision: 40, infantry: false, naval: true, hull: 11,
   w: { range: 34, interval: 0.6, inf: 4, veh: 12, accInf: 0.45, accVeh: 0.5, supp: 10, moveFire: 0.7 },
   ab: { id: 'ap', name: 'Torpedo', cd: 40, mult: 25, naval: true } };
 // Destroyer: true size (110 m), deep water only. Its guns out-range everything ashore and fire on whatever its side
 // spots (salvos, like the mortar), plus flak. Shore Bombardment: a heavy barrage on a spot. Max 2.
-UNITS.destroyer = { name: 'Destroyer', classic: true, max: 2, cost: 700, models: 1, hpPer: 2400, speed: 6, radius: 6, vision: 60, infantry: false, naval: true, deep: true, hull: 52,
-  w: { range: 120, minRange: 25, interval: 6, setup: 1, inf: 40, veh: 60, accInf: 1, accVeh: 1, supp: 60,
-    salvo: true, rockets: 2, spread: 5, blast: 4, terrain: 150, antiGarrison: 1.5, flight: 1.8, every: 0.4 },
+UNITS.destroyer = { name: 'Destroyer', max: 2, cost: 700, models: 1, hpPer: 2400, speed: 6, radius: 6, vision: 60, infantry: false, naval: true, deep: true, hull: 52,
+  w: { range: 120, minRange: 25, interval: 6, setup: 1, inf: 22, veh: 32, accInf: 1, accVeh: 1, supp: 40,
+    salvo: true, rockets: 4, spread: 6, blast: 4, terrain: 120, antiGarrison: 1.5, flight: 1.8, every: 0.1 }, // a broadside: one shell per gun
   aa: { range: 45, dps: 30 },
   ab: { id: 'barrage', name: 'Shore Bombardment', cd: 45, range: 120, shells: 8, mun: 40 } };
 UNITS.medic = { name: 'Medic Team', cost: 120, models: 2, hpPer: 20, speed: 4.8, radius: 1.2, vision: 30, infantry: true, garrisons: true, medic: true,
@@ -744,7 +745,7 @@ export function teamSees(g, team, at) {
 
 function spawnUnit(g, owner, type, n = g.units.size) {
   const s = g.players[owner].spawn, a = n * 2.4;
-  const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4);
+  const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4, UNITS[type].naval ? blockOf(UNITS[type]) : MOVE);
   const u = { id: g.nextId++, type, owner, x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL,
     rot: 0, aim: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
     path: [], orders: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
@@ -1832,6 +1833,7 @@ export function command(g, slot, cmd, auto = false) {
   } else if (cmd.t === 'buy' && typeof cmd.unit === 'string' && Object.hasOwn(UNITS, cmd.unit) && canBuild(cmd.unit, g.players[slot].faction)) {
     const p = g.players[slot], def = UNITS[cmd.unit], classic = g.mode?.kind === 'classic';
     if (def.classic && !classic) return 'needs'; // Engineers exist only in Classic
+    if (def.naval && !g.naval) return 'needs'; // boats only where the map has a sea for them
     const own = [...g.units.values()].filter(u => u.owner === slot);
     // Classic: training queues count toward the pop cap and the unit limit
     const queued = own.flatMap(b => b.queue ?? []);

@@ -40,6 +40,7 @@ export function availability(s, cfg = CFG, action = {}) {
   if (action.t === 'buy') {
     const def = UNITS[action.unit];
     if (!def || def.structure || (def.classic && !classic)) return no('Unavailable in this mode');
+    if (def.naval && !action.naval) return no('Needs a map with a sea');
     const price = priceOf(s, action.unit), money = resources(s, price.mp, price.fuel);
     if (!money.ok) return money;
     const pop = population(); if (!pop.ok) return pop;
