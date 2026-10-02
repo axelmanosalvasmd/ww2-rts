@@ -1614,3 +1614,56 @@ Full raw results and source manifests: [behavior balance evidence](docs/behavior
   on the map's east edge (x 113) the AI defender never reached the bridge (it holds points within 70 m of home) and
   attackers won 3/4 (2v2); spawns moved into the town (x 102). 20 AI 1v1 assaults: attackers win 4/20 (Seawall, kept,
   is 4/20). The AI attacker uses the ford and once rebuilt a plank bridge where the great one fell.
+
+## Map design rules (2026-10-02)
+
+Researched from Company of Heroes 2/3 map threads and patch notes (coh2.org map overhaul, Angoville, map size
+discussion), StarCraft map-making guides, CS level design, and three papers that measure maps on a grid: Togelius
+et al. 2010 (StarCraft map space), Liapis et al. 2013 (map sketches, tile safety) and Uriarte & Ontañón (PSMAGE).
+The rules we measure, with the numbers we use:
+
+- Fairness by walking distance, not by eye. `tools/mapstats.mjs` walks 8 ways like the pathfinder (houses, water and
+  cliff steps block, a ford costs 3x). A 4-way walk overstated diagonal routes by about 40% and made Default and
+  River Towns look unfair when they split the points evenly.
+- Point safety (Liapis): s = (enemy walk - own walk) / (enemy walk + own walk), against the nearest enemy. Over 0.35
+  (the enemy walks 2x further) is a home point, under 0.1 for every side is contested. CoH gives each side its own
+  resource about a third of the way to the front (safety about 2) and fights over the middle.
+- Killing fields: on the shortest route between enemy HQs, no stretch over about 12 cells (24 m) without cover within
+  2 cells. An HQ's own 8-cell doorstep stays clear (CoH removed hard cover near bases).
+- Lanes: 2-3 separate routes at most 1.35x the shortest. Chokes under 6 cells are a funnel a few guns can hold.
+- Dead space: walkable ground more than a quarter of the rush walk from every point and HQ is ground nobody visits.
+- Sight lines through a point are broken by bushes or hedges, so one MG cannot see every approach.
+
+`tools/mapwork.mjs` applies two of them to finished maps, through each map's own symmetry (point mirror or rotation
+about the HQs' center, found by checking which transforms send HQs to HQs and most features onto themselves):
+
+- Cover: every bare stretch of 12 cells on a walk from an HQ to each point and enemy HQ, and between neighbouring
+  points, gets a pair of shell holes on both sides of the route (every third a pair of bushes). Shell holes only on
+  flat ground away from water (a hole on a slope or bank tears the ground mesh: the relief test caught it on The
+  Polder).
+- Home points: on Conquest maps without defenders, with 2-4 HQs and room under the 9-point cap, each HQ gets a point
+  worth no VP and 1 MP/s, about a third of the walk to the nearest enemy, with safety over 0.35, in the corridor
+  toward the front (own walk + enemy walk at most 1.2x the rush walk), 6+ cells from the map edge, a little off the
+  main route. Supply lines can still cut it, so it is a raid target. The AI takes it early (its point score counts
+  distance and MP).
+- Applied to Default, River Towns, Ardennes Crossing, Twin Valleys, The Polder, No Man's Land, Crater Field,
+  Crossroads Village (home points and cover), King of the Hill, Six Fronts, Island Towns (cover only: 7 points and 6
+  HQs leave no room). Bare stretches: Six Fronts 49 -> 10 cells, Ardennes 52 -> 9, King of the Hill 37 -> 10, Island
+  Towns 58 -> 21 (its long bridges stay bare). Dead space on Default 44% -> 29%.
+- Not applied to Assault maps: their balance was tuned with AI runs, and their funnels (Hot Gates, Monte Cassino's
+  zigzag) are the set piece. By the rules they break (one lane, chokes of 5), they would need a second route.
+- Balance (120 AI free-for-all Conquest matches per map, old maps vs new, wins by spawn and median length): Default
+  39/40/41 -> 44/36/40, 9.3 -> 9.3 min, runner-up VP 0.61 -> 0.64 of the winner's (closer games); Ardennes 46/13/57/4
+  -> 43/15/54/8, 9.3 -> 8.8 min; Twin Valleys 32/21/21/46 -> 36/22/22/40, 10.1 -> 10.0; The Polder 34/26/30/30 ->
+  26/27/41/26, 11.6 -> 10.8; No Man's Land 32/24/41/23 -> 29/27/39/25, 11.0 -> 10.3; Crater Field 32/23/36/29 ->
+  37/26/26/31, 9.8 -> 10.0; Crossroads Village (2 players) 51/69 -> 55/65, 8.2 -> 7.2; River Towns 48/34/38 ->
+  45/40/35, 9.5 -> 9.5; King of the Hill 17/22/15/13/30/23 -> 14/19/10/24/28/25, 10.1 -> 10.4; Six Fronts
+  12/17/26/22/22/21 -> 24/15/28/18/16/19, 11.4 -> 11.8. Spawn spreads stay within noise; the home points bring the
+  first fights forward, so 2-side maps run up to 11% shorter. Faction wins by seat are noisy at 120 matches, so River
+  Towns' GER 57 of 120 after (44 before) needs a recheck before reading anything into it. Island Towns (new) and the
+  River Towns recheck were not run: the batch was stopped when the machine ran low on memory.
+- Found: the 2-side mirrored maps (Ardennes, Twin Valleys, Polder, No Man's Land, Crater Field) are fair for two
+  teams, not as a 4-player free-for-all: on Ardennes the two HQs of one mirror pair won 100 of 120 FFA AI matches
+  before and after the rework. Research agrees a map built for one format compromises the other. Left as is.
+- Found: `spawnDistances` (shared/sim.js) says cliffs block but only checks houses and water, so seating on cliff
+  maps can misjudge who is near whom. Left for the pathfinding work.

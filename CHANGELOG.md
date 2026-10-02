@@ -5,6 +5,22 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Map rework, from research on RTS map design (Company of Heroes map rules, StarCraft map papers): eleven Conquest
+  maps get cover along their open approaches and, where there is room, a home point per HQ.
+  - Killing fields broken up: every long open stretch on the walk between HQs and points now has shell holes beside
+    the route, and some bushes that block the sight line. The longest open run on Six Fronts fell from 49 to 10
+    cells, Ardennes 52 to 9, King of the Hill 37 to 10, Island Towns 58 to 21. HQ doorsteps stay clear.
+  - Home points on Default, River Towns, Ardennes Crossing, Twin Valleys, The Polder, No Man's Land, Crater Field and
+    Crossroads Village: each HQ gets its own point a third of the way to the front, worth 1 MP/s and no VP. It is
+    safely yours (the enemy walks twice as far), but a raid can take it or cut its supply line.
+  - Every change is copied through the map's symmetry, so fair maps stay fair. 120 AI matches per map, old vs new:
+    wins by spawn within noise everywhere (Default 39/40/41 -> 44/36/40), matches the same length or up to 11%
+    shorter on the two-side maps. Details in DESIGN.md, Map design rules.
+  - New tools: `node tools/mapstats.mjs` measures every map (rush distance, point safety, lanes, chokes, open
+    stretches, dead space), and `node tools/mapwork.mjs <maps>` applies the rework.
+  - Found and left: the mirrored two-side maps are fair for two teams but not as a 4-player free-for-all (on
+    Ardennes one mirror pair of HQs won 100 of 120 FFA matches, before and after). Assault maps were left alone
+    (their single-lane funnels are the set piece, and their balance was tuned with AI runs).
 - Fixed: long floating labels shrank their letters to fit a fixed plate, so the "Locked" tag over a linked point was
   unreadable. A long label now gets a wider plate at the normal letter size, and the locked tag reads "Locked: take
   the linked point first".
