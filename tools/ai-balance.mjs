@@ -6,8 +6,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate]';
-const factions = ['USA', 'Germany', 'USSR'];
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
+const factions = ['USA', 'Germany', 'USSR', 'UK'];
 
 function seededRandom(initial) {
   let value = initial >>> 0;
@@ -43,9 +43,10 @@ async function runMatches(options, indices) {
       const seats = options.seats ?? ffa;
       const order = options.rotate && index % 2 ? [1, 0] : seats.map((_, i) => i);
       const pair = [index % 3, Math.floor(index / 3) % 3];
-      const factionIds = options.rotate ? order.map(i => pair[i]) : order.map((_, i) => i % 3);
+      // --factions 4 brings in the UK: each match fields a different run of the four, so each sits out one match in four
+      const factionIds = options.rotate ? order.map(i => pair[i]) : order.map((_, i) => options.factions === 4 ? (i + index) % 4 : i % 3);
       const brains = order.map(i => ({ level: seats[i].replace(/^alt:/, ''), mod: seats[i].startsWith('alt:') ? alternate : current }));
-      const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, order.map((_, i) => i), factionIds, { mode: options.mode, army: 'standard' });
+      const g = sim.createGame(map, order.map(i => 'AI ' + seats[i]), true, order.map((_, i) => i), factionIds, { mode: options.mode, army: options.army });
       const spawns = g.players.map(p => map.spawns.findIndex(s => (s.x + 0.5) * sim.CELL === p.spawn.x && (s.y + 0.5) * sim.CELL === p.spawn.z));
       const initialCache = sim.snapshotCache(g);
       const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
@@ -84,7 +85,7 @@ if (!isMainThread) {
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
     if (key === '--rotate') { options.rotate = true; continue; }
-    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
+    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt', '--army', '--factions'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
     options[key.slice(2)] = process.argv[++i];
   }
   options.root = resolve(options.root);
@@ -95,6 +96,10 @@ if (!isMainThread) {
   }
   if (options.rotate && !options.seats) throw new Error('--rotate requires --seats');
   if (!['conquest', 'classic'].includes(options.mode)) throw new Error('--mode must be conquest or classic');
+  options.army ??= 'standard';
+  options.factions = Number(options.factions ?? 3);
+  if (![3, 4].includes(options.factions)) throw new Error('--factions must be 3 or 4');
+  if (!['standard', 'large', 'massive', 'endless'].includes(options.army)) throw new Error('--army must be standard, large, massive or endless');
   options.matches = Number(options.matches ?? (options.mode === 'classic' ? 30 : 60));
   options.seed = Number(options.seed);
   options.workers = Number(options.workers);
@@ -121,11 +126,11 @@ if (!isMainThread) {
   results.sort((a, b) => a.match - b.match);
   const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
   const ended = results.filter(r => r.winner !== null), wins = ended.filter(r => r.winner >= 0);
-  const byFaction = Object.fromEntries(factions.map(faction => [faction, wins.filter(r => r.winnerFaction === faction).length]));
+  const byFaction = Object.fromEntries(factions.slice(0, options.factions).map(faction => [faction, wins.filter(r => r.winnerFaction === faction).length]));
   const bySpawn = map.spawns.map((spawn, index) => ({ spawn: index, x: spawn.x, y: spawn.y, wins: wins.filter(r => r.winnerSpawn === index).length }));
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
-    root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: 'standard', seed: options.seed,
+    root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: options.army, seed: options.seed,
     matches: options.matches, workers: options.workers, maxSeconds: options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,
@@ -135,7 +140,7 @@ if (!isMainThread) {
   };
   console.log(`${result.mode}: ${result.matches} matches, seed ${result.seed}, ${result.ended} ended, ${result.draws} draws, ${result.timeouts} timeouts`);
   if (result.winsBySeat) console.log(`  seat wins: ${options.seats.map((s, i) => `${s} ${result.winsBySeat[i]}`).join(', ')}`);
-  console.log(`  faction wins: ${factions.map(faction => `${faction} ${byFaction[faction]}`).join(', ')}`);
+  console.log(`  faction wins: ${factions.slice(0, options.factions).map(faction => `${faction} ${byFaction[faction]}`).join(', ')}`);
   console.log(`  spawn wins: ${bySpawn.map(spawn => `${spawn.spawn} (${spawn.x},${spawn.y}) ${spawn.wins}`).join(', ')}`);
   console.log(`  median length including ${result.maxSeconds}s timeouts: ${result.medianSeconds}s (${result.medianEndedSeconds ?? 'none'}s among ended matches)`);
   if (result.runnerUpVpOverWinnerVp) console.log(`  runner-up VP / winner VP: mean ${result.runnerUpVpOverWinnerVp.mean}, median ${result.runnerUpVpOverWinnerVp.median}`);

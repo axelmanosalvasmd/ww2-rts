@@ -42,6 +42,8 @@ export const CFG = {
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
   // smoke screens long sight lines; anything closer than this sees (and shoots) through it
   smokeSight: 15,
+  // pathfinding: extra cost of a step onto a cell beside a house or building, so routes pass with a cell of room
+  wallHug: 0.5,
   // seeking cover: how far a squad walks for it on the Take Cover order, or under fire when it can't shoot back (metres)
   coverSeek: 10,
   // auto-retreat (a per-unit switch): the share of full strength below which a unit runs for home
@@ -251,7 +253,7 @@ UNITS.bomber = { name: 'Bomber', cost: 420, models: 1, hpPer: 420, speed: 12, ra
     salvo: true, rockets: 4, spread: 6, blast: 5, terrain: 250, antiGarrison: 1.5, flight: 1, every: 0.25 },
   ab: { id: 'none', name: '', cd: 1e9 } };
 
-// ---------- faction units (player faction: 0 USA, 1 Germany, 2 USSR) ----------
+// ---------- faction units (player faction: 0 USA, 1 Germany, 2 USSR, 3 UK) ----------
 // USA Rangers: elite all-rounders with bazookas; satchel charge demolishes houses, walls and bridges.
 UNITS.ranger = { name: 'Ranger Squad', faction: 0, cost: 200, models: 6, hpPer: 24, speed: 5, radius: 1.6, vision: 36, infantry: true, garrisons: true,
   w: { range: 26, interval: 1.4, inf: 3.6, veh: 3, accInf: 0.72, accVeh: 0.6, supp: 5, perModel: true, moveFire: 0.6 },
@@ -264,6 +266,14 @@ UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 
 UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, pop: 0.75, models: 7, hpPer: 14, speed: 4.6, radius: 1.8, vision: 34, infantry: true, garrisons: true,
   w: { range: 24, interval: 1.8, inf: 2.2, veh: 1.1, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
   ab: { id: 'ura', name: 'Ura!', cd: 35, dur: 6, speed: 1.6 } };
+// UK Churchill: a slow infantry tank, the thickest front on the map and a modest 75mm gun. One at a time.
+UNITS.churchill = { name: 'Churchill', faction: 3, max: 1, cost: 480, models: 1, hpPer: 1050, speed: 3.2, radius: 2.9, vision: 40, infantry: false, crushes: true, frontArmor: 0.6,
+  w: { range: 36, interval: 3.5, inf: 35, veh: 70, accInf: 0.6, accVeh: 0.75, supp: 25, moveFire: 0.7, shellTerrain: 110 },
+  ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
+// UK Commandos: a small raiding squad with Stens, camouflaged while still (like the sniper), satchel charges.
+UNITS.commando = { name: 'Commandos', faction: 3, cost: 190, models: 5, hpPer: 22, speed: 5, radius: 1.5, vision: 38, infantry: true, garrisons: true, camo: true,
+  w: { range: 20, interval: 1.2, inf: 4, veh: 2, accInf: 0.75, accVeh: 0.6, supp: 6, perModel: true, moveFire: 0.8 },
+  ab: { id: 'satchel', name: 'Satchel Charge', cd: 40, range: 6, fuse: 4, radius: 5, inf: 60, veh: 180, supp: 60, terrain: 600 } };
 UNITS.rifle.garrisons = UNITS.mg.garrisons = true;
 UNITS.mg.aa = { range: 30, dps: 5, setup: true }; // an MG can fire at low planes too, a little
 // Assault mode's objective: an immobile concrete bunker with an MG slit. Direct fire does 25%, explosives full damage.
@@ -280,18 +290,19 @@ const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, st
 // makes = what it trains; needs = a finished building you must own first
 UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
 UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
-UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'flamer', 'ranger', 'conscript'] });
-UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'howitzer', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'rocket', 'tiger'] });
+UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'flamer', 'ranger', 'conscript', 'commando'] });
+UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'howitzer', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'rocket', 'tiger', 'churchill'] });
 UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3, vision: 30, size: 3, buildTime: 40, produces: true, needs: 'motorpool', makes: ['fighter', 'attacker', 'bomber'] });
 UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3, vision: 30, size: 3, buildTime: 30, produces: true, coast: true, makes: ['lcvp', 'gunboat', 'destroyer'] });
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
 export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
 // Classic: seconds to train each unit at its building
-for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
+for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, churchill: 50, commando: 22, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
-for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['tankdestroyer', 220, 80], ['bomber', 300, 100], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
+for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['tankdestroyer', 220, 80], ['bomber', 300, 100], ['rocket', 170, 50], ['tiger', 420, 150], ['churchill', 360, 130]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
 export const priceOf = (g, t) => (g.mode?.kind === 'classic' ? { mp: UNITS[t].classicCost ?? UNITS[t].cost, fuel: UNITS[t].fuel ?? 0 } : { mp: UNITS[t].cost, fuel: 0 });
 export const UNIT_TYPES = Object.keys(UNITS);
+export const FACTION_COUNT = 4; // USA, Germany, USSR, UK
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
 // same team (a player is always allied with itself); -1 = nobody
 export const allied = (g, a, b) => a >= 0 && b >= 0 && g.players[a].team === g.players[b].team;
@@ -313,6 +324,10 @@ export const SUPPORT = {
 // which supports arrive by plane (flak and fighter cover can shoot those down)
 for (const k of ['recon', 'strafe', 'bombing', 'dive', 'para']) SUPPORT[k].plane = true;
 export const SUPPORT_TYPES = Object.keys(SUPPORT);
+// Faction doctrine: what a faction's off-map support does differently. UK (the 25-pounder): an artillery barrage
+// fires half again as many shells.
+export const DOCTRINE = { 3: { shells: { artillery: 1.5 } } };
+export const supShells = (fac, k) => Math.round((SUPPORT[k].shells ?? 0) * (DOCTRINE[fac]?.shells?.[k] ?? 1));
 
 // Field fortifications infantry can build (the dig command), laid across the line the player draws.
 // The MG nest is a trench pit behind a horseshoe of sandbags that faces away from the builders.
@@ -496,7 +511,7 @@ export const winVp = (teams) => CFG.vpToWin * teams.length / new Set(teams).size
 // cell costs 6, so spawns on either side of a river are far apart even when they look close. Spawns with no way
 // between them (islands) count four times their straight distance.
 export function spawnDistances(map, idx) {
-  const { w, h, rows } = map, INF = 1e9;
+  const { w, h, rows, heights } = map, INF = 1e9, lv = (x, y) => (heights ? levelOf(heights[y][x]) : 0);
   return idx.map(i => {
     const s = map.spawns[i], d = new Float64Array(w * h).fill(INF), buckets = [[s.y * w + s.x]];
     d[s.y * w + s.x] = 0;
@@ -506,7 +521,7 @@ export function spawnDistances(map, idx) {
       for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const f = TERRAIN[rows[ny][nx]] ?? 0, n = ny * w + nx, nd = c + (f & FORD ? 6 : 1);
-        if (!(f & MOVE) && nd < d[n]) { d[n] = nd; (buckets[nd] ??= []).push(n); }
+        if (!(f & MOVE) && Math.abs(lv(nx, ny) - lv(x, y)) <= 1 && nd < d[n]) { d[n] = nd; (buckets[nd] ??= []).push(n); }
       }
     }
     return idx.map(j => { const t = map.spawns[j], v = d[t.y * w + t.x]; return v < INF ? v : 4 * Math.hypot(t.x - s.x, t.y - s.y); });
@@ -1303,9 +1318,9 @@ function noCliffs(g, a, b) {
 const smoked = (g, a, b) => g.smokes.length > 0 && Math.hypot(b.x - a.x, b.z - a.z) >= CFG.smokeSight && g.smokes.some(s => segHits(a, b, s, s.r));
 export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !smoked(g, a, b) && overHills(g, a, b);
 
-function walkable(g, a, b, mask = MOVE) {
+function walkable(g, a, b, mask = MOVE, half = 0.9) {
   // three parallel rays so wide units don't clip building corners
-  const d = Math.hypot(b.x - a.x, b.z - a.z) || 1, ox = -(b.z - a.z) / d * 0.9, oz = (b.x - a.x) / d * 0.9;
+  const d = Math.hypot(b.x - a.x, b.z - a.z) || 1, ox = -(b.z - a.z) / d * half, oz = (b.x - a.x) / d * half;
   return [-1, 0, 1].every(k => clear(g, a.x + ox * k, a.z + oz * k, b.x + ox * k, b.z + oz * k, mask, true)) && noCliffs(g, a, b);
 }
 
@@ -1393,6 +1408,23 @@ function regionsFor(g, block) {
   entry.version = version;
   return labels;
 }
+// Cells touching a wall (a house or a building footprint: blocks both movement and sight). Routes pay extra to step on
+// them, so a squad or tank passes a building with a cell of room instead of scraping its corner. Rebuilt when walls
+// change (they flip the movement bit, which bumps infantryRegionVersion).
+const wallsNear = new WeakMap();
+function nearWalls(g) {
+  const version = g.infantryRegionVersion ?? 0;
+  let entry = wallsNear.get(g);
+  if (entry?.version === version && entry.near.length === g.w * g.h) return entry.near;
+  const W = g.w, N = W * g.h, near = entry?.near.length === N ? entry.near.fill(0) : new Uint8Array(N);
+  for (let c = 0; c < N; c++) {
+    if ((g.flags[c] & (MOVE | SIGHT)) !== (MOVE | SIGHT)) continue;
+    const x = c % W;
+    for (let dy = -W; dy <= W; dy += W) for (let dx = x > 0 ? -1 : 0; dx <= (x < W - 1 ? 1 : 0); dx++) { const n = c + dy + dx; if (n >= 0 && n < N) near[n] = 1; }
+  }
+  wallsNear.set(g, { version, near });
+  return near;
+}
 const pathStatsFor = (g) => (g.pathStats ??= { calls: 0, deferred: 0, failed: 0, dropped: 0, expansions: 0, regionRejected: 0 });
 const pathFailures = new WeakMap(), pathWork = new WeakMap();
 
@@ -1444,12 +1476,25 @@ export function findPath(g, from, to) {
   };
   const roads = veh && g.roads, low = roads ? 1 / CFG.roadSpeed : 1; // the cheapest step, so the estimate never overshoots
   const burning = g.fires?.size > 0;
+  // A command bunker is a unit, not cells (it shoots out of its slit, so its footprint cannot block sight): routes
+  // treat its ground as nearly solid and the ring around it like a wall's side. Not blocked outright, so an order
+  // aimed at the bunker itself still finds a way.
+  // ponytail: scans every unit per search; cache the list if more structures without cells appear
+  const posts = [];
+  for (const u of g.units?.values() ?? []) if (u.type === 'bunker' && u.hp > 0) posts.push(u);
+  const postR = UNITS.bunker.radius;
+  const postCost = (n) => {
+    let k = 0;
+    for (const p of posts) { const d = Math.hypot((n % W + 0.5) * CELL - p.x, (Math.floor(n / W) + 0.5) * CELL - p.z); k += d < postR + 1 ? 30 : d < postR + 3 ? CFG.wallHug : 0; }
+    return k;
+  };
+  const throughPost = (a, b) => posts.some(p => dist(a, p) >= postR + 1.5 && dist(b, p) >= postR + 1.5 && segHits(a, b, p, postR + 1.5));
   const stats = pathStatsFor(g); stats.calls++;
   if (goal !== start && !(g.flags[start] & block)) {
     const labels = regionsFor(g, block);
     if (labels[goal] < 0 || labels[start] !== labels[goal]) { stats.failed++; stats.regionRejected++; return []; }
   }
-  const b = buffersFor(N), gen = nextGeneration(b), { gs, came, seen, closed } = b;
+  const b = buffersFor(N), gen = nextGeneration(b), { gs, came, seen, closed } = b, near = nearWalls(g);
   const gx = goal % W, gy = Math.floor(goal / W);
   const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return (Math.max(dx, dy) + 0.414 * Math.min(dx, dy)) * low; };
   b.heapLength = 0; heapPush(b, hq(start), start);
@@ -1470,8 +1515,9 @@ export function findPath(g, from, to) {
       const climb = level(g, n) - level(g, c);
       if (Math.abs(climb) > 1) continue; // cliff
       if (dx && dy && (Math.abs(level(g, y * W + nx) - level(g, c)) > 1 || Math.abs(level(g, ny * W + x) - level(g, c)) > 1)) continue;
-      // uphill costs a bit more, wire a lot, fire more; a vehicle's step costs the time its ground takes (road, mud, churn)
-      const cost = gs[c] + (dx && dy ? 1.414 : 1) * (veh ? Math.max(low, 1 / groundMul(g, n, true)) : 1) + Math.max(0, climb) * 0.5 + (!veh && g.flags[n] & WIRE ? 4 : 0) + (burning && g.fires.has(n) ? 8 : 0) + (mined(n) ? 30 : 0);
+      // uphill costs a bit more, hugging a wall a little, wire a lot, fire more; a vehicle's step costs the time its
+      // ground takes (road, mud, churn)
+      const cost = gs[c] + (dx && dy ? 1.414 : 1) * (veh ? Math.max(low, 1 / groundMul(g, n, true)) : 1) + Math.max(0, climb) * 0.5 + near[n] * CFG.wallHug + (posts.length ? postCost(n) : 0) + (!veh && g.flags[n] & WIRE ? 4 : 0) + (burning && g.fires.has(n) ? 8 : 0) + (mined(n) ? 30 : 0);
       if (seen[n] !== gen || cost < gs[n]) { gs[n] = cost; came[n] = c; seen[n] = gen; heapPush(b, cost + hq(n), n); }
     }
   }
@@ -1486,7 +1532,8 @@ export function findPath(g, from, to) {
     let j = pts.length - 1;
     // a vehicle keeps to the road it chose: no shortcut past the next road cell
     if (roads) for (let k = i; k < j; k++) if (flagsAt(g, pts[k].x, pts[k].z) & ROAD) { j = k; break; }
-    while (j > i && (!walkable(g, at, pts[j], pull) || (found && minedLine(at, pts[j])))) j--;
+    // rays 2 m apart: a shortcut keeps the room the route left around walls (a 2 m cell cannot slip between them)
+    while (j > i && (!walkable(g, at, pts[j], pull, 2) || (found && minedLine(at, pts[j])) || (posts.length && throughPost(at, pts[j])))) j--;
     out.push(pts[j]); at = pts[j]; i = j + 1;
   }
   return out;
@@ -1925,7 +1972,7 @@ export function command(g, slot, cmd, auto = false) {
     p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
     tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
-    g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ?? sp.dur ?? 0, next: 0, live: false });
+    g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ? supShells(p.faction, cmd.kind) : sp.dur ?? 0, next: 0, live: false });
   } else if (cmd.t === 'build' && g.mode?.kind === 'classic' && !g.mode.suddenDeath && BUILDABLE.includes(cmd.kind)) {
     // Engineers put up a building: a depot on the free node nearest the click, anything else centered on the click.
     // Paid up front; the team must see the spot.
@@ -2088,7 +2135,7 @@ export function autocastTarget(g, u) {
 // ---------- unit behavior (DESIGN.md "Unit behavior") ----------
 
 // Weapons have jobs: AT guns hunt vehicles, MGs and rifles infantry, snipers the crews of heavy weapons.
-const CREWS = new Set(['mg', 'at', 'mortar', 'flak', 'howitzer']), RIFLES = new Set(['mg', 'rifle', 'ranger', 'conscript', 'engineer']);
+const CREWS = new Set(['mg', 'at', 'mortar', 'flak', 'howitzer']), RIFLES = new Set(['mg', 'rifle', 'ranger', 'conscript', 'commando', 'engineer']);
 function roleMul(u, t) {
   const def = UNITS[t.type];
   if (u.type === 'at' || u.type === 'tankdestroyer') return def.infantry || def.structure ? 1 : 3;

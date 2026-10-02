@@ -51,7 +51,7 @@ import { createAutocast } from './autocast.js';
 const FACTIONS = [
   { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics', lcvp: 'LCVP', gunboat: 'PT Boat', destroyer: 'Fletcher Destroyer', tankdestroyer: 'M10 Wolverine', howitzer: 'M2A1 105mm Howitzer', flamer: 'Flamethrower Team', bomber: 'B-25 Mitchell' } },
   { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter', lcvp: 'Sturmboot', gunboat: 'S-Boot', destroyer: 'Zerstörer 1936', tankdestroyer: 'StuG III', howitzer: 'leFH 18', flamer: 'Flammenwerfer Team', bomber: 'He 111' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer', tankdestroyer: 'SU-85', howitzer: '122mm M-30 Howitzer', flamer: 'ROKS-2 Flamethrower Team', bomber: 'Pe-2' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer', tankdestroyer: 'SU-85', howitzer: '122mm M-30 Howitzer', flamer: 'ROKS-2 Flamethrower Team', bomber: 'Pe-2' } },  { name: 'UK', uniform: 0x6f6448, vehicle: 0x565640, names: { rifle: 'Rifle Section', mg: 'Vickers MG', at: '6-pounder', tank: 'Stuart V', rocket: 'Land Mattress', churchill: 'Churchill VII', commando: 'Commandos', bunker: 'Command Bunker', mortar: '3-inch Mortar', sniper: 'Sniper Pair', armoredcar: 'Daimler Armoured Car', medium: 'Cromwell', flak: '40mm Bofors', flaktrack: 'Crusader AA', fighter: 'Spitfire', attacker: 'Typhoon', halftrack: 'Universal Carrier', medic: 'Stretcher Bearers', lcvp: 'LCA', gunboat: 'MTB', destroyer: 'Tribal-class Destroyer', tankdestroyer: 'Achilles', howitzer: '25-pounder', flamer: 'Lifebuoy Flamethrower Team', bomber: 'Mosquito' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AI_LEVELS = ['easy', 'normal', 'hard'];
@@ -64,7 +64,7 @@ const AIR_ALT = 20;
 const isAir = (type) => !!UNITS[type]?.air;
 const classicMode = () => lobbyState?.mode === 'classic';
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -1062,7 +1062,7 @@ function defaultDir(kind, at) {
   return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
 }
 // F fires exactly one ability: the first type in this order that has one ready (the others are click-only)
-const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'mortar', 'howitzer', 'at', 'armoredcar', 'tank', 'medium', 'tankdestroyer', 'tiger', 'rocket'];
+const PRIORITY = ['rifle', 'ranger', 'commando', 'conscript', 'mg', 'mortar', 'howitzer', 'at', 'armoredcar', 'tank', 'medium', 'tankdestroyer', 'tiger', 'churchill', 'rocket'];
 function fKeyType() {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   return PRIORITY.find(t => sel.some(v => v.type === t) && available({ t: 'ability', unit: t }).ok) ?? PRIORITY.find(t => sel.some(v => v.type === t)) ?? null;
@@ -1558,7 +1558,7 @@ renderer.setAnimationLoop(() => {
     const air = isAir(v.type), up = air ? AIR_ALT : 0;
     v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
     if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; aviation.tick(v, dt); }
-    if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
+    if (v.turret) { const a = -(v.aim - v.rot); v.turret.rotation.y = v.traverse ? Math.max(-v.traverse, Math.min(v.traverse, Math.atan2(Math.sin(a), Math.cos(a)))) : a; } // a casemate gun turns only so far
     if (v.mounts) for (const m of v.mounts) m.rotation.y = -(v.aim - v.rot); // every gun of a ship trains on the target
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);

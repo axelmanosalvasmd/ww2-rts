@@ -1,6 +1,6 @@
 // Medium tanks as realistic wartime vehicles: the M4 Sherman (USA), the Panzer IV Ausf. H (Germany) and the T-34/76 of
 // 1943 (USSR), plus the two conversions on those chassis, the T34 Calliope rocket Sherman and the Wirbelwind flak
-// Panzer IV.
+// Panzer IV, and the tank destroyers: the M10 Wolverine, the StuG III Ausf. G and the SU-85.
 //
 // Each model is two vertex-colored geometries: the hull with its running gear, and the turret. client/unit-models.js
 // bakes each into one mesh of its shared PAINT material, like the other tanks, so a medium tank stays two draw calls.
@@ -370,9 +370,13 @@ function shermanHull(paint, { cans = true } = {}) {
   // stars on the sponson sides
   const side = G.star(1, { color: WHITE });
   for (const s of [-1, 1]) items.push(mark(side, 0.35, 1.33, s * 1.2, [0, 0, s], 0.24));
-  // running gear: three VVSS bogies (a tall bracket with the return roller on its head, the volute spring housing,
-  // two arms down to the wheel pair), the raised front sprocket, the rear idler
-  const TZ = 1.14, gear = [], wheels = [], rollers = [];
+  items.push(vvss(P));
+  return finish(items, { height: 1.2 });
+}
+// The Sherman's running gear, both sides: three VVSS bogies (a tall bracket with the return roller on its head, the
+// volute spring housing, two arms down to the wheel pair), the raised front sprocket, the rear idler
+function vvss(P) {
+  const lite = tone(P, 1.1), TZ = 1.14, gear = [], wheels = [], rollers = [];
   const bracket = G.extrudeProfile([[-0.2, 0.38], [0.2, 0.38], [0.12, 0.76], [-0.12, 0.76]], 0.18, 0);
   const rw = wheel(0.25, 0.3, P, { holes: 5, sides: 5, hub: 0.3, ring: 0.6, hole: 0.12, a0: Math.PI / 2 });
   for (const bx of [1.45, 0.13, -1.19]) {
@@ -388,8 +392,7 @@ function shermanHull(paint, { cans = true } = {}) {
   gear.push(box(0.4, 0.1, 0.08, P, -2.08, 0.52, TZ - 0.12, 0, 0, 0.35));
   const line = beltLine([{ x: -2.3, y: 0.44, r: 0.25 }, ...wheels.slice().sort((a, b) => a.x - b.x), { x: 2.32, y: 0.64, r: 0.31 }, ...rollers]);
   gear.push(at(trackBelt(line, 0, 0.42, 0.1, 0.26), 0xffffff, 0, 0, TZ));
-  items.push({ geo: bothSides(gear) });
-  return finish(items, { height: 1.2 });
+  return { geo: bothSides(gear) };
 }
 
 // The cast turret: a flat front, a flat roof with rounded edges and a bustle hanging out over the back of the ring.
@@ -679,8 +682,12 @@ function t34Hull(paint) {
   // the unditching log chained along the left fender
   items.push({ geo: alongX(spin([[0, -1.1], [0.1, -1.1], [0.1, 1.1], [0, 1.1]], WOOD, 8)), matrix: G.xf(0.3, 1.1, -1.2), mat: 'wood' });
   for (const x of [-0.5, 0.2, 0.9]) items.push(box(0.04, 0.05, 0.25, STEEL, x, 1.1, -1.2, 0, 0, 0, 'gunmetal'));
-  // running gear: five big Christie road wheels with spoked faces, no return rollers, the front idler and the rear
-  // drive wheel; the wide track with its alternating horned links
+  items.push(christie(P));
+  return finish(items, { height: 1.1, dark: 0.84, under: 0.06, nose: [2.2, 5] });
+}
+// The T-34's running gear, both sides: five big Christie road wheels with spoked faces, no return rollers, the front
+// idler and the rear drive wheel; the wide track with its alternating horned links
+function christie(P) {
   const TZ = 1.1, gear = [], bottom = [], top = [], rw = wheel(0.37, 0.34, P, { rubber: 0.08, holes: 6, S: 10, hub: 0.26, ring: 0.6, hole: 0.1 });
   for (const x of [1.74, 0.87, 0, -0.87, -1.74]) {
     gear.push(at(rw, 0xffffff, x, 0.44, TZ));
@@ -691,8 +698,7 @@ function t34Hull(paint) {
   gear.push(at(wheel(0.32, 0.3, P, { rubber: 0, holes: 6, S: 10, hub: 0.36, ring: 0.66, hole: 0.11 }), 0xffffff, -2.42, 0.56, TZ));
   const line = beltLine([{ x: -2.42, y: 0.56, r: 0.32 }, ...bottom.slice().reverse(), { x: 2.42, y: 0.5, r: 0.3 }, ...top], 0.05);
   gear.push(at(trackBelt(line, 0, 0.52, 0.11, 0.26, { spuds: 0.05 }), 0xffffff, 0, 0, TZ));
-  items.push({ geo: bothSides(gear) });
-  return finish(items, { height: 1.1, dark: 0.84, under: 0.06, nose: [2.2, 5] });
+  return { geo: bothSides(gear) };
 }
 const T34_BODY = [
   { h: 0, pts: [[1.05, 0.5], [0.15, 0.95], [-1.25, 0.68], [-1.25, -0.68], [0.15, -0.95], [1.05, -0.5]] },
@@ -723,6 +729,244 @@ function t34Turret(paint, owner) {
   return items;
 }
 
+// ---------------------------------------------------------------- tank destroyers: M10, StuG III Ausf. G, SU-85
+
+// An open-topped armored tub on a convex plan ring [[x, z], ...]: walls from y0 up to tops (one height, or one per
+// corner), leaning in by `lean` per metre up and `t` thick. Each wall shows its painted outside, its darker inside
+// (down to the floor at fy) and a lit top edge; rim(i) may give wall i's top edge another color (the owner's, flat
+// paint). The floor closes it.
+function openTub(ring, { y0, tops, lean, t, paint, inside, floor, fy = y0, rim = null }) {
+  const m = mesh(), n = ring.length, top = (i) => (Array.isArray(tops) ? tops[i] : tops);
+  const cx = ring.reduce((s, p) => s + p[0], 0) / n, cz = ring.reduce((s, p) => s + p[1], 0) / n;
+  const outward = ring.map((a, i) => {
+    const b = ring[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]), o = [(b[1] - a[1]) / l, (a[0] - b[0]) / l];
+    return o[0] * ((a[0] + b[0]) / 2 - cx) + o[1] * ((a[1] + b[1]) / 2 - cz) < 0 ? [-o[0], -o[1]] : o;
+  });
+  // corner i pulled in by d, along the bisector of its two walls
+  const pull = (i, d) => { const p = outward[(i + n - 1) % n], q = outward[i], k = d / (1 + p[0] * q[0] + p[1] * q[1]); return [ring[i][0] - (p[0] + q[0]) * k, ring[i][1] - (p[1] + q[1]) * k]; };
+  const out = (i, h) => pull(i, lean * (h - y0)), inn = (i, h) => pull(i, t + lean * (h - y0)), tilt = Math.atan(lean);
+  ring.forEach((a, i) => {
+    const j = (i + 1) % n, o = outward[i], N = [o[0] * Math.cos(tilt), Math.sin(tilt), o[1] * Math.cos(tilt)], ti = top(i), tj = top(j);
+    const oi = out(i, ti), oj = out(j, tj), ii = inn(i, ti), ij = inn(j, tj), fi = inn(i, fy), fj = inn(j, fy), own = rim?.(i);
+    m.use(null).face([[a[0], y0, a[1]], [ring[j][0], y0, ring[j][1]], [oj[0], tj, oj[1]], [oi[0], ti, oi[1]]], N, paint);
+    m.face([[fi[0], fy, fi[1]], [fj[0], fy, fj[1]], [ij[0], tj, ij[1]], [ii[0], ti, ii[1]]], [-N[0], -N[1], -N[2]], inside);
+    m.use(own ? 'plain' : null).face([[oi[0], ti, oi[1]], [oj[0], tj, oj[1]], [ij[0], tj, ij[1]], [ii[0], ti, ii[1]]], [0, 1, 0], own ?? tone(paint, 1.12));
+  });
+  m.use(null).face(ring.map((_, i) => inn(i, fy)).map(([x, z]) => [x, fy, z]), [0, 1, 0], floor);
+  return m.geo();
+}
+// a raised bolt head facing +z (laid on a plate with G.place)
+const boltHead = (color) => spin([[0.032, 0], [0.032, 0.016], [0.02, 0.026], [0, 0.028]], color, 6);
+
+// M10 Wolverine: the Sherman's lower hull and running gear under a low welded upper hull whose sides slope in at 38
+// degrees, studded with the bosses that took bolt-on armor; the open five-sided turret with sloped walls, the wedge
+// counterweights hung on its back, the long 3 inch M7 in its wide gun shield and the .50 cal on the rear rim.
+function m10Hull(P) {
+  const lite = tone(P, 1.1), items = [];
+  const sec = (x, top, half) => ({ x, pts: [[1.2, 1.0], [half, top], [-half, top], [-1.2, 1.0]] });
+  items.push(at(G.loft([sec(2.62, 1.03, 1.17), sec(1.42, 1.64, 0.8), sec(-2.2, 1.64, 0.8), sec(-2.62, 1.38, 0.86)], { normals: 'flat' }), P));
+  // the Sherman's lower hull: the rounded transmission cover, the final drive housings, bolting flanges, tow hooks
+  items.push(at(G.extrudeProfile([[2.2, 0.42], [2.52, 0.5], [2.7, 0.68], [2.74, 0.86], [2.64, 1.03], [-2.55, 1.03], [-2.62, 0.74], [-2.42, 0.42]], 1.84, 0.05, { segments: 1 }), P));
+  const lump = G.loft([{ x: 2.45, w: 0.58, h: 0.5, p: 2.8 }, { x: 2.7, w: 0.56, h: 0.48, p: 2.8 }, { x: 2.78, w: 0.46, h: 0.38, p: 2.6 }], { segments: 10, normals: 50 });
+  for (const z of [-0.64, 0.64]) items.push(at(lump, tone(P, CAST), 0, 0.77, z, 0, 0, 0, 'cast-armor'));
+  for (const z of [-0.2, 0.2]) items.push(box(0.05, 0.4, 0.04, lite, 2.74, 0.8, z, 0, 0, -0.2, 'cast-armor'));
+  for (const z of [-0.3, 0.3]) items.push(box(0.1, 0.1, 0.06, STEEL, 2.72, 0.5, z * 1.1, 0, 0, 0, 'gunmetal'));
+  // glacis: a point t along it on the centre line, its normal and angle; lifting eyes, headlights with brush guards,
+  // two rows of armor bosses
+  const gl = (t) => [2.62 - 1.2 * t, 1.03 + 0.61 * t], gn = [0.453, 0.891, 0], ga = -0.47, stud = boltHead(lite);
+  for (const z of [-0.85, 0.85]) {
+    const [x, y] = gl(0.12);
+    items.push(box(0.12, 0.12, 0.12, STEEL, x + 0.04, y + 0.06, z), box(0.04, 0.16, 0.2, P, x + 0.12, y + 0.06, z));
+  }
+  for (const z of [-0.55, 0.55]) { const [x, y] = gl(0.7); items.push(box(0.1, 0.08, 0.04, STEEL, x + gn[0] * 0.05, y + gn[1] * 0.05, z, 0, 0, ga, 'gunmetal')); }
+  for (const t of [0.3, 0.55]) for (let k = 0; k < 5; k++) { const [x, y] = gl(t), z = (k - 2) * 0.36; items.push({ geo: stud, matrix: G.place([x, y, z], gn, [-0.891, 0.453, 0]) }); }
+  for (const z of [-1.14, 1.14]) items.push(box(0.46, 0.035, 0.42, lite, 2.46, 1.1, z, 0, 0, -0.1));
+  for (const z of [-1.22, 1.22]) items.push(box(4.7, 0.05, 0.05, lite, -0.02, 1.02, z));
+  // the drivers' hatches on the deck front with their periscopes
+  for (const z of [-0.42, 0.42]) items.push(box(0.5, 0.04, 0.42, jit(lite, z, 1), 1.12, 1.66, z), box(0.08, 0.07, 0.14, DARK, 1.36, 1.69, z));
+  // the sloped sides: rows of armor bosses (round a white star), a pioneer tool on each
+  const zAt = (y) => 1.2 - (y - 1.0) * 0.625;
+  for (const s of [-1, 1]) {
+    const n = [0, 0.53, s * 0.848], up = [0, 0.848, -s * 0.53];
+    for (const y of [1.17, 1.47]) for (let x = -1.95; x < 1.3; x += 0.54) if (Math.abs(x + 0.6) > 0.32) items.push({ geo: stud, matrix: G.place([x, y, s * zAt(y)], n, up) });
+    items.push(mark(G.star(1, { color: WHITE }), -0.6, 1.33, s * zAt(1.33), n, 0.22, up));
+    const yt = 1.08;
+    items.push(box(1.0, 0.045, 0.04, WOOD, -1.1, yt, s * (zAt(yt) + 0.03), 0, 0, 0, 'wood'), box(0.24, 0.16, 0.03, STEEL, -0.48, yt, s * (zAt(yt) + 0.03), 0, 0, 0, 'gunmetal'));
+  }
+  // engine deck: doors, the grille, fuel caps, a star; the exhaust deflector, air cleaners and cans on the rear plate
+  for (const z of [-0.47, 0.47]) items.push(box(0.52, 0.03, 0.86, lite, -1.25, 1.655, z));
+  items.push({ geo: grille(-2.12, -1.6, -0.7, 0.7, 1.645, 6, tone(P, 0.35), tone(P, 0.8)) });
+  for (const z of [-0.65, 0.65]) items.push({ geo: upright(spin([[0.08, 0], [0.08, 0.03], [0, 0.04]], STEEL, 6)), matrix: G.xf(-0.78, 1.64, z) });
+  items.push(box(0.04, 0.24, 1.7, P, -2.655, 1.2, 0, 0, 0, 0.12));
+  for (const z of [-0.78, 0.78]) items.push({ geo: upright(spin([[0.11, -0.2], [0.11, 0.2], [0, 0.2]], P, 6)), matrix: G.xf(-2.72, 1.12, z) });
+  for (const z of [-0.3, 0, 0.3]) items.push(box(0.1, 0.32, 0.2, jit(tone(P, 0.95), z, 5), -2.74, 1.18, z * 1.1, 0, 0, 0.04));
+  items.push(vvss(P));
+  return finish(items, { height: 1.2 });
+}
+const M10_GUN = { x: 1.0, y: 0.36, L: 2.55 };
+const M10 = { ring: [-0.1, 1.64, 0], tip: [M10_GUN.x + M10_GUN.L, M10_GUN.y, 0] };
+function m10Turret(paint, owner) {
+  const P = paint, lite = tone(P, 1.08), items = [], TH = 0.78, LEAN = 0.3;
+  // the five walls: the front plate, two cheeks turning back to the sides, the sides, the back (the owner's color on
+  // its top edge); the inside a lighter olive, the floor dark
+  const ring = [[0.92, 0.52], [0.55, 0.98], [-0.9, 0.98], [-0.9, -0.98], [0.55, -0.98], [0.92, -0.52]];
+  items.push({ geo: openTub(ring, { y0: 0, tops: TH, lean: LEAN, t: 0.05, paint: P, inside: new THREE.Color(P).lerp(new THREE.Color(0x9c9a80), 0.3), floor: tone(P, 0.5), fy: 0.06, rim: (i) => (i === 2 ? owner : null) }) });
+  // the wedge counterweights on the back
+  for (const z of [-0.5, 0.5]) items.push(at(G.extrudeProfile([[0, 0], [0, 0.56], [-0.34, 0.44], [-0.34, 0.14]], 0.72, 0.02, { segments: 1 }), jit(P, z, 3), -0.86, 0.1, z));
+  // the wide cast gun shield on the front plate, the collar and the long 3 inch gun
+  items.push(at(G.bevelBox(0.18, 0.5, 0.82, 0.05, 2), tone(lite, CAST), 0.86, M10_GUN.y, 0, 0, 0, 0.3, 'cast-armor'));
+  items.push({ geo: alongX(spin([[0.13, 0], [0.13, 0.14], [0.1, 0.18], [0, 0.18]], tone(P, CAST), 10)), matrix: G.xf(0.88, M10_GUN.y, 0), mat: 'cast-armor' });
+  const L = M10_GUN.L;
+  items.push(at(gun([[0.1, 0], [0.084, 0.15], [0.07, 0.45], [0.058, L - 0.08], [0.068, L - 0.06], [0.068, L]], P).geo, 0xffffff, M10_GUN.x, M10_GUN.y, 0));
+  items.push(box(0.1, 0.06, 0.1, DARK, 0.84, 0.66, -0.3, 0, 0, 0.3)); // the sight hood
+  // inside: the breech and its recoil guard, the gunner's and loader's seats, rounds racked on the side walls, a radio
+  items.push(box(0.62, 0.24, 0.26, STEEL, 0.42, M10_GUN.y, 0, 0, 0, 0, 'gunmetal'), box(0.5, 0.04, 0.44, DARK, 0.3, M10_GUN.y - 0.16, 0, 0, 0, 0, 'gunmetal'));
+  for (const z of [-0.5, 0.5]) items.push(box(0.22, 0.05, 0.22, 0x3a2b21, -0.1, 0.38, z, 0, 0, 0, 'leather'));
+  for (const s of [-1, 1]) for (let k = 0; k < 6; k++) items.push(box(0.04, 0.09, 0.09, k % 2 ? 0xa88c46 : 0x8c7438, -0.62 + k * 0.1, 0.42, s * 0.83, 0, 0, 0, 'gunmetal'));
+  items.push(box(0.26, 0.24, 0.5, tone(P, 0.8), -0.66, 0.22, 0));
+  // the .50 cal on its rear mount, its ammunition can
+  const gx = -0.7, gy = TH + 0.24;
+  items.push(box(0.05, 0.3, 0.05, DARK, gx, TH + 0.06, 0.55), box(0.24, 0.11, 0.09, DARK, gx + 0.06, gy, 0.55));
+  items.push({ geo: alongX(spin([[0, 0], [0.032, 0], [0.032, 0.34], [0, 0.34]], (b, s) => (b === 1 && s % 2 ? DARK : STEEL), 6)), matrix: G.xf(gx + 0.18, gy + 0.01, 0.55), mat: 'gunmetal' });
+  items.push(box(0.5, 0.024, 0.024, DARK, gx + 0.72, gy + 0.01, 0.55), box(0.12, 0.1, 0.07, 0x4a4f2c, gx + 0.04, gy - 0.08, 0.64));
+  // the owner's number block on each side wall
+  const block = plate(0.3, 0.15, owner);
+  for (const s of [-1, 1]) items.push(mark(block, -0.32, 0.4, s * (0.98 - LEAN * 0.4), [0, LEAN, s], 1));
+  return items;
+}
+
+// StuG III Ausf. G: the Panzer III chassis (six road wheels on torsion arms, three return rollers, the front sprocket,
+// the rear idler) under a low casemate that sits out over the tracks, its panniers sloping in to the roof; the 7.5 cm
+// StuK 40 in the cast Saukopf mantlet, right of the centre line; the commander's cupola at the left rear, the loader's
+// MG shield on the right, side skirts. Only the gun traverses, and only a little.
+function stugHull(P, owner) {
+  const lite = tone(P, 1.1), items = [];
+  // lower hull: the sloped lower nose, the nose plate, the short glacis, the rear plate; the engine deck behind
+  items.push(at(G.extrudeProfile([[2.2, 0.4], [2.55, 0.62], [2.58, 0.98], [2.1, 1.1], [-2.4, 1.1], [-2.46, 0.7], [-2.28, 0.4]], 1.8, 0.04, { segments: 1 }), P));
+  items.push(at(G.extrudeProfile([[-0.7, 1.1], [-0.7, 1.58], [-2.32, 1.58], [-2.42, 1.46], [-2.42, 1.1]], 1.94, 0.04, { segments: 1 }), P));
+  // the casemate: a narrow front plate, the panniers angled in at the front, the roof sloping down at front and back
+  const cs = (x, top, half, side = 1.3) => ({ x, pts: [[side, 1.1], [side, 1.28], [half, top], [-half, top], [-side, 1.28], [-side, 1.1]] });
+  items.push(at(G.loft([cs(2.06, 1.46, 0.86, 1.0), cs(1.78, 1.5, 1.06), cs(1.36, 1.78, 0.85), cs(-0.48, 1.78, 0.85), cs(-0.76, 1.6, 0.98)], { normals: 'flat' }), P));
+  // the front: bolted add-on plates on the nose and the casemate front, the driver's visor (left), tow shackles
+  const bolt = boltHead(lite);
+  items.push(box(0.05, 0.3, 1.5, jit(P, 1, 4), 2.6, 0.82, 0), box(0.05, 0.3, 1.6, jit(P, 2, 4), 2.08, 1.28, 0));
+  for (let k = 0; k < 6; k++) items.push({ geo: bolt, matrix: G.place([2.625, 0.92, -0.65 + k * 0.26], [1, 0, 0]) }, { geo: bolt, matrix: G.place([2.105, 1.38, -0.7 + k * 0.28], [1, 0, 0]) });
+  items.push(box(0.08, 0.12, 0.3, lite, 2.1, 1.36, -0.5), box(0.02, 0.025, 0.2, DARK, 2.145, 1.37, -0.5));
+  for (const z of [-0.7, 0.7]) items.push(box(0.12, 0.1, 0.08, STEEL, 2.58, 0.56, z, 0, 0, 0, 'gunmetal'));
+  items.push(box(0.4, 0.04, 0.16, P, 2.3, 1.12, -0.6, 0, 0, -0.22), box(0.4, 0.04, 0.16, P, 2.3, 1.12, 0.6, 0, 0, -0.22)); // brake hatches
+  // roof: the commander's cupola (left rear), the loader's hatch and the folding MG shield with its MG 34 (right),
+  // the scissors periscope, a vent, the aerial
+  items.push({ geo: upright(spin([[0.24, 0], [0.26, 0.07], [0.26, 0.13], [0.22, 0.16], [0.17, 0.17], [0.17, 0.2], [0, 0.2]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : b === 4 ? P : lite), 8)), matrix: G.xf(-0.1, 1.78, -0.5) });
+  items.push(box(0.4, 0.04, 0.4, jit(lite, 5, 1), 0.05, 1.8, 0.45));
+  items.push(box(0.04, 0.36, 0.56, P, 0.36, 1.96, 0.45, 0, 0, -0.08), box(0.04, 0.3, 0.2, P, 0.3, 1.94, 0.79, 0, 0.7, -0.08));
+  items.push(box(0.3, 0.07, 0.06, DARK, 0.46, 2.02, 0.4, 0, 0, 0, 'gunmetal'), box(0.5, 0.025, 0.025, DARK, 0.82, 2.03, 0.4, 0, 0, 0, 'gunmetal'), box(0.08, 0.1, 0.08, DARK, 0.36, 1.94, 0.4, 0, 0, 0, 'gunmetal'));
+  for (const z of [-0.06, 0.06]) items.push(box(0.04, 0.24, 0.04, DARK, 0.25, 1.9, -0.45 + z, 0, 0, 0, 'gunmetal'));
+  items.push({ geo: upright(spin([[0.12, 0], [0.12, 0.04], [0, 0.06]], STEEL, 8)), matrix: G.xf(-0.25, 1.78, 0.2), mat: 'gunmetal' });
+  items.push(box(0.05, 0.05, 0.05, DARK, -0.62, 1.66, 0.85), box(0.018, 0.9, 0.018, 0x3c4028, -0.62, 2.1, 0.85));
+  // engine deck: two hatches, the slatted intakes, spare road wheels; the muffler and a jerrycan on the back
+  for (const z of [-0.45, 0.45]) items.push(box(0.8, 0.04, 0.6, jit(lite, z, 2), -1.2, 1.6, z));
+  for (const s of [-1, 1]) items.push({ geo: grille(-2.2, -1.75, s * 0.84 - 0.16, s * 0.84 + 0.16, 1.585, 6, tone(P, 0.42), tone(P, 0.78)) });
+  const spare = wheel(0.27, 0.12, P, { rubber: 0.06, hub: 0.34, S: 10 });
+  for (const z of [-0.3, 0.3]) items.push(at(spare, 0xffffff, -2.0, 1.64, z, -Math.PI / 2));
+  items.push({ geo: spin([[0, -0.4], [0.15, -0.4], [0.15, 0.4], [0, 0.4]], RUST, 8), color: 0xffffff, matrix: G.xf(-2.58, 0.95, 0), mat: 'track-steel' });
+  items.push(box(0.12, 0.34, 0.24, jit(P, 9, 2), -2.48, 1.3, 0.7));
+  // fenders, tools and a jack on them
+  for (const s of [-1, 1]) items.push(box(4.86, 0.03, 0.36, lite, 0.05, 1.1, s * 1.12), box(0.5, 0.03, 0.36, lite, 2.66, 1.03, s * 1.12, 0, 0, -0.25));
+  items.push(box(1.1, 0.04, 0.05, WOOD, -1.2, 1.14, -1.12, 0, 0, 0, 'wood'), box(0.22, 0.14, 0.14, P, -0.4, 1.19, -1.12));
+  // the owner's number block on each pannier and a stripe across the roof
+  const pn = [0, 0.669, 0.743], zAt = (y) => 1.3 - (y - 1.28) * 0.9, block = plate(0.34, 0.16, owner);
+  for (const s of [-1, 1]) items.push(mark(block, 0.5, 1.48, s * zAt(1.48), [0, pn[1], s * pn[2]], 1, [0, pn[2], -s * pn[1]]));
+  items.push(...ownerMarks(owner, { side: [0, 0, 0], roof: [-0.3, 1.782, 0.55] }));
+  // running gear: six road wheels on torsion arms, three return rollers, the front sprocket, the rear idler
+  const TZ = 1.1, gear = [], wheels = [], WY = 0.355, rw = wheel(0.27, 0.24, P, { rubber: 0.06, hub: 0.34, face: 1.05, S: 10 });
+  for (const x of [1.5, 0.9, 0.3, -0.3, -0.9, -1.5]) {
+    gear.push(at(rw, 0xffffff, x, WY, TZ)); wheels.push({ x, y: WY, r: 0.27 });
+    gear.push(box(0.36, 0.07, 0.06, lite, x + 0.15, WY + 0.06, TZ - 0.16, 0, 0, 0.35), box(0.12, 0.1, 0.1, STEEL, x + 0.32, 0.62, TZ - 0.2, 0, 0, 0, 'gunmetal'));
+  }
+  const rollers = [1.22, 0.02, -1.18].map((x) => ({ x, y: 0.84, r: 0.07 }));
+  for (const r of rollers) gear.push(at(roller(0.07, 0.14, P), 0xffffff, r.x, r.y, TZ));
+  gear.push(at(sprocket(0.29, 12, 0.3, P), 0xffffff, 2.3, 0.62, TZ));
+  gear.push(at(wheel(0.27, 0.24, P, { rubber: 0, holes: 6, S: 10, hub: 0.3, ring: 0.64, hole: 0.15, face: 1.2 }), 0xffffff, -2.3, 0.6, TZ));
+  const line = beltLine([{ x: -2.3, y: 0.6, r: 0.27 }, ...wheels.sort((a, b) => a.x - b.x), { x: 2.3, y: 0.62, r: 0.29 }, ...rollers]);
+  gear.push(at(trackBelt(line, 0, 0.38, 0.085, 0.26), 0xffffff, 0, 0, TZ));
+  // Schuerzen hung from a rail, each plate a touch out of true, a cross on the middle one
+  const n = 5, x0 = -2.25, len = 4.4, w = len / n, z = 1.38, y = 1.08, hh = 0.42, e = 0.012;
+  for (let k = 0; k < n; k++) gear.push(box(w - 2 * e, hh * 2, 0.025, jit(P, k, 6, 0.06), x0 + w * k + w / 2, y, z, (rnd(k, 4) - 0.5) * 0.03));
+  gear.push(box(len, 0.04, 0.05, lite, x0 + len / 2, y + hh - 0.03, z - 0.04));
+  for (let k = 0; k < 4; k++) gear.push(box(0.05, 0.04, 0.2, P, x0 + 0.5 + k * 1.13, y + hh - 0.06, z - 0.12));
+  gear.push(mark(G.balkenkreuz(1), x0 + w * 2.5, y, z + 0.013, [0, 0, 1], 0.2));
+  items.push({ geo: bothSides(gear) });
+  return finish(items, { height: 1.15, ...GREY });
+}
+// the gun and its Saukopf mantlet, around the point where it pivots in the front plate
+const STUG = { ring: [2.02, 1.36, 0.12], tip: [0.32 + 2.7, 0, 0] };
+function stugGun(P) {
+  const items = [], saukopf = G.loft([{ x: -0.12, w: 0.5, h: 0.46, p: 3 }, { x: 0.12, w: 0.46, h: 0.42, p: 2.6 }, { x: 0.3, w: 0.3, h: 0.28, p: 2.2 }, { x: 0.42, w: 0.17, h: 0.17, p: 2 }], { segments: 12, normals: 50 });
+  items.push(at(saukopf, tone(tone(P, 1.08), CAST), 0, 0, 0, 0, 0, 0, 'cast-armor'));
+  items.push(at(gun([[0.12, 0], [0.08, 0.2], [0.06, 0.5], [0.055, 2.35], [0.105, 2.38], [0.105, 2.5], [0.065, 2.53], [0.065, 2.56], [0.105, 2.59], [0.105, 2.7]], P).geo, 0xffffff, 0.32, 0, 0));
+  items.push(box(0.12, 0.08, 0.08, DARK, 0.1, 0.22, -0.2, 0, 0, 0, 'gunmetal')); // the sight's opening
+  return items;
+}
+
+// SU-85: the T-34 hull and running gear with the glacis carried on up as one sloped plate to a fixed casemate, its
+// sides leaning in over the sponsons; the 85 mm D-5S in a cast ball mantlet on the plate, the commander's cupola, the
+// fuel tanks on the sponsons, the unditching log. Only the gun traverses, and only a little.
+function su85Section(x, top, bot = 0.4) {
+  const y1 = Math.min(top - 0.001, 1.4), z1 = 1.33 - (y1 - 0.98) * 0.84, z2 = z1 - (top - y1) * 0.36;
+  return { x, pts: [[1.33, 0.98], [z1, y1], [z2, top], [-z2, top], [-z1, y1], [-1.33, 0.98], [-0.86, 0.98], [-0.86, bot], [0.86, bot], [0.86, 0.98]] };
+}
+function su85Hull(P, owner) {
+  const lite = tone(P, 1.1), items = [];
+  const nose = { x: 2.7, pts: [[0.86, 0.79], [0.86, 0.795], [0.86, 0.8], [-0.86, 0.8], [-0.86, 0.795], [-0.86, 0.79], [-0.86, 0.78], [-0.86, 0.76], [0.86, 0.76], [0.86, 0.78]] };
+  items.push(at(G.loft([nose, su85Section(2.3, 1.136), su85Section(1.27, 2.0), su85Section(-0.95, 2.0), su85Section(-1.35, 1.4), su85Section(-2.25, 1.4), su85Section(-2.66, 1.1, 0.62)], { normals: 30 }), P));
+  for (const s of [-1, 1]) items.push(box(4.9, 0.04, 0.05, lite, -0.1, 0.97, s * 1.34), box(0.5, 0.03, 0.54, lite, 2.55, 0.975, s * 1.1), box(0.03, 0.09, 0.54, lite, 2.8, 0.94, s * 1.1), box(0.24, 0.03, 0.54, lite, -2.76, 0.975, s * 1.1));
+  // the front plate: the driver's hatch with its vision blocks (left), a ring of bolts round the mantlet, tow hooks,
+  // the headlight
+  const pl = (t) => [2.7 - 1.43 * t, 0.8 + 1.2 * t], pn = [0.643, 0.766, 0], pa = -0.698;
+  { const [x, y] = pl(0.33); items.push(box(0.5, 0.08, 0.48, lite, x + pn[0] * 0.03, y + pn[1] * 0.03, -0.48, 0, 0, pa)); for (const z of [-0.6, -0.36]) items.push(box(0.06, 0.06, 0.1, DARK, x - 0.12 + pn[0] * 0.08, y + 0.1 + pn[1] * 0.08, z, 0, 0, pa)); }
+  const bolt = boltHead(lite);
+  for (let k = 0; k < 10; k++) { const a = (k / 10) * TAU, [x, y] = pl(0.667 + 0.36 * Math.sin(a) / 1.87); items.push({ geo: bolt, matrix: G.place([x, y, 0.47 * Math.cos(a)], pn, [-0.766, 0.643, 0]) }); }
+  for (const z of [-0.6, 0.6]) items.push(box(0.12, 0.08, 0.06, STEEL, 2.72, 0.7, z));
+  items.push({ geo: alongX(spin([[0.08, -0.06], [0.08, 0.06], [0, 0.07]], STEEL, 8)), color: 0xffffff, matrix: G.xf(2.15, 1.25, -0.82) });
+  // roof: the commander's cupola with its vision slits (left), the second hatch, periscopes, the vent dome
+  items.push({ geo: upright(spin([[0.25, 0], [0.25, 0.08], [0.22, 0.13], [0.18, 0.15], [0, 0.16]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : lite), 8)), matrix: G.xf(-0.2, 2.0, -0.42) });
+  items.push({ geo: upright(spin([[0.22, 0], [0.22, 0.04], [0.18, 0.07], [0, 0.08]], jit(lite, 3, 6), 8)), matrix: G.xf(-0.1, 2.0, 0.38) });
+  for (const [x, z] of [[0.7, -0.4], [0.7, 0.35], [0.3, 0.1]]) items.push(box(0.12, 0.08, 0.09, DARK, x, 2.03, z));
+  items.push({ geo: upright(spin([[0.14, 0], [0.13, 0.05], [0.08, 0.09], [0, 0.1]], tone(P, CAST), 8)), matrix: G.xf(-0.7, 2.0, 0), mat: 'cast-armor' });
+  // the casemate sides: a red star and the owner's number block; the stripe across the roof
+  const side = (y) => 0.977 - (y - 1.4) * 0.36, sn = [0, 0.339, 0.94], star = G.star(1, { color: 0xb02a20, border: WHITE, edge: 0.08 }), block = plate(0.3, 0.15, owner);
+  for (const s of [-1, 1]) {
+    const n = [0, sn[1], s * sn[2]], up = [0, sn[2], -s * sn[1]];
+    items.push(mark(star, -0.45, 1.7, s * side(1.7), n, 0.2, up), mark(block, 0.45, 1.7, s * side(1.7), n, 1, up));
+  }
+  items.push(...ownerMarks(owner, { side: [0, 0, 0], roof: [0.35, 2.004, 0.42], stripe: 0.07 }));
+  // engine deck behind the casemate: the louvred grille, the round transmission hatch, the exhausts
+  items.push({ geo: grille(-2.15, -1.5, -0.55, 0.55, 1.402, 5, tone(P, 0.35), tone(P, 0.85)) });
+  items.push({ geo: upright(spin([[0.24, 0], [0.24, 0.03], [0.2, 0.05], [0, 0.06]], lite, 10)), color: 0xffffff, matrix: G.xf(-2.45, 1.25, 0, 0, 0, 0.64) });
+  for (const z of [-0.55, 0.55]) items.push({ geo: alongX(spin([[0.07, -0.12], [0.07, 0.1], [0.04, 0.1], [0, 0.06]], RUST, 7)), color: 0xffffff, matrix: G.xf(-2.62, 0.82, z, 0, 0, -0.35), mat: 'track-steel' }, box(0.1, 0.22, 0.2, P, -2.6, 0.82, z, 0, 0, -0.35));
+  // a long fuel tank on the back of each sponson, held by three straps; the unditching log on the left; a toolbox
+  const tsn = [0, 0.64, 0.768], tank = alongX(spin([[0, -0.45], [0.16, -0.45], [0.16, 0.45], [0, 0.45]], lite, 9)), strap = alongX(spin([[0.168, -0.03], [0.168, 0.03]], STEEL, 9));
+  for (const s of [-1, 1]) {
+    const ty = 1.19 + tsn[1] * 0.17, tz = s * (1.155 + tsn[2] * 0.17);
+    items.push({ geo: tank, matrix: G.xf(-1.85, ty, tz) });
+    for (const dx of [-0.32, 0, 0.32]) items.push({ geo: strap, matrix: G.xf(-1.85 + dx, ty, tz) });
+  }
+  items.push({ geo: alongX(spin([[0, -1.0], [0.1, -1.0], [0.1, 1.0], [0, 1.0]], WOOD, 8)), matrix: G.xf(0.2, 1.08, -1.25), mat: 'wood' });
+  for (const x of [-0.5, 0.2, 0.9]) items.push(box(0.04, 0.05, 0.25, STEEL, x, 1.08, -1.25, 0, 0, 0, 'gunmetal'));
+  items.push(box(0.6, 0.18, 0.28, lite, 0.7, 1.07, 1.22));
+  items.push(christie(P));
+  return finish(items, { height: 1.1, dark: 0.84, under: 0.06, nose: [2.2, 5] });
+}
+const SU85 = { ring: [1.75, 1.6, 0], tip: [0.3 + 2.8, 0, 0] };
+function su85Gun(P) {
+  const items = [], ball = G.loft([{ x: -0.2, w: 0.72, h: 0.64, p: 2.4 }, { x: 0.06, w: 0.68, h: 0.6, p: 2.4 }, { x: 0.22, w: 0.46, h: 0.42, p: 2.2 }, { x: 0.32, w: 0.2, h: 0.2, p: 2 }], { segments: 12, normals: 50 });
+  items.push(at(ball, tone(tone(P, 1.08), CAST), 0, 0, 0, 0, 0, 0, 'cast-armor'));
+  const L = 2.8;
+  items.push(at(gun([[0.09, 0], [0.075, 0.25], [0.062, 0.6], [0.052, L - 0.05], [0.06, L - 0.03], [0.06, L]], P).geo, 0xffffff, 0.3, 0, 0));
+  items.push(box(0.1, 0.08, 0.08, DARK, 0.16, 0.12, -0.22, 0, 0, 0, 'gunmetal')); // the sight's opening
+  return items;
+}
+
 // ---------------------------------------------------------------- the unit types
 
 const TURRET = { height: 0.4, dark: 0.75 };
@@ -740,14 +984,20 @@ const MODELS = {
     // the open turret sits on the hull's center line, a little behind the Panzer IV's turret
     return { hull: panzerHull(german(P), false), turret: finish(t.items, { height: 0.5, ...GREY }), ring: [0.1, PANZER.ring[1], 0], tip: t.tip };
   }],
+  // the StuG and the SU-85 turn only their gun, `limit` radians either way of the hull (v.traverse)
+  tankdestroyer: [
+    (P, C) => ({ hull: m10Hull(P), turret: finish(m10Turret(P, C), TURRET), ring: M10.ring, tip: M10.tip }),
+    (P, C) => ({ hull: stugHull(german(P), C), turret: finish(stugGun(german(P)), { ...TURRET, ...GREY, floor: -0.3 }), ring: STUG.ring, tip: STUG.tip, limit: 0.21 }),
+    (P, C) => ({ hull: su85Hull(P, C), turret: finish(su85Gun(P), { ...TURRET, floor: -0.35 }), ring: SU85.ring, tip: SU85.tip, limit: 0.21 }),
+  ],
 };
 
-// The units this module builds: every medium tank, the T34 Calliope (rocket, USA) and the Wirbelwind (flaktrack,
-// Germany).
-export const isArmorMedium = (type, fac) => type === 'medium' || (type === 'rocket' && fac === 0) || (type === 'flaktrack' && fac === 1);
+// The units this module builds: every medium tank and tank destroyer, the T34 Calliope (rocket, USA) and the
+// Wirbelwind (flaktrack, Germany).
+export const isArmorMedium = (type, fac) => type === 'medium' || type === 'tankdestroyer' || (type === 'rocket' && fac === 0) || (type === 'flaktrack' && fac === 1);
 
 // Builds unit v's hull (returned, added under root) and its turret (v.turret, on the turret ring) as one part each
-// for the caller to bake, and sets v.fxTip. Geometry is made once per look and shared.
+// for the caller to bake, and sets v.fxTip (and v.traverse, how far a casemate gun turns). Geometry is made once per look and shared.
 const made = new Map();
 const piece = (geo) => { const o = new THREE.Object3D(); o.userData.geo = geo; o.userData.paint = 0xffffff; return o; };
 export function buildArmorMedium(v, root, type, fac, f) {
@@ -760,6 +1010,7 @@ export function buildArmorMedium(v, root, type, fac, f) {
   v.turret.position.set(...m.ring);
   v.turret.add(piece(m.turret));
   v.fxTip = m.tip.slice();
+  if (m.limit) v.traverse = m.limit;
   root.add(hull, v.turret);
   return hull;
 }

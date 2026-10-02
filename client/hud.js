@@ -21,7 +21,7 @@ const setHTML = (el, h) => { if (el && el._html !== h) { el._html = h; el.innerH
 const show = (el, on) => el && el.classList.toggle('hidden', !on);
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.max(0, t) % 60).padStart(2, '0')}`;
 
-const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning', strafe: 'Plane rakes a line from your HQ outward',
+const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shells on an area after a 5s warning (UK: 15, the 25-pounder doctrine)', strafe: 'Plane rakes a line from your HQ outward',
   smoke: 'Smoke screen over an area for 20s: blocks sight both ways', bombing: 'A stick of heavy bombs along the line: flattens houses, kills tanks',
   dive: 'One heavy bomb, right on the spot: tanks, guns, houses', para: 'Drops two rifle squads and an MG team where your side can see (3 toward pop)',
   cover: 'Fighters intercept the next enemy air strike over the area for 60s (not recon)' };
@@ -47,7 +47,7 @@ const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need
 const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft', 'Naval'];
 const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter', 'destroyer']; // a silhouette before each group's name
 const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak', 'howitzer']);
-const ORDER = ['rifle', 'conscript', 'ranger', 'flamer', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'howitzer', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'tiger', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker', 'bomber'];
+const ORDER = ['rifle', 'conscript', 'ranger', 'commando', 'flamer', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'howitzer', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'tiger', 'churchill', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker', 'bomber'];
 const groupOf = (t) => (UNITS[t].naval ? 4 : UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
 const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? ORDER.length + UNIT_TYPES.indexOf(t) : i; };
 // long one-word names get a soft hyphen so they break cleanly on a narrow card
@@ -61,13 +61,14 @@ const star = (cx, cy, R, r) => 'M' + Array.from({ length: 10 }, (_, k) => {
   const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? r : R;
   return `${(cx + Math.cos(a) * d).toFixed(2)} ${(cy + Math.sin(a) * d).toFixed(2)}`;
 }).join('L') + 'Z';
-// faction markings next to player names: US star, German cross, Soviet star
+// faction markings next to player names: US star, German cross, Soviet star, RAF roundel
 const MARKS = [
   `<circle cx="12" cy="12" r="10.5" fill="#24427a" stroke="#e6dcc0" stroke-width="1.2"/><path d="${star(12, 12.6, 8.2, 3.3)}" fill="#f3efe2"/>`,
   `<path d="M8.5 1.5h7v7h7v7h-7v7h-7v-7h-7v-7h7z" fill="#f3efe2"/><path d="M10.3 3.3h3.4v7h7v3.4h-7v7h-3.4v-7h-7v-3.4h7z" fill="#151512"/>`,
   `<path d="${star(12, 12.8, 11, 4.4)}" fill="#c4302b" stroke="#f0dca6" stroke-width="1" stroke-linejoin="round"/>`,
+  `<circle cx="12" cy="12" r="10.5" fill="#24427a" stroke="#e6dcc0" stroke-width="1.2"/><circle cx="12" cy="12" r="6.6" fill="#f3efe2"/><circle cx="12" cy="12" r="3.4" fill="#c4302b"/>`,
 ];
-const FACTION_NAME = ['USA', 'Germany', 'USSR'];
+const FACTION_NAME = ['USA', 'Germany', 'USSR', 'UK'];
 const mark = (f) => (MARKS[f] ? `<svg class="mark" viewBox="0 0 24 24" role="img"><title>${FACTION_NAME[f]}</title>${MARKS[f]}</svg>` : '');
 
 // The support calls and the orders draw from the same silhouette set as the units (client/symbols.js icon()).

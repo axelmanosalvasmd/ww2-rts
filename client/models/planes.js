@@ -1,4 +1,4 @@
-// The twelve aircraft, four roles for each faction: a fighter, a ground-attack plane, a twin-engine bomber and a
+// The sixteen aircraft, four roles for each faction: a fighter, a ground-attack plane, a twin-engine bomber and a
 // transport. plane(fac, role, own) builds one as a single vertex-coloured geometry plus what client/aircraft.js needs
 // to fly it: the propellers, the outline for the ground shadow and a few sizes.
 //
@@ -18,7 +18,7 @@
 // a little less and transports about two thirds, so a transport is not a house.
 // Only 'three' and geom.js are imported, so the browser and the Node tests load this file the same way.
 import * as THREE from 'three';
-import { xf, crease, merge, spinner, bomb, tube, lathe, star, balkenkreuz, place, ao, matId, PLAIN, UNSET } from './geom.js';
+import { xf, crease, merge, spinner, bomb, tube, lathe, star, balkenkreuz, roundel, place, ao, matId, PLAIN, UNSET } from './geom.js';
 
 const PI = Math.PI, TAU = PI * 2;
 const WHITE = 0xd9d5c9, BLACK = 0x1f1e1b, BLUE = 0x27396a, RED = 0xa8342a, YELLOW = 0xc99a2e, DARK = 0x2a2824;
@@ -298,6 +298,13 @@ function usInsignia(R) {
 }
 const withNormal = (g) => { g.computeVertexNormals(); return g; };
 
+// The RAF fin flash: dull red, a narrow white stripe and dull blue (11, 2 and 11 parts), 2 * size square. dir 1 puts
+// the red toward +x.
+function finFlash(size, dir = 1) {
+  const S = size, x = (f) => dir * (S - 2 * S * f), rect = (a, b) => [[a, -S], [b, -S], [b, S], [a, S]];
+  return flat([[RAF_RED, 0, 11 / 24], [WHITE, 11 / 24, 13 / 24], [RAF_BLUE, 13 / 24, 1]].map(([color, a, b]) => ({ color, outline: rect(x(a), x(b)) })));
+}
+
 // A marking laid on a curved surface: frame places the flat decal, its triangles are split until no edge is longer
 // than max (an edge is split the same way in both triangles that share it, so nothing cracks), then fit(v) moves
 // every corner onto the surface.
@@ -342,8 +349,15 @@ function stick(mark, frame, fit, max) {
 const METAL = 0xa9b1b8, OD = 0x666d5f, NEUTRAL = 0x8c8f8a;
 const RLM70 = 0x414a44, RLM71 = 0x5b6656, RLM65 = 0x9cb0ba, RLM74 = 0x4f5553, RLM75 = 0x6c6e74, RLM76 = 0xaebbc1;
 const VVS_GREEN = 0x5f6c5b, VVS_BLACK = 0x3e4641, VVS_BLUE = 0x9bb0bb;
-// propeller tip colour by faction: yellow (USA), none (Germany: the blades stay black-green), yellow (USSR)
-const BLADE = [0x1f1f1d, 0x2b322c, 0x222220], PROP_TIPS = [0xc99a2e, 0x2b322c, 0xb8932e];
+// The RAF: ocean grey and dark green over medium sea grey (the day fighters and the Mosquito), dark earth and dark
+// green (the Dakota), Sky for the fighters' spinners and tail bands, and the dull red and blue of the roundels.
+const OCEAN = 0x6d7378, RAF_GREEN = 0x535e50, MSG = 0xa2a7a6, RAF_SKY = 0xb4bea0, EARTH = 0x6e6353, RAF_RED = 0x93322b, RAF_BLUE = 0x2e3d63;
+// propeller tip colour by faction: yellow (USA), none (Germany: the blades stay black-green), yellow (USSR), yellow (UK)
+const BLADE = [0x1f1f1d, 0x2b322c, 0x222220, 0x1f1f1d], PROP_TIPS = [0xc99a2e, 0x2b322c, 0xb8932e, 0xc99a2e];
+// D-Day invasion stripes: five bands w wide from a, white, black, white, black, white. Gives the colour at v (or
+// null outside them); stripeCuts gives the paint edges.
+const stripes = (a, w) => (v) => (v > a && v < a + 5 * w ? C(Math.floor((v - a) / w) % 2 ? 0x262522 : 0xc4bfb0) : null);
+const stripeCuts = (a, w) => Array.from({ length: 6 }, (_, k) => a + k * w);
 
 // Camouflage is drawn per pixel by paintMaterial(), so its edges stay crisp however coarse the mesh. A camouflaged
 // paint returns its first colour with a .camo code: [the second colour as a ratio to the first (r, g, b), kind * 4 +
@@ -593,10 +607,16 @@ function kit(own) {
         K.box(x, y, s * (body.side(x, y) + size * 0.12), size * 1.25, size * 0.62, size * 0.75, EXHAUST, 0, -0.5, 0, 'gunmetal');
       }
     },
-    // a national marking: kind 'us', 'cross' or 'star'; on a wing {wing, x, z}, on a body's sides {hull, x, y} or on a
-    // fin's sides {fin, x, h}; sides picks 1 and/or -1
+    // a national marking: kind 'us', 'cross', 'star', or the RAF's 'raf' (the type C1 roundel, yellow ringed), 'rafb'
+    // (the type B, red and blue) and 'flash' (the fin flash, red forward); on a wing {wing, x, z}, on a body's sides
+    // {hull, x, y} or on a fin's sides {fin, x, h}; sides picks 1 and/or -1
     mark(kind, size, o) {
-      const g = kind === 'us' ? usInsignia(size) : kind === 'cross' ? balkenkreuz(size, { lift: 0 }) : star(size, { color: RED, border: WHITE, edge: 0.12, lift: 0 });
+      const make = (s) => kind === 'us' ? usInsignia(size) : kind === 'cross' ? balkenkreuz(size, { lift: 0 })
+        : kind === 'raf' ? roundel(size, [YELLOW, RAF_BLUE, WHITE, RAF_RED], { widths: [2 / 18, 8 / 18, 2 / 18, 6 / 18], lift: 0, segments: 20 })
+        : kind === 'rafb' ? roundel(size, [RAF_BLUE, RAF_RED], { widths: [0.6, 0.4], lift: 0, segments: 24 })
+        : kind === 'flash' ? finFlash(size, -s) // a fin's side s faces its decal's +x aft
+        : star(size, { color: RED, border: WHITE, edge: 0.12, lift: 0 });
+      const g = make(1);
       if (o.wing) {
         const W = o.wing, at = [o.x, W.surf(o.x, o.z), o.z];
         K.add(stick(g, place(at, [0, 1, 0], [1, 0, 0]), (v) => { v.y = W.surf(v.x, v.z) + 0.02; }, 0.7));
@@ -608,7 +628,7 @@ function kit(own) {
       } else if (o.fin) {
         for (const s of o.sides ?? [1, -1]) {
           const F = o.fin, at = [o.x, F.surf(o.x, o.h, s), o.h];
-          const geo = stick(g, place(at, [0, s, 0], [0, 0, 1]), (v) => { v.y = F.surf(v.x, v.z, s) + s * 0.015; }, 0.45);
+          const geo = stick(make(s), place(at, [0, s, 0], [0, 0, 1]), (v) => { v.y = F.surf(v.x, v.z, s) + s * 0.015; }, 0.45);
           K.add(geo, F.m);
           if (F.mirrored) K.add(geo, MIRROR.clone().multiply(F.m));
         }
@@ -791,9 +811,10 @@ function dc3(K, o) {
 }
 
 // C-47 Skytrain: olive drab over grey, invasion stripes on the outer wings and round the rear fuselage (they take the
-// place of the owner band).
-function c47(K) {
-  const base = livery(solid(OD), NEUTRAL, -0.3), band = (k) => C(k % 2 ? 0x262522 : 0xc4bfb0);
+// place of the owner band). raf: the RAF's Dakota, dark earth and dark green over medium sea grey, type C1 roundels
+// on the fuselage over the stripes, type B on both wings and a fin flash.
+function c47(K, raf = false) {
+  const base = raf ? livery(waves(EARTH, RAF_GREEN, 1.4), MSG, -0.3) : livery(solid(OD), NEUTRAL, -0.3), band = (k) => C(k % 2 ? 0x262522 : 0xc4bfb0);
   return dc3(K, {
     stripes: true,
     paint: (p, n, i) => {
@@ -801,7 +822,13 @@ function c47(K) {
       if (i.tag === 'fus' && p.x > -4.1 && p.x < -2.0) return band(Math.floor((p.x + 4.1) / 0.42));
       return base(p, n, i);
     },
-    marks(fus, w) {
+    marks(fus, w, fin) {
+      if (raf) {
+        K.mark('raf', 0.5, { hull: fus, x: -3.05, y: 0.32 });
+        for (const z of [7.2, -7.2]) K.mark('rafb', 0.62, { wing: w, x: 0.05, z });
+        K.mark('flash', 0.3, { fin, x: -5.38, h: 0.7 });
+        return;
+      }
       K.mark('us', 0.46, { hull: fus, x: -3.05, y: 0.32 });
       K.mark('us', 0.62, { wing: w, x: 0.05, z: -7.4 });
     },
@@ -1051,21 +1078,148 @@ function li2(K) {
   });
 }
 
+// ---------------------------------------------------------------- UK
+
+// Spitfire Mk IX: the slim oval fuselage behind the long Merlin nose and its chin intake, the elliptical wing with a
+// Hispano cannon in each leading edge and a radiator bath under each wing, the framed windscreen, the blown sliding
+// hood and the rear glazing behind it, a pointed Sky spinner and four blades. Ocean grey and dark green over medium
+// sea grey, the Sky band ahead of the tail, invasion stripes round the rear fuselage (as on the C-47 they take the
+// place of the owner band; the owner's colour is on the spinner tip) and across the inner wings.
+function spitfire(K) {
+  const base = livery(waves(OCEAN, RAF_GREEN, 0.8), MSG, -0.25), fs = [-2.75, 0.22], ws = [1.0, 0.29], fsp = stripes(...fs), wsp = stripes(...ws);
+  K.paint = owned(K, (p, n, i) => {
+    if (i.tag === 'fus') { if (p.x > -3.08 && p.x < -2.82) return C(RAF_SKY); const c = fsp(p.x); if (c) return c; }
+    if (i.tag === 'wing') { const c = wsp(Math.abs(p.z)); if (c) return c; }
+    return base(p, n, i);
+  }, null, [{ x1: 3.08, y: 0.13, spread: 1.4, h: 0.12 }]);
+  const fus = K.hull([[-3.78, 0.04, 0.12, 0.38, 2], [-3.4, 0.18, 0.46, 0.33, 2.1], [-2.6, 0.34, 0.72, 0.24, 2.2], [-1.6, 0.5, 0.92, 0.16, 2.2], [-0.6, 0.62, 1.04, 0.11, 2.2], [0.3, 0.68, 1.08, 0.08, 2.2], [1.2, 0.7, 1.04, 0.04, 2.2], [2.2, 0.68, 0.94, 0.01, 2.2], [3.0, 0.62, 0.8, 0.0, 2.1], [3.45, 0.58, 0.62, 0.0, 2]], { seg: 16, cuts: [-3.08, -2.82, ...stripeCuts(...fs)], angles: [PI + 0.253, TAU - 0.253] });
+  // the windscreen, the blown hood (one frame at its back) and the fixed rear glazing tapering into the spine
+  K.canopy(fus, [[0.95, 0.22, 0.02], [0.8, 0.38, 0.17], [0.58, 0.45, 0.25], [0.2, 0.47, 0.29], [-0.2, 0.45, 0.27], [-0.5, 0.37, 0.19], [-0.85, 0.15, 0.06], [-1.0, 0.04, 0.0]], { p: 2.2, frames: [0.6, 0.5, -0.42], bars: [{ a: 0.9, x0: 0.5, x1: 2 }, { a: PI - 0.9, x0: 0.5, x1: 2 }, { a: PI / 2, x0: 0.6, x1: 2 }], seg: 10 });
+  // the elliptical wing: the quarter-chord line straight across, the chord falling off as an ellipse to the tip
+  const ell = (z) => 2.03 * Math.sqrt(Math.max(0, 1 - (z / 4.5) ** 2)), wk = (z, y, t) => [z, 1.2 + 0.25 * Math.max(ell(z), 0.8), 1.2 - 0.75 * Math.max(ell(z), 0.8), y, t];
+  const w = K.wing([wk(0, -0.32, 0.13), wk(2.6, -0.05, 0.115), wk(3.95, 0.1, 0.1), wk(4.5, 0.15, 0.09)], { nk: 5, n: 3, round: 0.75, pivot: 0.72, smooth: true, cuts: stripeCuts(...ws), hinge: [0.78, 2.4] });
+  // the radiator baths: slab-sided, deeper than the Bf 109's, their open fronts and flaps dark
+  for (const s of [1, -1]) {
+    const yc = w.surf(0.6, 1.25, -1) - 0.1;
+    K.hull([[-0.2, 0.36, 0.08, yc + 0.06, 4], [0.05, 0.42, 0.22, yc, 4], [0.95, 0.42, 0.22, yc, 4], [1.25, 0.38, 0.12, yc + 0.05, 4]], { seg: 10, z: 1.25 * s, tag: 'pod', shadow: false, capColor: [DARK, DARK] });
+    // the Hispano cannon in its leading-edge fairing, and the two .303 ports outboard of it
+    const pl = w.plan(1.75), y = pl.y - 0.02;
+    K.rod([pl.le - 0.15, y, s * 1.75], [pl.le + 0.12, y, s * 1.75], 0.055, OCEAN, 8, null);
+    K.rod([pl.le, y, s * 1.75], [pl.le + 0.45, y, s * 1.75], 0.026, DARK);
+    for (const z of [2.3, 2.55]) { const q = w.plan(z); K.rod([q.le - 0.04, q.y, s * z], [q.le + 0.03, q.y, s * z], 0.014, DARK, 5); }
+  }
+  // the long carburettor intake under the nose
+  K.hull([[1.55, 0.1, 0.05, -0.42], [1.9, 0.26, 0.2, -0.47], [2.95, 0.26, 0.2, -0.44]], { seg: 10, tag: 'pod', capColor: [null, DARK], shadow: false });
+  K.wing([[0, -2.72, -3.55, 0.28, 0.1], [0.7, -2.76, -3.5, 0.28, 0.1], [1.3, -2.95, -3.3, 0.28, 0.09]], { tag: 'tail', nk: 4, n: 2, round: 0.4, pivot: 0.65, smooth: true, hinge: [0.62] });
+  const fin = K.fin([[0, -2.7, -3.8, 0, 0.1], [0.35, -2.92, -3.84, 0, 0.1], [0.85, -3.18, -3.8, 0, 0.09], [1.15, -3.36, -3.7, 0, 0.09]], { y: 0.42, nk: 4, n: 4, round: 0.55, smooth: true, hinge: [0.55] });
+  K.stubs(fus, 2.15, 3.05, 0.13, 6);
+  K.spinner(3.43, 0.64, 0.29, { color: RAF_SKY, front: K.own, split: 0.6 });
+  K.prop(3.6, 0, 0, 1.31, 4);
+  for (const z of [3.0, -3.0]) K.mark('rafb', 0.5, { wing: w, x: 0.82, z });
+  K.mark('raf', 0.32, { hull: fus, x: -1.25, y: 0.14 });
+  K.mark('flash', 0.18, { fin, x: -3.21, h: 0.3 });
+  return { span: 9.0, len: 7.6, tail: -3.78, nose: 4.07 };
+}
+
+// Hawker Typhoon Mk IB: the deep fuselage behind the Napier Sabre with its big chin radiator and two rows of stacks
+// each side, the thick wing with dihedral outboard of the gear, four long-barrelled Hispanos in fairings, eight RP-3
+// rockets on rails under the outer wings, the bubble canopy, a four-blade prop behind a Sky spinner. Ocean grey and
+// dark green over medium sea grey, the Sky band, invasion stripes round the rear fuselage and across the wings.
+function typhoon(K) {
+  const base = livery(waves(OCEAN, RAF_GREEN, 0.85), MSG, -0.3), fs = [-2.95, 0.24], ws = [1.15, 0.31], fsp = stripes(...fs), wsp = stripes(...ws);
+  K.paint = owned(K, (p, n, i) => {
+    if (i.tag === 'fus') { if (p.x > -3.32 && p.x < -3.05) return C(RAF_SKY); const c = fsp(p.x); if (c) return c; }
+    if (i.tag === 'wing') { const c = wsp(Math.abs(p.z)); if (c) return c; }
+    return base(p, n, i);
+  }, null, [{ x1: 3.15, y: 0.2, spread: 1.6, h: 0.24 }]);
+  const fus = K.hull([[-3.95, 0.04, 0.14, 0.42, 2], [-3.5, 0.22, 0.52, 0.38, 2.1], [-2.6, 0.44, 0.84, 0.28, 2.2], [-1.5, 0.66, 1.08, 0.17, 2.3], [-0.4, 0.82, 1.24, 0.1, 2.4], [0.6, 0.9, 1.3, 0.06, 2.5], [1.6, 0.92, 1.28, 0.05, 2.6], [2.5, 0.9, 1.18, 0.06, 2.6], [3.2, 0.82, 1.0, 0.08, 2.3], [3.6, 0.72, 0.76, 0.1, 2]], { seg: 14, cuts: [-3.32, -3.05, ...stripeCuts(...fs)], angles: [PI + 0.305, TAU - 0.305] });
+  K.canopy(fus, [[1.05, 0.22, 0.0], [0.92, 0.46, 0.22], [0.7, 0.56, 0.38], [0.3, 0.6, 0.48], [-0.15, 0.56, 0.45], [-0.55, 0.42, 0.28], [-0.9, 0.14, 0.07], [-1.05, 0.04, 0.0]], { p: 2, frames: [0.86], bars: [{ a: 0.95, x0: 0.86, x1: 2 }, { a: PI - 0.95, x0: 0.86, x1: 2 }, { a: PI / 2, x0: 0.86, x1: 2 }], seg: 10 });
+  const w = K.wing([[0, 1.42, -0.75, -0.42, 0.19], [1.6, 1.4, -0.72, -0.42, 0.18], [5.05, 0.78, -0.42, -0.08, 0.12]], { nk: 4, n: 4, round: 0.7, cuts: stripeCuts(...ws), hinge: [0.76, 3.1] });
+  // the chin radiator: a deep scoop under the engine, its mouth dark with a splitter down the middle
+  K.hull([[1.5, 0.1, 0.06, -0.46], [2.05, 0.62, 0.5, -0.64, 2.4], [2.9, 0.72, 0.68, -0.7, 2.6], [3.45, 0.74, 0.7, -0.64, 2.6]], { seg: 14, tag: 'pod', capColor: [null, DARK] });
+  K.box(3.44, -0.64, 0, 0.03, 0.62, 0.04, DARK, 0, 0, 0, 'gunmetal');
+  K.stubs(fus, 2.35, 3.0, 0.22, 3, 0.11);
+  K.stubs(fus, 2.35, 3.0, 0.02, 3, 0.11);
+  const motor = tube([[0, 0, 0], [1.05, 0, 0]], 0.042, { radial: 5, caps: false }), head = lathe([[0.042, 0], [0.075, 0.05], [0.075, 0.17], [0, 0.31]], 5, { axis: 'x' });
+  for (const s of [1, -1]) {
+    // two Hispanos each side: a long fairing out of the leading edge and the barrel past it
+    for (const z of [2.0, 2.42]) {
+      const pl = w.plan(z), y = pl.y - 0.03;
+      K.rod([pl.le - 0.2, y, s * z], [pl.le + 0.24, y, s * z], 0.06, OCEAN, 6, null);
+      K.rod([pl.le + 0.2, y, s * z], [pl.le + 0.75, y, s * z], 0.03, DARK);
+    }
+    // four RP-3s on their rails: a slim motor and the fat 60 lb head
+    for (const rz of [2.95, 3.32, 3.69, 4.06]) {
+      const ry = w.surf(0.2, rz, -1) - 0.15, z = s * rz;
+      K.box(0.15, ry + 0.085, z, 1.3, 0.035, 0.03, DARK, 0, 0, 0, 'gunmetal');
+      K.add(motor, xf(-0.42, ry, z), 0x5e6158, 'gunmetal');
+      K.add(head, xf(0.63, ry, z), 0x4f5248, 'gunmetal');
+    }
+  }
+  K.wing([[0, -3.0, -3.85, 0.32, 0.1], [1.8, -3.25, -3.75, 0.32, 0.09]], { tag: 'tail', nk: 4, n: 2, round: 0.5, hinge: [0.62] });
+  const fin = K.fin([[0, -2.85, -3.92, 0, 0.1], [0.35, -3.15, -3.96, 0, 0.1], [1.2, -3.45, -3.88, 0, 0.09]], { y: 0.5, nk: 4, n: 4, round: 0.55, smooth: true, hinge: [0.58] });
+  K.spinner(3.58, 0.62, 0.36, { y: 0.1, color: RAF_SKY, front: K.own, split: 0.62 });
+  K.prop(3.76, 0.1, 0, 1.68, 4);
+  for (const z of [3.45, -3.45]) K.mark('rafb', 0.55, { wing: w, x: 0.26, z });
+  K.mark('raf', 0.38, { hull: fus, x: -1.3, y: 0.18 });
+  K.mark('flash', 0.2, { fin, x: -3.42, h: 0.36 });
+  return { span: 10.1, len: 7.9, tail: -3.95, nose: 4.2 };
+}
+
+// de Havilland Mosquito FB VI: the slim wooden fuselage with a solid nose (four Brownings on top, four Hispanos
+// under the cockpit floor), the side-by-side cockpit under a framed canopy, the wing with the radiator intakes in the
+// leading edge between fuselage and nacelles, the long Merlin nacelles running past the trailing edge, pointed
+// spinners, the tall rounded fin, a 500 lb bomb under each outer wing. Ocean grey and dark green over medium sea grey.
+function mosquito(K) {
+  K.paint = owned(K, livery(waves(OCEAN, RAF_GREEN, 1.2), MSG, -0.3), [-3.4, -3.05]);
+  const fus = K.hull([[-5.15, 0.04, 0.1, 0.45], [-4.6, 0.24, 0.4, 0.42], [-3.4, 0.5, 0.66, 0.34], [-1.8, 0.78, 0.98, 0.22], [0.0, 0.98, 1.2, 0.1], [1.6, 1.08, 1.3, 0.04], [2.8, 1.1, 1.28, 0.0], [3.8, 1.02, 1.12, -0.06], [4.5, 0.8, 0.84, -0.12], [4.95, 0.5, 0.5, -0.16], [5.12, 0.04, 0.04, -0.18]], { seg: 20, cuts: [-3.4, -3.05], angles: [PI + 0.305, TAU - 0.305] });
+  K.canopy(fus, [[4.05, 0.4, 0.02], [3.85, 0.8, 0.24], [3.55, 0.94, 0.36], [3.1, 0.96, 0.38], [2.7, 0.86, 0.32], [2.45, 0.6, 0.16], [2.3, 0.2, 0.02]], { p: 2.6, frames: [3.85, 3.58, 3.15, 2.7], bars: [PI / 2, 0.75, PI - 0.75], seg: 12, fw: 0.04, bw: 0.06 });
+  const w = K.wing([[0, 2.05, -1.0, -0.05, 0.15], [6.85, 0.95, -0.15, 0.35, 0.1]], { n: 8, round: 0.55, hinge: [0.76, 4.4] });
+  const nz = 2.1, nac = K.hull([[-1.95, 0.04, 0.06, -0.08], [-1.3, 0.4, 0.5, -0.1], [0.0, 0.8, 1.0, -0.14], [1.6, 0.92, 1.12, -0.14], [3.0, 0.88, 1.02, -0.1], [3.75, 0.7, 0.74, -0.05], [3.95, 0.62, 0.62, -0.05]], { seg: 16, z: nz, mirror: true, tag: 'nac', angles: [PI + 0.305, TAU - 0.305] });
+  for (const s of [1, -1]) {
+    // six exhaust stubs on each side of each nacelle
+    for (const side of [1, -1]) for (let k = 0; k < 6; k++) {
+      const x = 2.45 + k * 0.15;
+      K.box(x, 0.1, s * (nz + side * (nac.side(x, 0.1) + 0.01)), 0.11, 0.06, 0.07, EXHAUST, 0, -0.5, 0, 'gunmetal');
+    }
+    // the radiator intake in the leading edge between the fuselage and the nacelle
+    const pl = w.plan(1.1);
+    K.box(pl.le - 0.03, pl.y + 0.01, s * 1.1, 0.08, 0.07, 0.95, DARK, -s * 0.16, 0, 0, 'plain');
+    // a 500 lb bomb on the outer wing
+    const sy = w.surf(0.4, 3.5, -1);
+    K.add(bomb(1.5, 0.26, { segments: 8 }), xf(-0.35, sy - 0.36, s * 3.5), 0x5c6054);
+    K.box(0.4, sy - 0.06, s * 3.5, 0.6, 0.13, 0.05, OCEAN);
+    K.spinner(3.93, 0.7, 0.31, { y: -0.05, z: s * nz, color: OCEAN, band: K.own, bandWidth: 0.24 });
+    K.prop(4.1, -0.05, s * nz, 1.45, 3);
+  }
+  // the guns: four Brownings out of the top of the nose, four Hispano barrels under the cockpit floor
+  for (const [y, z] of [[0.02, 0.07], [0.02, -0.07], [-0.06, 0.18], [-0.06, -0.18]]) K.rod([4.85, y, z], [5.3, y, z], 0.018, DARK, 5);
+  for (const z of [0.12, -0.12, 0.3, -0.3]) { const y = fus.bottom(3.3) + 0.06; K.rod([2.9, y, z], [3.55, y - 0.02, z], 0.03, DARK); }
+  K.wing([[0, -4.0, -5.0, 0.32, 0.1], [2.45, -4.3, -4.95, 0.32, 0.09]], { tag: 'tail', nk: 4, n: 3, round: 0.55, hinge: [0.62] });
+  const fin = K.fin([[0, -3.3, -5.15, 0, 0.1], [0.35, -3.95, -5.18, 0, 0.1], [1.0, -4.4, -5.12, 0, 0.09], [1.5, -4.65, -5.0, 0, 0.09]], { y: 0.55, nk: 4, n: 5, round: 0.7, smooth: true, hinge: [0.6] });
+  K.mark('raf', 0.36, { hull: fus, x: -2.15, y: 0.26 });
+  for (const z of [4.6, -4.6]) K.mark('rafb', 0.6, { wing: w, x: 0.42, z });
+  K.mark('flash', 0.24, { fin, x: -4.33, h: 0.45 });
+  return { span: 13.7, len: 10.3, tail: -5.15, nose: 5.3 };
+}
+
 // ---------------------------------------------------------------- the module
 
 const BUILD = [
   { fighter: p51, attacker: p47, bomber: b25, transport: c47 },
   { fighter: bf109, attacker: ju87, bomber: he111, transport: ju52 },
   { fighter: yak9, attacker: il2, bomber: pe2, transport: li2 },
+  { fighter: spitfire, attacker: typhoon, bomber: mosquito, transport: (K) => c47(K, true) },
 ];
 export const PLANE_NAMES = [
   { fighter: 'P-51D Mustang', attacker: 'P-47D Thunderbolt', bomber: 'B-25J Mitchell', transport: 'C-47 Skytrain' },
   { fighter: 'Bf 109 G', attacker: 'Ju 87 Stuka', bomber: 'He 111 H', transport: 'Ju 52/3m' },
   { fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', bomber: 'Pe-2', transport: 'Li-2' },
+  { fighter: 'Spitfire Mk IX', attacker: 'Typhoon Mk IB', bomber: 'Mosquito FB VI', transport: 'Dakota III' },
 ];
 export const ROLES = ['fighter', 'attacker', 'bomber', 'transport'];
 
-// One plane for a faction (0 USA, 1 Germany, 2 USSR), a role (fighter, attacker, bomber, transport) and the owner's
+// One plane for a faction (0 USA, 1 Germany, 2 USSR, 3 UK), a role (fighter, attacker, bomber, transport) and the owner's
 // colour: { geo, props: [{x, y, z, r, n}], polys: shadow outlines [[x, z], ...], span, len, tail, nose, belly, blade
 // and tip (the propeller blade and tip colours), metal (bare metal: aircraft.js gives it a shinier material) }. geo
 // carries the `camo` and `hinge` attributes for paintMaterial() and `matId` for the model textures.

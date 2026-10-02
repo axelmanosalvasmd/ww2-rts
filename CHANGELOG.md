@@ -5,6 +5,40 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- A fourth faction: the UK, picked in the lobby like the others. Its own units: the Churchill VII (480 MP, max 1),
+  a slow infantry tank with the thickest front on the map (takes 60% from the front, the Tiger 70%) and a modest
+  75 mm gun, and Commandos (190 MP, 5 men), raiders with Stens and satchel charges who hide when they keep still,
+  like the sniper. Its doctrine, the 25-pounder: an artillery barrage fires 15 shells instead of 10, same price.
+  The AI fields Commandos and its Churchill the way it does Rangers and the Tiger.
+- British models, as detailed as the others: infantry in battledress, pale '37 webbing and the Brodie helmet with
+  the No.4 rifle, the Sten and a Bren gunner per section; Commandos in green berets with toggle ropes; the
+  Churchill VII, the Cromwell (medium tank), the Daimler armoured car, the Universal Carrier (the UK's squad
+  carrier), the Vickers MG, the 6-pounder, the 3-inch mortar and a Bofors with Royal Artillery marks; the RAF's
+  Spitfire IX, Typhoon IB, Mosquito VI and Dakota in roundels and invasion stripes. British vehicles wear the Allied
+  white star in a circle, a WD number and unit signs. The RAF roundel marks UK players in the HUD.
+- Balance, 240 Conquest AI matches on the default map with all four factions rotating through the three spawns
+  (each faction played 180): wins USA/GER/USSR/UK 66/63/50/61 (37/35/28/34%), 9.4 min median. The UK sits at its
+  fair share; the USSR's low share was there before. `tools/ai-balance.mjs --factions 4` runs this.
+- Left for later: the UK's light tank, tank destroyer, mobile flak, rocket launcher, howitzer, flamer, boats and
+  medics still use the American models in British paint (the white star was the Allied mark, so they read right).
+  UK voices are American until British lines are recorded. Gun pits and the Creeping Barrage order from the UK
+  design are not built yet.
+
+- New models for the new units, as detailed as the old ones. Tank destroyers: the M10 Wolverine (Sherman chassis, a
+  sloped hull studded with armor bosses, the open five-sided turret with its counterweights and the long 3 inch
+  gun), the StuG III Ausf. G (Panzer III running gear, the low casemate, the Saukopf mantlet, side skirts) and the
+  SU-85 (the T-34 hull carried up into a casemate, the 85 mm in a ball mantlet). The StuG and SU-85 only turn their
+  gun, a few degrees either way. Field howitzers: the M2A1, leFH 18 and M-30 on split trails with their own
+  wheels, recoil cylinders and shields, raised for indirect fire, with crews and ready shells. The flamethrower
+  squad: a flamer with the M2-2 tanks, the Flammenwerfer 41 or the box-shaped ROKS-2 and its rifle-looking gun,
+  held at the hip with the hose to his back, and two riflemen.
+- Their own map icons and unit badges too (the HUD cards, the war map and the badges over units): the tank destroyer
+  is a low turretless casemate with a long gun, the howitzer a steeply raised barrel on a wheel and trail, the
+  flamethrower a soldier with tanks on his back and fire at his hip, the bomber a twin-engine plane with a twin tail.
+- The model viewer takes &view=N to show one view filling the window.
+- Left for later: the sim does not turn a casemate hull toward its target, so a StuG or SU-85 shooting to the side
+  fires past its own gun.
+
 - Paratroopers drop a whole stick now: two rifle squads and an MG team land in a ring around the spot you pick,
   instead of one rifle squad. Same price (260 MP / 90 Munitions in Classic) and cooldown, so the call is worth its
   cost (350 MP of units; before it was 2.6x the price of the one squad it brought). It needs room for all three
@@ -27,6 +61,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   - Found and left: the mirrored two-side maps are fair for two teams but not as a 4-player free-for-all (on
     Ardennes one mirror pair of HQs won 100 of 120 FFA matches, before and after). Assault maps were left alone
     (their single-lane funnels are the set piece, and their balance was tuned with AI runs).
+- Fixed: units walked over the corner of an HQ (and other buildings and houses) instead of around it. Routes hugged
+  the wall 1 m off, so a squad's soldiers and a tank's hull cut across the model. Pathfinding now pays a little extra
+  for ground right beside a wall and straightens routes only where a 4 m wide lane is clear, so units pass a
+  building about 3 m out. One-cell alleys between houses still work.
+- Fixed: units routed straight through the command bunker (Assault, Annihilation, Horde) and were shoved out by
+  crowding. Routes now go around a standing bunker; an order aimed at the bunker still reaches it.
+- Fixed: spawn placement measured walking distance through cliffs, so two spawns on either side of a cliff counted
+  as neighbours. A step of more than one level now blocks that measure, like water and houses already did.
 - Fixed: long floating labels shrank their letters to fit a fixed plate, so the "Locked" tag over a linked point was
   unreadable. A long label now gets a wider plate at the normal letter size, and the locked tag reads "Locked: take
   the linked point first".

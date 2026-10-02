@@ -194,6 +194,10 @@ const DEFS = {
       [59.5, 71], [61, 80.5], [65.5, 82], [65.5, 84], [56, 84], [54.5, 73], [49.5, 66], [45, 73], [41.5, 84], [33, 84],
       [34, 81], [39, 71], [40.5, 61], [39.5, 51], [41.5, 44.5], [45, 41.5], [40, 35]) +
     bar([68.5, 62], [82, 76.6], 4) + ellipse(84, 79.8, 9.5, 3), 1.06, -3)],
+  flamer: ['Flamethrower Squad', 'infantry', 'Flamethrower: a soldier with fuel tanks on his back, the flame gun at his hip spitting a tongue of fire',
+    place(widen(poly(...MAN)) + poly([30, 36], [37, 36], [38, 38], [38, 59], [37, 61], [30, 61], [29, 59], [29, 38]) +
+      bar([61.5, 55], [80, 51.5], 4.5) + poly([81, 49], [86, 47], [92, 42.5], [90.5, 48], [97, 49.5], [90.5, 52.5], [94, 58], [86, 54.5], [81, 54]),
+    { dx: -4 })],
   medic: ['Medic Team', 'medical', 'Medic: a soldier beside a medical cross',
     place(widen(poly(...MAN)), { s: 0.8, ox: 50, oy: 84, dx: -20 }) + poly([68, 34], [78, 34], [78, 44], [92, 44], [92, 54], [78, 54], [78, 68], [68, 68], [68, 54], [54, 54], [54, 44], [68, 44])],
   mg: ['MG Team', 'weapon', 'Machine gun team: a prone gunner behind a machine gun on its tripod',
@@ -212,6 +216,10 @@ const DEFS = {
     poly([5, 84], [12, 84], [12, 81.5], [34.5, 75], [34, 69.6], [8, 76.5], [5, 78.5]) + wheel(48, 72, 12, 5) +
     poly([47, 36], [55, 36], [58.5, 47], [88, 47], [88, 45.5], [94, 45.5], [94, 52.5], [88, 52.5], [88, 51], [59.8, 51],
       [62, 58], [49, 58], [48.6, 54], [38, 54], [36, 50.5], [38, 47], [48, 47])],
+  howitzer: ['Field Howitzer', 'artillery', 'Field howitzer: a heavy barrel raised steeply behind a shield, on a big wheel and a split trail',
+    poly([5, 84], [12, 84], [12, 81.5], [33.5, 75], [33, 69.6], [8, 76.5], [5, 78.5]) + wheel(46, 72, 12, 5) +
+    poly(...[[-10, -5], [10, -5], [10, -3.2], [40, -3.2], [40, -4.2], [45, -4.2], [45, 4.2], [40, 4.2], [40, 3.2], [10, 3.2], [10, 5], [-10, 5]]
+      .map(([a, sd]) => at([52, 48], -38, a, sd))) + poly([59, 50], [64, 49], [64.5, 66], [59.5, 66])],
   flak: ['Flak Gun', 'airdefense', 'Anti-aircraft gun: a light cannon raised steeply on a cross-shaped ground mount',
     poly([6, 84], [7, 79], [13, 77], [13, 74], [36, 74], [40, 64], [62, 64], [66, 74], [87, 74], [87, 77], [93, 79], [94, 84],
       [84, 84], [83, 80], [17, 80], [16, 84]) +
@@ -253,6 +261,13 @@ const DEFS = {
     poly([7, 62], [7, 52], [9, 50], [29, 50], [29, 40], [32, 36], [35, 36], [36, 32], [43, 32], [44, 36], [62, 36], [64, 38.5],
       [70, 38.5], [70, 41.5], [88, 41.5], [88, 39.5], [95, 39.5], [95, 47.5], [88, 47.5], [88, 45.5], [70, 45.5], [70, 48],
       [64, 48], [64, 50], [85, 50], [88, 52], [88, 59], [84, 64.5], ...run(8, 84, 64)) + wheels([22, 36, 50, 64], 74.5, 5.5)],
+  // the Churchill: a long, tall hull with the tracks running right over it, a small slab turret mid-hull, a short gun
+  churchill: ['Churchill', 'armor', 'Infantry tank: a long, tall hull with tracks running over the top, a small square turret and a short gun',
+    poly([5, 66], [5, 56], [9, 49], [36, 49], [36, 40], [39, 37], [58, 37], [60, 40], [74, 40], [74, 44], [60, 44], [60, 49],
+      [89, 49], [95, 56], [95, 66], [88, 80], [84, 84], [16, 84], [12, 80]) + wheels([22, 34, 46, 58, 70, 80], 75, 3.6)],
+  tankdestroyer: ['Tank Destroyer', 'antitank', 'Tank destroyer: a low casemate with no turret and a long gun out of its sloped front',
+    poly([9, 66], [9, 57], [13, 54], [24, 54], [28, 46], [50, 46], [60, 51], [87, 51], [87, 49.5], [95, 49.5], [95, 56.5], [87, 56.5],
+      [87, 55], [64.5, 55], [68, 57], [86, 62], [89, 64.5], [88, 68], ...run(10, 86, 66)) + wheels([22, 34, 46, 58, 70], 75.5, 4.5)],
   rocket: ['Rocket Launcher', 'artillery', 'Rocket artillery: a truck with a rack of launch rails raised over the cab',
     poly([8, 72], [8, 60], [60, 60], [60, 48], [63, 45], [72, 45], [77, 55], [88, 56.5], [92.5, 59], [93, 70], [90, 72],
       ...arc(80, 75, 10.5, 10.5, -15, -165, 8), ...arc(38, 75, 10.5, 10.5, -15, -90, 4), ...arc(22, 75, 10.5, 10.5, -90, -165, 4)) +
@@ -266,6 +281,11 @@ const DEFS = {
       [61.5, 30], [63.5, 26.5], [65.5, 30], [65.5, 38], [71.5, 38], [71.5, 30], [73.5, 26.5], [75.5, 30], [75.5, 38], [91, 38],
       [94, 40.5], [94, 55], [91, 58], [58.5, 58], [55, 74], [54.5, 77], [71, 79], [72, 82], [71, 86], [54, 86.5], [52, 92],
       [50, 92]]))],
+
+  bomber: ['Bomber', 'air', 'Bomber: a twin-engine plane with long straight wings and a twin tail, seen from above',
+    poly(...mirror([[50, 8], [53, 9.5], [55, 14], [55.5, 32], [62, 32], [63, 26], [66, 24], [69, 26], [70, 32], [92, 35], [94, 37.5],
+      [94, 42], [92, 44], [70, 46], [69.5, 52], [66, 54], [62.5, 52], [62, 46], [55.5, 46], [54.5, 72], [54, 76], [68, 78], [69, 75],
+      [73, 75], [73, 86], [69, 86], [68, 83], [53, 84], [51.5, 90], [50, 90]]))],
 
   // buildings, front elevation on the same baseline
   bunker: ['Command Bunker', 'fort', 'Bunker: a low concrete blockhouse with a firing slit, on an earth berm',
@@ -432,10 +452,7 @@ export const VIEWBOX = '0 0 100 100';
 export const SYMBOLS = Object.create(null);
 for (const [type, [name, branch, meaning, d]] of Object.entries(DEFS)) SYMBOLS[type] = { name, branch, meaning, d };
 // ponytail: the newest units borrow a drawn symbol until they get their own
-for (const [type, from, name, meaning] of [['tankdestroyer', 'medium', 'Tank Destroyer', 'Tank destroyer: a tank hull with a long gun'],
-  ['howitzer', 'mortar', 'Field Howitzer', 'Field howitzer: a towed gun lobbing heavy shells'],
-  ['flamer', 'rifle', 'Flamethrower Squad', 'Flamethrower: infantry with a flame projector'],
-  ['bomber', 'bombing', 'Bomber', 'Bomber: a twin-engine plane dropping bombs']]) SYMBOLS[type] = { ...SYMBOLS[from], name, meaning };
+for (const [type, from, name, meaning] of [['commando', 'ranger', 'Commandos', 'Commando: a raider advancing with a submachine gun']]) SYMBOLS[type] = { ...SYMBOLS[from], name, meaning };
 
 // GLYPHS[key] = path data for the order buttons and UI glyphs. The support calls resolve here too, to their symbol.
 export const GLYPHS = Object.create(null);

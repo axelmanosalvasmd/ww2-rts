@@ -16,14 +16,14 @@ import { gfx } from './gfx.js';
 
 // ---------- copied from main.js (the header warns when main.js changes them) ----------
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics', lcvp: 'LCVP', gunboat: 'PT Boat', destroyer: 'Fletcher Destroyer', tankdestroyer: 'M10 Wolverine', howitzer: 'M2A1 105mm Howitzer', flamer: 'Flamethrower Team', bomber: 'B-25 Mitchell' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter', lcvp: 'Sturmboot', gunboat: 'S-Boot', destroyer: 'Zerstörer 1936', tankdestroyer: 'StuG III', howitzer: 'leFH 18', flamer: 'Flammenwerfer Team', bomber: 'He 111' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer', tankdestroyer: 'SU-85', howitzer: '122mm M-30 Howitzer', flamer: 'ROKS-2 Flamethrower Team', bomber: 'Pe-2' } },  { name: 'UK', uniform: 0x6f6448, vehicle: 0x565640, names: { rifle: 'Rifle Section', mg: 'Vickers MG', at: '6-pounder', tank: 'Stuart V', rocket: 'Land Mattress', churchill: 'Churchill VII', commando: 'Commandos', bunker: 'Command Bunker', mortar: '3-inch Mortar', sniper: 'Sniper Pair', armoredcar: 'Daimler Armoured Car', medium: 'Cromwell', flak: '40mm Bofors', flaktrack: 'Crusader AA', fighter: 'Spitfire', attacker: 'Typhoon', halftrack: 'Universal Carrier', medic: 'Stretcher Bearers', lcvp: 'LCA', gunboat: 'MTB', destroyer: 'Tribal-class Destroyer', tankdestroyer: 'Achilles', howitzer: '25-pounder', flamer: 'Lifebuoy Flamethrower Team', bomber: 'Mosquito' } },
 ];
 // planes that only fly air support (no unit type in the sim), shown with ?type=bomber or ?type=transport
 const PLANES = {
-  bomber: { air: true, name: 'Bomber (air support)', radius: 8, models: 1, names: ['B-25 Mitchell', 'He 111', 'Pe-2'] },
-  transport: { air: true, name: 'Transport (air support)', radius: 8, models: 1, names: ['C-47 Skytrain', 'Ju 52', 'Li-2'] },
+  bomber: { air: true, name: 'Bomber (air support)', radius: 8, models: 1, names: ['B-25 Mitchell', 'He 111', 'Pe-2', 'Mosquito'] },
+  transport: { air: true, name: 'Transport (air support)', radius: 8, models: 1, names: ['C-47 Skytrain', 'Ju 52', 'Li-2', 'Dakota'] },
 };
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AIR_ALT = 20; // main.js: planes fly this high over the ground
@@ -133,7 +133,7 @@ const farEye = (v) => new THREE.Vector3(v.x, 160, v.z + 160); // past LOD.high
 // the posture main.js gets from suppression and retreat; a long dt snaps the blend to it
 function pose(v) {
   v.supp = [0, 50, 90, 0][posture]; v.flags = posture === 3 ? 1 : 0;
-  if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
+  if (v.turret) { const a = -(v.aim - v.rot); v.turret.rotation.y = v.traverse ? Math.max(-v.traverse, Math.min(v.traverse, Math.atan2(Math.sin(a), Math.cos(a)))) : a; } // a casemate gun turns only so far
   animate(v, 10, farLod ? farEye(v) : nearEye(v));
 }
 // a plane's painted ground shadow under it (aircraft.js tick() puts it there each frame)
@@ -411,7 +411,7 @@ function lineupAll() {
 // ---------- layout and drawing ----------
 let measureOnce = null, dirty = true, frames = 0, cells = [];
 function layout() {
-  const W = innerWidth, H = innerHeight - HEAD, cols = lineup ? 1 : 3;
+  const W = innerWidth, H = innerHeight - HEAD, cols = views.length === 1 ? 1 : 3;
   const cw = (W - GAP * (cols - 1)) / cols, ch = (H - GAP * (rows - 1)) / rows;
   cells = views.map((view, i) => {
     const c = i % cols, r = Math.floor(i / cols);
@@ -477,6 +477,8 @@ function frame(now) {
 
 try {
   if (lineup) lineupAll(); else singleUnit();
+  const only = views[int(q.get('view'), 0, views.length - 1, -1)]; // &view=N: that view alone, filling the window
+  if (only) { views = [only]; rows = 1; }
   if (warnings.length) showWarnings();
 } catch (e) { fail(e.message); }
 // the copy of FACTIONS and COLORS above must match main.js

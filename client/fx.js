@@ -97,6 +97,7 @@ const GUNS = {
   rifle: SMALL, conscript: SMALL,
   engineer: { ...SMALL, n: 2 },
   ranger: { ...SMALL, snd: 'smg', burst: 2, gap: 0.07, flash: 0.28 },
+  commando: { ...SMALL, snd: 'smg', burst: 3, gap: 0.06, flash: 0.26 },
   mg: { ...SMALL, snd: 'mg', n: 1, burst: 4, gap: 0.065, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   bunker: { ...SMALL, snd: 'mg', n: 1, burst: 4, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.5 },
   sniper: { ...SMALL, snd: 'sniper', n: 1, spd: 420, w: 0.035, trOdds: 0.6, flash: 0.4 },
@@ -104,6 +105,7 @@ const GUNS = {
   tank: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.16, tr: FX.tracerHot, trOdds: 1, flash: 1.4, heavy: 2.6, smoke: 1, blast: 1 },
   medium: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.18, tr: FX.tracerHot, trOdds: 1, flash: 1.7, heavy: 3, smoke: 1, blast: 1.2 },
   tiger: { ...SMALL, snd: 'tankgun', n: 1, spd: 160, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 2.1, heavy: 3.4, smoke: 1, blast: 1.4 },
+  churchill: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.18, tr: FX.tracerHot, trOdds: 1, flash: 1.7, heavy: 3, smoke: 1, blast: 1.2 },
   tankdestroyer: { ...SMALL, snd: 'tankgun', n: 1, spd: 165, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 1.9, heavy: 3, smoke: 1, blast: 1.2 },
   // ponytail: the flame is drawn as a slow, fat, hot tracer with a big flash until it gets its own stream effect
   flamer: { ...SMALL, snd: 'flak', n: 1, burst: 3, gap: 0.06, spd: 40, w: 0.5, tr: FX.tracerHot, trOdds: 1, flash: 1.2 },
@@ -853,7 +855,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       burning(v.x, gy + 1, v.z, 1.4, 8, 30);
       return;
     }
-    const big = v.type === 'tiger' ? 1.3 : v.type === 'medium' ? 1.15 : 1;
+    const big = v.type === 'tiger' || v.type === 'churchill' ? 1.3 : v.type === 'medium' ? 1.15 : 1;
     explode(v.x, v.z, 3.2 * big, { debris: FX.metal, smokeK: 0.7 });
     burning(v.x, gy + 1.3 * big, v.z, big, 20, 38);
     play('vehicle_destroyed', v.x, v.z);

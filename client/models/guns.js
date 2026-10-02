@@ -1,5 +1,5 @@
 // Crew-served weapons: the M1919, MG 42 and Maxim machine guns, the 81 mm, GrW 34 and 82 mm mortars, the 57 mm, PaK 40
-// and 45 mm anti-tank guns, the Bofors, Flak 38 and 61-K anti-aircraft guns and the emplacement twin gun of the flak
+// and 45 mm anti-tank guns, the M2A1, leFH 18 and M-30 field howitzers, the Bofors, Flak 38 and 61-K anti-aircraft guns and the emplacement twin gun of the flak
 // position, plus the sandbag ring around that position.
 //
 // Each gun is built once per look as ONE vertex-colored geometry (the weapon, its ammunition and its owner marking), so a
@@ -153,6 +153,12 @@ function plateBand(k, color, frame, u, v, w) {
   return k.add(new THREE.BoxGeometry(0.034, 0.026, w), color, new THREE.Matrix4().copy(frame).multiply(new THREE.Matrix4().makeTranslation(0, v - 0.009, u)));
 }
 
+// the Royal Artillery's arm-of-service sign, which British guns carried in place of a national marking: a square s wide,
+// red over blue, at the marking matrix m (from onPlate() or G.place())
+function raSign(k, m, s) {
+  for (const [dy, c] of [[s / 4, 0xa63a2c], [-s / 4, 0x2a3d6a]]) k.add(QUAD, c, m.clone().multiply(new THREE.Matrix4().makeTranslation(0, dy, 0)).multiply(new THREE.Matrix4().makeScale(s, s / 2, 1)), 'plain');
+}
+
 // Paint and finish: the body color darkens toward the ground and under overhangs, and top faces get a light wash of dust.
 function finish(geo, { dark = 0.8, under = 0.14, lift = 0.1, span } = {}) {
   geo.computeBoundingBox();
@@ -267,10 +273,10 @@ function jack(k, P, x, z) {
 
 // A belt: a dark link strip along a path with brass rounds across it, packed edge to edge (about 0.03 m apart), their
 // noses leading forward.
-function belt(k, P, path) {
+function belt(k, P, path, strip = P.bore) {
   const curve = new THREE.CatmullRomCurve3(path.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
   const n = Math.max(6, Math.round(curve.getLength() / 0.03)), Y = new THREE.Vector3(0, 1, 0), rg = roundGeo(0.07, 0.0125);
-  k.add(G.tube(path, 0.008, { segments: 8, radial: 4, caps: false }), P.bore);
+  k.add(G.tube(path, strip === P.bore ? 0.008 : 0.011, { segments: 8, radial: 4, caps: false }), strip);
   for (let i = 0; i < n; i++) {
     const u = (i + 0.5) / n, p = curve.getPointAt(u), t = curve.getTangentAt(u);
     const a = new THREE.Vector3().crossVectors(t, Y);
@@ -283,10 +289,11 @@ function belt(k, P, path) {
 }
 
 // An ammunition box for the faction's gun with a thin owner strap across the lid: US olive can with a hinge and a stenciled
-// mark, German steel can with a carry handle and latches, Soviet plain box with a rope handle and a strap.
+// mark, German steel can with a carry handle and latches, Soviet plain box with a rope handle and a strap, British steel
+// belt box with a hinged lid, a lid clasp, a wire handle and a stenciled band.
 function ammoBox(k, P, fac, x, z, rot) {
-  const [w, h, d] = fac === 0 ? [0.34, 0.21, 0.15] : fac === 1 ? [0.28, 0.26, 0.13] : [0.34, 0.21, 0.16];
-  const color = fac === 0 ? mix(P.paint, 0x56603a, 0.4) : fac === 1 ? mix(P.paint, P.steel, 0.2) : mix(P.wood, P.paint, 0.35);
+  const [w, h, d] = fac === 0 ? [0.34, 0.21, 0.15] : fac === 1 ? [0.28, 0.26, 0.13] : fac === 3 ? [0.3, 0.19, 0.14] : [0.34, 0.21, 0.16];
+  const color = fac === 0 ? mix(P.paint, 0x56603a, 0.4) : fac === 1 ? mix(P.paint, P.steel, 0.2) : fac === 3 ? mix(P.paint, 0x48452f, 0.35) : mix(P.wood, P.paint, 0.35);
   const at = M(x, 0, z).ry(rot).m.clone();
   k.add(softBox(w, h, d, 0.016), color, M(x, h / 2, z).ry(rot));
   k.add(new THREE.BoxGeometry(0.036, 0.01, d * 0.96), P.owner, M(x, h + 0.003, z).ry(rot).t(w * 0.3, 0, 0));
@@ -299,6 +306,13 @@ function ammoBox(k, P, fac, x, z, rot) {
     for (const s of [-1, 1]) k.add(new THREE.BoxGeometry(0.014, 0.045, 0.014), rail, M(x, h + 0.022, z).ry(rot).t(s * 0.075, 0, 0));
     k.add(new THREE.BoxGeometry(0.17, 0.014, 0.02), rail, M(x, h + 0.052, z).ry(rot));
     for (const s of [-1, 1]) k.add(new THREE.BoxGeometry(0.03, 0.05, 0.014), rail, M(x, h * 0.62, z).ry(rot).t(s * w * 0.28, 0, d / 2));
+  } else if (fac === 3) {
+    // the lid hinge along the back, the clasp on the front, a wire handle on two lugs, the yellow stenciled band
+    k.add(new THREE.BoxGeometry(w * 0.9, 0.018, 0.018), rail, M(x, h + 0.004, z).ry(rot).t(0, 0, -d / 2));
+    k.add(new THREE.BoxGeometry(0.04, 0.06, 0.016), rail, M(x, h * 0.86, z).ry(rot).t(0, 0, d / 2 + 0.006));
+    for (const s of [-1, 1]) k.add(new THREE.BoxGeometry(0.014, 0.03, 0.014), rail, M(x, h + 0.014, z).ry(rot).t(s * 0.06, 0, 0));
+    k.add(new THREE.BoxGeometry(0.13, 0.01, 0.01), P.steel, M(x, h + 0.032, z).ry(rot));
+    k.decal(mix(0xb8a64a, color, 0.25), w * 0.7, 0.022, [0, h * 0.42, d / 2 + 0.002], [0, 0, 1], [1, 0, 0], at);
   } else {
     k.add(new THREE.BoxGeometry(0.1, 0.03, 0.03), rail, M(x, h + 0.02, z).ry(rot));
     k.add(new THREE.BoxGeometry(0.04, h * 1.02, d * 1.04), rail, M(x, h / 2, z).ry(rot).t(w * 0.28, 0, 0));
@@ -415,6 +429,72 @@ function mgGun(fac, P) {
     ammoBox(k, P, 1, 0.6, -0.44, -0.25);
     ammoBox(k, P, 1, 1.0, 0.56, 0.2);
     belt(k, P, [[0.6, 0.28, -0.44], [0.68, 0.36, -0.38], [0.82, 0.42, -0.25], [0.93, y + 0.03, -0.1], [0.98, y + 0.07, -0.06]]);
+  } else if (fac === 3) {
+    // Vickers Mk I on the Mk IV tripod: a slab-sided receiver with the crank handle on the right and the fusee box on the
+    // left, wooden spade grips, a corrugated water jacket with its conical flash hider, the condenser hose to the can on
+    // the ground, a canvas belt fed from the right; the tripod has two front legs and one long rear leg
+    const jk = made(mix(P.black, P.paint, 0.3), 'gunmetal'), canvas = P.canvas;
+    k.box(P.black, 0.36, 0.135, 0.105, 0.86, y, 0, 0, 0, 0, 0.012);                       // receiver
+    k.box(P.black, 0.28, 0.022, 0.1, 0.84, y + 0.078, 0);                                  // top cover
+    k.box(P.steel, 0.04, 0.02, 0.06, 0.97, y + 0.094, 0);                                  // cover catch
+    k.box(P.black, 0.075, 0.06, 0.24, 0.995, y + 0.02, 0, 0, 0, 0, 0.008);                // the feed block across the front of the receiver
+    k.decal(P.bore, 0.05, 0.03, [0.995, y + 0.02, 0.1205], [0, 0, 1], [1, 0, 0]);          // its belt slot on the right
+    k.box(P.steel, 0.17, 0.045, 0.026, 0.95, y - 0.025, -0.066);                            // the fusee spring box on the left
+    // the crank handle on the right: an arm from the crankshaft swinging back, a roller at its end
+    k.cyl(P.steel, 0.022, 0.022, 0.03, 8, 0.73, y + 0.01, 0.052, 'z');
+    k.rod(P.steel, [0.73, y + 0.01, 0.07], [0.62, y - 0.04, 0.08], 0.012, 4);
+    k.cyl(P.black, 0.018, 0.018, 0.05, 6, 0.62, y - 0.04, 0.06, 'z');
+    // the rear: the cross piece with two wooden spade grips and the thumb piece between them
+    k.box(P.black, 0.035, 0.05, 0.2, 0.67, y - 0.02, 0);
+    for (const s of [-1, 1]) {
+      k.cyl(P.stock, 0.019, 0.017, 0.12, 6, 0.63, y - 0.09, s * 0.085);
+      k.rod(P.black, [0.67, y - 0.02, s * 0.085], [0.63, y - 0.02, s * 0.085], 0.012, 4, false);
+    }
+    k.box(P.steel, 0.03, 0.03, 0.06, 0.645, y + 0.005, 0);                                 // the thumb piece
+    // the tall rear sight leaf and its tangent arm, the foresight on the jacket's front cap
+    k.box(P.black, 0.05, 0.03, 0.06, 0.74, y + 0.083, 0);
+    k.box(P.steel, 0.012, 0.11, 0.035, 0.74, y + 0.15, 0, 0, 0, -0.2);
+    k.box(P.black, 0.018, 0.05, 0.012, 1.6, y + 0.085, 0);
+    // the corrugated water jacket between its rear trunnion block and the front cap, the filler and drain plugs, the owner's band
+    k.add(flutedJacket(1.04, y, 0.56, 0.064, 0.056, 8), jk);
+    k.cyl(P.black, 0.07, 0.07, 0.04, 8, 1.03, y, 0, 'x');
+    k.cyl(P.black, 0.068, 0.06, 0.035, 8, 1.6, y, 0, 'x');
+    k.cyl(P.steel, 0.022, 0.022, 0.03, 6, 1.1, y + 0.06, 0);                               // filler plug
+    k.cyl(P.steel, 0.016, 0.016, 0.02, 6, 1.5, y - 0.08, 0);                               // drain plug
+    k.cyl(P.owner, 0.067, 0.067, 0.03, 8, 1.33, y, 0, 'x');
+    // the conical flash hider (to 1.72) on the barrel stub
+    k.cyl(P.black, 0.02, 0.02, 0.02, 6, 1.635, y, 0, 'x');
+    k.turn(P.black, [[0, 0], [0.024, 0], [0.046, 0.065], [0.04, 0.065], [0, 0.065]], 8, 1.655, y, 0, 'x');
+    // the steam nozzle under the front of the jacket, the rubber hose sagging to the condenser can on the left
+    k.rod(P.steel, [1.55, y - 0.06, 0], [1.55, y - 0.1, -0.02], 0.013, 5);
+    k.add(G.tube([[1.55, y - 0.1, -0.02], [1.53, 0.2, -0.12], [1.42, 0.05, -0.32], [1.3, 0.12, -0.48], [1.27, 0.32, -0.52]], 0.014, { segments: 6, radial: 4 }), P.tire);
+    {
+      const cx = 1.24, cz = -0.56, ch = 0.3, can = made(mix(P.paint, 0x2f3a2a, 0.4), 'armor-paint');
+      k.add(new THREE.BoxGeometry(0.2, ch, 0.11), can, M(cx, ch / 2, cz).ry(0.3));
+      k.cyl(P.steel, 0.028, 0.028, 0.03, 6, cx + 0.02, ch, cz + 0.03);                      // the hose cap
+      k.rod(P.steel, [cx - 0.06, ch, cz - 0.03], [cx - 0.02, ch + 0.05, cz], 0.008, 4, false);  // the handle
+      k.add(new THREE.BoxGeometry(0.03, 0.01, 0.1), P.owner, M(cx, ch + 0.003, cz).ry(0.3).t(-0.07, 0, 0));
+    }
+    // Mk IV tripod: the crosshead and its socket with the traversing dial and clamp, the elevating gear from the rear leg
+    // to the receiver, two front legs splayed forward and the long rear leg running back
+    const head = [0.98, 0.27, 0];
+    k.cyl(P.tripod, 0.06, 0.055, 0.12, 8, 0.98, 0.21, 0);
+    k.cyl(P.steel, 0.11, 0.11, 0.018, 10, 0.98, 0.31, 0);                                  // the traversing dial
+    k.cyl(P.black, 0.04, 0.04, 0.06, 8, 0.98, 0.33, 0);
+    k.box(P.black, 0.07, 0.05, 0.16, 1.02, 0.37, 0);                                        // the crosshead
+    for (const s of [-1, 1]) k.box(P.black, 0.05, 0.05, 0.02, 1.03, y - 0.075, s * 0.07);    // the gun's trunnion lugs into it
+    k.rod(P.steel, [0.98, 0.33, 0.11], [0.98, 0.33, 0.18], 0.009, 4);                       // the traverse clamp lever
+    for (const s of [-1, 1]) leg(k, P, P.tripod, [1.0, 0.25, s * 0.04], [1.5, 0.035, s * 0.46]);
+    leg(k, P, P.tripod, [0.94, 0.26, 0], [0.22, 0.035, 0]);
+    const eb = [0.72, 0.17, 0], et = [0.73, y - 0.075, 0];
+    k.rod(P.black, eb, lerp3(eb, et, 0.55), 0.022, 6);                                      // the elevating gear: a sleeve and the screw
+    k.rod(P.steel, lerp3(eb, et, 0.5), et, 0.013, 5);
+    k.cyl(P.steel, 0.05, 0.05, 0.014, 8, 0.72, 0.24, 0.025, 'z');                         // its hand wheel
+    k.box(P.black, 0.05, 0.03, 0.06, 0.73, y - 0.07, 0);
+    // a belt box on the right with the canvas belt rising to the feed block, the empty belt hanging left
+    ammoBox(k, P, 3, 0.72, 0.46, 0.2);
+    belt(k, P, [[0.72, 0.21, 0.46], [0.78, 0.3, 0.4], [0.88, 0.38, 0.28], [0.97, y + 0.0, 0.16], [0.995, y + 0.02, 0.12]], canvas);
+    k.add(G.tube([[0.995, y + 0.02, -0.12], [0.99, y - 0.04, -0.17], [0.96, 0.2, -0.2], [0.93, 0.02, -0.24]], 0.01, { segments: 5, radial: 4, caps: false }), canvas);
   } else {
     // Maxim on the Sokolov mount: fluted water jacket, spade grips, one shield plate, two small spoked wheels, a single trail
     k.box(P.black, 0.4, 0.21, 0.15, 0.82, y, 0, 0, 0, 0, 0.014);                          // receiver
@@ -486,6 +566,22 @@ function mortarGun(fac, P) {
     for (const sg of [-1, 1]) { k.box(darkMetal, s, 0.035, 0.035, bx, 0.045, sg * (s / 2 - 0.0175)); k.box(darkMetal, 0.035, 0.035, s, bx + sg * (s / 2 - 0.0175), 0.045, 0); }
     k.box(P.owner, 0.04, 0.012, 0.36, bx - s / 2 + 0.07, 0.0475, 0);                          // the owner's stripe along the rear edge
     k.turn(lightMetal, [[0, 0], [0.19, 0], [0.19, 0.04], [0.13, 0.075], [0.12, 0.12], [0.07, 0.15], [0, 0.15]], 10, bx, 0.04, 0);
+  } else if (fac === 3) {
+    // ML 3-inch: a rectangular pressed plate, wider than deep, with clipped corners, a turned-down rim, ribs from the
+    // socket to the corners, a cross rib, and a carrying handle on each side
+    const hx = 0.27, hz = 0.34, c = 0.06;
+    const outline = [[-hx + c, -hz], [hx - c, -hz], [hx, -hz + c], [hx, hz - c], [hx - c, hz], [-hx + c, hz], [-hx, hz - c], [-hx, -hz + c]];
+    k.add(lightEdges(G.extrudeProfile(outline, 0.035, 0.008, { segments: 1 }), 1.14, 0.12), metal, M(bx, 0.0175, 0).rx(-Math.PI / 2));
+    for (const sg of [-1, 1]) { k.box(darkMetal, hx * 2, 0.03, 0.03, bx, 0.045, sg * (hz - 0.015)); k.box(darkMetal, 0.03, 0.03, hz * 2, bx + sg * (hx - 0.015), 0.045, 0); }
+    for (const a of [Math.atan2(hz, hx), -Math.atan2(hz, hx)]) k.box(darkMetal, Math.hypot(hx, hz) * 1.9, 0.035, 0.04, bx, 0.05, 0, 0, a, 0);
+    k.box(darkMetal, 0.04, 0.035, hz * 1.9, bx, 0.05, 0);
+    for (const sg of [-1, 1]) {
+      k.rod(P.steel, [bx - 0.09, 0.05, sg * (hz + 0.005)], [bx - 0.06, 0.09, sg * (hz + 0.04)], 0.012, 4, false);
+      k.rod(P.steel, [bx - 0.06, 0.09, sg * (hz + 0.04)], [bx + 0.06, 0.09, sg * (hz + 0.04)], 0.012, 4, false);
+      k.rod(P.steel, [bx + 0.06, 0.09, sg * (hz + 0.04)], [bx + 0.09, 0.05, sg * (hz + 0.005)], 0.012, 4, false);
+    }
+    k.box(P.owner, 0.04, 0.012, 0.4, bx - hx + 0.06, 0.0412, 0);                               // the owner's stripe along the rear edge
+    k.turn(lightMetal, [[0, 0], [0.13, 0], [0.13, 0.04], [0.09, 0.08], [0.085, 0.11], [0, 0.11]], 8, bx, 0.035, 0);
   } else {
     const c = 0.16, h = 0.36, outline = [[-h + c, -h], [h - c, -h], [h, -h + c], [h, h - c], [h - c, h], [-h + c, h], [-h, h - c], [-h, -h + c]];
     k.add(lightEdges(G.extrudeProfile(outline, 0.04, 0.008, { segments: 1 }), 1.14, 0.12), metal, M(bx, 0.02, 0).rx(-Math.PI / 2));
@@ -518,7 +614,23 @@ function mortarGun(fac, P) {
       for (let c = 0; c < 4; c++) { const u = 0.15 + c * 0.2; k.rod(P.steel, [cx + 0.03 + (mid[0] - cx - 0.03) * u, cy + 0.07 + (mid[1] + 0.02 - cy - 0.07) * u, s * (0.13 + (Math.abs(mid[2]) - 0.13) * u)], [cx + 0.03 + (mid[0] - cx - 0.03) * (u + 0.07), cy + 0.07 + (mid[1] + 0.02 - cy - 0.07) * (u + 0.07), s * (0.13 + (Math.abs(mid[2]) - 0.13) * (u + 0.07))], 0.034, 6, false); }
     }
   }
-  k.rod(darkMetal, [cx + 0.02, cy - 0.06, 0], [bx + 0.32, 0.1, 0], 0.017, 5);                  // the elevating screw
+  if (fac === 3) {
+    // the ML 3-inch's mounting: the elevating gear in a sleeve standing between the legs on a cross brace, its crank at
+    // the foot, the traversing gear in a long housing across the yoke, and the two buffer springs either side of the tube
+    const onLeg = (s, u) => lerp3([cx + 0.02, cy - 0.02, s * 0.12], [fx, 0.07, s * fz], u), lo = onLeg(-1, 0.68), hi = onLeg(1, 0.68);
+    const foot3 = [lo[0] - 0.03, lo[1] + 0.02, 0];
+    k.rod(darkMetal, lo, hi, 0.016, 5);
+    k.box(darkMetal, 0.07, 0.05, 0.07, foot3[0], foot3[1], 0);
+    k.rod(metal, foot3, lerp3(foot3, [cx + 0.02, cy - 0.06, 0], 0.6), 0.03, 6);
+    k.rod(P.steel, lerp3(foot3, [cx + 0.02, cy - 0.06, 0], 0.55), [cx + 0.02, cy - 0.06, 0], 0.016, 5);
+    k.rod(P.steel, [foot3[0], foot3[1], 0.03], [foot3[0], foot3[1], 0.1], 0.01, 4, false);
+    k.rod(P.black, [foot3[0], foot3[1], 0.1], [foot3[0] - 0.06, foot3[1] + 0.02, 0.1], 0.013, 4, false);
+    k.cyl(darkMetal, 0.03, 0.03, 0.3, 6, cx + 0.02, cy - 0.06, -0.16, 'z');
+    for (const s of [-1, 1]) {
+      k.add(G.lathe([[0, 0], [0.024, 0], [0.024, 0.22], [0, 0.22]], 6, { axis: 'y' }), P.steel, onTube(0.6, s * 0.08, 0));
+      k.add(G.lathe([[0.024, 0], [0.03, 0], [0.03, 0.02], [0.024, 0.02]], 6, { axis: 'y' }), darkMetal, onTube(0.69, s * 0.08, 0));
+    }
+  } else k.rod(darkMetal, [cx + 0.02, cy - 0.06, 0], [bx + 0.32, 0.1, 0], 0.017, 5);              // the elevating screw
   k.cyl(P.steel, 0.055, 0.055, 0.025, 8, cx + 0.02, cy - 0.06, 0.14, 'z');                    // the traverse handwheel on its crank
   k.rod(darkMetal, [cx + 0.02, cy - 0.06, 0.08], [cx + 0.02, cy - 0.06, 0.14], 0.012, 4, false);
   // the sight on the left of the yoke: a bracket, the collimator block and a short telescope
@@ -527,8 +639,8 @@ function mortarGun(fac, P) {
   k.add(G.lathe([[0, 0], [0.026, 0], [0.026, 0.17], [0.034, 0.17], [0.034, 0.2], [0, 0.2]], 8, { axis: 'y' }), P.black, onTube(0.6, -0.12, 0.15));
   // ammunition: an open crate of banded bombs lying flat, and a closed crate beside it
   const crateC = fac === 0 ? shade(P.paint, 0.85) : made(shade(P.wood, fac === 1 ? 1 : 0.9), 'wood');
-  const bodyC = fac === 0 ? P.paint : fac === 1 ? made(new THREE.Color(0x3a3d40), 'gunmetal') : mix(P.paint, P.steel, 0.2);
-  const bandC = fac === 0 ? 0xa89a3a : fac === 1 ? 0xa4a7a8 : 0x9a3a2a;
+  const bodyC = fac === 0 ? P.paint : fac === 1 ? made(new THREE.Color(0x3a3d40), 'gunmetal') : fac === 3 ? made(mix(P.paint, 0x2f3a2a, 0.5), 'armor-paint') : mix(P.paint, P.steel, 0.2);
+  const bandC = fac === 0 ? 0xa89a3a : fac === 1 ? 0xa4a7a8 : fac === 3 ? 0xa63a2c : 0x9a3a2a;
   const bp = bombParts(0.34, 0.04);
   {
     const x = 0.1, z = 0.56, rot = 0.15, w = 0.46, h = 0.15, d = 0.34;
@@ -537,7 +649,18 @@ function mortarGun(fac, P) {
     k.add(new THREE.BoxGeometry(w * 0.9, 0.012, 0.026), P.owner, M(x, h + 0.003, z).ry(rot).t(0, 0, d / 2 - 0.013));   // the owner's band on the rim
     for (let i = 0; i < 4; i++) bomb(k, bp, bodyC, shade(bodyC, 0.7), bandC, M(x, h + 0.04, z).ry(rot).t(-0.17, 0, -0.12 + i * 0.08));
   }
-  {
+  if (fac === 3) {
+    // the British three-bomb carrier: three tubular cases side by side in a frame of two straps and a carrying handle,
+    // their lids toward the gun
+    const x = 0.12, z = -0.58, rot = -0.2, rc = 0.05, len = 0.42, tubeC = made(mix(P.paint, 0x3e3a28, 0.45), 'armor-paint');
+    // each case and its wider lid as one 6-sided lathe
+    const caseGeo = G.lathe([[0, 0], [rc, 0], [rc, len - 0.04], [rc * 1.1, len - 0.04], [rc * 1.1, len], [0, len]], 6, { axis: 'x' });
+    for (const dz of [-0.105, 0, 0.105]) k.add(caseGeo, tubeC, M(x, rc, z).ry(rot).t(-len / 2 + 0.02, 0, dz));
+    for (const dx of [-0.12, 0.12]) k.add(new THREE.BoxGeometry(0.03, rc * 2 + 0.012, 0.33), P.leather, M(x, rc, z).ry(rot).t(dx, 0, 0));
+    k.add(new THREE.BoxGeometry(0.16, 0.02, 0.025), P.leather, M(x, rc * 2 + 0.04, z).ry(rot));
+    for (const dx of [-0.08, 0.08]) k.add(new THREE.BoxGeometry(0.015, 0.05, 0.015), P.leather, M(x, rc * 2 + 0.015, z).ry(rot).t(dx, 0, 0));
+    k.add(new THREE.BoxGeometry(0.03, 0.012, 0.3), P.owner, M(x, rc * 2 + 0.004, z).ry(rot).t(0.05, 0, 0));
+  } else {
     const x = 0.12, z = -0.58, rot = -0.2, w = 0.4, h = 0.16, d = 0.28;
     k.add(softBox(w, h, d, 0.012), crateC, M(x, h / 2, z).ry(rot));
     k.add(new THREE.BoxGeometry(w * 1.02, 0.02, 0.03), shade(crateC, 0.6), M(x, h * 0.8, z).ry(rot).t(0, 0, d * 0.25));
@@ -557,6 +680,9 @@ const AT = [
   { barrel: 3.2, yb: 0.95, R: 0.42, w: 0.2, track: 0.84, lean: 16, trail: 2.3, spread: 26, pivot: 0.55 },
   // 45 mm 53-K: short barrel, stepped V shield with flanges, spoked wheels
   { barrel: 2.35, yb: 0.9, R: 0.46, w: 0.18, track: 0.8, lean: 10, trail: 2.0, spread: 28, pivot: 0.5 },
+  // QF 6-pounder Mk IV: a low gun on small disc wheels, the long thin barrel with its single-baffle brake, a flat shield
+  // in two halves whose tops fold back
+  { barrel: 2.85, yb: 0.86, R: 0.38, w: 0.17, track: 0.78, lean: 8, trail: 2.0, spread: 25, pivot: 0.5 },
 ];
 
 function atGun(fac, P) {
@@ -575,7 +701,7 @@ function atGun(fac, P) {
   k.cyl(P.dark, 0.118, 0.118, 0.06, 8, 0.8, yb, 0, 'x');
   for (const s of [-1, 1]) k.cyl(P.steel, 0.05, 0.05, 0.9, 6, -0.05, yb - 0.17, s * 0.12, 'x');       // recoil cylinders
   k.cyl(P.steel, 0.065, 0.065, 0.75, 6, 0.0, yb - 0.2, 0, 'x');                                    // the recuperator
-  k.cyl(P.mid, 0.045, 0.045, 0.8, 6, -0.02, yb + 0.14, 0.1, 'x');                                  // the upper recoil cylinder
+  if (fac !== 3) k.cyl(P.mid, 0.045, 0.045, 0.8, 6, -0.02, yb + 0.14, 0.1, 'x');                   // the upper recoil cylinder (the 6-pounder has none)
   k.box(P.black, 0.42, 0.3, 0.26, x0 + 0.14, yb + 0.02, 0, 0, 0, 0, 0.015);                         // breech block
   k.box(P.dark, 0.16, 0.14, 0.18, x0 + 0.14, yb + 0.22, 0);                                         // the breech wedge
   k.box(P.steel, 0.14, 0.18, 0.2, x0 - 0.1, yb + 0.02, 0);
@@ -588,8 +714,8 @@ function atGun(fac, P) {
   k.rod(P.black, [-0.1, yb + 0.24, -0.12], [0.3, yb + 0.26, -0.12], 0.026, 6);                       // sight telescope
   k.box(P.black, 0.07, 0.07, 0.06, x0 + 0.02, yb + 0.24, -0.12);
   // barrel: heavy at the breech and stepping down along its length, then the muzzle device
-  const muzzleBox = fac === 1, plain = fac === 2, bl = muzzleBox ? 0.34 : plain ? 0 : 0.2;
-  const rb = [0.085, 0.07, 0.062][fac], rm = [0.047, 0.05, 0.04][fac];
+  const muzzleBox = fac === 1, plain = fac === 2, bl = muzzleBox ? 0.34 : plain ? 0 : fac === 3 ? 0.15 : 0.2;
+  const rb = [0.085, 0.07, 0.062, 0.07][fac], rm = [0.047, 0.05, 0.04, 0.04][fac];
   k.add(G.lathe([[0, 0], [rb * 1.05, 0], [rb * 1.05, 0.4], [rb * 0.82, 0.55], [rb * 0.78, 1.1], [rm * 1.1, 1.3], [rm, 1.6], [rm, L - bl - 0.05], [rm * (plain ? 1.45 : 1.15), L - bl - 0.05], [rm * (plain ? 1.45 : 1.15), L - bl], ...(plain ? [[rm * 0.55, L], [rm * 0.55, L - 0.05], [0, L - 0.05]] : [[rm * 1.0, L - bl], [rm * 0.7, L - bl], [0, L - bl]])], 8, { axis: 'x' }), P.black, M(x0, yb, 0));
   const bx = x0 + L - bl;
   if (fac === 0) {
@@ -605,6 +731,13 @@ function atGun(fac, P) {
     for (const s of [-1, 1]) for (const dx of [0.11, 0.24]) k.decal(P.hole, 0.07, 0.1, [bx + dx, yb, s * 0.1015], [0, 0, s], [1, 0, 0]);
     k.decal(P.hole, 0.24, 0.07, [bx + bl / 2, yb + 0.0965, 0], [0, 1, 0], [1, 0, 0]);
     k.box(P.steel, 0.02, 0.2, 0.22, bx + bl - 0.01, yb, 0);
+  } else if (fac === 3) {
+    // the Mk IV's single-baffle brake: a collar, a top and a bottom strap, the open side ports and the square baffle
+    k.cyl(P.black, 0.058, 0.058, 0.05, 8, bx, yb, 0, 'x');
+    for (const s of [-1, 1]) k.box(P.black, 0.06, 0.022, 0.07, bx + 0.07, yb + s * 0.05, 0);
+    k.cyl(P.bore, 0.024, 0.024, 0.06, 6, bx + 0.045, yb, 0, 'x');
+    k.box(P.black, 0.05, 0.13, 0.14, bx + bl - 0.025, yb, 0, 0, 0, 0, 0.012);
+    k.decal(P.hole, 0.045, 0.045, [x0 + L + 0.001, yb, 0], [1, 0, 0], [0, 1, 0]);
   }
   // trails: split, spread, tapering box beams with clamps, arrow spades and handles
   const a = S.spread * RAD;
@@ -620,7 +753,7 @@ function atGun(fac, P) {
   }
   // a crate of rounds on the ground between the trails: the gun's ammunition, three shells lying in an open crate
   {
-    const cx = -1.3, cz = 0, rot = 0.2, w = 0.5, h = 0.16, d = 0.3, sr = [0.029, 0.038, 0.023][fac], sl = [0.5, 0.6, 0.4][fac];
+    const cx = -1.3, cz = 0, rot = 0.2, w = 0.5, h = 0.16, d = 0.3, sr = [0.029, 0.038, 0.023, 0.03][fac], sl = [0.5, 0.6, 0.4, 0.55][fac];
     const crateC = fac === 0 ? shade(P.paint, 0.85) : P.wood, shell = shellGeo(sl, sr);
     k.add(new THREE.BoxGeometry(w, h, d), crateC, M(cx, h / 2, cz).ry(rot));
     k.flat(P.hole, w - 0.05, d - 0.05, cx, h + 0.0015, cz, rot);
@@ -662,6 +795,26 @@ function shield(k, P, S, fac) {
     studs(k, P.light, wl, [...row([-0.06, 0.8], [-0.28, 0.8], 3), ...row([-0.28, 0.2], [-0.28, 0.66], 4)], off);
     topBand(fr, 0, 0.9, 0.3); topBand(wr, 0.16, 0.84, 0.16); topBand(wl, -0.16, 0.84, 0.16);
     k.add(G.balkenkreuz(0.085, { color: 0x1c1b18, border: P.white }), 0xffffff, onPlate(fr, -0.2, 0.26, t / 2 + 0.012), 'plain');
+  } else if (fac === 3) {
+    // the 6-pounder: two flat halves in a very shallow V with the barrel slot between them, each topped by a strip folded
+    // back at a steep angle, a sight port on the left, rivets along the edges and the folds
+    const y0 = 0.36, yaw = 5 * RAD, H = 0.72, W = 0.62;
+    const half = [[0, 0], [W, 0], [W, H], [0, H], [0, 0.62], [0.1, 0.62], [0.1, 0.3], [0, 0.3]];
+    const right = k.panel(paint, half, t, xs, y0, 0, lean, -yaw);
+    const left = k.panel(paint, mirror(half), t, xs, y0, 0, lean, yaw, [[[-0.3, 0.46], [-0.42, 0.46], [-0.42, 0.56], [-0.3, 0.56]]]);
+    const fold = [[0, 0], [W, 0], [W - 0.12, 0.26], [0, 0.26]];
+    const top = (frame) => new THREE.Vector3(0, H, 0).applyMatrix4(frame);
+    const pr = top(right), pl = top(left);
+    const fr = k.panel(shade(paint, 1.03), fold, t, pr.x, pr.y, pr.z, lean + 52 * RAD, -yaw);
+    const fl = k.panel(shade(paint, 1.03), mirror(fold), t, pl.x, pl.y, pl.z, lean + 52 * RAD, yaw);
+    // the hinge strips where the folds meet the halves
+    for (const [f, s] of [[right, 1], [left, -1]]) k.add(new THREE.BoxGeometry(0.03, 0.03, W - 0.04), P.dark, new THREE.Matrix4().copy(f).multiply(new THREE.Matrix4().makeTranslation(t / 2, H - 0.01, s * W / 2)));
+    const rv = [...row([0.16, 0.66], [0.56, 0.66], 5), ...row([0.56, 0.06], [0.56, 0.58], 5), ...row([0.16, 0.05], [0.5, 0.05], 4), ...row([0.15, 0.36], [0.15, 0.56], 2)];
+    studs(k, P.light, right, rv, off); studs(k, P.light, left, mir(rv), off);
+    const fv = row([0.08, 0.12], [0.46, 0.12], 4);
+    studs(k, P.light, fr, fv, off); studs(k, P.light, fl, mir(fv), off);
+    topBand(fr, 0.26, 0.26, 0.36); topBand(fl, -0.26, 0.26, 0.36);
+    raSign(k, onPlate(right, 0.44, 0.5, t / 2 + 0.012), 0.12);
   } else {
     const y0 = 0.44, yaw = 6 * RAD;
     const half = [[0, 0], [0.4, 0], [0.4, 0.28], [0.54, 0.28], [0.54, 0.64], [0.34, 0.64], [0.34, 0.78], [0, 0.78], [0, 0.64], [0.11, 0.64], [0.11, 0.26], [0, 0.26]];
@@ -675,6 +828,154 @@ function shield(k, P, S, fac) {
     topBand(right, 0.17, 0.78, 0.28); topBand(left, -0.27, 0.64, 0.4);
     k.add(G.star(0.1, { color: P.red, border: 0xd9d3c1, edge: 0.1 }), 0xffffff, onPlate(right, 0.3, 0.14, t / 2 + 0.012), 'plain');
   }
+}
+
+// ---------------------------------------------------------------- field howitzers
+
+const HOW = [
+  // M2A1 105 mm: big pneumatic tires, the recoil cylinders side by side under the barrel, a flat shield in two halves
+  // over a hanging apron, long box trails
+  { R: 0.5, w: 0.26, track: 0.98, barrel: 2.3, rb: 0.088, rm: 0.07, rec: 'under', trail: 2.6, spread: 24, e: 0.3, spokes: 0, half: 0.8, sh: 0.82 },
+  // leFH 18: tall spoked steel wheels with solid rubber rims, the recuperator over the barrel and the buffer under it,
+  // a straight-topped shield with its wings bent back
+  { R: 0.6, w: 0.17, track: 0.92, barrel: 2.55, rb: 0.092, rm: 0.068, rec: 'over', trail: 2.7, spread: 26, e: 0.27, spokes: 12, half: 0.74, sh: 0.9 },
+  // M-30 122 mm: the fat short barrel, two recoil cylinders stacked over it and one under, disc wheels, a shield with
+  // a raised middle plate that slides with the barrel
+  { R: 0.55, w: 0.22, track: 1.0, barrel: 2.35, rb: 0.112, rm: 0.086, rec: 'both', trail: 2.8, spread: 25, e: 0.33, spokes: 0, half: 0.82, sh: 0.78 },
+];
+// the trunnions: where the barrel and cradle pivot, above the axle (x = 0)
+const trunnion = (S) => [0.08, S.R + 0.42];
+// the barrel, its breech and the cradle with the recoil system, in the cradle's own frame (origin the trunnions, +x
+// along the bore): built level, then raised by S.e
+function howitzerBarrel(fac, P, S) {
+  const B = kit(), L = S.barrel, xb = -0.72, rb = S.rb, rm = S.rm;
+  B.add(G.lathe([[0, 0], [rb * 1.2, 0], [rb * 1.2, 0.46], [rb, 0.56], [rb * 0.93, 1.1], [rm, L - 0.07], [rm * 1.2, L - 0.07], [rm * 1.2, L], [rm * 0.62, L], [rm * 0.62, L - 0.04], [0, L - 0.04]], 10, { axis: 'x' }), P.black, M(xb, 0, 0));
+  B.add(G.lathe([[0, 0], [rm * 0.6, 0], [rm * 0.6, 0.02], [0, 0.02]], 8, { axis: 'x' }), P.bore, M(xb + L - 0.041, 0, 0));
+  B.box(P.black, 0.42, rb * 3.2, rb * 3.2, xb + 0.06, 0, 0, 0, 0, 0, 0.02);                        // the breech ring
+  B.box(P.dark, 0.16, rb * 2.4, rb * 2.8, xb - 0.12, 0.01, 0);                                      // the breech block
+  B.rod(P.steel, [xb - 0.12, rb * 1.1, rb * 1.4], [xb - 0.3, rb * 2.2, rb * 2.4], 0.016, 4);        // its lever
+  B.box(P.paint, 1.55, 0.1, 0.32, 0.18, -rb - 0.08, 0, 0, 0, 0, 0.015);                             // the cradle
+  for (const s of [-1, 1]) B.box(P.paint, 1.2, 0.2, 0.03, 0.1, -rb - 0.02, s * 0.17);
+  const cyl = (y, z, r, len, x0, color = P.paint) => {
+    B.cyl(color, r, r, len, 10, x0, y, z, 'x');
+    B.cyl(P.dark, r * 1.1, r * 1.1, 0.05, 10, x0 + len - 0.05, y, z, 'x');                        // the front cap
+    B.cyl(P.steel, r * 0.4, r * 0.4, 0.22, 6, x0 + len, y, z, 'x');                                // the piston rod to the barrel lug
+  };
+  const under = -rb - 0.2;
+  if (S.rec === 'under') { for (const z of [-0.085, 0.085]) cyl(under, z, 0.075, 1.3, -0.5); }
+  else if (S.rec === 'over') { cyl(rb + 0.13, 0, 0.09, 1.35, -0.55); cyl(under, 0, 0.07, 1.15, -0.4); }
+  else { cyl(rb + 0.13, 0, 0.085, 1.4, -0.55); cyl(rb + 0.31, 0, 0.065, 1.2, -0.45); cyl(under, 0, 0.08, 1.25, -0.45); }
+  // the owner's band round the front of the top cylinder (or the cradle's nose)
+  const topY = S.rec === 'under' ? under : rb + 0.13, topR = S.rec === 'under' ? 0.075 : 0.09;
+  B.cyl(P.owner, topR * 1.08, topR * 1.08, 0.06, 10, 0.55, topY, S.rec === 'under' ? 0.085 : 0, 'x');
+  // the lug the rods pull on, the panoramic sight on the left of the cradle
+  B.box(P.black, 0.1, Math.abs(under) + 0.1, 0.12, 0.85, under / 2, 0);
+  B.rod(P.black, [-0.2, 0.05, -0.24], [-0.2, 0.32, -0.24], 0.018, 5);
+  B.box(P.black, 0.16, 0.08, 0.08, -0.2, 0.36, -0.24, 0, 0, 0, 0.01);
+  B.rod(P.black, [-0.28, 0.36, -0.24], [-0.36, 0.36, -0.24], 0.022, 6);
+  return { B, muzzle: xb + L };
+}
+function howitzerGun(fac, P) {
+  const S = HOW[fac], k = kit(), R = S.R, [tx, ty] = trunnion(S);
+  // wheels, the axle and its housing, the leaf springs, the hand brake
+  const wheel = wheelGeo(R, S.w, P, { spokes: S.spokes, seg: 16, lugs: S.spokes ? 0 : 14, bolts: 6 });
+  for (const s of [-1, 1]) k.add(wheel, 0xffffff, M(0, R, s * S.track).ry(s > 0 ? 0 : Math.PI));
+  k.rod(P.dark, [0, R, -S.track], [0, R, S.track], 0.055, 6);
+  k.box(P.paint, 0.3, 0.2, 1.3, 0, R + 0.04, 0, 0, 0, 0, 0.02);
+  for (const s of [-1, 1]) k.box(P.dark, 0.5, 0.06, 0.1, -0.05, R + 0.17, s * 0.55), k.rod(P.steel, [-0.15, R + 0.12, s * (S.track - 0.2)], [-0.32, R + 0.4, s * (S.track - 0.22)], 0.015, 4);
+  // the top carriage: two cheeks carrying the trunnions, the pin across, the toothed elevating arc under the cradle,
+  // the hand wheels (elevation on the left, traverse on the right), the layer's seat
+  for (const s of [-1, 1]) k.panel(P.paint, [[-0.32, 0], [0.26, 0], [0.18, 0.5], [-0.2, 0.5]], 0.05, tx, R + 0.06, s * 0.2, 0, Math.PI / 2 * s, [], 0.008);
+  k.cyl(P.dark, 0.06, 0.06, 0.56, 8, tx, ty, -0.28, 'z');
+  for (let i = 0; i < 5; i++) { const a = -0.55 + i * 0.22; k.box(P.dark, 0.12, 0.06, 0.08, tx - 0.42 * Math.cos(a), ty - 0.42 * Math.sin(a) * 0.7 - 0.12, -0.12, 0, 0, a); }
+  handwheel(k, P, tx - 0.32, ty - 0.18, -0.34);
+  handwheel(k, P, tx - 0.3, ty - 0.28, 0.32, 0.1);
+  seat(k, P, -0.5, -0.42, -1, R + 0.22);
+  // the barrel and cradle, raised
+  const { B, muzzle } = howitzerBarrel(fac, P, S);
+  k.group(B, M(tx, ty, 0).rz(S.e));
+  // trails: split, spread, tapered box beams with clamps, spades, a lifting handle and the towing eye on the left
+  const a = S.spread * RAD;
+  for (const s of [-1, 1]) {
+    const hinge = [-0.1, R + 0.02, s * 0.2], end = [-0.1 - S.trail * Math.cos(a), 0.12, s * (0.2 + S.trail * Math.sin(a))];
+    k.taper(P.paint, hinge, end, 0.17, 0.26, 0.11, 0.13);
+    k.box(P.dark, 0.18, 0.18, 0.1, hinge[0], hinge[1], hinge[2]);
+    for (const u of [0.3, 0.62]) {
+      const p = hinge.map((v, i) => v + (end[i] - v) * u), w = 0.17 + (0.11 - 0.17) * u + 0.02;
+      k.add(new THREE.BoxGeometry(0.05, 0.26 + (0.13 - 0.26) * u + 0.025, w), P.dark, M(p[0], p[1], p[2]).ry(Math.atan2(-(end[2] - hinge[2]), end[0] - hinge[0])).rz(Math.atan2(end[1] - hinge[1], Math.hypot(end[0] - hinge[0], end[2] - hinge[2]))));
+    }
+    const h = hinge.map((v, i) => v + (end[i] - v) * 0.82);
+    k.rod(P.steel, [h[0], h[1] + 0.08, h[2] - 0.08], [h[0] - 0.05, h[1] + 0.16, h[2] + 0.08], 0.016, 4);
+    spade(k, P, end, [-Math.cos(a), s * Math.sin(a)]);
+  }
+  k.turn(P.dark, [[0.07, -0.02], [0.07, 0.02]], 8, -0.1 - S.trail * Math.cos(a) - 0.12, 0.2, -(0.2 + S.trail * Math.sin(a)), 'y');
+  // the shield
+  howShield(k, P, S, fac);
+  // shells by the trails: an open crate of rounds and two shells standing ready, projectiles olive, cases brass
+  {
+    const cx = -1.25, cz = 0, rot = 0.15, w = 0.7, h = 0.2, d = 0.42, sr = fac === 2 ? 0.06 : 0.052;
+    const crateC = fac === 0 ? shade(P.paint, 0.85) : P.wood, proj = made(mix(P.paint, 0x4e5230, 0.5), 'armor-paint');
+    k.add(new THREE.BoxGeometry(w, h, d), crateC, M(cx, h / 2, cz).ry(rot));
+    k.flat(P.hole, w - 0.06, d - 0.06, cx, h + 0.0015, cz, rot);
+    k.add(new THREE.BoxGeometry(0.05, 0.012, d * 0.9), P.owner, M(cx, h + 0.004, cz).ry(rot).t(w * 0.34, 0, 0));
+    for (const dz of [-0.13, 0, 0.13]) {
+      k.add(shellGeo(0.3, sr), P.brass, M(cx, h + sr + 0.01, cz).ry(rot).t(-0.32, 0, dz));
+      k.add(G.lathe([[0, 0], [sr, 0], [sr, 0.14], [sr * 0.4, 0.3], [0, 0.32]], 6, { axis: 'x' }), proj, M(cx, h + sr + 0.01, cz).ry(rot).t(-0.02, 0, dz));
+    }
+    for (const [x, z] of [[-0.75, 0.62], [-0.9, 0.72]]) {
+      k.cyl(P.brass, sr, sr, 0.3, 6, x, 0, z);
+      k.add(G.lathe([[sr, 0], [sr, 0.14], [sr * 0.4, 0.3], [0, 0.32]], 6), proj, M(x, 0.3, z));
+    }
+  }
+  const tip = [tx + Math.cos(S.e) * muzzle, ty + Math.sin(S.e) * muzzle, 0];
+  return { geo: finish(k.geometry(), { span: 0.6 }), pivot: [0.5, 0, 0], tip };
+}
+// The shield in front of the axle, its halves either side of the barrel's slot, rivets along the edges, the owner's
+// band on the top edges, the national marking. US: two flat halves and a hanging apron; German: a straight-topped
+// centre with wings bent back; Soviet: stepped halves under a raised middle plate.
+function howShield(k, P, S, fac) {
+  const x = 0.42, y0 = S.R - 0.1, t = 0.028, lean = 8 * RAD, gap = 0.17, H = S.sh, W = S.half, off = t / 2 + 0.004;
+  const mirror = (pts) => pts.map(([u, v]) => [-u, v]);
+  const half = fac === 2
+    ? [[gap, 0], [W, 0], [W, H * 0.7], [W - 0.14, H * 0.82], [0.32, H * 0.82], [0.32, H], [gap, H]]
+    : [[gap, 0], [W, 0], [W, H - 0.1], [W - 0.1, H], [gap, H]];
+  const yaw = fac === 0 ? 4 * RAD : 0;
+  const right = k.panel(P.paint, half, t, x, y0, 0, lean, -yaw), left = k.panel(P.paint, mirror(half), t, x, y0, 0, lean, yaw, [[[-0.4, H * 0.6], [-0.52, H * 0.6], [-0.52, H * 0.74], [-0.4, H * 0.74]]]);
+  const rv = [...row([gap + 0.05, H - 0.06], [W - 0.12, H - 0.06], 5), ...row([W - 0.05, 0.08], [W - 0.05, H * 0.6], 4)];
+  studs(k, P.light, right, rv, off); studs(k, P.light, left, mirror(rv), off);
+  plateBand(k, P.owner, right, (gap + W) / 2, fac === 2 ? H * 0.82 : H, W - gap - 0.15);
+  plateBand(k, P.owner, left, -(gap + W) / 2, fac === 2 ? H * 0.82 : H, W - gap - 0.15);
+  if (fac === 0) {
+    // the apron hanging under the halves, hinged at the top
+    k.panel(shade(P.paint, 0.95), [[-W, -0.32], [W, -0.32], [W, 0], [-W, 0]], t, x + 0.02, y0, 0, -4 * RAD);
+    k.add(G.star(0.13, { color: P.white, disc: 0x2a3d6a }), 0xffffff, onPlate(right, 0.5, H * 0.45, t / 2 + 0.012), 'plain');
+  } else if (fac === 1) {
+    for (const s of [-1, 1]) {
+      const wing = k.panel(P.paint, s > 0 ? [[0, 0.04], [0.3, 0.12], [0.3, H - 0.16], [0, H - 0.04]] : mirror([[0, 0.04], [0.3, 0.12], [0.3, H - 0.16], [0, H - 0.04]]), t, x - Math.sin(lean) * 0, y0, s * W, lean, -s * 30 * RAD);
+      studs(k, P.light, wing, row([s * 0.06, H - 0.12], [s * 0.26, H - 0.2], 3), off);
+    }
+    k.add(G.balkenkreuz(0.1, { color: 0x1c1b18, border: P.white }), 0xffffff, onPlate(right, 0.45, H * 0.45, t / 2 + 0.012), 'plain');
+  } else {
+    // the middle plate over the slot, standing a little ahead of the halves
+    const mid = k.panel(shade(P.paint, 1.04), [[-0.36, H * 0.55], [0.36, H * 0.55], [0.36, H + 0.22], [-0.36, H + 0.22]], t, x + 0.08, y0, 0, lean);
+    studs(k, P.light, mid, row([-0.3, H + 0.16], [0.3, H + 0.16], 5), off);
+    plateBand(k, P.owner, mid, 0, H + 0.22, 0.5);
+    k.add(G.star(0.11, { color: P.red, border: 0xd9d3c1, edge: 0.1 }), 0xffffff, onPlate(right, 0.52, H * 0.4, t / 2 + 0.012), 'plain');
+  }
+}
+function howitzerFar(fac, P) {
+  const S = HOW[fac], k = kit(), R = S.R, [tx, ty] = trunnion(S);
+  for (const s of [-1, 1]) farWheel(k, P, R, S.w, 0, s * S.track);
+  k.rod(P.dark, [0, R, -S.track], [0, R, S.track], 0.055, 4, false);
+  k.box(P.paint, 0.4, 0.5, 0.46, tx, R + 0.25, 0);
+  const g = M(tx, ty, 0).rz(S.e), L = S.barrel, xb = -0.72;
+  k.add(G.lathe([[0, 0], [S.rb * 1.2, 0], [S.rb, 0.6], [S.rm, 1.3], [S.rm, L], [0, L]], 6, { axis: 'x' }), P.black, g.m.clone().multiply(new THREE.Matrix4().makeTranslation(xb, 0, 0)));
+  k.add(new THREE.BoxGeometry(1.4, 0.24, 0.3), P.paint, g.m.clone().multiply(new THREE.Matrix4().makeTranslation(0.05, S.rec === 'under' ? -S.rb - 0.16 : S.rb + 0.1, 0)));
+  k.add(new THREE.BoxGeometry(0.06, 0.3, 0.32), P.owner, g.m.clone().multiply(new THREE.Matrix4().makeTranslation(0.55, S.rec === 'under' ? -S.rb - 0.16 : S.rb + 0.1, 0)));
+  const a = S.spread * RAD;
+  for (const s of [-1, 1]) k.taper(P.paint, [-0.1, R + 0.02, s * 0.2], [-0.1 - S.trail * Math.cos(a), 0.12, s * (0.2 + S.trail * Math.sin(a))], 0.17, 0.26, 0.11, 0.13);
+  for (const s of [-1, 1]) k.box(P.paint, 0.03, S.sh, S.half - 0.17, 0.42, S.R - 0.1 + S.sh / 2, s * (S.half + 0.17) / 2);
+  return finish(k.geometry(), { span: 0.6 });
 }
 
 // ---------------------------------------------------------------- anti-aircraft guns
@@ -730,8 +1031,8 @@ function magazine(g, P, x, y, z, w, h, d, tilt = 0) {
 // the elevating gun group in its own frame: breech at x = 0, barrel along +x. Returns the muzzle x.
 function aaGun(P, fac) {
   const g = kit();
-  if (fac === 0) {
-    // Bofors: long barrel with a flash hider, recoil sleeve, cradle plates, a four-round clip standing in the feed
+  if (fac === 0 || fac === 3) {
+    // Bofors (the British served the same gun): long barrel with a flash hider, recoil sleeve, cradle plates, a four-round clip standing in the feed
     g.add(G.lathe([[0, 0], [0.07, 0], [0.07, 0.35], [0.052, 0.6], [0.048, 1.58], [0.064, 1.58], [0.064, 1.9], [0.036, 1.9], [0.036, 1.84], [0, 1.84]], 8, { axis: 'x' }), P.black, M(-0.12, 0, 0));
     g.cyl(P.steel, 0.095, 0.095, 0.6, 8, 0.0, 0, 0, 'x');
     for (const s of [-1, 1]) g.cyl(P.steel, 0.04, 0.04, 0.7, 6, 0.0, -0.14, s * 0.11, 'x');
@@ -768,8 +1069,9 @@ function aaGun(P, fac) {
 function flakGun(fac, P) {
   const k = kit();
   let P0, e;
-  if (fac === 0) {
-    // Bofors: cruciform platform on four jacks, a wide low turntable, big cradle housings flanking the barrel with seats and ring sights
+  if (fac === 0 || fac === 3) {
+    // Bofors: cruciform platform on four jacks, a wide low turntable, big cradle housings flanking the barrel with seats and
+    // ring sights. The British gun is the same, with the Royal Artillery's sign in place of the star.
     P0 = [0.15, 1.04]; e = 32 * RAD;
     for (const a of [42, 138, -42, -138]) outrigger(k, P, a * RAD, 1.28, 0.2);
     turntable(k, P, 0.5, 0.3, 0.12);
@@ -783,7 +1085,8 @@ function flakGun(fac, P) {
       k.rod(P.dark, [0.2, 1.27, s * 0.34], [0.32, 1.46, s * 0.6], 0.018, 5, false);              // the sight arm
       ringSight(k, P.black, 0.32, 1.6, s * 0.6, 0.11, 0.12);
     }
-    k.add(G.star(0.06, { color: P.white, disc: 0x2a3d6a }), 0xffffff, G.place([0.1 + 0.252, 0.98, 0.29], [1, 0, 0], [0, 1, 0], 1), 'plain');
+    if (fac === 3) raSign(k, G.place([0.1 + 0.252, 0.98, 0.29], [1, 0, 0], [0, 1, 0], 1), 0.1);
+    else k.add(G.star(0.06, { color: P.white, disc: 0x2a3d6a }), 0xffffff, G.place([0.1 + 0.252, 0.98, 0.29], [1, 0, 0], [0, 1, 0], 1), 'plain');
   } else if (fac === 1) {
     // Flak 38: three-legged base on a low turntable, two flat shield plates either side of the barrel with a gap, a seat and
     // wheels for the gunner
@@ -927,6 +1230,21 @@ function mgFar(fac, P) {
     k.add(new THREE.BoxGeometry(0.34, 0.21, 0.16), mix(P.wood, P.paint, 0.35), M(0.5, 0.105, 0.42));
     k.beam(P.brass, [0.5, 0.24, 0.42], [0.84, y, 0.08], 0.03, 0.03);
     k.add(new THREE.BoxGeometry(0.036, 0.024, 0.3), P.owner, M(1.1, 0.13, 0).rz(0.12).t(-0.012, 0.541, 0));
+  } else if (fac === 3) {
+    // Vickers: receiver, grips, the thick jacket and flash hider, two front legs and the long rear leg, the hose and can
+    k.box(P.black, 0.4, 0.135, 0.11, 0.84, y, 0);
+    k.box(P.black, 0.075, 0.06, 0.24, 0.995, y + 0.02, 0);
+    k.box(P.stock, 0.04, 0.12, 0.2, 0.63, y - 0.06, 0);
+    k.cyl(made(mix(P.black, P.paint, 0.3), 'gunmetal'), 0.062, 0.062, 0.58, 8, 1.03, y, 0, 'x');
+    k.cyl(P.black, 0.024, 0.046, 0.07, 6, 1.65, y, 0, 'x');
+    k.cyl(P.owner, 0.067, 0.067, 0.03, 8, 1.33, y, 0, 'x');
+    for (const s of [-1, 1]) k.rod(P.tripod, [1.0, 0.27, s * 0.04], [1.5, 0.035, s * 0.46], 0.034, 4, false);
+    k.rod(P.tripod, [0.94, 0.27, 0], [0.22, 0.035, 0], 0.034, 4, false);
+    k.box(P.tripod, 0.16, 0.14, 0.16, 0.98, 0.3, 0);
+    k.rod(P.tire, [1.55, y - 0.08, -0.02], [1.3, 0.1, -0.45], 0.016, 4, false);
+    k.add(new THREE.BoxGeometry(0.2, 0.3, 0.11), made(mix(P.paint, 0x2f3a2a, 0.4), 'armor-paint'), M(1.24, 0.15, -0.56).ry(0.3));
+    k.add(new THREE.BoxGeometry(0.3, 0.19, 0.14), mix(P.paint, 0x48452f, 0.35), M(0.72, 0.095, 0.46));
+    k.beam(P.canvas, [0.72, 0.21, 0.46], [0.99, y + 0.02, 0.12], 0.03, 0.03);
   } else {
     const tri = fac === 0 ? P.tripod : P.lafette, hx = fac === 0 ? 1.0 : 0.96;
     k.box(P.black, 0.44, 0.17, 0.13, 0.98, y, 0);
@@ -949,6 +1267,7 @@ function mortarFar(fac, P) {
   const k = kit(), top = [1.1, 1.12], L = 1.15, by = 0.075;
   const tilt = Math.acos((top[1] - by) / L), bx = top[0] - L * Math.sin(tilt), metal = P.paint, dark = shade(metal, 0.66);
   if (fac === 0) k.cyl(metal, 0.33, 0.33, 0.04, 8, bx, 0, 0);
+  else if (fac === 3) k.box(metal, 0.54, 0.05, 0.68, bx, 0.025, 0);
   else k.box(metal, fac === 1 ? 0.6 : 0.72, 0.05, fac === 1 ? 0.6 : 0.72, bx, 0.025, 0);
   const r = fac === 2 ? 0.058 : 0.055, base = M(bx, by, 0).rz(-tilt);
   k.add(G.lathe([[0, 0], [r * 1.4, 0], [r, 0.1], [r, L], [0, L]], 6, { axis: 'y' }), metal, base);
@@ -956,7 +1275,8 @@ function mortarFar(fac, P) {
   const cx = bx + Math.sin(tilt) * L * 0.6, cy = by + Math.cos(tilt) * L * 0.6;
   for (const s of [-1, 1]) k.rod(dark, [cx, cy, s * 0.12], [cx + 0.22, 0.05, s * 0.36], 0.026, 4, false);
   k.box(fac === 0 ? shade(P.paint, 0.85) : P.wood, 0.46, 0.15, 0.34, 0.1, 0.075, 0.56);
-  k.box(fac === 0 ? shade(P.paint, 0.85) : P.wood, 0.4, 0.16, 0.28, 0.12, 0.08, -0.58);
+  if (fac === 3) for (const dz of [-0.105, 0, 0.105]) k.add(G.lathe([[0, 0], [0.05, 0], [0.05, 0.42], [0, 0.42]], 6, { axis: 'x' }), mix(P.paint, 0x3e3a28, 0.45), M(0.12, 0.05, -0.58).ry(-0.2).t(-0.21, 0, dz));
+  else k.box(fac === 0 ? shade(P.paint, 0.85) : P.wood, 0.4, 0.16, 0.28, 0.12, 0.08, -0.58);
   return finish(k.geometry(), { span: 0.4 });
 }
 
@@ -967,7 +1287,7 @@ function atFar(fac, P) {
   k.box(P.paint, 0.4, 0.3, 0.5, 0, 0.58, 0);
   k.cyl(P.steel, 0.105, 0.105, 0.9, 6, 0, yb, 0, 'x');
   k.box(P.black, 0.42, 0.3, 0.26, x0 + 0.14, yb + 0.02, 0);
-  const rb = [0.085, 0.07, 0.062][fac], rm = [0.047, 0.05, 0.04][fac], bl = fac === 2 ? 0 : fac === 1 ? 0.34 : 0.2;
+  const rb = [0.085, 0.07, 0.062, 0.07][fac], rm = [0.047, 0.05, 0.04, 0.04][fac], bl = fac === 2 ? 0 : fac === 1 ? 0.34 : fac === 3 ? 0.15 : 0.2;
   k.add(G.lathe([[0, 0], [rb * 1.05, 0], [rb * 0.8, 0.5], [rm, 1.3], [rm, L - bl], [0, L - bl]], 6, { axis: 'x' }), P.black, M(x0, yb, 0));
   if (bl) k.box(P.black, bl, fac === 1 ? 0.19 : 0.14, fac === 1 ? 0.2 : 0.14, x0 + L - bl / 2, yb, 0);
   const a = S.spread * RAD;
@@ -975,12 +1295,19 @@ function atFar(fac, P) {
   // the shield as two or three slabs
   const lean = S.lean * RAD, plate = (w, h, z, yaw = 0, y0 = 0.42) => k.box(P.paint, 0.028, h, w, 0.4, y0 + h / 2, z, 0, yaw, 0);
   if (fac === 1) { plate(0.68, 0.9, 0, 0, 0.3); plate(0.3, 0.7, 0.5, -0.45, 0.3); plate(0.3, 0.7, -0.5, 0.45, 0.3); }
-  else { plate(0.8, 0.9, 0.38, -0.14, 0.42); plate(0.8, 0.9, -0.38, 0.14, 0.42); }
-  k.add(new THREE.BoxGeometry(0.034, 0.026, 0.5), P.owner, M(0.4 - Math.tan(lean) * 0.4, fac === 1 ? 1.2 : 1.32, 0));
+  else if (fac === 3) {
+    // the two halves and their folded-back tops
+    for (const s of [-1, 1]) {
+      plate(0.62, 0.72, s * 0.31, -s * 5 * RAD, 0.36);
+      k.box(P.paint, 0.028, 0.2, 0.58, 0.4 - Math.tan(lean) * 0.72 - 0.07, 1.14, s * 0.3, 0, -s * 5 * RAD, 60 * RAD);
+    }
+  } else { plate(0.8, 0.9, 0.38, -0.14, 0.42); plate(0.8, 0.9, -0.38, 0.14, 0.42); }
+  k.add(new THREE.BoxGeometry(0.034, 0.026, 0.5), P.owner, fac === 3 ? M(0.4 - Math.tan(lean) * 0.72 - 0.15, 1.2, 0) : M(0.4 - Math.tan(lean) * 0.4, fac === 1 ? 1.2 : 1.32, 0));
   return finish(k.geometry(), { span: 0.55 });
 }
 
 function flakFar(fac, P) {
+  if (fac === 3) fac = 0;   // the British Bofors is the American one, and far away its marking does not show
   const k = kit();
   let P0, e, muzzle;
   const arms = fac === 0 ? [42, 138, -42, -138] : fac === 1 ? [0, 122, -122] : [];
@@ -1016,10 +1343,11 @@ export const GUN_SLOTS = {
   mortar: [[-0.45, 0.75], [-0.45, -0.75], [0.2, -1.0]],   // behind the baseplate and across from the crates, clear of the tube from the usual camera side
   at: [[-0.1, 1.15], [-0.1, -1.15], [-0.85, 1.5], [-0.85, -1.5]],
   flak: [[0.0, 1.15], [0.0, -1.15], [-0.95, 1.2]],
+  howitzer: [[-0.35, 1.0], [-0.55, -0.95], [-1.3, 0.55], [-1.5, -0.6]],   // the layer at his hand wheel, loaders by the breech and the shells
 };
 
 const memo = new Map();
-// The weapon of a squad type (mg, mortar, at, flak) or of the flak position (flakpos), for faction fac and the owner's look
+// The weapon of a squad type (mg, mortar, at, flak, howitzer) or of the flak position (flakpos), for faction fac and the owner's look
 // ({ vehicle, color }). null for every other type. Cached per look; the geometry is shared, do not change it.
 export function gunModel(type, fac, look) {
   const key = `${type}|${fac}|${look.vehicle}|${look.color}`;
@@ -1032,6 +1360,7 @@ export function gunModel(type, fac, look) {
   else if (type === 'mortar') m = { geo: mortarGun(fac, P), far: mortarFar(fac, P) };
   else if (type === 'at') m = { ...atGun(fac, P), far: atFar(fac, P) };
   else if (type === 'flak') m = { ...flakGun(fac, P), far: flakFar(fac, P) };
+  else if (type === 'howitzer') m = { ...howitzerGun(fac, P), far: howitzerFar(fac, P) };
   else if (type === 'flakpos') m = { geo: flakposGun(fac, P) };
   else return null;
   memo.set(key, m);

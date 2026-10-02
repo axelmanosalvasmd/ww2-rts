@@ -1,5 +1,5 @@
-// Infantry figures: every soldier of every squad (riflemen, rangers, conscripts, engineers, snipers and the crews of
-// the MG, mortar, AT gun and flak), near and far, ready for client/unit-models.js to bake. The guns themselves are
+// Infantry figures: every soldier of every squad (riflemen, rangers, conscripts, engineers, snipers, flamethrowers and
+// the crews of the MG, mortar, AT gun, howitzer and flak), near and far, ready for client/unit-models.js to bake. The guns themselves are
 // built in client/models/guns.js.
 //
 // A figure is a real-proportioned man (about 7.5 heads tall, true-size hands, head and weapon) in his faction's
@@ -94,28 +94,36 @@ const SKIN = 0xa98872, HAIR = 0x352a20, STEEL = 0x2e2e2b, BRASS = 0xa8843f, OLIV
 const FACTIONS = [
   // USA: olive drab wool, khaki canvas webbing and leggings, russet boots, the M1 helmet
   { tunic: 0x5f6046, legs: 0x57553f, boots: 0x4a3322, wrap: 0x8f8a6c, wrapMat: 'canvas', wrapUp: 0.42, web: 0x857f5f, webMat: 'canvas', bag: 0x77714f, can: OLIVE,
-    helmet: 'm1', wood: 0x6e4a2c, rifle: 'garand', smg: 'thompson', carbine: 'm1carbine', scoped: 'm1903' },
+    helmet: 'm1', wood: 0x6e4a2c, rifle: 'garand', smg: 'thompson', carbine: 'm1carbine', scoped: 'm1903', flamer: 'm2' },
   // Germany: field grey, black leather Y-straps and jackboots, bread bag and gas mask can, the Stahlhelm
   { tunic: 0x5d6668, legs: 0x575f61, boots: 0x1f1d1a, wrap: null, wrapMat: 'leather', wrapUp: 0.64, web: 0x232120, webMat: 'leather', bag: 0x7a6f52, can: 0x4f5446,
-    helmet: 'stahlhelm', wood: 0x5e3f28, rifle: 'kar98', smg: 'mp40', carbine: 'kar98', scoped: 'kar98' },
+    helmet: 'stahlhelm', wood: 0x5e3f28, rifle: 'kar98', smg: 'mp40', carbine: 'kar98', scoped: 'kar98', flamer: 'fmw41' },
   // USSR: khaki gymnastyorka, puttees over ankle boots, brown leather, the rolled greatcoat, the SSh-40
   { tunic: 0x7f7a5c, legs: 0x6f6a50, boots: 0x2b2724, wrap: 0x6f6b58, wrapMat: 'wool', wrapUp: 0.45, web: 0x5a4430, webMat: 'leather', bag: 0x6e6449, can: 0x4d5238,
-    helmet: 'ssh40', wood: 0x6b4527, rifle: 'mosin', smg: 'ppsh', carbine: 'mosin', scoped: 'mosin', roll: 0x7d7462 },
+    helmet: 'ssh40', wood: 0x6b4527, rifle: 'mosin', smg: 'ppsh', carbine: 'mosin', scoped: 'mosin', flamer: 'roks2', roll: 0x7d7462 },
+  // UK: brown-khaki battledress (the blouse ends at the belt, the trousers ride high), '37 pattern webbing in pale
+  // blanco, short web anklets over black ammunition boots, the Mk II Brodie helmet; the No.4 rifle, Sten and Bren
+  { tunic: 0x6e5f42, legs: 0x66583e, boots: 0x1d1b18, wrap: 0xa49a74, wrapMat: 'canvas', wrapUp: 0.3, web: 0xa0976f, webMat: 'canvas', bag: 0x938a63, can: 0x55573e,
+    helmet: 'brodie', wood: 0x6a4126, rifle: 'lee', smg: 'sten', carbine: 'lee', scoped: 'no4t', bren: 'bren' },
 ];
 // sniper camouflage: per-face patches on the smock (and the helmet cover or hood)
-const CAMO = [[0x5f6046, 0x4a4d34, 0x6b6648], [0x6b6a4a, 0x4e5636, 0x7a6a4c, 0x3e4430], [0x6b6e4a, 0x3f4a2e, 0x8a8562]];
+const CAMO = [[0x5f6046, 0x4a4d34, 0x6b6648], [0x6b6a4a, 0x4e5636, 0x7a6a4c, 0x3e4430], [0x6b6e4a, 0x3f4a2e, 0x8a8562],
+  [0xb4a476, 0x7c8248, 0x8c6c48, 0xc4b88c]]; // UK: the Denison smock's brushstroke brown and green on sand
 
 // Which job each man of a squad has (and so which figure he is): the squad leader, riflemen in two stances, the
 // rangers' bazooka, the sniper and his spotter, and the crews at their guns. B and C are the same job in another stance.
-export function soldierKit(type, i) {
+// A British rifle section's last man carries its Bren; commandos are Thompson and Sten men with a Bren and a rifle.
+export function soldierKit(type, i, fac = 0) {
   switch (type) {
-    case 'rifle': case 'conscript': return i === 0 ? 'leader' : ['rifle', 'rifleB', 'rifleC'][(i - 1) % 3];
+    case 'flamer': return ['flamer', 'rifleB', 'rifle'][i] ?? 'rifle';
+    case 'rifle': case 'conscript': return i === 0 ? 'leader' : fac === 3 && type === 'rifle' && i === 4 ? 'bren' : ['rifle', 'rifleB', 'rifleC'][(i - 1) % 3];
+    case 'commando': return ['leader', 'tommy', 'bren', 'tommyB', 'rifle'][i] ?? 'tommy';
     case 'ranger': return i % 3 === 1 ? 'bazooka' : i % 2 ? 'smg' : 'smgB';
     case 'sniper': return i === 0 ? 'sniper' : 'spotter';
     case 'engineer': return i % 2 ? 'engineerB' : 'engineer';
     case 'mg': return ['gunner', 'feeder'][i] ?? 'ammo';
     case 'mortar': return ['loader', 'ammo', 'spotter'][i] ?? 'ammo';
-    case 'at': return ['layer', 'shell', 'ammo', 'carbine'][i] ?? 'ammo';
+    case 'at': case 'howitzer': return ['layer', 'shell', 'ammo', 'carbine'][i] ?? 'ammo';
     case 'flak': return ['shell', 'ammo', 'spotter'][i] ?? 'ammo';
     default: return 'rifle';
   }
@@ -205,6 +213,9 @@ const RIFLES = {
   mosin: { L: 0.96, fore: 0.77, hand: 0.52, bolt: true },
   m1903: { L: 0.86, fore: 0.645, hand: 0.5, bolt: true },
   m1carbine: { L: 0.705, fore: 0.47, hand: 0.4, mag: true },
+  // the No.4: wood nearly to the muzzle, a stub of barrel past the nose cap, the box magazine under the bolt
+  lee: { L: 0.885, fore: 0.79, hand: 0.5, bolt: true, mag: true },
+  no4t: { L: 0.885, fore: 0.79, hand: 0.5, bolt: true, mag: true },
 };
 // A weapon in its own frame: butt at x = 0, bore along +x on y = 0, muzzle at x = L; grip and fore are where the
 // right and left fists hold it, butt the point that goes into the shoulder. detail 1: the far prism; 2: slung on the
@@ -213,6 +224,7 @@ function weapon(kind, F, detail = 0) {
   const model = F[kind] ?? kind, out = [], add = (geo, color, m, mat) => out.push({ geo, color, m: m ?? new THREE.Matrix4(), mat });
   const X = (x0, x1, r, color, sides = 5, y = 0, mat = 'gunmetal', z = 0) => add(new THREE.CylinderGeometry(r, r, x1 - x0, sides, 1, true), color, chain(T((x0 + x1) / 2, y, z), RZ(-Math.PI / 2)), mat);
   const R = RIFLES[model], bayonet = model === 'mosin' && kind === 'rifle';
+  if (model === 'bren' || model === 'sten') return britishGun(model, F, detail, X, add, out);
   if (R) {
     const { L, fore: f } = R, info = { L, grip: [0.28, -0.036], fore: [R.hand, -0.024], butt: [0, -0.01], parts: out };
     if (detail === 1) { X(0, L + (bayonet ? 0.3 : 0), 0.02, F.wood, 3, -0.01, 'wood'); return info; }
@@ -223,7 +235,8 @@ function weapon(kind, F, detail = 0) {
     if (R.bolt) add(box(0.012, 0.012, 0.045), STEEL, T(0.36, 0.016, 0.028), 'gunmetal');
     if (R.mag) add(box(0.03, 0.055, 0.02), STEEL, T(0.36, -0.04, 0), 'gunmetal');
     if (bayonet) add(new THREE.CylinderGeometry(0, 0.007, 0.33, 3, 1, true), 0x7a7a74, chain(T(L + 0.145, -0.012, 0.01), RZ(-Math.PI / 2)), 'gunmetal');
-    if (kind === 'scoped') { X(0.29, 0.56, 0.014, 0x1f1f1c, 6, 0.046, 'gunmetal', model === 'mosin' ? -0.012 : 0); add(box(0.07, 0.03, 0.012), STEEL, T(0.42, 0.028, 0), 'gunmetal'); }
+    if (kind === 'scoped') { X(0.29, 0.56, 0.014, 0x1f1f1c, 6, 0.046, 'gunmetal', model === 'mosin' || model === 'no4t' ? -0.012 : 0); add(box(0.07, 0.03, 0.012), STEEL, T(0.42, 0.028, 0), 'gunmetal'); }
+    if (model === 'no4t') add(box(0.09, 0.016, 0.034), F.wood, T(0.12, 0.028, 0), 'wood'); // the sniper's cheek rest
     return info;
   }
   if (model === 'bazooka') {
@@ -234,6 +247,29 @@ function weapon(kind, F, detail = 0) {
     add(box(0.16, 0.04, 0.028), F.wood, T(0.42 * L, -0.042, 0), 'wood'); // shoulder stock
     add(box(0.03, 0.075, 0.026), F.wood, chain(T(0.58 * L, -0.06, 0), RZ(-0.2)), 'wood'); // trigger grip
     add(box(0.03, 0.065, 0.026), F.wood, T(0.76 * L, -0.055, 0), 'wood'); // front grip
+    return info;
+  }
+  // flame guns: the hose end at x = 0, the nozzle at L, held at the hip. The M2 and the Flammenwerfer 41 are a tube
+  // with two grips and an igniter head; the ROKS-2 was made to pass for a rifle, with a wooden stock and fore-end.
+  if (kind === 'flamer') {
+    const L = model === 'fmw41' ? 0.95 : model === 'roks2' ? 0.92 : 0.8, rifleLike = model === 'roks2';
+    const info = { L, grip: [rifleLike ? 0.27 : 0.12, -0.05], fore: [L * 0.55, -0.04], butt: [0, -0.01], parts: out };
+    if (detail === 1) { X(0, L, 0.024, rifleLike ? F.wood : STEEL, 3, 0, rifleLike ? 'wood' : 'gunmetal'); return info; }
+    if (rifleLike) {
+      add(extrudeProfile([[0, -0.06], [0.03, -0.06], [0.24, -0.03], [0.3, -0.045], [0.34, -0.026], [0.62, -0.016], [0.62, 0.008], [0.3, 0.012], [0, 0.02]], 0.032), F.wood, null, 'wood');
+      X(0.3, L - 0.06, 0.013, STEEL, 6);
+      X(L - 0.06, L, 0.02, STEEL, 6); // the nozzle
+      add(box(0.06, 0.04, 0.03), STEEL, T(0.36, -0.03, 0), 'gunmetal'); // the valve under the receiver
+    } else {
+      const tubeC = model === 'm2' ? 0x4a5032 : STEEL, tubeM = model === 'm2' ? 'armor-paint' : 'gunmetal';
+      X(0, 0.1, 0.022, STEEL, 6); // the hose fitting
+      X(0.1, L - 0.1, 0.017, tubeC, 6, 0, tubeM); // the fuel tube
+      X(L - 0.12, L, 0.03, STEEL, 8); // the igniter head round the nozzle
+      add(box(0.03, 0.08, 0.026), F.wood, chain(T(0.12, -0.05, 0), RZ(-0.25)), 'wood'); // the rear grip and its valve
+      add(box(0.03, 0.07, 0.026), F.wood, chain(T(L * 0.55, -0.045, 0), RZ(-0.1)), 'wood'); // the front grip
+      if (model === 'm2') X(L - 0.24, L - 0.12, 0.022, tubeC, 6, 0.034, tubeM); // the igniter cylinder over the barrel
+      else add(box(0.05, 0.05, 0.035), STEEL, T(L - 0.08, -0.035, 0), 'gunmetal'); // the igniter cartridge box
+    }
     return info;
   }
   // submachine guns
@@ -263,6 +299,37 @@ function weapon(kind, F, detail = 0) {
     X(0.6, L, 0.012, STEEL);
     add(new THREE.CylinderGeometry(0.055, 0.055, 0.03, 8), STEEL, chain(T(0.31, -0.07, 0), RX(Math.PI / 2)), 'gunmetal'); // drum
   }
+  return info;
+}
+
+// The Bren light MG (the curved magazine standing on top, carrying handle, gas tube under the barrel, coned flash
+// hider, bipod) and the Sten Mk II (skeleton butt, tube receiver, the magazine sticking out to the left), in
+// weapon()'s frame and details.
+function britishGun(model, F, detail, X, add, out) {
+  const W = 0x34332e;
+  if (model === 'bren') {
+    const L = 0.9, info = { L, grip: [0.3, -0.06], fore: [0.55, -0.03], butt: [0, -0.02], parts: out };
+    if (detail === 1) { X(0, L, 0.022, STEEL, 3, -0.005); return info; }
+    add(extrudeProfile([[0, -0.075], [0.03, -0.075], [0.2, -0.03], [0.24, -0.012], [0.24, 0.016], [0, 0.02]], 0.03), W, null, 'gunmetal'); // butt
+    add(box(0.3, 0.05, 0.036), STEEL, T(0.38, 0.002, 0), 'gunmetal'); // receiver
+    add(box(0.03, 0.075, 0.026), F.wood, chain(T(0.3, -0.055, 0), RZ(-0.3)), 'wood'); // pistol grip
+    add(box(0.034, 0.075, 0.022), W, chain(T(0.405, 0.058, 0), RZ(-0.2)), 'gunmetal'); // the curved magazine, in two
+    add(box(0.034, 0.06, 0.022), W, chain(T(0.432, 0.112, 0), RZ(-0.65)), 'gunmetal');
+    add(box(0.1, 0.014, 0.016), F.wood, chain(T(0.6, 0.045, 0), RZ(0.12)), 'wood'); // carrying handle
+    X(0.53, L - 0.05, 0.014, STEEL, 6);
+    X(0.53, 0.78, 0.01, STEEL, 5, -0.026); // gas tube
+    add(new THREE.CylinderGeometry(0.02, 0.013, 0.06, 5, 1, true), STEEL, chain(T(L - 0.03, 0, 0), RZ(-Math.PI / 2)), 'gunmetal'); // flash hider
+    for (const z of [-1, 1]) add(new THREE.CylinderGeometry(0.006, 0.006, 0.17, 3, 1, true), STEEL, chain(T(0.77, -0.03, 0), RX(-0.14 * z), RZ(0.4), T(0, -0.085, 0)), 'gunmetal'); // bipod
+    return info;
+  }
+  const L = 0.6, info = { L, grip: [0.24, -0.05], fore: [0.47, -0.014], butt: [0, -0.03], parts: out };
+  if (detail === 1) { X(0, L, 0.018, STEEL, 3, -0.01); return info; }
+  add(extrudeProfile([[0, -0.07], [0.016, -0.07], [0.016, -0.04], [0.2, -0.012], [0.2, 0.004], [0.016, -0.02], [0.016, 0], [0, 0]], 0.014), STEEL, null, 'gunmetal'); // skeleton butt
+  X(0.19, 0.44, 0.02, STEEL, 6); // receiver
+  X(0.44, 0.53, 0.014, W, 6); // barrel sleeve
+  X(0.53, L, 0.008, STEEL, 4);
+  add(box(0.07, 0.04, 0.022), STEEL, T(0.235, -0.03, 0), 'gunmetal'); // trigger housing
+  add(box(0.026, 0.02, 0.17), W, T(0.37, -0.004, -0.1), 'gunmetal'); // the magazine, out to the left
   return info;
 }
 
@@ -302,10 +369,11 @@ function item(kind, F, far) {
 export const AIM_SHIFT = [[0, 0], [0.05, -0.33], [0.28, -0.84], [-0.25, 0.15]];
 const HAND = { rifle: [0.72, 1.1, 0.2], conscript: [0.72, 1.1, 0.2], engineer: [0.6, 1.0, 0.2], ranger: [0.62, 0.9, 0.2], sniper: [1.13, 1.08, 0.2] };
 const BAZ = [0.63, 0.93, 0.25];
+const FLAME = [0.9, 0.78, 0.2]; // the flame gun's nozzle, held at the hip
 const flash = (type, k, h = HAND[type] ?? HAND.rifle) => v3(h[0] + AIM_SHIFT[k][0], h[1] + AIM_SHIFT[k][1], h[2]);
 // where each hold puts the weapon on the body (canonical): the shoulder pocket, under the right arm, on top of the
-// right shoulder
-const ANCHOR = { aim: [0.05, 1.075, 0.105], under: [0.0, 0.97, 0.14], shoulder: [0.0, 1.14, 0.13] };
+// right shoulder, at the right hip (the flame gun)
+const ANCHOR = { aim: [0.05, 1.075, 0.105], under: [0.0, 0.97, 0.14], shoulder: [0.0, 1.14, 0.13], hip: [0.06, 0.8, 0.17] };
 // the guns, from each crewman's own slot (client/models/guns.js GUN_SLOTS): MG gunner grips (right, left), the MG42's
 // butt, the belt feed seen from the feeder, the mortar's mouth seen from the loader
 const MG = [
@@ -322,7 +390,7 @@ function fallenSpec(ctx) {
   const { type, job } = ctx, base = /[BC]$/.test(job) ? job.slice(0, -1) : job;
   // lean +0.5 rolls the chest into the dirt. The aiming prone uses about -0.3, which props the chest up to sight.
   const lie = { stance: 'prone', turn: 0.06, lean: 0.5, yaw: 0.35, fallen: true };
-  const gun = { rifle: 'rifle', leader: 'smg', sniper: 'scoped', engineer: 'carbine', smg: 'smg', bazooka: 'bazooka', carbine: 'carbine' }[base];
+  const gun = { rifle: 'rifle', leader: 'smg', sniper: 'scoped', engineer: 'carbine', smg: 'smg', bazooka: 'bazooka', carbine: 'carbine', flamer: 'flamer', bren: 'bren', tommy: 'thompson' }[base];
   if (gun) return { ...lie, gun: { kind: gun, hold: 'dropped' } };
   const carry = base === 'spotter' ? 'binos' : base === 'ammo' || base === 'feeder' ? 'can' : base === 'shell' ? (type === 'flak' ? 'clip' : 'round') : base === 'loader' ? 'bomb' : null;
   return { ...lie, sling: true, ...(carry ? { carry, down: true } : {}), ...(base === 'feeder' ? { belt: 'can' } : {}) };
@@ -337,16 +405,23 @@ function spec(ctx, k) {
   // crosses in front of the chest over the left elbow
   const prone = { stance: 'prone', turn: -0.1, lean: -0.42 }, proneAim = { stance: 'prone', turn: -0.05, lean: -0.3, yaw: C ? -0.16 : -0.28 };
   switch (base) {
-    case 'rifle': case 'leader': case 'sniper': case 'engineer': {
-      const kind = base === 'leader' ? 'smg' : base === 'sniper' ? 'scoped' : base === 'engineer' ? 'carbine' : 'rifle';
+    case 'rifle': case 'leader': case 'sniper': case 'engineer': case 'bren': case 'tommy': {
+      const kind = { leader: 'smg', sniper: 'scoped', engineer: 'carbine', bren: 'bren', tommy: 'thompson' }[base] ?? 'rifle';
       const target = flash(type, k), aim = { kind, hold: 'aim', target };
       if (k === 0) {
         if (C) return { stance: 'stand', turn: -0.6, lean: -0.03, gun: { ...aim, psi: -0.03 } };
-        return { stance: base === 'leader' || base === 'sniper' || B ? 'brace' : 'stride', turn: B ? -0.82 : -0.68, lean: B ? 0.1 : 0.05, gun: { ...aim, psi: B ? 0.04 : 0 } };
+        return { stance: base === 'leader' || base === 'sniper' || base === 'bren' || B ? 'brace' : 'stride', turn: B ? -0.82 : -0.68, lean: B ? 0.1 : 0.05, gun: { ...aim, psi: B ? 0.04 : 0 } };
       }
       if (k === 1) return { stance: 'kneel', turn: C ? -0.45 : -0.55, lean: C ? 0.22 : 0.14, gun: aim };
       if (k === 2) return { ...proneAim, gun: aim };
       return { ...run, gun: { kind, hold: 'port' } };
+    }
+    case 'flamer': {
+      const target = flash('flamer', k, FLAME), gun = { kind: 'flamer', hold: 'hip', target };
+      if (k === 0) return { stance: 'brace', turn: -0.35, lean: 0.12, gun };
+      if (k === 1) return { stance: 'kneel', turn: -0.35, lean: 0.14, gun };
+      if (k === 2) return { ...proneAim, gun: { ...gun, hold: 'aim', target: target.add(v3(0, 0.1, 0)) } };
+      return { ...run, gun: { kind: 'flamer', hold: 'port' } };
     }
     case 'smg': {
       const target = flash('ranger', k);
@@ -476,7 +551,7 @@ function solve(ctx, k, phase = null) {
     gaze = v3(1, 0, 0).transformDirection(W);
     if (hold === 'aim') { pR = prone ? V([0, -1, 0.5]) : rot([-0.1, -0.35, 1]); pL = prone ? V([0.3, -1, -0.3]) : rot([0.1, -1, -0.3]); }
     if (hold === 'port') { gaze = facing.clone().add(v3(0, -0.1, 0)); pR = rot([-0.4, -0.6, 1]); pL = rot([-0.2, -1, -0.6]); }
-    if (hold === 'under') { pR = rot([-1, -0.3, 0.6]); pL = rot([0, -1, -0.6]); }
+    if (hold === 'under' || hold === 'hip') { pR = rot([-1, -0.3, 0.6]); pL = rot([0, -1, -0.6]); }
     if (hold === 'shoulder') { pR = rot([0, -1, 0.6]); pL = rot([0, -1, -0.5]); }
   } else if (hold === 'carry') {
     hR = V([...info.grip, 0]).applyMatrix4(W); hL = v3(0.08, 0.84, -0.2).applyMatrix4(U); pL = rot([-1, 0, -0.3]); pR = rot([0, -1, 0.5]);
@@ -600,10 +675,13 @@ const HELMETS = {
   m1: { color: 0x4f5536, sx: 0.112, sz: 0.097, rings: [[1.03, -0.004], [1.0, 0.012], [0.96, 0.045], [0.84, 0.085], [0.55, 0.112]], apex: 0.122, side: 0.024, back: 0.012, y: 0.014, tilt: 0.1 },
   stahlhelm: { color: 0x4f5650, sx: 0.102, sz: 0.091, rings: [[0, -0.03], [1.08, 0], [1.02, 0.02], [0.99, 0.055], [0.86, 0.095], [0.55, 0.125]], apex: 0.135, side: 0.035, back: 0.045, y: 0.018, tilt: 0.08 },
   ssh40: { color: 0x47502f, sx: 0.104, sz: 0.092, rings: [[1.04, -0.004], [1.0, 0.01], [0.97, 0.05], [0.86, 0.095], [0.56, 0.125]], apex: 0.135, side: 0.012, back: 0.012, y: 0.006, tilt: 0.06 },
+  brodie: { color: 0x5a593d, sx: 0.098, sz: 0.089, rings: [[1.6, 0.03], [1.62, 0.04], [1.0, 0.052], [0.93, 0.084], [0.66, 0.11]], apex: 0.122, side: 0, back: 0, y: 0, tilt: 0.05,
+    lip: 0.62, lipY: 0, far: [[1.58, 0.035], [0.97, 0.06], [0.6, 0.108]] },
   hood: { color: 0x6b6e4a, sx: 0.092, sz: 0.078, rings: [[1.02, -0.02], [1.0, 0.0], [0.98, 0.04], [0.85, 0.08], [0.5, 0.105]], apex: 0.112, side: 0.07, back: 0.1, y: 0.0, tilt: 0.12 },
 };
 // A helmet shell in the head's frame: rings from a rolled lip under the rim up to the crown, the rim dropping at
-// the sides (side) and back (back); the Stahlhelm's rim (scale 0) flares out at the sides and back.
+// the sides (side) and back (back); the Stahlhelm's rim (scale 0) flares out at the sides and back. The Brodie's lip
+// (lip, lipY) runs in under its flat brim to the bowl.
 function helmetGeo(kind, segs, color) {
   const H = HELMETS[kind];
   const ring = ([s, y], i) => Array.from({ length: segs }, (_, j) => {
@@ -611,7 +689,7 @@ function helmetGeo(kind, segs, color) {
     const d = (i <= 1 ? 1 : i === 2 ? 0.4 : 0) * (H.side * sn * sn + H.back * Math.max(0, -c) ** 2);
     return v3(c * H.sx * sc, y - d, -sn * H.sz * sc);
   });
-  const rings = H.rings.map(ring), rows = [rings[0].map((p) => v3(p.x * 0.9, p.y + 0.012, p.z * 0.9)), ...rings];
+  const rings = H.rings.map(ring), lip = H.lip ?? 0.9, rows = [rings[0].map((p) => v3(p.x * lip, p.y + (H.lipY ?? 0.012), p.z * lip)), ...rings];
   return gridGeo(rows, { color: (i, j) => color(i, j, rows[i][j]).multiplyScalar(i === 0 ? 0.5 : 1), top: { p: v3(0, H.apex, 0), c: color(rows.length, 0, v3(0, H.apex, 0)) } });
 }
 // the Soviet pilotka: a folded side cap, a band around the head and a ridge along the top
@@ -620,6 +698,18 @@ function pilotkaGeo() {
   // the turned-up flap around the head, the crown over it, the folded ridge on top
   const rows = [ring(0.028, -0.006, 0.086, 0.071), ring(0.068, 0, 0.085, 0.054), ring(0.112, 0.014, 0.08, 0.01)];
   return gridGeo(rows, { color: (i) => (i ? WHITE : shade(0xffffff, 0.8)) });
+}
+// the commando's green beret in the head's frame: the leather band low at the back, the crown pulled down over the
+// right ear, the badge over the left eye
+const BERET = 0x34502f;
+function beretGeo() {
+  const n = 10, ring = (r, z, y, dy, cx, cz, tilt) => Array.from({ length: n }, (_, j) => {
+    const a = (j / n) * TAU, c = Math.cos(a), s = Math.sin(a);
+    return v3(cx + c * r, y + dy * c + tilt * s, cz - s * z);
+  });
+  const rows = [ring(0.077, 0.064, 0.033, 0.017, -0.004, 0, 0), ring(0.078, 0.065, 0.045, 0.017, -0.004, 0, 0), ring(0.094, 0.086, 0.088, 0, -0.008, 0.024, 0.018), ring(0.06, 0.055, 0.114, 0, -0.012, 0.022, 0.01)];
+  const band = new THREE.Color(0x2b2419), wool = new THREE.Color(BERET);
+  return gridGeo(rows, { color: (i) => (i < 2 ? band : wool), top: { p: v3(-0.012, 0.12, 0.018), c: shade(BERET, 1.08) } });
 }
 // a band around the torso from y0 to y1 (the belt)
 function band(body, y0, y1, out, cols = 10) {
@@ -642,23 +732,36 @@ function nearParts(r, ctx) {
   const sniper = job === 'sniper' || (type === 'sniper' && job === 'spotter');
   // torso: the tunic down over the hips, the hem a shade darker
   const cols = 8, torso = gridGeo(TORSO.map(([y]) => Array.from({ length: cols }, (_, j) => b.at(torsoAt(y, (j / cols) * TAU)))), {
-    color: (i) => shade(F.tunic, i === 0 ? 0.9 : 1), bottom: { p: b.at(v3(0, 0.6, 0)), c: shade(F.tunic, 0.8) } });
+    color: (i) => shade(fac === 3 && i < 2 ? F.legs : F.tunic, i === 0 ? 0.9 : 1), bottom: { p: b.at(v3(0, 0.6, 0)), c: shade(fac === 3 ? F.legs : F.tunic, 0.8) } });
   add(sniper && fac ? camoFaces(torso, CAMO[fac], 14) : torso, null, null, 'wool');
   // belt and webbing
   add(band(b, 0.775, 0.825, 0.009), F.web, null, F.webMat);
   if (fac === 0) for (const s of [1, -1]) add(strap(b, [[0.82, 0.42 * s], [0.95, 0.4 * s], [1.05, 0.45 * s], [1.115, 0.75 * s], [1.15, 1.4 * s], [1.1, 2.2 * s], [1.0, 2.6 * s], [0.82, 2.72 * s]], 0.046), F.web, null, F.webMat);
   if (fac === 1) for (const s of [1, -1]) add(strap(b, [[0.82, 0.5 * s], [0.96, 0.42 * s], [1.06, 0.45 * s], [1.12, 0.8 * s], [1.15, 1.4 * s], [1.1, 2.4 * s], [1.0, 2.95 * s]], 0.042), F.web, null, F.webMat);
   // pouches on the belt front, then each faction's bags
-  const crew = !['rifle', 'leader', 'smg', 'sniper', 'engineer', 'bazooka'].includes(job.replace(/[BC]$/, ''));
-  for (const s of [1, -1]) add(box(0.045, 0.075, fac === 1 ? 0.12 : 0.11), fac === 1 ? 0x2a2724 : F.web, onTorso(b, 0.805, 0.5 * s, 0.03), F.webMat);
+  const crew = !['rifle', 'leader', 'smg', 'sniper', 'engineer', 'bazooka', 'bren', 'tommy'].includes(job.replace(/[BC]$/, ''));
+  if (fac !== 3) for (const s of [1, -1]) add(box(0.045, 0.075, fac === 1 ? 0.12 : 0.11), fac === 1 ? 0x2a2724 : F.web, onTorso(b, 0.805, 0.5 * s, 0.03), F.webMat);
   add(box(0.014, 0.036, 0.05), fac === 1 ? 0x686862 : 0x9a9275, onTorso(b, 0.8, 0, 0.024), 'gunmetal');
   if (fac === 0) {
     add(new THREE.CylinderGeometry(0.034, 0.034, 0.1, 6), 0x5d6147, chain(onTorso(b, 0.74, -2.1, 0.03), SC(0.65, 1, 1)), 'canvas'); // canteen
     if (!crew) add(box(0.075, 0.18, 0.18), F.bag, onTorso(b, 0.97, Math.PI, 0.026), 'canvas'); // haversack
   } else if (fac === 1) {
     add(box(0.065, 0.12, 0.15), F.bag, onTorso(b, 0.73, -2.2, 0.026), 'canvas'); // bread bag
-    add(new THREE.CylinderGeometry(0.038, 0.038, 0.22, 6), 0x4f5549, chain(onTorso(b, 0.84, -2.75, 0.045), RX(-0.35)), 'armor-paint'); // gas mask can
+    if (job !== 'flamer') add(new THREE.CylinderGeometry(0.038, 0.038, 0.22, 6), 0x4f5549, chain(onTorso(b, 0.84, -2.75, 0.045), RX(-0.35)), 'armor-paint'); // gas mask can (the flamer's tanks are there)
     add(box(0.024, 0.16, 0.075), 0x4a4236, onTorso(b, 0.72, 2.3, 0.02), 'wood'); // entrenching tool
+  } else if (fac === 3) {
+    // '37 pattern: the braces from the basic pouches over the shoulders, crossed on the back under the small pack
+    for (const s of [1, -1]) add(strap(b, [[0.98, 0.42 * s], [1.07, 0.5 * s], [1.13, 0.8 * s], [1.15, 1.4 * s], [1.1, 2.2 * s], [0.98, 2.85 * s], [0.86, 3.45 * s], [0.81, 3.7 * s]], 0.04), F.web, null, F.webMat);
+    for (const s of [1, -1]) add(box(0.064, 0.13, 0.105), F.web, onTorso(b, 0.955, 0.42 * s, 0.034), F.webMat); // basic pouches, high on the chest
+    add(new THREE.CylinderGeometry(0.036, 0.036, 0.12, 5), 0x5e5a44, chain(onTorso(b, 0.73, -2.25, 0.034), SC(0.7, 1, 1)), 'canvas'); // water bottle in its carrier
+    add(box(0.03, 0.12, 0.11), F.web, onTorso(b, 0.73, Math.PI, 0.026), F.webMat); // entrenching tool carrier
+    if (!crew) add(box(0.08, 0.17, 0.2), F.bag, onTorso(b, 1.0, Math.PI, 0.03), 'canvas'); // small pack
+    if (type === 'commando') {
+      // the toggle rope coiled over the left shoulder to the right hip
+      const loop = [[1.14, 1.5], [1.01, 0.6], [0.88, -0.35], [0.82, -1.3], [0.97, -2.6], [1.14, 2.35]].map(([y, a]) => b.at(torsoAt(y, a, 0.045)));
+      const rows = tubeRows([loop.at(-1), ...loop, loop[0]], Array(loop.length + 2).fill(0.02), 3, v3(0, 1, 0)).slice(1, loop.length + 1);
+      add(gridGeo([...rows, rows[0]], { color: (i, j) => shade(0xc2b58c, j % 2 ? 0.85 : 1) }), null, null, 'canvas');
+    }
   } else {
     if (!crew && type !== 'conscript' && type !== 'engineer') add(box(0.06, 0.14, 0.16), F.bag, onTorso(b, 0.94, Math.PI, 0.03), 'canvas'); // veshmeshok
     if (job.startsWith('rifle') || job === 'leader' || job.startsWith('engineer')) {
@@ -666,6 +769,30 @@ function nearParts(r, ctx) {
       const loop = [[1.13, 1.45], [1.0, 0.55], [0.86, -0.4], [0.8, -1.3], [0.96, -2.65], [1.13, 2.3]].map(([y, a]) => b.at(torsoAt(y, a, 0.026)));
       const rows = tubeRows([loop.at(-1), ...loop, loop[0]], Array(loop.length + 2).fill(0.055), 6, v3(0, 1, 0)).slice(1, loop.length + 1);
       add(gridGeo([...rows, rows[0]], { color: (i, j) => shade(F.roll, i === 1 || i === 4 ? 0.62 : j % 2 ? 0.9 : 1) }), null, null, 'wool');
+    }
+  }
+  if (job === 'flamer') {
+    // the tanks on his back, and the hose from under them round his right hip to the gun
+    const back = (y, dz, out) => chain(onTorso(b, y, Math.PI, out), T(0, 0, dz));
+    if (fac === 2) {
+      // ROKS-2: the flat box tank in a canvas cover, worn like a pack, the pressure cylinder under it
+      add(box(0.11, 0.34, 0.3), 0x5f5a42, back(0.9, 0, 0.065), 'canvas');
+      for (const y of [0.8, 1.0]) add(box(0.116, 0.025, 0.31), 0x4a4434, back(y, 0, 0.065), 'leather');
+      add(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 6), STEEL, chain(back(0.7, 0, 0.1), RX(Math.PI / 2)), 'gunmetal');
+    } else if (fac === 1) {
+      // Flammenwerfer 41: the fuel tank and the smaller nitrogen tank side by side on a frame
+      add(new THREE.CylinderGeometry(0.07, 0.07, 0.38, 8), 0x4f5446, back(0.9, 0.075, 0.08), 'armor-paint');
+      add(new THREE.CylinderGeometry(0.05, 0.05, 0.3, 8), 0x5c6152, back(0.93, -0.09, 0.06), 'armor-paint');
+      for (const y of [0.74, 1.06]) add(box(0.03, 0.035, 0.32), STEEL, back(y, 0, 0.03), 'gunmetal');
+    } else {
+      // M2-2: two fuel tanks with the pressure tank between and behind them, the valve on top
+      for (const dz of [-0.075, 0.075]) add(new THREE.CylinderGeometry(0.066, 0.066, 0.44, 8), 0x4a5032, back(0.9, dz, 0.075), 'armor-paint');
+      add(new THREE.CylinderGeometry(0.045, 0.045, 0.24, 8), 0x5a6040, back(0.92, 0, 0.17), 'armor-paint');
+      add(box(0.05, 0.04, 0.06), STEEL, back(1.14, 0, 0.1), 'gunmetal');
+    }
+    if (r.W) {
+      const from = v3(0, -0.22, 0).applyMatrix4(back(0.9, 0.05, 0.08)), hip = b.at(torsoAt(0.68, -1.7, 0.08)), to = v3(0, 0, 0).applyMatrix4(r.W);
+      add(tube([from, hip, to], [0.016, 0.016, 0.016], 5, v3(0, 1, 0)), 0x2a2724, null, 'rubber');
     }
   }
   if (job.startsWith('engineer')) {
@@ -680,17 +807,20 @@ function nearParts(r, ctx) {
     }
   }
   // head, then the helmet or cap
-  const H = r.H, cap = type === 'conscript' && job !== 'leader';
-  add(headGeo(cap || (sniper && fac === 2), !cap), null, chain(H, SC(0.93, 1, 0.93)), 'plain');
+  const H = r.H, cap = type === 'conscript' && job !== 'leader', beret = type === 'commando';
+  add(headGeo(cap || beret || (sniper && fac === 2), !cap && !beret), null, chain(H, SC(0.93, 1, 0.93)), 'plain');
   if (cap) add(pilotkaGeo(), 0x77714f, chain(H, T(0.004, 0, 0), RX(0.15)), 'wool');
-  else {
+  else if (beret) {
+    add(beretGeo(), null, H, 'wool');
+    add(box(0.008, 0.024, 0.02), 0xb9b2a0, chain(H, T(0.074, 0.062, -0.031), RY(0.42)), 'gunmetal'); // cap badge
+  } else {
     const kind = sniper && fac === 2 ? 'hood' : F.helmet, Hd = HELMETS[kind];
-    const net = fac === 0 ? (i, j, p) => shade(Hd.color, 0.82 + 0.18 * hash(p.x * 40, p.y * 40, p.z * 40)) : (i, j, p) => shade(Hd.color, 0.93 + 0.07 * hash(p.x * 30, p.y * 30, p.z * 30));
+    const net = fac === 0 || fac === 3 ? (i, j, p) => shade(Hd.color, 0.82 + 0.18 * hash(p.x * 40, p.y * 40, p.z * 40)) : (i, j, p) => shade(Hd.color, 0.93 + 0.07 * hash(p.x * 30, p.y * 30, p.z * 30));
     let g = helmetGeo(kind, 10, net);
     if (sniper && fac) g = camoFaces(g, CAMO[fac], 30);
     add(g, null, chain(H, T(0, Hd.y, 0), RZ(Hd.tilt)), kind === 'hood' ? 'wool' : 'armor-paint');
   }
-  if (!cap && !(sniper && fac === 2)) {
+  if (!cap && !beret && !(sniper && fac === 2)) {
     // Two narrow ribbons from the helmet sides to the chin. They share the soldier mesh.
     const strapRows = [[-0.005, -0.01, 0.069], [0.042, -0.072, 0.043]].map(([x, y, z]) => [v3(x - 0.006, y, z), v3(x + 0.006, y, z)]);
     for (const side of [-1, 1]) {
@@ -706,7 +836,12 @@ function nearParts(r, ctx) {
       [0.09, 0.064, 0.06, 0.054], 6, L.pole), F.legs, null, 'wool');
     const wrap = F.wrap ?? F.boots, n = fac === 2 ? 4 : 3, top = fac === 1 ? 0.07 : fac === 2 ? 0.062 : 0.066;
     add(tube(Array.from({ length: n }, (_, i) => edge.clone().lerp(L.ankle, i / (n - 1))), Array.from({ length: n }, (_, i) => top + (0.052 - top) * (i / (n - 1))), 6, L.pole,
-      { color: (i) => shade(wrap, fac === 2 && i % 2 ? 0.86 : 1) }), null, null, F.wrapMat);
+      { color: (i) => shade(wrap, (fac === 2 || fac === 3) && i % 2 ? 0.86 : 1) }), null, null, F.wrapMat);
+    if (fac === 3 && L === r.legs[0]) {
+      // the battledress map pocket on the front of the left thigh
+      const out = r.legs[0].hip.clone().sub(r.legs[1].hip).normalize(), front = L.pole.clone().addScaledVector(thigh, -L.pole.dot(thigh)).normalize();
+      add(box(0.15, 0.014, 0.1), shade(F.legs, 1.05), basis(L.hip.clone().lerp(L.knee, 0.5).addScaledVector(front.addScaledVector(out, 0.4).normalize(), 0.07), thigh, front), 'wool');
+    }
     add(extrudeProfile([[-0.05, -0.062], [0.17, -0.062], [0.178, -0.035], [0.09, -0.012], [0.03, 0.03], [-0.055, 0.03]], 0.078), F.boots, basis(L.ankle, L.toe, L.knee.clone().sub(L.ankle)), 'leather');
   }
   // arms: sleeves, the owner's band on the left upper arm, fists
@@ -732,9 +867,10 @@ function farParts(r, ctx) {
   add(gridGeo([0.62, 0.92, 1.12].map((y) => Array.from({ length: 5 }, (_, j) => b.at(torsoAt(y, (j / 5) * TAU + 0.3)))), { top: { p: b.at(v3(0, 1.19, 0)) } }), F.tunic, null, 'wool');
   const head = gridGeo([-0.035, 0.035].map(y => Array.from({ length: 6 }, (_, j) => v3(Math.cos((j / 6) * TAU) * 0.075, y, -Math.sin((j / 6) * TAU) * 0.062))), { top: { p: v3(0, 0.09, 0) }, bottom: { p: v3(0.01, -0.09, 0) } });
   add(head, SKIN, r.H, 'plain');
-  const cap = ctx.type === 'conscript' && ctx.job !== 'leader', Hd = HELMETS[F.helmet];
-  const shell = gridGeo([[1.05, 0], [0.8, 0.08], [0.48, Hd.apex * 0.88]].map(([s, y]) => Array.from({ length: 6 }, (_, j) => v3(Math.cos((j / 6) * TAU) * Hd.sx * s, y, -Math.sin((j / 6) * TAU) * Hd.sz * s))), { top: { p: v3(0, Hd.apex, 0) } });
-  add(cap ? head : shell, cap ? 0x7a7456 : Hd.color, chain(r.H, cap ? T(0, 0.03, 0) : T(0, Hd.y, 0), cap ? SC(0.9, 0.5, 0.9) : RZ(Hd.tilt)), cap ? 'wool' : 'armor-paint');
+  const cap = ctx.type === 'conscript' && ctx.job !== 'leader', beret = ctx.type === 'commando', Hd = HELMETS[F.helmet];
+  const shell = gridGeo((Hd.far ?? [[1.05, 0], [0.8, 0.08], [0.48, Hd.apex * 0.88]]).map(([s, y]) => Array.from({ length: 6 }, (_, j) => v3(Math.cos((j / 6) * TAU) * Hd.sx * s, y, -Math.sin((j / 6) * TAU) * Hd.sz * s))), { top: { p: v3(0, Hd.apex, 0) } });
+  if (beret) add(head, BERET, chain(r.H, T(-0.006, 0.062, 0.016), SC(1.12, 0.5, 1.2)), 'wool'); // the beret, pulled to the right
+  else add(cap ? head : shell, cap ? 0x7a7456 : Hd.color, chain(r.H, cap ? T(0, 0.03, 0) : T(0, Hd.y, 0), cap ? SC(0.9, 0.5, 0.9) : RZ(Hd.tilt)), cap ? 'wool' : 'armor-paint');
   for (const L of r.legs) add(tube([L.hip, L.knee, L.ankle.clone().add(L.toe.clone().multiplyScalar(0.05))], [0.075, 0.055, 0.045], 3, L.pole, { color: (i) => new THREE.Color(i === 2 ? F.boots : F.legs) }), null, null, 'wool');
   r.arms.forEach((a, side) => {
     const own = new THREE.Color(F.tunic).lerp(new THREE.Color(ctx.owner), 0.4);
@@ -744,6 +880,7 @@ function farParts(r, ctx) {
   else if (r.sling) for (const p of weapon('carbine', F, 1).parts) add(p.geo, p.color, r.sling.clone().multiply(p.m), p.mat);
   const t = r.things.find((x) => x.kind !== 'belt' && x.kind !== 'binos');
   if (t) for (const p of item(t.kind, F, true)) add(p.geo, p.color, t.m.clone().multiply(p.m), p.mat);
+  else if (ctx.job === 'flamer') add(box(0.12, 0.4, 0.26), F.flamer === 'roks2' ? 0x5f5a42 : 0x4d5240, onTorso(b, 0.9, Math.PI, 0.06), 'armor-paint'); // the tanks
   else add(box(0.06, 0.16, 0.16), F.bag, onTorso(b, 0.95, Math.PI, 0.03), 'canvas');
   return P;
 }
@@ -774,12 +911,12 @@ function figure(ctx, far) {
   return body;
 }
 // for the check script: the solved rig of a soldier in posture k
-export function rigOf(type, fac, i, k, phase = null) { const job = soldierKit(type, i); return solve({ type, fac, job, F: FACTIONS[fac] ?? FACTIONS[0], owner: 0x3b73d6 }, k, phase); }
+export function rigOf(type, fac, i, k, phase = null) { const job = soldierKit(type, i, fac); return solve({ type, fac, job, F: FACTIONS[fac] ?? FACTIONS[0], owner: 0x3b73d6 }, k, phase); }
 
 const bodies = new Map();
 // One soldier of a squad, near and far: each a group holding one vertex-colored body for unit-models.js to bake.
 export function soldier(type, fac, i, f) {
-  const kit = soldierKit(type, i), F = FACTIONS[fac] ?? { ...FACTIONS[0], tunic: f.uniform };
+  const kit = soldierKit(type, i, fac), F = FACTIONS[fac] ?? { ...FACTIONS[0], tunic: f.uniform };
   const group = (far) => {
     const key = `${type}|${fac}|${f.color}|${kit}|${far}`;
     if (!bodies.has(key)) bodies.set(key, figure({ type, fac, job: kit, F, owner: f.color }, far));

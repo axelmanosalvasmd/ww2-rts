@@ -3,7 +3,9 @@
 // client/audio/ (index.json lists them) and load when a match starts, not in the lobby.
 // Every call is safe before anything has loaded (it just stays quiet).
 const DIR = new URL('./audio/', import.meta.url);
-const FACS = ['us', 'de', 'ru']; // voice folders by faction index (USA, Germany, USSR)
+// voice folders by faction index (USA, Germany, USSR, UK); a faction with no voices yet (the UK) speaks American
+const FACS = ['us', 'de', 'ru', 'uk'];
+const voiceFac = (f) => (index.voice[FACS[f]] ? FACS[f] : 'us');
 const KEY = 'ww2-volume';
 const store = (fn) => { try { return fn(); } catch { return null; } };
 
@@ -223,7 +225,7 @@ export const audio = {
     }).catch(e => { console.warn('audio: index', e.message); loading = null; }); // the next match tries again
     loading.then(async () => {
       if (!index || mine !== match) return;
-      const fac = FACS[faction] ?? 'us', names = Object.keys(index.voice[fac] ?? {}).sort();
+      const fac = voiceFac(faction), names = Object.keys(index.voice[fac] ?? {}).sort();
       voiceName = names.length ? names[slot % names.length] : null;
       if (voiceName) await loadAll(voiceFiles(fac, voiceName).filter(([k]) => !buffers.has(k)));
       if (mine !== match) return;
@@ -287,7 +289,7 @@ export const audio = {
     if (!ctx || !started || !voiceName || !index) return;
     const t = now();
     if (t < voiceUntil || t - (lastLine.get('any') ?? -9) < VOICE_GAP) return;
-    const lines = index.voice[FACS[player.faction] ?? 'us']?.[voiceName]?.[kind];
+    const lines = index.voice[voiceFac(player.faction)]?.[voiceName]?.[kind];
     if (!lines?.length) return;
     // a different line than last time when there is a choice, and either take of it
     let n = Math.floor(Math.random() * lines.length);

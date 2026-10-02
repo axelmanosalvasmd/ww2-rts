@@ -157,7 +157,7 @@ const worth = (u) => UNITS[u.type].cost * u.hp / (UNITS[u.type].models * UNITS[u
 const centroid = (us) => ({ x: us.reduce((a, u) => a + u.x, 0) / us.length, z: us.reduce((a, u) => a + u.z, 0) / us.length });
 // the spot k meters from a toward b (b itself when that's closer)
 const toward = (a, b, k) => { const l = d(a, b) || 1, s = Math.min(k, l) / l; return { x: a.x + (b.x - a.x) * s, z: a.z + (b.z - a.z) * s }; };
-const HEAVY = new Set(['tank', 'medium', 'tiger']);
+const HEAVY = new Set(['tank', 'medium', 'tiger', 'churchill']);
 
 // Difficulty, picked per AI seat in the lobby. No level gets extra income or vision: they differ in how fast they react
 // and how well they play. Normal is the default (and what takes over a player who leaves).
@@ -306,7 +306,7 @@ function plan(observation, slot, opts, mem, send) {
   // against infantry crowds, an armored car to scout and raid, else 2 rifles per MG
   const seenGarrison = [...me.visible].some(id => view.units.get(id)?.garrison >= 0);
   const seenDugIn = [...me.visible].some(id => { const e = view.units.get(id); return e && !allied(view, e.owner, slot) && (e.type === 'mg' || e.type === 'at') && inCover(view, e); });
-  const tanks = count('tank') + count('medium') + count('tiger');
+  const tanks = count('tank') + count('medium') + count('tiger') + count('churchill');
   // air: enemy planes it can see now (they're visible from far away), its own anti-air and planes
   const enemyPlanes = Math.max([...me.visible].filter(id => view.units.get(id)?.air).length, L.memory ? recent.filter(e => UNITS[e.type].air && now - e.t < 30).length : 0), flakN = count('flak') + count('flaktrack');
   const airWant = enemyPlanes && flakN < Math.min(3, Math.ceil(enemyPlanes / 2)) ? (trains('flaktrack') && tanks ? 'flaktrack' : 'flak')
@@ -319,7 +319,8 @@ function plan(observation, slot, opts, mem, send) {
     : count('medic') < 1 && mine.filter(u => UNITS[u.type].infantry).length >= 5 ? 'medic' // one medic team once there is infantry to patch up
     : count('armoredcar') < 1 && mine.length >= 7 ? 'armoredcar' : tanks < 2 && mine.length >= 8 ? 'tank'
     : count('mg') * 2 < count('rifle') || (rule(1) && seenInf >= 6 && count('mg') < 3) ? 'mg' : 'rifle'; // many infantry seen: more MGs
-  // faction flavor: USA mixes in Rangers, Germany saves up for its Tiger, USSR fields Conscripts instead of rifles
+  // faction flavor: USA mixes in Rangers, Germany saves up for its Tiger, USSR fields Conscripts instead of rifles,
+  // UK mixes in Commandos and fields its Churchill
   let buy = want;
   // the medium tank is the mainline tank once it can be afforded; the light tank is the cheap fallback
   const affords = (t) => { const pr = priceOf(view, t); return me.mp >= pr.mp && !(pr.fuel > (me.fuel ?? 0)); };
@@ -330,6 +331,8 @@ function plan(observation, slot, opts, mem, send) {
   if (want === 'rifle' && canBuild('ranger', me.faction) && count('ranger') < 2 && count('rifle') >= 1) buy = 'ranger';
   // Tiger only when it's affordable right now: saving up for it starved the German army
   if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && affords('tiger') && (want === 'tank' || want === 'rifle')) buy = 'tiger';
+  if (want === 'rifle' && canBuild('commando', me.faction) && count('commando') < 2 && count('rifle') >= 1) buy = 'commando';
+  if (canBuild('churchill', me.faction) && count('churchill') < 1 && mine.length >= 5 && affords('churchill') && (want === 'tank' || want === 'rifle')) buy = 'churchill';
   // A tank that already wiped a squad, or one this seat still remembers, changes the next buy after it leaves sight.
   if (mindful) {
     const learned = lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null;
@@ -431,7 +434,7 @@ function plan(observation, slot, opts, mem, send) {
   // an enemy air strike announced near my units: put fighter cover over it (cover arrives in 2s, strikes take 3-6s)
   const incoming = view.strikes.find(q => q.t > 0 && !allied(view, q.owner, slot) && SUPPORT_PLANE(q.kind) && mine.some(u => d(u, q) < 25));
   if (incoming && can('cover')) call('cover', incoming);
-  const heavy = enemies.find(e => (e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'flaktrack') && watched(e));
+  const heavy = enemies.find(e => (e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'churchill' || e.type === 'flaktrack') && watched(e));
   if (heavy && can('dive')) call('dive', heavy);
   const dropZone = view.points.find(q => q.owner >= 0 && !allied(view, q.owner, slot) && view.sees(q));
   if (dropZone && !horde && mine.length >= 6 && can('para') && (!mindful || pointReady(mind, view.points.indexOf(dropZone), now, L.notice))) call('para', dropZone);

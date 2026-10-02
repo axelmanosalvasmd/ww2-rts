@@ -92,8 +92,8 @@ export function pointExtra(mind, index) {
 }
 
 // Armor the seat has actually seen. Anti-armor is what it can send against that, instead of rifles.
-export const ARMOR = new Set(['tank', 'medium', 'tiger']);
-export const ANTI_ARMOR = new Set(['at', 'tank', 'medium', 'tiger', 'rocket']);
+export const ARMOR = new Set(['tank', 'medium', 'tiger', 'churchill']);
+export const ANTI_ARMOR = new Set(['at', 'tank', 'medium', 'tiger', 'churchill', 'rocket']);
 
 // A sighting that has left vision still stands until it is a minute old, or until this seat looks at that ground and it is empty.
 export function dropEmptyGround(mem, view, slot, now) {

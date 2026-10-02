@@ -18,6 +18,8 @@ import { soldier, AIM_SHIFT } from './models/infantry.js';
 import { moveSquad, gaitWeights } from './squad-motion.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
+import { churchill } from './models/churchill.js';
+import { cromwell } from './models/cromwell.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
 import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
@@ -196,11 +198,13 @@ const SLOTS = {
   ...GUN_SLOTS, // mg, mortar, at, flak: around the weapons of client/models/guns.js
   sniper: [[0.4, 0], [-0.5, 0.6]],
   medic: [[0.3, 0.4], [-0.3, -0.4]],
+  flamer: [[0.45, 0], [-0.25, 0.75], [-0.35, -0.7]], // the flamethrower ahead, a rifleman either side behind him
   engineer: block(3, 2),
   ranger: block(6, 2),
+  commando: block(5, 3),
   conscript: block(7, 3),
 };
-const BLOCKS = new Set(['rifle', 'engineer', 'ranger', 'conscript']); // smaller men, so the ranks stand shoulder to shoulder
+const BLOCKS = new Set(['rifle', 'engineer', 'ranger', 'conscript', 'commando']); // smaller men, so the ranks stand shoulder to shoulder
 
 // soldier posture, blended by weight: [lean (rad, + = back), height scale, shift x, shift y, weapon x, weapon y]
 // in the soldier's own units (+x forward, feet at 0). The weapon point is where muzzle flashes start (client/fx.js
@@ -267,11 +271,16 @@ function wheeledUnit(v, root, f, fac, key) {
 // Builds the model of unit v under root: v.models (soldiers, or the root for vehicles and structures), v.turret,
 // v.body (structures and planes; it scales up while built), v.fxTip (barrel tip for client/fx.js).
 // f is the owner's look (uniform, vehicle and player colors), fac the faction, def the unit's stats.
-// ponytail: the newest units borrow an existing model until they get their own
-const BORROW = { tankdestroyer: 'medium', howitzer: 'at', flamer: 'engineer' };
+const UK_MODELS = new Set(['churchill', 'armoredcar', 'halftrack', 'medium', 'mg', 'at', 'mortar', 'flak']);
+const UK_TANKS = { churchill, medium: cromwell };
 export function buildModel(v, root, f, fac, def) {
-  const type = BORROW[v.type] ?? v.type, key = `${type}|${fac}|${f.color}`;
+  const type = v.type, key = `${type}|${fac}|${f.color}`;
   if (def.air || type === 'airfield') return; // client/aircraft.js builds these
+  // ponytail: a UK vehicle or gun without a model of its own yet borrows the American one in British paint (late-war
+  // British vehicles wore the same Allied white star); UK_MODELS lists the ones that have their own. Soldiers always
+  // wear their own faction's kit (own).
+  const own = fac;
+  if (fac === 3 && !UK_MODELS.has(type)) fac = 0;
   if (isWheeled(type, fac)) { wheeledUnit(v, root, f, fac, key); return; }
   if (type === 'flakpos') {
     // a sandbagged ring with a twin gun pointing up
@@ -370,14 +379,15 @@ export function buildModel(v, root, f, fac, def) {
     shell.add(part(GEO.cyl, 0x4a3f30, 0.08, 4, 0.08, -1.8, 4.6, -1.8), part(GEO.plane, cloth(f.color), 1.8, 1.1, 1, -0.9, 6, -1.8));
     root.add(bake(shell, key, true, 'structure'));
     v.models.push(root);
-  } else if (isArmorMedium(type, fac)) {
+  } else if (isArmorMedium(type, fac) && !((fac === 3 || type === 'churchill') && UK_TANKS[type])) {
     // M4 Sherman, Panzer IV, T-34, T34 Calliope and Wirbelwind: client/models/armor-medium.js
     const hull = buildArmorMedium(v, root, type, fac, f);
     bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
     v.models.push(root);
-  } else if (lightHeavy(type, fac, f)) {
-    // the light tanks, the Tiger and the ZSU-37: client/models/armor-lightheavy.js, two painted geometries (cached)
-    const lh = lightHeavy(type, fac, f), hull = new THREE.Group();
+  } else if (((fac === 3 || type === 'churchill') && UK_TANKS[type]?.(f)) || lightHeavy(type, fac, f)) {
+    // the light tanks, the Tiger and the ZSU-37: client/models/armor-lightheavy.js; the Churchill and the Cromwell:
+    // client/models/churchill.js and cromwell.js. Two painted geometries each (cached)
+    const lh = ((fac === 3 || type === 'churchill') && UK_TANKS[type]?.(f)) || lightHeavy(type, fac, f), hull = new THREE.Group();
     hull.add(part(lh.hull, 0xffffff));
     v.turret = new THREE.Group(); v.turret.position.set(...lh.ring); v.turret.add(part(lh.turret, 0xffffff));
     root.add(hull, v.turret); v.fxTip = lh.tip;
@@ -389,7 +399,7 @@ export function buildModel(v, root, f, fac, def) {
     SLOTS[type].forEach(([x, z], i) => {
       // client/models/infantry.js builds the figure, near and far, with its kneeling, prone and running builds in
       // userData.poses for the posture morph targets
-      const s = soldier(figure, fac, i, f), poses = (g) => g.children[0].userData.geo.userData;
+      const s = soldier(figure, own, i, f), poses = (g) => g.children[0].userData.geo.userData;
       const hi = bakeMeshes(s.near, `${key}|man|${s.kit}`, false, poses(s.near), 'soldier'), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, poses(s.far), 'soldier');
       lo.forEach((m) => (m.visible = false));
       // man: the node client/fx.js and the corpses use; pose: the body inside it that crouches and lies down

@@ -333,9 +333,11 @@ export function barrel(length = 1, radius = 0.05, { brake = false, taper = 0.12,
 const dome = (r, y0, top, from = Math.PI / 2, steps = 6) => Array.from({ length: steps + 1 }, (_, k) => { const t = from * (1 - k / steps); return [r * Math.sin(t), y0 + top * Math.cos(t)]; });
 
 // A helmet sitting on y = 0, about `size` in radius: 'm1' (US, round with a small brim), 'stahlhelm' (German,
-// flared skirt and a stepped dome, longer front to back) or 'ssh40' (Soviet, tall dome with a slight flare).
+// flared skirt and a stepped dome, longer front to back), 'ssh40' (Soviet, tall dome with a slight flare) or
+// 'brodie' (British Mk II: a shallow bowl on a wide, flat brim).
 export function helmet(kind = 'm1', size = 0.27, segments = 16) {
   const R = size;
+  if (kind === 'brodie') return lathe([[0, 0.02], [1.42, -0.04], [1.44, 0], [1.38, 0.03], [0.95, 0.08], ...dome(0.95, 0.1, 0.62, 1.4)].map(([r, y]) => [r * R, y * R]), segments);
   if (kind === 'stahlhelm') {
     const raw = new THREE.LatheGeometry([[0, 0.1], [1.12, -0.1], [1.14, -0.05], [1.0, 0.12], [0.93, 0.22], ...dome(0.95, 0.28, 0.72, 1.35)]
       .map(([r, y]) => new THREE.Vector2(r * R, y * R)), segments);

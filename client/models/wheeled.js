@@ -24,7 +24,7 @@ const shade = (c, k, kb = 1) => { const s = c.clone().multiplyScalar(k); s.b *= 
 // The factory paints, picked against the game's warm sun and blue shade: US olive drab, German panzer grey (the
 // armored cars) and dunkelgelb (the late rocket half-track, with olive and red-brown patches), Soviet 4BO green.
 // The textures fade and mottle them further, so they are a little richer here than they end up on screen.
-const SCHEME = { od: 0x575f3e, grey: 0x585752, green: 0x505e3a, gelb: 0x857c5c };
+const SCHEME = { od: 0x575f3e, grey: 0x585752, green: 0x505e3a, gelb: 0x857c5c, scc15: 0x595b3c };
 function paints(look, scheme) {
   const base = col(SCHEME[scheme] ?? look.vehicle), kb = scheme === 'grey' ? 0.93 : 0.95; // warm the dark shades against the sky fill
   return {
@@ -207,7 +207,9 @@ function finish(geo, floor = 0) {
 }
 const place = (at, normal, up = [0, 1, 0], s = 1) => G.place(at, normal, up, s);
 // the faction's insignia, flat on a surface; the decal carries its own colors
-const insignia = (P, fac, size) => (fac === 1 ? G.balkenkreuz(size) : G.star(size, fac === 2 ? { color: P.red, border: P.chalk, edge: 0.1 } : { color: P.chalk }));
+const insignia = (P, fac, size) => (fac === 1 ? G.balkenkreuz(size)
+  : fac === 3 ? G.star(size * 0.8, { color: P.chalk, ring: P.chalk }) // the British wore the Allied star in a ring
+    : G.star(size, fac === 2 ? { color: P.red, border: P.chalk, edge: 0.1 } : { color: P.chalk }));
 // the marking on the side of a hull, at x, y on the surface half width z (the surface leans in by lean going up)
 function sideMark(p, P, fac, size, x, y, z, s, lean = 0.1) {
   const nz = 1 / Math.hypot(1, lean), ny = lean * nz;
@@ -705,17 +707,205 @@ function katyusha(P, fac) {
   };
 }
 
+// ---------------------------------------------------------------- British markings
+
+// Stencilled white characters (a War Department number like "F 214567") as seven-segment strokes, H tall, centered on
+// the origin facing +z and placed by `matrix`. 'i' is a middle upright, for the T of a tracked vehicle's number.
+const SEG7 = { 0: 'abcdef', 1: 'i', 2: 'abdeg', 3: 'abcdg', 4: 'bcfg', 5: 'acdfg', 6: 'acdefg', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg', F: 'aefg', T: 'ai' };
+function stencil(p, P, text, matrix, H = 0.085) {
+  const W = H * 0.55, th = H * 0.16, step = W * 1.6, sub = parts();
+  const SEG = { a: [0, H / 2, W, th], b: [W / 2, H / 4, th, H / 2], c: [W / 2, -H / 4, th, H / 2], d: [0, -H / 2, W, th], e: [-W / 2, -H / 4, th, H / 2], f: [-W / 2, H / 4, th, H / 2], g: [0, 0, W, th], i: [0, 0, th, H] };
+  [...text].forEach((ch, k) => {
+    const cx = (k - (text.length - 1) / 2) * step;
+    for (const s of SEG7[ch] ?? '') { const [x, y, w, hh] = SEG[s]; sub.mat(PLANE, P.chalk, G.xf(cx + x, y, 0, 0, 0, 0, w + th * 0.4, hh + th * 0.4, 1), 'plain'); }
+  });
+  p.put(sub, matrix);
+}
+// a flat square sign facing +z: the arm-of-service color, split in two when `lower` is given, with a white number
+function unitSign(p, P, upper, lower, num, matrix, size = 0.16) {
+  const sub = parts();
+  if (lower) { sub.mat(PLANE, upper, G.xf(0, size / 4, 0, 0, 0, 0, size, size / 2, 1), 'plain'); sub.mat(PLANE, lower, G.xf(0, -size / 4, 0, 0, 0, 0, size, size / 2, 1), 'plain'); }
+  else sub.mat(PLANE, upper, G.xf(0, 0, 0, 0, 0, 0, size, size, 1), 'plain');
+  stencil(sub, P, num, G.xf(0, 0, 0.004), size * 0.42);
+  p.put(sub, matrix);
+}
+// a hollow squadron sign (n corners: 3 a triangle, 4 a square, more a circle) 1 across, facing +z
+const hollowSign = (n) => once(`hsign|${n}`, () => {
+  const a0 = n === 4 ? Math.PI / 4 : Math.PI / 2, pts = (r) => Array.from({ length: n }, (_, k) => new THREE.Vector2(r * Math.cos(a0 + (k * TAU) / n), r * Math.sin(a0 + (k * TAU) / n)));
+  const s = new THREE.Shape(pts(0.5)); s.holes.push(new THREE.Path(pts(n === 3 ? 0.28 : 0.36)));
+  return new THREE.ShapeGeometry(s);
+});
+// a wireless aerial with a small pennant near its tip in the owner's color (both faces)
+function pennantAerial(p, P, x, y, z, len = 1.1, lean = 0.06) {
+  aerial(p, P, x, y, z, len, lean);
+  const flag = once('pennant', () => new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0, 0.13), new THREE.Vector2(-0.24, 0.065)])));
+  const fx = x - lean * 0.86, fy = y + len * 0.86;
+  for (const ry of [0, Math.PI]) p.mat(flag, P.owner, G.xf(fx, fy, z, 0, ry, 0, ry ? -1 : 1, 1, 1), 'plain');
+}
+
+// ---------------------------------------------------------------- Daimler Armoured Car Mk II
+
+function daimler(P, fac) {
+  const h = parts(), t = parts();
+  // the boat hull: a V of lower plates rising from a narrow belly to an upright waist band between the wheels, upper
+  // plates leaning in to the deck, a short nose plate under a long glacis, the deck sloping down over the engine at the
+  // back
+  h.mat(hullOf([
+    [-1.7, [0.34, 0.62], [0.54, 0.8], [0.46, 1.06], [0.56, 0.9]],
+    [-1.46, [0.42, 0.42], [0.66, 0.8], [0.55, 1.2], [0.68, 0.92]],
+    [-0.62, [0.44, 0.38], [0.68, 0.8], [0.58, 1.3], [0.69, 0.92]],
+    [0.82, [0.44, 0.38], [0.68, 0.8], [0.58, 1.3], [0.69, 0.92]],
+    [1.42, [0.42, 0.44], [0.64, 0.8], [0.52, 1.04], [0.66, 0.92]],
+    [1.7, [0.3, 0.6], [0.48, 0.78], [0.38, 0.9], [0.5, 0.86]],
+  ]), P.base);
+  // four big run-flat wheels set out on their hubs, no mudguards over them; the steering arms and the axle housings
+  for (const x of [1.08, -1.08]) for (const s of [1, -1]) {
+    wheel(h, P, 0.44, 0.3, x, 0.44, s * 0.87, s, { seg: 20 });
+    h.box(P.deep, 0.42, 0.08, 0.3, x, 0.42, s * 0.6); h.add(CYL8, P.dark, x, 0.44, s * 0.7, Math.PI / 2, 0, 0, 0.08, 0.16, 0.08);
+  }
+  for (const s of [1, -1]) {
+    // the long stowage bin on the lower plate between the wheels, its lid and hasps
+    h.box(P.mid, 1.18, 0.28, 0.16, 0.0, 0.66, s * 0.6, s * 0.3, 0, 0); h.box(P.dark, 1.16, 0.02, 0.17, 0.0, 0.79, s * 0.64, s * 0.3, 0, 0);
+    for (const x of [-0.3, 0.3]) h.box(P.steel, 0.05, 0.06, 0.02, x, 0.74, s * 0.69, s * 0.3, 0, 0);
+    // the waist band: a seam, the escape door (left) or a shovel and pick (right), vision slits, the star
+    h.box(P.dark, 2.9, 0.014, 0.012, -0.1, 0.92, s * 0.695);
+    if (s < 0) { h.box(P.mid, 0.5, 0.3, 0.025, -0.3, 1.08, -0.655, 0.26, 0, 0); h.box(P.steel, 0.06, 0.03, 0.03, -0.1, 1.1, -0.67); for (const x of [-0.5, -0.12]) h.box(P.steel, 0.06, 0.04, 0.03, x, 0.95, -0.69); }
+    else { tool(h, P, -0.5, 1.02, 0.66, 0.7, s, 0.26); tool(h, P, -0.55, 1.13, 0.635, 0.66, s, 0.26, 'pick'); }
+    h.box(P.black, 0.16, 0.03, 0.02, 0.95, 1.16, s * 0.62, -s * 0.26, 0, 0);
+    sideMark(h, P, fac, 0.13, 0.42, 1.08, 0.69 - 0.16 * 0.29, s, 0.29);
+    // headlamps with blackout hoods on the nose corners, the tow hooks, the sidelights
+    lamp(h, P, 1.62, 0.86, s * 0.4, 0.055, 0.09); h.box(P.dark, 0.1, 0.02, 0.13, 1.63, 0.92, s * 0.4);
+    h.box(P.steel, 0.1, 0.06, 0.05, 1.72, 0.62, s * 0.22); h.add(CYL6, P.steel, 1.58, 0.94, s * 0.56, 0, 0, 0, 0.025, 0.05, 0.025);
+  }
+  // the driver's hood on the glacis: its visor flap with a slit, two periscope heads; a spare tool box beside it
+  h.mat(frustum([[1.18, 0.24], [0.8, 0.26], [0.8, -0.26], [1.18, -0.24]], [[1.06, 0.2], [0.8, 0.22], [0.8, -0.22], [1.06, -0.2]], 1.08, 1.38), P.base);
+  h.box(P.mid, 0.03, 0.18, 0.34, 1.14, 1.23, 0, 0, 0, 0.32); h.box(P.black, 0.02, 0.025, 0.26, 1.15, 1.26, 0, 0, 0, 0.32);
+  for (const z of [0.12, -0.12]) { h.box(P.dark, 0.08, 0.05, 0.08, 0.9, 1.41, z); h.box(P.glass, 0.01, 0.03, 0.06, 0.945, 1.41, z); }
+  h.box(P.mid, 0.3, 0.12, 0.22, 1.12, 1.12, 0.42, 0, 0, -0.41);
+  // the nose plate: the WD number and the recce corps sign (green over blue); the front of the belly
+  stencil(h, P, 'F 74218', place([1.705, 0.7, 0.0], [1, 0, 0], [0, 1, 0]), 0.075);
+  unitSign(h, P, col(0x3e7a3a), col(0x2c4f86), '41', place([1.62, 0.95, -0.3], [0.38, 0.92, 0], [-0.92, 0.38, 0]), 0.14);
+  // the engine deck: two louvred grilles, the radiator louvres on the rear plate, the silencers under it, jerrycans and
+  // a bedroll on the back, a ration box
+  for (const z of [0.26, -0.26]) {
+    h.box(P.deep, 0.66, 0.02, 0.4, -1.08, 1.25, z, 0, 0, 0.07);
+    for (let i = 0; i < 6; i++) h.box(P.mid, 0.04, 0.025, 0.38, -0.8 - i * 0.11, 1.27 - i * 0.008, z);
+  }
+  h.box(P.deep, 0.02, 0.2, 0.7, -1.66, 0.97, 0, 0, 0, -0.5);
+  for (let i = 0; i < 5; i++) h.box(P.mid, 0.035, 0.02, 0.66, -1.65 + i * 0.022, 0.9 + i * 0.04, 0, 0, 0, -0.5);
+  for (const s of [1, -1]) { h.add(CYL8, P.steel, -1.68, 0.62, s * 0.3, Math.PI / 2, 0, 0, 0.07, 0.36, 0.07); h.box(P.base, 0.12, 0.3, 0.22, -1.74, 0.72, s * 0.62, 0, 0, -0.1); }
+  h.add(CYL8, P.canvas, -1.5, 1.27, 0, Math.PI / 2, 0, 0, 0.1, 1.0, 0.075);
+  for (const z of [-0.32, 0.32]) h.box(P.leather, 0.2, 0.15, 0.03, -1.5, 1.27, z);
+  stencil(h, P, 'F 74218', place([-1.745, 0.78, 0.0], [-1, 0, 0], [0, 1, 0]), 0.07);
+
+  // the two-man turret: eight sloped faces, a split roof hatch and two periscopes, the 2-pounder and the coaxial Besa
+  // in an external mantlet, smoke dischargers on the cheeks, a stowage bin on the back, the squadron triangle in the
+  // owner's color on each side and the wireless aerial with its pennant
+  const TH = 0.44, bot = [[0.5, 0.3], [0.3, 0.52], [-0.36, 0.52], [-0.56, 0.32], [-0.56, -0.32], [-0.36, -0.52], [0.3, -0.52], [0.5, -0.3]];
+  const top = grow(bot, 0.84, 0.8);
+  t.mat(frustum(bot, top, 0, TH), P.base);
+  t.mat(turn([[0.6, 0], [0.6, 0.05]], 14, 'y'), P.dark, G.xf(-0.04, -0.03, 0));
+  for (const s of [1, -1]) { t.box(P.mid, 0.38, 0.03, 0.17, -0.12, TH + 0.015, s * 0.1); t.box(P.steel, 0.05, 0.03, 0.03, -0.12, TH + 0.035, s * 0.16); }
+  t.box(P.dark, 0.38, 0.032, 0.012, -0.12, TH + 0.016, 0);
+  for (const z of [0.3, -0.3]) { t.box(P.dark, 0.1, 0.07, 0.09, 0.2, TH + 0.035, z); t.box(P.glass, 0.01, 0.04, 0.07, 0.255, TH + 0.04, z); }
+  for (const s of [1, -1]) {
+    t.box(P.black, 0.14, 0.025, 0.02, 0.2, 0.3, s * 0.425, -s * 0.33, 0, 0);
+    // two smoke dischargers on a bracket, cups raised forward
+    t.box(P.steel, 0.1, 0.05, 0.06, 0.0, 0.24, s * 0.53);
+    for (const dz of [0, 0.075]) t.rod(P.dark, 0.035, 0.16, 0.04, 0.3, s * (0.55 + dz), 0, 0, 0.75);
+    t.mat(hollowSign(3), P.owner, place([-0.2, 0.22, s * (0.5 + 0.012)], [0, 0.33, s * 0.94], [0, 1, 0], 0.17), 'plain');
+  }
+  t.add(G.chamferBox(0.16, 0.26, 0.42, 0.05), P.base, 0.52, 0.22, 0).list.at(-1).mat = 'cast-armor';
+  t.rod(P.base, 0.055, 0.18, 0.66, 0.22, -0.05);
+  t.mat(G.barrel(1.5, 0.032, { segments: 8 }), P.base, G.xf(0.66, 0.22, -0.05));
+  t.rod(P.gun, 0.032, 0.24, 0.68, 0.22, 0.12, 0, 0, 0, 6); t.rod(P.gun, 0.013, 0.18, 0.88, 0.22, 0.12, 0, 0, 0, 6); // the Besa's jacket and barrel
+  t.add(G.chamferBox(0.16, 0.24, 0.6, 0.04), P.mid, -0.62, 0.22, 0);
+  t.box(P.dark, 0.17, 0.02, 0.58, -0.62, 0.3, 0);
+  pennantAerial(t, P, -0.42, TH, -0.36, 1.15, 0.05);
+
+  return { hull: finish(G.merge(h.list)), turret: finish(G.merge(t.list), -1.3), turretAt: [-0.05, 1.3, 0], tip: [2.16, 0.22, -0.05] };
+}
+
+// ---------------------------------------------------------------- Universal Carrier
+
+function carrier(P, fac) {
+  const h = parts(), t = parts();
+  // the lower hull between the tracks with its sloped nose, the floor plates that run out over the tracks as guards
+  h.mat(hullOf([[-1.5, [0.5, 0.3], [0.52, 0.62], [0.5, 0.66]], [1.18, [0.5, 0.22], [0.52, 0.62], [0.5, 0.66]], [1.52, [0.44, 0.44], [0.48, 0.62], [0.46, 0.66]]]), P.base);
+  h.box(P.base, 2.84, 0.04, 1.74, -0.1, 0.66, 0);
+  // the running gear: the drive sprocket at the back, a two-wheel bogie and a single-wheel bogie on Horstmann springs,
+  // the idler at the front
+  for (const s of [1, -1]) {
+    trackRun(h, P, s, 0.74, 0.24, [[-1.26, 0.35, 0.2], [-0.72, 0.265, 0.19], [0.06, 0.265, 0.19], [0.52, 0.265, 0.19], [1.22, 0.33, 0.2]], P.mid, { pad: 0.075 });
+    h.rod(P.steel, 0.045, 0.34, 0.29, 0.4, s * 0.83); h.box(P.dark, 0.5, 0.06, 0.05, 0.29, 0.31, s * 0.82); // the front bogie's spring and arms
+    h.rod(P.steel, 0.04, 0.24, -0.5, 0.38, s * 0.83, 0, 0, -0.3); h.box(P.dark, 0.3, 0.06, 0.05, -0.6, 0.3, s * 0.82, 0, 0, -0.3);
+    for (const x of [0.29, -0.55]) h.box(P.base, 0.22, 0.2, 0.06, x, 0.5, s * 0.66); // the bogie brackets on the hull side
+    fender(h, P.base, 1.22, 0.32, s * 0.74, 0.2, 0.26, 30, 95, 3, { gap: 0.06 }); // the front guard curving down over the idler
+    h.box(P.base, 0.04, 0.16, 0.26, -1.58, 0.6, s * 0.74, 0, 0, 0.3); // the rear mudflap
+  }
+  // the open body: the rear compartments either side of the engine (a band in the owner's color along the top of each
+  // side), the taller front compartment for the driver (right) and the Bren gunner (left)
+  tub(h, P.base, P.deep, P.mid, -1.52, 0.2, 0.87, 0.68, 1.04, 0.05);
+  for (const s of [1, -1]) h.box(P.owner, 1.6, 0.035, 0.012, -0.66, 1.02, s * 0.876);
+  tub(h, P.base, P.deep, P.mid, 0.2, 1.24, 0.87, 0.68, 1.12, 0.05);
+  h.box(P.deep, 2.7, 0.03, 1.66, -0.15, 0.71, 0);
+  // the front: a glacis down to the nose, the gunner's angular hood with the Bren through its slit, the driver's
+  // visor plate and hood, a low plate between them; spare track links, headlamps, the tow hook
+  h.box(P.base, 0.36, 0.035, 1.66, 1.38, 0.88, 0, 0, 0, -0.62);
+  h.mat(frustum([[1.32, -0.08], [1.32, -0.8], [0.86, -0.8], [0.86, -0.08]], [[1.16, -0.14], [1.16, -0.74], [0.9, -0.76], [0.9, -0.12]], 1.0, 1.36), P.base);
+  h.mat(frustum([[1.3, 0.08], [1.3, 0.8], [0.9, 0.8], [0.9, 0.08]], [[1.2, 0.12], [1.2, 0.76], [0.92, 0.76], [0.92, 0.12]], 1.0, 1.3), P.base);
+  h.box(P.mid, 0.03, 0.16, 0.44, 1.255, 1.17, 0.44, 0, 0, 0.6); h.box(P.black, 0.02, 0.025, 0.3, 1.262, 1.2, 0.44, 0, 0, 0.6); // the driver's visor
+  h.box(P.mid, 0.03, 0.12, 0.2, 1.24, 1.16, -0.64, 0, 0, 0.55); h.box(P.black, 0.02, 0.02, 0.14, 1.247, 1.18, -0.64, 0, 0, 0.55);
+  h.box(P.dark, 0.06, 0.08, 0.1, 1.3, 1.13, -0.36); // the Bren's slit mantle
+  h.box(P.gun, 0.34, 0.07, 0.05, 1.24, 1.13, -0.36); h.rod(P.gun, 0.016, 0.42, 1.6, 1.13, -0.36, 0, 0, 0, 6); h.rod(P.gun, 0.026, 0.06, 1.82, 1.13, -0.36, 0, 0, 0, 6);
+  h.box(P.gun, 0.06, 0.1, 0.03, 1.3, 1.21, -0.36, 0, 0, 0.3); // the curved magazine
+  for (let i = 0; i < 3; i++) h.box(P.tread, 0.07, 0.03, 0.26, 1.33 + i * 0.075, 0.92 - i * 0.05, 0.12, 0, 0, -0.62);
+  for (const s of [1, -1]) { lamp(h, P, 1.36, 1.0, s * 0.62, 0.05, 0.08); h.box(P.dark, 0.09, 0.02, 0.11, 1.37, 1.055, s * 0.62); }
+  h.box(P.steel, 0.1, 0.08, 0.06, 1.55, 0.5, 0);
+  // the engine cover down the middle, a rounded box with louvres at the back; the radiator louvres in the rear plate
+  h.mat(hullOf([[-1.48, [0.28, 0.7], [0.28, 0.94], [0.18, 1.04]], [0.25, [0.28, 0.7], [0.28, 0.94], [0.18, 1.04]], [0.42, [0.24, 0.7], [0.24, 0.9], [0.14, 0.98]]]), P.mid);
+  for (let i = 0; i < 6; i++) h.box(P.dark, 0.035, 0.012, 0.34, -0.7 - i * 0.12, 1.046, 0);
+  h.box(P.deep, 0.012, 0.26, 0.5, -1.525, 0.88, 0);
+  for (let i = 0; i < 5; i++) h.box(P.mid, 0.03, 0.025, 0.48, -1.535, 0.78 + i * 0.05, 0);
+  // the rear compartments: bench cushions and backrests on the outer walls, kit and an ammo box on the floor
+  for (const s of [1, -1]) {
+    h.box(P.leather, 1.2, 0.08, 0.26, -0.7, 0.8, s * 0.66); h.box(P.leather, 1.1, 0.2, 0.05, -0.7, 0.92, s * 0.8);
+    h.box(P.canvas, 0.3, 0.14, 0.2, -1.3, 0.8, s * 0.5); h.box(P.mid, 0.24, 0.12, 0.14, -0.1, 0.78, s * 0.48);
+  }
+  // outside: the star and the WD number on the compartment sides, a pick and a shovel, jerrycans and a camouflage net
+  // on the back, the infantry battalion's sign on the front, the aerial with its pennant
+  for (const s of [1, -1]) {
+    sideMark(h, P, fac, 0.13, -0.15, 0.88, 0.87, s, 0);
+    stencil(h, P, 'T 31492', place([-1.0, 0.94, s * 0.875], [0, 0, s], [0, 1, 0]), 0.055);
+    tool(h, P, -0.95, 0.77, 0.875, 0.72, s, 0, s > 0 ? 'shovel' : 'pick');
+    h.box(P.base, 0.12, 0.28, 0.22, -1.6, 0.86, s * 0.5);
+  }
+  h.add(CYL8, P.canvas, -1.62, 1.07, 0, Math.PI / 2, 0, 0, 0.09, 0.62, 0.07);
+  stencil(h, P, 'T 31492', place([1.462, 0.858, -0.42], [0.58, 0.81, 0], [-0.81, 0.58, 0]), 0.06);
+  unitSign(h, P, col(0x9a3328), null, '62', place([1.357, 0.933, 0.58], [0.58, 0.81, 0], [-0.81, 0.58, 0]), 0.13);
+  pennantAerial(h, P, -1.4, 1.04, -0.75, 1.0);
+
+  // the Bren on its anti-aircraft pintle in the right rear compartment, the part that traverses: a post, the cradle,
+  // the gun with its top magazine, bipod folded, carrying handle
+  t.add(CYL6, P.steel, 0, 0.32, 0, 0, 0, 0, 0.03, 0.64, 0.03);
+  t.box(P.steel, 0.08, 0.06, 0.08, 0, 0.66, 0);
+  t.box(P.gun, 0.46, 0.07, 0.05, 0.02, 0.72, 0); t.box(P.wood, 0.18, 0.09, 0.04, -0.28, 0.7, 0, 0, 0, 0.1);
+  t.rod(P.gun, 0.016, 0.42, 0.44, 0.72, 0, 0, 0, 0, 6); t.rod(P.gun, 0.026, 0.06, 0.66, 0.72, 0, 0, 0, 0, 6);
+  t.box(P.gun, 0.07, 0.12, 0.03, 0.06, 0.8, 0, 0, 0, 0.3); t.box(P.steel, 0.1, 0.03, 0.02, 0.2, 0.78, 0);
+  return { hull: finish(G.merge(h.list)), turret: finish(G.merge(t.list), -0.7), turretAt: [-0.7, 0.7, 0.42], tip: [0.69, 0.72, 0] };
+}
+
 // ---------------------------------------------------------------- the registry
 
 // each unit's builder and its paint scheme
 const BUILD = {
-  armoredcar: [[m8, 'od'], [sdkfz222, 'grey'], [ba64, 'green']],
+  armoredcar: [[m8, 'od'], [sdkfz222, 'grey'], [ba64, 'green'], [daimler, 'scc15']],
   flaktrack: [[m16, 'od'], null, null],
-  halftrack: [[m16, 'od'], [m16, 'grey'], [m16, 'green']], // ponytail: every faction's carrier borrows the M16 half-track until it gets its own
+  halftrack: [[m16, 'od'], [m16, 'grey'], [m16, 'green'], [carrier, 'scc15']], // ponytail: every faction's carrier borrows the M16 half-track until it gets its own
   rocket: [null, [panzerwerfer, 'gelb'], [katyusha, 'green']],
 };
 
-const FIT = { 'rocket|2': 0.92 };
+const FIT = { 'rocket|2': 0.92, 'halftrack|3': 1.15 }; // the little carrier grown a bit toward the half-tracks
 const cache = new Map();
 // The hull and turret geometries of a wheeled unit: { hull, turret, turretAt, tip } (turretAt is the traverse pivot on
 // the hull, tip the muzzle point in the turret's own space). look: { vehicle, color } as hex numbers. Cached, shared.

@@ -33,9 +33,9 @@ export function availability(s, cfg = CFG, action = {}) {
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
   const selected = own.filter((v) => (action.ids ?? []).includes(v.id));
   const classic = s.mode?.kind === 'classic', sudden = classic && s.mode.suddenDeath;
-  const population = (unit) => {
+  const population = (unit, need = unit ? popUse(unit) : 1) => {
     const pop = popTotal(own, queued), cap = popCap(s);
-    return pop + (unit ? popUse(unit) : 1) > cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
+    return pop + need > cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
   };
   if (action.t === 'buy') {
     const def = UNITS[action.unit];

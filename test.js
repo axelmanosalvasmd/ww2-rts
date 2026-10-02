@@ -40,6 +40,44 @@ import { createOrders } from './client/orders.js';
   assert.equal(findPath(g, from, to).length, 0, 'the editor still rejects a blocked route');
 }
 
+// Routes pass a building with room to spare: a squad or tank ordered straight across a Classic HQ goes around it
+// at least 2 m off its walls, not along its corner (their models would cut across it).
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 20, y: 40 }, { x: 70, y: 40 }], points: [] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'classic' });
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq'), half = UNITS.hq.size * CELL / 2;
+  const off = (p) => Math.hypot(Math.max(0, Math.abs(p.x - hq.x) - half), Math.max(0, Math.abs(p.z - hq.z) - half));
+  for (const type of ['rifle', 'tank']) {
+    const from = { owner: 0, type, x: hq.x - 12, z: hq.z + 0.3 }, path = findPath(g, from, { x: hq.x + 12, z: hq.z });
+    let at = from, closest = Infinity;
+    for (const q of path) { for (let k = 0; k <= 40; k++) closest = Math.min(closest, off({ x: at.x + (q.x - at.x) * k / 40, z: at.z + (q.z - at.z) * k / 40 })); at = q; }
+    assert.ok(path.length && closest >= 1.9, `${type} keeps clear of the HQ (${closest.toFixed(2)} m)`);
+  }
+}
+
+// A command bunker has no cells, but routes still go around it, and an order aimed at it still gets a path.
+{
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 4 }, { x: 75, y: 75 }], points: [] };
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'annihilation' });
+  const bunker = [...g.units.values()].find(u => u.owner === 0 && u.type === 'bunker');
+  Object.assign(bunker, { x: 81, z: 81 });
+  for (const type of ['rifle', 'tank']) {
+    const from = { owner: 1, type, x: 65, z: 81.3 }, path = findPath(g, from, { x: 97, z: 81 });
+    let at = from, closest = Infinity;
+    for (const q of path) { for (let k = 0; k <= 40; k++) closest = Math.min(closest, Math.hypot(at.x + (q.x - at.x) * k / 40 - 81, at.z + (q.z - at.z) * k / 40 - 81)); at = q; }
+    assert.ok(path.length && closest >= UNITS.bunker.radius + 1, `${type} goes around the bunker (${closest.toFixed(2)} m)`);
+    assert.ok(findPath(g, from, bunker).length, `${type} can still be sent at the bunker`);
+  }
+}
+
+// Spawn walking distances: a cliff (a step of more than one level) is in the way like water.
+{
+  const map = { w: 10, h: 5, rows: Array(5).fill('.'.repeat(10)), heights: Array(5).fill('00000' + '22222'), spawns: [{ x: 1, y: 2 }, { x: 8, y: 2 }], points: [] };
+  assert.equal(sim.spawnDistances(map, [0, 1])[0][1], 28, 'no way up the cliff: four times the straight distance');
+  map.heights = Array(5).fill('00000' + '11111');
+  assert.equal(sim.spawnDistances(map, [0, 1])[0][1], 7, 'a one-level step is walkable');
+}
+
 // AI: an all-allied lobby is legal, so holding a point must not assume an enemy HQ exists.
 {
   const map = { w: 20, h: 20, rows: Array(20).fill('.'.repeat(20)), spawns: [{ x: 1, y: 1 }, { x: 18, y: 18 }], points: [{ x: 10, y: 10 }] };
@@ -910,6 +948,25 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   assert.equal(types(0), 'ranger', 'USA: rangers only');
   assert.equal(types(1), 'tiger', 'Germany: one Tiger');
   assert.equal(types(2), 'conscript', 'USSR: conscripts');
+}
+{
+  // UK: Commandos and one Churchill, nobody else gets them; its artillery barrage fires half again as many shells,
+  // and the Churchill's front shrugs off 40%
+  const g = createGame({ ...blank(empty) }, ['a', 'b', 'c'], false, [0, 1, 2], [3, 0, 1]); g.units.clear();
+  g.players.forEach(p => { p.mp = 5000; p.spawn = { x: -1000, z: -1000 }; });
+  command(g, 0, { t: 'buy', unit: 'churchill' }); command(g, 0, { t: 'buy', unit: 'churchill' }); command(g, 0, { t: 'buy', unit: 'commando' }); command(g, 0, { t: 'buy', unit: 'ranger' });
+  command(g, 1, { t: 'buy', unit: 'churchill' }); command(g, 1, { t: 'buy', unit: 'commando' });
+  const types = (s) => [...g.units.values()].filter(u => u.owner === s).map(u => u.type).sort().join();
+  assert.equal(types(0), 'churchill,commando', 'UK: one Churchill and Commandos');
+  assert.equal(types(1), '', 'USA: no UK units');
+  command(g, 0, { t: 'support', kind: 'artillery', x: 30, z: 30 }); command(g, 1, { t: 'support', kind: 'artillery', x: 30, z: 30 });
+  assert.deepEqual(g.strikes.map(s => s.left), [SUPPORT.artillery.shells * 1.5, SUPPORT.artillery.shells], 'UK barrage: 15 shells, others 10');
+  const ch = [...g.units.values()].find(u => u.type === 'churchill'); ch.x = 20; ch.z = 20; ch.rot = 0; ch.hp = 1050; g.strikes.length = 0;
+  const at = put(g, 1, 'at', 40, 20); at.still = 5; at.auto = false;
+  const orig = Math.random; Math.random = () => 0;
+  run(g, 0.2);
+  Math.random = orig;
+  assert.equal(1050 - ch.hp, 120 * 0.6, 'Churchill front armor');
 }
 {
   // Tiger: the front takes 60%, the rear 200%
@@ -5935,7 +5992,7 @@ for (const lookupFinished of [false, true]) {
   assert.ok(one.material === mat && one.castShadow && one.geometry.index.count === 3 * box.index.count, 'scenery merges into one shadow-casting mesh');
 
   const look = { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 };
-  for (const [type, def] of Object.entries(UNITS)) for (const fac of [0, 1, 2]) {
+  for (const [type, def] of Object.entries(UNITS)) for (const fac of [0, 1, 2, 3]) {
     if (def.air || type === 'airfield') continue; // client/aircraft.js builds the planes and the airfield
     const root = new THREE.Group(), v = { type, root, models: [], turret: null };
     buildModel(v, root, look, fac, def);
@@ -7729,9 +7786,9 @@ console.log('all model toolkit checks passed');
 {
   const THREE = await import('three');
   const { buildModel, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
-  const looks = [{ vehicle: 0x59623d, color: 0x3b73d6 }, { vehicle: 0x50565a, color: 0xcc3a2e }, { vehicle: 0x4e5a38, color: 0xece6d6 }];
-  const cases = [['tank', 0, 3000], ['tank', 1, 3000], ['tank', 2, 3000], ['tiger', 1, 5000],
-    ['medium', 0, 4000], ['medium', 1, 4000], ['medium', 2, 4000], ['rocket', 0, 4000], ['flaktrack', 1, 4000], ['flaktrack', 2, 3000]];
+  const looks = [{ vehicle: 0x59623d, color: 0x3b73d6 }, { vehicle: 0x50565a, color: 0xcc3a2e }, { vehicle: 0x4e5a38, color: 0xece6d6 }, { vehicle: 0x565640, color: 0xe2832b }];
+  const cases = [['tank', 0, 3000], ['tank', 1, 3000], ['tank', 2, 3000], ['tiger', 1, 5000], ['churchill', 3, 5000],
+    ['medium', 0, 4000], ['medium', 1, 4000], ['medium', 2, 4000], ['medium', 3, 4000], ['rocket', 0, 4000], ['flaktrack', 1, 4000], ['flaktrack', 2, 3000]];
   for (const [type, fac, budget] of cases) {
     const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
     buildModel(v, root, looks[fac], fac, UNITS[type]);
@@ -7806,14 +7863,14 @@ console.log('all wheeled model checks passed');
   const THREE = await import('three');
   const { buildModel, animate } = await import('./client/unit-models.js');
   const { gunModel, GUN_SLOTS } = await import('./client/models/guns.js');
-  const looks = [{ uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, { uniform: 0x5c6266, vehicle: 0x50565a, color: 0xcc3a2e }, { uniform: 0x7d7250, vehicle: 0x4e5a38, color: 0xece6d6 }];
+  const looks = [{ uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, { uniform: 0x5c6266, vehicle: 0x50565a, color: 0xcc3a2e }, { uniform: 0x7d7250, vehicle: 0x4e5a38, color: 0xece6d6 }, { uniform: 0x6f6448, vehicle: 0x565640, color: 0xe2832b }];
   const nearest = (geo, p, off = [0, 0, 0], minY = -1) => {
     const P = geo.attributes.position;
     let best = Infinity;
     for (let i = 0; i < P.count; i++) if (P.getY(i) >= minY) best = Math.min(best, Math.hypot(P.getX(i) + off[0] - p[0], P.getY(i) + off[1] - p[1], P.getZ(i) + off[2] - p[2]));
     return best;
   };
-  for (const type of ['mg', 'mortar', 'at', 'flak']) for (const fac of [0, 1, 2]) {
+  for (const type of ['mg', 'mortar', 'at', 'flak']) for (const fac of [0, 1, 2, 3]) {
     const label = `${type} (faction ${fac})`, look = looks[fac], root = new THREE.Group(), v = { type, root, models: [], turret: null, x: 0, z: 0 };
     buildModel(v, root, look, fac, UNITS[type]);
     // the weapon is every visible mesh under the root outside the soldiers (their nodes carry a formation slot)
@@ -7869,7 +7926,7 @@ console.log('all gun model checks passed');
   const { plane, ROLES, PLANE_NAMES } = await import('./client/models/planes.js');
   const { MATS, PLAIN, UNSET } = await import('./client/models/geom.js');
   const BUDGET = { fighter: 3500, attacker: 3500, bomber: 6000, transport: 6000 }, OWN = 0xff00ff;
-  for (const fac of [0, 1, 2]) for (const role of ROLES) {
+  for (const fac of [0, 1, 2, 3]) for (const role of ROLES) {
     const p = plane(fac, role, OWN), geo = p.geo, label = PLANE_NAMES[fac][role];
     const I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, col = geo.attributes.color, mat = geo.attributes.matId;
     const tris = I.count / 3 + p.props.reduce((s, q) => s + q.n * 60 + 36, 0) + 2;
@@ -7902,11 +7959,11 @@ console.log('all aircraft model checks passed');
   const { soldier, soldierKit, rigOf } = await import('./client/models/infantry.js');
   const THREE = await import('three');
   const { buildModel } = await import('./client/unit-models.js');
-  const types = ['rifle', 'conscript', 'ranger', 'engineer', 'sniper', 'mg', 'mortar', 'at', 'flak'];
-  for (const fac of [0, 1, 2]) for (const type of types) {
+  const types = ['rifle', 'conscript', 'ranger', 'commando', 'engineer', 'sniper', 'mg', 'mortar', 'at', 'flak'];
+  for (const fac of [0, 1, 2, 3]) for (const type of types) {
     const seen = new Set();
     for (let i = 0; i < 5; i++) {
-      const kit = soldierKit(type, i);
+      const kit = soldierKit(type, i, fac);
       if (seen.has(kit)) continue;
       seen.add(kit);
       const s = soldier(type, fac, i, { color: 0xff00ff });

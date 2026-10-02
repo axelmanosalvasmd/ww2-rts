@@ -32,6 +32,18 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
   rifle squad, MG team, AT gun, light tank, plus (2026-09-30) mortar team, sniper, armored car, medium tank.
   Squads are one sim entity with N models.
+- Four factions (2026-10-02: the UK joined; new players still cycle USA / Germany / USSR, the UK is picked in the
+  lobby). The shared roster is the same for all; each faction adds its own units (USA Rangers, Germany the Tiger,
+  USSR Conscripts, UK Commandos and the Churchill) and the UK a doctrine (DOCTRINE in shared/sim.js: its artillery
+  barrage fires 1.5x the shells). The UK design aims at slow, methodical play behind the best artillery: the
+  Churchill is tougher at the front than the Tiger (0.6 vs 0.7 front damage, 1050 vs 900 hp) but slower (3.2) with
+  a weaker gun (70 vs 110 against vehicles). Planned, not built: gun pits (infantry-built sandbag emplacements that
+  give a gun inside extra range), the Crocodile, and a Creeping Barrage commander order. Other factions' ideas
+  (Japan: ambush, tunnels, Banzai) are parked.
+- Balance with four factions: `node tools/ai-balance.mjs --matches 240 --factions 4` rotates the four through the
+  three spawns (each sits out one match in four). 2026-10-02, 240 Conquest matches, default map: USA/GER/USSR/UK
+  66/63/50/61 wins of 180 each (37/35/28/34%), median 565 s, runner-up VP 0.64 of the winner. Run on a working tree
+  that also held other sessions' uncommitted paratrooper and pathfinding changes.
 - Combat: cover cells halve incoming accuracy and suppression. The suppression meter slows and then pins infantry.
   Tanks take double damage from the rear. Grid line of sight. Fog of war is enforced by the server.
 
@@ -478,8 +490,11 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - AI: tank destroyer for every other anti-tank buy once it has an AT gun, flamers against garrisons (after the
   rocket truck), a howitzer once its army is 8+, a bomber once it has an attacker and 9+ units. Horde unlocks
   flamers at wave 6 and tank destroyers at wave 8.
-- Models and icons are borrowed for now (tank destroyer = medium tank, howitzer = AT gun, flamer = engineer figure,
-  symbol of medium / mortar / rifle / bombing run). The flame is drawn as a fat slow tracer.
+- Each has its own model (M10 / StuG III / SU-85, M2A1 / leFH 18 / M-30, a flamethrower man with his tanks and two
+  riflemen; the bombers already had theirs). The StuG and the SU-85 are casemates: only the gun turns, 12 degrees
+  either way of the hull, and the sim does not swing the hull to face the target. Each has its own map icon and unit badge too: a low
+  casemate with a long gun, a steeply raised barrel on a wheel and trail, a soldier with tanks on his back and a
+  flame at his hip, a twin-engine plane with a twin tail. The flame is drawn as a fat slow tracer.
 - 60 AI matches (Conquest, default map): faction wins 19/22/19 (32/37/32%). 6 AI matches per mode: all four units
   get fielded and fire; the bomber scored no kills in that small sample (its stick lands where the target was).
 
@@ -968,6 +983,15 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   Clients send commands and smooth toward the latest snapshot.
 - All command validation lives in `command()` in `shared/sim.js`.
 - Map = grid of cells (2 m). `B` building, `H` hedgerow, `#` wall, `+` crater. LOS, pathing (A*), and cover all read the grid.
+- Wall clearance: a cell touching a wall (a cell that blocks both MOVE and SIGHT: houses, building footprints) costs
+  `CFG.wallHug` (0.5) extra to step on, and string-pulling checks three rays 2 m apart (other uses keep 0.9 m). Units
+  pass buildings about 3 m out instead of 1 m, so models no longer cut across an HQ's corner. A penalty, not a block,
+  so one-cell alleys stay open. 0.3 already clears a Classic HQ (0.1 does not), 0.5 leaves margin; 0.8 and up moved hill-112's
+  Fuel node into a backyard (its placement compares walk lengths).
+- The command bunker is a unit with no cells (a sight-blocking footprint would blind its MG slit). `findPath` adds
+  30 to cells within its radius + 1 m and `wallHug` to the ring 2 m beyond, and string-pulling will not pass within
+  radius + 1.5 m of it unless an end of the segment is already there. A cost, not a block, so a move or attack aimed
+  at the bunker still gets a route.
 - Hosted on the owner's PC in Ecuador, reached by friends over Tailscale (`tailscale serve`).
 
 ## Roadmap

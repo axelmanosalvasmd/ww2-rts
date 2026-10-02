@@ -90,6 +90,7 @@ function insignia(fac, r) {
   const F = (geo, color, layer, sx, sy, x = 0, y = 0) => ({ geo, color, m: xf(x, y, layer * 0.025, 0, 0, 0, sx, sy, 0.01) });
   if (fac === 0) return [F(SRC.box, BLUE, 0, 4.6 * r, 0.62 * r), F(SRC.disc, BLUE, 0, r, r), F(SRC.star, WHITE, 1, 0.8 * r, 0.8 * r), F(SRC.box, WHITE, 1, 0.9 * r, 0.34 * r, 1.55 * r), F(SRC.box, WHITE, 1, 0.9 * r, 0.34 * r, -1.55 * r)];
   if (fac === 1) return [F(SRC.box, WHITE, 0, 2.3 * r, 0.74 * r), F(SRC.box, WHITE, 0, 0.74 * r, 2.3 * r), F(SRC.box, BLACK, 1, 2 * r, 0.5 * r), F(SRC.box, BLACK, 1, 0.5 * r, 2 * r)];
+  if (fac === 3) return [F(SRC.disc, TIP, 0, 1.12 * r, 1.12 * r), F(SRC.disc, BLUE, 1, r, r), F(SRC.disc, WHITE, 2, 0.56 * r, 0.56 * r), F(SRC.disc, RED, 3, 0.4 * r, 0.4 * r)]; // the RAF's type C1 roundel
   return [F(SRC.star, WHITE, 0, 1.2 * r, 1.2 * r), F(SRC.star, RED, 1, r, r)];
 }
 const FLAT = new THREE.Matrix4().makeRotationY(-PI / 2).multiply(new THREE.Matrix4().makeRotationX(-PI / 2)); // lies on a wing: x across, y forward

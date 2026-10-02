@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
 import { think, observe, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
@@ -368,7 +368,7 @@ wss.on('connection', (ws, req) => {
       if (room.state === 'play' || me.ws !== ws || !isHost(room, me)) return;
       if (room.mode === 'horde' && !map.defend?.length) return; // Horde needs defender spawns
       room.mapName = msg.name; room.mapSpawns = map.spawns; lobby(room);
-    } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.slot) && msg.slot >= 0 && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : 3)) {
+    } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.slot) && msg.slot >= 0 && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : FACTION_COUNT)) {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
       if (p && (host ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
