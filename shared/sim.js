@@ -1,7 +1,7 @@
 // Pure game logic. The server runs it; the client imports the tables for rendering.
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
-import { gridFor, rebuildGrid, updateGrid } from './grid.js';
+import { gridFor, rebuildGrid, updateGrid, SpatialGrid } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
 
@@ -1890,11 +1890,13 @@ const firedOnBy = (g, u, t) => g.tick - (t.id === u.hitBy ? u.hitAt : t.targetId
 function pickTarget(g, u) {
   const w = UNITS[u.type].w, cur = u.targetId, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity, curScore = Infinity;
+  // salvo weapons count each target's neighbours: gather them once (range + 6 m) instead of a query per target
+  const pool = w.salvo ? gridFor(g).candidates(u, w.range + 6, false, o => !o.riding && !allied(g, o.owner, u.owner) && g.players[u.owner].visible.has(o.id)) : null;
   for (const t of gridFor(g).candidates(u, w.range, true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
-    const value = w.salvo ? dug * (1 + gridFor(g).candidates(t, 6).filter(o => o.owner === t.owner && !o.riding && g.players[u.owner].visible.has(o.id) && dist(o, t) < 6).length)
+    const value = w.salvo ? dug * (1 + pool.filter(o => o.owner === t.owner && dist(o, t) < 6).length)
       : (inf ? w.inf * w.accInf * coverMul(g, t) : w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
     const threat = firedOnBy(g, u, t) ? 2.5 : t.targetId === u.id ? 1.5 : 1;
     const others = w.salvo ? 0 : (g.claims?.get(t.id * 8 + team) ?? 0) - (t.id === cur ? volley(u, t) : 0);
@@ -2145,12 +2147,16 @@ function updateVision(g) {
       const def = UNITS[u.type];
       return { u, def, base: visionOf(g, u), range: visionRange(g, u, def) };
     });
-    const watchers = new Map();
+    const watchers = new Map(), nearCache = new Map(), airList = list.filter(t => t.air);
     // Gather observers once, in their original order. Each target's check then visits
     // only the sources near it, without querying once per team and target.
     for (const source of sources) {
       const { u, def, range } = source, reach = Math.max(6, CFG.camoRange, def.vision, range) * CFG.dustSeen;
-      for (const t of gridFor(g).candidates(u, Math.max(reach, CFG.air.seeRange), false)) {
+      // One query per 16 m cell and reach, shared by every source standing there; aircraft are appended whole.
+      const bx = Math.floor(u.x / 16), bz = Math.floor(u.z / 16), ck = bx + ',' + bz + ',' + reach;
+      let near = nearCache.get(ck);
+      if (!near) nearCache.set(ck, near = [...gridFor(g).candidates({ x: (bx + 0.5) * 16, z: (bz + 0.5) * 16 }, reach + 8, false, t => !t.air && g.players[t.owner].team !== p.team), ...airList]);
+      for (const t of near) {
         if (g.players[t.owner].team === p.team) continue;
         const bound = t.air ? CFG.air.seeRange : reach;
         if (Math.abs(t.x - u.x) > bound || Math.abs(t.z - u.z) > bound) continue;
@@ -2874,12 +2880,13 @@ export function step(g) {
   // soft separation; never push a unit into a blocked cell
   const list = [...g.units.values()];
   const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
+  const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
   for (let i = 0; i < list.length; i++) {
     const a = list[i], radius = (UNITS[a.type].radius + maxRadius) * 0.8;
     if (a.garrison >= 0 || a.air || a.riding) continue;
-    const grid = gridFor(g), size = grid.size;
+    const grid = sep, size = grid.size;
     let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
-    let candidates = grid.candidates(a, radius).filter(b => order.get(b.id) > i);
+    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
     for (let k = 0; k < candidates.length; k++) {
       const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
       if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding) continue;
@@ -2892,13 +2899,13 @@ export function step(g) {
       const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
       if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
       if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
-      updateGrid(g, a); updateGrid(g, b);
+      updateGrid(g, a); updateGrid(g, b); sep.update(a); sep.update(b);
       // Unvisited units have not moved during this i pass. The candidate cells remain
       // complete until a push changes the query bounds. No displacement padding is needed.
       const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
       if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
         x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
-        candidates = grid.candidates(a, radius).filter(next => order.get(next.id) > j); k = -1;
+        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
       }
     }
   }

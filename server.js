@@ -436,8 +436,9 @@ function timedRoomTick(room) {
   if (g.mode?.kind === 'horde') seats.push(g.mode.slot);
   // AI observations refresh only when human snapshots are due. Turns between sends use the previous view.
   room.aiViews ??= [];
+  let built = null; // the cache is built once per send tick; human snapshots reuse it (AI orders this tick show next send)
   if (sent && seats.length) {
-    const cache = snapshotCache(g);
+    const cache = built = snapshotCache(g);
     for (const i of seats) room.aiViews[i] = observe(g, i, cache);
   }
   // AI decisions follow the selected difficulty, staggered by seat. The Horde and human handovers use Normal.
@@ -451,7 +452,7 @@ function timedRoomTick(room) {
     const watched = !!room.spectators?.some(s => s.ws?.readyState === 1);
     if (recipients.length || watched) {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-      const cacheAt = process.hrtime.bigint(), cache = snapshotCache(g);
+      const cacheAt = process.hrtime.bigint(), cache = built ?? snapshotCache(g);
       snapshotBuild += Number(process.hrtime.bigint() - cacheAt) / 1e6;
       for (const i of recipients) {
         const p = room.players[i], buildAt = process.hrtime.bigint(), msg = { ...snapshotFor(g, i, shots, cells, cache), online, ping };
