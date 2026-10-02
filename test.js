@@ -3313,6 +3313,20 @@ const referenceNearCover = (g, u) => {
   } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
 }
 
+// Unit row deltas: a fresh client gets every row, a row that stops changing is not resent, a unit that dies or goes
+// under fog is named in gone, and a spectator joining the shared stream (full) gets every row again.
+{
+  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]), sent = new Map(), rows = () => snapshotFor(g, 0, []).units;
+  const first = sim.unitDelta(sent, rows());
+  assert.ok(first.units.length >= 2 && first.units.length === rows().length && !first.gone, 'a fresh join gets the full set');
+  assert.deepEqual(sim.unitDelta(sent, rows()), { units: [], gone: undefined }, 'unchanged units are not resent');
+  const [moved, dead] = [...g.units.values()].filter(u => u.owner === 0);
+  moved.x += 3; g.units.delete(dead.id);
+  const next = sim.unitDelta(sent, rows());
+  assert.deepEqual([next.units.map(r => r[0]), next.gone], [[moved.id], [dead.id]], 'only the changed row is sent, the removed unit is gone');
+  assert.equal(sim.unitDelta(sent, rows(), true).units.length, rows().length, 'full resends every row');
+}
+
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
   const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));
@@ -3334,6 +3348,7 @@ const referenceNearCover = (g, u) => {
   let comparison = 0;
   const check = (slot, full = false, snapshot = false) => {
     const expected = referenceTerrainFor(slot, full);
+    g.visionTick = (g.visionTick ?? 0) + 1; // the hand edits to sight below stand in for a vision pass, which terrainFor waits on
     const actual = snapshot ? snapshotFor(g, slot, [], []).cells : sim.terrainFor(g, slot, full);
     assert.deepEqual(actual, expected, `incremental terrain comparison ${comparison++}: viewer ${slot}, full ${full}`);
     assert.deepEqual([...g.players[slot].terrainMemory], [...memories[slot]], 'incremental terrain preserves ordered remembered tuples');
@@ -3799,11 +3814,11 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
-    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats',
+    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
       body + '\nreturn timedRoomTick;')(
       thinkEvery, g => { g.tick++; },
       (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
-      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}));
+      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -4196,7 +4211,8 @@ async function serverHarness() {
   };
   const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier', hello = true } = {}) => {
     const serverSide = new Promise(resolve => accepting.push(resolve));
-    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
+    // no compression: zlib runs off the main thread, and settleServer's few milliseconds assume a message is sent at once
+    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
     const messages = [], errors = [];
     const client = {
       code, token, ws, messages, log: messages, errors, closed: false, serverSide,
@@ -4206,7 +4222,18 @@ async function serverHarness() {
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
       wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
     };
-    ws.on('message', raw => messages.push(JSON.parse(String(raw))));
+    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: rebuild them as client/main.js does
+    const rows = new Map(); let prev = null;
+    ws.on('message', raw => {
+      const m = JSON.parse(String(raw));
+      if (m.t === 'start') { rows.clear(); prev = null; }
+      if (m.t === 's') {
+        for (const id of m.gone ?? []) rows.delete(id);
+        for (const row of m.units) rows.set(row[0], row);
+        m.sent = m.units; m.units = [...rows.values()]; m.wrecks ??= prev?.wrecks; m.nodes ??= prev?.nodes; prev = m;
+      }
+      messages.push(m);
+    });
     ws.on('close', () => { client.closed = true; });
     ws.on('error', error => errors.push(error)); clients.push(client);
     await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
