@@ -5653,6 +5653,19 @@ for (const lookupFinished of [false, true]) {
   assert.equal(bodies.count, 0, 'old bodies fade out and leave');
   bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
   assert.equal(bodies.count, 0, 'a finished match empties the pool');
+
+  // drawSoldiers: two rifle squads of one look draw as one instanced mesh per figure; their own meshes leave the camera
+  const { drawSoldiers, crowd } = await import('./client/unit-models.js');
+  const squads = [0, 1].map((i) => { const r = new THREE.Group(), u = { type: 'rifle', root: r, models: [], x: i * 10, z: 0, supp: 0, flags: 0, cover: 0 }; buildModel(u, r, look, 0, UNITS.rifle); r.position.x = u.x; return u; });
+  const cam = new THREE.PerspectiveCamera(42, 1.5, 1, 2200); cam.position.set(5, 30, 40); cam.lookAt(5, 0, 0);
+  for (const u of squads) animate(u, 0.1, cam.position);
+  drawSoldiers(squads, cam);
+  const drawn = crowd.children.filter((m) => m.count), men = squads.flatMap((u) => u.models).flatMap((m) => m.userData.hi);
+  assert.equal(drawn.reduce((n, m) => n + m.count, 0), men.length, 'every man is one instance');
+  assert.equal(drawn.length, new Set(men.map((m) => m.geometry)).size, 'one draw call per figure');
+  assert.ok(men.every((m) => !m.layers.test(cam.layers)), 'the men no longer draw themselves');
+  cam.lookAt(5, 0, 400); drawSoldiers(squads, cam);
+  assert.ok(crowd.children.every((m) => !m.count), 'squads behind the camera are left out');
 }
 // Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
 {

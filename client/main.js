@@ -37,7 +37,7 @@ import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
-import { buildModel, animate, createBodies, setSurfaces, setBuildings } from './unit-models.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers } from './unit-models.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
@@ -364,6 +364,7 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 2200);
 setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, Graphics High/Low (client/light.js)
+scene.add(crowd); // every soldier, one instanced draw per figure (drawSoldiers in client/unit-models.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -480,6 +481,14 @@ function startGame(m, restored = null) {
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
 let props = null;
+// big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
+const terrainDue = { pieces: false, minimap: false, wait: 0 };
+function terrainFrame(dt) {
+  if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap)) return;
+  if (terrainDue.pieces && terrain) buildStructures();
+  if (terrainDue.minimap) mmImage = null;
+  terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
+}
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
 function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state); }
 
@@ -507,11 +516,12 @@ function applyCells(cells) {
   }
   terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
   if (shaped.length) {
-    relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; // the fog overlay follows the relief through onGeometry
     const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
-    refreshTerrain(Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL);
+    const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
+    relief.update(shaped); props?.refresh(box); water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
+    refreshTerrain(...box);
   }
-  if (pieces) buildStructures();
+  if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
 
@@ -564,7 +574,7 @@ function makeUnit(id, type, owner) {
   else buildModel(v, root, f, facOf(owner), def); // soldiers, vehicles, guns and structures, merged per part (client/unit-models.js)
   // billboarded health + suppression bars
   v.bars = new THREE.Group(); v.bars.position.y = barY(type);
-  const bg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
+  const bg = v.barBg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
   v.hpBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: f.color, depthTest: false })); v.hpBar.scale.set(2.3, 0.2, 1); v.hpBar.position.set(0, 0.07, 0.01);
   v.suppBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd23a, depthTest: false })); v.suppBar.scale.set(2.3, 0.1, 1); v.suppBar.position.set(0, -0.11, 0.01);
   bg.renderOrder = 3; v.hpBar.renderOrder = v.suppBar.renderOrder = 4;
@@ -623,6 +633,7 @@ function seatTrench(v) {
 const hulks = new Map(); // wreck id -> its model
 function removeUnit(v) {
   world.remove(v.bars);
+  for (const m of [v.barBg, v.hpBar, v.suppBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
   if (isAir(v.type)) {
     // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
     aviation.release(v); world.remove(v.root);
@@ -1242,12 +1253,15 @@ document.addEventListener('mouseleave', () => cancelInput(false));
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 renderer.domElement.addEventListener('wheel', (e) => rig.wheel(e), { passive: false });
 
-const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
+const screenV = new THREE.Vector3(), screenAt = {};
+// out: reuse one object (pick does, per unit per call); left out, a new one
+const screenOf = (v, out = {}) => { const p = screenV.set(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); out.x = (p.x + 1) / 2 * innerWidth; out.y = (1 - p.y) / 2 * innerHeight; out.front = p.z < 1; return out; };
+let hovered = null, hoverFoe = false, hoverTick = 0, lastCursor = '';
 function pick(mx, my, test, r) {
   let best = null, bd = Infinity;
   for (const v of units.values()) {
     if (!test(v) || v.flags & RIDING_FLAG) continue; // a squad inside a halftrack cannot be clicked
-    const s = screenOf(v), d = Math.hypot(s.x - mx, s.y - my);
+    const s = screenOf(v, screenAt), d = Math.hypot(s.x - mx, s.y - my);
     if (s.front && d < (r ?? (isVeh(v.type) ? 45 : 32)) && d < bd) { bd = d; best = v; }
   }
   return best;
@@ -1498,6 +1512,9 @@ renderer.setAnimationLoop(() => {
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
+    // the health bar only when it says something: hurt, suppressed (its own bar), selected or under the cursor; a
+    // garrisoned squad keeps it, since its roof bar is what you click (client/selection-view.js)
+    v.barBg.visible = v.hpBar.visible = v.sel.visible || v === hovered || v.hpBar.scale.x < 2.299 || v.supp > 0 || v.garr;
     if (v.range) v.range.visible = ranges && v.sel.visible;
     if (v.trench) seatTrench(v);
     animate(v, sdt, camera.position, hAt); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
@@ -1535,8 +1552,13 @@ renderer.setAnimationLoop(() => {
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   coverPreview.frame(dt);
   for (const m of strikeMarks.values()) m.frame(m.t > 0, now);
-  renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
+  // the unit under the cursor, every fourth frame (units move under a still mouse too)
+  if (++hoverTick % 4 === 0) { hovered = mouse.inside ? pick(mouse.x, mouse.y, () => true) : null; hoverFoe = !!selected.size && !!pick(mouse.x, mouse.y, v => foe(v.owner)); }
+  const cursor = targeting ? 'cell' : selected.size && hoverFoe ? 'crosshair' : 'default';
+  if (cursor !== lastCursor) renderer.domElement.style.cursor = lastCursor = cursor;
+  terrainFrame(dt);
   apron?.update();
+  drawSoldiers(units.values(), camera);
   renderFrame(cam, groundMesh); // shadows and haze follow the view
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });

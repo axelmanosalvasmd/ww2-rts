@@ -177,7 +177,7 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
     if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle);
     baked.set(key, list);
   }
-  return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; return m; });
+  return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; m.userData.baked = material; return m; });
 }
 // bake in place: the group keeps its transform and gets the baked meshes as its only children
 function bake(group, key, shadow, look = 'vehicle') {
@@ -189,7 +189,7 @@ function bake(group, key, shadow, look = 'vehicle') {
 // Formation slots in local space (+x = forward). Gun crews stand behind the gun.
 // Line infantry is drawn as a battalion: a block of ranks with more men than the sim counts (def.models), front rank
 // first so the rear ranks thin out as the squad loses health. Purely a look; main.js maps health onto the men drawn.
-// ponytail: one mesh per man, so about 3x the draw calls for these squads; instance the men if big armies drop frames
+// Each man is his own mesh here; drawSoldiers() below draws all men of one figure as one instanced draw call.
 const block = (cols, rows, gap = 0.65) => Array.from({ length: cols * rows }, (_, i) => [((rows - 1) / 2 - Math.floor(i / cols)) * gap, (i % cols - (cols - 1) / 2) * gap]);
 const SLOTS = {
   rifle: block(5, 3),
@@ -404,11 +404,50 @@ export function animate(v, dt, eye, groundAt) {
     man.position.set(motion.localX + ox * s, floor + sink + oy * s, motion.localZ);
     man.rotation.y = motion.localYaw;
     u.pose.rotation.z = mp[0]; u.pose.scale.y = mp[1]; u.pose.position.set(mp[2] - ox, mp[3] - oy, 0);
-    for (const m of u.meshes) {
+    for (const m of sq.far ? u.lo : u.hi) { // the hidden level of detail keeps its last weights
       for (let j = 0; j < 3; j++) m.morphTargetInfluences[j] = pw[j + 1];
       for (let j = 0; j < gait.length; j++) m.morphTargetInfluences[j + 3] = gait[j];
     }
   }
+}
+
+// Soldiers drawn instanced: every man keeps his own mesh (animate() poses it; the level of detail, picking, selection
+// and the corpses read it), but drawSoldiers() hides those meshes from the camera and draws every visible man of one
+// baked figure (type, faction, color, kit, near or far) in one InstancedMesh under crowd, posture weights included.
+// Squads off screen are left out. Without drawSoldiers (the viewer, portraits, the tests) each man draws himself.
+// A man whose material was swapped (main.js clones it for see-through camouflage) still draws himself.
+export const crowd = new THREE.Group();
+const pools = new Map(), HIDDEN = 1 << 31, frustum = new THREE.Frustum(), clip = new THREE.Matrix4(), ball = new THREE.Sphere();
+function grow(p) {
+  const cap = Math.max(64, p.cap * 2), mesh = new THREE.InstancedMesh(p.geometry, p.material, cap), n = p.geometry.morphAttributes.position.length + 1;
+  mesh.morphTexture = new THREE.DataTexture(new Float32Array(n * cap), n, cap, THREE.RedFormat, THREE.FloatType);
+  mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  if (p.mesh) { mesh.instanceMatrix.array.set(p.mesh.instanceMatrix.array); mesh.morphTexture.image.data.set(p.mesh.morphTexture.image.data); p.mesh.removeFromParent(); p.mesh.dispose(); }
+  crowd.add(mesh); p.mesh = mesh; p.cap = cap;
+}
+// once per frame, after animate(), before rendering; units: the units to draw, camera: the view
+export function drawSoldiers(units, camera) {
+  camera.updateMatrixWorld();
+  frustum.setFromProjectionMatrix(clip.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  for (const p of pools.values()) p.n = 0;
+  for (const v of units) {
+    // ponytail: a 25 m ball around the squad covers its spread-out men; widen it if men pop at the screen edge
+    if (!v.squad || !v.root.visible || !frustum.intersectsSphere(ball.set(v.root.position, 25))) continue;
+    v.root.updateMatrixWorld();
+    for (const man of v.models) {
+      if (!man.visible) continue;
+      for (const m of man.userData.meshes) {
+        if (!m.visible) continue;
+        if (m.material !== m.userData.baked) { m.layers.mask = 1; continue; }
+        let p = pools.get(m.geometry);
+        if (!p) pools.set(m.geometry, p = { geometry: m.geometry, material: m.material, cap: 0, n: 0, mesh: null });
+        if (p.n === p.cap) grow(p);
+        m.layers.mask = HIDDEN;
+        p.mesh.setMatrixAt(p.n, m.matrixWorld); p.mesh.setMorphAt(p.n++, m);
+      }
+    }
+  }
+  for (const p of pools.values()) { p.mesh.count = p.n; p.mesh.instanceMatrix.needsUpdate = true; p.mesh.morphTexture.needsUpdate = true; }
 }
 
 // Corpses: one instanced mesh (one draw call) holding up to CAP bodies. Past SOFT bodies the oldest starts to fade;

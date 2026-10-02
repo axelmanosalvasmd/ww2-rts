@@ -418,6 +418,7 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
     hazeGoal.setHex(M.haze).lerp(hazeTmp.setHex(r.hazeTo), r.hazeMix).lerp(hazeBase, 1 - k);
   }
 
+  const EASED = ['haze', 'sun', 'shadow', 'clouds', 'wet', 'sheen', 'mud', 'cover', 'banks'];
   function applyMood() {
     setMood({ ...M, sunI: M.sunI * cur.sun, shadow: M.shadow * cur.shadow,
       hazeK: M.hazeK * cur.haze, haze: hazeNow.getHex() });
@@ -521,9 +522,10 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
       groundGeo = ground.geometry;
     }
     // ease toward the weather (about 8 s to settle), then fade the rain or snow out and the next one in
+    // once settled (every value within 0.0005 and the haze color the same) the light is left alone
     const k = 1 - Math.exp(-dt / 2.5);
-    if (k > 0) {
-      for (const key of ['haze', 'sun', 'shadow', 'clouds', 'wet', 'sheen', 'mud', 'cover', 'banks']) cur[key] += (goal[key] - cur[key]) * k;
+    if (k > 0 && (EASED.some((key) => Math.abs(goal[key] - cur[key]) > 5e-4) || hazeNow.getHex() !== hazeGoal.getHex())) {
+      for (const key of EASED) cur[key] += (goal[key] - cur[key]) * k;
       hazeNow.lerp(hazeGoal, k);
       applyMood();
     }

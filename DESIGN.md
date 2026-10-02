@@ -749,6 +749,11 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Damage ladder: finished structures smoke at 0.66 hp or below and burn at 0.33 or below. Posture: crouch at
   suppression 50, prone at 90 (crouch at most in a trench), and lean when retreating. LOD: simple soldier model beyond
   110 m (80 m on Low) with 4 m hysteresis. Corpses are capped at 200 and live 25 s.
+- Draw budget (2026-10-01): soldiers are drawn instanced, one InstancedMesh per baked figure (type, faction, color,
+  kit, near or far) with posture weights per man (`drawSoldiers` in `client/unit-models.js`); each man keeps his own
+  hidden mesh for posing, selection and corpses, and squads off screen are skipped. Health bars show only on hurt,
+  suppressed, selected or hovered units. The relief casts no shadow (it still receives them). Dug or bombed cells
+  re-place only nearby scenery props, and the 3D terrain pieces and minimap terrain are redone at most 4 times a second.
 - Adaptive snapshot interval: rooms start at every 2 ticks (10 Hz) and stretch to 3, then 4, when the snapshot-tick p95
   over 50 samples exceeds 40 ms. They recover one step after 10 s under 24 ms. The client smooths units over the
   measured gap (60 to 400 ms).
