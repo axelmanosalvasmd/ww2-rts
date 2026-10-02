@@ -174,7 +174,7 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
       buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT || material === VEHICLE_PAINT ? colorOf(d.paint) : null, mat: d.mat });
     });
     list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT || material === VEHICLE_PAINT, look, group.position.y) }));
-    if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle);
+    if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle, poses.fallen);
     baked.set(key, list);
   }
   return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; return m; });
@@ -223,7 +223,7 @@ export const postureOf = (supp, flags, cover) => (flags & 1 ? 3 : supp >= POSTUR
 // The posture morph targets: poses holds the figure's kneeling, prone and running builds ({position, normal}, the
 // same vertices as the standing one). Each is stored undone by its pose's lean, squash and shift, which animate()
 // applies to the whole body, so the two cancel at full weight.
-function poseMorphs(g, poses, gait = [], muzzle) {
+function poseMorphs(g, poses, gait = [], muzzle, fallen = null) {
   const n = g.attributes.position.count, pos = [], nor = [], tips = muzzle ? [muzzle.clone()] : null;
   const frames = [...poses.map((p, i) => ({ ...p, posture: i + 1 })), ...gait];
   for (const frame of frames) {
@@ -237,7 +237,7 @@ function poseMorphs(g, poses, gait = [], muzzle) {
       q.setXYZ(i, mx / len, my / len, N.getZ(i) / len);
     }
     pos.push(p); nor.push(q);
-    // the idle prone build, before this undo, is the body a corpse uses
+    // the idle aiming prone, before this undo. Corpses do not use it; they use userData.fallen.
     if (k === 2 && !g.userData.prone) g.userData.prone = { position: P, normal: N };
     if (tips) {
       const tip = frame.muzzle ?? muzzle, x = tip.x - tx, y = tip.y - ty;
@@ -245,6 +245,7 @@ function poseMorphs(g, poses, gait = [], muzzle) {
     }
   }
   g.userData.muzzles = tips;
+  if (fallen) g.userData.fallen = fallen;
   g.morphAttributes.position = pos; g.morphAttributes.normal = nor;
   g.computeBoundingSphere();
 }
@@ -413,21 +414,22 @@ export function animate(v, dt, eye, groundAt) {
   }
 }
 
-// Corpses: the soldier's own prone build, instanced, up to CAP bodies in all. One mesh per uniform, so a battle
+// Corpses: the soldier's own fallen build, instanced, up to CAP bodies in all. One mesh per uniform, so a battle
 // still draws a handful of corpse batches instead of one mesh per man. Past SOFT bodies the oldest starts to fade
-// and sink; a body also fades once it is LIFE seconds old; faded bodies leave the pool.
+// and sink; a body also fades once it is LIFE seconds old; faded bodies leave the pool. The aiming prone stays on
+// the living morphs; a body is the slack pose, not a man still sighting from the dirt.
 export const CORPSES = { cap: 200, soft: 184, life: 25, fade: 1.5, sink: 0.45 };
 const corpseGeos = new Map();
-// The prone build, scaled like the living man and resting on y = 0. Colors and materials stay with the vertices.
-function proneGeometry(man) {
+// The fallen build, scaled like the living man and resting on y = 0. Colors and materials stay with the vertices.
+function fallenGeometry(man) {
   const mesh = man.userData.hi?.[0] ?? man.userData.lo?.[0];
-  const src = mesh?.geometry, prone = src?.userData.prone;
-  if (!prone) throw new Error('a corpse needs the soldier\'s prone build');
+  const src = mesh?.geometry, pose = src?.userData.fallen;
+  if (!pose) throw new Error('a corpse needs the soldier\'s fallen build');
   const scale = man.scale?.x || 1, key = `${src.uuid}|${scale}`;
   let geo = corpseGeos.get(key);
   if (geo) return geo;
-  const n = prone.position.count, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
-  const P = prone.position, N = prone.normal;
+  const n = pose.position.count, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+  const P = pose.position, N = pose.normal;
   let minY = Infinity;
   for (let i = 0; i < n; i++) {
     const y = P.getY(i) * scale;
@@ -524,7 +526,7 @@ export function createBodies() {
       });
       if (live >= soft && oldest >= 0) bodies[oldest].out = FADE;
       if (bodies.length >= cap) drop(most >= 0 ? most : oldest);
-      const who = soldierOf(man), pool = poolFor(proneGeometry(who));
+      const who = soldierOf(man), pool = poolFor(fallenGeometry(who));
       const b = { age: 0, x, y, z, yaw: yaw ?? Math.random() * Math.PI * 2, pool, slot: pool.list.length };
       pool.list.push(b); bodies.push(b);
       place(pool, b, 0); pool.fade.array[b.slot] = 1; pool.mesh.count = pool.list.length; changed(pool);
