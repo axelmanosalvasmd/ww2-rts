@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Teammates now spawn on the same side of the map. Spawns are matched by walking distance over the terrain, so a river, cliff or sea between two spawns keeps them on different teams: on Pegasus Bridge, Ardennes, Seawall, Kasserine and Monte Cassino a 2v2 or 3v3 always splits one bank against the other. Before, spawns were dealt in map-file order with a random rotation, which could put teammates on opposite banks. Which side your team gets still changes each match, and a free-for-all spreads players evenly.
+
 - New **Formation** menu in the Orders panel: line, block, column and wedge (Shift+V cycles), Tighten and Spread (`[` and `]`) to re-form units where they stand, March together (the group moves at its slowest unit's pace) and Snap to trenches (infantry placed next to a trench step into it). Mortars, rockets and medics stand in the rear rank.
 - A wider right-drag now fits more units side by side, so a long drag gives fewer ranks. A double right-click turns the selection to face a spot without moving.
 - Control groups remember their formation: Ctrl+number saves it, recalling the group brings it back.

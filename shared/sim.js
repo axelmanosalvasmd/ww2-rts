@@ -388,14 +388,51 @@ export const spawnsFor = (map, mode) => map.spawns.map((s, i) => i).filter(i => 
 // team VP needed to win: scaled by average team size, so a 3v3 lasts about as long as a 1v1
 export const winVp = (teams) => CFG.vpToWin * teams.length / new Set(teams).size;
 
-// Spawns are listed in order around the map. Teammates get neighbouring spawns, and fewer players than
-// spawns spread out evenly (2 on a 6-spawn map sit opposite). shuffle rotates/mirrors it per match.
-export function spawnSlots(nSpawns, teams, shuffle = true) {
-  const order = teams.map((t, i) => i).sort((a, b) => teams[a] - teams[b]);
-  const rot = shuffle ? Math.floor(Math.random() * nSpawns) : 0, dir = shuffle && Math.random() < 0.5 ? -1 : 1;
-  const out = [];
-  order.forEach((slot, k) => { out[slot] = ((rot + dir * Math.round(k * nSpawns / teams.length)) % nSpawns + nSpawns) % nSpawns; });
-  return out;
+// Walking distance in cells between each pair of the given spawns: water, cliffs and houses are in the way and a ford
+// cell costs 6, so spawns on either side of a river are far apart even when they look close. Spawns with no way
+// between them (islands) count four times their straight distance.
+export function spawnDistances(map, idx) {
+  const { w, h, rows } = map, INF = 1e9;
+  return idx.map(i => {
+    const s = map.spawns[i], d = new Float64Array(w * h).fill(INF), buckets = [[s.y * w + s.x]];
+    d[s.y * w + s.x] = 0;
+    for (let c = 0; c < buckets.length; c++) for (const cell of buckets[c] ?? []) {
+      if (d[cell] !== c) continue;
+      const x = cell % w, y = (cell - x) / w;
+      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const f = TERRAIN[rows[ny][nx]] ?? 0, n = ny * w + nx, nd = c + (f & FORD ? 6 : 1);
+        if (!(f & MOVE) && nd < d[n]) { d[n] = nd; (buckets[nd] ??= []).push(n); }
+      }
+    }
+    return idx.map(j => { const t = map.spawns[j], v = d[t.y * w + t.x]; return v < INF ? v : 4 * Math.hypot(t.x - s.x, t.y - s.y); });
+  });
+}
+
+// Which spawn each player gets: the layout that keeps teammates closest together and enemies furthest apart, by
+// walking distance (dist[a][b], default: steps around a ring of nSpawns). Fewer players than spawns spread out (2 on a
+// 6-spawn map sit opposite). shuffle picks at random among layouts within 3% of the best, so sides change per match.
+// ponytail: tries every layout (at most 6P6 = 720, or 5^6 = 15625 when spawns are shared); prune if maps get more spawns.
+export function spawnSlots(nSpawns, teams, shuffle = true, dist = null) {
+  dist ??= Array.from({ length: nSpawns }, (_, a) => Array.from({ length: nSpawns }, (_, b) => Math.min(Math.abs(a - b), nSpawns - Math.abs(a - b))));
+  const n = teams.length, cur = [], used = new Array(nSpawns).fill(false), all = [];
+  (function place(p) {
+    if (p === n) {
+      let score = 0, near = Infinity; // near: the closest two enemies, the tie-break that spreads a free-for-all evenly
+      for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) {
+        const d = dist[cur[a]][cur[b]], same = teams[a] === teams[b];
+        score += same ? -d : d;
+        if (!same) near = Math.min(near, d);
+      }
+      all.push({ score, near, slots: [...cur] });
+      return;
+    }
+    // more players than spawns: spawns are shared (teammates first, since a shared spawn is no distance apart)
+    for (let s = 0; s < nSpawns; s++) if (!used[s] || n > nSpawns) { used[s] = true; cur[p] = s; place(p + 1); used[s] = false; }
+  })(0);
+  const best = Math.max(...all.map(o => o.score)), close = all.filter(o => o.score >= best - 0.03 * Math.abs(best) - 1e-9);
+  const nearest = Math.max(...close.map(o => o.near)), good = close.filter(o => o.near >= nearest * 0.97 - 1e-9);
+  return (shuffle ? good[Math.floor(Math.random() * good.length)] : good[0]).slots;
 }
 
 // teams[i] / factions[i] per player; default is free-for-all with factions cycling USA, Germany, USSR
@@ -415,7 +452,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
   }
-  const usable = spawnsFor(map, opts.mode), spawnIdx = spawnSlots(usable.length, teams, shuffle).map(k => usable[k]);
+  const usable = spawnsFor(map, opts.mode), spawnIdx = spawnSlots(usable.length, teams, shuffle, spawnDistances(map, usable)).map(k => usable[k]);
   // assault maps can reserve spawns for the defenders (a hilltop, a town); attackers get the rest
   if (assault && map.defend?.length) {
     const att = map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i));

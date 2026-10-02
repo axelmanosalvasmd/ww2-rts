@@ -843,10 +843,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 }
 {
   // spawn assignment: teammates neighbour, fewer players spread out
+  const ring = (a, b) => Math.min(Math.abs(a - b), 6 - Math.abs(a - b));
   assert.deepEqual(spawnSlots(6, [0, 1], false), [0, 3], '1v1 on a 6-spawn map sits opposite');
-  assert.deepEqual(spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [0, 3, 1, 4, 2, 5], '3v3 sides');
-  assert.deepEqual(spawnSlots(6, [0, 1, 2], false), [0, 2, 4], '3-way FFA spread');
+  const sides = spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [a0, a1, a2] = [sides[0], sides[2], sides[4]];
+  assert.ok(ring(a0, a1) + ring(a1, a2) + ring(a0, a2) === 4, '3v3: each team holds three neighbouring spawns');
+  const ffa = spawnSlots(6, [0, 1, 2], false);
+  assert.ok(ring(ffa[0], ffa[1]) === 2 && ring(ffa[1], ffa[2]) === 2, '3-way FFA spreads evenly');
   for (let i = 0; i < 20; i++) { const s = spawnSlots(6, [0, 0, 1, 1, 2, 2]); assert.equal(new Set(s).size, 6, 'no shared spawns'); }
+  // on a real map teammates share a river bank: Pegasus Bridge lists two spawns north of the river, then two south
+  const peg = JSON.parse(readFileSync('maps/pegasus-bridge.json', 'utf8'));
+  for (let i = 0; i < 20; i++) {
+    const g = createGame(peg, ['a', 'b', 'c', 'd'], true, [0, 1, 0, 1]), north = (p) => p.spawn.z < peg.h * CELL / 2;
+    assert.equal(north(g.players[0]), north(g.players[2]), '2v2: teammates spawn on the same side of the river');
+    assert.notEqual(north(g.players[0]), north(g.players[1]), '2v2: the other team spawns across it');
+  }
 }
 
 // Army size accepts only named settings and scales each supported mode without changing the balance values.
@@ -5337,8 +5347,9 @@ for (const lookupFinished of [false, true]) {
 
 // Classic keeps training separate from unit orders, and Engineers finish queued field and building work.
 {
-  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }, { x: 5, y: 70 }], points: [{ x: 40, y: 40 }] };
-  const classic = (teams = [0, 1]) => createGame(map, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 5, y: 70 }, { x: 70, y: 70 }], points: [{ x: 40, y: 40 }] };
+  // the 1v1 uses the first two spawns only, so player 0 holds the top-left corner and the enemy the bottom-left
+  const classic = (teams = [0, 1], m = teams.length > 2 ? map : { ...map, spawns: map.spawns.slice(0, 2) }) => createGame(m, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
   const g = classic(), p = g.players[0]; p.mp = 5000;
   const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer'), hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
   for (const u of [...g.units.values()]) if (!UNITS[u.type].structure && u !== eng) g.units.delete(u.id);

@@ -21,8 +21,12 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Each spawn is a visible HQ: tinted reinforce zone, a ring of real-size sandbags, a canvas wall tent with guy lines,
   crates and a field table, a guyed flagpole with the team flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
-- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawns are listed in order around the map; teammates
-  get neighbouring spawns and fewer players spread out (spawnSlots). The host sets teams, each player picks a faction.
+- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawn order in the map file does not matter: spawnSlots
+  tries every layout and keeps the one with teammates closest together and enemies furthest apart, measured as
+  walking distance over the terrain (spawnDistances: water, cliffs and houses block, a ford cell costs 6), so a team
+  shares a river bank. Fewer players spread out, and a free-for-all spreads evenly (closest enemies as far apart as
+  possible). Each match picks at random among layouts within 3% of the best, so which side a team gets changes.
+  The host sets teams, each player picks a faction.
   Teams share vision, can't target each other, hold each other's points, and win on combined VP; the goal scales
   with average team size (3v3 plays to 3600) so team games last about as long as a 1v1.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
