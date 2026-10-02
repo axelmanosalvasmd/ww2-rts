@@ -588,11 +588,14 @@ function makeUnit(id, type, owner) {
   return v;
 }
 
-// pooled and capped; the oldest fade out (client/unit-models.js)
+// pooled and capped; the oldest fade and sink (client/unit-models.js)
 const bodies = createBodies();
+const corpseAt = new THREE.Vector3(), corpseQ = new THREE.Quaternion(), corpseE = new THREE.Euler();
 function corpse(v, man) {
-  const p = man.getWorldPosition(new THREE.Vector3());
-  bodies.add(world, p.x, hAt(p.x, p.z) + 0.3, p.z);
+  const p = man.getWorldPosition(corpseAt);
+  man.getWorldQuaternion(corpseQ);
+  corpseE.setFromQuaternion(corpseQ, 'YXZ');
+  bodies.add(world, p.x, hAt(p.x, p.z), p.z, man, corpseE.y + (Math.random() - 0.5) * 0.4);
   man.visible = false;
 }
 
