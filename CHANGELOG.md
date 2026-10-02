@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed: long floating labels shrank their letters to fit a fixed plate, so the "Locked" tag over a linked point was
+  unreadable. A long label now gets a wider plate at the normal letter size, and the locked tag reads "Locked: take
+  the linked point first".
 - Medics matter now. They heal 2.5x faster (a man back every 4 s instead of every 10 s), keep healing at half rate
   while the squad is under fire (before they stopped for 5 s after every hit), and an idle medic walks on its own to
   the most hurt friendly squad within 30 m (below 90% strength, not retreating). The AI no longer pulls its medic
@@ -31,6 +34,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     and trenches take 1.5x damage.
   - **Bomber** (Airfield, 420 MP): B-25 / He 111 / Pe-2. Drops two sticks of four bombs a sortie.
   - The AI builds all four. Faction wins 32/37/32% over 60 AI matches.
+- **Shell area** (Shift+B, or the new order button): mortars, howitzers, rocket trucks, destroyers and bombers can
+  fire on any patch of ground, seen or not, not just at a unit or a building. Guns move into range and keep firing
+  until given another order. A bomber drops every stick it carries on the spot, then flies home. Shift+click queues it.
+- Map labels with long text widen their plate instead of squeezing the letters, and a locked point's tag is shorter
+  ("Locked: take the linked point first").
 - Left for later: the new units borrow models and icons (the tank destroyer looks like the medium tank, the
   howitzer like the AT gun, the flamer like an engineer), and the flame is drawn as a fat tracer. The bomber's stick
   lands where its target was when it dropped, so it misses moving units.

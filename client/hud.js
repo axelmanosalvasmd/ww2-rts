@@ -306,15 +306,16 @@ export function createHud(ctx) {
     const el = $('abil'), bld = sel.length > 0 && sel.every((v) => UNITS[v.type].building);
     // Fort buttons whenever a squad that can build them is selected, including Engineers.
     const types = ctx.PRIORITY.filter((t) => sel.some((v) => v.type === t)), dig = sel.some((v) => CFG.fortBuilders.includes(v.type));
-    const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries);
+    const inf = sel.some((v) => UNITS[v.type].infantry), carry = sel.some((v) => UNITS[v.type].carries), shell = sel.some((v) => UNITS[v.type].w?.salvo);
     if (menu && menu !== 'form' && !dig) menu = null;
-    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${menu}`;
+    const key = bld || !sel.length ? '' : `${types.join()}|${dig}|${inf}|${carry}|${shell}|${menu}`;
     if (key !== ordKey) {
       ordKey = key;
       el.innerHTML = !key ? '' : '<div class="hd">Orders</div><div class="grid">' +
         orderBtn('data-a="retreat"', 'retreat', label('retreat'), `Retreat (${label('retreat')}): run back to base, heal and reinforce there`) +
         orderBtn('data-a="amove"', 'amove', label('amove'), `Attack-move (${label('amove')}, or Ctrl+right-click): move and fight anything met on the way`) +
         orderBtn('data-a="stop"', 'stop', label('stop'), `Stop (${label('stop')}): halt where they are`) +
+        (shell ? orderBtn('data-a="area"', 'barrage', badge('area'), `Shell area (${label('area')}): click any ground, seen or not; mortars, howitzers, rocket trucks and ships move into range and keep firing on it until given another order, bombers drop every stick on it. Shift+click queues it`) : '') +
         Object.entries(STANCE).map(([k, [, nm, tip]]) => orderBtn(`data-a="st:${k}"`, k, badge(`stance:${k}`), `${nm} (${label(`stance:${k}`)}): ${tip}. Click to switch it on or off for the selection`)).join('') +
         (inf ? orderBtn('data-a="cover"', 'takecover', badge('cover'), `Take cover (${label('cover')}): infantry run to the nearest trench, wall or rubble within ${CFG.coverSeek} m. Shift+click queues it`) : '') +
         (carry ? orderBtn('data-a="unload"', 'unload', badge('unload'), `Unload (${label('unload')}): the squad inside gets out beside the halftrack. To board, right-click the halftrack with infantry selected`) : '') +
@@ -325,7 +326,7 @@ export function createHud(ctx) {
       el.querySelectorAll('button[data-a]').forEach((b) => {
         const a = b.dataset.a;
         b.onclick = (e) => {
-          if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop();
+          if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop(); else if (a === 'area') ctx.area();
           else if (a === 'unload') ctx.unload(); else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
           else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
         };

@@ -1943,6 +1943,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   command(hn, 0, { t: 'ability', ids: [hw2.id], x: 42, z: 10 });
   run(hn, 0.1);
   assert.ok(hn.salvos[0].spread < 3.2, 'and land tight close in');
+  // area fire: salvo weapons shell open ground (seen or not) and keep at it; direct-fire guns can't
+  const af = fresh(wide); af.players[0].mp = 5000;
+  const ah = put(af, 0, 'howitzer', 10, 10), at2 = put(af, 0, 'tank', 10, 20);
+  assert.equal(command(af, 0, { t: 'fireat', ids: [ah.id], x: 80, z: 80 }), undefined, 'a howitzer shells open ground');
+  assert.notEqual(command(af, 0, { t: 'fireat', ids: [at2.id], x: 80, z: 80 }), undefined, 'a tank only shells a structure');
+  let shells = 0;
+  for (let i = 0; i < 40 * 20; i++) { step(af); shells += af.shots.filter(s => s.k === 'salvo' && s.f === ah.id).length; af.shots = []; }
+  assert.ok(shells >= 2 && ah.fireAt >= 0, `the howitzer keeps shelling the spot (${shells} shells)`);
+  const ab = fresh(wide); ab.players[0].mp = 5000;
+  const bm = put(ab, 0, 'bomber', 10, 10);
+  assert.equal(command(ab, 0, { t: 'fireat', ids: [bm.id], x: 90, z: 90 }), undefined, 'a bomber takes an area order');
+  let sticks = 0;
+  for (let i = 0; i < 60 * 20 && sticks < 2; i++) { step(ab); sticks += ab.shots.filter(s => s.k === 'salvo' && s.f === bm.id && Math.hypot(s.x - 91, s.z - 91) < 3).length; ab.shots = []; }
+  assert.equal(sticks, 2, 'the bomber drops both sticks on the spot');
 }
 
 // Classic resources on every shipped map: each player gets an HQ and 2 MP nodes close to home, and Fuel nodes sit

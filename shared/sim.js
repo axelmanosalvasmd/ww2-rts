@@ -926,7 +926,7 @@ function stepPlane(g, u, dt) {
   if (a.state === 'station') a.fuel -= dt;
   if (a.state !== 'home' && (a.fuel <= 0 || a.ammo <= 0 || u.hp < def.hpPer * A.bail || !m)) a.state = 'home';
   // fly: out to the mission, circle it (tighter on an attack run), home to rearm
-  const R = m?.kind === 'attack' && def.role === 'attack' ? 10 : A.orbit;
+  const R = (m?.kind === 'attack' || m?.kind === 'area') && def.role === 'attack' ? 10 : A.orbit;
   let goal = base;
   if (a.state === 'out') { goal = center; if (dist(u, center) < R + 6) a.state = 'station'; }
   if (a.state === 'station') { a.ang += def.speed / R * dt; goal = { x: center.x + Math.cos(a.ang) * R, z: center.z + Math.sin(a.ang) * R }; }
@@ -934,6 +934,8 @@ function stepPlane(g, u, dt) {
   if (d > 0.01) { u.rot = Math.atan2(goal.z - u.z, goal.x - u.x); u.x += (goal.x - u.x) / d * step; u.z += (goal.z - u.z) / d * step; }
   updateGrid(g, u);
   if (a.state === 'home') { if (dist(u, base) < 6) Object.assign(a, { state: 'rearm', timer: A.rearm, mission: null }); return; }
+  // area bombing: every stick on the ordered spot while on station, until the bombs run out and it flies home
+  if (m?.kind === 'area' && def.w?.salvo) { if (a.state === 'station' && u.cooldown <= 0) { launchSalvo(g, u, m); u.cooldown = def.w.interval; a.ammo--; } return; }
   // guns, rockets and bombs on ground targets (the attack target first)
   const tgt = m?.kind === 'attack' && t && !allied(g, t.owner, u.owner) && canShoot(g, u, t) ? t : null;
   if (u.holdFire && !tgt) return;
@@ -1507,7 +1509,7 @@ function currentPathGoal(g, u, kind) {
   if (kind === 'board') { const c = g.units.get(u.board); return c && c.hp > 0 && !u.path.length && dist(u, c) > CFG.aid.board ? c : null; }
   if (kind === 'amove') return u.amove && !u.path.length && dist(u, u.amove) >= 2.5 && !canShoot(g, u, g.units.get(u.targetId)) ? u.amove : null;
   if (kind === 'fireAt') {
-    const at = u.fireAt >= 0 && g.cellHp[u.fireAt] > 0 ? cellCenter(g, u.fireAt) : null;
+    const at = u.fireAt >= 0 && (def.w.salvo || g.cellHp[u.fireAt] > 0) ? cellCenter(g, u.fireAt) : null;
     return at && !u.path.length && !(dist(u, at) <= def.w.range && (def.w.salvo || los(g, u, at))) ? at : null;
   }
   const target = g.units.get(u.attackId);
@@ -1736,13 +1738,17 @@ export function command(g, slot, cmd, auto = false) {
     }
     if (!moved) return full ? 'queueFull' : 'blocked';
   } else if (cmd.t === 'fireat') {
-    const c = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1);
-    if (c < 0 || !(g.cellHp[c] > 0)) return c < 0 || teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'blocked' : 'notVisible';
-    if (!ids.some(id => { const u = mine(id); return u && (UNITS[u.type].w.shellTerrain || UNITS[u.type].w.salvo); })) return teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'needs' : 'notVisible';
+    // Salvo weapons (mortar, howitzer, rocket truck, destroyer, bomber) shell any ground, seen or not, until told
+    // otherwise; direct-fire guns only shell a structure.
+    const c = cellOf(g, num(cmd.x, g.w * CELL) ?? -1, num(cmd.z, g.h * CELL) ?? -1), solid = c >= 0 && g.cellHp[c] > 0;
+    const can = (u) => u && (UNITS[u.type].w?.salvo || (solid && UNITS[u.type].w?.shellTerrain));
+    if (c < 0 || (!solid && !ids.some(id => can(mine(id))))) return c < 0 || teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'blocked' : 'notVisible';
+    if (!ids.some(id => can(mine(id)))) return teamSees(g, g.players[slot].team, cellCenter(g, c)) ? 'needs' : 'notVisible';
     let ordered = false;
     for (const id of ids) {
       const u = mine(id);
-      if (!u || !(UNITS[u.type].w.shellTerrain || UNITS[u.type].w.salvo)) continue;
+      if (!can(u)) continue;
+      if (u.air) { u.orders = []; sendPlane(u, { kind: 'area', ...cellCenter(g, c) }); ordered = true; continue; }
       if (cmd.queue === true) { if (enqueueOrder(u, { t: 'fireat', ids: [u.id], ...cellCenter(g, c) })) ordered = true; }
       else { Object.assign(u, { orders: [], entrench: null, face: null, fireAt: c, attackId: 0, amove: null, retreating: false, repath: 0, path: [] }); ordered = true; }
     }
@@ -3029,7 +3035,7 @@ export function step(g) {
     // shelling a structure: close to range with a clear line, then fire at it
     if (u.fireAt >= 0) {
       const at = cellCenter(g, u.fireAt);
-      if (!(g.cellHp[u.fireAt] > 0)) u.fireAt = -1;
+      if (!w.salvo && !(g.cellHp[u.fireAt] > 0)) u.fireAt = -1; // a salvo keeps shelling open ground until told otherwise
       else if (dist(u, at) <= w.range && (w.salvo || los(g, u, at))) u.path = [];
       else if (!u.path.length && u.repath <= 0) requestStepPath(g, u, at, 'fireAt');
     }
@@ -3404,7 +3410,7 @@ export function finish(g, winner, reason, at) {
 // what a unit is set on, as [kind, x, z]. kind: 0 none, 1 move, 2 attack-move, 3 retreat, 4 attack a unit,
 // 5 fire at a structure, 6 throw / plant at a spot, 7 dig, 8 build, 9 go into a house
 function planOf(g, u) {
-  if (u.air) { const m = u.air.mission; return airborne(u) && m ? [m.kind === 'attack' ? 4 : 1, m.x, m.z] : [0, 0, 0]; }
+  if (u.air) { const m = u.air.mission; return airborne(u) && m ? [m.kind === 'attack' ? 4 : m.kind === 'area' ? 5 : 1, m.x, m.z] : [0, 0, 0]; }
   const t = u.attackId && g.units.get(u.attackId), site = u.build && g.units.get(u.build), ride = u.board && g.units.get(u.board);
   if (ride) return [9, ride.x, ride.z];
   if (u.retreating) return [3, g.players[u.owner].spawn.x, g.players[u.owner].spawn.z];

@@ -7,6 +7,7 @@ export const bindings = [
   binding('retreat', 'KeyR', 'R', 'Retreat selected units'),
   binding('ability', 'KeyF', 'F', 'Use the first ready selected ability'),
   binding('amove', 'KeyG', 'G', 'Aim an attack-move order'),
+  binding('area', 'KeyB', 'Shift+B', 'Shell an area: mortars, howitzers, rocket trucks, ships and bombers keep firing on a spot', 'global', { shift: true }),
   binding('cover', 'KeyC', 'Shift+C', 'Selected infantry take cover', 'global', { shift: true }),
   binding('stance:holdFire', 'KeyF', 'Shift+F', 'Toggle hold fire', 'global', { shift: true }),
   binding('stance:holdPos', 'KeyG', 'Shift+G', 'Toggle hold position', 'global', { shift: true }),

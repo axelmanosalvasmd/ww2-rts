@@ -220,7 +220,7 @@ const labels = new Map();
 export function fadeLabels(k) { for (const e of labels.values()) e.mat.opacity = k; }
 function paintLabel(e) {
   // the sprite shows the canvas at about a third of its size, so 3 canvas px of edge reads as a 1 px hairline
-  const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, bh = H - 12, y0 = 6, pad = 16;
+  const st = LABEL[e.style], c = e.cv.getContext('2d'), W = e.cv.width, H = st.h, bh = H - 12, y0 = 6, pad = 16;
   const sw = e.color != null ? bh - 22 : 0, lead = sw ? sw + 14 : 0;
   c.clearRect(0, 0, W, H);
   if ('letterSpacing' in c) c.letterSpacing = st.spacing + 'px';
@@ -251,7 +251,10 @@ export function label(text, { style = 'tag', color = null } = {}) {
   const st = LABEL[style], shown = st.upper ? String(text).toUpperCase() : String(text), key = `${style}|${color}|${shown}`;
   let e = labels.get(key);
   if (!e) {
-    const cv = document.createElement('canvas'); cv.width = st.w; cv.height = st.h;
+    // a long text widens its plate instead of shrinking its letters (the 10% covers the webfont arriving wider)
+    const cv = document.createElement('canvas'), m = cv.getContext('2d'), lead = color != null ? st.h - 20 : 0;
+    m.font = st.font(st.px); if ('letterSpacing' in m) m.letterSpacing = st.spacing + 'px';
+    cv.width = Math.max(st.w, Math.ceil((m.measureText(shown).width * 1.1 + 40 + lead) / 32) * 32); cv.height = st.h;
     e = { cv, style, color, text: shown };
     paintLabel(e);
     e.tex = new THREE.CanvasTexture(cv); e.tex.colorSpace = THREE.SRGBColorSpace;
@@ -261,7 +264,7 @@ export function label(text, { style = 'tag', color = null } = {}) {
     labels.set(key, e);
   }
   const sp = new THREE.Sprite(e.mat);
-  sp.scale.set(st.sx, (st.sx * st.h) / st.w, 1); sp.position.y = 10; sp.renderOrder = 5;
+  sp.scale.set(st.sx * e.cv.width / st.w, (st.sx * st.h) / st.w, 1); sp.position.y = 10; sp.renderOrder = 5;
   return sp;
 }
 

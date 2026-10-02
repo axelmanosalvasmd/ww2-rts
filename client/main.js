@@ -446,7 +446,7 @@ function startGame(m, restored = null) {
     // shown while the point is cut off from its owner's HQ and pays nothing (supply lines)
     const cutTag = label('Cut off: no supply', { color: 0xb8322a }); cutTag.position.y = 13; cutTag.visible = false; g.add(cutTag);
     // shown while your side can't take it: it needs another point held first (map.points[i].needs)
-    const lockTag = label('Locked: take the linked point first (dashed on the minimap)', { color: 0xb8a04a }); lockTag.position.y = 15; lockTag.visible = false; g.add(lockTag);
+    const lockTag = label('Locked: take the linked point first', { color: 0xb8a04a }); lockTag.position.y = 15; lockTag.visible = false; g.add(lockTag);
     world.add(g);
     const n = map.points[p.needs], link = n && { x: (n.x + 0.5) * CELL, z: (n.y + 0.5) * CELL };
     return { g, link, set: cp.set, frame: cp.frame, cut: (on) => { cutTag.visible = !!on; }, lock: (on) => { lockTag.visible = !!on; } };
@@ -839,8 +839,8 @@ function aimShape(kind, color) {
   }
   if (UNITS[kind]?.building) return aimMarker({ len: UNITS[kind].size * CELL, width: UNITS[kind].size * CELL, arrow: false }, color);
   if (SUPPORT[kind]?.point) return aimMarker({ r: SUPPORT[kind].radius ?? SUPPORT[kind].blast ?? 4 }, color);
-  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally')
-    return aimMarker({ r: kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2 }, color);
+  if (kind === 'grenade' || kind === 'barrage' || kind === 'satchel' || kind === 'amove' || kind === 'rally' || kind === 'area')
+    return aimMarker({ r: kind === 'grenade' ? UNITS.rifle.ab.radius : kind === 'barrage' || kind === 'area' ? UNITS.rocket.w.spread : kind === 'satchel' ? UNITS.ranger.ab.radius : 2 }, color);
   const [len, width] = kind === 'dig' ? (FORTS[fortKind].nest ? [3 * CELL, 2 * CELL] : [FORTS[fortKind].n * CELL, CELL]) : [SUPPORT[kind].len, SUPPORT[kind].width];
   return aimMarker({ len, width }, color); // an arrow past the far end shows which way it runs
 }
@@ -869,7 +869,7 @@ function placementView() {
 const hud = createHud({
   get me() { return me; }, get teams() { return teams; }, get names() { return names; }, get PRIORITY() { return PRIORITY; }, get host() { return !!lobbyState?.amHost; }, get watching() { return watching; },
   units, selected, look, facOf, color: (slot) => css(look(slot).color), classic: () => classicMode(), naval: () => lastStart?.map?.naval === true, send: sendCmd, blip,
-  retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), rally: () => startRally(),
+  retreat: () => retreat(), takeCover: (q) => takeCover(q), stance: (k) => toggleStance(k), entrench: (k) => startEntrench(k), stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); }, amove: () => selected.size && setAim('amove'), area: () => startArea(), rally: () => startRally(),
   dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
@@ -1033,12 +1033,15 @@ function takeCover(queue = false) { if (!selected.size || explainUnavailable(ava
 // F: instant abilities fire now; grenades arm a targeting click
 // targeting: null | 'grenade' | 'dig' | support kind. Directional ones take two clicks: center, then direction.
 let targeting = null, aimCenter = null, aimMesh = null, home = null, aimedUnit = null;
+// the selected units that can shell open ground: every salvo weapon (mortar, howitzer, rocket truck, destroyer, bomber)
+const shellers = () => [...selected].map(id => units.get(id)).filter(v => v?.owner === me && UNITS[v.type].w?.salvo);
+const startArea = () => { if (shellers().length) { setAim('area'); blip(560); } else $('hint').textContent = 'Select a mortar, howitzer, rocket truck, destroyer or bomber to shell an area'; };
 function cancelAim() { clearFacing(); feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind, unit = null) {
   clearFacing();
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
-  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
+  $('hint').textContent = { depot: 'Click a resource node', barracks: 'Click where to build', motorpool: 'Click where to build', grenade: 'Click where to throw', barrage: 'Click where to fire the salvo', satchel: 'Click where to plant the charge', amove: 'Click where to attack-move', area: 'Click the ground to shell (they keep firing until given another order)', rally: 'Click where recruits should gather' }[kind] ?? 'Click to set the center';
   $('hint').textContent += '. Right-click cancels';
 }
 function startRally() {
@@ -1208,7 +1211,7 @@ const selection = createSelection({ units, selected, groups, owner: () => (watch
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
-  retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'),
+  retreat, unload, cover: () => takeCover(), ability: () => useAbility(fKeyType()), amove: () => selected.size && setAim('amove'), area: startArea,
   mute: toggleMute,
   alert: () => { rig.cancelFollow(); const al = alerts.newest(); if (al) { cam.x = al.x; cam.z = al.z; } else centerSelection([...selected].map(id => units.get(id)).filter(Boolean)); },
   follow: followSelected, rally: startRally,
@@ -1330,6 +1333,12 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (SUPPORT[kind]?.point) { if (explainUnavailable(available({ t: 'support', kind }))) return; cancelAim(); sendCmd({ t: 'support', kind, x: g.x, z: g.z }); marker(g.x, g.z, 0xffa030); blip(520); return; }
     if (AIMED[kind]) { const type = aimedUnit; if (explainUnavailable(available({ t: 'ability', unit: type, queue: e.shiftKey }))) return; cancelAim(); throwAt(g, kind, type, e.shiftKey); return; }
     if (kind === 'amove') { beginFacing({ ground: g }, e, true); return; }
+    if (kind === 'area') {
+      const ids = shellers().map(v => v.id);
+      if (!e.shiftKey) cancelAim();
+      if (ids.length) { sendCmd({ t: 'fireat', ids, x: g.x, z: g.z, queue: e.shiftKey }); marker(g.x, g.z, 0xff4030); blip(440); bark('attack'); }
+      return;
+    }
     // first click: pin the center, then the mouse rotates it
     if (!aimCenter) { aimCenter = g; if (kind !== 'entrench') $('hint').textContent = `Move the mouse to rotate, then click to ${kind === 'dig' ? 'place' : 'launch'}`; blip(560); return; }
     if (kind === 'entrench') {

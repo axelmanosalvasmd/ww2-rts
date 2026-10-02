@@ -465,6 +465,12 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   8 m at 95 m, as real howitzers were not that accurate. Against a squad standing in the open, a shell does about
   27 on average close in, 16 at 62 m and 7 at 95 m (it lands within blast reach 100% / 67% / 32% of the time). This
   keeps massed howitzers at long range from deleting whatever their spotters see; to hit hard they must come closer.
+- Area fire (decided 2026-10-02): the `fireat` order takes any ground cell for salvo weapons (mortar, howitzer,
+  rocket truck, destroyer, bomber), seen or not; direct-fire guns still need a structure. A gun walks into range and
+  keeps shelling until another order (`fireAt` never clears on open ground, so a Shift-queued order behind it waits
+  forever: give a new order instead). A bomber gets an `area` mission: it circles the spot at 10 m and drops each
+  stick there, then flies home when out of bombs. Client: Shift+B or the Shell area button, shown when a salvo unit
+  is selected. Blind fire is allowed on purpose: shelling a suspected position is what artillery does.
 - Flamethrower squad (180 MP, Barracks): three men, 14 m, 9 damage a shot to infantry. `w.flame`: cover, walls,
   trenches and houses give no protection from it, and a garrison or a trench takes x1.5. Pins hard (30 a shot).
 - Bomber (420 MP, Airfield; Classic 300 MP + 100 Fuel): B-25 / He 111 / Pe-2. 420 hp, speed 12, two sticks a sortie,
