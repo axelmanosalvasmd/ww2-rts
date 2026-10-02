@@ -5617,7 +5617,7 @@ for (const lookupFinished of [false, true]) {
     for (let i = 0; i < 60; i++) animate(march, 1 / 60, eye);
     assert.equal(leader.hi[0].morphTargetInfluences[posture - 1], 1, 'idle low figures return to their planted suppression pose');
   }
-  const { rigOf, AIM_SHIFT } = await import('./client/models/infantry.js');
+  const { rigOf, soldierKit, AIM_SHIFT } = await import('./client/models/infantry.js');
   march.cover = 2; march.supp = 100; march.trench = march.models.map(() => [0, 0]);
   animate(march, POSTURE.blend + 0.01, eye);
   assert.equal(march.squad.w[1], 1, 'trench keeps the crouching posture');
@@ -5645,14 +5645,128 @@ for (const lookupFinished of [false, true]) {
 
   const bodies = createBodies(), scene = new THREE.Scene(), world = new THREE.Group();
   scene.add(world);
+  const deadRoot = new THREE.Group(), dead = { type: 'rifle', root: deadRoot, models: [], turret: null };
+  buildModel(dead, deadRoot, look, 0, UNITS.rifle);
+  bodies.add(world, 3, 0.2, 4, dead.models[0], 1.2);
+  const fallen = world.children.find((o) => o.isInstancedMesh);
+  fallen.geometry.computeBoundingBox();
+  const bb = fallen.geometry.boundingBox, span = (a) => bb.max[a] - bb.min[a];
+  assert.ok(fallen.geometry.attributes.color && fallen.geometry.attributes.matId, 'a corpse keeps the soldier colors and materials');
+  assert.ok(fallen.geometry.attributes.position.count > 500 && fallen.geometry.type !== 'CapsuleGeometry', 'a corpse is the soldier mesh, not a capsule');
+  assert.ok(Math.max(span('x'), span('z')) > span('y') * 2 && span('y') < 0.85, `a corpse lies down (${span('x').toFixed(2)} x ${span('y').toFixed(2)} x ${span('z').toFixed(2)})`);
+  assert.ok(bb.min.y > -0.001 && bb.min.y < 0.02, 'the body rests on the ground');
+  const placed = new THREE.Matrix4();
+  fallen.getMatrixAt(0, placed);
+  const at = new THREE.Vector3().setFromMatrixPosition(placed), facing = new THREE.Euler().setFromRotationMatrix(placed, 'YXZ');
+  assert.ok(Math.abs(at.x - 3) < 1e-4 && Math.abs(at.y - 0.2) < 1e-4 && Math.abs(at.z - 4) < 1e-4, 'the corpse is placed where the man fell');
+  assert.ok(Math.abs(facing.y - 1.2) < 1e-3, 'it keeps the facing it was given');
+  const mgRoot = new THREE.Group(), mg = { type: 'mg', root: mgRoot, models: [], turret: null };
+  buildModel(mg, mgRoot, { ...look, color: 0xc43a31 }, 1, UNITS.mg);
+  bodies.add(world, 1, 0, 1, mg.models[0], 0);
+  const pools = world.children.filter((o) => o.isInstancedMesh);
+  assert.equal(pools.length, 2, 'a different uniform gets its own pooled mesh');
+  assert.ok(pools[0].geometry !== pools[1].geometry, 'the two pools do not share one body');
+  assert.equal(bodies.count, 2, 'both men are on the field');
   let most = 0;
   for (let i = 0; i < 600; i++) { bodies.add(world, i % 50, 0.3, i / 50); bodies.update(0.02); most = Math.max(most, bodies.count); }
   assert.ok(most <= CORPSES.cap && most > CORPSES.cap - 20, `corpses stay at or under the cap (${most})`);
-  assert.equal(world.children.find((o) => o.isInstancedMesh).count, bodies.count, 'one instanced mesh draws them all');
+  const drawn = world.children.filter((o) => o.isInstancedMesh).reduce((n, o) => n + o.count, 0);
+  assert.equal(drawn, bodies.count, 'the pooled meshes draw every corpse');
   for (let s = 0; s < CORPSES.life + CORPSES.fade + 1; s += 0.5) bodies.update(0.5);
   assert.equal(bodies.count, 0, 'old bodies fade out and leave');
   bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
   assert.equal(bodies.count, 0, 'a finished match empties the pool');
+
+  // The mesh the pool instances is the slack fallen build. These squads use their own pools so the two-uniform
+  // check above stays a leader and one gunner. Landmarks come from the living aiming prone; the measured mesh is
+  // the one createBodies placed.
+  const segDist = (p, a, b) => {
+    const ab = b.clone().sub(a), t = Math.min(1, Math.max(0, p.clone().sub(a).dot(ab) / (ab.lengthSq() || 1)));
+    return p.distanceTo(a.clone().addScaledVector(ab, t));
+  };
+  const placeCorpse = (type, index, fac, color) => {
+    const root = new THREE.Group(), squad = { type, root, models: [], turret: null };
+    buildModel(squad, root, { ...look, color }, fac, UNITS[type]);
+    const man = squad.models[index], src = man.userData.hi[0].geometry, aim = src.userData.prone;
+    assert.ok(aim && src.userData.fallen, `${type} ${index}: the aiming prone stays on the man, and the fallen build is separate`);
+    assert.equal(man.userData.hi[0].morphTargetInfluences.length, 23, `${type} ${index}: the fallen pose is not another morph`);
+    const pool = createBodies(), field = new THREE.Group();
+    pool.add(field, 2, 0.2, 3, man, 0.4);
+    const mesh = field.children.find((o) => o.isInstancedMesh);
+    assert.ok(mesh && mesh.count === 1, `${type} ${index}: the corpse is instanced`);
+    assert.ok(mesh.geometry.attributes.color && mesh.geometry.attributes.matId, `${type} ${index}: corpse keeps colors and materials`);
+    assert.ok(mesh.geometry.attributes.position.count > 500 && mesh.geometry.type !== 'CapsuleGeometry', `${type} ${index}: corpse is the soldier mesh, not a capsule`);
+    mesh.geometry.computeBoundingBox();
+    const box = mesh.geometry.boundingBox, wide = (axis) => box.max[axis] - box.min[axis];
+    assert.ok(Math.max(wide('x'), wide('z')) > wide('y') * 2 && wide('y') < 0.85, `${type} ${index}: corpse lies down`);
+    assert.ok(box.min.y > -0.001 && box.min.y < 0.02, `${type} ${index}: corpse rests on the ground`);
+    const placed = new THREE.Matrix4();
+    mesh.getMatrixAt(0, placed);
+    const at = new THREE.Vector3().setFromMatrixPosition(placed), facing = new THREE.Euler().setFromRotationMatrix(placed, 'YXZ');
+    assert.ok(Math.abs(at.x - 2) < 1e-4 && Math.abs(at.y - 0.2) < 1e-4 && Math.abs(at.z - 3) < 1e-4, `${type} ${index}: corpse is placed where he fell`);
+    assert.ok(Math.abs(facing.y - 0.4) < 1e-3, `${type} ${index}: corpse keeps the facing it was given`);
+    const scale = man.scale.x, P = aim.position, C = mesh.geometry.attributes.position;
+    assert.equal(C.count, P.count, `${type} ${index}: corpse vertices match the living man`);
+    let minY = Infinity;
+    for (let i = 0; i < P.count; i++) minY = Math.min(minY, P.getY(i) * scale);
+    const aimAt = (i) => new THREE.Vector3(P.getX(i) * scale, P.getY(i) * scale - minY, P.getZ(i) * scale);
+    const corAt = (i) => new THREE.Vector3().fromBufferAttribute(C, i);
+    const prone = rigOf(type, fac, index, 2);
+    const near = (point, radius) => {
+      const idx = [];
+      for (let i = 0; i < P.count; i++) if (new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(point) < radius) idx.push(i);
+      return idx;
+    };
+    const chestIdx = near(prone.body.at(new THREE.Vector3(0, 1.02, 0)), 0.12);
+    assert.ok(chestIdx.length >= 8, `${type} ${index}: the aiming prone has a chest to measure`);
+    const meanY = (idx, pos) => idx.reduce((sum, i) => sum + pos(i).y, 0) / idx.length;
+    const chestDrop = meanY(chestIdx, aimAt) - meanY(chestIdx, corAt);
+    let elbowMove = 0;
+    for (const arm of prone.arms) {
+      const idx = near(arm.elbow, 0.07);
+      assert.ok(idx.length > 0, `${type} ${index}: the aiming prone has an elbow to measure`);
+      let moved = 0;
+      for (const i of idx) moved += aimAt(i).distanceTo(corAt(i));
+      elbowMove = Math.max(elbowMove, moved / idx.length);
+    }
+    let handMove = 0;
+    for (const arm of prone.arms) {
+      const idx = near(arm.hand, 0.06);
+      if (!idx.length) continue;
+      let moved = 0;
+      for (const i of idx) moved += aimAt(i).distanceTo(corAt(i));
+      handMove = Math.max(handMove, moved / idx.length);
+    }
+    let barrel = null;
+    if (prone.W) {
+      const a = new THREE.Vector3().applyMatrix4(prone.W), b = new THREE.Vector3(prone.info.L, 0, 0).applyMatrix4(prone.W);
+      const idx = [];
+      for (let i = 0; i < P.count; i++) if (segDist(new THREE.Vector3().fromBufferAttribute(P, i), a, b) < 0.04) idx.push(i);
+      assert.ok(idx.length > 4, `${type} ${index}: the aiming prone has a barrel to measure`);
+      const aimC = new THREE.Vector3(), corC = new THREE.Vector3();
+      for (const i of idx) { aimC.add(aimAt(i)); corC.add(corAt(i)); }
+      aimC.multiplyScalar(1 / idx.length); corC.multiplyScalar(1 / idx.length);
+      let far = new THREE.Vector3(), best = 0;
+      for (const i of idx) {
+        const p = corAt(i), dd = p.distanceTo(corC);
+        if (dd > best) { best = dd; far = p; }
+      }
+      barrel = { shift: corC.distanceTo(aimC), dot: Math.abs(far.clone().sub(corC).normalize().dot(b.clone().sub(a).normalize())) };
+    }
+    return { chestDrop, elbowMove, handMove, barrel, kit: soldierKit(type, index) };
+  };
+  const rifleman = placeCorpse('rifle', 1, 0, look.color);
+  assert.equal(rifleman.kit, 'rifle', 'the checked rifleman is not the squad leader');
+  assert.ok(rifleman.chestDrop > 0.08, `a dead rifleman rests his chest lower than the sighting lean (${rifleman.chestDrop.toFixed(3)})`);
+  assert.ok(rifleman.elbowMove > 0.2, `a dead rifleman's elbows leave the prone support (${rifleman.elbowMove.toFixed(3)})`);
+  assert.ok(rifleman.barrel && rifleman.barrel.shift > 0.3 && rifleman.barrel.dot < 0.45, `a dead rifleman's weapon leaves the aim line (shift ${rifleman.barrel?.shift.toFixed(3)}, dot ${rifleman.barrel?.dot.toFixed(3)})`);
+  const ranger = placeCorpse('ranger', 0, 0, look.color);
+  assert.ok(ranger.chestDrop > 0.08 && ranger.elbowMove > 0.2, `a dead ranger lies slack, not sighting (chest ${ranger.chestDrop.toFixed(3)}, elbows ${ranger.elbowMove.toFixed(3)})`);
+  assert.ok(ranger.barrel && ranger.barrel.shift > 0.3 && ranger.barrel.dot < 0.45, `a dead ranger's weapon leaves the aim line (shift ${ranger.barrel?.shift.toFixed(3)}, dot ${ranger.barrel?.dot.toFixed(3)})`);
+  const gunner = placeCorpse('mg', 0, 1, 0xc43a31);
+  assert.equal(gunner.kit, 'gunner', 'the crew check is the man who was on the gun');
+  assert.ok(gunner.chestDrop > 0.08 && gunner.handMove > 0.25, `a dead gunner is not frozen on an empty grip (chest ${gunner.chestDrop.toFixed(3)}, hands ${gunner.handMove.toFixed(3)})`);
+  console.log(`fallen versus aim passed: rifle chest ${rifleman.chestDrop.toFixed(3)} elbows ${rifleman.elbowMove.toFixed(3)} barrel shift ${rifleman.barrel.shift.toFixed(3)} dot ${rifleman.barrel.dot.toFixed(3)}; ranger chest ${ranger.chestDrop.toFixed(3)} elbows ${ranger.elbowMove.toFixed(3)} barrel shift ${ranger.barrel.shift.toFixed(3)} dot ${ranger.barrel.dot.toFixed(3)}; mg chest ${gunner.chestDrop.toFixed(3)} hands ${gunner.handMove.toFixed(3)}`);
 }
 // Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
 {
