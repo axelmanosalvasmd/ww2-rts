@@ -291,4 +291,4 @@ function corners(terrain) {
 }
 
 export const rig = { init, update, pose, wheel, frame, follow, cancelFollow, startIntro, skipIntro, introPress, beginMiddle, moveMiddle, stopDrag, corners,
-  get following() { return followed; }, get intro() { return !!intro; } };
+  get following() { return followed; }, get intro() { return !!intro; }, get wide() { return wide().dist; } };

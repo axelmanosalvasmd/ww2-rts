@@ -85,6 +85,9 @@ const FX = {
   wood: pre({ lit: 1, c0: lin(0x8a6a4a), cell: AT.wood, rv: 9, grav: 22, floor: 1, k: 8, fin: 0 }),
   metal: pre({ lit: 1, c0: lin(0x34302c), cell: AT.metal, rv: 11, grav: 22, floor: 1, k: 8, fin: 0 }),
   nade: pre({ lit: 1, c0: lin(0x34342a), cell: AT.metal, rv: 10, k: 20, fin: 0 }),
+  // gore (only with gfx.gore): bloody scraps that bounce like clods, and a red mist that falls out of the air
+  gib: pre({ lit: 1, c0: lin(0x4a1410), cell: AT.soil, cells: 2, rv: 10, grav: 22, floor: 1, k: 8, fin: 0 }),
+  mist: pre({ lit: 1, c0: lin(0x7a1a14), c1: lin(0x4a1c18), a: 0.7, cell: AT.smoke, cells: 4, grow: 2.2, curve: 1, rv: 0.3, drag: 2, wind: 0.5, grav: 1.5, pull: 0.3, fin: 0.02, k: 1.5 }),
 };
 
 // direct-fire weapons by shooter type: sound, tracers per shot (tr null = no tracer), burst, speed, width, flash
@@ -101,6 +104,9 @@ const GUNS = {
   tank: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.16, tr: FX.tracerHot, trOdds: 1, flash: 1.4, heavy: 2.6, smoke: 1, blast: 1 },
   medium: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.18, tr: FX.tracerHot, trOdds: 1, flash: 1.7, heavy: 3, smoke: 1, blast: 1.2 },
   tiger: { ...SMALL, snd: 'tankgun', n: 1, spd: 160, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 2.1, heavy: 3.4, smoke: 1, blast: 1.4 },
+  tankdestroyer: { ...SMALL, snd: 'tankgun', n: 1, spd: 165, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 1.9, heavy: 3, smoke: 1, blast: 1.2 },
+  // ponytail: the flame is drawn as a slow, fat, hot tracer with a big flash until it gets its own stream effect
+  flamer: { ...SMALL, snd: 'flak', n: 1, burst: 3, gap: 0.06, spd: 40, w: 0.5, tr: FX.tracerHot, trOdds: 1, flash: 1.2 },
   halftrack: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   gunboat: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.12, tr: FX.tracerHot, trOdds: 1, flash: 0.8, heavy: 1.5, smoke: 0.5 },
   lcvp: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
@@ -380,7 +386,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       #include <fog_pars_fragment>
       void main() {
         vec4 t = texture2D(map, vUv);
-        vec3 m = vKind > 0.5 ? vec3(0.36, 0.33, 0.3) : clamp(pow(t.rgb / ref, vec3(0.85)), 0.0, 2.0);
+        vec3 m = vKind > 1.5 ? vec3(0.5, 0.16, 0.13) : vKind > 0.5 ? vec3(0.36, 0.33, 0.3) : clamp(pow(t.rgb / ref, vec3(0.85)), 0.0, 2.0);
         vec3 c = mix(vec3(1.0), m, t.a * vFade);
         #ifdef USE_FOG
           #ifndef FOG_EXP2
@@ -532,6 +538,26 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     if (!lo) for (let i = 0, nk = Math.round(1 + s * 0.6); i < nk; i++) { const a = rand() * TAU, h = rr(4, 9); emit(FX.spark, x, gy + 0.4 * s, z, Math.cos(a) * h, rr(5, 12), Math.sin(a) * h, 0.05, rr(0.3, 0.6)); }
     if (decal) scorch(x, z, Math.min(6.5, 0.7 * s + 0.4));
     kick(x, z, s);
+    Object.assign(blasts[blastI++ % blasts.length], { x, z, s, t: clock });
+  }
+
+  // Blasts of the last moment, so a man who dies next to one is thrown (client/unit-models.js createBodies). The
+  // death and the blast arrive in either order (a tank shell lands after its tracer flies), hence the time window.
+  const blasts = Array.from({ length: 16 }, () => ({ x: 0, z: 0, s: 0, t: -1e9 })); let blastI = 0;
+  function blastNear(x, z) {
+    for (const b of blasts) if (clock - b.t < 0.6 && Math.hypot(x - b.x, z - b.z) < b.s + 0.5) return b;
+    return null;
+  }
+  // a man torn by a blast: scraps, a red mist and a stain on the ground. k (0 to 1) is how close he was.
+  function gore(x, z, k = 1) {
+    if (!gfx.gore) return;
+    const gy = hAt(x, z) + 0.6, n = Math.round((low() ? 3 : 7) * k + 1);
+    for (let i = 0; i < n; i++) {
+      const a = rand() * TAU, h = rr(1, 4);
+      emit(FX.gib, x, gy, z, Math.cos(a) * h, rr(3, 7), Math.sin(a) * h, rr(0.06, 0.14), rr(1.2, 2));
+    }
+    emit(FX.mist, x, gy, z, 0, 0.6, 0, rr(0.6, 0.9) * (0.6 + 0.4 * k), rr(0.5, 0.8));
+    scorch(x, z, rr(0.8, 1.3) * (0.7 + 0.3 * k), 2); // ponytail: stains share the crater decal pool, so a heavy fight recycles the oldest
   }
 
   // muzzle flash: a short flame out of the barrel seen from the side, a little glow at the muzzle; heavy guns blow a
@@ -994,9 +1020,10 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
 
   function salvo(sh, from) {
     // a destroyer's guns arc over like the mortar's, from its front mount
-    const ship = from?.type === 'destroyer', mortar = from ? from.type === 'mortar' || ship : sh.n <= 4, n = sh.n ?? 8;
-    const w = UNITS[ship ? 'destroyer' : mortar ? 'mortar' : 'rocket'].w, flight = w.flight ?? 1.2, every = w.every ?? 0.15;
-    Object.assign(salvos[salvoI++ % salvos.length], { x: sh.x, z: sh.z, r: w.spread ?? 6, mortar, t: clock });
+    const ship = from?.type === 'destroyer', mortar = from ? from.type === 'mortar' || from.type === 'howitzer' || ship : sh.n <= 4, n = sh.n ?? 8;
+    const w = from && UNITS[from.type]?.w?.salvo ? UNITS[from.type].w : UNITS[mortar ? 'mortar' : 'rocket'].w, flight = w.flight ?? 1.2, every = w.every ?? 0.15;
+    if (from && UNITS[from.type]?.air) from = null; // a bomber's stick falls from the sky like an unseen launcher's rockets
+    Object.assign(salvos[salvoI++ % salvos.length], { x: sh.x, z: sh.z, r: sh.r ?? w.spread ?? 6, mortar, t: clock });
     if (mortar) {
       for (let i = 0; i < n; i++) {
         const d = ship ? Math.floor(i / from.mounts.length) * 1.2 : i * (w.every ?? 0.5); // a ship's guns fire together
@@ -1061,6 +1088,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     for (const r of rockets) r.on = false;
     for (const c of columns) c.on = false;
     for (const s of salvos) s.t = -1e9;
+    for (const b of blasts) b.t = -1e9;
     wrecks.length = 0; clouds.clear(); fires.clear(); strikeSounds.clear(); falls.length = 0; // fallen unit models went with the old world
   }
 
@@ -1091,5 +1119,5 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
   }
 
   const aaFire = (sh, from, to) => antiAir(sh, from, to, false);
-  return { update, snapshot, wreck, downPlane, aaFire, reset, explode, scorch, collapse, plume, air, get count() { return n; }, get shown() { return shown; } };
+  return { update, snapshot, wreck, downPlane, aaFire, reset, explode, scorch, collapse, plume, air, blastNear, gore, get count() { return n; }, get shown() { return shown; } };
 }

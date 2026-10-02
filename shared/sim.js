@@ -19,7 +19,7 @@ export const CFG = {
   // horde units left they show through the fog. support: MP of off-map support per wave from supportWave; planes from
   // airWave. unlock: [unit, first wave, weight in the mix]
   horde: { budget: 300, growth: 1.25, field: 60, fieldMax: 240, break: 45, heal: 0.1, reveal: 3, supportWave: 6, support: 150, airWave: 10,
-    unlock: [['rifle', 1, 4], ['conscript', 1, 4], ['mg', 3, 2], ['mortar', 3, 1], ['armoredcar', 5, 1], ['tank', 5, 2], ['at', 5, 1], ['medium', 8, 2], ['rocket', 8, 1], ['tiger', 12, 1]] },
+    unlock: [['rifle', 1, 4], ['conscript', 1, 4], ['mg', 3, 2], ['mortar', 3, 1], ['armoredcar', 5, 1], ['tank', 5, 2], ['at', 5, 1], ['flamer', 6, 1], ['medium', 8, 2], ['tankdestroyer', 8, 1], ['rocket', 8, 1], ['tiger', 12, 1]] },
   // flat income does most of the work; points add a little and trailing players catch up
   mpBase: 4, catchupMax: 6, catchupPer: 60,
   captureTime: 8, pointRadius: 8, popCap: 12,
@@ -47,7 +47,9 @@ export const CFG = {
   // auto-retreat (a per-unit switch): the share of full strength below which a unit runs for home
   autoRetreat: 0.35,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
-  terrainHp: { H: 60, '#': 150, '=': 200, X: 40, Y: 250, N: 1, O: 200, A: 150, Q: 300 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.', N: '+', O: '.', A: '+', Q: '+' }, crush: { H: '.', '#': 'R', X: '.', T: '+' },
+  terrainHp: { H: 60, '#': 150, '=': 200, X: 40, Y: 250, N: 1, O: 200, A: 150, Q: 300 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.', N: '+', O: '.', A: '+', Q: '+' }, crush: { H: '.', '#': '+', X: '.', T: '+' },
+  // a house that falls throws rubble (which stops vehicles) onto each open or road cell beside it with this chance
+  rubbleSpill: 0.35,
   // a ford's speed, shallow to deep (each ford cell has its own depth)
   fordSpeed: [0.75, 0.35],
   // vehicles: faster on an unbroken road or bridge; mud from shallow to deep; open ground down to 1 - churn as traffic
@@ -73,8 +75,9 @@ export const CFG = {
   wood: { sight: 3, cover: 0.6, speed: 0.5 },
   // forward aid: infantry reinforce (paid, at `slow` x the HQ's pace) within `radius` of their side's Field Hospital
   // or `carrier` metres of a halted halftrack. A medic heals `heal` hp/s on the most hurt squad within `medic`
-  // metres that took no damage for `calm` seconds. A rider thrown from a wrecked carrier takes `evict` of its strength.
-  aid: { radius: 12, carrier: 10, slow: 2, heal: 2, medic: 10, calm: 5, board: 4.5, evict: 0.3 },
+  // metres (`hot` of that on a squad hit in the last `calm` seconds); an idle one walks to a squad below `hurt` of its
+  // strength within `seek` metres. A rider thrown from a wrecked carrier takes `evict` of its strength.
+  aid: { radius: 12, carrier: 10, slow: 2, heal: 5, hot: 0.5, medic: 10, seek: 30, hurt: 0.9, calm: 5, board: 4.5, evict: 0.3 },
   // a landing craft lands its squad only with ground this close (metres); a squad thrown out further from it drowns
   shoreReach: 5,
   // a destroyer keeps this many cells of water between its centre and any shore or surf (its 11 m beam, and room to turn)
@@ -124,9 +127,9 @@ export const CFG = {
 
 export const MOVE = 1, SIGHT = 2, COVER = 4, TRENCH = 8, FORD = 16, WIRE = 32, VBLOCK = 64, ROAD = 128, MUD = 256, WOOD = 512, LAND = 1024, SHOAL = 2048;
 // T trench (heavy cover, diggable) · W river (impassable, see across) · F ford (wade at half speed)
-// = bridge (walkable, can be blown) · R rubble (what's left of a house: walkable cover)
+// = bridge (walkable, can be blown) · R rubble (what's left of a house: cover infantry climb over, vehicles can't; a shovel clears it)
 // K = footprint of a Classic building (never in map files): solid until the building falls, then rubble
-export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': ROAD, R: COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER, D: ROAD, M: MUD, N: 0, O: COVER | WOOD, A: 0, Q: VBLOCK | COVER }; // Q: a wrecked vehicle (stops vehicles, cover for infantry, can be blown apart)
+export const TERRAIN = { '.': 0, B: MOVE | SIGHT, H: SIGHT | COVER, '#': COVER, '+': COVER, T: COVER | TRENCH, W: MOVE, F: FORD, '=': ROAD, R: VBLOCK | COVER, K: MOVE | SIGHT, X: WIRE, Y: VBLOCK | COVER, D: ROAD, M: MUD, N: 0, O: COVER | WOOD, A: 0, Q: VBLOCK | COVER }; // Q: a wrecked vehicle (stops vehicles, cover for infantry, can be blown apart)
 // LAND: everything a boat can't float on. Boats take W (open water) and F (fords, and the surf off a beach).
 for (const ch of Object.keys(TERRAIN)) if (ch !== 'W' && ch !== 'F') TERRAIN[ch] |= LAND;
 // the terrain bits that stop a unit: boats are kept off land, vehicles out of water and off tank traps, infantry out of water
@@ -225,6 +228,28 @@ UNITS.destroyer = { name: 'Destroyer', max: 2, cost: 700, models: 1, hpPer: 2400
 UNITS.medic = { name: 'Medic Team', cost: 120, models: 2, hpPer: 20, speed: 4.8, radius: 1.2, vision: 30, infantry: true, garrisons: true, medic: true,
   w: { range: 0, interval: 9, inf: 0, veh: 0, accInf: 0, accVeh: 0, supp: 0 },
   ab: { id: 'none', name: '', cd: 1e9 } };
+// Tank destroyer (M10 / StuG III / SU-85): a long gun on a tank hull, thinner armor, no smoke. Out-ranges every tank
+// but the Tiger and hits like an AT gun without having to set up; a poor shot against infantry.
+UNITS.tankdestroyer = { name: 'Tank Destroyer', cost: 320, models: 1, hpPer: 380, speed: 6.5, radius: 2.6, vision: 40, infantry: false, crushes: true,
+  w: { range: 46, interval: 4, inf: 12, veh: 120, accInf: 0.35, accVeh: 0.8, supp: 10, moveFire: 0.5, shellTerrain: 80 },
+  ab: { id: 'ap', name: 'AP Round', cd: 45 } };
+// Field howitzer (M2A1 / leFH 18 / M-30): a towed gun and its crew. Mortar rules, further and heavier: it shells
+// whatever its side spots, must dig its trail in first (setup) and can't hit anything close.
+UNITS.howitzer = { name: 'Field Howitzer', cost: 300, models: 4, hpPer: 20, speed: 2, radius: 1.8, vision: 30, infantry: true,
+  w: { range: 95, minRange: 30, interval: 12, setup: 4, inf: 35, veh: 40, accInf: 1, accVeh: 1, supp: 50,
+    salvo: true, rockets: 1, spread: 3, spreadFar: 8, blast: 4.5, terrain: 150, antiGarrison: 1.5, flight: 2.2, every: 0.1 },
+  ab: { id: 'barrage', name: 'Howitzer Barrage', cd: 50, range: 95, shells: 4, mun: 25 } };
+// Flamethrower squad: a flamer and two riflemen. Short range, and fire goes round cover: no wall, trench or house
+// protects from it, and a garrison or a trench takes flame x damage. Pins hard, weak against tanks.
+UNITS.flamer = { name: 'Flamethrower Squad', cost: 180, models: 3, hpPer: 22, speed: 4.3, radius: 1.4, vision: 32, infantry: true, garrisons: true,
+  w: { range: 14, interval: 1.2, inf: 9, veh: 3, accInf: 0.85, accVeh: 0.6, supp: 30, moveFire: 0.4, flame: 1.5 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
+// Bomber: a twin-engine plane that drops a stick of four bombs (a salvo) on what it is sent at, or on a crowd it
+// finds, two sticks a sortie. Slow and big: flak and fighters bring it down.
+UNITS.bomber = { name: 'Bomber', cost: 420, models: 1, hpPer: 420, speed: 12, radius: 3, vision: 40, infantry: false, air: true, role: 'attack', ammo: 2,
+  w: { range: 14, minRange: 0, interval: 5, inf: 45, veh: 80, accInf: 1, accVeh: 1, supp: 80, moveFire: 1,
+    salvo: true, rockets: 4, spread: 6, blast: 5, terrain: 250, antiGarrison: 1.5, flight: 1, every: 0.25 },
+  ab: { id: 'none', name: '', cd: 1e9 } };
 
 // ---------- faction units (player faction: 0 USA, 1 Germany, 2 USSR) ----------
 // USA Rangers: elite all-rounders with bazookas; satchel charge demolishes houses, walls and bridges.
@@ -255,16 +280,16 @@ const building = (o) => ({ faction: -1, models: 1, speed: 0, infantry: false, st
 // makes = what it trains; needs = a finished building you must own first
 UNITS.hq = building({ name: 'HQ', cost: 0, hpPer: 3000, radius: 3, vision: 30, size: 3, produces: true, makes: ['engineer', 'rifle'] });
 UNITS.depot = building({ name: 'Supply Depot', cost: 60, hpPer: 600, radius: 2, vision: 16, size: 2, buildTime: 20 });
-UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'ranger', 'conscript'] });
-UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'rocket', 'tiger'] });
-UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3, vision: 30, size: 3, buildTime: 40, produces: true, needs: 'motorpool', makes: ['fighter', 'attacker'] });
+UNITS.barracks = building({ name: 'Barracks', cost: 150, hpPer: 1500, radius: 3, vision: 24, size: 3, buildTime: 30, produces: true, makes: ['mg', 'mortar', 'sniper', 'medic', 'flak', 'flamer', 'ranger', 'conscript'] });
+UNITS.motorpool = building({ name: 'Motor Pool', cost: 200, hpPer: 1900, radius: 3, vision: 24, size: 3, buildTime: 45, produces: true, needs: 'barracks', makes: ['at', 'howitzer', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'rocket', 'tiger'] });
+UNITS.airfield = building({ name: 'Airfield', cost: 250, hpPer: 1800, radius: 3, vision: 30, size: 3, buildTime: 40, produces: true, needs: 'motorpool', makes: ['fighter', 'attacker', 'bomber'] });
 UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3, vision: 30, size: 3, buildTime: 30, produces: true, coast: true, makes: ['lcvp', 'gunboat', 'destroyer'] });
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
 export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
 // Classic: seconds to train each unit at its building
-for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, rocket: 30, tank: 35, medium: 40, tiger: 50 })) UNITS[t].train = s;
+for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
-for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
+for (const [t, mp, fuel] of [['halftrack', 140, 20], ['lcvp', 120, 15], ['gunboat', 170, 40], ['destroyer', 520, 180], ['flaktrack', 200, 30], ['fighter', 200, 40], ['attacker', 240, 70], ['armoredcar', 160, 25], ['tank', 200, 60], ['medium', 260, 90], ['tankdestroyer', 220, 80], ['bomber', 300, 100], ['rocket', 170, 50], ['tiger', 420, 150]]) Object.assign(UNITS[t], { classicCost: mp, fuel });
 export const priceOf = (g, t) => (g.mode?.kind === 'classic' ? { mp: UNITS[t].classicCost ?? UNITS[t].cost, fuel: UNITS[t].fuel ?? 0 } : { mp: UNITS[t].cost, fuel: 0 });
 export const UNIT_TYPES = Object.keys(UNITS);
 export const canBuild = (type, faction) => UNITS[type].faction === undefined || UNITS[type].faction === faction;
@@ -300,7 +325,7 @@ export const FORTS = {
   mines: { name: 'Minefield', cost: 40, ch: 'N', n: 4 },
   // on: the ground it is built on (river); reach: the builders work from the bank; along: runs the way they walk
   bridge: { name: 'Bridge', cost: 80, ch: '=', n: 5, on: 'W', reach: 9, along: true },
-  // shovels a crater, a flooded crater or sunken ground back in (see fillable)
+  // shovels a crater, a flooded crater or sunken ground back in, clears rubble (see fillable)
   fill: { name: 'Fill in', cost: 10, ch: '.', n: 5, fill: true },
   // lifts the mines the squad's side knows about (its own, or enemy ones a builder squad has found); the squad works
   // from `reach` metres back, so it does not have to stand in the field
@@ -853,7 +878,9 @@ function spawnUnit(g, owner, type, n = g.units.size) {
     // space, back); reverse = the path end a vehicle backs up to; react = seconds until it next looks for cover
     hitBy: 0, hitAt: -1e9, hitFrom: null, drift: false, reverse: null, react: 0,
     // autocast starts on where abilities are free (cooldown only) and off where they cost Munitions (Classic)
-    auto: UNITS[type].ab.id !== 'none' && !abCost(g, UNITS[type].ab) };
+    auto: UNITS[type].ab.id !== 'none' && !abCost(g, UNITS[type].ab),
+    // auto-retreat starts on for everything on the ground; Shift+X turns it off
+    autoRetreat: !UNITS[type].air };
   if (UNITS[type].air) { u.air = { state: 'base', fuel: CFG.air.station, ammo: UNITS[type].ammo, timer: 0, ang: 0, mission: null }; Object.assign(u, airBase(g, u)); }
   g.units.set(u.id, u);
   updateGrid(g, u);
@@ -1169,11 +1196,12 @@ function setLevel(g, c, L) {
   g.vehicleRegionVersion = (g.vehicleRegionVersion ?? 0) + 1;
   logCell(g, c, [c, g.chars[c], L]);
 }
-// What a squad can fill in: a crater, a crater that flooded (not a ford the map was drawn with), ground a blast sank.
+// What a squad can fill in: a crater, a crater that flooded (not a ford the map was drawn with), ground a blast sank,
+// rubble (cleared away).
 const level0 = (g, c) => g.initialTerrain.height?.[c] ?? 0; // the map as drawn: what filling in works back to
 function fillable(g, c) {
   const ch = g.chars[c];
-  return ch === '+' || (ch === 'F' && g.initialTerrain.chars[c] !== 'F') || (ch === '.' && level(g, c) < level0(g, c));
+  return ch === '+' || ch === 'R' || (ch === 'F' && g.initialTerrain.chars[c] !== 'F') || (ch === '.' && level(g, c) < level0(g, c));
 }
 // Back to open ground, and up towards the height the map had there: as far as one level above the lowest ground
 // beside it (the slope rule again), so a deep bowl is filled from its deepest cells outwards.
@@ -1184,11 +1212,13 @@ const fillLevel = (g, c) => {
 function fillCell(g, c) {
   const L = fillLevel(g, c);
   if (L > level(g, c)) setLevel(g, c, L);
-  if (g.chars[c] !== '.') setCell(g, c, '.');
+  // rubble cleared off a street gives the road back
+  const ch = g.chars[c] === 'R' && g.initialTerrain.chars[c] === 'D' ? 'D' : '.';
+  if (g.chars[c] !== ch) setCell(g, c, ch);
 }
 // Ground a computer player fills in: flooded or sunk below the map, and a shovel would change it now. A dry crater
-// at the map's height is cover and stays.
-export const spoiled = (g, c) => fillable(g, c) && (g.chars[c] === 'F' || level(g, c) < level0(g, c)) && (g.chars[c] !== '.' || fillLevel(g, c) > level(g, c));
+// at the map's height is cover and stays. Rubble on what was a road is cleared.
+export const spoiled = (g, c) => (g.chars[c] === 'R' && g.initialTerrain.chars[c] === 'D') || (fillable(g, c) && (g.chars[c] === 'F' || level(g, c) < level0(g, c)) && (g.chars[c] !== '.' || fillLevel(g, c) > level(g, c)));
 // A blast digs a round hole of radius r metres around the spot it lands on (0: just that cell): one level down, two
 // in the inner half, and open ground in it is cratered. Measured from the blast, not the cell, so no two are alike.
 function digAt(g, at, r) {
@@ -2050,10 +2080,11 @@ export function autocastTarget(g, u) {
 // ---------- unit behavior (DESIGN.md "Unit behavior") ----------
 
 // Weapons have jobs: AT guns hunt vehicles, MGs and rifles infantry, snipers the crews of heavy weapons.
-const CREWS = new Set(['mg', 'at', 'mortar', 'flak']), RIFLES = new Set(['mg', 'rifle', 'ranger', 'conscript', 'engineer']);
+const CREWS = new Set(['mg', 'at', 'mortar', 'flak', 'howitzer']), RIFLES = new Set(['mg', 'rifle', 'ranger', 'conscript', 'engineer']);
 function roleMul(u, t) {
   const def = UNITS[t.type];
-  if (u.type === 'at') return def.infantry || def.structure ? 1 : 3;
+  if (u.type === 'at' || u.type === 'tankdestroyer') return def.infantry || def.structure ? 1 : 3;
+  if (u.type === 'flamer') return def.infantry ? 2 : 1;
   if (u.type === 'sniper') return CREWS.has(t.type) ? 3 : 1;
   return RIFLES.has(u.type) && def.infantry ? 2 : 1;
 }
@@ -2081,7 +2112,7 @@ function pickTarget(g, u) {
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
     const value = w.salvo ? dug * (1 + pool.filter(o => o.owner === t.owner && dist(o, t) < 6).length)
-      : (inf ? w.inf * w.accInf * coverMul(g, t, u) : w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
+      : (inf ? w.inf * w.accInf * (w.flame ? (t.garrison >= 0 || inTrench(g, t) ? w.flame : 1) : coverMul(g, t, u)) :w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
     const threat = firedOnBy(g, u, t) ? 2.5 : t.targetId === u.id ? 1.5 : 1;
     const others = w.salvo ? 0 : (g.claims?.get(t.id * 8 + team) ?? 0) - (t.id === cur ? volley(u, t) : 0);
     const score = dist(u, t) / (value * threat) * (def.structure ? 5 : 1) * Math.max(1, others / t.hp); // soldiers first, concrete later
@@ -2265,14 +2296,16 @@ function keepSpacing(g, u) {
 
 function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
   const w = UNITS[u.type].w;
-  g.salvos.push({ x: at.x, z: at.z, owner: u.owner, left: n, next: w.flight, w });
-  g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'salvo', n, pub: true });
+  // spreadFar: the shells scatter more the further they fly (spread at minRange, spreadFar at full range)
+  const spread = w.spreadFar ? lerp(w.spread, w.spreadFar, Math.min(1, Math.max(0, (dist(u, at) - w.minRange) / (w.range - w.minRange)))) : w.spread;
+  g.salvos.push({ x: at.x, z: at.z, owner: u.owner, left: n, next: w.flight, w, spread });
+  g.shots.push({ f: u.id, fo: u.owner, x: at.x, z: at.z, k: 'salvo', n, r: spread, pub: true });
 }
 
 function fire(g, u, t, moving) {
   if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval; return; }
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
-  const cover = Math.min(coverMul(g, t, u), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1);
+  const cover = w.flame ? 1 : Math.min(coverMul(g, t, u), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1); // fire goes round cover
   // shooting downhill is easier, uphill harder
   const hg = Math.min(1.45, Math.max(0.7, 1 + CFG.highGroundAcc * (levelAt(g, u.x, u.z) - levelAt(g, t.x, t.z))));
   let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg * (1 + CFG.vetAcc * vet(u));
@@ -2281,6 +2314,7 @@ function fire(g, u, t, moving) {
   const ab = UNITS[u.type].ab;
   if (u.ap && !inf && (!ab.naval || def.naval)) { acc = 1; dmg *= ab.mult ?? 1.5; u.ap = false; } // a torpedo (ab.naval) only runs at boats and ships
   if (t.retreating) dmg *= CFG.retreatDamage;
+  if (w.flame && (t.garrison >= 0 || inTrench(g, t))) dmg *= w.flame; // flame burns out a house or a trench
   dmg *= 1 - CFG.vetArmor * vet(t); supp *= 1 - CFG.vetSupp * vet(t);
   // Classic buildings are timber: guns (anti-tank damage of 20+) hit them fully, small arms chip at them
   if (def.building) dmg = w.veh >= 20 ? w.veh : w.inf * CFG.classic.smallArms;
@@ -2790,6 +2824,12 @@ function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
     if (nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && g.chars[ny * g.w + nx] === '=') wreckCell(g, list, ny * g.w + nx, into);
   }
   g.shots.push({ k: 'collapse', x, z, pub: true });
+  // a falling house spills into the street: rubble on open ground or road beside it, never under a vehicle
+  if (was === 'B') for (const n of [c % g.w > 0 ? c - 1 : -1, c % g.w < g.w - 1 ? c + 1 : -1, c - g.w, c + g.w]) {
+    if (n < 0 || n >= g.chars.length || !'.D+M'.includes(g.chars[n]) || rng(g) >= CFG.rubbleSpill) continue;
+    if (list.some(u => u.hp > 0 && !u.air && !UNITS[u.type].infantry && cellOf(g, u.x, u.z) === n)) continue;
+    setCell(g, n, 'R');
+  }
   for (const u of g.units.values()) if (u.garrison === c) {
     u.garrison = -1; u.hp -= UNITS[u.type].models * UNITS[u.type].hpPer * CFG.garrisonEvictDamage;
     g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: u.hp <= 0 });
@@ -2798,18 +2838,26 @@ function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
   if (TERRAIN[into] & MOVE) for (const u of list) if (u.hp > 0 && !u.air && cellOf(g, u.x, u.z) === c) { u.hp = 0; g.shots.push({ t: u.id, to: u.owner, x: u.x, z: u.z, k: 'hurt', kill: true }); }
 }
 
-// Medics, twice a second: each heals the most hurt friendly squad near it that has taken no damage for a while.
+// Medics, twice a second: each heals the most hurt friendly squad near it, at `hot` of the rate if that squad was hit
+// in the last `calm` seconds. A medic with nothing to do walks over to the most hurt squad within `seek` metres.
 function healWounded(g, list, dt) {
   const A = CFG.aid, medics = list.filter(m => UNITS[m.type].medic && m.hp > 0 && !m.retreating && !m.riding);
   if (!medics.length) return;
   for (const u of list) if (UNITS[u.type].infantry) { if (u.hp < (u.hpWas ?? u.hp)) u.woundAt = g.tick; u.hpWas = u.hp; }
   for (const m of medics) {
-    let best = null, worst = 1;
-    for (const u of gridFor(g).candidates(m, A.medic, false)) {
+    const idle = !m.path.length && !m.amove && m.garrison < 0 && !(m.enter >= 0) && !m.board;
+    let best = null, worst = 1, far = null, farWorst = A.hurt;
+    for (const u of gridFor(g).candidates(m, idle ? A.seek : A.medic, false)) {
       const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer);
-      if (u !== m && def.infantry && u.hp > 0 && !u.riding && frac < worst && allied(g, u.owner, m.owner) && dist(u, m) <= A.medic && g.tick - (u.woundAt ?? -1e9) >= A.calm / TICK) { best = u; worst = frac; }
+      if (u === m || !def.infantry || u.hp <= 0 || u.riding || u.retreating || !allied(g, u.owner, m.owner)) continue;
+      const d = dist(u, m);
+      if (d <= A.medic && frac < worst) { best = u; worst = frac; }
+      else if (d <= A.seek && frac < farWorst) { far = u; farWorst = frac; }
     }
-    if (best) { best.hp = best.hpWas = Math.min(UNITS[best.type].models * UNITS[best.type].hpPer, best.hp + A.heal * dt); best.healAt = g.tick; }
+    if (best) {
+      const rate = g.tick - (best.woundAt ?? -1e9) >= A.calm / TICK ? 1 : A.hot;
+      best.hp = best.hpWas = Math.min(UNITS[best.type].models * UNITS[best.type].hpPer, best.hp + A.heal * rate * dt); best.healAt = g.tick;
+    } else if (idle && far) m.path = findPath(g, m, far); // ponytail: one path per half second at most, per idle medic
   }
 }
 // Builder squads find enemy mines near them: Engineers always, the others once they have stood still for a moment.
@@ -3144,7 +3192,7 @@ export function step(g) {
   g.nades = g.nades.filter(n => n.t > 0);
   for (const s of g.salvos) {
     if ((s.next -= dt) > 0) continue;
-    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * s.w.spread, at = { x: s.x + Math.cos(a) * r, z: s.z + Math.sin(a) * r };
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * s.spread, at ={ x: s.x + Math.cos(a) * r, z: s.z + Math.sin(a) * r };
     g.shots.push({ x: at.x, z: at.z, k: 'rocket', pub: true });
     blast(g, list, at, s.w.blast, s.w, s.owner);
     s.left--; s.next = s.w.every;

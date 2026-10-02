@@ -5,6 +5,8 @@ const KEY = 'ww2-gfx', AUTO_KEY = 'ww2-gfx-auto';
 const store = (fn) => { try { return fn(); } catch { return null; } };
 const subs = new Set();
 let level = store(() => localStorage.getItem(KEY)) === 'low' ? 'low' : 'high';
+const GORE_KEY = 'ww2-gore';
+let gore = store(() => localStorage.getItem(GORE_KEY)) !== 'off';
 
 export const gfx = {
   get level() { return level; },
@@ -14,6 +16,13 @@ export const gfx = {
     if (next === level) return;
     level = next;
     store(() => localStorage.setItem(KEY, level));
+    subs.forEach((fn) => fn(level));
+  },
+  // blood and torn bodies when men die in a blast (client/fx.js gore); bodies are thrown either way. On by default.
+  get gore() { return gore; },
+  setGore(on) {
+    gore = !!on;
+    store(() => localStorage.setItem(GORE_KEY, gore ? 'on' : 'off'));
     subs.forEach((fn) => fn(level));
   },
   // fn(level) runs whenever the setting changes; returns an unsubscribe function

@@ -27,7 +27,7 @@ import { gfx } from './gfx.js';
 import { rig, groundAt as marchGround } from './camera.js';
 import { createPointer } from './pointer.js';
 import { pings } from './pings.js';
-import { label, symbolBadge, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, aimMarker, cellLayer, coverRings, setTerrain, refreshTerrain, MOVE_COLOR, PLAN_COLORS } from './markers.js';
+import { label, symbolBadge, fadeLabels, ownerRing, setOwnerRing, selectionRing, hqRing, flagMat, clickRing, capturePoint, planLayer, nodeSquare, strikeZone, aimMarker, cellLayer, coverRings, setTerrain, refreshTerrain, MOVE_COLOR, PLAN_COLORS } from './markers.js';
 import { disposeTree } from './upkeep.js';
 import { audio } from './audio.js';
 import { battleFrame } from './battle-sound.js';
@@ -44,13 +44,14 @@ import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
 import { createCoverPreview } from './cover-preview.js';
+import { createMapView } from './map-view.js';
 import { createAutocast } from './autocast.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics', lcvp: 'LCVP', gunboat: 'PT Boat', destroyer: 'Fletcher Destroyer' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter', lcvp: 'Sturmboot', gunboat: 'S-Boot', destroyer: 'Zerstörer 1936' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics', lcvp: 'LCVP', gunboat: 'PT Boat', destroyer: 'Fletcher Destroyer', tankdestroyer: 'M10 Wolverine', howitzer: 'M2A1 105mm Howitzer', flamer: 'Flamethrower Team', bomber: 'B-25 Mitchell' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter', lcvp: 'Sturmboot', gunboat: 'S-Boot', destroyer: 'Zerstörer 1936', tankdestroyer: 'StuG III', howitzer: 'leFH 18', flamer: 'Flammenwerfer Team', bomber: 'He 111' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat', gunboat: 'Armored Boat', destroyer: 'Gnevny Destroyer', tankdestroyer: 'SU-85', howitzer: '122mm M-30 Howitzer', flamer: 'ROKS-2 Flamethrower Team', bomber: 'Pe-2' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AI_LEVELS = ['easy', 'normal', 'hard'];
@@ -388,7 +389,7 @@ let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogM
 const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Ground height and the terrain surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
-let relief = null;
+let relief = null, mapView = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
@@ -423,7 +424,7 @@ function startGame(m, restored = null) {
   gp.paint(terrain.grid, terrain.state);
   // the fog overlay shares the relief's live geometry, which a crater replaces
   relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
-    onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; } });
+    onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; mapView?.setGeometry(geometry); } });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
   apron = createApron({ ground: gp, relief, grid: terrain.grid, map });
@@ -457,6 +458,11 @@ function startGame(m, restored = null) {
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
   fog.renderOrder = 1; fog.visible = !EDIT;
   world.add(fog);
+  // zoomed out, the paper war map (client/map-view.js, a prototype)
+  mapView?.dispose(); mapView = EDIT ? null : createMapView({ grid: terrain.grid, w: map.w, h: map.h, geometry: ground.geometry, hAt, fog: fogOfWar, units, colorOf: (slot) => css(look(slot).color), title: map.name || lobbyState?.mapName || '',
+    camera, view: renderer.domElement, state: () => ({ me, selected, strikes: lastSnap?.strikes ?? [],
+      points: points.map((p, i) => ({ x: p.g.position.x, z: p.g.position.z, owner: lastSnap?.points[i]?.[0] ?? -1 })) }) });
+  if (mapView) world.add(mapView.object);
   atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather, apron }); // mood, clouds, mist, weather, birds
   wx.start(m.weather, atmos);
 
@@ -490,7 +496,7 @@ const terrainDue = { pieces: false, minimap: false, wait: 0 };
 function terrainFrame(dt) {
   if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap)) return;
   if (terrainDue.pieces && terrain) buildStructures();
-  if (terrainDue.minimap) mmImage = null;
+  if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
   terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
@@ -1053,7 +1059,7 @@ function defaultDir(kind, at) {
   return home ? Math.atan2(at.z - home.z, at.x - home.x) : 0;
 }
 // F fires exactly one ability: the first type in this order that has one ready (the others are click-only)
-const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'mortar', 'at', 'armoredcar', 'tank', 'medium', 'tiger', 'rocket'];
+const PRIORITY = ['rifle', 'ranger', 'conscript', 'mg', 'mortar', 'howitzer', 'at', 'armoredcar', 'tank', 'medium', 'tankdestroyer', 'tiger', 'rocket'];
 function fKeyType() {
   const sel = [...selected].map(id => units.get(id)).filter(Boolean);
   return PRIORITY.find(t => sel.some(v => v.type === t) && available({ t: 'ability', unit: t }).ok) ?? PRIORITY.find(t => sel.some(v => v.type === t)) ?? null;
@@ -1555,7 +1561,8 @@ renderer.setAnimationLoop(() => {
     animate(v, sdt, camera.position, hAt); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
   }
   battleFrame(cam, units, me);
-  bodies.update(sdt);
+  bodies.update(sdt, effects, hAt); // men killed by a blast are thrown (client/unit-models.js)
+  if (mapView) { mapView.frame(dt, cam.dist / rig.wide); fadeLabels(1 - Math.min(1, mapView.fade * 2)); }
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
@@ -1601,7 +1608,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get points() { return points; } };
+window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

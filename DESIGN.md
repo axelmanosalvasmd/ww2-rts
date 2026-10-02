@@ -454,6 +454,29 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Classic balance with Fuel and the new units (30 per map): 74% decided before Sudden Death (23/25/19 of 30), median 15.9
   (default), 18.1 (River Towns), 23.2 min (Six Fronts, long), faction wins 24/33/31 with 2 draws.
 
+### Second unit wave (2026-10-02, all modes)
+- Tank destroyer (320 MP, Motor Pool; Classic 220 MP + 80 Fuel): M10 / StuG III / SU-85. 380 hp, 46 m gun doing 120 to
+  vehicles (0.8 hit), 12 to infantry (0.35), fires on the move at half accuracy, AP Round, no smoke. Picks vehicles
+  first like the AT gun (`roleMul` x3). Fills the gap between the towed AT gun (slow, sets up) and tanks.
+- Field howitzer (300 MP, Motor Pool, Classic 30 s): M2A1 / leFH 18 / M-30, four crew. Mortar rules scaled up: one
+  shell every 12 s at 30-95 m, 4 s setup, blast 4.5, 35/40 damage, garrisons x1.5. Howitzer Barrage: 4 shells
+  (Classic 25 Munitions). Counts as a crew for snipers.
+  Scatter grows with range (`w.spreadFar`, decided 2026-10-02): shells land within 3 m of the aim at 30 m and within
+  8 m at 95 m, as real howitzers were not that accurate. Against a squad standing in the open, a shell does about
+  27 on average close in, 16 at 62 m and 7 at 95 m (it lands within blast reach 100% / 67% / 32% of the time). This
+  keeps massed howitzers at long range from deleting whatever their spotters see; to hit hard they must come closer.
+- Flamethrower squad (180 MP, Barracks): three men, 14 m, 9 damage a shot to infantry. `w.flame`: cover, walls,
+  trenches and houses give no protection from it, and a garrison or a trench takes x1.5. Pins hard (30 a shot).
+- Bomber (420 MP, Airfield; Classic 300 MP + 100 Fuel): B-25 / He 111 / Pe-2. 420 hp, speed 12, two sticks a sortie,
+  each a 4-bomb salvo (blast 5, 45/80 damage, terrain 250) on its attack target or a crowd it finds.
+- AI: tank destroyer for every other anti-tank buy once it has an AT gun, flamers against garrisons (after the
+  rocket truck), a howitzer once its army is 8+, a bomber once it has an attacker and 9+ units. Horde unlocks
+  flamers at wave 6 and tank destroyers at wave 8.
+- Models and icons are borrowed for now (tank destroyer = medium tank, howitzer = AT gun, flamer = engineer figure,
+  symbol of medium / mortar / rifle / bombing run). The flame is drawn as a fat slow tracer.
+- 60 AI matches (Conquest, default map): faction wins 19/22/19 (32/37/32%). 6 AI matches per mode: all four units
+  get fielded and fire; the bomber scored no kills in that small sample (its stick lands where the target was).
+
 ## Aviation (2026-10-01, all modes)
 - Off-map air support adds Dive Bomber, Paratroopers and Fighter Cover (point supports, one click). Support planes
   (recon, strafe, bombing, dive, paratroopers) can be shot down on arrival: fighter cover always (and is used up; never
@@ -943,7 +966,8 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 5. ~~In-game map editor~~ (`/?edit`): paint terrain, place spawns and points, per-point VP/MP, save with the `.edit-password`,
    fairness test (90 AI matches in a worker, per-spawn win rate). The host picks the map in the lobby.
    Select / move tool grabs a whole structure (drag to move, Delete removes) and drags spawns and points; Raise/Lower brushes.
-6. ~~Destructible terrain, rivers, bridges~~: W river (impassable, see across), F ford (half speed), = bridge, R rubble.
+6. ~~Destructible terrain, rivers, bridges~~: W river (impassable, see across), F ford (half speed), = bridge, R rubble
+   (infantry only).
    Artillery/grenades damage structure cells (house -> rubble, wall -> crater, hedge -> gone); a wrecked bridge cell drops the
    whole span into the river, taking anyone on it. Shells crater open ground. Tanks crush hedges and walls. One barrage aimed
    along a bridge drops it ~91% of the time. Map "River Towns": three rivers between the sectors, a bridge through each
@@ -1035,6 +1059,21 @@ Trenches were a flat 0.35x on incoming fire from every side, for anyone, forever
   zigzag front lines joined by communication trenches, staggered wire, a cratered middle with an abandoned trench by
   the center point.
 
+### AI fortification (2026-10-02)
+- The squad holding a point fortifies toward the closest enemy HQ, in order: mines at radius + 2 m, an arc of trench
+  (strongpoint at 600 MP), a 14 m line of barbed wire at radius + 5 m, and once the enemy has shown armor
+  (`mem.armor`) a 16 m line of tank traps at radius + 10 m. Each step keeps `FORT_RESERVE` (60 MP) back for units;
+  it was 150, which left the AI almost never able to afford any of it.
+- Before, a holder with a house nearby garrisoned and never dug, and from inside it could not see the ground to build
+  on (wire was refused as `notVisible`). Now a builder squad on a quiet point (no enemy in sight within 40 m) does the
+  work still owed first, stepping out of the house for it, and takes the house once it is done or the enemy shows up.
+  Only the first unit at a point holds it, so a point held by a mortar or AT gun is still not fortified.
+- Measured, 8 matches each (peak new cells per match), HEAD -> now: default map trench 1.3 -> 3.8, mines 2 -> 4.4,
+  wire 0 -> 1, traps 0 -> 0 (the AI rarely gets that far there); No Man's Land trench 8.6 -> 10, mines 10.4 -> 11.9, wire
+  0 -> 1.5, traps 0 -> 3.3.
+- Balance, 90 Conquest AI matches on the default map (seeds 1000-1089), HEAD -> now: faction wins 30/37/23 ->
+  26/31/33, spawn wins 34/37/19 -> 34/28/28, runner-up VP over winner 0.62 -> 0.58, median 9.3 -> 9.0 min.
+
 ## Roads, mud, bridges and mines (2026-10-01)
 - Three terrain cells: `D` road (flag ROAD), `M` mud (flag MUD), `N` mine (no flags). `=` bridge also carries ROAD.
   The flags array is 16 bits now (MUD is 256).
@@ -1105,6 +1144,15 @@ the sand-table look, move the rules away from the board a little.
   `Q` cell changes. One cell, although a tank is wider: enough to plug a road, and no footprint code. Not on a bridge
   (the span logic owns `=` cells) or a ford, where the hull is cover only. Sent whole in every snapshot
   (40 short rows at most); the client keeps one darkened model per id in `hulks`.
+- Rubble (2026-10-02): `R` is VBLOCK | COVER, so a ruined block is no longer a tank shortcut. When a house cell
+  (`B`) is wrecked, `wreckCell` throws rubble onto each 4-neighbour that is open ground, road, crater or mud with
+  chance `CFG.rubbleSpill` (0.35), never under a vehicle. That is what chokes streets: house rubble alone stayed
+  inside the footprint, which was already blocked. Supply lines needed nothing new (they flood over cells without
+  MOVE | VBLOCK), so a street choked with rubble cuts the points behind it. `fillable` takes `R`; `fillCell` gives a
+  cell that was `D` on the map its road back, anything else becomes open ground. `spoiled` adds rubble on a map road,
+  so the AI clears its own streets near points it holds. Tanks crushing a wall now leave `+`, not `R`, or they would
+  stand on a cell that blocks them. Hand-drawn rubble on the shipped maps cuts no point off from any spawn (checked
+  by flood fill).
 - AI filling: `fillHoles` in `shared/ai.js` sits beside `rebuildBridge` and works the same way (one job per look,
   walk up when the cell is not visible). `spoiled(g, c)` in the sim says what counts: flooded or below the map's
   height, and a shovel would change it now. That last part is what stops it paying for the same cell for ever: the
@@ -1143,7 +1191,7 @@ Decisions from the planning interview:
   auto-cover and no chasing.
 - Mass entrenchment: every selected digger works one shared pattern (line, zigzag, double line, arc, ring,
   strongpoint with wire). Short of MP or diggers: dig what can be paid for, middle outward; the rest as MP comes in.
-- Stances (free fire, hold fire, hold position), auto-retreat when broken (a toggle, off by default), vehicles turn
+- Stances (free fire, hold fire, hold position), auto-retreat when broken (a toggle, on by default for ground units), vehicles turn
   their front to the threat, groups spread their fire. New units behave as before until the player changes them.
 - Computer players use all of it. Order of work: cover, trenches, extras, AI and rebalance.
 
@@ -1257,6 +1305,11 @@ Mass entrenchment follow-up (asked for after slice 4): joining, ghost, queueing.
   halted halftrack. Infantry only, `CFG.aid.slow` (2) times slower than the HQ, same price.
 - Medics heal hp, not men: a squad is a pool of hp, so "treat the wounded but do not replace the dead" would heal at
   most one man's worth. Decided: free and slow (2 hp/s on one squad), and only out of the fight (5 s without damage).
+  Revised 2026-10-02 (medics barely mattered: one man per 10 s, off in every fight, and only for a squad that happened
+  to stand within 10 m): 5 hp/s (a man every 4 s), half that on a squad hit in the last 5 s, and an idle medic (no
+  path, order, house or carrier) paths to the most hurt squad below 90% within `CFG.aid.seek` (30 m). Retreating
+  squads are skipped, so a medic does not chase one home. The AI keeps its medic within 0.8 x seek of its army's
+  middle (it was 8 m, which pulled the medic back off every patient).
 - Supply (`supplyLines`, every 40 ticks): per team, a flood fill from its HQs over cells a vehicle can cross. A held
   point is supplied when the flood reaches any cell inside its capture radius. Enemy units close the ground within
   `zoc` 8 m, except within `free` 16 m of a point the team holds: without that exemption, any enemy walking up to a

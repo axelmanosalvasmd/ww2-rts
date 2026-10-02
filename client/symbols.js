@@ -431,6 +431,11 @@ export const VIEWBOX = '0 0 100 100';
 // It has no prototype, so a name like "constructor" is simply unknown. Use symbolInfo(type) to always get an entry.
 export const SYMBOLS = Object.create(null);
 for (const [type, [name, branch, meaning, d]] of Object.entries(DEFS)) SYMBOLS[type] = { name, branch, meaning, d };
+// ponytail: the newest units borrow a drawn symbol until they get their own
+for (const [type, from, name, meaning] of [['tankdestroyer', 'medium', 'Tank Destroyer', 'Tank destroyer: a tank hull with a long gun'],
+  ['howitzer', 'mortar', 'Field Howitzer', 'Field howitzer: a towed gun lobbing heavy shells'],
+  ['flamer', 'rifle', 'Flamethrower Squad', 'Flamethrower: infantry with a flame projector'],
+  ['bomber', 'bombing', 'Bomber', 'Bomber: a twin-engine plane dropping bombs']]) SYMBOLS[type] = { ...SYMBOLS[from], name, meaning };
 
 // GLYPHS[key] = path data for the order buttons and UI glyphs. The support calls resolve here too, to their symbol.
 export const GLYPHS = Object.create(null);

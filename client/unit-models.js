@@ -267,8 +267,10 @@ function wheeledUnit(v, root, f, fac, key) {
 // Builds the model of unit v under root: v.models (soldiers, or the root for vehicles and structures), v.turret,
 // v.body (structures and planes; it scales up while built), v.fxTip (barrel tip for client/fx.js).
 // f is the owner's look (uniform, vehicle and player colors), fac the faction, def the unit's stats.
+// ponytail: the newest units borrow an existing model until they get their own
+const BORROW = { tankdestroyer: 'medium', howitzer: 'at', flamer: 'engineer' };
 export function buildModel(v, root, f, fac, def) {
-  const type = v.type, key = `${type}|${fac}|${f.color}`;
+  const type = BORROW[v.type] ?? v.type, key = `${type}|${fac}|${f.color}`;
   if (def.air || type === 'airfield') return; // client/aircraft.js builds these
   if (isWheeled(type, fac)) { wheeledUnit(v, root, f, fac, key); return; }
   if (type === 'flakpos') {
@@ -575,7 +577,7 @@ export function createBodies() {
     return pool;
   }
   function place(pool, b, yOff) {
-    e.set(0, b.yaw, 0); q.setFromEuler(e); at.set(b.x, b.y + yOff, b.z);
+    e.set(b.fly?.rx ?? 0, b.yaw, b.fly?.rz ?? 0, 'YXZ'); q.setFromEuler(e); at.set(b.x, b.y + yOff, b.z);
     pool.mesh.setMatrixAt(b.slot, m4.compose(at, q, one));
   }
   function drop(i) {
@@ -622,11 +624,32 @@ export function createBodies() {
       pool.list.push(b); bodies.push(b);
       place(pool, b, 0); pool.fade.array[b.slot] = 1; pool.mesh.count = pool.list.length; changed(pool);
     },
-    update(dt) {
+    // fx (client/fx.js effects, optional): a man who died beside a blast in the last moment is thrown away from it,
+    // tumbling, and lands where he comes down (ground(x, z) is the height there). fx.gore adds the blood.
+    update(dt, fx = null, ground = null) {
       if (bodies.length && worldRef && !worldRef.parent) clear(); // the match ended: its world left the scene
       for (let i = bodies.length - 1; i >= 0; i--) {
         const b = bodies[i];
         b.age += dt;
+        if (fx && ground && !b.tossed && b.age < 0.6) {
+          const hit = fx.blastNear(b.x, b.z);
+          if (hit) {
+            const dx = b.x - hit.x, dz = b.z - hit.z, d = Math.hypot(dx, dz) || 0.01, k = Math.max(0.15, 1 - d / (hit.s + 0.5));
+            const p = Math.sqrt(hit.s / 3), h = (2 + 6 * k) * p * (0.8 + 0.4 * Math.random()), sp = () => (Math.random() - 0.5) * 16 * k;
+            b.tossed = true;
+            b.fly = { vx: dx / d * h, vy: (3 + 7 * k) * p, vz: dz / d * h, rx: 0, rz: 0, wx: sp(), wz: sp() };
+            fx.gore(b.x, b.z, k);
+          }
+        }
+        if (b.fly) {
+          const f = b.fly;
+          f.vy -= 18 * dt;
+          b.x += f.vx * dt; b.y += f.vy * dt; b.z += f.vz * dt; f.rx += f.wx * dt; f.rz += f.wz * dt;
+          const g = ground(b.x, b.z);
+          if (f.vy < 0 && b.y <= g) { b.y = g; b.fly = null; } // ponytail: snaps flat on landing; a settle roll if it looks off
+          place(b.pool, b, 0); changed(b.pool);
+          continue;
+        }
         if (b.out === undefined && b.age >= life) b.out = FADE;
         if (b.out === undefined) continue;
         b.out -= dt;

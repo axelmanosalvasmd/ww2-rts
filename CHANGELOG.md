@@ -5,6 +5,53 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Medics matter now. They heal 2.5x faster (a man back every 4 s instead of every 10 s), keep healing at half rate
+  while the squad is under fire (before they stopped for 5 s after every hit), and an idle medic walks on its own to
+  the most hurt friendly squad within 30 m (below 90% strength, not retreating). The AI no longer pulls its medic
+  back to the middle of the army every time it steps away to treat someone. Balance over 150 AI matches on the
+  default map: USA/GER/USSR 40/30/30% (was 34/37/29%), 9.2 min (was 9.3); medics are the same for every faction,
+  so the USA swing is most likely noise, worth a recheck.
+- Rubble stops vehicles. Infantry still climb through it and use it as cover, but tanks and trucks can no longer
+  drive over a ruined house. A house that falls also throws rubble into the street beside it (about a 1 in 3 chance
+  per side), so shelling a town can choke its roads for armour and cut off the points behind them (supply lines
+  already count any ground a vehicle cannot cross). Any squad that can dig clears rubble with **Fill in**, and a road
+  gets its road back. The AI clears rubble off roads near points it holds. Tanks crushing a wall leave a crater, not
+  rubble. No shipped map loses vehicle access to a point. Balance unchanged within noise: default map
+  USA/GER/USSR 37/33/31% over 150 AI matches (was 33/37/30%), 9.6 min (was 9.3); Stalingrad Factory 42/33/25% over
+  60 (was 37/40/23%).
+- Left for later: rubble cannot be blown clear with explosives (only shovelled), and ordinary shelling never digs a
+  road deep enough to cut it (only bomb holes make cliffs).
+- Four new units for every faction:
+  - **Tank Destroyer** (Motor Pool, 320 MP): M10 Wolverine / StuG III / SU-85. A long gun that out-ranges every
+    tank but the Tiger and hits like an AT gun without setting up. Poor against infantry.
+  - **Field Howitzer** (Motor Pool, 300 MP): M2A1 / leFH 18 / M-30. Heavy shells on anything your side spots, out to
+    95 m, but it can't hit anything closer than 30 m and must set up. Barrage: 4 shells on a spot. Shells scatter
+    more the further they fly: tight (3 m) close in, loose (8 m) at full range.
+  - **Flamethrower Squad** (Barracks, 180 MP): short range, and cover doesn't protect against fire. Squads in houses
+    and trenches take 1.5x damage.
+  - **Bomber** (Airfield, 420 MP): B-25 / He 111 / Pe-2. Drops two sticks of four bombs a sortie.
+  - The AI builds all four. Faction wins 32/37/32% over 60 AI matches.
+- Left for later: the new units borrow models and icons (the tank destroyer looks like the medium tank, the
+  howitzer like the AT gun, the flamer like an engineer), and the flame is drawn as a fat tracer. The bomber's stick
+  lands where its target was when it dropped, so it misses moving units.
+
+- The paper war map: zoom all the way out and the battlefield fades into a staff map on old paper lying on a
+  wooden desk (inked roads, houses, woods, water, contours and a blue grid), with the map's name above it and a
+  compass in the corner. Every unit you can see is its map symbol in its owner's color, sharp at any map size;
+  capture points are lettered rings in the holder's color; strikes on the way are red hatched boxes; your units'
+  routes and queued orders are grease-pencil arrows (blue move, red attack, dashed retreat), and selected units get
+  a pencil ring. Ground you cannot see now has a sepia wash. The floating labels fade out while the map is up.
+  Zoom back in for the 3D view.
+- Men killed by a blast (grenade, mortar, shell, rocket, bomb) are thrown away from it, tumbling through the air,
+  and lie where they land. The closer they were and the bigger the blast, the higher and farther they fly.
+- Gore: a man torn by a blast throws out bloody scraps and a red mist, and leaves a blood stain on the ground. A
+  new **Gore: On/Off** button in the menu turns it off (bodies are still thrown). Visual only, no gameplay change.
+- Left for later: real dismemberment (loose limbs) needs the soldier model split by limb. A thrown body snaps flat
+  as it lands instead of rolling to rest. Blood stains share the crater marks' pool, so a long fight recycles the
+  oldest of either.
+- Auto-retreat is on by default: every new ground unit runs for home below 35% strength unless you switch it off
+  (Shift+X). Planes are unchanged. Before, it started off and you had to turn it on per unit. The AI already armed it
+  in a fight, so AI behaviour is about the same; balance not re-measured.
 - New map, **The Great Bridge** (Assault): hold or take a great stone bridge into a river town. At 5:00 the
   defenders' engineers start wiring it, at 7:00 it is blown with anyone still on it, and from then on the attack has
   to go round by a ford far to the north or a plank rail bridge far to the south. The town square can only be taken
@@ -26,6 +73,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   them when saved. The editor and server now keep every setting the map check knows.
 - Left for later: cells that hold two things (a mine under a road, wire in woods). Mines are a terrain type today,
   so it means changing every mine check and how fog hides them.
+
+- The AI fortifies the points it holds: mines, a trench arc or strongpoint, a belt of barbed wire across the
+  approach, and tank traps once you have shown it armor. It keeps less manpower back to do it, and a squad holding a
+  point from a house now steps out to build while the point is quiet, then goes back in. On the default map it digs
+  about three times as much as before. Balance (90 AI matches): faction wins 30/37/23 -> 26/31/33, spawn wins
+  34/37/19 -> 34/28/28, median length 9.3 -> 9.0 min.
+- Left for later: a point held by a mortar, AT gun or flak never gets fortified (only the first unit there holds it),
+  and the AI does not build MG nests, sandbags or a Field Hospital.
 
 - Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A line of bombs is a ragged run: the banks wander and the bright rim is gone on dug ground, instead of a row of equal pale bowls. A wrecked house is broken wall stubs and spilled rubble, not a shorter box. Feet can sit a couple of metres off the visible lip, because the lip slides and the ground under a unit does not.
 - Trenches are real cuts in the ground now: the terrain drops 0.9 m along every trench, with sloped walls and the

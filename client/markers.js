@@ -216,6 +216,8 @@ function screenSized(shader) {
     .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vNear );');
 }
 const labels = new Map();
+// every floating label at once: 1 shown, 0 gone (the paper war map fades them out, client/map-view.js)
+export function fadeLabels(k) { for (const e of labels.values()) e.mat.opacity = k; }
 function paintLabel(e) {
   // the sprite shows the canvas at about a third of its size, so 3 canvas px of edge reads as a 1 px hairline
   const st = LABEL[e.style], c = e.cv.getContext('2d'), W = st.w, H = st.h, bh = H - 12, y0 = 6, pad = 16;

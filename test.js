@@ -123,7 +123,12 @@ const empty = Array(20).fill('.'.repeat(20));
 const run = (g, secs) => { for (let i = 0; i < secs * 20; i++) step(g); };
 const fresh = (rows = empty, n = 2) => { const g = createGame(blank(rows), ['a', 'b', 'c'].slice(0, n), false); g.units.clear(); g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 })); return g; };
 const UNITS_COST = (t) => ({ rifle: 100, mg: 150, at: 200, tank: 300, rocket: 250, ranger: 200, tiger: 560, conscript: 80 })[t];
-const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; return u; };
+// put: tests set hp by hand, so a placed unit keeps still instead of auto-retreating (it starts on in a real match)
+const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type }); const u = [...g.units.values()].at(-1); u.x = x; u.z = z; u.autoRetreat = false; return u; };
+{
+  const g = fresh(); g.players[0].mp = 1000; command(g, 0, { t: 'buy', unit: 'rifle' });
+  assert.ok([...g.units.values()].at(-1).autoRetreat, 'a bought squad starts with auto-retreat on');
+}
 
 // LOS: a building between two points blocks sight; a wall does not.
 {
@@ -1924,7 +1929,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   run(m, 0.1);
   assert.equal(m.salvos[0]?.left, 4, 'mortar barrage is 4 shells');
   // the new units are in Conquest too
-  for (const t of ['mortar', 'sniper', 'armoredcar', 'medium']) { const q = fresh(); q.players[0].mp = 1000; command(q, 0, { t: 'buy', unit: t }); assert.equal(q.units.size, 1, t + ' buyable in Conquest'); }
+  for (const t of ['mortar', 'sniper', 'armoredcar', 'medium', 'tankdestroyer', 'howitzer', 'flamer', 'bomber']) { const q = fresh(); q.players[0].mp = 1000; command(q, 0, { t: 'buy', unit: t }); assert.equal(q.units.size, 1, t + ' buyable in Conquest'); }
+  // howitzer barrage: 4 shells, beyond a mortar's reach
+  const wide = Array(60).fill('.'.repeat(60)); // 120 m: the default test map is too small for a howitzer
+  const hz = fresh(wide); hz.players[0].mp = 1000;
+  const hw = put(hz, 0, 'howitzer', 10, 10);
+  command(hz, 0, { t: 'ability', ids: [hw.id], x: 90, z: 10 });
+  run(hz, 0.1);
+  assert.equal(hz.salvos[0]?.left, 4, 'howitzer barrage lands 80 m out');
+  assert.ok(Math.abs(hz.salvos[0].spread - (3 + 5 * 50 / 65)) < 0.2, `shells scatter more far out (${hz.salvos[0].spread})`);
+  const hn = fresh(wide); hn.players[0].mp = 1000;
+  const hw2 = put(hn, 0, 'howitzer', 10, 10);
+  command(hn, 0, { t: 'ability', ids: [hw2.id], x: 42, z: 10 });
+  run(hn, 0.1);
+  assert.ok(hn.salvos[0].spread < 3.2, 'and land tight close in');
 }
 
 // Classic resources on every shipped map: each player gets an HQ and 2 MP nodes close to home, and Fuel nodes sit
@@ -3808,7 +3826,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 
 // Entrenching and taking cover plan on remembered terrain; auto-retreat is set from the seat's own units.
 {
-  const field = (trench, mp = 185) => { // 185 MP is enough to dig but not to lay mines first (FORTS.mines.cost + 150)
+  const field = (trench, mp = 95) => { // 95 MP is enough to dig (digCost + 60 kept back) but not to lay mines first (mines.cost + 60)
     const map = aiMap();
     if (trench) for (const r of [39, 40, 41]) map.rows[r] = '.'.repeat(39) + 'TTT' + '.'.repeat(38);
     const g = createGame(map, ['AI', 'enemy'], false, [0, 1]);
@@ -3841,6 +3859,16 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.equal(viewFor(foe, 0, {}).mines.length, 0, 'the seat is not told about enemy mines');
   aiEquivalent(rich.g, foe, 0, {}, 5, 'enemy mines do not change where the AI lays its own');
   assert.ok(!aiCommands(own, 0, {}, 5).commands.some(c => c.t === 'dig' && c.kind === 'mines'), 'two minefields of its own are enough');
+  // Mined and dug in, a squad with manpower to spare strings wire across the approach, then tank traps once the
+  // enemy has shown armor.
+  const fortified = field(true, 1000);
+  for (const c of mineCells) { massiveInternals.setCell(fortified.g, c, 'N'); fortified.g.mines.set(c, 0); }
+  const next = (memory) => aiCommands(fortified.g, 0, memory, 5).commands.find(c => c.t === 'entrench' && c.ids.includes(fortified.squad.id));
+  assert.equal(next({})?.fort, 'wire', 'a dug-in point gets barbed wire next');
+  const ahead = next({}), wireAt = Math.floor((ahead.z + ahead.z2) / 2 / CELL) * fortified.g.w + Math.floor((ahead.x + ahead.x2) / 2 / CELL);
+  for (const c of [wireAt - 2, wireAt - 1, wireAt, wireAt + 1, wireAt + 2]) massiveInternals.setCell(fortified.g, c, 'X');
+  assert.equal(next({}), undefined, 'with wire up and no enemy armor seen, nothing more is built');
+  assert.equal(next({ armor: true })?.fort, 'traps', 'once enemy armor has been seen, tank traps go in');
   // Stances come from the seat's own rows: once a squad reports auto-retreat the AI stops ordering it.
   open.squad.autoRetreat = true;
   assert.ok(!aiCommands(open.g, 0, {}, 5).commands.some(c => c.t === 'stance' && c.ids.includes(open.squad.id)), 'a squad already on auto-retreat is left alone');
@@ -3853,7 +3881,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 {
   const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
   const squad = massiveInternals.spawnUnit(g, 0, 'rifle'), foe = massiveInternals.spawnUnit(g, 1, 'rifle');
-  Object.assign(squad, { x: 80, z: 80 }); Object.assign(foe, { x: 88, z: 80 });
+  Object.assign(squad, { x: 80, z: 80, autoRetreat: false }); Object.assign(foe, { x: 88, z: 80 }); // switched off, as a player can
   g.players[0].visible.add(foe.id);
   const memory = {};
   assert.ok(!aiCommands(g, 0, memory, 5).commands.some(c => c.t === 'stance'), 'the first look at an enemy does not arm auto-retreat');
@@ -4269,7 +4297,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const holder = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
   const squad = [...holder.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   Object.assign(squad, { x: holder.points[0].x, z: holder.points[0].z });
-  holder.points[0].owner = 0; holder.players[0].mp = 185;
+  holder.points[0].owner = 0; holder.players[0].mp = 95;
   const privateEconomy = structuredClone(holder); privateEconomy.players[1].mp += 12345;
   const holderCommands = aiEquivalent(holder, privateEconomy, 0, {}, 5, 'the entrenching holder ignores hidden enemy resources');
   assert.ok(holderCommands.some(cmd => cmd.t === 'entrench'), 'the deterministic holder issues entrenchment');
@@ -4280,7 +4308,8 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.ok(counts.comparisons >= 600, `checked ${counts.comparisons} paired turns`);
   assert.ok(counts.commands >= 100 && counts.hiddenUnits >= 100 && counts.footprints > 0 && counts.depots > 0 && counts.visibleUnits >= 100 && counts.digits >= 100 && counts.hiddenMines >= 100,
     'proof exercised actual orders, hidden armies, private footprints, secret depots, hidden mines and visible enemies\' private state');
-  assert.ok(byType.entrench > 0 && byType.stance > 0, `the matches exercised entrenchment and auto-retreat orders (${JSON.stringify(byType)})`);
+  // no stance orders here: auto-retreat starts on, so the AI has nothing to switch
+  assert.ok(byType.entrench > 0, `the matches exercised entrenchment orders (${JSON.stringify(byType)})`);
   assert.equal(hordeSeats.size, 2, 'the Horde seat itself planned through the view in both Horde runs');
   console.log(`AI fog proofs: ${counts.comparisons} paired turns, ${counts.commands} command-only orders (${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(', ')}), ${counts.hiddenUnits} hidden-unit, ${counts.visibleUnits} visible-unit, ${counts.digits} sub-precision and ${counts.depots} secret-depot and ${counts.hiddenMines} hidden-mine perturbations, ${counts.dropped} dropped as visible`);
 }
@@ -6986,7 +7015,7 @@ for (const lookupFinished of [false, true]) {
   const mapOf = (rows, extra = {}) => ({ name: 't', w: rows[0].length, h: rows.length, rows, spawns: [{ x: 2, y: 2 }, { x: rows[0].length - 3, y: rows.length - 3 }], points: [{ x: 20, y: 20 }], ...extra });
   const unitOf = (g, slot, type) => [...g.units.values()].find(u => u.owner === slot && u.type === type);
   const at = (x, y) => ({ x: (x + 0.5) * CELL, z: (y + 0.5) * CELL });
-  const place = (g, u, x, y) => { Object.assign(u, at(x, y), { path: [] }); return u; };
+  const place = (g, u, x, y) => { Object.assign(u, at(x, y), { path: [], autoRetreat: false }); return u; }; // shelled targets stay put
   const run = (g, n) => { for (let i = 0; i < n; i++) step(g); };
   const add = (g, slot, type, x, y) => { g.players[slot].mp += 2000; command(g, slot, { t: 'buy', unit: type }); const u = [...g.units.values()].filter(o => o.owner === slot && o.type === type).at(-1); return place(g, u, x, y); };
 
@@ -7180,8 +7209,11 @@ for (const lookupFinished of [false, true]) {
     assert.ok(rifle.hp > 40 + CFG.aid.heal * 8, 'the medic heals the squad');
     assert.ok(Math.abs(mp() - before - 200 * g.players[0].inc / 20) < 1, 'for free');
     rifle.hp = 40; run(g, 10); rifle.hp = 30; run(g, 20);
-    assert.ok(rifle.hp <= 30.01, 'a squad that was just hit waits');
+    assert.ok(rifle.hp > 30 && rifle.hp <= 30 + CFG.aid.heal * CFG.aid.hot + 0.01, `a squad under fire heals at half rate (${rifle.hp})`);
     assert.equal(command(g, 0, { t: 'attack', ids: [medic.id], target: unitOf(g, 1, 'rifle').id }), 'unseen');
+    // an idle medic walks over to a hurt squad within reach, and heals it
+    place(g, rifle, 15, 30); rifle.hp = 40; place(g, medic, 5, 30); run(g, 20 * 20);
+    assert.ok(Math.hypot(medic.x - rifle.x, medic.z - rifle.z) <= CFG.aid.medic && rifle.hp > 60, `the medic went to the wounded (${rifle.hp} hp)`);
   }
 
   // Field Hospital: one per player, infantry near it reinforce
@@ -7230,6 +7262,32 @@ for (const lookupFinished of [false, true]) {
     h.points[0].owner = 0; for (const c of [20 * 40 + 12, 20 * 40 + 13, 20 * 40 + 14]) { h.chars[c] = 'W'; h.flags[c] = sim.TERRAIN.W; }
     run(h, 45);
     assert.equal(h.points[0].cut, false, 'supply: false turns the rule off');
+  }
+
+  // a house that falls spills rubble into the street: vehicles stop, the point is cut, a shovel opens the road again
+  {
+    const rows = open(); for (let y = 0; y < 40; y++) put(rows, 12, y, 'WWW');
+    put(rows, 12, 19, 'BBB'); put(rows, 12, 20, 'DDD'); put(rows, 12, 21, 'WWW');
+    const g = createGame(mapOf(rows), ['a', 'b'], false, [0, 1], [0, 1], { weather: false });
+    const p = g.points[0], road = 20 * 40 + 13, spill = sim.CFG.rubbleSpill;
+    p.owner = 0; p.progress = 1;
+    for (const u of g.units.values()) { place(g, u, u.owner ? 37 : 3, u.owner ? 37 : 3); u.holdFire = true; }
+    run(g, 45);
+    assert.equal(p.cut, false, 'the street over the river keeps the point supplied');
+    sim.CFG.rubbleSpill = 1;
+    sim.damageCells(g, [...g.units.values()], at(13, 19), 3, 2000);
+    sim.CFG.rubbleSpill = spill;
+    assert.equal(g.chars[road], 'R', 'the falling house throws rubble across the road');
+    assert.ok(g.flags[road] & sim.VBLOCK, 'and rubble stops vehicles');
+    run(g, 45);
+    assert.equal(p.cut, true, 'a street choked with rubble cuts the point');
+    g.players[0].mp = 1000;
+    const eng = place(g, unitOf(g, 0, 'rifle'), 10, 20);
+    assert.equal(command(g, 0, { t: 'dig', ids: [eng.id], kind: 'fill', x: at(13, 20).x, z: at(13, 20).z, dir: 0 }), undefined, 'rubble can be cleared');
+    run(g, 60 * 20);
+    assert.deepEqual([12, 13, 14].map(x => g.chars[20 * 40 + x]), ['D', 'D', 'D'], 'cleared rubble gives the road back');
+    run(g, 45);
+    assert.equal(p.cut, false, 'and the point is supplied again');
   }
 
   // computer players cope: a short match with every new unit on the field runs clean

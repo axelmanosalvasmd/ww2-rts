@@ -21,13 +21,17 @@ function houseNear(view, p, r) {
   return best;
 }
 
-function trenchesNear(view, p, r) {
+// manpower a point holder keeps back for units when it fortifies
+const FORT_RESERVE = 60;
+// how many cells within the square of half-size r around p pass test(cell)
+function cellsNear(view, p, r, test) {
   let n = 0;
   for (let y = Math.floor((p.z - r) / CELL); y <= (p.z + r) / CELL; y++)
     for (let x = Math.floor((p.x - r) / CELL); x <= (p.x + r) / CELL; x++)
-      if (x >= 0 && y >= 0 && x < view.w && y < view.h && view.flags[y * view.w + x] & TRENCH) n++;
+      if (x >= 0 && y >= 0 && x < view.w && y < view.h && test(y * view.w + x)) n++;
   return n;
 }
+const trenchesNear = (view, p, r) => cellsNear(view, p, r, c => view.flags[c] & TRENCH);
 
 // how many of my side's mines lie within r of p (the view's terrain shows only the mines my side laid)
 const minesNear = (view, p, r) => view.mines.filter(m => d(p, m) <= r).length;
@@ -78,7 +82,8 @@ function sent(mem, key, squads, now) {
 }
 const builders = (squads, busy) => squads.filter(u => CFG.fortBuilders.includes(u.type) && !u.retreating && !u.targetId && !u.dig && !u.entrench && u.garrison < 0 && !busy.has(u.id));
 
-// Spoiled ground to shovel back in: flooded craters and ground that shelling sank, around a point my side holds or on
+// Spoiled ground to shovel back in: flooded craters, ground that shelling sank and rubble across a road (it stops
+// vehicles and so cuts supply), around a point my side holds or on
 // a supply node nobody has built on (a depot needs a nearly level site). One job per look, never with a visible
 // enemy within 35 m, and only a squad within 60 m goes.
 function fillHoles(view, slot, squads, enemies, busy, mem, submit) {
@@ -257,6 +262,8 @@ function plan(observation, slot, opts, mem, send) {
   let sit = null;
   let armorSightings = [];
   const enemies = [...me.visible].map(id => view.units.get(id)).filter(Boolean);
+  // once the enemy has shown armor, points get tank traps too
+  if (!mem.armor) mem.armor = enemies.some(e => !UNITS[e.type].infantry && !UNITS[e.type].structure && !e.air);
   const watched = (e) => !mindful || knownSince(mind, e?.id, now, L.notice);
   if (mindful) {
     dropEmptyGround(mem, view, slot, now);
@@ -303,9 +310,12 @@ function plan(observation, slot, opts, mem, send) {
   // air: enemy planes it can see now (they're visible from far away), its own anti-air and planes
   const enemyPlanes = Math.max([...me.visible].filter(id => view.units.get(id)?.air).length, L.memory ? recent.filter(e => UNITS[e.type].air && now - e.t < 30).length : 0), flakN = count('flak') + count('flaktrack');
   const airWant = enemyPlanes && flakN < Math.min(3, Math.ceil(enemyPlanes / 2)) ? (trains('flaktrack') && tanks ? 'flaktrack' : 'flak')
-    : enemyPlanes > count('fighter') && trains('fighter') ? 'fighter' : count('attacker') < 2 && mine.length >= 8 && trains('attacker') ? 'attacker' : null;
-  const want = airWant ? airWant : seenTanks > count('at') ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : tanks < 1 && mine.length >= 4 ? 'tank'
-    : (seenDugIn || mine.length >= 6) && count('mortar') < 1 ? 'mortar' : seenInf >= 6 && count('sniper') < 1 && mine.length >= 5 ? 'sniper'
+    : enemyPlanes > count('fighter') && trains('fighter') ? 'fighter' : count('attacker') < 2 && mine.length >= 8 && trains('attacker') ? 'attacker'
+    : count('bomber') < 1 && count('attacker') >= 1 && mine.length >= 9 && trains('bomber') ? 'bomber' : null;
+  const atN = count('at') + count('tankdestroyer');
+  const want = airWant ? airWant : seenTanks > atN ? 'at' : seenGarrison && count('rocket') < 1 ? 'rocket' : seenGarrison && count('flamer') < 1 ? 'flamer' : tanks < 1 && mine.length >= 4 ? 'tank'
+    : (seenDugIn || mine.length >= 6) && count('mortar') < 1 ? 'mortar' : mine.length >= 8 && count('howitzer') < 1 && trains('howitzer') ? 'howitzer'
+    : seenInf >= 6 && count('sniper') < 1 && mine.length >= 5 ? 'sniper'
     : count('medic') < 1 && mine.filter(u => UNITS[u.type].infantry).length >= 5 ? 'medic' // one medic team once there is infantry to patch up
     : count('armoredcar') < 1 && mine.length >= 7 ? 'armoredcar' : tanks < 2 && mine.length >= 8 ? 'tank'
     : count('mg') * 2 < count('rifle') || (rule(1) && seenInf >= 6 && count('mg') < 3) ? 'mg' : 'rifle'; // many infantry seen: more MGs
@@ -314,6 +324,8 @@ function plan(observation, slot, opts, mem, send) {
   // the medium tank is the mainline tank once it can be afforded; the light tank is the cheap fallback
   const affords = (t) => { const pr = priceOf(view, t); return me.mp >= pr.mp && !(pr.fuel > (me.fuel ?? 0)); };
   if (want === 'tank' && trains('medium') && affords('medium')) buy = 'medium';
+  // every other tank answer is a tank destroyer once there is a gun line to back it
+  if (want === 'at' && count('at') > count('tankdestroyer') && trains('tankdestroyer') && affords('tankdestroyer')) buy = 'tankdestroyer';
   if (want === 'rifle' && canBuild('conscript', me.faction)) buy = 'conscript';
   if (want === 'rifle' && canBuild('ranger', me.faction) && count('ranger') < 2 && count('rifle') >= 1) buy = 'ranger';
   // Tiger only when it's affordable right now: saving up for it starved the German army
@@ -455,7 +467,7 @@ function plan(observation, slot, opts, mem, send) {
         const depot = knownBuildings(view, slot).filter(b => b.type === 'depot' && view.players[b.owner].team !== me.team && !recent.some(e => now - e.t < 30 && d(e, b) < 25))
           .sort((a, b) => d(a, me.spawn) - d(b, me.spawn))[0];
         const fast = (u) => (u.type === 'armoredcar' ? 0 : 1); // armored cars are the raiders
-        const pick = depot && free.filter(u => !busy.has(u.id) && !['mg', 'at', 'mortar', 'sniper'].includes(u.type)).sort((a, b) => fast(a) - fast(b) || d(a, depot) - d(b, depot)).slice(0, 2);
+        const pick = depot && free.filter(u => !busy.has(u.id) && !['mg', 'at', 'mortar', 'sniper', 'howitzer'].includes(u.type)).sort((a, b) => fast(a) - fast(b) || d(a, depot) - d(b, depot)).slice(0, 2);
         if (pick?.length === 2) mem.raid = { id: depot.id, ids: pick.map(u => u.id), at: { x: depot.x, z: depot.z } };
       }
       if (mem.raid) for (const u of mem.raid.ids.map(id => view.units.get(id)).filter(u => u && u.owner === slot)) send(u, mem.raid.at);
@@ -487,7 +499,7 @@ function plan(observation, slot, opts, mem, send) {
   const army = mine.filter(u => !u.air), front = army.length ? { x: army.reduce((a, u) => a + u.x, 0) / army.length, z: army.reduce((a, u) => a + u.z, 0) / army.length } : me.spawn;
   for (const u of mine.filter(u => u.air && u.air.state === 'base')) {
     if (u.type === 'attacker') {
-      const t = enemies.filter(e => !e.air && !UNITS[e.type].building && (!UNITS[e.type].infantry || e.type === 'at' || e.type === 'flak' || e.type === 'mortar')).sort((a, b) => d(a, front) - d(b, front))[0];
+      const t = enemies.filter(e => !e.air && !UNITS[e.type].building && (!UNITS[e.type].infantry || e.type === 'at' || e.type === 'flak' || e.type === 'mortar' || e.type === 'howitzer')).sort((a, b) => d(a, front) - d(b, front))[0];
       if (t && d(t, front) < 120) submit({ t: 'attack', ids: [u.id], target: t.id });
     } else {
       const e = enemies.filter(e => e.air).sort((a, b) => d(a, front) - d(b, front))[0];
@@ -546,8 +558,8 @@ function plan(observation, slot, opts, mem, send) {
     // save hurt units instead of letting them die: retreat, get reinforced, come back
     if (!horde && !home && hurt(u)) { retreat.push(u.id); continue; }
     if (!horde && home && frac < 1 && (me.mp >= 20 || hurt(u))) continue; // wait for reinforcements
-    // a medic keeps to the middle of the army, where the wounded are
-    if (def.medic) { if (!u.path.length && d(u, front) > 8) orders.push([u.id, front.x, front.z]); continue; }
+    // a medic keeps near the middle of the army; within reach of it the sim walks it to the wounded
+    if (def.medic) { if (!u.path.length && d(u, front) > CFG.aid.seek * 0.8) orders.push([u.id, front.x, front.z]); continue; }
     // tanks knock down houses that enemy squads are hiding in
     if (def.w.shellTerrain && !u.targetId && u.fireAt < 0) {
       const house = enemiesNear(u, 60).find(e => watched(e) && e.garrison >= 0 && d(u, e) < 60);
@@ -562,20 +574,32 @@ function plan(observation, slot, opts, mem, send) {
       const p = view.points[here];
       if (!allied(view, p.owner, slot)) continue;
       if (holding[here]++ === 0) {
-        // hold it from a house if there is one close by, otherwise dig in
-        const house = u.garrison < 0 && def.garrisons && houseNear(view, p, CFG.pointRadius + 3);
-        if (house && submit({ t: 'garrison', ids: [u.id], x: house.x, z: house.z }) === undefined) continue;
+        // Fortify toward the closest enemy HQ: mines just outside the point, trench around it, then a belt of wire across
+        // the approach and tank traps beyond it once the enemy has shown armor. Wire and traps are short lines, so the
+        // side's own units go round them. While the point is quiet a builder squad does the work still owed, stepping out
+        // of its house for it (from inside it cannot see the ground); otherwise it holds the point from a house close by.
         const foe = view.players.filter(q => q.team !== me.team).sort((a, b) => d(a.spawn, p) - d(b.spawn, p))[0]?.spawn;
         if (!foe) continue;
-        const l = d(foe, p) || 1, free = !u.dig && !u.entrench && CFG.fortBuilders.includes(u.type);
-        // mines first, across the approach from the closest enemy HQ and just outside the point (laid from inside it,
-        // so the squad still holds the point), then the trenches
-        if (free && me.mp >= FORTS.mines.cost + 150 && minesNear(view, p, CFG.pointRadius + 10) < 2
-          && submit({ t: 'dig', ids: [u.id], kind: 'mines', x: p.x + (foe.x - p.x) / l * (CFG.pointRadius + 2), z: p.z + (foe.z - p.z) / l * (CFG.pointRadius + 2), dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 }) === undefined) continue;
-        if (u.garrison < 0 && free && me.mp >= CFG.digCost + 150 && trenchesNear(view, p, CFG.pointRadius + 4) < 6) {
-          // entrench toward the closest enemy HQ: an arc of trench, or a strongpoint when there is manpower to spare
-          submit({ t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: p.x + (foe.x - p.x) / l * 6, z2: p.z + (foe.z - p.z) / l * 6 });
-        } else if (u.garrison < 0 && !u.dig && !u.entrench && !inCover(view, u)) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
+        const l = d(foe, p) || 1, R = CFG.pointRadius, free = !u.dig && !u.entrench && CFG.fortBuilders.includes(u.type);
+        const toward = (k) => ({ x: p.x + (foe.x - p.x) / l * k, z: p.z + (foe.z - p.z) / l * k }), ahead = toward(R + 7);
+        const across = (k, half) => { const at = toward(k), px = -(foe.z - p.z) / l * half, pz = (foe.x - p.x) / l * half; return { x: at.x - px, z: at.z - pz, x2: at.x + px, z2: at.z + pz }; };
+        const needs = {
+          mines: me.mp >= FORTS.mines.cost + FORT_RESERVE && minesNear(view, p, R + 10) < 2,
+          trench: me.mp >= CFG.digCost + FORT_RESERVE && trenchesNear(view, p, R + 4) < 6,
+          wire: me.mp >= FORTS.wire.cost * 2 + FORT_RESERVE && cellsNear(view, ahead, 6, c => view.chars[c] === 'X') < 4,
+          traps: !!mem.armor && me.mp >= FORTS.traps.cost * 2 + FORT_RESERVE && cellsNear(view, ahead, 8, c => view.chars[c] === 'Y') < 4,
+        };
+        const work = free && !enemies.some(e => d(e, p) < 40) && Object.values(needs).some(Boolean);
+        const house = !work && u.garrison < 0 && def.garrisons && houseNear(view, p, R + 3);
+        if (house && submit({ t: 'garrison', ids: [u.id], x: house.x, z: house.z }) === undefined) continue;
+        if (u.garrison >= 0) { if (work) submit({ t: 'move', orders: [[u.id, p.x, p.z]] }); continue; }
+        const mines = toward(R + 2);
+        if (free && needs.mines && submit({ t: 'dig', ids: [u.id], kind: 'mines', x: mines.x, z: mines.z, dir: Math.atan2(foe.z - p.z, foe.x - p.x) + Math.PI / 2 }) === undefined) continue;
+        // an arc of trench, or a strongpoint when there is manpower to spare
+        if (free && needs.trench) { const at = toward(6); submit({ t: 'entrench', ids: [u.id], pattern: me.mp >= 600 ? 'strongpoint' : 'arc', x: p.x, z: p.z, x2: at.x, z2: at.z }); continue; }
+        if (free && needs.wire && submit({ t: 'entrench', ids: [u.id], pattern: 'line', fort: 'wire', ...across(R + 5, 7) }) === undefined) continue;
+        if (free && needs.traps && submit({ t: 'entrench', ids: [u.id], pattern: 'line', fort: 'traps', ...across(R + 10, 8) }) === undefined) continue;
+        if (!u.dig && !u.entrench && !inCover(view, u)) submit({ t: 'cover', ids: [u.id] }); // stand in the trench, not beside it
         continue;
       }
     }

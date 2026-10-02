@@ -28,7 +28,7 @@ const SUPPORT_TIP = { recon: 'Reveals a wide area for 15s', artillery: '10 shell
 const FORT_TIP = { trench: 'Heavy cover for infantry', sandbags: 'Cover for infantry', wire: 'Slows infantry; tanks flatten it', traps: 'Stops vehicles; cover for infantry',
   nest: 'A trench pit behind a horseshoe of sandbags', mines: 'Hidden from the enemy; goes off under the first enemy squad or vehicle',
   bridge: 'Across a river, up to 5 cells; aim it along the crossing',
-  fill: 'Shovels craters, flooded craters and sunken ground back to open ground',
+  fill: 'Shovels craters, flooded craters and sunken ground back to open ground, and clears rubble (a road gets its road back)',
   demine: `Lifts the mines your side knows about: your own, and enemy ones a builder squad found by standing within ${CFG.mine.detect} m`,
   aid: `Infantry within ${CFG.aid.radius} m reinforce for manpower, at half the HQ's pace. One per player` };
 const ENTRENCH_TIP = { line: 'One straight trench from the first click to the second', zigzag: 'A sawtooth trench: more room on the same frontage',
@@ -46,8 +46,8 @@ const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need
 // Command Card groups, and the order of the cards inside them (types not listed go last, in table order)
 const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft', 'Naval'];
 const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter', 'destroyer']; // a silhouette before each group's name
-const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak']);
-const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker'];
+const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak', 'howitzer']);
+const ORDER = ['rifle', 'conscript', 'ranger', 'flamer', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'howitzer', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tankdestroyer', 'tiger', 'rocket', 'lcvp', 'gunboat', 'destroyer', 'fighter', 'attacker', 'bomber'];
 const groupOf = (t) => (UNITS[t].naval ? 4 : UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
 const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? ORDER.length + UNIT_TYPES.indexOf(t) : i; };
 // long one-word names get a soft hyphen so they break cleanly on a narrow card

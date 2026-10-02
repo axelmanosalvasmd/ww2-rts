@@ -14,7 +14,7 @@ const SUN_DIR = new THREE.Vector3(); // from the ground toward the sun
 export const sky = { sunUp: MOODS[DEFAULT_MOOD].sunUp, haze: 1 };
 const EDIT = new URLSearchParams(location.search).has('edit');
 
-let renderer, scene, camera, sun, hemi, mood = MOODS[DEFAULT_MOOD], gfxBtn = null, lastT = performance.now();
+let renderer, scene, camera, sun, hemi, mood = MOODS[DEFAULT_MOOD], gfxBtn = null, goreBtn = null, lastT = performance.now();
 const v3 = new THREE.Vector3();
 const view = { mesh: null, key: '' }; // the ground mesh the sun was last aimed for
 
@@ -42,6 +42,11 @@ export function setupLight(r, s, c) {
     gfxBtn.title = 'Low uses cheaper shadows, fewer particles and no cloud shadows or birds';
     gfxBtn.onclick = () => gfx.set(gfx.low ? 'high' : 'low');
     menu.insertBefore(gfxBtn, document.getElementById('leaveBtn'));
+    goreBtn = document.createElement('button');
+    goreBtn.id = 'goreBtn';
+    goreBtn.title = 'Blood and torn bodies when men die in a blast';
+    goreBtn.onclick = () => gfx.setGore(!gfx.gore);
+    menu.insertBefore(goreBtn, document.getElementById('leaveBtn'));
   }
   setMood(MOODS[DEFAULT_MOOD]);
   gfx.onChange(applyGfx);
@@ -66,6 +71,7 @@ function applyGfx() {
   sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
   sun.shadow.radius = low ? 1 : 2.5 * mood.soft;
   if (gfxBtn && gfxBtn.textContent !== text) gfxBtn.textContent = text; // setMood runs while the weather eases
+  if (goreBtn) goreBtn.textContent = `Gore: ${gfx.gore ? 'On' : 'Off'}`;
 }
 
 function notice(msg) {
