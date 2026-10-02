@@ -6085,6 +6085,82 @@ for (const lookupFinished of [false, true]) {
     }
     relief.dispose();
   }
+
+  // A stick of bombs keeps sim heights at cell centres. The banks have to leave the cell grid.
+  {
+    const W = 36, H = 18;
+    const height = new Int8Array(W * H);
+    const chars = Array.from({ length: H }, () => Array.from({ length: W }, () => '.'));
+    const cellOf = (x, z) => {
+      const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+      if (cx < 0 || cz < 0 || cx >= W || cz >= H) return -1;
+      return cz * W + cx;
+    };
+    const center = (c) => ({ x: (c % W + 0.5) * CELL, z: (Math.floor(c / W) + 0.5) * CELL });
+    const dent = (c) => {
+      if (c < 0) return;
+      const L = height[c] - 1, x = c % W;
+      const ns = [c - W, c + W, x > 0 ? c - 1 : -1, x < W - 1 ? c + 1 : -1];
+      if (L < -2 || ns.some(n => n >= 0 && n < height.length && height[n] - L > 1)) return;
+      height[c] = L;
+    };
+    const digAt = (at, r) => {
+      const n = Math.ceil(r / CELL), hole = [cellOf(at.x, at.z)];
+      for (let dy = -n; dy <= n; dy++) for (let dx = -n; dx <= n; dx++) {
+        const c = cellOf(at.x + dx * CELL, at.z + dy * CELL);
+        if (c >= 0 && c !== hole[0] && Math.hypot(center(c).x - at.x, center(c).z - at.z) <= r) hole.push(c);
+      }
+      for (const c of hole) { dent(c); if (chars[Math.floor(c / W)][c % W] === '.') chars[Math.floor(c / W)][c % W] = '+'; }
+      if (r > 0) for (const c of hole) if (Math.hypot(center(c).x - at.x, center(c).z - at.z) <= r / 2) dent(c);
+    };
+    const jitter = [0.4, -1.1, 0.8, -0.3, 1.2, -0.6];
+    for (let i = 0; i < 6; i++) digAt({ x: 36 + (i / 5 - 0.5) * 40, z: 22 + jitter[i] }, 4.2);
+    const levelChar = (L) => (L >= 0 ? String(L) : String.fromCharCode(96 - L));
+    const rows = chars.map(row => row.join(''));
+    const heights = Array.from({ length: H }, (_, z) => Array.from({ length: W }, (_, x) => levelChar(height[z * W + x])).join(''));
+    const grid = rows.map(r => [...r]);
+    const stick = createRelief({ w: W, h: H, rows, heights, spawns: [{ x: 2, y: 2 }] }, grid, { low: false });
+    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
+      const got = stick.hAt((x + 0.5) * CELL, (z + 0.5) * CELL);
+      assert.ok(Math.abs(got - levelOf(heights[z][x]) * CFG.levelHeight) <= 0.1, `stick centre ${x},${z}`);
+    }
+    const p = stick.geometry.attributes.position.array, idx = stick.geometry.index.array;
+    let tris = 0, down = 0, degenerate = false;
+    for (let i = 0; i < idx.length; i += 3) {
+      const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+      const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2];
+      const vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+      const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      const area = Math.hypot(cx, cy, cz);
+      tris++;
+      if (area <= 1e-9) degenerate = true;
+      else if (cy < -0.35 * area) down++;
+    }
+    assert.ok(!degenerate, 'stick: degenerate triangle');
+    assert.ok(down / tris < 0.02, `stick: folded surface ${down}/${tris}`);
+    const bank = (side) => {
+      const bins = Array.from({ length: 24 }, () => []);
+      for (let i = 0; i < p.length; i += 3) {
+        const x = p[i], y = p[i + 1], z = p[i + 2];
+        if (y < -0.85 || y > -0.02 || x < 14 || x > 62) continue;
+        if (side < 0 ? z >= 22 : z < 22) continue;
+        bins[Math.max(0, Math.min(23, Math.floor((x - 14) / 2)))].push(z);
+      }
+      let off = 0, n = 0;
+      for (const zs of bins) {
+        if (!zs.length) continue;
+        const z = side < 0 ? Math.min(...zs) : Math.max(...zs);
+        const f = Math.abs(z % 0.5);
+        off += Math.min(f, 0.5 - f);
+        n++;
+      }
+      return { off, n };
+    };
+    const north = bank(-1), south = bank(1);
+    assert.ok(north.n >= 8 && south.n >= 8, 'stick: the rim is missing');
+    assert.ok(north.off > 0.7 && south.off > 0.7, `stick: banks still sit on the cell grid (${north.off.toFixed(2)}, ${south.off.toFixed(2)})`);
+    stick.dispose();
+  }
 }
 
 // Weather (shared/weather.js): the plan is the same for the same seed, it turns on time after a public warning, and
@@ -7465,6 +7541,27 @@ console.log('all infantry model checks passed');
   const again = avg(4.5, 12.5);
   lines.push(`burn restored d=${dist(burnCenter, again).toFixed(2)}`);
   assert.ok(dist(burnCenter, again) < 2, 'repainting a burn does not match the first paint');
+
+  for (let x = 8; x <= 15; x++) grid[1][x] = '+';
+  ground.paint(grid, state);
+  snap();
+  const widths = [], mids = [];
+  for (let x = 8.25; x <= 15.25; x += 0.5) {
+    let lo = null, hi = null;
+    for (let v = 0.15; v <= 2.5; v += 0.05) {
+      if (dClean(avg(x, v)) > 26) {
+        if (lo == null) lo = v;
+        hi = v;
+      }
+    }
+    widths.push(hi == null ? 0 : +(hi - lo).toFixed(2));
+    mids.push(+dClean(avg(x, 1.5)).toFixed(1));
+  }
+  const wmin = Math.min(...widths), wmax = Math.max(...widths);
+  lines.push(`line widths=${widths.join(',')} span=${(wmax - wmin).toFixed(2)} mids=${mids.join(',')}`);
+  assert.ok(wmin > 0.1, `a bomb line breaks (min width ${wmin})`);
+  assert.ok(wmax - wmin >= 0.25, `a bomb line is an even ribbon (span ${(wmax - wmin).toFixed(2)})`);
+  assert.ok(mids.some(v => v < 25) && mids.some(v => v > 60), 'a bomb line does not pinch and open');
 
   const { buildStructures } = await import('./client/structures.js');
   const TW = 14, TH = 8;

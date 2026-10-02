@@ -5,7 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-- Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A wrecked house is broken wall stubs and spilled rubble, not a shorter box.
+- Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A line of bombs is a ragged run: the banks wander and the bright rim is gone on dug ground, instead of a row of equal pale bowls. A wrecked house is broken wall stubs and spilled rubble, not a shorter box. Feet can sit a couple of metres off the visible lip, because the lip slides and the ground under a unit does not.
 
 - Fallen soldiers stay the soldiers who fell. A dead man lies as if he fell rather than aiming from the dirt. He keeps his uniform, helmet and kit, stays where he dropped, then sinks and fades. Bodies are no longer brown capsules. Up to 200 stay on the field, in one draw per uniform.
 - Left for later: a wiped gun crew's weapon still disappears with the squad. Vehicle wrecks are still the real hull, darkened.

@@ -256,35 +256,63 @@ function scarField(scar, w, h, u, v) {
 // How destroyed the point (u, v) is, in cell coordinates. 0 is untouched ground, 1 is the middle of a blast.
 // A lone hit stays a blob inside its cell, so the corners still show grass. A wide blast is one torn patch:
 // the sample point is shoved by almost a cell before the edge is measured, and that edge is only solid once
-// it is a full cell inside the scar. The low-frequency ground noise cannot do this. It is too smooth to tear a block.
+// it is a full cell inside the scar. A thin stick (a bombing run, a strafe) is not that patch and not a row of
+// disks: the sample slides along the run and the width pinches, so grass shows between some of the hits.
+// The low-frequency ground noise cannot do this. It is too smooth to tear a block.
 function scarWeights(scar, depth, w, h, u, v) {
-  let mass = 0;
+  let mass = 0, n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
   const x0 = u | 0, y0 = v | 0;
   for (let y = y0 - 3; y <= y0 + 3; y++) {
     if (y < 0 || y >= h) continue;
     for (let x = x0 - 3; x <= x0 + 3; x++) {
       if (x < 0 || x >= w || !scar[y * w + x]) continue;
-      if (Math.hypot(u - (x + 0.5), v - (y + 0.5)) > 3.2) continue;
+      const cx = x + 0.5, cy = y + 0.5;
+      if (Math.hypot(u - cx, v - cy) > 3.2) continue;
+      n++; sx += cx; sy += cy; sxx += cx * cx; syy += cy * cy; sxy += cx * cy;
       const dep = depth[y * w + x];
       if (dep > mass) mass = dep;
     }
   }
+  // A stick is long and only a few cells across. A square block, including the tested three-by-three, is not.
+  let run = null;
+  if (n >= 5) {
+    const mx = sx / n, my = sy / n;
+    const cxx = sxx / n - mx * mx, cyy = syy / n - my * my, cxy = sxy / n - mx * my;
+    const tr = cxx + cyy, det = cxx * cyy - cxy * cxy;
+    const disc = Math.max(0, tr * tr * 0.25 - det);
+    const major = tr * 0.5 + Math.sqrt(disc), minor = Math.max(0, tr * 0.5 - Math.sqrt(disc));
+    // A plane stick is a few cells wide, not one. A square block still fails the long-axis test.
+    if (major > 2.2 && minor < 1.65 && minor < major / 2.4) {
+      const ang = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
+      run = { ax: Math.cos(ang), ay: Math.sin(ang) };
+    }
+  }
   // A single cell and a three-by-three stay gentle, or the tested corners fill in. A real shelled block does not.
-  const big = mass >= 3;
-  const mid = !big && mass >= 1.8;
-  const warp = big ? 0.78 : mid ? 0.16 : 0.04;
-  const amp = big ? 1.35 : mid ? 0.34 : 0.14;
-  const biteAmp = big ? 0.62 : mid ? 0.1 : 0.05;
-  // Two octaves, so a side that is flat in the slow wave still gets torn by the faster one.
-  const slow = (pu, pv, k) => cellNoise(pu * 0.26 + k, pv * 0.24 + k * 1.3, k) * 2 - 1;
-  const fast = (pu, pv, k) => cellNoise(pu * 0.62 + k * 2, pv * 0.57 + 3, k) * 2 - 1;
-  // A product of sines, so every side of a wide blast is bitten even where the noise happens to be flat.
-  // The two frequencies are not the cell spacing, so the notches do not line up with the map grid.
-  const rip = big ? 0.62 : 0;
-  const nu = u + slow(u + 2.2, v + 5.1, 4) * warp + fast(u, v, 6) * warp * 0.7
-    + Math.sin(v * 2.6 + u * 0.7) * Math.sin(u * 1.15 + v * 0.45 + 1.7) * rip;
-  const nv = v + slow(u + 8.4, v + 1.3, 5) * warp + fast(u + 4, v, 7) * warp * 0.7
-    + Math.sin(u * 2.35 + v * 0.55) * Math.sin(v * 1.25 + u * 0.4 + 0.6) * rip;
+  const big = !run && mass >= 3;
+  const mid = !run && !big && mass >= 1.8;
+  let nu, nv, amp, biteAmp;
+  if (run) {
+    const s = u * run.ax + v * run.ay, t = -u * run.ay + v * run.ax;
+    const alongN = cellNoise(s * 0.18 + 2, t * 0.18 + 1, 31) * 2 - 1;
+    const acrossN = cellNoise(s * 0.31 + 5, 8.2, 32) * 2 - 1;
+    nu = u + run.ax * alongN * 0.34 + (-run.ay) * acrossN * 0.42;
+    nv = v + run.ay * alongN * 0.34 + run.ax * acrossN * 0.42;
+    amp = 0.42; biteAmp = 0.22;
+  } else {
+    const warp = big ? 0.78 : mid ? 0.16 : 0.04;
+    amp = big ? 1.35 : mid ? 0.34 : 0.14;
+    biteAmp = big ? 0.62 : mid ? 0.1 : 0.05;
+    // Two octaves, so a side that is flat in the slow wave still gets torn by the faster one.
+    const slow = (pu, pv, k) => cellNoise(pu * 0.26 + k, pv * 0.24 + k * 1.3, k) * 2 - 1;
+    const fast = (pu, pv, k) => cellNoise(pu * 0.62 + k * 2, pv * 0.57 + 3, k) * 2 - 1;
+    // A product of sines, so every side of a wide blast is bitten even where the noise happens to be flat.
+    // The two frequencies are not the cell spacing, so the notches do not line up with the map grid.
+    const rip = big ? 0.62 : 0;
+    nu = u + slow(u + 2.2, v + 5.1, 4) * warp + fast(u, v, 6) * warp * 0.7
+      + Math.sin(v * 2.6 + u * 0.7) * Math.sin(u * 1.15 + v * 0.45 + 1.7) * rip;
+    nv = v + slow(u + 8.4, v + 1.3, 5) * warp + fast(u + 4, v, 7) * warp * 0.7
+      + Math.sin(u * 2.35 + v * 0.55) * Math.sin(v * 1.25 + u * 0.4 + 0.6) * rip;
+  }
   const field = scarField(scar, w, h, nu, nv);
   const wave = cellNoise(u * 0.45 + 1.7, v * 0.45 + 4.2, 11) * 2 - 1;
   const bite = cellNoise(u * 1.7 + 3.0, v * 1.4 + 6.0, 8) * 2 - 1;
@@ -292,8 +320,8 @@ function scarWeights(scar, depth, w, h, u, v) {
   const shifted = inset - 0.08 + amp * wave + biteAmp * bite;
   let cover = shifted <= 0 ? 0 : shifted >= 0.65 ? 1 : shifted / 0.65;
   cover = cover * cover * (3 - 2 * cover);
-  if (!big && field.dScar < (mid ? 0.28 : 0.34)) cover = 1;
-  if (big && inset > 2.05) {
+  if (!run && !big && field.dScar < (mid ? 0.28 : 0.34)) cover = 1;
+  if ((big && inset > 2.05) || (run && inset > 1.45)) {
     const fleck = cellNoise(u * 3.1 + 4, v * 3.1 + 2, 19);
     cover = Math.max(cover, fleck > 0.93 ? 0.5 : 1);
   }
