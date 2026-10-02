@@ -61,10 +61,11 @@ export function setMood(M) {
 
 function applyGfx() {
   const low = gfx.low;
-  renderer.shadowMap.type = low ? THREE.BasicShadowMap : THREE.PCFShadowMap; // three rebuilds the map on a type change
+  const type = low ? THREE.BasicShadowMap : THREE.PCFShadowMap, text = `Graphics: ${low ? 'Low' : 'High'}`;
+  if (renderer.shadowMap.type !== type) renderer.shadowMap.type = type; // three rebuilds the map on a type change
   sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
   sun.shadow.radius = low ? 1 : 2.5 * mood.soft;
-  if (gfxBtn) gfxBtn.textContent = `Graphics: ${low ? 'Low' : 'High'}`;
+  if (gfxBtn && gfxBtn.textContent !== text) gfxBtn.textContent = text; // setMood runs while the weather eases
 }
 
 function notice(msg) {
