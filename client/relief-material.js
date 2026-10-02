@@ -4,21 +4,25 @@ import { CFG } from '../shared/sim.js';
 
 const VERT_PARS = /* glsl */`
 attribute vec4 reliefPaint;
+attribute float reliefScar;
 varying vec3 vReliefPosition;
 varying vec3 vReliefNormal;
 varying vec4 vReliefPaint;
+varying float vReliefScar;
 `;
 
 const VERT_MAIN = /* glsl */`
 vReliefPosition = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
 vReliefNormal = normalize( mat3( modelMatrix ) * objectNormal );
 vReliefPaint = reliefPaint;
+vReliefScar = reliefScar;
 `;
 
 const FRAG_PARS = /* glsl */`
 varying vec3 vReliefPosition;
 varying vec3 vReliefNormal;
 varying vec4 vReliefPaint;
+varying float vReliefScar;
 uniform float uReliefStep;
 
 #ifndef RELIEF_LOW
@@ -64,8 +68,10 @@ vec3 reliefTint = mix( vec3( 1.01, 0.98, 0.92 ), vec3( 1.12, 1.05, 0.98 ), relie
 diffuseColor.rgb *= reliefTint;
 
 // At 45 degrees the dry earth reaches its full coverage; patches leave grass showing through.
+// Dug ground stays the paint colour. The tan slope mix was drawing a pale ring around each bomb.
 float reliefSlope = smoothstep( 0.05, 0.2929, reliefSteep );
-float reliefEarth = reliefSlope * 0.55;
+float reliefScarGate = 1.0 - clamp( vReliefScar, 0.0, 1.0 );
+float reliefEarth = reliefSlope * 0.55 * reliefScarGate;
 #ifndef RELIEF_LOW
 	reliefEarth *= 0.5 + 0.5 * smoothstep( 0.20, 0.68, reliefPatch );
 #endif
@@ -77,14 +83,16 @@ diffuseColor.rgb *= 1.0 - 0.16 * reliefSlope * ( 1.0 - reliefRock );
 // Each raised level dries and lightens the painted ground, capped at three levels.
 float reliefLevel = clamp( vReliefPosition.y / uReliefStep, 0.0, 3.0 );
 float reliefPlateau = reliefLevel * ( 1.0 - reliefSlope ) * ( 1.0 - reliefRock )
-	* ( 1.0 - reliefFoot ) * ( 1.0 - reliefDamp );
+	* ( 1.0 - reliefFoot ) * ( 1.0 - reliefDamp ) * ( 1.0 - clamp( vReliefScar, 0.0, 1.0 ) );
 diffuseColor.rgb *= vec3( 1.0 ) + vec3( 0.13, 0.12, 0.10 ) * reliefPlateau;
 
 // World height locates each ramp's lowest 0.95 m and its crest without adding geometry attributes.
 float reliefPhase = mod( vReliefPosition.y, uReliefStep );
 float reliefRampMask = smoothstep( 0.003, 0.06, reliefSteep ) * ( 1.0 - reliefRock );
-float reliefRampFoot = ( 1.0 - smoothstep( 0.12, 0.95, reliefPhase ) ) * reliefRampMask;
+float reliefRampFoot = ( 1.0 - smoothstep( 0.12, 0.95, reliefPhase ) ) * reliefRampMask * reliefScarGate;
 float reliefRampCrest = smoothstep( uReliefStep - 0.40, uReliefStep - 0.26, reliefPhase ) * reliefRampMask;
+// A closed pale ring is what makes a bomb read as a stamped bowl. Dug ground has no ring.
+if ( vReliefScar > 0.5 ) reliefRampCrest = 0.0;
 diffuseColor.rgb *= 1.0 - 0.27 * reliefRampFoot;
 diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * 1.10 + vec3( 0.008, 0.006, 0.003 ), reliefRampCrest );
 
@@ -177,6 +185,12 @@ if ( reliefRock > 0.001 ) {
 `;
 
 const FRAG_NORMAL = /* glsl */`
+if ( vReliefScar > 0.5 ) {
+	// The pit wall is still there. Flattening its shading stops the sun tracing an octagon.
+	vec3 reliefViewUp = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
+	normal = normalize( mix( normal, reliefViewUp, 0.93 ) );
+	reliefN = normalize( mix( reliefN, vec3( 0.0, 1.0, 0.0 ), 0.93 ) );
+}
 #ifndef RELIEF_LOW
 	// Broad, tiny paint irregularities catch the low sun without moving the surface.
 	vec3 reliefBump = vec3(
@@ -194,7 +208,7 @@ const FRAG_FILL = /* glsl */`
 // A small terrain bounce keeps shaded rock and earth readable alongside the lit plateaus.
 // The ramp mask reaches full strength at 45 degrees; the wall mask excludes gentle terrain.
 float reliefWallFill = 0.30 * reliefRock * smoothstep( 0.35, 1.0, reliefSteep );
-float reliefRampFill = 0.22 * ( 1.0 - reliefRock ) * reliefSlope;
+float reliefRampFill = 0.22 * ( 1.0 - reliefRock ) * reliefSlope * ( 1.0 - clamp( vReliefScar, 0.0, 1.0 ) );
 totalEmissiveRadiance += diffuseColor.rgb * ( reliefWallFill + reliefRampFill );
 `;
 
@@ -214,7 +228,7 @@ export function createReliefMaterial(texture, { low = false } = {}) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAG_NORMAL}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${FRAG_FILL}`);
   };
-  material.customProgramCacheKey = () => `relief-painted-v6-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
+  material.customProgramCacheKey = () => `relief-painted-v8-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
   material.userData.setLow = (next) => {
     if (Boolean(next) === ('RELIEF_LOW' in material.defines)) return;
     if (next) material.defines.RELIEF_LOW = '';

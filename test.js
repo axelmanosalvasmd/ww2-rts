@@ -1,7 +1,7 @@
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import * as sim from './shared/sim.js';
 import { createGame, step, command, los, findPath, validateMap, snapshotFor, snapshotCache, inTrench, vet, spawnSlots, popOf, popCap, CFG, CELL, SUPPORT, UNITS, teamSees, levelOf } from './shared/sim.js';
 import { SpatialGrid, updateGrid } from './shared/grid.js';
@@ -6321,6 +6321,82 @@ for (const lookupFinished of [false, true]) {
     }
     relief.dispose();
   }
+
+  // A stick of bombs keeps sim heights at cell centres. The banks have to leave the cell grid.
+  {
+    const W = 36, H = 18;
+    const height = new Int8Array(W * H);
+    const chars = Array.from({ length: H }, () => Array.from({ length: W }, () => '.'));
+    const cellOf = (x, z) => {
+      const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+      if (cx < 0 || cz < 0 || cx >= W || cz >= H) return -1;
+      return cz * W + cx;
+    };
+    const center = (c) => ({ x: (c % W + 0.5) * CELL, z: (Math.floor(c / W) + 0.5) * CELL });
+    const dent = (c) => {
+      if (c < 0) return;
+      const L = height[c] - 1, x = c % W;
+      const ns = [c - W, c + W, x > 0 ? c - 1 : -1, x < W - 1 ? c + 1 : -1];
+      if (L < -2 || ns.some(n => n >= 0 && n < height.length && height[n] - L > 1)) return;
+      height[c] = L;
+    };
+    const digAt = (at, r) => {
+      const n = Math.ceil(r / CELL), hole = [cellOf(at.x, at.z)];
+      for (let dy = -n; dy <= n; dy++) for (let dx = -n; dx <= n; dx++) {
+        const c = cellOf(at.x + dx * CELL, at.z + dy * CELL);
+        if (c >= 0 && c !== hole[0] && Math.hypot(center(c).x - at.x, center(c).z - at.z) <= r) hole.push(c);
+      }
+      for (const c of hole) { dent(c); if (chars[Math.floor(c / W)][c % W] === '.') chars[Math.floor(c / W)][c % W] = '+'; }
+      if (r > 0) for (const c of hole) if (Math.hypot(center(c).x - at.x, center(c).z - at.z) <= r / 2) dent(c);
+    };
+    const jitter = [0.4, -1.1, 0.8, -0.3, 1.2, -0.6];
+    for (let i = 0; i < 6; i++) digAt({ x: 36 + (i / 5 - 0.5) * 40, z: 22 + jitter[i] }, 4.2);
+    const levelChar = (L) => (L >= 0 ? String(L) : String.fromCharCode(96 - L));
+    const rows = chars.map(row => row.join(''));
+    const heights = Array.from({ length: H }, (_, z) => Array.from({ length: W }, (_, x) => levelChar(height[z * W + x])).join(''));
+    const grid = rows.map(r => [...r]);
+    const stick = createRelief({ w: W, h: H, rows, heights, spawns: [{ x: 2, y: 2 }] }, grid, { low: false });
+    for (let z = 0; z < H; z++) for (let x = 0; x < W; x++) {
+      const got = stick.hAt((x + 0.5) * CELL, (z + 0.5) * CELL);
+      assert.ok(Math.abs(got - levelOf(heights[z][x]) * CFG.levelHeight) <= 0.1, `stick centre ${x},${z}`);
+    }
+    const p = stick.geometry.attributes.position.array, idx = stick.geometry.index.array;
+    let tris = 0, down = 0, degenerate = false;
+    for (let i = 0; i < idx.length; i += 3) {
+      const a = idx[i] * 3, b = idx[i + 1] * 3, c = idx[i + 2] * 3;
+      const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2];
+      const vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+      const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      const area = Math.hypot(cx, cy, cz);
+      tris++;
+      if (area <= 1e-9) degenerate = true;
+      else if (cy < -0.35 * area) down++;
+    }
+    assert.ok(!degenerate, 'stick: degenerate triangle');
+    assert.ok(down / tris < 0.02, `stick: folded surface ${down}/${tris}`);
+    const bank = (side) => {
+      const bins = Array.from({ length: 24 }, () => []);
+      for (let i = 0; i < p.length; i += 3) {
+        const x = p[i], y = p[i + 1], z = p[i + 2];
+        if (y < -0.85 || y > -0.02 || x < 14 || x > 62) continue;
+        if (side < 0 ? z >= 22 : z < 22) continue;
+        bins[Math.max(0, Math.min(23, Math.floor((x - 14) / 2)))].push(z);
+      }
+      let off = 0, n = 0;
+      for (const zs of bins) {
+        if (!zs.length) continue;
+        const z = side < 0 ? Math.min(...zs) : Math.max(...zs);
+        const f = Math.abs(z % 0.5);
+        off += Math.min(f, 0.5 - f);
+        n++;
+      }
+      return { off, n };
+    };
+    const north = bank(-1), south = bank(1);
+    assert.ok(north.n >= 8 && south.n >= 8, 'stick: the rim is missing');
+    assert.ok(north.off > 0.7 && south.off > 0.7, `stick: banks still sit on the cell grid (${north.off.toFixed(2)}, ${south.off.toFixed(2)})`);
+    stick.dispose();
+  }
 }
 
 // Weather (shared/weather.js): the plan is the same for the same seed, it turns on time after a public warning, and
@@ -7575,5 +7651,189 @@ console.log('all aircraft model checks passed');
   assert.equal(new Set(poses.map(r => r.s.stance)).size, 3, 'riflemen use stride, brace and standing stances');
 }
 console.log('all infantry model checks passed');
+
+// Shell holes, rubble and burnt ground are painted by the client, then read back. A filled cell square fails.
+{
+  class ImageData {
+    constructor(w, h) { this.width = w; this.height = h; this.data = new Uint8ClampedArray(w * h * 4); }
+  }
+  class Ctx {
+    constructor(canvas) { this.canvas = canvas; this._buf = null; }
+    _ensure() {
+      const { width, height } = this.canvas;
+      if (!this._buf || this._buf.width !== width || this._buf.height !== height) this._buf = new ImageData(width, height);
+      return this._buf;
+    }
+    createImageData(w, h) { return new ImageData(w, h); }
+    putImageData(img, x, y) {
+      const buf = this._ensure(), W = buf.width;
+      for (let row = 0; row < img.height; row++) {
+        const dy = y + row;
+        if (dy < 0 || dy >= buf.height) continue;
+        const sx = Math.max(0, x), sw = Math.min(img.width - (sx - x), W - sx);
+        if (sw <= 0) continue;
+        buf.data.set(img.data.subarray((row * img.width + (sx - x)) * 4, (row * img.width + (sx - x)) * 4 + sw * 4), (dy * W + sx) * 4);
+      }
+    }
+    getImageData(x, y, w, h) {
+      const buf = this._ensure(), out = new ImageData(w, h);
+      for (let row = 0; row < h; row++) {
+        const dy = y + row;
+        if (dy < 0 || dy >= buf.height) continue;
+        const sx = Math.max(0, x), sw = Math.min(w - (sx - x), buf.width - sx);
+        if (sw <= 0) continue;
+        out.data.set(buf.data.subarray((dy * buf.width + sx) * 4, (dy * buf.width + sx) * 4 + sw * 4), (row * w + (sx - x)) * 4);
+      }
+      return out;
+    }
+    save() {} restore() {} beginPath() {} rect() {} clip() {} arc() {} ellipse() {} fill() {} stroke() {}
+    fillRect() {} moveTo() {} lineTo() {} closePath() {} clearRect() {} drawImage() {}
+    createRadialGradient() { return { addColorStop() {} }; }
+    set fillStyle(v) {} set strokeStyle(v) {} set lineWidth(v) {} set lineCap(v) {} set lineJoin(v) {}
+    set imageSmoothingEnabled(v) {} set imageSmoothingQuality(v) {}
+  }
+  class Canvas {
+    constructor() { this.width = 0; this.height = 0; }
+    getContext() { return this._ctx || (this._ctx = new Ctx(this)); }
+  }
+  class Img {
+    constructor() { this._l = {}; }
+    addEventListener(t, fn) { (this._l[t] ||= []).push(fn); }
+    removeEventListener(t, fn) { this._l[t] = (this._l[t] || []).filter(f => f !== fn); }
+    set src(_) { queueMicrotask(() => { this.onerror?.(); for (const fn of this._l.error || []) fn.call(this, {}); }); }
+  }
+  globalThis.document = { createElement: () => new Canvas(), createElementNS: () => new Img() };
+  globalThis.Image = Img;
+  globalThis.window = globalThis;
+
+  const { createGround } = await import('./client/ground.js');
+  const W = 16, H = 16;
+  const grid = Array.from({ length: H }, () => Array.from({ length: W }, () => '.'));
+  grid[4][4] = 'R';
+  grid[8][4] = '+';
+  for (let y = 8; y <= 10; y++) for (let x = 8; x <= 10; x++) grid[y][x] = 'R';
+  const state = new Uint8Array(W * H);
+  state[12 * W + 4] = 4;
+  const map = { w: W, h: H, rows: grid.map(row => row.join('')), spawns: [{ x: 8, y: 8 }] };
+  const ground = createGround(map);
+  await ground.loading;
+  ground.paint(grid, state);
+  const P = ground.px;
+  let frame = ground.ctx.getImageData(0, 0, W * P, H * P);
+  const snap = () => { frame = ground.ctx.getImageData(0, 0, W * P, H * P); };
+  const pix = (x, y) => {
+    const i = ((Math.round(y) * W * P + Math.round(x)) * 4);
+    return [frame.data[i], frame.data[i + 1], frame.data[i + 2]];
+  };
+  const avg = (u, v) => {
+    const cx = u * P - 0.5, cy = v * P - 0.5;
+    let r = 0, g = 0, b = 0, k = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const p = pix(cx + dx, cy + dy);
+      r += p[0]; g += p[1]; b += p[2]; k++;
+    }
+    return [r / k, g / k, b / k];
+  };
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const clean = [];
+  for (let y = 0.3; y < 2.7; y += 0.25) for (let x = 0.3; x < 2.7; x += 0.25) clean.push(avg(x, y));
+  const dClean = (p) => clean.reduce((m, s) => Math.min(m, dist(p, s)), Infinity);
+  const lines = [`P=${P}`];
+  const scarCell = (name, cx, cy) => {
+    const center = avg(cx + 0.5, cy + 0.5);
+    const corners = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => avg(cx + 0.04 + a * 0.92, cy + 0.04 + b * 0.92));
+    const cd = dClean(center), kd = corners.map(dClean);
+    let dom = 0, n = 0;
+    for (let y = cy * P + 1; y < (cy + 1) * P - 1; y += 2) for (let x = cx * P + 1; x < (cx + 1) * P - 1; x += 2) {
+      n++;
+      const p = pix(x, y);
+      if (dist(p, center) + 6 < dClean(p)) dom++;
+    }
+    const fill = dom / n;
+    lines.push(`${name} center=${cd.toFixed(1)} corners=${kd.map(v => v.toFixed(1)).join(',')} fill=${fill.toFixed(3)}`);
+    assert.ok(kd.every(v => cd > v + 6), `${name}: the middle (${cd.toFixed(1)}) is no further from clean ground than a corner`);
+    assert.ok(kd.every(v => v < 20), `${name}: a corner is still painted as the blast (${kd.map(v => v.toFixed(1)).join(',')})`);
+    assert.ok(fill > 0.15 && fill < 0.93, `${name}: blast fill ${fill.toFixed(3)} is a cell square or empty`);
+    return center;
+  };
+  scarCell('rubble', 4, 4);
+  scarCell('crater', 4, 8);
+  const burnCenter = scarCell('burnt', 4, 12);
+  const interior = avg(9.5, 9.5), edge = avg(9, 8.5), outer = avg(8.05, 8.05);
+  lines.push(`block interior=${dClean(interior).toFixed(1)} edge=${dClean(edge).toFixed(1)} outer=${dClean(outer).toFixed(1)} edgeToInterior=${dist(edge, interior).toFixed(1)}`);
+  assert.ok(dClean(edge) > dClean(outer) + 6, 'a rubble block reads as separate squares along the shared edge');
+  assert.ok(dClean(outer) < 12, 'the outer corner of a rubble block is still the cell square');
+  assert.ok(dist(edge, interior) < dClean(edge), 'the shared edge of a rubble block is not the blast');
+
+  state[12 * W + 4] = 0;
+  ground.paint(grid, state);
+  snap();
+  const cleared = avg(4.5, 12.5);
+  lines.push(`burn cleared=${dClean(cleared).toFixed(1)}`);
+  assert.ok(dClean(cleared) < 25, 'clearing a burn left the scar in place');
+  state[12 * W + 4] = 4;
+  ground.paint(grid, state);
+  snap();
+  const again = avg(4.5, 12.5);
+  lines.push(`burn restored d=${dist(burnCenter, again).toFixed(2)}`);
+  assert.ok(dist(burnCenter, again) < 2, 'repainting a burn does not match the first paint');
+
+  for (let x = 8; x <= 15; x++) grid[1][x] = '+';
+  ground.paint(grid, state);
+  snap();
+  const widths = [], mids = [];
+  for (let x = 8.25; x <= 15.25; x += 0.5) {
+    let lo = null, hi = null;
+    for (let v = 0.15; v <= 2.5; v += 0.05) {
+      if (dClean(avg(x, v)) > 26) {
+        if (lo == null) lo = v;
+        hi = v;
+      }
+    }
+    widths.push(hi == null ? 0 : +(hi - lo).toFixed(2));
+    mids.push(+dClean(avg(x, 1.5)).toFixed(1));
+  }
+  const wmin = Math.min(...widths), wmax = Math.max(...widths);
+  lines.push(`line widths=${widths.join(',')} span=${(wmax - wmin).toFixed(2)} mids=${mids.join(',')}`);
+  assert.ok(wmin > 0.1, `a bomb line breaks (min width ${wmin})`);
+  assert.ok(wmax - wmin >= 0.25, `a bomb line is an even ribbon (span ${(wmax - wmin).toFixed(2)})`);
+  assert.ok(mids.some(v => v < 25) && mids.some(v => v > 60), 'a bomb line does not pinch and open');
+
+  const { buildStructures } = await import('./client/structures.js');
+  const TW = 14, TH = 8;
+  const orig = Array.from({ length: TH }, () => '.'.repeat(TW).split(''));
+  const live = orig.map(row => row.slice());
+  for (let y = 2; y < 4; y++) for (let x = 2; x < 5; x++) orig[y][x] = 'B';
+  for (let y = 2; y < 4; y++) for (let x = 8; x < 11; x++) orig[y][x] = 'B';
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) live[y][x] = orig[y][x];
+  for (let y = 2; y < 4; y++) live[y][4] = 'R';
+  for (let y = 2; y < 4; y++) for (let x = 8; x < 11; x++) live[y][x] = 'R';
+  const THREE = await import('three');
+  const group = new THREE.Group();
+  buildStructures(group, live, orig, () => 0);
+  const foot = [];
+  for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) if (orig[y][x] === 'B') foot.push([x, y]);
+  const cell = 2;
+  let pieces = 0, outside = 0, boxy = 0;
+  for (const mesh of group.children) {
+    const a = mesh.instanceMatrix.array;
+    for (let i = 0; i < mesh.count; i++) {
+      const o = i * 16;
+      const sx = Math.hypot(a[o], a[o + 1], a[o + 2]), sz = Math.hypot(a[o + 8], a[o + 9], a[o + 10]);
+      const x = a[o + 12], z = a[o + 14];
+      pieces++;
+      if (sx > 2.2 && sz > 2.2) boxy++;
+      const inside = foot.some(([fx, fy]) => x > fx * cell - 0.3 && x < (fx + 1) * cell + 0.3 && z > fy * cell - 0.3 && z < (fy + 1) * cell + 0.3);
+      if (!inside) outside++;
+    }
+  }
+  lines.push(`wrecks pieces=${pieces} boxy=${boxy} outside=${outside}`);
+  assert.ok(pieces > 8, 'a ruined house produced no wreckage');
+  assert.equal(boxy, 0, 'a ruin still has a footprint-sized box');
+  assert.ok(outside > 0, 'rubble stays inside the cell square');
+  console.log(lines.join('\n'));
+  if (process.env.GOAL_SCRATCH) writeFileSync(`${process.env.GOAL_SCRATCH}/scar-pixels.log`, lines.join('\n') + '\n');
+}
+console.log('all destruction paint checks passed');
 
 await stopServerHarness(); // the last server check is done

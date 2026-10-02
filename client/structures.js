@@ -4,7 +4,7 @@
 // draw calls. Every piece stands on the cells it represents; gameplay cells are never changed here.
 // Base buildings (HQ, barracks, motor pool, depot, command bunker) are one merged, vertex-colored mesh per type and team.
 import * as THREE from 'three';
-import { CELL, houseKinds } from '/shared/sim.js';
+import { CELL, houseKinds } from '../shared/sim.js';
 import { surface, fogShader, fogged, loadTexture } from './surfaces.js';
 import { leafGeometry, leafMaterial } from './foliage.js';
 import { gfx } from './gfx.js';
@@ -541,25 +541,38 @@ function shed(C, F, sp, list) {
   put('wood', bx, g + 0.05 + dh / 2, bz, Math.hypot(0.85, dh - 0.55), 0.11, 0.05, yd, pale, 0, Math.atan2(dh - 0.55, 0.85));
 }
 
-// a house with fallen cells: what stands is a roofless, burnt-out shell with jagged wall tops
+// a house with fallen cells: standing cells keep jagged stubs and dropped slabs, not a shorter copy of the building
 function ruin(C, r, sp, standing) {
-  const keep = new Set(standing.map(([x, y]) => y * C.w + x)), ph = sp.shed ? 0.2 : 0.55;
-  for (const q of rectangles(r.x0, r.y0, r.x1, r.y1, (x, y) => keep.has(y * C.w + x))) {
-    const F = frame(C, q), { L, S, base, P } = F, t = (k) => rnd(q.x0, q.y0, 40 + k);
-    const Hs = Math.max(Math.min(2.6, sp.H * 0.8), sp.H * (0.6 + 0.25 * t(1)));
-    P(wallKind(sp), 0, base - 1 + (Hs + 1) / 2, 0, S, Hs + 1, L, sp.tint);
-    P('stone', 0, base - 1.55 + (ph + 1.55) / 2, 0, S + 0.14, ph + 1.55, L + 0.14, 0.85);
-    P('paint', 0, base + Hs + 0.03, 0, S - 0.3, 0.06, L - 0.3, lin(0x3a342e));
-    const jag = jagKind(sp), tint = sp.tint;
-    for (const s of [-1, 1]) {
-      P(jag, s * (S / 2 - 0.15), base + Hs - 0.05, 0, L, 0.7 + 0.7 * t(2 + s), 0.3, tint, Math.PI / 2 + (t(4 + s) < 0.5 ? Math.PI : 0));
-      P(jag, 0, base + Hs - 0.05, s * (L / 2 - 0.15), S, 0.6 + 0.7 * t(6 + s), 0.3, tint, t(8 + s) < 0.5 ? Math.PI : 0);
+  const keep = new Set(standing.map(([x, y]) => y * C.w + x));
+  const jag = jagKind(sp), tint = sp.tint;
+  for (const [x, y] of standing) {
+    const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = C.hAt(cx, cz);
+    const piles = 2 + (rnd(x, y, 40) < 0.45 ? 1 : 0);
+    for (let k = 0; k < piles; k++) {
+      const ang = rnd(x, y, 41 + k) * 6.2832;
+      const rad = CELL * (0.08 + 0.48 * rnd(x, y, 46 + k));
+      const len = 0.55 + 1.15 * rnd(x, y, 52 + k);
+      const ht = 0.35 + Math.min(2.4, sp.H) * (0.12 + 0.38 * rnd(x, y, 58 + k));
+      const yaw = ang + (rnd(x, y, 64 + k) - 0.5) * 0.8;
+      put(jag, cx + Math.cos(ang) * rad, g - 0.12, cz + Math.sin(ang) * rad, len, ht, 0.26 + 0.12 * rnd(x, y, 70 + k), yaw, tint, (rnd(x, y, 74 + k) - 0.5) * 0.35, (rnd(x, y, 78 + k) - 0.5) * 0.25);
     }
-    for (let i = 0; i < 2; i++) P('dark', 0, base + Hs + 0.05, (t(10 + i) - 0.5) * (L - 0.6), S * 0.96, 0.2, 0.2, 0.45, 0, 0, (t(12 + i) - 0.5) * 0.4);
-    for (const b of bays(C, q, F)) {
-      if (!sp.wood) windowAt('pane', b, base + 1.6, lin(0x5a544c));
-      if (Hs > 4.6 && sp.storeys > 1) windowAt('pane', b, base + Hs - 1.6, lin(0x5a544c));
+    if (rnd(x, y, 82) < 0.7) {
+      const ang = rnd(x, y, 83) * 6.2832;
+      const rad = CELL * (0.1 + 0.4 * rnd(x, y, 84));
+      const s = 0.35 + 0.55 * rnd(x, y, 85);
+      put('chunk', cx + Math.cos(ang) * rad, g + s * 0.15, cz + Math.sin(ang) * rad, s * 1.3, s * 0.55, s, rnd(x, y, 86) * 6.28, tint, (rnd(x, y, 87) - 0.5) * 0.5, (rnd(x, y, 88) - 0.5) * 0.4);
     }
+    DIR4.forEach(([dx, dy], i) => {
+      const nx = x + dx, ny = y + dy;
+      if (keep.has(ny * C.w + nx)) return;
+      if (rnd(x, y, 90 + i) < 0.42) return;
+      const slide = (rnd(x, y, 96 + i) - 0.5) * CELL * 0.55;
+      const out = CELL * (0.28 + 0.28 * rnd(x, y, 102 + i));
+      const len = 0.45 + 0.95 * rnd(x, y, 108 + i);
+      const ht = 0.4 + 1.5 * rnd(x, y, 114 + i);
+      const yaw = yawOf(dx, dy) + (rnd(x, y, 120 + i) - 0.5) * 0.9;
+      put(jag, cx + dx * out - dy * slide, g - 0.1, cz + dy * out + dx * slide, len, ht, 0.28, yaw, tint, (rnd(x, y, 126 + i) - 0.5) * 0.2, 0);
+    });
   }
   if (sp.church) {
     // the tower stays up while its own cells do
@@ -580,22 +593,34 @@ function rubble(C) {
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), house = C.tint.get(y * w + x);
     const n = (low ? 2 : 3) + (house && !low ? 1 : 0);
     for (let k = 0; k < n; k++) {
-      const s = 0.45 + 0.6 * rnd(x, y, k), c = rnd(x, y, k + 17);
+      if (rnd(x, y, k + 3) < 0.22) continue;
+      const ang = rnd(x, y, k + 5) * 6.2832, rad = CELL * 0.62 * rnd(x, y, k + 7);
+      const s = 0.4 + 0.7 * rnd(x, y, k), c = rnd(x, y, k + 17);
       const tint = house && c < 0.5 ? (house.wood ? mul(house.color, 0.6) : house.color) : c < 0.78 ? [0.95, 0.93, 0.9] : [1.12, 0.66, 0.52];
-      put('chunk', cx + (rnd(x, y, k + 9) - 0.5) * 1.3, g + s * 0.12, cz + (rnd(x, y, k + 13) - 0.5) * 1.3,
+      put('chunk', cx + Math.cos(ang) * rad, g + s * 0.12, cz + Math.sin(ang) * rad,
         s * (1 + 0.4 * rnd(x, y, k + 21)), s * (0.45 + 0.3 * rnd(x, y, k + 25)), s * (0.9 + 0.4 * rnd(x, y, k + 29)),
         rnd(x, y, k + 33) * 6.28, tint, (rnd(x, y, k + 37) - 0.5) * 0.6, (rnd(x, y, k + 41) - 0.5) * 0.6);
     }
-    // broken wall stubs on the outside edges of what stood here (low enough to see units over)
+    // a slab thrown clear of the cell, so the pile is not a square of chunks
+    if (!low && rnd(x, y, 48) < 0.75) {
+      const ang = rnd(x, y, 49) * 6.2832, rad = CELL * (0.48 + 0.32 * rnd(x, y, 50));
+      const len = 0.7 + 1.1 * rnd(x, y, 51), ht = 0.25 + 0.55 * rnd(x, y, 52);
+      const jag = house ? (house.wood ? 'brokenWood' : house.stone ? 'brokenStone' : house.brick ? 'brokenBrick' : 'broken') : 'broken';
+      const tint = house ? (house.wood ? mul(house.color, 0.7) : house.color) : [0.95, 0.93, 0.9];
+      put(jag, cx + Math.cos(ang) * rad, g - 0.05, cz + Math.sin(ang) * rad, len, ht, 0.22, ang + (rnd(x, y, 53) - 0.5) * 0.8, tint, (rnd(x, y, 54) - 0.5) * 0.5, (rnd(x, y, 55) - 0.5) * 0.3);
+    }
+    // short stubs on the outside edges, often skipped, yawed and slid so they do not draw the cell square
     DIR4.forEach(([dx, dy], i) => {
       const nb = at(x + dx, y + dy);
-      if (nb === 'R' || nb === 'B' || nb === 'K' || rnd(x, y, 50 + i) > (house ? 0.6 : 0.35)) return;
-      const len = 0.9 + 1.1 * rnd(x, y, 54 + i), ht = house ? 0.6 + 0.7 * rnd(x, y, 58 + i) : 0.4 + 0.5 * rnd(x, y, 58 + i);
-      const along = (rnd(x, y, 62 + i) - 0.5) * (CELL - len), stone = !house || house.stone;
-      put(stone ? 'brokenStone' : house.wood ? 'brokenWood' : house.brick ? 'brokenBrick' : 'broken', cx + dx * 0.82 - dy * along, g - 0.2, cz + dy * 0.82 + dx * along, len, ht + 0.2, 0.3,
-        yawOf(dx, dy) + (rnd(x, y, 66 + i) < 0.5 ? Math.PI : 0), stone ? 0.95 : house.wall);
+      if (nb === 'R' || nb === 'B' || nb === 'K' || rnd(x, y, 50 + i) > (house ? 0.34 : 0.18)) return;
+      const slide = (rnd(x, y, 62 + i) - 0.5) * CELL * 0.7;
+      const out = CELL * (0.35 + 0.28 * rnd(x, y, 66 + i));
+      const len = 0.55 + 0.9 * rnd(x, y, 54 + i), ht = house ? 0.45 + 0.9 * rnd(x, y, 58 + i) : 0.3 + 0.45 * rnd(x, y, 58 + i);
+      const stone = !house || house.stone;
+      put(stone ? 'brokenStone' : house.wood ? 'brokenWood' : house.brick ? 'brokenBrick' : 'broken',
+        cx + dx * out - dy * slide, g - 0.08, cz + dy * out + dx * slide, len, ht, 0.28,
+        yawOf(dx, dy) + (rnd(x, y, 70 + i) - 0.5) * 0.8, stone ? 0.95 : house.wall, (rnd(x, y, 74 + i) - 0.5) * 0.25, 0);
     });
-    if (house && !low && rnd(x, y, 70) < 0.45) put('dark', cx + rnd(x, y, 71) - 0.5, g + 0.35, cz + rnd(x, y, 72) - 0.5, 2.2, 0.16, 0.16, rnd(x, y, 73) * 6.28, 0.45, 0, 0.3);
   }
 }
 

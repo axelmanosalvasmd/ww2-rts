@@ -5,6 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A line of bombs is a ragged run: the banks wander and the bright rim is gone on dug ground, instead of a row of equal pale bowls. A wrecked house is broken wall stubs and spilled rubble, not a shorter box. Feet can sit a couple of metres off the visible lip, because the lip slides and the ground under a unit does not.
 - Conscripts take three quarters of a place in the army limit, so the USSR can field a third more squads than anyone else (32 instead of 24 in Classic). The army count in the HUD can show quarters, and a unit only goes into the queue if the whole unit fits.
 - Smoke is no longer a cloak of invulnerability. It still blocks sight lines 15 m and longer, so it screens you from tanks and guns at range, but anything closer sees and shoots through it. Before, a unit in smoke could not be seen or hit beyond 6 m.
 - Balance, 150 AI matches on the default map (seed 1000), before -> after both changes: faction wins USA/Germany/USSR 39/58/53 -> 46/46/58, median length 473 s -> 465 s, runner-up VP share 0.44 -> 0.44. The USSR edges up from 35% to 39%, inside the swing earlier runs showed.
