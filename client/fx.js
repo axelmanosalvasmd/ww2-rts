@@ -102,6 +102,7 @@ const GUNS = {
   medium: { ...SMALL, snd: 'tankgun', n: 1, spd: 150, w: 0.18, tr: FX.tracerHot, trOdds: 1, flash: 1.7, heavy: 3, smoke: 1, blast: 1.2 },
   tiger: { ...SMALL, snd: 'tankgun', n: 1, spd: 160, w: 0.2, tr: FX.tracerHot, trOdds: 1, flash: 2.1, heavy: 3.4, smoke: 1, blast: 1.4 },
   halftrack: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
+  lcvp: { ...SMALL, snd: 'mg', n: 1, burst: 3, gap: 0.08, spd: 210, w: 0.085, tr: FX.tracer, trOdds: 1, flash: 0.45 },
   armoredcar: { ...SMALL, snd: 'tankgun', n: 1, burst: 2, gap: 0.12, spd: 170, w: 0.12, tr: FX.tracerHot, trOdds: 1, flash: 0.8, heavy: 1.5, smoke: 0.5 },
   // anti-air guns turned on the ground; planes (guns = wing guns firing together)
   flak: { ...SMALL, snd: 'flak', n: 1, burst: 2, gap: 0.1, spd: 240, w: 0.11, tr: FX.tracerHot, trOdds: 1, flash: 0.6 },
@@ -662,7 +663,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     return (v.fxTip = tip);
   }
   // fixed gun tips in the unit's local space (+x forward, z mirrored for the second barrel or wing)
-  const TIPS = { fighter: [1.1, -0.15, 2.4], attacker: [1.2, -0.4, 3], flak: [1.7, 2.0, 0.15], flakpos: [0.95, 2.1, 0.2] };
+  const TIPS = { fighter: [1.1, -0.15, 2.4], attacker: [1.2, -0.4, 3], flak: [1.7, 2.0, 0.15], flakpos: [0.95, 2.1, 0.2], lcvp: [-3.7, 2.2, 0.8] };
   // world position of the k-th weapon of unit v into v3; false if it has none showing
   function muzzleAt(v, k, tx, tz, bazooka) {
     const type = v.type, fixed = v.turret && v.fxTip ? null : TIPS[type]; // traversing guns provide their own muzzle

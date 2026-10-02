@@ -221,6 +221,9 @@ const DEFS = {
   halftrack: ['Halftrack', 'infantry', 'Halftrack: an open-topped carrier with a wheel in front and a track behind',
     poly([7, 66], [7, 50], [52, 50], [55, 48], [62, 48], [64, 56], [86, 57], [92, 61],
       [93, 70], [89, 72], ...arch(78, 75.5, 11.5), ...run(8, 56, 68)) + wheel(78, 75, 9, 3.5) + wheels([20, 32, 44], 75.8, 4.2)],
+  lcvp: ['Landing Craft', 'infantry', 'Landing craft: a flat boxy boat with a square bow ramp, riding on the water',
+    poly([8, 56], [20, 56], [20, 48], [30, 48], [30, 56], [84, 56], [84, 50], [90, 50], [92, 70], [86, 76], [14, 76], [8, 70]) +
+    poly([4, 80], [96, 80], [96, 84], [4, 84])],
   armoredcar: ['Armored Car', 'recon', 'Armored car: an angled armored body on two axles with a small turret and a short gun',
     poly([7, 72], [7, 64], [13, 56.5], [41, 54.5], [43.5, 46], [58, 46], [61, 49], [80, 49], [80, 53], [62, 53], [63, 54.5],
       [70, 55], [90, 62], [93, 66], [93, 71], [86, 72], ...arch(73, 75.5, 12), ...arch(27, 75.5, 12), [12, 72]) +
@@ -276,6 +279,9 @@ const DEFS = {
     poly([83, 37], [90, 37], [90, 84], [83, 84]) + wrench(60, 52, 12, -45, 28, 9)],
   airfield: ['Airfield', 'building', 'Airfield: an arched hangar with its doors open',
     poly(...arc(50, 84, 44, 50, 180, 360, 36), [75, 84], [75, 58], [25, 58], [25, 84]) + band(arc(50, 84, 36, 42, 233, 307, 12), 4)],
+  shipyard: ['Shipyard', 'building', 'Shipyard: a slipway running down into the water under a crane',
+    poly([6, 84], [6, 70], [60, 58], [60, 84]) + poly([66, 84], [66, 18], [72, 18], [72, 84]) + poly([72, 18], [94, 18], [94, 23], [72, 23]) +
+    poly([90, 23], [92, 23], [92, 40], [90, 40]) + poly([4, 80], [96, 80], [96, 84], [4, 84])],
   flakpos: ['Flak Emplacement', 'building', 'Flak emplacement: a ring of sandbags with an anti-aircraft gun pointing up',
     blob(50, 76, [14, 28, 42, 56, 70, 84].map((x) => [x, 77.5, 8.5, 6.5]).concat([21, 35, 49, 63, 77].map((x) => [x, 66.5, 8.5, 6.5])), 84) +
     bar(at([50, 55], -60, 0), at([50, 55], -60, 11), 8) + bar(at([50, 55], -60, 11), at([50, 55], -60, 47), 3.6) +

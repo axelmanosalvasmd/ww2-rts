@@ -10,6 +10,7 @@ export const DENY_SENTENCES = Object.freeze({
   queueFull: 'The training queue is full', ordersFull: 'This unit already has 8 queued orders',
   retreating: 'That squad is retreating', noBuilders: 'Select a builder squad',
   noCover: 'No cover within reach',
+  coast: 'A Shipyard needs open water beside it', shore: 'Too far from the shore to land',
 });
 // The server answers queueFull for both a full training queue (buy) and a full order queue (every other command).
 export const denySentence = (code, cmd) =>
@@ -119,7 +120,7 @@ export function buyCount(s, cfg, action, want) {
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.
 export function placementState(s, map, grid, teams) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s);
-  const g = { w, h, chars, flags: chars.map((ch) => TERRAIN[ch] ?? 0),
+  const g = { w, h, chars, naval: map.naval === true, flags: chars.map((ch) => TERRAIN[ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),
     units: new Map(us.map((v) => [v.id, v])), players: teams.map((team) => ({ team })),

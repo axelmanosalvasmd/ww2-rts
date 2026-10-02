@@ -306,6 +306,23 @@ export function buildModel(v, root, f, fac, def) {
       part(GEO.box, crate, 1.2, 1, 1.2, -0.1, 1.8, -0.9));
     for (let i = 0; i < 4; i++) v.body.add(part(GEO.cyl, f.vehicle, 0.4, 1.1, 0.4, -1.1 + i * 0.75, 0.65, 1));
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
+  } else if (type === 'shipyard') {
+    // a timber slipway running down to the water, a shed over its head and a crane
+    const post = skin('darkwood', 0x5a4a34);
+    v.body = new THREE.Group();
+    v.body.add(part(GEO.box, skin('wood', 0x7a6446), 5.8, 0.25, 3.6, 0, 0.12, 0), part(GEO.box, post, 5.8, 0.3, 0.3, 0, 0.3, -1.5), part(GEO.box, post, 5.8, 0.3, 0.3, 0, 0.3, 1.5),
+      part(GEO.box, f.vehicle, 2.4, 0.2, 4, -1.8, 3.1, 0), part(GEO.box, post, 0.3, 3, 0.3, -2.8, 1.5, -1.8), part(GEO.box, post, 0.3, 3, 0.3, -2.8, 1.5, 1.8),
+      part(GEO.box, post, 0.3, 3, 0.3, -0.8, 1.5, -1.8), part(GEO.box, post, 0.3, 3, 0.3, -0.8, 1.5, 1.8),
+      part(GEO.box, DARK, 0.3, 5.5, 0.3, 2.2, 2.75, 2.4), part(GEO.box, DARK, 3, 0.25, 0.25, 1.1, 5.4, 2.4), part(GEO.cyl, DARK, 0.03, 2, 0.03, 0, 4.4, 2.4));
+    root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
+  } else if (type === 'lcvp') {
+    // landing craft: a flat-bottomed open box, square bow ramp forward (+x), the coxswain's position aft, one MG
+    const hull = new THREE.Group(), paint = f.vehicle;
+    hull.add(part(GEO.box, DARK, 10, 0.4, 3, 0, 0.1, 0), part(GEO.box, paint, 10, 1.3, 0.14, 0, 0.9, 1.45), part(GEO.box, paint, 10, 1.3, 0.14, 0, 0.9, -1.45),
+      part(GEO.box, paint, 0.14, 1.3, 3, -5, 0.9, 0), part(GEO.box, paint, 0.2, 1.6, 3, 5.05, 1, 0), part(GEO.box, paint, 1.4, 0.9, 1.3, -4.1, 1.7, 0.6),
+      part(GEO.cyl, DARK, 0.05, 1.2, 0.05, -4.3, 2.2, -0.8).rotateZ(Math.PI / 2));
+    root.add(bake(hull, key + '|hull', true));
+    v.models.push(root);
   } else if (type === 'bunker') {
     const shell = new THREE.Group();
     shell.add(part(GEO.box, 0x8a8a82, 5.2, 2.4, 5.2, 0, 1.2, 0), part(GEO.box, 0x74746c, 6, 0.5, 6, 0, 2.6, 0), part(GEO.box, 0x1e1e1a, 0.3, 0.4, 3, 2.62, 1.6, 0));

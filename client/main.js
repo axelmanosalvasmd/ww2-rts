@@ -48,9 +48,9 @@ import { createAutocast } from './autocast.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
-  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics' } },
-  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter' } },
-  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team' } },
+  { name: 'USA', uniform: 0x6b7248, vehicle: 0x59623d, names: { rifle: 'Rifle Squad', mg: '.30 cal MG', at: '57mm AT Gun', tank: 'M5 Stuart', rocket: 'T34 Calliope', ranger: 'Ranger Squad', bunker: 'Command Bunker', mortar: '81mm Mortar', sniper: 'Sniper Team', armoredcar: 'M8 Greyhound', medium: 'M4 Sherman', flak: '40mm Bofors', flaktrack: 'M16 Half-track', fighter: 'P-51 Mustang', attacker: 'P-47 Thunderbolt', halftrack: 'M3 Half-track', medic: 'Medics', lcvp: 'LCVP' } },
+  { name: 'Germany', uniform: 0x5c6266, vehicle: 0x50565a, names: { rifle: 'Grenadiers', mg: 'MG 42 Team', at: 'PaK 40', tank: 'Panzer II', rocket: 'Panzerwerfer', tiger: 'Tiger I', bunker: 'Command Bunker', mortar: 'GrW 34 Mortar', sniper: 'Scharfschützen', armoredcar: 'Sd.Kfz. 222', medium: 'Panzer IV', flak: 'Flak 38', flaktrack: 'Wirbelwind', fighter: 'Bf 109', attacker: 'Ju 87 Stuka', halftrack: 'Sd.Kfz. 251', medic: 'Sanitäter', lcvp: 'Sturmboot' } },
+  { name: 'USSR', uniform: 0x7d7250, vehicle: 0x4e5a38, names: { rifle: 'Riflemen', mg: 'Maxim MG', at: '45mm AT Gun', tank: 'T-70', rocket: 'Katyusha', conscript: 'Conscripts', bunker: 'Command Bunker', mortar: '82mm Mortar', sniper: 'Snipers', armoredcar: 'BA-64', medium: 'T-34', flak: '61-K AA Gun', flaktrack: 'ZSU-37', fighter: 'Yak-9', attacker: 'Il-2 Sturmovik', halftrack: 'M5 Half-track', medic: 'Sanitary Team', lcvp: 'Assault Boat' } },
 ];
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AI_LEVELS = ['easy', 'normal', 'hard'];
@@ -63,7 +63,7 @@ const AIR_ALT = 20;
 const isAir = (type) => !!UNITS[type]?.air;
 const classicMode = () => lobbyState?.mode === 'classic';
 const isVeh = (type) => !UNITS[type].infantry;
-const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -288,7 +288,7 @@ async function previewMap(name, mode) {
     c.fillStyle = assault && m.defend ? (m.defend.includes(i) ? '#d94a3d' : '#3d7bd9') : '#f2ecd8'; c.fill();
     c.strokeStyle = '#111'; c.lineWidth = 2; c.stroke();
   }
-  const top = Math.max(0, ...(m.heights || []).flatMap(r => [...r].map(levelOf)));
+  const top = (m.heights || []).reduce((t, r) => Math.max(t, ...[...r].map(levelOf)), 0); // per row: spreading every cell overflows the stack on big maps
   $('mapInfo').innerHTML = [`<b>${esc(m.name)}</b>`, `${m.w * CELL} × ${m.h * CELL} m`, horde ? `up to ${COLORS.length - 1} defenders` : `up to ${spawns.length} players`,
     `${points.length} capture point${points.length === 1 ? '' : 's'}`, top >= 3 ? 'hills and cliffs' : top > 0 ? 'rolling hills' : '',
     m.rows.some(r => r.includes('W')) ? 'rivers' : '', m.defend ? (horde ? '<span style="color:#d94a3d">●</span> your HQ is one of these, <span style="color:#3d7bd9">●</span> the horde comes from here' : assault ? '<span style="color:#d94a3d">●</span> defend, <span style="color:#3d7bd9">●</span> attack' : 'built for Assault') : '',
@@ -1491,7 +1491,7 @@ renderer.setAnimationLoop(() => {
   for (const v of units.values()) {
     v.x += (v.tx - v.x) * k; v.z += (v.tz - v.z) * k;
     v.rot = lerpAngle(v.rot, v.trot, k); v.aim = lerpAngle(v.aim, v.taim, k * 0.6);
-    const gy = hAt(v.x, v.z);
+    const ground = hAt(v.x, v.z), gy = UNITS[v.type].naval ? Math.max(ground, relief?.waterAt(v.x, v.z) || ground) : ground; // boats ride on the water line
     const air = isAir(v.type), up = air ? AIR_ALT : 0;
     v.root.position.set(v.x, gy + up, v.z); v.root.rotation.y = -v.rot;
     if (air) { v.root.visible = v.bars.visible = !(v.flags & 512); v.base.visible = false; aviation.tick(v, dt); }

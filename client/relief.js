@@ -258,6 +258,12 @@ export function createRelief(map, grid = map.rows, options = {}) {
     return tx + tz <= 1 ? A + (B - A) * tx + (C - A) * tz : D + (C - D) * (1 - tx) + (B - D) * (1 - tz);
   }
 
+  // the water line at (x, z), NaN away from water: boats ride on it
+  function waterAt(x, z) {
+    const c = Math.min(h - 1, Math.max(0, Math.floor(z / CELL))) * w + Math.min(w - 1, Math.max(0, Math.floor(x / CELL)));
+    return water.wl[c] + WATER_LIFT;
+  }
+
   function rebuildGeometry() {
     // Merge flat row runs. Extra edge vertices on their neighbours are collinear, so no seams open.
     const runs = [], walls = [];
@@ -434,6 +440,6 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const unsubscribe = options.gfx?.onChange(() => {
     low = options.gfx.low; mesh.castShadow = !low; material.userData.setLow?.(low); rebuildGeometry();
   });
-  return { mesh, get geometry() { return mesh.geometry; }, hAt, update, stats,
+  return { mesh, get geometry() { return mesh.geometry; }, hAt, waterAt, update, stats,
     dispose() { unsubscribe?.(); mesh.geometry.dispose(); if (!options.material) material.dispose(); } };
 }

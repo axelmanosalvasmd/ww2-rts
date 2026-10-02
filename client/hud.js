@@ -39,7 +39,7 @@ const STANCE = { holdFire: [2048, 'Hold fire', 'shoot only when given an attack 
   holdPos: [4096, 'Hold position', 'never move without an order, not even to cover'],
   autoRetreat: [8192, 'Auto-retreat', `run for home when below ${Math.round(CFG.autoRetreat * 100)}% strength`] };
 const BUILD_ROLE = { depot: 'On a resource node: +1.5 MP/s', barracks: 'Trains MGs and elite infantry', motorpool: 'Trains AT guns, tanks, rockets',
-  airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base' };
+  airfield: 'Trains planes; their base', flakpos: 'Shoots down planes over your base', shipyard: 'On the coast: trains landing craft' };
 const AIR_STATE = ['Ready', 'Flying out', 'On station', 'Heading home', 'Rearming'];
 const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need a spot clicked
 
@@ -47,7 +47,7 @@ const AIMED = new Set(['grenade', 'barrage', 'satchel']); // abilities that need
 const GROUPS = ['Infantry', 'Support weapons', 'Vehicles', 'Aircraft'];
 const GROUP_ICONS = ['rifle', 'mg', 'medium', 'fighter']; // a silhouette before each group's name
 const SUPPORT_WEAPONS = new Set(['mg', 'mortar', 'at', 'flak']);
-const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'fighter', 'attacker'];
+const ORDER = ['rifle', 'conscript', 'ranger', 'sniper', 'medic', 'engineer', 'mg', 'mortar', 'at', 'flak', 'halftrack', 'armoredcar', 'flaktrack', 'tank', 'medium', 'tiger', 'rocket', 'lcvp', 'fighter', 'attacker'];
 const groupOf = (t) => (UNITS[t].air ? 3 : SUPPORT_WEAPONS.has(t) ? 1 : UNITS[t].infantry ? 0 : 2);
 const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? ORDER.length + UNIT_TYPES.indexOf(t) : i; };
 // long one-word names get a soft hyphen so they break cleanly on a narrow card

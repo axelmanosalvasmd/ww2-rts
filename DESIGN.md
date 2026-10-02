@@ -812,7 +812,7 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   bank row and 0.38 m deeper per row inward, with sloping banks. Bridge cells keep their deck height.
 - Low path: the relief material compiles with `RELIEF_LOW`, which drops the noise patches, strata detail, cracks and
   paint bump in the shader. The geometry skips the extra centre vertices that High adds to sloped cells (a budget of
-  5 triangles per cell, at most 150k). A Graphics change swaps the define, recompiles through the program cache key
+  5 triangles per cell, at most 150k, or one per cell on maps bigger than 256x256: Three Islands has 248k on 262k cells). A Graphics change swaps the define, recompiles through the program cache key
   and rebuilds the geometry. Structures on Low drop duckboards, half the shrubs and small-part shadows. The atmosphere
   on Low turns off cloud shade, blowing dust and birds, and keeps the table props, the lamp pool, fewer mist sheets
   and fog banks, and the match weather's rain or snow with a third of the drops.
@@ -902,6 +902,31 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
    Before tuning: USSR won 74% (conscripts at 60 MP were too efficient) and the German AI stalled saving for the Tiger.
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
+
+## Naval warfare (decided 2026-10-01, slice 1 built)
+Goal: a big-map mode where players slowly take resource nodes, fortify their coast, then cross the sea to invade.
+- Decided with the user: games last 60 minutes at most; both FFA and teams; ships at true size on bigger maps (a
+  110 m destroyer is fine at 1 km); it builds on Classic (nodes, Engineers, buildings) and stays opt-in per map
+  (`naval: true`), because rivers are chokepoints by design and boats would undo River Towns' balance.
+- Core risk: the defender always wins a landing. What has to hold: the coast is too long to fortify everywhere
+  (fog over the sea, limited builders), the attacker gets tools only an invasion needs (naval gunfire, smoke, paratroopers),
+  the defender counters with coastal guns and mobile reserves. Kept small: no fleets, submarines or carriers.
+- Map size spike (`tools/bench.mjs --map`, six Massive AI, 6000 ticks, Classic): tick p50/p95 1.8/6.6 ms on King
+  of the Hill, 1.9/7.2 at 256 cells, 2.2/10.2 at 384, 2.1/11.1 at 512 (1 km). The per-seat snapshot is what grows.
+  Browser JS heap 76 MB (King of the Hill) vs about 450 MB at 512 cells, so 2 km (about 1.7 GB) is out without client
+  work. The size cap went from 256 to 1024 cells; 1 km is the working size.
+- Slice 1 as built: terrain flag `LAND` on every char except `W` and `F`; `blockOf(def)` gives a boat `LAND` where
+  a vehicle has `MOVE | VBLOCK`, so A*, regions (`navalRegionVersion`), string-pull and `nearestFree(g, x, z, block)`
+  work unchanged. `F` doubles as surf off a beach: boats float in it, infantry wade it. The Landing Craft (`lcvp`)
+  reuses the halftrack's cargo (`carries`) but gives no forward reinforcement. Unload asks for ground within
+  `CFG.shoreReach` (5 m) and answers `shore` otherwise; a squad thrown from a sunk boat further out drowns. The
+  Shipyard (`coast: true`) needs open water within two cells of its footprint and a naval map (`coast` reason);
+  it counts as a Production Building, so boats retreat to it and it keeps its owner alive. Boats ride the client's
+  water line (`relief.waterAt`). Three Islands: 512 cells, islands about 350 m across, straits about 185 m, beaches
+  with 6 cells of surf on three sectors of each coast and two-level cliffs between.
+- Next slices: AI that defends coasts and later invades, gunboat and destroyer with shore bombardment plus a coastal
+  battery, beach obstacles and bunkers, supply across the sea (forward depot or a captured port), Sudden Death moved
+  for 60-minute games, a larger pop cap, and the zoomed-out symbol view for big maps.
 
 ## Field fortifications
 - `FORTS` in sim.js: trench (T, 30), sandbags (#, 20), barbed wire (X, 25), tank traps (Y, 40), MG nest (6 cells, 60).

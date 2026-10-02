@@ -3428,11 +3428,13 @@ const referenceNearCover = (g, u) => {
   for (let viewer = 0; viewer < g.players.length; viewer++) check(viewer, true);
 }
 
-// Every shipped map is valid, and every spawn can walk to every capture point and every other spawn.
+// Every shipped map is valid, and every spawn can walk to every capture point and every other spawn (not across a naval map's sea).
 for (const f of readdirSync('maps')) {
   const map = JSON.parse(readFileSync('maps/' + f, 'utf8'));
   assert.equal(validateMap(map), null, f);
   const g = createGame(map, ['a', 'b'], false), W = (p) => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL });
+  // naval maps are islands: the sea is crossed by boat, so a spawn only has to reach a point on its own island
+  if (map.naval) { for (const s of map.spawns) assert.ok(map.points.some(p => findPath(g, W(s), W(p)).length), `${f}: spawn ${s.x},${s.y} can reach a point`); continue; }
   for (const s of map.spawns) for (const p of [...map.points, ...map.spawns]) {
     if (p !== s) assert.ok(findPath(g, W(s), W(p)).length, `${f}: spawn ${s.x},${s.y} can reach ${p.x},${p.y}`);
   }
@@ -5949,7 +5951,7 @@ for (const lookupFinished of [false, true]) {
       if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) <= 1e-9) { degenerate = true; break; }
     }
     assert.ok(!degenerate, `${file}: nondegenerate triangles`);
-    assert.ok(idx.length / 3 <= 150000, `${file}: terrain triangle ceiling`);
+    assert.ok(idx.length / 3 <= Math.max(150000, map.w * map.h), `${file}: terrain triangle ceiling`); // maps over 256 cells: one per cell
     for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) for (const [dx, dy] of [[1, 0], [0, 1]]) {
       const nx = x + dx, ny = y + dy;
       if (nx >= map.w || ny >= map.h) continue;
@@ -6527,6 +6529,57 @@ for (const lookupFinished of [false, true]) {
     run(g, 200);
     assert.ok(rifle.hp > 20 && rifle.hp < 100 && g.players[0].mp < 500 + 200 * CFG.mpBase / 20, 'squad reinforced beside the halftrack, and paid for');
     assert.ok(ht2.hp > 0);
+  }
+
+  // landing craft: a Shipyard on the coast trains one onto the water, it carries a squad over a strait no one can
+  // walk across and lands it in the surf, never in deep water, and a squad in a boat sunk far from land drowns
+  {
+    // west island x 0-9, a strait (open water, with surf off a western beach for rows 20+), east island x 30-39
+    const rows = open().map((r, y) => '.'.repeat(10) + (y >= 20 ? 'FF' : 'WW') + 'W'.repeat(16) + 'FF' + '.'.repeat(10));
+    const naval = mapOf(rows, { naval: true, spawns: [{ x: 2, y: 2 }, { x: 37, y: 37 }], points: [{ x: 35, y: 5 }] });
+    assert.equal(sim.validateMap(naval), null, 'a naval map is valid');
+    const g = createGame(naval, ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false, mode: 'classic' });
+    const p = g.players[0], eng = unitOf(g, 0, 'engineer'), rifle = unitOf(g, 0, 'rifle');
+    const cellAt = (u) => Math.floor(u.z / CELL) * g.w + Math.floor(u.x / CELL);
+    p.mp = 2000; p.fuel = 500;
+    assert.equal(command(g, 0, { t: 'build', ids: [eng.id], kind: 'shipyard', x: at(3, 14).x, z: at(3, 14).z }), 'coast', 'a Shipyard needs open water beside it');
+    assert.equal(command(g, 0, { t: 'build', ids: [eng.id], kind: 'shipyard', x: at(8, 7).x, z: at(8, 7).z }), undefined, 'and goes up on the shore');
+    const yard = unitOf(g, 0, 'shipyard');
+    run(g, 20 * 90);
+    assert.ok(yard.built >= 1, 'the Shipyard is built');
+    assert.equal(command(g, 0, { t: 'buy', unit: 'lcvp', from: yard.id }), undefined);
+    run(g, 20 * (UNITS.lcvp.train + 1));
+    const boat = unitOf(g, 0, 'lcvp');
+    assert.ok(boat && 'WF'.includes(g.chars[cellAt(boat)]), 'the boat is launched onto the water');
+    const shore = at(36, 30);
+    assert.equal(findPath(g, rifle, shore).length, 0, 'nobody walks across the strait');
+    assert.equal(command(g, 0, { t: 'board', ids: [rifle.id], target: boat.id }), undefined);
+    run(g, 20 * 20);
+    assert.equal(rifle.riding, boat.id, 'the squad boards from the shore');
+    command(g, 0, { t: 'move', orders: [[boat.id, at(20, 25).x, at(20, 25).z]] });
+    run(g, 20 * 12);
+    assert.ok(findPath(g, boat, at(20, 5)).length > 0 && 'WF'.includes(g.chars[cellAt(boat)]), 'the boat keeps to the water');
+    assert.equal(command(g, 0, { t: 'unload', ids: [boat.id] }), 'shore', 'no landing in the middle of the strait');
+    command(g, 0, { t: 'move', orders: [[boat.id, shore.x, shore.z]] });
+    run(g, 20 * 15);
+    assert.ok(boat.x > at(26, 0).x, 'the boat crosses to the far beach');
+    assert.equal(command(g, 0, { t: 'unload', ids: [boat.id] }), undefined);
+    assert.ok(rifle.riding === 0 && rifle.x > at(27, 0).x && !(g.flags[cellAt(rifle)] & sim.MOVE), 'the squad lands on the far side');
+    // sunk in the middle of the strait with a squad aboard: the squad goes down with it
+    place(g, eng, 9, 12);
+    command(g, 0, { t: 'move', orders: [[boat.id, at(11, 12).x, at(11, 12).z]] });
+    run(g, 20 * 15);
+    assert.equal(command(g, 0, { t: 'board', ids: [eng.id], target: boat.id }), undefined);
+    run(g, 20 * 10);
+    assert.equal(eng.riding, boat.id);
+    command(g, 0, { t: 'move', orders: [[boat.id, at(20, 8).x, at(20, 8).z]] });
+    run(g, 20 * 10);
+    boat.hp = 0; run(g, 3);
+    assert.ok(!g.units.has(eng.id), 'a squad thrown out in deep water drowns');
+    // a map that does not ask for boats takes no Shipyard
+    const dry = createGame(mapOf(rows, { spawns: [{ x: 2, y: 2 }, { x: 37, y: 37 }], points: [{ x: 35, y: 5 }] }), ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false, mode: 'classic' });
+    dry.players[0].mp = 2000;
+    assert.equal(command(dry, 0, { t: 'build', ids: [unitOf(dry, 0, 'engineer').id], kind: 'shipyard', x: at(8, 7).x, z: at(8, 7).z }), 'blocked', 'no Shipyard on a map without naval: true');
   }
 
   // medic: heals the most hurt squad nearby for free, but not one under fire

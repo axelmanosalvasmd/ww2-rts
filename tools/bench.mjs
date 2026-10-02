@@ -4,10 +4,10 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 
-const options = { root: resolve(dirname(fileURLToPath(import.meta.url)), '..'), ticks: 6000, scenario: 'all', dump: null };
+const options = { root: resolve(dirname(fileURLToPath(import.meta.url)), '..'), ticks: 6000, scenario: 'all', dump: null, map: null };
 for (let i = 2; i < process.argv.length; i++) {
   const key = process.argv[i];
-  if (!['--root', '--ticks', '--scenario', '--dump'].includes(key) || i + 1 >= process.argv.length) {
+  if (!['--root', '--ticks', '--scenario', '--dump', '--map'].includes(key) || i + 1 >= process.argv.length) {
     throw new Error('Usage: node tools/bench.mjs [--root DIR] [--ticks N] [--scenario classic|conquest|all] [--dump FILE]');
   }
   options[key.slice(2)] = process.argv[++i];
@@ -45,7 +45,7 @@ function stats(samples) {
 
 async function run(scenario) {
   // The hill gives Classic a busy central battle. Six Fronts sustains more Conquest units.
-  const mapName = scenario === 'classic' ? 'king-of-the-hill' : 'six-fronts';
+  const mapName = options.map ?? (scenario === 'classic' ? 'king-of-the-hill' : 'six-fronts');
   const map = JSON.parse(await readFile(resolve(options.root, 'maps', mapName + '.json'), 'utf8'));
   const originalRandom = Math.random, random = seededRandom(seed);
   let randomCalls = 0;
