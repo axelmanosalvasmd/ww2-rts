@@ -12,6 +12,14 @@ const S = 4, STRIDE = 25;
 export const TRENCH_DEPTH = 0.9;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = t => t * t * (3 - 2 * t);
+// Cell-scale noise for a crater rim. The ground fBm is too broad to break a bowl's outline.
+function fieldNoise(u, v, k) {
+  const x0 = Math.floor(u), y0 = Math.floor(v), tx = u - x0, ty = v - y0;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const n = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return s - Math.floor(s); };
+  const a = n(x0, y0), b = n(x0 + 1, y0), c = n(x0, y0 + 1), d = n(x0 + 1, y0 + 1);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
 
 export function createRelief(map, grid = map.rows, options = {}) {
   const { w, h } = map, n = w * h, qw = w + 1;
@@ -158,8 +166,116 @@ export function createRelief(map, grid = map.rows, options = {}) {
     }
     out[0] -= 0.1 * amount; out[1] -= 0.1 * rx; out[2] -= 0.1 * rz;
   }
+
+  // A blast's bowl is a smoothstep between cell centres, so a stick of bombs reads as a row of rounded squares.
+  // The height of that cross stays on the sim (the relief checks sample only the height). On a stick the banks
+  // slide along the run, and the ground between the spokes sinks, or each bowl stays a closed octagon.
+  // A sideways shove uses the world position, so both cells of a shared edge move together.
+  // Intact ground, where no crater or rubble touches the point, is left alone.
+  const shift = new Float64Array(2), torn = new Uint8Array(n);
+  function touch(wu, wv) {
+    // The four cells around the nearest corner. A southwest-only window missed the north lip of a trench,
+    // so that bank stayed a straight cut while the south bank moved.
+    const ix = Math.round(wu), iz = Math.round(wv);
+    let minL = 99, maxL = -99, scar = false, gx = 0, gz = 0, inside = true;
+    for (let dz = 0; dz <= 1; dz++) for (let dx = 0; dx <= 1; dx++) {
+      const x = ix - 1 + dx, z = iz - 1 + dz, L = levels[idAt(x, z)];
+      if (L < minL) minL = L;
+      if (L > maxL) maxL = L;
+      gx += L * (dx - 0.5); gz += L * (dz - 0.5);
+      const onMap = x >= 0 && z >= 0 && x < w && z < h;
+      const dug = onMap && (grid[z][x] === '+' || grid[z][x] === 'R');
+      if (dug) scar = true;
+      if (!dug) inside = false;
+    }
+    return { span: maxL - minL, scar, gx, gz, minL, inside };
+  }
+  // A bombing run is a long scar. A lone hit and a block are not, and they keep the softer shove below.
+  function scarRun(wu, wv) {
+    const cx = Math.round(wu - 0.5), cz = Math.round(wv - 0.5);
+    let n = 0, sx = 0, sz = 0, sxx = 0, szz = 0, sxz = 0;
+    for (let dz = -5; dz <= 5; dz++) for (let dx = -5; dx <= 5; dx++) {
+      const x = cx + dx, z = cz + dz;
+      if (x < 0 || z < 0 || x >= w || z >= h) continue;
+      const ch = grid[z][x];
+      if (ch !== '+' && ch !== 'R') continue;
+      const px = x + 0.5, pz = z + 0.5;
+      n++; sx += px; sz += pz; sxx += px * px; szz += pz * pz; sxz += px * pz;
+    }
+    if (n < 6) return null;
+    const mx = sx / n, mz = sz / n;
+    const cxx = sxx / n - mx * mx, czz = szz / n - mz * mz, cxz = sxz / n - mx * mz;
+    const tr = cxx + czz, det = cxx * czz - cxz * cxz;
+    const major = tr * 0.5 + Math.sqrt(Math.max(0, tr * tr * 0.25 - det));
+    const minor = tr - major;
+    if (!(major > 1.6 && minor < major * 0.42)) return null;
+    let ax, az;
+    if (Math.abs(cxz) < 1e-6) { if (cxx >= czz) { ax = 1; az = 0; } else { ax = 0; az = 1; } }
+    else { ax = cxz; az = major - cxx; }
+    if (ax < 0 || (ax === 0 && az < 0)) { ax = -ax; az = -az; }
+    const len = Math.hypot(ax, az) || 1;
+    return { ax: ax / len, az: az / len };
+  }
+  function lipShift(wu, wv) {
+    shift[0] = shift[1] = 0;
+    const t = touch(wu, wv);
+    if (!t.scar || (t.span < 1 && !t.inside)) return shift;
+    // The pale lip runs through the cell centres. A shove that is the same on every side of one bowl
+    // only moves the octagon. Along a stick the two banks spread and sway together, a few metres at a time.
+    // Movement still uses the unshifted height, so a unit can stand a few metres off the visible lip.
+    // A shorter wave folds the surface. The cap keeps a shared edge from crossing itself.
+    const run = scarRun(wu, wv);
+    let dx = 0, dz = 0;
+    if (run) {
+      const along = wu * run.ax + wv * run.az, px = -run.az, pz = run.ax;
+      const side = Math.max(-1, Math.min(1, t.gx * px + t.gz * pz));
+      const width = (fieldNoise(along * 0.08 + 1.7, 4.2, 4) * 2 - 1) * 0.8;
+      const sway = (fieldNoise(along * 0.045 + 9.1, 1.3, 6) * 2 - 1) * 1.35;
+      const alongJ = (fieldNoise(along * 0.07 + 3.1, 8.8, 8) * 2 - 1) * 0.35;
+      // Sway alone slides each bowl along the stick. This nick pushes the lip in and out
+      // around one bomb, short enough to bend the ring and long enough not to fold it.
+      const nick = (fieldNoise(wu * 0.2 + 2.4, wv * 0.17 + 6.1, 9) * 2 - 1) * 0.7;
+      const glen = Math.hypot(t.gx, t.gz) || 1;
+      dx = px * (side * width + sway) + run.ax * alongJ + (t.gx / glen) * nick;
+      dz = pz * (side * width + sway) + run.az * alongJ + (t.gz / glen) * nick;
+    } else {
+      const radial = (fieldNoise(wu * 0.18 + 1.7, wv * 0.16 + 4.2, 2) * 2 - 1) * 0.65;
+      const tangent = (fieldNoise(wu * 0.11 + 3.3, wv * 0.09 + 9.1, 8) * 2 - 1) * 0.22;
+      const glen = Math.hypot(t.gx, t.gz) || 1, rx = t.gx / glen, rz = t.gz / glen;
+      dx = rx * radial - rz * tangent;
+      dz = rz * radial + rx * tangent;
+    }
+    const mag = Math.hypot(dx, dz), cap = 2.1;
+    if (mag > cap) { dx *= cap / mag; dz *= cap / mag; }
+    shift[0] = dx; shift[1] = dz;
+    return shift;
+  }
+  function chewScar(x, z, off) {
+    let moved = false;
+    for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
+      if (i === 2 || j === 2) continue;
+      const wu = x + i / S, wv = z + j / S, t = touch(wu, wv);
+      if (!t.scar || t.span < 1) continue;
+      const here = heights[off + j * 5 + i];
+      const rise = (here - t.minL * CFG.levelHeight) / (CFG.levelHeight * Math.max(1, t.span));
+      const bite = fieldNoise(wu * 0.23 + 4.2, wv * 0.19 + 1.1, 5);
+      // Bite the high lip only. Sinking the floor leaves the locked spokes standing up as a plus sign.
+      if (rise > 0.45) heights[off + j * 5 + i] -= Math.min(1.15, (rise - 0.45) * (0.7 + 1.5 * bite));
+      moved = true;
+    }
+    if (moved) torn[x + z * w] = 1;
+    if (!moved) return;
+    for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
+      const i0 = Math.max(0, i - 1), i1 = Math.min(S, i + 1), j0 = Math.max(0, j - 1), j1 = Math.min(S, j + 1);
+      const dx = (heights[off + j * 5 + i1] - heights[off + j * 5 + i0]) / ((i1 - i0) * CELL / S);
+      const dz = (heights[off + j1 * 5 + i] - heights[off + j0 * 5 + i]) / ((j1 - j0) * CELL / S);
+      const inv = 1 / Math.hypot(dx, 1, dz), k = off + j * 5 + i;
+      normals[k * 3] = -dx * inv; normals[k * 3 + 1] = inv; normals[k * 3 + 2] = -dz * inv;
+    }
+  }
   function buildCell(c) {
     const x = c % w, z = Math.floor(c / w), off = c * STRIDE;
+    torn[c] = 0;
     const dug = grid[z][x] === 'T';
     let constant = !dug, reference = levels[c], nearWet = false, nearRoad = false;
     for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
@@ -221,7 +337,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
         const inv = 1 / Math.hypot(dx, 1, dz);
         normals[node * 3] = -dx * inv; normals[node * 3 + 1] = inv; normals[node * 3 + 2] = -dz * inv;
       }
-    }
+    } else chewScar(x, z, off);
     if (dug) {
       const T = (dx, dz) => grid[z + dz]?.[x + dx] === 'T';
       const w0 = T(-1, 0), e = T(1, 0), n0 = T(0, -1), s = T(0, 1);
@@ -320,21 +436,25 @@ export function createRelief(map, grid = map.rows, options = {}) {
     let extra = Math.max(0, Math.min(150000, Math.floor(n * 5)) - triangles);
     if (!low) for (const run of runs) {
       const [c, , xs, zs] = run, cost = xs * zs * 2;
-      if (flat[c] || (xs < 4 && zs < 4) || Number.isFinite(water.wl[c]) || cost > extra) continue;
+      if (flat[c] || torn[c] || (xs < 4 && zs < 4) || Number.isFinite(water.wl[c]) || cost > extra) continue;
       run[4] = true; vertices += xs * zs; triangles += cost; extra -= cost;
     }
-    const pos = new Float32Array(vertices * 3), normal = new Float32Array(vertices * 3), uv = new Float32Array(vertices * 2), paint = new Float32Array(vertices * 4), index = new Uint32Array(triangles * 3);
+    const pos = new Float32Array(vertices * 3), normal = new Float32Array(vertices * 3), uv = new Float32Array(vertices * 2), paint = new Float32Array(vertices * 4), scar = new Float32Array(vertices), index = new Uint32Array(triangles * 3);
     let vi = 0, ti = 0;
-    function vertex(x, z, height, nxv, nyv, nzv, rock = 0, lip = 0, foot = 0, damp = 0) {
+    function vertex(x, z, height, nxv, nyv, nzv, rock = 0, lip = 0, foot = 0, damp = 0, dug = 0) {
       const k = vi++;
       pos[k * 3] = x; pos[k * 3 + 1] = height; pos[k * 3 + 2] = z;
       normal[k * 3] = nxv; normal[k * 3 + 1] = nyv; normal[k * 3 + 2] = nzv;
       uv[k * 2] = x / (w * CELL); uv[k * 2 + 1] = 1 - z / (h * CELL);
       paint[k * 4] = rock; paint[k * 4 + 1] = lip; paint[k * 4 + 2] = foot; paint[k * 4 + 3] = damp;
+      scar[k] = dug;
       return k;
     }
     function surfaceVertex(c, u, v, heightOverride) {
       const x = c % w, z = Math.floor(c / w), node = c * STRIDE + Math.round(v * S) * 5 + Math.round(u * S);
+      lipShift(x + u, z + v);
+      const sx = shift[0], sz = shift[1], dug = touch(x + u, z + v);
+      const scarHere = dug.scar && (dug.span >= 1 || dug.inside) ? 1 : 0;
       let lip = 0, foot = 0;
       for (let side = 0; side < 4; side++) {
         const other = side === 0 ? (x > 0 ? c - 1 : c) : side === 1 ? (x + 1 < w ? c + 1 : c) : side === 2 ? (z > 0 ? c - w : c) : (z + 1 < h ? c + w : c);
@@ -354,9 +474,9 @@ export function createRelief(map, grid = map.rows, options = {}) {
           vx += normals[nk] * weight; vy += normals[nk + 1] * weight; vz += normals[nk + 2] * weight;
         }
         const inv = 1 / Math.hypot(vx, vy, vz);
-        return vertex((x + u) * CELL, (z + v) * CELL, heightOverride, vx * inv, vy * inv, vz * inv, 0, lip, foot, water.wet[c] ? 1 : 0);
+        return vertex((x + u) * CELL + sx, (z + v) * CELL + sz, heightOverride, vx * inv, vy * inv, vz * inv, 0, lip, foot, water.wet[c] ? 1 : 0, scarHere);
       }
-      return vertex((x + u) * CELL, (z + v) * CELL, heights[node], normals[node * 3], normals[node * 3 + 1], normals[node * 3 + 2], 0, lip, foot, water.wet[c] ? 1 : 0);
+      return vertex((x + u) * CELL + sx, (z + v) * CELL + sz, heights[node], normals[node * 3], normals[node * 3 + 1], normals[node * 3 + 2], 0, lip, foot, water.wet[c] ? 1 : 0, scarHere);
     }
     const tri = (a, b, c) => { index[ti++] = a; index[ti++] = b; index[ti++] = c; };
     for (const [c, width, xs, zs, fan] of runs) {
@@ -383,17 +503,21 @@ export function createRelief(map, grid = map.rows, options = {}) {
       const x = c % w, z = Math.floor(c / w), sign = levels[c] > levels[c + (axis === 0 ? 1 : w)] ? 1 : -1;
       const p0x = (x + (axis === 0 ? 1 : k / S)) * CELL, p0z = (z + (axis === 0 ? k / S : 1)) * CELL;
       const p1x = p0x + (axis === 0 ? 0 : CELL / S), p1z = p0z + (axis === 0 ? CELL / S : 0);
+      lipShift(p0x / CELL, p0z / CELL);
+      const s0x = shift[0], s0z = shift[1];
+      lipShift(p1x / CELL, p1z / CELL);
+      const s1x = shift[0], s1z = shift[1];
       const start = vi, ah = heights[a0], bh = heights[b0], ah1 = heights[a1], bh1 = heights[b1];
-      vertex(p0x, p0z, ah, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
-      vertex(p1x, p1z, ah1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
-      vertex(p0x, p0z, bh, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
-      vertex(p1x, p1z, bh1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
+      vertex(p0x + s0x, p0z + s0z, ah, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
+      vertex(p1x + s1x, p1z + s1z, ah1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
+      vertex(p0x + s0x, p0z + s0z, bh, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
+      vertex(p1x + s1x, p1z + s1z, bh1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
       const reverse = (axis === 0 ? sign < 0 : sign > 0);
       if (Math.abs(ah - bh) > 0.00001) { if (reverse) tri(start, start + 2, start + 1); else tri(start, start + 1, start + 2); }
       if (Math.abs(ah1 - bh1) > 0.00001) { if (reverse) tri(start + 1, start + 2, start + 3); else tri(start + 1, start + 3, start + 2); }
     }
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint, 4)); geo.setIndex(new THREE.BufferAttribute(index, 1));
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint, 4)); geo.setAttribute('reliefScar', new THREE.BufferAttribute(scar, 1)); geo.setIndex(new THREE.BufferAttribute(index, 1));
     // Fixed bounds avoid another full vertex scan on every crater.
     geo.boundingBox = new THREE.Box3(new THREE.Vector3(0, -12, 0), new THREE.Vector3(w * CELL, 12, h * CELL));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(w * CELL / 2, 0, h * CELL / 2), Math.hypot(w * CELL / 2, h * CELL / 2, 12));

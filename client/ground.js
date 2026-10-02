@@ -1,9 +1,11 @@
 // Painted ground. Each cell picks a main and a secondary ground material (grass with dirt patches, mud by the water,
-// shelled earth, rubble, ...). Every pixel blends the materials of the four nearest cells with a little noise warp,
-// so cell edges come out soft instead of square. Contour lines, shell holes and trench cuts are drawn on top.
+// a road, a field). Every pixel blends the materials of the four nearest cells with a little noise warp, so ordinary
+// materials meet in a soft edge. Shell holes, rubble and burnt ground are not the cell's material: a scar is laid
+// over the grass or dirt, strongest at the impact and ragged at the rim, so a bombed block is one torn patch.
+// Contour lines, shell holes and trench cuts are drawn on top.
 // When cells change mid-match only the 4x4-cell tiles around them are repainted and sent to the GPU.
 import * as THREE from 'three';
-import { levelOf, CELL, startState } from '/shared/sim.js';
+import { levelOf, CELL, startState } from '../shared/sim.js';
 import { gfx } from './gfx.js';
 
 // material ids; FIELD_V is the ploughed field turned 90 degrees
@@ -58,6 +60,11 @@ function buildNoise() {
   for (let i = 0; i < NA.length; i++) NP[i] = hist[Math.min(BINS - 1, ((NA[i] + 1) / 2 * BINS) | 0)] / NA.length;
 }
 const nA = (x, y) => NA[((y | 0) & NM) << 9 | ((x | 0) & NM)];
+const bilerpN = (x, y) => {
+  const x0 = Math.floor(x), y0 = Math.floor(y), tx = x - x0, ty = y - y0;
+  const a = nA(x0, y0), b = nA(x0 + 1, y0), c = nA(x0, y0 + 1), d = nA(x0 + 1, y0 + 1);
+  return (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+};
 
 // ---------- textures: load once at import, cut into world-sized tiles for the current pixels-per-cell ----------
 const images = {};
@@ -141,6 +148,7 @@ function fieldsOf(map) {
 function cellAttrs(S, grid) {
   const { w, h, map, fields } = S, rows = map.rows, n = w * h;
   const prim = new Uint8Array(n), sec = new Uint8Array(n), amt = new Float32Array(n), lev = new Float32Array(n), ov = new Uint8Array(n), key = new Uint8Array(n);
+  const scar = new Uint8Array(n); // 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground.
   const at = (x, y) => grid[y]?.[x];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x, ch = grid[y][x], L = levelOf(map.heights?.[y]?.[x] ?? '0');
@@ -159,13 +167,13 @@ function cellAttrs(S, grid) {
       else if (town) { p = ROAD; s = GRASS; a = 0.3; }
       else if (L < 0) { s = MUD; a = Math.min(0.6, 0.25 + 0.12 * -L); }
       else a = 0.1 + 0.3 * (nA(x * 3 + 41, y * 3 + 77) * 0.5 + 0.5);
-      // tracks cut the ground up step by step until it is mud; burnt ground is black earth
+      // tracks cut the ground up step by step until it is mud; a burn is a scar, not a new square of earth
       if (worn) { s = MUD; a = Math.max(a, 0.24 * worn); }
-      if (st & 4) { s = SHELL; a = 0.78; }
+      if (st & 4) scar[i] = 1;
     }
     else if (ch === 'B' || ch === 'K') { p = DIRT; s = ROAD; a = 0.3; }
-    else if (ch === 'R') { p = RUBBLE; s = DIRT; a = 0.3; }
-    else if (ch === '+') { p = SHELL; s = MUD; a = 0.18 + 0.1 * worn; ov[i] = 1; } // a deeper hole holds more mud
+    else if (ch === 'R') { p = DIRT; s = GRASS; a = 0.35; scar[i] = 2; }
+    else if (ch === '+') { p = GRASS; s = worn ? MUD : DIRT; a = 0.16 + 0.12 * worn; ov[i] = 1; scar[i] = 1; } // the bowl is drawn on top; the scar is the blast mark
     else if (ch === 'T') {
       p = EARTH; s = MUD; a = 0.3; ov[i] = 16;
       DIRS.forEach(([dx, dy], k) => { if (at(x + dx, y + dy) === 'T') ov[i] |= 1 << k; });
@@ -184,7 +192,142 @@ function cellAttrs(S, grid) {
     if (!a) s = p;
     prim[i] = p; sec[i] = s; amt[i] = a; key[i] = p | s << 4;
   }
-  return { prim, sec, amt, lev, ov, key };
+  // pixels this far from a scar run the blast-mark pass; everyone else stays on the fast material blend.
+  // The mark itself can reach almost two cells past a scar, so the pass covers three.
+  const near = new Uint8Array(n);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!scar[y * w + x]) continue;
+    for (let dy = -3; dy <= 3; dy++) {
+      const ny = y + dy;
+      if (ny < 0 || ny >= h) continue;
+      for (let dx = -3; dx <= 3; dx++) {
+        const nx = x + dx;
+        if (nx < 0 || nx >= w) continue;
+        near[ny * w + nx] = 1;
+      }
+    }
+  }
+  // How many cells of scar sit between this cell and open ground. A lone hit is 1. The middle of a wide blast is more.
+  const depth = new Float32Array(n);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!scar[y * w + x]) continue;
+    let best = 8;
+    for (let dy = -6; dy <= 6; dy++) {
+      const ny = y + dy;
+      for (let dx = -6; dx <= 6; dx++) {
+        const nx = x + dx;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && scar[ny * w + nx]) continue;
+        const d = Math.hypot(dx, dy);
+        if (d < best) best = d;
+      }
+    }
+    depth[y * w + x] = best;
+  }
+  return { prim, sec, amt, lev, ov, key, scar, near, depth };
+}
+
+// Smooth noise at cell scale. The ground fBm is far too low-frequency to tear a scar's edge.
+function cellNoise(u, v, k) {
+  const x0 = Math.floor(u), y0 = Math.floor(v), tx = u - x0, ty = v - y0;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const n = (x, y) => rnd(x, y, k);
+  const a = n(x0, y0), b = n(x0 + 1, y0), c = n(x0, y0 + 1), d = n(x0 + 1, y0 + 1);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
+
+// Distance from (u, v) to the nearest scar-cell centre and the nearest clean-cell centre, plus which material is closer.
+function scarField(scar, w, h, u, v) {
+  let shell = 0, rubble = 0, dScar = 9, dClean = 9;
+  const x0 = u | 0, y0 = v | 0;
+  for (let y = y0 - 3; y <= y0 + 3; y++) {
+    for (let x = x0 - 3; x <= x0 + 3; x++) {
+      const d = Math.hypot(u - (x + 0.5), v - (y + 0.5));
+      const kind = (x >= 0 && y >= 0 && x < w && y < h) ? scar[y * w + x] : 0;
+      if (!kind) { if (d < dClean) dClean = d; continue; }
+      if (d < dScar) dScar = d;
+      if (d >= 2.4) continue;
+      const inf = (1 - d / 2.4) ** 2;
+      if (kind === 1) shell += inf; else rubble += inf;
+    }
+  }
+  return { shell, rubble, dScar, dClean };
+}
+
+// How destroyed the point (u, v) is, in cell coordinates. 0 is untouched ground, 1 is the middle of a blast.
+// A lone hit stays a blob inside its cell, so the corners still show grass. A wide blast is one torn patch:
+// the sample point is shoved by almost a cell before the edge is measured, and that edge is only solid once
+// it is a full cell inside the scar. A thin stick (a bombing run, a strafe) is not that patch and not a row of
+// disks: the sample slides along the run and the width pinches, so grass shows between some of the hits.
+// The low-frequency ground noise cannot do this. It is too smooth to tear a block.
+function scarWeights(scar, depth, w, h, u, v) {
+  let mass = 0, n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  const x0 = u | 0, y0 = v | 0;
+  for (let y = y0 - 3; y <= y0 + 3; y++) {
+    if (y < 0 || y >= h) continue;
+    for (let x = x0 - 3; x <= x0 + 3; x++) {
+      if (x < 0 || x >= w || !scar[y * w + x]) continue;
+      const cx = x + 0.5, cy = y + 0.5;
+      if (Math.hypot(u - cx, v - cy) > 3.2) continue;
+      n++; sx += cx; sy += cy; sxx += cx * cx; syy += cy * cy; sxy += cx * cy;
+      const dep = depth[y * w + x];
+      if (dep > mass) mass = dep;
+    }
+  }
+  // A stick is long and only a few cells across. A square block, including the tested three-by-three, is not.
+  let run = null;
+  if (n >= 5) {
+    const mx = sx / n, my = sy / n;
+    const cxx = sxx / n - mx * mx, cyy = syy / n - my * my, cxy = sxy / n - mx * my;
+    const tr = cxx + cyy, det = cxx * cyy - cxy * cxy;
+    const disc = Math.max(0, tr * tr * 0.25 - det);
+    const major = tr * 0.5 + Math.sqrt(disc), minor = Math.max(0, tr * 0.5 - Math.sqrt(disc));
+    // A plane stick is a few cells wide, not one. A square block still fails the long-axis test.
+    if (major > 2.2 && minor < 1.65 && minor < major / 2.4) {
+      const ang = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
+      run = { ax: Math.cos(ang), ay: Math.sin(ang) };
+    }
+  }
+  // A single cell and a three-by-three stay gentle, or the tested corners fill in. A real shelled block does not.
+  const big = !run && mass >= 3;
+  const mid = !run && !big && mass >= 1.8;
+  let nu, nv, amp, biteAmp;
+  if (run) {
+    const s = u * run.ax + v * run.ay, t = -u * run.ay + v * run.ax;
+    const alongN = cellNoise(s * 0.18 + 2, t * 0.18 + 1, 31) * 2 - 1;
+    const acrossN = cellNoise(s * 0.31 + 5, 8.2, 32) * 2 - 1;
+    nu = u + run.ax * alongN * 0.34 + (-run.ay) * acrossN * 0.42;
+    nv = v + run.ay * alongN * 0.34 + run.ax * acrossN * 0.42;
+    amp = 0.42; biteAmp = 0.22;
+  } else {
+    const warp = big ? 0.78 : mid ? 0.16 : 0.04;
+    amp = big ? 1.35 : mid ? 0.34 : 0.14;
+    biteAmp = big ? 0.62 : mid ? 0.1 : 0.05;
+    // Two octaves, so a side that is flat in the slow wave still gets torn by the faster one.
+    const slow = (pu, pv, k) => cellNoise(pu * 0.26 + k, pv * 0.24 + k * 1.3, k) * 2 - 1;
+    const fast = (pu, pv, k) => cellNoise(pu * 0.62 + k * 2, pv * 0.57 + 3, k) * 2 - 1;
+    // A product of sines, so every side of a wide blast is bitten even where the noise happens to be flat.
+    // The two frequencies are not the cell spacing, so the notches do not line up with the map grid.
+    const rip = big ? 0.62 : 0;
+    nu = u + slow(u + 2.2, v + 5.1, 4) * warp + fast(u, v, 6) * warp * 0.7
+      + Math.sin(v * 2.6 + u * 0.7) * Math.sin(u * 1.15 + v * 0.45 + 1.7) * rip;
+    nv = v + slow(u + 8.4, v + 1.3, 5) * warp + fast(u + 4, v, 7) * warp * 0.7
+      + Math.sin(u * 2.35 + v * 0.55) * Math.sin(v * 1.25 + u * 0.4 + 0.6) * rip;
+  }
+  const field = scarField(scar, w, h, nu, nv);
+  const wave = cellNoise(u * 0.45 + 1.7, v * 0.45 + 4.2, 11) * 2 - 1;
+  const bite = cellNoise(u * 1.7 + 3.0, v * 1.4 + 6.0, 8) * 2 - 1;
+  const inset = field.dClean - field.dScar;
+  const shifted = inset - 0.08 + amp * wave + biteAmp * bite;
+  let cover = shifted <= 0 ? 0 : shifted >= 0.65 ? 1 : shifted / 0.65;
+  cover = cover * cover * (3 - 2 * cover);
+  if (!run && !big && field.dScar < (mid ? 0.28 : 0.34)) cover = 1;
+  if ((big && inset > 2.05) || (run && inset > 1.45)) {
+    const fleck = cellNoise(u * 3.1 + 4, v * 3.1 + 2, 19);
+    cover = Math.max(cover, fleck > 0.93 ? 0.5 : 1);
+  }
+  if (cover > 1) cover = 1;
+  const tot = field.shell + field.rubble;
+  return tot && cover > 0 ? { cover, shell: field.shell / tot, rubble: field.rubble / tot } : { cover: 0, shell: 0, rubble: 0 };
 }
 
 // ---------- the per-pixel blend ----------
@@ -205,7 +348,7 @@ const tq = (m, i, j) => (tSwap[m]
 
 const wt = new Float32Array(NMAT);
 function raster(S, X0, Y0, W, H, img) {
-  const { P, w, h } = S, { prim, sec, amt, key } = S.attrs, d = img.data;
+  const { P, w, h } = S, { prim, sec, amt, key, scar, near, depth } = S.attrs, d = img.data;
   useTiles(ready && tiles);
   // everything that depends only on the column, worked out once
   const cU = new Float32Array(W), cWx = new Int32Array(W), cWy = new Int32Array(W), cP0 = new Int32Array(W), cP1 = new Int32Array(W), cPt = new Float32Array(W);
@@ -269,6 +412,21 @@ function raster(S, X0, Y0, W, H, img) {
           r += wm * dd[k]; g += wm * dd[k + 1]; bl += wm * dd[k + 2];
         }
       }
+      // the blast mark sits on the ordinary ground. Only pixels near a scar pay for it.
+      const gx = u <= 0 ? 0 : u >= w ? w - 1 : u | 0, gy = v <= 0 ? 0 : v >= h ? h - 1 : v | 0;
+      if (near[gy * w + gx]) {
+        const sc = scarWeights(scar, depth, w, h, u, v);
+        if (sc.cover > 0.015) {
+          const cover = sc.cover, sd = tData[SHELL], sk = tq(SHELL, i, j), rd = tData[RUBBLE], rk = tq(RUBBLE, i, j);
+          const shade = 0.48 + 0.52 * (1 - cover * cover);
+          const sr = sc.shell * sd[sk] * shade + sc.rubble * rd[rk];
+          const sg = sc.shell * sd[sk + 1] * shade + sc.rubble * rd[rk + 1];
+          const sb = sc.shell * sd[sk + 2] * shade * 1.06 + sc.rubble * rd[rk + 2];
+          const ink = cover * (0.35 + 0.65 * cover);
+          const keep = 1 - ink;
+          r = r * keep + sr * ink; g = g * keep + sg * ink; bl = bl * keep + sb * ink;
+        }
+      }
       // broad light and dark sweeps, so the repeat of the textures doesn't show
       const br = 1 + 0.14 * NA[rB | cB[c]];
       r *= br; g *= br; bl *= br;
@@ -291,7 +449,8 @@ function overlays(S, c, cx0, cy0, cx1, cy1) {
     const f = ov[y * w + x];
     if (f === 1) holes.push([x, y]); else if (f & 16) cuts.push([x, y, f]);
   }
-  for (const [x, y] of holes) shellHole(c, P, x, y);
+  const holeAt = (x, y) => x >= 0 && y >= 0 && x < w && y < h && ov[y * w + x] === 1;
+  for (const [x, y] of holes) shellHole(c, P, x, y, holeAt);
   if (cuts.length) {
     c.beginPath();
     for (const [x, y, f] of cuts) {
@@ -336,25 +495,17 @@ function overlays(S, c, cx0, cy0, cx1, cy1) {
   }
 }
 
-// a shell hole lit from the upper right (the sun's side): dark bowl, lit far wall, thrown-out earth around it
-function shellHole(c, P, x, y) {
-  const r = (0.3 + 0.1 * rnd(x, y, 21)) * P, cx = (x + 0.5 + (rnd(x, y, 22) - 0.5) * 0.3) * P, cy = (y + 0.5 + (rnd(x, y, 23) - 0.5) * 0.3) * P;
-  let g = c.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.8);
-  g.addColorStop(0, 'rgba(60, 46, 30, 0.65)'); g.addColorStop(1, 'rgba(60, 46, 30, 0)');
-  c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r * 1.8, 0, Math.PI * 2); c.fill();
-  for (let k = 0; k < 8; k++) {
-    const a = rnd(x, y, 30 + k) * Math.PI * 2, dd = r * (1.05 + 0.6 * rnd(x, y, 40 + k)), s = P * (0.025 + 0.03 * rnd(x, y, 50 + k));
-    c.fillStyle = k % 3 ? 'rgba(44, 34, 22, 0.8)' : 'rgba(150, 126, 88, 0.7)';
-    c.beginPath(); c.arc(cx + Math.cos(a) * dd, cy + Math.sin(a) * dd, s, 0, Math.PI * 2); c.fill();
-  }
-  g = c.createRadialGradient(cx + r * 0.25, cy - r * 0.25, r * 0.05, cx, cy, r);
-  g.addColorStop(0, '#1e1810'); g.addColorStop(0.55, '#33291c'); g.addColorStop(0.85, '#55442e'); g.addColorStop(1, '#6a573b');
-  c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
-  c.lineCap = 'round';
-  c.strokeStyle = 'rgba(200, 172, 124, 0.55)'; c.lineWidth = r * 0.16;
-  c.beginPath(); c.arc(cx, cy, r * 0.84, Math.PI * 0.55, Math.PI * 1.2); c.stroke();
-  c.strokeStyle = 'rgba(186, 160, 112, 0.35)'; c.lineWidth = r * 0.12;
-  c.beginPath(); c.arc(cx, cy, r * 1.08, Math.PI * 1.55, Math.PI * 2.2); c.stroke();
+// A small bowl inside the cell, lit from the upper right. The blast's outline is the scar, so the bowl stays
+// well clear of the cell corners, and a hole that already has a neighbour is often skipped so a crater field
+// is not a grid of identical circles.
+function shellHole(c, P, x, y, holeAt) {
+  const beside = holeAt(x + 1, y) || holeAt(x - 1, y) || holeAt(x, y + 1) || holeAt(x, y - 1);
+  if (beside && rnd(x, y, 21) < 0.82) return;
+  const rad = (0.08 + 0.14 * rnd(x, y, 24)) * P;
+  const cx = (x + 0.5 + (rnd(x, y, 22) - 0.5) * 0.36) * P, cy = (y + 0.5 + (rnd(x, y, 23) - 0.5) * 0.36) * P;
+  const g = c.createRadialGradient(cx + rad * 0.2, cy - rad * 0.2, rad * 0.04, cx, cy, rad);
+  g.addColorStop(0, '#1a140e'); g.addColorStop(0.7, '#3a2e22'); g.addColorStop(1, 'rgba(70, 54, 36, 0)');
+  c.fillStyle = g; c.beginPath(); c.arc(cx, cy, rad, 0, Math.PI * 2); c.fill();
 }
 
 // ---------- painting and upload ----------
@@ -415,15 +566,15 @@ function paint(S, grid) {
   S.version = (S.version ?? 0) + 1;
   const want = ready ? 'textured' : 'flat';
   if (!prev || S.painted !== want) return fullPaint(S);
-  const { w, h } = S, n = w * h, tw = Math.ceil(w / TILE), dirty = new Set(), R = 2;
+  const { w, h } = S, n = w * h, tw = Math.ceil(w / TILE), dirty = new Set(), R = 3;
   const A = S.attrs;
   for (let i = 0; i < n; i++) {
-    if (A.prim[i] === prev.prim[i] && A.sec[i] === prev.sec[i] && A.amt[i] === prev.amt[i] && A.lev[i] === prev.lev[i] && A.ov[i] === prev.ov[i]) continue;
+    if (A.prim[i] === prev.prim[i] && A.sec[i] === prev.sec[i] && A.amt[i] === prev.amt[i] && A.lev[i] === prev.lev[i] && A.ov[i] === prev.ov[i] && A.scar[i] === prev.scar[i] && A.near[i] === prev.near[i]) continue;
     const x = i % w, y = (i / w) | 0;
     for (let ty = Math.max(0, y - R) / TILE | 0; ty <= (Math.min(h - 1, y + R) / TILE | 0); ty++)
       for (let tx = Math.max(0, x - R) / TILE | 0; tx <= (Math.min(w - 1, x + R) / TILE | 0); tx++) dirty.add(ty * tw + tx);
   }
-  if (!dirty.size) return;
+  if (!dirty.size) { S.stats = { kind: 'clean', tiles: 0 }; return; }
   if (dirty.size > tw * Math.ceil(h / TILE) * 0.5) return fullPaint(S);
   tilePaint(S, dirty);
 }

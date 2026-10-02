@@ -5,6 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A line of bombs is a ragged run: the banks wander and the bright rim is gone on dug ground, instead of a row of equal pale bowls. A wrecked house is broken wall stubs and spilled rubble, not a shorter box. Feet can sit a couple of metres off the visible lip, because the lip slides and the ground under a unit does not.
 - Trenches are real cuts in the ground now: the terrain drops 0.9 m along every trench, with sloped walls and the
   channel running on between connected cells. Men in a trench stand on its floor instead of sinking through flat
   ground, and anyone walking across one dips into it. The timber revetments line the walls from floor to lip and
