@@ -30,7 +30,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const material = options.material ?? createReliefMaterial(options.texture ?? null, { low });
   const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
   mesh.receiveShadow = true;
-  mesh.castShadow = !low;
+  mesh.castShadow = false; // seen from above the ground hardly shades itself; it still takes the shadows of all else
   const stats = { vertices: 0, triangles: 0, cliffEdges: 0, buildMs: 0, updateMs: 0, cellsUpdated: 0 };
   const baseValues = new Float32Array(25), baseDx = new Float32Array(25), baseDz = new Float32Array(25);
   const waterDx = new Float32Array(9), waterDz = new Float32Array(9);
@@ -556,7 +556,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
   for (let c = 0; c < n; c++) buildCell(c);
   rebuildGeometry(); stats.buildMs = performance.now() - t0;
   const unsubscribe = options.gfx?.onChange(() => {
-    low = options.gfx.low; mesh.castShadow = !low; material.userData.setLow?.(low); rebuildGeometry();
+    low = options.gfx.low; material.userData.setLow?.(low); rebuildGeometry();
   });
   return { mesh, get geometry() { return mesh.geometry; }, hAt, update, stats,
     dispose() { unsubscribe?.(); mesh.geometry.dispose(); if (!options.material) material.dispose(); } };

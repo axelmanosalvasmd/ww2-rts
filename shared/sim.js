@@ -1,7 +1,7 @@
 // Pure game logic. The server runs it; the client imports the tables for rendering.
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
-import { gridFor, rebuildGrid, updateGrid } from './grid.js';
+import { gridFor, rebuildGrid, updateGrid, SpatialGrid } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
 
@@ -388,14 +388,51 @@ export const spawnsFor = (map, mode) => map.spawns.map((s, i) => i).filter(i => 
 // team VP needed to win: scaled by average team size, so a 3v3 lasts about as long as a 1v1
 export const winVp = (teams) => CFG.vpToWin * teams.length / new Set(teams).size;
 
-// Spawns are listed in order around the map. Teammates get neighbouring spawns, and fewer players than
-// spawns spread out evenly (2 on a 6-spawn map sit opposite). shuffle rotates/mirrors it per match.
-export function spawnSlots(nSpawns, teams, shuffle = true) {
-  const order = teams.map((t, i) => i).sort((a, b) => teams[a] - teams[b]);
-  const rot = shuffle ? Math.floor(Math.random() * nSpawns) : 0, dir = shuffle && Math.random() < 0.5 ? -1 : 1;
-  const out = [];
-  order.forEach((slot, k) => { out[slot] = ((rot + dir * Math.round(k * nSpawns / teams.length)) % nSpawns + nSpawns) % nSpawns; });
-  return out;
+// Walking distance in cells between each pair of the given spawns: water, cliffs and houses are in the way and a ford
+// cell costs 6, so spawns on either side of a river are far apart even when they look close. Spawns with no way
+// between them (islands) count four times their straight distance.
+export function spawnDistances(map, idx) {
+  const { w, h, rows } = map, INF = 1e9;
+  return idx.map(i => {
+    const s = map.spawns[i], d = new Float64Array(w * h).fill(INF), buckets = [[s.y * w + s.x]];
+    d[s.y * w + s.x] = 0;
+    for (let c = 0; c < buckets.length; c++) for (const cell of buckets[c] ?? []) {
+      if (d[cell] !== c) continue;
+      const x = cell % w, y = (cell - x) / w;
+      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const f = TERRAIN[rows[ny][nx]] ?? 0, n = ny * w + nx, nd = c + (f & FORD ? 6 : 1);
+        if (!(f & MOVE) && nd < d[n]) { d[n] = nd; (buckets[nd] ??= []).push(n); }
+      }
+    }
+    return idx.map(j => { const t = map.spawns[j], v = d[t.y * w + t.x]; return v < INF ? v : 4 * Math.hypot(t.x - s.x, t.y - s.y); });
+  });
+}
+
+// Which spawn each player gets: the layout that keeps teammates closest together and enemies furthest apart, by
+// walking distance (dist[a][b], default: steps around a ring of nSpawns). Fewer players than spawns spread out (2 on a
+// 6-spawn map sit opposite). shuffle picks at random among layouts within 3% of the best, so sides change per match.
+// ponytail: tries every layout (at most 6P6 = 720, or 5^6 = 15625 when spawns are shared); prune if maps get more spawns.
+export function spawnSlots(nSpawns, teams, shuffle = true, dist = null) {
+  dist ??= Array.from({ length: nSpawns }, (_, a) => Array.from({ length: nSpawns }, (_, b) => Math.min(Math.abs(a - b), nSpawns - Math.abs(a - b))));
+  const n = teams.length, cur = [], used = new Array(nSpawns).fill(false), all = [];
+  (function place(p) {
+    if (p === n) {
+      let score = 0, near = Infinity; // near: the closest two enemies, the tie-break that spreads a free-for-all evenly
+      for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) {
+        const d = dist[cur[a]][cur[b]], same = teams[a] === teams[b];
+        score += same ? -d : d;
+        if (!same) near = Math.min(near, d);
+      }
+      all.push({ score, near, slots: [...cur] });
+      return;
+    }
+    // more players than spawns: spawns are shared (teammates first, since a shared spawn is no distance apart)
+    for (let s = 0; s < nSpawns; s++) if (!used[s] || n > nSpawns) { used[s] = true; cur[p] = s; place(p + 1); used[s] = false; }
+  })(0);
+  const best = Math.max(...all.map(o => o.score)), close = all.filter(o => o.score >= best - 0.03 * Math.abs(best) - 1e-9);
+  const nearest = Math.max(...close.map(o => o.near)), good = close.filter(o => o.near >= nearest * 0.97 - 1e-9);
+  return (shuffle ? good[Math.floor(Math.random() * good.length)] : good[0]).slots;
 }
 
 // teams[i] / factions[i] per player; default is free-for-all with factions cycling USA, Germany, USSR
@@ -415,7 +452,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
   }
-  const usable = spawnsFor(map, opts.mode), spawnIdx = spawnSlots(usable.length, teams, shuffle).map(k => usable[k]);
+  const usable = spawnsFor(map, opts.mode), spawnIdx = spawnSlots(usable.length, teams, shuffle, spawnDistances(map, usable)).map(k => usable[k]);
   // assault maps can reserve spawns for the defenders (a hilltop, a town); attackers get the rest
   if (assault && map.defend?.length) {
     const att = map.spawns.map((_, i) => i).filter(i => !map.defend.includes(i));
@@ -966,6 +1003,8 @@ function logCell(g, c, change) {
   else g.cellLog[index] = latest;
   // Keep each viewer's changes independently of the transient snapshot batch.
   for (const p of g.players) p.terrainPending?.add(index);
+  g.watchPending?.add(index); // the spectators' shared terrain memory (server.js)
+  g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.newCells.push(change);
 }
 
@@ -1890,11 +1929,13 @@ const firedOnBy = (g, u, t) => g.tick - (t.id === u.hitBy ? u.hitAt : t.targetId
 function pickTarget(g, u) {
   const w = UNITS[u.type].w, cur = u.targetId, team = g.players[u.owner].team;
   let best = 0, bestScore = Infinity, curScore = Infinity;
+  // salvo weapons count each target's neighbours: gather them once (range + 6 m) instead of a query per target
+  const pool = w.salvo ? gridFor(g).candidates(u, w.range + 6, false, o => !o.riding && !allied(g, o.owner, u.owner) && g.players[u.owner].visible.has(o.id)) : null;
   for (const t of gridFor(g).candidates(u, w.range, true, t => t.hp > 0 && !t.air && !allied(g, t.owner, u.owner) && g.players[u.owner].visible.has(t.id))) {
     if (!canShoot(g, u, t)) continue;
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
-    const value = w.salvo ? dug * (1 + gridFor(g).candidates(t, 6).filter(o => o.owner === t.owner && !o.riding && g.players[u.owner].visible.has(o.id) && dist(o, t) < 6).length)
+    const value = w.salvo ? dug * (1 + pool.filter(o => o.owner === t.owner && dist(o, t) < 6).length)
       : (inf ? w.inf * w.accInf * coverMul(g, t) : w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
     const threat = firedOnBy(g, u, t) ? 2.5 : t.targetId === u.id ? 1.5 : 1;
     const others = w.salvo ? 0 : (g.claims?.get(t.id * 8 + team) ?? 0) - (t.id === cur ? volley(u, t) : 0);
@@ -2145,12 +2186,16 @@ function updateVision(g) {
       const def = UNITS[u.type];
       return { u, def, base: visionOf(g, u), range: visionRange(g, u, def) };
     });
-    const watchers = new Map();
+    const watchers = new Map(), nearCache = new Map(), airList = list.filter(t => t.air);
     // Gather observers once, in their original order. Each target's check then visits
     // only the sources near it, without querying once per team and target.
     for (const source of sources) {
       const { u, def, range } = source, reach = Math.max(6, CFG.camoRange, def.vision, range) * CFG.dustSeen;
-      for (const t of gridFor(g).candidates(u, Math.max(reach, CFG.air.seeRange), false)) {
+      // One query per 16 m cell and reach, shared by every source standing there; aircraft are appended whole.
+      const bx = Math.floor(u.x / 16), bz = Math.floor(u.z / 16), ck = bx + ',' + bz + ',' + reach;
+      let near = nearCache.get(ck);
+      if (!near) nearCache.set(ck, near = [...gridFor(g).candidates({ x: (bx + 0.5) * 16, z: (bz + 0.5) * 16 }, reach + 8, false, t => !t.air && g.players[t.owner].team !== p.team), ...airList]);
+      for (const t of near) {
         if (g.players[t.owner].team === p.team) continue;
         const bound = t.air ? CFG.air.seeRange : reach;
         if (Math.abs(t.x - u.x) > bound || Math.abs(t.z - u.z) > bound) continue;
@@ -2594,7 +2639,7 @@ function sweepMines(g, list) {
     const bit = 1 << g.players[u.owner].team, cx = Math.floor(u.x / CELL), cy = Math.floor(u.z / CELL);
     for (let y = Math.max(0, cy - r); y <= Math.min(g.h - 1, cy + r); y++) for (let x = Math.max(0, cx - r); x <= Math.min(g.w - 1, cx + r); x++) {
       const c = y * g.w + x;
-      if (g.chars[c] === 'N' && !mineKnown(g, c, g.players[u.owner].team) && dist(u, cellCenter(g, c)) <= M.detect) g.mineSeen.set(c, (g.mineSeen.get(c) ?? 0) | bit);
+      if (g.chars[c] === 'N' && !mineKnown(g, c, g.players[u.owner].team) && dist(u, cellCenter(g, c)) <= M.detect) { g.mineSeen.set(c, (g.mineSeen.get(c) ?? 0) | bit); g.terrainVersion = (g.terrainVersion ?? 0) + 1; }
     }
   }
 }
@@ -2874,12 +2919,13 @@ export function step(g) {
   // soft separation; never push a unit into a blocked cell
   const list = [...g.units.values()];
   const order = new Map(list.map((u, i) => [u.id, i])), maxRadius = Math.max(0, ...list.map(u => UNITS[u.type].radius));
+  const sep = new SpatialGrid(g.units, 4); // fine 4 m cells: this query is tiny and runs for every unit
   for (let i = 0; i < list.length; i++) {
     const a = list[i], radius = (UNITS[a.type].radius + maxRadius) * 0.8;
     if (a.garrison >= 0 || a.air || a.riding) continue;
-    const grid = gridFor(g), size = grid.size;
+    const grid = sep, size = grid.size;
     let x0 = Math.floor((a.x - radius) / size), x1 = Math.floor((a.x + radius) / size), z0 = Math.floor((a.z - radius) / size), z1 = Math.floor((a.z + radius) / size);
-    let candidates = grid.candidates(a, radius).filter(b => order.get(b.id) > i);
+    let candidates = grid.candidates(a, radius, true, b => order.get(b.id) > i);
     for (let k = 0; k < candidates.length; k++) {
       const b = candidates[k], j = order.get(b.id), min = (UNITS[a.type].radius + UNITS[b.type].radius) * 0.8;
       if (a.garrison >= 0 || b.garrison >= 0 || a.air || b.air || b.riding) continue;
@@ -2892,13 +2938,13 @@ export function step(g) {
       const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
       if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
       if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
-      updateGrid(g, a); updateGrid(g, b);
+      updateGrid(g, a); updateGrid(g, b); sep.update(a); sep.update(b);
       // Unvisited units have not moved during this i pass. The candidate cells remain
       // complete until a push changes the query bounds. No displacement padding is needed.
       const nx0 = Math.floor((a.x - radius) / size), nx1 = Math.floor((a.x + radius) / size), nz0 = Math.floor((a.z - radius) / size), nz1 = Math.floor((a.z + radius) / size);
       if (nx0 !== x0 || nx1 !== x1 || nz0 !== z0 || nz1 !== z1) {
         x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
-        candidates = grid.candidates(a, radius).filter(next => order.get(next.id) > j); k = -1;
+        candidates = grid.candidates(a, radius, true, next => order.get(next.id) > j); k = -1;
       }
     }
   }
@@ -3137,7 +3183,11 @@ function planOf(g, u) {
 export function terrainFor(g, slot, full = false) {
   const p = g.players[slot], memory = p.terrainMemory ??= new Map();
   const pending = p.terrainPending ??= new Set(g.cellLog.keys());
-  if (!pending.size) return full ? [...memory.values()] : [];
+  // What is still pending waits on a new cell, a found mine or a vision pass; until one comes there is nothing to redo.
+  // ponytail: a ruin's teamSees check also follows live positions, so it can show up one vision pass (4 ticks) later.
+  const key = `${g.terrainVersion ?? 0}:${g.visionTick ?? -1}`;
+  if (!pending.size || (!full && pending.key === key)) return full ? [...memory.values()] : [];
+  pending.key = key;
   const changes = [], visible = new Map();
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
@@ -3217,6 +3267,20 @@ export function seenBy(g, slot, id) {
   const u = g.units.get(id);
   // A plane is seen only while it flies, even between vision updates. The end-of-match reveal shows everything.
   return (g.reveal && !!u) || allied(g, u?.owner ?? -1, slot) || (g.players[slot].visible.has(id) && (!u?.air || airborne(u)));
+}
+
+// The unit rows one client still needs. sent maps id to the row it last got (start and reconnect begin with an empty
+// map); full sends every row anyway (a spectator joined the shared stream). Returns the rows that changed and the ids
+// that are gone (dead, or hidden by fog) for the client to drop. sent is updated.
+export function unitDelta(sent, rows, full = false) {
+  const units = [], gone = new Set(sent.keys());
+  for (const row of rows) {
+    const old = sent.get(row[0]);
+    gone.delete(row[0]);
+    if (full || !old || row.some((v, i) => v !== old[i])) { units.push(row); sent.set(row[0], row); }
+  }
+  for (const id of gone) sent.delete(id);
+  return { units, gone: gone.size ? [...gone] : undefined };
 }
 
 export function snapshotFor(g, slot, shots, cells = [], cache) {

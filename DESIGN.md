@@ -21,8 +21,12 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Each spawn is a visible HQ: tinted reinforce zone, a ring of real-size sandbags, a canvas wall tent with guy lines,
   crates and a field table, a guyed flagpole with the team flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
-- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawns are listed in order around the map; teammates
-  get neighbouring spawns and fewer players spread out (spawnSlots). The host sets teams, each player picks a faction.
+- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawn order in the map file does not matter: spawnSlots
+  tries every layout and keeps the one with teammates closest together and enemies furthest apart, measured as
+  walking distance over the terrain (spawnDistances: water, cliffs and houses block, a ford cell costs 6), so a team
+  shares a river bank. Fewer players spread out, and a free-for-all spreads evenly (closest enemies as far apart as
+  possible). Each match picks at random among layouts within 3% of the best, so which side a team gets changes.
+  The host sets teams, each player picks a faction.
   Teams share vision, can't target each other, hold each other's points, and win on combined VP; the goal scales
   with average team size (3v3 plays to 3600) so team games last about as long as a 1v1.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
@@ -749,12 +753,24 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Damage ladder: finished structures smoke at 0.66 hp or below and burn at 0.33 or below. Posture: crouch at
   suppression 50, prone at 90 (crouch at most in a trench), and lean when retreating. LOD: simple soldier model beyond
   110 m (80 m on Low) with 4 m hysteresis. Corpses are capped at 200 and live 25 s.
+- Draw budget (2026-10-01): soldiers are drawn instanced, one InstancedMesh per baked figure (type, faction, color,
+  kit, near or far) with posture weights per man (`drawSoldiers` in `client/unit-models.js`); each man keeps his own
+  hidden mesh for posing, selection and corpses, and squads off screen are skipped. Health bars show only on hurt,
+  suppressed, selected or hovered units. The relief casts no shadow (it still receives them). Dug or bombed cells
+  re-place only nearby scenery props, and the 3D terrain pieces and minimap terrain are redone at most 4 times a second.
 - Adaptive snapshot interval: rooms start at every 2 ticks (10 Hz) and stretch to 3, then 4, when the snapshot-tick p95
   over 50 samples exceeds 40 ms. They recover one step after 10 s under 24 ms. The client smooths units over the
   measured gap (60 to 400 ms).
 - Snapshot cache: `snapshotCache(g)` is built once per send and passed as the fifth argument to `snapshotFor`. Without
   it, `snapshotFor` reads live state. Owner orders and the mode row with Assault total and Annihilation bunkers are
   cached. Rally, contested and the fog lift stay per player.
+- Snapshot deltas (server.js `trimmed`): the WebSocket compresses messages over 1 KB (permessage-deflate). Each client
+  gets only the unit rows that changed since its last snapshot plus `gone` (ids that died or went under fog), from
+  `unitDelta(sent, rows)`; wrecks and resource nodes go only when their room-level version moves. A start or reconnect
+  resets the seat's record, so its next snapshot is whole. Spectators share one stream: one build and one string per
+  broadcast, one terrain memory on the game (`g.watchPending`, fed by `logCell`), and a joining spectator makes the
+  next broadcast whole. The client (and the test harness) rebuild full lists before anything reads them.
+  `terrainFor` skips its pending replay until a cell changes, a mine is found or a vision pass runs.
 - As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
   fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
   gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign

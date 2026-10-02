@@ -843,10 +843,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 }
 {
   // spawn assignment: teammates neighbour, fewer players spread out
+  const ring = (a, b) => Math.min(Math.abs(a - b), 6 - Math.abs(a - b));
   assert.deepEqual(spawnSlots(6, [0, 1], false), [0, 3], '1v1 on a 6-spawn map sits opposite');
-  assert.deepEqual(spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [0, 3, 1, 4, 2, 5], '3v3 sides');
-  assert.deepEqual(spawnSlots(6, [0, 1, 2], false), [0, 2, 4], '3-way FFA spread');
+  const sides = spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [a0, a1, a2] = [sides[0], sides[2], sides[4]];
+  assert.ok(ring(a0, a1) + ring(a1, a2) + ring(a0, a2) === 4, '3v3: each team holds three neighbouring spawns');
+  const ffa = spawnSlots(6, [0, 1, 2], false);
+  assert.ok(ring(ffa[0], ffa[1]) === 2 && ring(ffa[1], ffa[2]) === 2, '3-way FFA spreads evenly');
   for (let i = 0; i < 20; i++) { const s = spawnSlots(6, [0, 0, 1, 1, 2, 2]); assert.equal(new Set(s).size, 6, 'no shared spawns'); }
+  // on a real map teammates share a river bank: Pegasus Bridge lists two spawns north of the river, then two south
+  const peg = JSON.parse(readFileSync('maps/pegasus-bridge.json', 'utf8'));
+  for (let i = 0; i < 20; i++) {
+    const g = createGame(peg, ['a', 'b', 'c', 'd'], true, [0, 1, 0, 1]), north = (p) => p.spawn.z < peg.h * CELL / 2;
+    assert.equal(north(g.players[0]), north(g.players[2]), '2v2: teammates spawn on the same side of the river');
+    assert.notEqual(north(g.players[0]), north(g.players[1]), '2v2: the other team spawns across it');
+  }
 }
 
 // Army size accepts only named settings and scales each supported mode without changing the balance values.
@@ -3313,6 +3323,20 @@ const referenceNearCover = (g, u) => {
   } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
 }
 
+// Unit row deltas: a fresh client gets every row, a row that stops changing is not resent, a unit that dies or goes
+// under fog is named in gone, and a spectator joining the shared stream (full) gets every row again.
+{
+  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]), sent = new Map(), rows = () => snapshotFor(g, 0, []).units;
+  const first = sim.unitDelta(sent, rows());
+  assert.ok(first.units.length >= 2 && first.units.length === rows().length && !first.gone, 'a fresh join gets the full set');
+  assert.deepEqual(sim.unitDelta(sent, rows()), { units: [], gone: undefined }, 'unchanged units are not resent');
+  const [moved, dead] = [...g.units.values()].filter(u => u.owner === 0);
+  moved.x += 3; g.units.delete(dead.id);
+  const next = sim.unitDelta(sent, rows());
+  assert.deepEqual([next.units.map(r => r[0]), next.gone], [[moved.id], [dead.id]], 'only the changed row is sent, the removed unit is gone');
+  assert.equal(sim.unitDelta(sent, rows(), true).units.length, rows().length, 'full resends every row');
+}
+
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
   const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));
@@ -3334,6 +3358,7 @@ const referenceNearCover = (g, u) => {
   let comparison = 0;
   const check = (slot, full = false, snapshot = false) => {
     const expected = referenceTerrainFor(slot, full);
+    g.visionTick = (g.visionTick ?? 0) + 1; // the hand edits to sight below stand in for a vision pass, which terrainFor waits on
     const actual = snapshot ? snapshotFor(g, slot, [], []).cells : sim.terrainFor(g, slot, full);
     assert.deepEqual(actual, expected, `incremental terrain comparison ${comparison++}: viewer ${slot}, full ${full}`);
     assert.deepEqual([...g.players[slot].terrainMemory], [...memories[slot]], 'incremental terrain preserves ordered remembered tuples');
@@ -3799,11 +3824,11 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
-    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats',
+    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
       body + '\nreturn timedRoomTick;')(
       thinkEvery, g => { g.tick++; },
       (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
-      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}));
+      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -4196,7 +4221,8 @@ async function serverHarness() {
   };
   const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier', hello = true } = {}) => {
     const serverSide = new Promise(resolve => accepting.push(resolve));
-    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
+    // no compression: zlib runs off the main thread, and settleServer's few milliseconds assume a message is sent at once
+    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
     const messages = [], errors = [];
     const client = {
       code, token, ws, messages, log: messages, errors, closed: false, serverSide,
@@ -4206,7 +4232,18 @@ async function serverHarness() {
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
       wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
     };
-    ws.on('message', raw => messages.push(JSON.parse(String(raw))));
+    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: rebuild them as client/main.js does
+    const rows = new Map(); let prev = null;
+    ws.on('message', raw => {
+      const m = JSON.parse(String(raw));
+      if (m.t === 'start') { rows.clear(); prev = null; }
+      if (m.t === 's') {
+        for (const id of m.gone ?? []) rows.delete(id);
+        for (const row of m.units) rows.set(row[0], row);
+        m.sent = m.units; m.units = [...rows.values()]; m.wrecks ??= prev?.wrecks; m.nodes ??= prev?.nodes; prev = m;
+      }
+      messages.push(m);
+    });
     ws.on('close', () => { client.closed = true; });
     ws.on('error', error => errors.push(error)); clients.push(client);
     await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
@@ -5337,8 +5374,9 @@ for (const lookupFinished of [false, true]) {
 
 // Classic keeps training separate from unit orders, and Engineers finish queued field and building work.
 {
-  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }, { x: 5, y: 70 }], points: [{ x: 40, y: 40 }] };
-  const classic = (teams = [0, 1]) => createGame(map, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 5, y: 70 }, { x: 70, y: 70 }], points: [{ x: 40, y: 40 }] };
+  // the 1v1 uses the first two spawns only, so player 0 holds the top-left corner and the enemy the bottom-left
+  const classic = (teams = [0, 1], m = teams.length > 2 ? map : { ...map, spawns: map.spawns.slice(0, 2) }) => createGame(m, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
   const g = classic(), p = g.players[0]; p.mp = 5000;
   const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer'), hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
   for (const u of [...g.units.values()]) if (!UNITS[u.type].structure && u !== eng) g.units.delete(u.id);
@@ -5677,6 +5715,18 @@ for (const lookupFinished of [false, true]) {
   bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
   assert.equal(bodies.count, 0, 'a finished match empties the pool');
 
+  // drawSoldiers: two rifle squads of one look draw as one instanced mesh per figure; their own meshes leave the camera
+  const { drawSoldiers, crowd } = await import('./client/unit-models.js');
+  const squads = [0, 1].map((i) => { const r = new THREE.Group(), u = { type: 'rifle', root: r, models: [], x: i * 10, z: 0, supp: 0, flags: 0, cover: 0 }; buildModel(u, r, look, 0, UNITS.rifle); r.position.x = u.x; return u; });
+  const cam = new THREE.PerspectiveCamera(42, 1.5, 1, 2200); cam.position.set(5, 30, 40); cam.lookAt(5, 0, 0);
+  for (const u of squads) animate(u, 0.1, cam.position);
+  drawSoldiers(squads, cam);
+  const batches = crowd.children.filter((m) => m.count), men = squads.flatMap((u) => u.models).flatMap((m) => m.userData.hi);
+  assert.equal(batches.reduce((n, m) => n + m.count, 0), men.length, 'every man is one instance');
+  assert.equal(batches.length, new Set(men.map((m) => m.geometry)).size, 'one draw call per figure');
+  assert.ok(men.every((m) => !m.layers.test(cam.layers)), 'the men no longer draw themselves');
+  cam.lookAt(5, 0, 400); drawSoldiers(squads, cam);
+  assert.ok(crowd.children.every((m) => !m.count), 'squads behind the camera are left out');
   // The mesh the pool instances is the slack fallen build. These squads use their own pools so the two-uniform
   // check above stays a leader and one gunner. Landmarks come from the living aiming prone; the measured mesh is
   // the one createBodies placed.
