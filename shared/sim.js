@@ -34,6 +34,8 @@ export const CFG = {
   armies: { standard: { pop: 1, income: 1 }, large: { pop: 2.5, income: 3 }, massive: { pop: 5, income: 6 }, endless: { pop: 5, income: 20 } },
   air: { seeRange: 60, station: 50, rearm: 30, orbit: 18, seek: 60, bail: 0.35, offmap: 40 },
   digCost: 30, digCells: 4, digTime: 3, wireSpeed: 0.35, fortBuilders: ['rifle', 'conscript', 'engineer'], camoRange: 12,
+  // smoke screens long sight lines; anything closer than this sees (and shoots) through it
+  smokeSight: 15,
   // seeking cover: how far a squad walks for it on the Take Cover order, or under fire when it can't shoot back (metres)
   coverSeek: 10,
   // auto-retreat (a per-unit switch): the share of full strength below which a unit runs for home
@@ -193,7 +195,7 @@ UNITS.tiger = { name: 'Tiger', faction: 1, max: 1, cost: 560, models: 1, hpPer: 
   w: { range: 42, interval: 4, inf: 40, veh: 110, accInf: 0.55, accVeh: 0.8, supp: 30, moveFire: 0.6, shellTerrain: 140 },
   ab: { id: 'smoke', name: 'Smoke', cd: 45, dur: 14, radius: 9 } };
 // USSR Conscripts: cheap human waves. Ura! = sprint and shrug off suppression.
-UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, models: 7, hpPer: 14, speed: 4.6, radius: 1.8, vision: 34, infantry: true, garrisons: true,
+UNITS.conscript = { name: 'Conscripts', faction: 2, cost: 80, pop: 0.75, models: 7, hpPer: 14, speed: 4.6, radius: 1.8, vision: 34, infantry: true, garrisons: true,
   w: { range: 24, interval: 1.8, inf: 2.2, veh: 1.1, accInf: 0.55, accVeh: 0.5, supp: 3, perModel: true, moveFire: 0.5 },
   ab: { id: 'ura', name: 'Ura!', cd: 35, dur: 6, speed: 1.6 } };
 UNITS.rifle.garrisons = UNITS.mg.garrisons = true;
@@ -341,8 +343,10 @@ function payAb(g, u) {
   return true;
 }
 // units a player fields, trains or has incoming with paratroopers (planes count too)
-export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue?.length ?? 0) : 1) : 0), 0)
-  + g.strikes.reduce((a, s) => a + (s.owner === slot && !s.live && SUPPORT[s.kind].unit ? 1 : 0), 0);
+// how much of the army limit one unit takes: 1, or its own pop (Conscripts are cheap bodies)
+export const popUse = (type) => UNITS[type].pop ?? 1;
+export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue ?? []).reduce((n, t) => n + popUse(t), 0) : popUse(u.type)) : 0), 0)
+  + g.strikes.reduce((a, s) => a + (s.owner === slot && !s.live && SUPPORT[s.kind].unit ? popUse(SUPPORT[s.kind].unit) : 0), 0);
 export const popCap = (g) => Math.round((g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap) * (g.army?.pop ?? 1));
 export const supCost = (g, k) => (g.mode?.kind === 'classic' ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
@@ -1135,7 +1139,8 @@ function noCliffs(g, a, b) {
   return true;
 }
 
-export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !g.smokes.some(s => segHits(a, b, s, s.r)) && overHills(g, a, b);
+const smoked = (g, a, b) => g.smokes.length > 0 && Math.hypot(b.x - a.x, b.z - a.z) >= CFG.smokeSight && g.smokes.some(s => segHits(a, b, s, s.r));
+export const los = (g, a, b) => clear(g, a.x, a.z, b.x, b.z, SIGHT, false) && !smoked(g, a, b) && overHills(g, a, b);
 
 function walkable(g, a, b, mask = MOVE) {
   // three parallel rays so wide units don't clip building corners
@@ -1807,7 +1812,7 @@ export function command(g, slot, cmd, auto = false) {
     const pop = popOf(g, slot);
     const have = own.filter(u => u.type === cmd.unit).length + queued.filter(t => t === cmd.unit).length;
     const price = priceOf(g, cmd.unit);
-    if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop >= popCap(g) || have >= (def.max ?? Infinity)) return p.mp < price.mp ? 'mp' : price.fuel && !(p.fuel >= price.fuel) ? 'fuel' : pop >= popCap(g) ? 'pop' : 'max';
+    if (p.mp < price.mp || (price.fuel && !(p.fuel >= price.fuel)) || pop + popUse(cmd.unit) > popCap(g) || have >= (def.max ?? Infinity)) return p.mp < price.mp ? 'mp' : price.fuel && !(p.fuel >= price.fuel) ? 'fuel' : pop + popUse(cmd.unit) > popCap(g) ? 'pop' : 'max';
     if (!classic) { p.mp -= price.mp; tally(g, slot, 'mpSpent', price.mp); sendToRally(g, spawnUnit(g, slot, cmd.unit)); return; }
     // queue it at the building asked for, else the one with the shortest queue
     if (g.mode.suddenDeath) return 'suddenDeath';
@@ -2294,8 +2299,8 @@ function fogLos(g, f, sx, sz, ux, uy, x, y, la, srcTop, smokes) {
     }
   }
   const x0 = ux < x ? ux : x, x1 = ux < x ? x : ux, y0 = uy < y ? uy : y, y1 = uy < y ? y : uy;
-  if (smokes.length) {
-    // segHits, unrolled
+  if (smokes.length && Math.hypot(px - sx, pz - sz) >= CFG.smokeSight) { // same test as los
+    // segHits, unrolled (smoked)
     const dx = px - sx, dz = pz - sz, l2 = dx * dx + dz * dz || 1;
     for (const s of smokes) {
       const t = Math.max(0, Math.min(1, ((s.x - sx) * dx + (s.z - sz) * dz) / l2));

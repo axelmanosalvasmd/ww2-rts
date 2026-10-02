@@ -5,7 +5,7 @@
 // Each panel builds its HTML only when what it shows changes shape (the teams, the selection, the selected building)
 // and otherwise only updates text, widths and disabled states: rebuilding the buttons 10 times a second ate clicks.
 
-import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
+import { UNITS, UNIT_TYPES, CFG, SUPPORT, SUPPORT_TYPES, FORTS, lineFort, ENTRENCH, ENTRENCH_TYPES, BUILDABLE, canBuild, winVp, supCost, popCap, popUse, abCost, priceOf, AUTO_FLAG, RIDING_FLAG, CARGO_FLAG } from '/shared/sim.js';
 import { symbolSVG, icon } from './symbols.js';
 import { portrait } from './portraits.js';
 import { unitRole } from './unit-roles.js';
@@ -512,7 +512,7 @@ export function createHud(ctx) {
   function update(s) {
     snapshot = s;
     const me = ctx.me, all = [...ctx.units.values()];
-    const pop = all.filter((v) => v.owner === me && !UNITS[v.type].structure).length + all.reduce((a, v) => a + (v.owner === me && v.queue ? v.queue.length : 0), 0);
+    const pop = all.reduce((a, v) => a + (v.owner !== me ? 0 : UNITS[v.type].structure ? (v.queue ?? []).reduce((n, t) => n + popUse(t), 0) : popUse(v.type)), 0);
     const cap = popCap(s), sel = selUnits();
     drawScores(s);
     drawEcon(s, pop, cap);

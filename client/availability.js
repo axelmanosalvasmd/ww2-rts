@@ -1,4 +1,4 @@
-import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, abCost, levelOf, teamSees } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, abCost, levelOf, teamSees } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
@@ -32,16 +32,16 @@ export function availability(s, cfg = CFG, action = {}) {
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
   const selected = own.filter((v) => (action.ids ?? []).includes(v.id));
   const classic = s.mode?.kind === 'classic', sudden = classic && s.mode.suddenDeath;
-  const population = () => {
-    const pop = own.filter((v) => !UNITS[v.type].structure).length + queued.length, cap = popCap(s);
-    return pop >= cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
+  const population = (unit) => {
+    const pop = popTotal(own, queued), cap = popCap(s);
+    return pop + (unit ? popUse(unit) : 1) > cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
   };
   if (action.t === 'buy') {
     const def = UNITS[action.unit];
     if (!def || def.structure || (def.classic && !classic)) return no('Unavailable in this mode');
     const price = priceOf(s, action.unit), money = resources(s, price.mp, price.fuel);
     if (!money.ok) return money;
-    const pop = population(); if (!pop.ok) return pop;
+    const pop = population(action.unit); if (!pop.ok) return pop;
     if (own.filter((v) => v.type === action.unit).length + queued.filter((t) => t === action.unit).length >= (def.max ?? Infinity)) return no('Maximum of this unit reached');
     if (classic) {
       if (sudden) return no(DENY_SENTENCES.suddenDeath);
@@ -104,16 +104,19 @@ export function availability(s, cfg = CFG, action = {}) {
 
 // How many of one unit a single Shift purchase can buy right now, up to `want`: what manpower, fuel, the army limit,
 // the unit limit and (Classic) the room in the training queues leave. 0 whenever availability() refuses the first one.
+// the army limit used: units on the field plus queued ones, Conscripts at their own weight
+export const popTotal = (own, queued) => own.reduce((n, v) => n + (UNITS[v.type].structure ? 0 : popUse(v.type)), 0) + queued.reduce((n, t) => n + popUse(t), 0);
+
 export function buyCount(s, cfg, action, want) {
   if (!availability(s, cfg, action).ok) return 0;
   const def = UNITS[action.unit], price = priceOf(s, action.unit), classic = s.mode?.kind === 'classic';
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
-  const pop = own.filter((v) => !UNITS[v.type].structure).length + queued.length;
+  const pop = popTotal(own, queued);
   const have = own.filter((v) => v.type === action.unit).length + queued.filter((t) => t === action.unit).length;
   const room = own.filter((v) => v.built >= 1 && UNITS[v.type].makes?.includes(action.unit) && (action.from === undefined || v.id === action.from))
     .reduce((n, v) => n + Math.max(0, 5 - v.queue.length), 0);
   return Math.max(0, Math.min(want, price.mp ? Math.floor(s.mp / price.mp) : want, price.fuel ? Math.floor((s.fuel ?? 0) / price.fuel) : want,
-    popCap(s) - pop, (def.max ?? Infinity) - have, classic ? room : want));
+    Math.floor((popCap(s) - pop) / popUse(action.unit)), (def.max ?? Infinity) - have, classic ? room : want));
 }
 
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.

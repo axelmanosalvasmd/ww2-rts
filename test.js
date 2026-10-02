@@ -324,8 +324,16 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }));
   command(g, 0, { t: 'ability', ids: [t.id] });
   assert.equal(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), false, 'smoke blocks LOS');
+  assert.ok(los(g, { x: 20 - CFG.smokeSight + 1, z: 20 }, { x: 20, z: 20 }), 'a unit close by sees into the smoke');
   run(g, 15);
   assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), 'smoke clears');
+}
+// Conscripts take three quarters of a place in the army limit.
+{
+  const g = fresh(), before = popOf(g, 0);
+  g.players[0].mp = 1000;
+  for (let i = 0; i < 4; i++) put(g, 0, 'rifle', 20 + i * 4, 20).type = 'conscript';
+  assert.equal(popOf(g, 0) - before, 3, 'four conscript squads count as three');
 }
 
 // Catch-up: trailing players earn more manpower.

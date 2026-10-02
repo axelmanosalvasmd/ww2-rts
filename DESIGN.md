@@ -1418,3 +1418,10 @@ samples. Per-match seeds, outcomes and simulation lengths are saved in
 Click and box selection use projected bounds of each visible model mesh, squad centers and health bars. Posture bounds blend with the rendered morph weights, and near-plane intersections are clipped before projection. Selection and owner rings never count as troop geometry. Garrisoned squads use their roof bars. A box selects a squad when it overlaps any displayed mesh bounds, with 6 px of click forgiveness around those bounds; houses and scenery never block troop selection. Troops take priority over production buildings on a click. Double-click uses the same visible targets and excludes dead squads, passengers and parked aircraft. Release distance also detects a box drag when a mousemove event was missed. Saved groups retain living passenger and parked-aircraft IDs but skip them during recall until they become selectable again. This changes input targeting only, with no balance changes.
 
 Full raw results and source manifests: [behavior balance evidence](docs/behavior-balance-2026-10-01.md). Combined browser checks and GPU measurements: [verification](docs/issue-batch-verification.md).
+
+## Conscript population and smoke (2026-10-01)
+
+- Units can take a fraction of the army limit: `UNITS[type].pop` (default 1), read through `popUse`. Conscripts are 0.75. `popOf`, paratrooper reservations, the buy check (`pop + popUse(unit) > popCap`), the client's `availability`/`buyCount` and the HUD all weigh units the same way.
+- Smoke blocks a sight line only when the line is at least `CFG.smokeSight` (15 m) long. `los` and the fog's `fogLos` share the rule, so the drawn fog matches what units can see and shoot. Cloud sizes and durations are unchanged.
+- Why: a unit inside smoke was hidden beyond the 6 m close-sight rule and could not be targeted at all, so tank smoke and smoke barrages made units close to invulnerable. Conscripts were meant as human waves but were held to the same squad count as everyone else.
+- 150 AI matches, default map, seed 1000, before -> after: USA/Germany/USSR 39/58/53 -> 46/46/58, median 473 s -> 465 s.
