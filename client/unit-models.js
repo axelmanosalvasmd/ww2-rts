@@ -433,7 +433,7 @@ export function animate(v, dt, eye, groundAt) {
   sq.aimBlend = aimBlend + Math.max(-step, Math.min(step, aimGoal - aimBlend));
   moveSquad(v, dt);
   const sum = w.reduce((a, b) => a + b, 0);
-  const sink = v.cover === 2 ? -0.6 : 0;
+  const sink = v.cover === 2 && !v.trench ? -0.6 : 0; // men seated in a trench stand on its carved floor instead
   for (const man of v.models) {
     const u = man.userData, s = man.scale.x, motion = u.motion;
     const blend = motion.blend;
@@ -455,7 +455,7 @@ export function animate(v, dt, eye, groundAt) {
       const c = Math.cos(mp[0]), sn = Math.sin(mp[0]), x = tip.x, y = tip.y * mp[1];
       tip.set(x * c - y * sn + mp[2] - ox, x * sn + y * c + mp[3] - oy, tip.z);
     }
-    const floor = groundAt && !v.trench ? groundAt(motion.x, motion.z) - v.root.position.y : 0;
+    const floor = groundAt ? groundAt(motion.x, motion.z) - v.root.position.y : 0;
     man.position.set(motion.localX + ox * s, floor + sink + oy * s, motion.localZ);
     man.rotation.y = motion.localYaw;
     u.pose.rotation.z = mp[0]; u.pose.scale.y = mp[1]; u.pose.position.set(mp[2] - ox, mp[3] - oy, 0);

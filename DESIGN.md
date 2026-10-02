@@ -402,6 +402,12 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
   damage of the rocket made no measurable difference to a mass of trucks, so they stay. 60 AI matches: faction wins
   24/19/17 -> 20/17/23, length and closeness unchanged. Open: halftracks and mobile flak beat basic infantry at equal
   cost; MG teams still lose to conscripts in the open.
+- Second round (same day): the rocket launcher is area artillery (`w.area`): no automatic fire at units, only the
+  barrage (clicked spot, or autocast on 3+ in a blast area or a dug-in enemy) or an explicit attack order. Barrage
+  cooldown 45 -> 20 s and free in Classic (`ab.mun: 0`, so autocast defaults on there), speed 5 -> 3.5. Rifles do 1.5
+  to vehicles (was 0.4), conscripts 1.1 (was 0.3): infantry beats light vehicles at equal cost and still loses to
+  tanks. Nine trucks against equal-cost rifles went from 63%/0% army left to 12%/5%. AI faction wins moved within
+  noise (150 matches 46/53/51 -> 57/52/41, 60 matches 15/24/21 -> 19/13/28, opposite swings).
 - Looks per faction: Sherman / Panzer IV / T-34, M8 Greyhound / Sd.Kfz. 222 / BA-64.
 - AI: a mortar against dug-in MGs and AT guns (or once its army is 6+), a sniper against 6+ infantry seen, an armored car
   once the army is 7+ (it leads depot raids), medium tanks when affordable. It falls back to infantry when it can't make
@@ -971,6 +977,31 @@ Goal: a big-map mode where players slowly take resource nodes, fortify their coa
   40 hp) and VBLOCK (vehicles' paths treat it as a wall; infantry pass and get cover; 250 hp). findPath picks the
   blocking mask from the moving unit's type.
 - Only open ground, craters and rubble take a fortification, so nobody builds on bridges, fords or in houses.
+
+### Trench rules (2026-10-01)
+Trenches were a flat 0.35x on incoming fire from every side, for anyone, forever. They now have five rules
+(`CFG.trench`), so where and how you dig matters and attackers have answers:
+- Settling in: incoming accuracy and suppression go from 0.5 (cover level, just jumped in) to 0.3 after 8 s standing
+  still (`u.still`). Hit them before they settle.
+- Facing: a dug trench cell remembers its front (`g.trenchFront`, radians). Lines and zigzags face away from the
+  diggers; arcs, rings and strongpoints face out from their center; a single dig faces fortCells' forward. Fire from
+  within about 72 degrees of the front (cos > 0.3) meets the full trench, anything else (enfilade, the rear) gets
+  plain cover (0.5). Map-drawn trenches protect all round unless the map sets `trenchFacing: true`, which faces each
+  away from its nearest spawn. Squads seeking cover (`coverRank`) know a flanked trench is only cover.
+- Concealment: a squad in a trench that has not fired for 4 s is seen only within 18 m (and with line of sight).
+  Planes and recon still see it. Firing gives it away.
+- Moving: infantry move at 1.2x along trench cells (communication trenches).
+- Rallying: suppression drains at 14/s in a trench instead of 8/s.
+- Caving in: shell damage on a trench cell adds up in `g.wear` and at 400 the cell becomes a crater (cover). Tanks
+  crush trench cells they drive over (`CFG.crush.T`).
+- Balance, 150 Conquest AI matches on the default map (seeds 1-60 and 1000-1089), before and after: faction wins
+  USA/GER/USSR 50/47/53 -> 44/50/56; spawn wins 51/49/50 -> 62/54/34; runner-up VP over winner 0.49 -> 0.44; median
+  length about the same (7.9 -> 7.7 min). Turning one rule off at a time (90 matches each) moved spawn 2 between 22
+  and 29 wins, so no single rule causes the spawn shift and it may be noise; turning facing off changed almost nothing,
+  since the AI mostly fights head on. Worth re-measuring with more matches.
+- New map **No Man's Land** (`tools/genmap-trenches.mjs`, 2v2, mirrored, `trenchFacing`) shows them off: reserve and
+  zigzag front lines joined by communication trenches, staggered wire, a cratered middle with an abandoned trench by
+  the center point.
 
 ## Roads, mud, bridges and mines (2026-10-01)
 - Three terrain cells: `D` road (flag ROAD), `M` mud (flag MUD), `N` mine (no flags). `=` bridge also carries ROAD.

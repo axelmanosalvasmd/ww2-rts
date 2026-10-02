@@ -8,6 +8,7 @@ import { CELL, houseKinds } from '/shared/sim.js';
 import { surface, fogShader, fogged, loadTexture } from './surfaces.js';
 import { leafGeometry, leafMaterial } from './foliage.js';
 import { gfx } from './gfx.js';
+import { TRENCH_DEPTH } from './relief.js';
 
 // stable pseudo-random per cell (same formula as main.js and ground.js), so a rebuild never reshuffles the village
 const rnd = (x, y, k = 0) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
@@ -687,19 +688,20 @@ function trenches(C) {
   const { w, h, at, hAt, low } = C;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (at(x, y) !== 'T') continue;
-    const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), conn = DIR4.map(([dx, dy]) => at(x + dx, y + dy) === 'T');
+    // g is the carved floor (client/relief.js), top the ground at the lip; the revetments line the walls between them
+    const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), top = g + TRENCH_DEPTH, wall = (g + top) / 2, conn = DIR4.map(([dx, dy]) => at(x + dx, y + dy) === 'T');
     DIR4.forEach(([dx, dy], i) => {
       const yaw = yawOf(dx, dy);
       if (conn[i]) {
         // the channel runs on: line both sides to the cell edge, boards along the floor
-        for (const s of [-1, 1]) put('wood', cx + dx * 0.75 - dy * s * 0.5, g - 0.05, cz + dy * 0.75 + dx * s * 0.5, 0.08, 0.5, 0.5, yaw, 0.9);
+        for (const s of [-1, 1]) put('wood', cx + dx * 0.75 - dy * s * 0.5, wall, cz + dy * 0.75 + dx * s * 0.5, 0.08, TRENCH_DEPTH + 0.2, 0.5, yaw, 0.9);
         if (!low) put('duck', cx + dx * 0.5, g + 0.19, cz + dy * 0.5, 1, 1, 1, yaw + Math.PI / 2);
       } else {
-        put('wood', cx + dx * 0.5, g - 0.05, cz + dy * 0.5, 1.08, 0.5, 0.08, yaw, 0.9);
-        if (at(x + dx, y + dy) !== '#') put('earth', cx + dx * 0.88, g - 0.1, cz + dy * 0.88, 2.1, 0.5, 0.7, yaw, [0.95, 0.88, 0.78]);
+        put('wood', cx + dx * 0.5, wall, cz + dy * 0.5, 1.08, TRENCH_DEPTH + 0.2, 0.08, yaw, 0.9);
+        if (at(x + dx, y + dy) !== '#') put('earth', cx + dx * 0.88, top - 0.1, cz + dy * 0.88, 2.1, 0.5, 0.7, yaw, [0.95, 0.88, 0.78]);
       }
     });
-    for (const [sx, sz] of DIAG) put('dark', cx + sx * 0.5, g - 0.05, cz + sz * 0.5, 0.12, 0.6, 0.12, 0, 0.8);
+    for (const [sx, sz] of DIAG) put('dark', cx + sx * 0.5, wall + 0.1, cz + sz * 0.5, 0.12, TRENCH_DEPTH + 0.4, 0.12, 0, 0.8);
     if (conn.some(Boolean)) continue;
     if (!low) put('duck', cx, g + 0.19, cz, 0.8, 1, 1, rnd(x, y, 120) < 0.5 ? 0 : Math.PI / 2);
     // a lone pit with sandbags around it is an MG nest: low ring of bags round its front and sides, ammo boxes behind
@@ -709,7 +711,7 @@ function trenches(C) {
     const a0 = fx || fz ? Math.atan2(fz, fx) : 0;
     for (let c = 0; c < 2; c++) for (let i = -3; i <= 3 - c; i++) {
       const a = a0 + i * 0.5 + c * 0.25;
-      bags(x, y, 200 + c * 10 + i, cx + Math.cos(a) * 0.82, g + 0.1 + c * 0.25, cz + Math.sin(a) * 0.82, -a + Math.PI / 2, 0.5);
+      bags(x, y, 200 + c * 10 + i, cx + Math.cos(a) * 0.82, top + 0.1 + c * 0.25, cz + Math.sin(a) * 0.82, -a + Math.PI / 2, 0.5);
     }
     for (const s of [-1, 1]) {
       const bx = cx - Math.cos(a0) * 0.45 - Math.sin(a0) * s * 0.3, bz = cz - Math.sin(a0) * 0.45 + Math.cos(a0) * s * 0.3;

@@ -5,6 +5,29 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Trenches are real cuts in the ground now: the terrain drops 0.9 m along every trench, with sloped walls and the
+  channel running on between connected cells. Men in a trench stand on its floor instead of sinking through flat
+  ground, and anyone walking across one dips into it. The timber revetments line the walls from floor to lip and
+  MG nest sandbags sit on the lip. Visual only: cover and sight lines are unchanged.
+- Trenches are a mechanic now, not just a bigger cover number:
+  - **Settling in**: a squad that just jumped into a trench gets ordinary cover. After 8 s standing still it is dug
+    in and takes 0.3x incoming fire (was a flat 0.35x).
+  - **Facing**: a trench you dig faces away from the diggers (rings, arcs and strongpoints face outward). Fire from
+    the front meets the full trench; fire along it or from behind gets only ordinary cover. Flanking a line pays, and
+    a captured enemy trench faces the wrong way.
+  - **Hidden**: a squad in a trench that is not firing is seen only within 18 m. Firing gives it away.
+  - **Communication trenches**: infantry move 20% faster along trenches.
+  - **Steady**: suppression wears off almost twice as fast in a trench.
+  - **Caving in**: enough shelling turns a trench cell into a crater, and tanks crush trenches they drive over.
+  - Balance (150 AI Conquest matches, default map): faction wins 50/47/53 -> 44/50/56; spawn wins 51/49/50 ->
+    62/54/34, which may be noise (see DESIGN.md "Trench rules"); games slightly less close (runner-up VP 0.49 -> 0.44).
+- New map **No Man's Land** (2v2): two trench systems facing each other across wire and a cratered middle, made to
+  show off the trench rules. Its trenches face the enemy (new map option `trenchFacing`).
+- Planes: Shift- or Ctrl-click a plane in the air panel to add it to the selection (or drop it), double-click to
+  select all your planes. Before, a click always replaced the selection, so you could not send several at once.
+- Left for later: the AI does not yet flank trench lines or shell them on purpose; the client does not draw which
+  way a trench faces.
+
 - Boats in every mode: on a naval map, Conquest, Assault and Annihilation now offer the Landing Craft, Gunboat and
   Destroyer in a new **Naval** group of the recruit bar (140, 220 and 700 MP). A bought boat launches on the water
   nearest your HQ (a destroyer on the nearest deep water). Classic still trains them at the Shipyard.
@@ -84,11 +107,23 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
     15 rifle squads went from wiped out (rifles keep 64%) to nearly even (MGs keep 4%, rifles 16%).
   - 60 AI matches on Three Crossroads, before -> after: faction wins USA/Germany/USSR 24/19/17 -> 20/17/23, median
     length 439 s -> 444 s, runner-up VP share 0.42 -> 0.42. Too few matches to call the faction shift real.
-  - Left for later: a mass of rocket trucks still beats any infantry army and any army that stands still (they
-    outrange everything at 70 m); tanks, AT guns pushed forward and now armored cars are the answer. Halftracks and
-    mobile flak beat rifles and conscripts by about 70 points at equal cost, since rifles barely scratch vehicles.
-    MG teams still lose to equal-cost conscripts in the open. Planes, off-map support, cover and houses were not
-    part of these tests.
+  - Rocket launcher, second round: it is now area artillery. It no longer fires at units on its own; a salvo lands
+    where you order a Rocket Barrage, on a unit you give it an attack order on, or by autocast on a crowd (3+ in one
+    blast area) or a dug-in enemy. The barrage is ready every 20 s (was 45) and is free in Classic (was 25
+    Munitions), so autocast starts on there too. Speed 5 -> 3.5: moving it is a commitment.
+  - Infantry against vehicles: rifle squads' damage to vehicles 0.4 -> 1.5, conscripts' 0.3 -> 1.1. A rifle army now
+    beats halftracks (-72 -> +59), armored cars (-23 -> +82) and mobile flak (-68 -> +55) at equal cost, and still
+    loses to light tanks (-85 -> -44) and medium tanks (-82 -> -25). AT guns stay the answer to tanks.
+  - Nine rocket trucks defending against an equal-cost army attack-moving into them: against rifle squads the trucks
+    kept 63% and the rifles 0% (with the infantry change alone); as area artillery the trucks keep 12%, the rifles
+    5%. Against conscripts 61%/0% -> 6%/6%. A mass of trucks is now an even trade with infantry, not a wipe, and
+    still punishes a crowd or a garrison.
+  - AI matches on Three Crossroads after the merge with #29, before -> after both rounds: 150 matches (seed 1000)
+    faction wins 46/53/51 -> 57/52/41, median length 474 s -> 464 s, runner-up VP share 0.46 -> 0.45; 60 matches
+    (seed 1) 15/24/21 -> 19/13/28. The two runs swing opposite ways, so no faction effect shows above noise.
+  - Left for later: MG teams still lose to equal-cost conscripts in the open. A slower truck (5 -> 3) made no
+    difference in a straight fight; the speed cut is for feel. Planes, off-map support, cover and houses were not
+    part of these tests. The trucks are still drawn as trucks (a towed gun would need new models).
 
 ### 2026-10-01. Individual soldiers and troop selection (`c55fd0f`, `69575e3`, `c27bcef`)
 

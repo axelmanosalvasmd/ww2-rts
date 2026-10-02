@@ -492,7 +492,8 @@ export function createHud(ctx) {
   }
 
   // ---------- top right, under the support calls: your planes and what each is doing ----------
-  // rebuilt only when the planes change; a click selects that plane
+  // rebuilt only when the planes change; a click selects that plane, Shift/Ctrl-click adds or drops it, a double-click
+  // selects every plane
   let airKey = '';
   function drawAir(s) {
     const el = $('airPanel'); if (!el) return;
@@ -500,7 +501,10 @@ export function createHud(ctx) {
     if (key !== airKey) {
       airKey = key;
       el.innerHTML = air.map(([id]) => `<button data-plane="${id}"><span class="nm">${esc(name(ctx.units.get(id).type))}</span><span class="st"></span></button>`).join('');
-      el.querySelectorAll('[data-plane]').forEach((b) => (b.onclick = () => ctx.select(+b.dataset.plane)));
+      el.querySelectorAll('[data-plane]').forEach((b) => {
+        b.onclick = (e) => ctx.select(+b.dataset.plane, e.shiftKey || e.ctrlKey);
+        b.ondblclick = () => ctx.selectMany(air.map(([id]) => id));
+      });
     }
     air.forEach(([id, st, fuel, , timer], k) => {
       const b = el.children[k];

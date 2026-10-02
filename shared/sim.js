@@ -25,7 +25,13 @@ export const CFG = {
   captureTime: 8, pointRadius: 8, popCap: 12,
   retreatSpeed: 1.5, retreatDamage: 0.25, reinforceRadius: 15, reinforceEvery: 2,
   // incoming accuracy/suppression multipliers; blasts only care about trenches
-  coverMul: 0.5, trenchMul: 0.35, trenchBlastMul: 0.5,
+  coverMul: 0.5, trenchBlastMul: 0.5,
+  // trenches: incoming accuracy/suppression goes from fresh (just jumped in) to dug (after settle s standing still).
+  // A dug trench (g.trenchFront) gives that only against fire within acos(arc) of its front; from the flank or behind
+  // it is plain cover (map-drawn trenches protect all round). hide: a squad in a trench that has not fired for 4 s is
+  // seen only this close. speed: infantry move faster along trenches. rally: suppression lost per second in one
+  // (8 elsewhere). hp: shell damage that caves a trench cell into a crater; tanks crush it by driving over.
+  trench: { fresh: 0.5, dug: 0.3, settle: 8, arc: 0.3, hide: 18, speed: 1.2, rally: 14, hp: 400 },
   // planes: seen from this far with no line of sight; time on station (fuel); rearm time at base; circling radius;
   // how far a fighter looks for enemy planes; hp share at which a plane turns for home; off-map airbase distance
   // kill bounty: whoever lands the killing blow gets this share of the dead unit's (or building's) cost in MP
@@ -41,7 +47,7 @@ export const CFG = {
   // auto-retreat (a per-unit switch): the share of full strength below which a unit runs for home
   autoRetreat: 0.35,
   // destruction: hit points per structure cell, what it turns into, and what tanks flatten by driving through
-  terrainHp: { H: 60, '#': 150, '=': 200, X: 40, Y: 250, N: 1, O: 200, A: 150, Q: 300 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.', N: '+', O: '.', A: '+', Q: '+' }, crush: { H: '.', '#': 'R', X: '.' },
+  terrainHp: { H: 60, '#': 150, '=': 200, X: 40, Y: 250, N: 1, O: 200, A: 150, Q: 300 }, wreck: { B: 'R', H: '.', '#': '+', '=': 'W', X: '.', Y: '.', N: '+', O: '.', A: '+', Q: '+' }, crush: { H: '.', '#': 'R', X: '.', T: '+' },
   // a ford's speed, shallow to deep (each ford cell has its own depth)
   fordSpeed: [0.75, 0.35],
   // vehicles: faster on an unbroken road or bridge; mud from shallow to deep; open ground down to 1 - churn as traffic
@@ -323,17 +329,18 @@ export function entrenchPlan(pattern, a, b, back, fort = 'trench') {
   const away = back && Math.hypot(a.x - back.x, a.z - back.z) > 0.5 ? Math.atan2(a.z - back.z, a.x - back.x) : 0;
   const dir = drawn ? Math.atan2(b.z - a.z, b.x - a.x) : linear ? away + Math.PI / 2 : away;
   const dx = Math.cos(dir), dz = Math.sin(dir), clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), out = [];
-  const seg = (kind, x, z, d) => out.push({ kind, x, z, dir: d });
+  // front: where a trench faces. Out from a for the arc, ring and strongpoint; the line patterns set it to their front.
+  const seg = (kind, x, z, d, front = Math.atan2(z - a.z, x - a.x)) => out.push({ kind, x, z, dir: d, front });
   if (linear) {
     const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, L = drawn ? len : SEG;
     // the front is the side away from the diggers
-    const side = back && (mx - back.x) * dz + (mz - back.z) * -dx < 0 ? -1 : 1, nx = dz * side, nz = -dx * side;
-    const row = (off) => { const n = clamp(Math.round(L / SEG), 1, 12); for (let i = 0; i < n; i++) { const t = (i - (n - 1) / 2) * SEG; seg(fort, mx + dx * t + nx * off, mz + dz * t + nz * off, dir); } };
+    const side = back && (mx - back.x) * dz + (mz - back.z) * -dx < 0 ? -1 : 1, nx = dz * side, nz = -dx * side, front = Math.atan2(nz, nx);
+    const row = (off) => { const n = clamp(Math.round(L / SEG), 1, 12); for (let i = 0; i < n; i++) { const t = (i - (n - 1) / 2) * SEG; seg(fort, mx + dx * t + nx * off, mz + dz * t + nz * off, dir, front); } };
     if (pattern === 'zigzag') {
       // a sawtooth: each segment turns 0.6 rad off the line, alternately forward and back
       const w = SEG * Math.cos(0.6), h = SEG * Math.sin(0.6), n = clamp(Math.round(L / w), 1, 16);
       const v = (i) => ({ x: mx + dx * (i - n / 2) * w + nx * (i % 2 ? h / 2 : -h / 2), z: mz + dz * (i - n / 2) * w + nz * (i % 2 ? h / 2 : -h / 2) });
-      for (let i = 0; i < n; i++) { const p = v(i), q = v(i + 1); seg(fort, (p.x + q.x) / 2, (p.z + q.z) / 2, Math.atan2(q.z - p.z, q.x - p.x)); }
+      for (let i = 0; i < n; i++) { const p = v(i), q = v(i + 1); seg(fort, (p.x + q.x) / 2, (p.z + q.z) / 2, Math.atan2(q.z - p.z, q.x - p.x), front); }
     } else { row(0); if (pattern === 'double') row(-3 * CELL); }
   } else if (pattern === 'arc' || pattern === 'ring') {
     const ring = pattern === 'ring', R = drawn ? clamp(len, ring ? 6 : 8, ring ? 24 : 30) : ring ? 10 : 12, span = ring ? Math.PI * 2 : Math.PI * 2 / 3;
@@ -420,6 +427,7 @@ export function validateMap(m) {
   if (m.defend !== undefined && (!Array.isArray(m.defend) || !m.defend.length || m.defend.length >= m.spawns.length
     || m.defend.some(i => !int(i, 0, m.spawns.length - 1)) || new Set(m.defend).size !== m.defend.length)) return 'defend must list some (not all) spawn numbers';
   if (m.naval !== undefined && typeof m.naval !== 'boolean') return 'naval must be true or false';
+  if (m.trenchFacing !== undefined && typeof m.trenchFacing !== 'boolean') return 'trenchFacing must be true or false';
   if (!Array.isArray(m.points) || m.points.length < 1 || m.points.length > 9) return 'needs 1-9 capture points';
   for (const p of m.points) if (!p || !int(p.x, 0, m.w - 1) || !int(p.y, 0, m.h - 1) || TERRAIN[at(p)] & MOVE || !numIn(p.vp ?? 1, 0, 5) || !numIn(p.mp ?? 1, 0, 5)) return 'points must be on open ground, vp and mp 0-5';
   return null;
@@ -528,6 +536,15 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   // supply lines (not in Horde, whose waves would cut every point): opts.supply === false turns them off
   g.supply = opts.supply !== false && !horde;
   g.house = houseKinds(g.chars, map.w);
+  // trenchFacing: the map's trenches face like dug ones, each away from the spawn nearest to it (its side's rear)
+  if (map.trenchFacing) {
+    g.trenchFront = new Float32Array(g.chars.length).fill(NaN);
+    g.chars.forEach((ch, c) => {
+      if (ch !== 'T') return;
+      const x = c % map.w, y = Math.floor(c / map.w), s = map.spawns.reduce((a, b) => (Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a));
+      g.trenchFront[c] = Math.atan2(y - s.y, x - s.x);
+    });
+  }
   g.cellHp = Float32Array.from(g.chars, (ch, c) => maxHp(g, c));
   g.wear = Float32Array.from(g.chars, startWear); g.burnt = new Uint8Array(g.chars.length);
   g.cellState = Uint8Array.from(g.chars, startState);
@@ -912,7 +929,16 @@ export function houseKinds(chars, w) {
 const maxHp = (g, c) => (g.chars[c] === 'B' ? CFG.houses[g.house[c]].hp : CFG.terrainHp[g.chars[c]] ?? 0);
 // incoming accuracy on a squad in house cell c: the type's protection, less as the cell is shot up
 export const garrisonMul = (g, c) => { const k = CFG.houses[g.house[c]]; return k.worn + (k.mul - k.worn) * Math.max(0, g.cellHp[c]) / k.hp; };
-const coverMul = (g, t) => (t.garrison >= 0 ? garrisonMul(g, t.garrison) : inTrench(g, t) ? CFG.trenchMul : inCover(g, t) ? 1 - (1 - CFG.coverMul) * coverQ(g, cellOf(g, t.x, t.z)) : 1);
+// does the trench at u face fire from `from`? (no shooter known, or a map-drawn trench: yes)
+const trenchFaces = (g, u, from) => {
+  const f = g.trenchFront?.[cellOf(g, u.x, u.z)];
+  return !from || f === undefined || Number.isNaN(f) || Math.cos(Math.atan2(from.z - u.z, from.x - u.x) - f) > CFG.trench.arc;
+};
+export const coverMul = (g, t, from) => {
+  if (t.garrison >= 0) return garrisonMul(g, t.garrison);
+  if (inTrench(g, t) && trenchFaces(g, t, from)) return lerp(CFG.trench.fresh, CFG.trench.dug, Math.min(1, t.still / CFG.trench.settle));
+  return inCover(g, t) ? 1 - (1 - CFG.coverMul) * coverQ(g, cellOf(g, t.x, t.z)) : 1;
+};
 // Cover from something solid between you and the shooter, within ~2 m on their side:
 // a house, wall, rubble, hedge, or a vehicle. Protects from the front, not the flank.
 const SOLID = new Set(['B', '#', 'R', 'H', 'K', 'Q']);
@@ -963,7 +989,7 @@ function touch(g, c) { const s = stateOf(g, c); if (s !== g.cellState[c]) { g.ce
 function groundMul(g, c, veh) {
   const f = g.flags[c], w = g.wear ? g.wear[c] : 0, wet = g.wx ? g.wx.wet * (g.height && g.height[c] < 0 ? 2 : 1) : 0;
   if (f & FORD) return lerp(CFG.fordSpeed[0], CFG.fordSpeed[1], w) * (1 - CFG.weather.wetFord * Math.min(1, wet));
-  if (!veh) return f & WIRE ? CFG.wireSpeed : 1;
+  if (!veh) return f & WIRE ? CFG.wireSpeed : f & TRENCH ? CFG.trench.speed : 1;
   if (f & WOOD) return CFG.wood.speed;
   if (f & ROAD) return lerp(CFG.roadSpeed, 1, w);
   if (f & MUD) return lerp(CFG.mudSpeed[0], CFG.mudSpeed[1], w) * (1 - CFG.weather.wetGround * wet);
@@ -993,7 +1019,7 @@ const cellCenter = (g, c) => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.
 // how well a spot shelters infantry from fire coming from `from` (may be null): 0 trench, 1 cover cell (hedge, wall,
 // crater, ruins, tank traps: every side), 2 behind something solid on that side or at a house corner, 3 open ground.
 // Only the ground counts here, not vehicles (see coverBehind), so a choice never rests on a unit the side can't see.
-const coverRank = (g, at, from) => { const f = flagsAt(g, at.x, at.z); return f & TRENCH ? 0 : f & COVER ? 1 : from && coverBehind(g, at, from, false) > 0.4 ? 2 : 3; };
+const coverRank = (g, at, from) => { const f = flagsAt(g, at.x, at.z); return f & TRENCH && trenchFaces(g, at, from) ? 0 : f & COVER ? 1 : from && coverBehind(g, at, from, false) > 0.4 ? 2 : 3; };
 // nothing ordered and nothing under way
 const busy = (u) => u.path.length > 0 || !!u.attackId || !!u.dig || !!u.nade || !!u.amove || !!u.build || u.enter >= 0 || !!u.board || !!u.riding || u.fireAt >= 0 || u.retreating;
 // squads in cover are not pushed out of it by others crowding past
@@ -1076,6 +1102,7 @@ function setCell(g, c, ch) {
   if (g.chars[c] === 'A') g.aid.delete(c);
   if (g.chars[c] === 'Q') g.wrecks = g.wrecks.filter(w => w.c !== c); // the hull goes with its cell
   g.flags[c] = next | (g.shoal?.[c] ? SHOAL : 0); g.chars[c] = ch; g.cellHp[c] = maxHp(g, c);
+  if (g.trenchFront) g.trenchFront[c] = NaN; // the digging sets a new trench's front after this
   g.fires?.delete(c);
   if (g.soak) for (const n of [c, c - 1, c + 1, c - g.w, c + g.w]) g.soak.add(n); // flood() sorts out which of them count
   if (g.wear) { g.wear[c] = startWear(ch, c); g.cellState[c] = stateOf(g, c); }
@@ -1519,7 +1546,7 @@ function takeDigJob(g, u) {
   jobs.splice(k, 1);
   p.mp -= cost; tally(g, u.owner, 'mpSpent', cost);
   u.entrench.active++;
-  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0, project: u.entrench, kind: job.kind, dir: job.dir, reach: FORTS[job.kind].reach }; u.repath = 0;
+  u.dig = { x: job.x, z: job.z, cells: place.cells, t: 0, project: u.entrench, kind: job.kind, dir: job.dir, front: job.front, reach: FORTS[job.kind].reach }; u.repath = 0;
 }
 
 // Per-unit switches the player sets. holdFire: shoot only on an attack order. holdPos: never move unordered (no
@@ -2013,7 +2040,7 @@ function pickTarget(g, u) {
     const def = UNITS[t.type], inf = def.infantry;
     const dug = t.garrison >= 0 ? 3 : inTrench(g, t) ? 2 : inCover(g, t) ? 1.5 : 1;
     const value = w.salvo ? dug * (1 + pool.filter(o => o.owner === t.owner && dist(o, t) < 6).length)
-      : (inf ? w.inf * w.accInf * coverMul(g, t) : w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
+      : (inf ? w.inf * w.accInf * coverMul(g, t, u) : w.veh * w.accVeh * (def.structure ? 1 : armorMul(t, u))) * roleMul(u, t);
     const threat = firedOnBy(g, u, t) ? 2.5 : t.targetId === u.id ? 1.5 : 1;
     const others = w.salvo ? 0 : (g.claims?.get(t.id * 8 + team) ?? 0) - (t.id === cur ? volley(u, t) : 0);
     const score = dist(u, t) / (value * threat) * (def.structure ? 5 : 1) * Math.max(1, others / t.hp); // soldiers first, concrete later
@@ -2204,7 +2231,7 @@ function launchSalvo(g, u, at, n = UNITS[u.type].w.rockets) {
 function fire(g, u, t, moving) {
   if (UNITS[u.type].w.salvo) { launchSalvo(g, u, t); u.cooldown = UNITS[u.type].w.interval; return; }
   const w = UNITS[u.type].w, def = UNITS[t.type], inf = def.infantry, sm = suppMul(u);
-  const cover = Math.min(coverMul(g, t), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1);
+  const cover = Math.min(coverMul(g, t, u), inf ? 1 - (1 - CFG.coverMul) * coverBehind(g, t, u) : 1);
   // shooting downhill is easier, uphill harder
   const hg = Math.min(1.45, Math.max(0.7, 1 + CFG.highGroundAcc * (levelAt(g, u.x, u.z) - levelAt(g, t.x, t.z))));
   let acc = (inf ? w.accInf : w.accVeh) * sm.acc * (moving ? w.moveFire : 1) * cover * hg * (1 + CFG.vetAcc * vet(u));
@@ -2290,12 +2317,15 @@ function updateVision(g) {
       if (UNITS[t.type].structure && !UNITS[t.type].building) { vis.add(t.id); continue; }
       if (t.air) { if (airborne(t) && nearby(t).some(s => dist(s.u, t) <= CFG.air.seeRange)) vis.add(t.id); continue; }
       // camouflage: after 3s still and 4s without firing, only seen within camoRange (recon flights still spot it)
-      const hidden = UNITS[t.type].camo && t.still >= 3 && g.tick - (t.shotAt ?? -1e9) >= 80;
+      const quiet = g.tick - (t.shotAt ?? -1e9) >= 80, hidden = UNITS[t.type].camo && t.still >= 3 && quiet;
+      // down in a trench and not firing: seen only up close, moving along it or not (planes and recon still see it)
+      const sunk = !hidden && quiet && inTrench(g, t);
       let seen = false;
       for (const { u, def, base, range } of nearby(t)) {
         const d = reachDist(u, t);
         if (u.air ? d <= def.vision && (!hidden || d < CFG.camoRange * 2)
           : hidden ? d < CFG.camoRange
+            : sunk ? d < CFG.trench.hide && los(g, u, t)
             : d < 6 || (def.building && d <= base) || (d <= range * (dusty(g, t) ? CFG.dustSeen : 1) && los(g, u, t.cells ? aimPoint(g, u, t) : t))) { seen = true; break; }
       }
       if (seen || recon.some(s => inStrip(s, t, SUPPORT.recon.len, SUPPORT.recon.width))) vis.add(t.id);
@@ -2586,7 +2616,7 @@ function blast(g, list, at, radius, src, owner) {
   if (src.terrain) damageCells(g, list, at, radius, src.terrain, src.scar);
 }
 // explosions chew through structures; a wrecked cell changes type (house -> rubble, bridge -> river)
-function damageCells(g, list, at, radius, dmg, scar = 0) {
+export function damageCells(g, list, at, radius, dmg, scar = 0) {
   const r = Math.ceil(radius / CELL);
   for (let y = Math.floor(at.z / CELL) - r; y <= Math.floor(at.z / CELL) + r; y++) for (let x = Math.floor(at.x / CELL) - r; x <= Math.floor(at.x / CELL) + r; x++) {
     if (x < 0 || y < 0 || x >= g.w || y >= g.h) continue;
@@ -2604,6 +2634,8 @@ function damageCells(g, list, at, radius, dmg, scar = 0) {
       const was = level(g, c); dent(g, c);
       if (level(g, c) < was) { g.scar[c] = 0; if (ch === '.') setCell(g, c, '+'); }
     }
+    // a trench caves in under enough shelling (wear counts it up) and is left a crater
+    if (ch === 'T' && (g.wear[c] += hit / CFG.trench.hp) >= 1) { wreckCell(g, list, c, '+'); continue; }
     if (dmg >= 60 && CFG.fire.ignite[ch] && rng(g) < CFG.fire.ignite[ch]) ignite(g, c);
     if (!(g.cellHp[c] > 0)) continue;
     if ((g.cellHp[c] -= hit) <= 0) wreckCell(g, list, c); else touch(g, c);
@@ -2796,7 +2828,7 @@ export function step(g) {
       else { Object.assign(u, { x: c.x, z: c.z, rot: c.rot, supp: 0, targetId: 0, still: 0 }); u.cd -= dt; updateGrid(g, u); continue; }
     }
     if (u.cargo && g.units.get(u.cargo)?.riding !== u.id) u.cargo = 0;
-    if (def.infantry) u.supp = Math.max(0, u.supp - 8 * dt);
+    if (def.infantry) u.supp = Math.max(0, u.supp - (inTrench(g, u) ? CFG.trench.rally : 8) * dt);
     u.cooldown -= dt; u.retarget -= dt; u.repath -= dt; u.cd -= dt; u.buff -= dt; u.sprint -= dt; u.react -= dt;
 
     // auto-retreat: a broken unit runs for home by itself
@@ -2829,7 +2861,11 @@ export function step(g) {
         const under = ch === 'Y' && [...g.units.values()].some(v => !UNITS[v.type].infantry && cellOf(g, v.x, v.z) === c);
         if (u.dig.kind === 'demine') { if (g.chars[c] === 'N') setCell(g, c, '.'); }
         else if (ch === '.') { if (fillable(g, c)) fillCell(g, c); }
-        else if ((ch === '=' ? 'W' : BUILDABLE_GROUND).includes(g.chars[c]) && !under) { setCell(g, c, ch); if (ch === 'N') g.mines.set(c, u.owner); if (ch === 'A') g.aid.set(c, u.owner); }
+        else if ((ch === '=' ? 'W' : BUILDABLE_GROUND).includes(g.chars[c]) && !under) {
+          setCell(g, c, ch);
+          // a dug trench faces away from the diggers (forward in fortCells), or out from the pattern's center
+          if (ch === 'T') (g.trenchFront ??= new Float32Array(g.w * g.h).fill(NaN))[c] = u.dig.front ?? Math.atan2(-Math.cos(u.dig.dir), Math.sin(u.dig.dir));
+          if (ch === 'N') g.mines.set(c, u.owner); if (ch === 'A') g.aid.set(c, u.owner); }
         if (!u.dig.cells.length) { if (u.dig.project) u.dig.project.active--; u.dig = null; tally(g, u.owner, 'built'); }
       }
     }

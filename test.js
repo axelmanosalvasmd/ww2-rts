@@ -8,7 +8,7 @@ import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
 import { unitRole } from './client/unit-roles.js';
-import { createRelief } from './client/relief.js';
+import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
@@ -419,6 +419,7 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   const g = fresh(rows); g.players[0].mp = g.players[1].mp = 1000;
   const inT = put(g, 1, 'rifle', 11, 21), inC = put(g, 1, 'rifle', 21, 21);
   assert.ok(inTrench(g, inT) && !inTrench(g, inC));
+  inT.still = 10; // settled in (a squad that just jumped in gets only crater-level cover)
   const mg = put(g, 0, 'mg', 16, 38); mg.still = 5;
   let tHits = 0, cHits = 0;
   for (let i = 0; i < 4000; i++) {
@@ -430,6 +431,46 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
     Math.random = orig;
   }
   assert.ok(tHits < cHits * 0.8, `trench is harder to hit than a crater (${tHits} vs ${cHits})`);
+}
+
+// Trench mechanics: settling in, facing, hiding, rallying, caving in.
+{
+  const rows = Array(40).fill('.'.repeat(40)); rows[10] = '.'.repeat(5) + 'TTTT' + '.'.repeat(31);
+  const g = fresh(rows), T = CFG.trench;
+  const sq = Object.assign(put(g, 1, 'rifle', 13, 21), { cooldown: 1e9, retarget: 1e9 }), front = { x: 13, z: 0 }, flank = { x: 40, z: 21 }, rear = { x: 13, z: 40 };
+  sq.still = 0;
+  assert.equal(sim.coverMul(g, sq, front), T.fresh, 'a squad that just jumped in gets fresh cover');
+  sq.still = T.settle;
+  assert.equal(sim.coverMul(g, sq, front), T.dug, 'settled in, it gets the full trench');
+  assert.equal(sim.coverMul(g, sq, rear), T.dug, 'a map-drawn trench protects all round');
+  // a dug trench facing north (toward z = 0)
+  g.trenchFront = new Float32Array(g.w * g.h).fill(NaN);
+  for (let x = 5; x < 9; x++) g.trenchFront[10 * g.w + x] = -Math.PI / 2;
+  assert.equal(sim.coverMul(g, sq, front), T.dug, 'fire from its front meets the parapet');
+  assert.equal(sim.coverMul(g, sq, flank), CFG.coverMul, 'fire along the trench (enfilade) meets plain cover');
+  assert.equal(sim.coverMul(g, sq, rear), CFG.coverMul, 'and so does fire from behind');
+  // the line patterns face away from the diggers, the ring faces out
+  for (const j of sim.entrenchPlan('line', { x: 0, z: 0 }, { x: 20, z: 0 }, { x: 10, z: 10 })) assert.ok(Math.sin(j.front) < -0.99, 'a line faces away from the diggers');
+  for (const j of sim.entrenchPlan('ring', { x: 0, z: 0 }, { x: 10, z: 0 }, null)) assert.ok(Math.cos(j.front - Math.atan2(j.z, j.x)) > 0.99, 'a ring faces out');
+  // hidden while quiet, seen once it fires
+  const spotter = put(g, 0, 'rifle', 13, 46); // 25 m off, beyond trench.hide
+  run(g, 0.2);
+  assert.ok(!g.players[0].visible.has(sq.id), 'a quiet squad in a trench is not seen at 25 m');
+  sq.shotAt = g.tick; run(g, 0.2);
+  assert.ok(g.players[0].visible.has(sq.id), 'firing gives it away');
+  spotter.hp = 0;
+  // suppression wears off faster in a trench
+  const open = put(g, 1, 'rifle', 30, 40); sq.supp = open.supp = 60; run(g, 1);
+  assert.ok(sq.supp < open.supp - 4, `rallies faster in a trench (${sq.supp} vs ${open.supp})`);
+  // shelling caves a trench cell in; a tank driving across crushes it
+  const c = 10 * g.w + 5;
+  sim.damageCells(g, [], { x: 11, z: 21 }, 0.5, T.hp * 0.6);
+  assert.equal(g.chars[c], 'T', 'one hit does not cave it in');
+  sim.damageCells(g, [], { x: 11, z: 21 }, 0.5, T.hp * 0.6);
+  assert.equal(g.chars[c], '+', 'two do: a crater');
+  g.players[0].mp = 1000; const tank = put(g, 0, 'tank', 15, 10); tank.path = [{ x: 15, z: 32 }];
+  run(g, 5);
+  assert.equal(g.chars[10 * g.w + 7], '+', 'a tank crushes the trench it drives over');
 }
 
 // Digging: costs MP, the squad walks over, trench cells appear one by one and are broadcast.
@@ -2318,6 +2359,7 @@ const behindHedge = p => p.x >= 40 - 2.2 && p.x < 42 && p.z > 6 && p.z < 54;
 {
   const g = fresh(field(r => { r[20][16] = 'T'; })); g.players[0].mp = g.players[1].mp = 5000;
   const mortar = holdFire(put(g, 0, 'mortar', 5, 41)), open = passive(put(g, 1, 'rifle', 22, 41)), dug = passive(put(g, 1, 'rifle', 33, 41));
+  dug.shotAt = g.tick; // it has been firing, so the trench does not hide it
   run(g, 1);
   assert.ok(inTrench(g, dug) && !inTrench(g, open));
   assert.equal(mortar.targetId, dug.id, 'a mortar shells the squad in a trench 28 m away over one in the open 17 m away');
@@ -5672,10 +5714,10 @@ for (const lookupFinished of [false, true]) {
   }
   const { rigOf, soldierKit, AIM_SHIFT } = await import('./client/models/infantry.js');
   march.cover = 2; march.supp = 100; march.trench = march.models.map(() => [0, 0]);
-  animate(march, POSTURE.blend + 0.01, eye);
+  animate(march, POSTURE.blend + 0.01, eye, () => -0.9);
   assert.equal(march.squad.w[1], 1, 'trench keeps the crouching posture');
   assert.equal(leader.motion.blend, 0, 'trench seating does not shuffle');
-  assert.ok(Math.abs(march.models[0].position.y - (-0.6 + AIM_SHIFT[1][1] * march.models[0].scale.x)) < 0.001, 'trench remains sunk to its existing height');
+  assert.ok(Math.abs(march.models[0].position.y - (-0.9 - marchRoot.position.y + AIM_SHIFT[1][1] * march.models[0].scale.x)) < 0.001, 'trench men stand on the carved floor, not sunk through the ground');
   const originalSlot = [...leader.slot];
   leader.slot = [originalSlot[0] + 3, originalSlot[1] + 2];
   animate(march, 1 / 60, eye);
@@ -6115,10 +6157,11 @@ for (const lookupFinished of [false, true]) {
     for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
       let bank = false;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ('WF='.includes(grid[y + dy]?.[x + dx] ?? '!')) bank = true;
-      plain[y * map.w + x] = bank ? 0 : 1;
+      const dug = grid[y][x] === 'T'; // trench cells are carved TRENCH_DEPTH below their level
+      plain[y * map.w + x] = bank || dug ? 0 : 1;
       const height = relief.hAt((x + 0.5) * CELL, (y + 0.5) * CELL);
       assert.ok(Number.isFinite(height), `${file}: finite centre ${x},${y}`);
-      if (!bank || grid[y][x] === '=') assert.ok(Math.abs(height - lv(x, y)) <= 0.1, `${file}: nominal centre ${x},${y}`);
+      if (!bank || grid[y][x] === '=') assert.ok(Math.abs(height - lv(x, y) + (dug ? TRENCH_DEPTH : 0)) <= 0.1, `${file}: nominal centre ${x},${y}`);
     }
     for (const attr of Object.values(geo.attributes)) assert.ok(attr.array.every(Number.isFinite), `${file}: finite geometry`);
     let degenerate = false;

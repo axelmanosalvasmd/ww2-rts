@@ -863,7 +863,9 @@ const hud = createHud({
   dig: (k) => startDig(k), form: () => fm, setForm: (p) => setFormation(p), reform: (d) => reform(d), unload: () => unload(), build: (k) => startBuild(k), ability: (t) => useAbility(t), support: (k) => aimSupport(k), fType: () => fKeyType(),
   autocast: (t) => { const on = autocast.toggle(t, [...selected].map(id => units.get(id)).filter(v => v?.type === t && v.owner === me), classicMode()); if (on !== null) blip(); },
   builders: () => builders(), owns: (t) => owns(t), canPlace: (k) => canPlace(k), explain: (reason) => feedback.show(reason),
-  select: (id) => { selected.clear(); selected.add(id); updateHud(lastSnap); },
+  // add: Shift/Ctrl adds the unit to the selection, or takes it out if it is already in
+  select: (id, add = false) => { if (!add) selected.clear(); else if (selected.has(id)) { selected.delete(id); updateHud(lastSnap); return; } selected.add(id); updateHud(lastSnap); },
+  selectMany: (ids) => { selected.clear(); for (const id of ids) selected.add(id); updateHud(lastSnap); },
   selectType: (type, e) => { selection.type(type, e); if (lastSnap) updateHud(lastSnap); },
   idleCount: () => selection.idle().length,
   findIdle: (all) => { selection.findIdle(all); if (lastSnap) updateHud(lastSnap); },

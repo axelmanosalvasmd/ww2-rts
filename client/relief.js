@@ -7,6 +7,9 @@ import { createReliefMaterial } from './relief-material.js';
 export { createReliefMaterial } from './relief-material.js';
 
 const S = 4, STRIDE = 25;
+// Trench cells ('T') are cut into the mesh: the inner 3x3 nodes drop by this much, and the channel runs on through
+// the edge nodes shared with a neighbouring trench cell. Purely visual: the sim's cover and sight lines ignore it.
+export const TRENCH_DEPTH = 0.9;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = t => t * t * (3 - 2 * t);
 
@@ -157,7 +160,8 @@ export function createRelief(map, grid = map.rows, options = {}) {
   }
   function buildCell(c) {
     const x = c % w, z = Math.floor(c / w), off = c * STRIDE;
-    let constant = true, reference = levels[c], nearWet = false, nearRoad = false;
+    const dug = grid[z][x] === 'T';
+    let constant = !dug, reference = levels[c], nearWet = false, nearRoad = false;
     for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
       const k = idAt(x + i, z + j);
       if (levels[k] !== reference) constant = false;
@@ -216,6 +220,21 @@ export function createRelief(map, grid = map.rows, options = {}) {
         const dz = baseDz[j * 5 + i] + (waterDz[k] * (1 - tx) + waterDz[k + 1] * tx) * (1 - tz) + (waterDz[k + 3] * (1 - tx) + waterDz[k + 4] * tx) * tz;
         const inv = 1 / Math.hypot(dx, 1, dz);
         normals[node * 3] = -dx * inv; normals[node * 3 + 1] = inv; normals[node * 3 + 2] = -dz * inv;
+      }
+    }
+    if (dug) {
+      const T = (dx, dz) => grid[z + dz]?.[x + dx] === 'T';
+      const w0 = T(-1, 0), e = T(1, 0), n0 = T(0, -1), s = T(0, 1);
+      for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
+        const inI = i > 0 && i < S, inJ = j > 0 && j < S;
+        if ((inI && inJ) || (inJ && ((i === 0 && w0) || (i === S && e))) || (inI && ((j === 0 && n0) || (j === S && s)))) heights[off + j * 5 + i] -= TRENCH_DEPTH;
+      }
+      // the walls are steep, so redo the normals from the carved nodes
+      const H = (i, j) => heights[off + clamp(j, 0, S) * 5 + clamp(i, 0, S)], step = CELL / S;
+      for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
+        const k = off + j * 5 + i, dx = (H(i + 1, j) - H(i - 1, j)) / (step * (Math.min(S, i + 1) - Math.max(0, i - 1)));
+        const dz = (H(i, j + 1) - H(i, j - 1)) / (step * (Math.min(S, j + 1) - Math.max(0, j - 1))), inv = 1 / Math.hypot(dx, 1, dz);
+        normals[k * 3] = -dx * inv; normals[k * 3 + 1] = inv; normals[k * 3 + 2] = -dz * inv;
       }
     }
     let cx = 1, cz = 1, isFlat = true;
