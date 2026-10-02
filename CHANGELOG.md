@@ -10,7 +10,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   a watched enemy hits something they hold, or the time they gave it runs out. Easy keeps a plan longer than Hard.
   A tank they saw and then lost still keeps their rifles off that ground, and the next rifle or machine-gun purchase
   becomes an anti-tank gun, until the sighting is a minute old, they look and the ground is empty, or the wait runs out.
-  If they already have an anti-tank gun, that gun goes toward the tank and the rifles stay back. A watched enemy on a
+  If they already have an anti-tank gun, that gun goes toward the tank and the rifles stay back. The rest of the army
+  does not freeze: a point clear of that tank is still taken. A watched enemy on a
   point, depot, or base they hold pulls idle squads there and stops a second attack for that look. A unit they have
   only just spotted does not break the plan and is not struck yet. An announced enemy air strike is still answered
   at once. When squads die on a point, the next push asks for a bigger margin and prefers a different point. Taking

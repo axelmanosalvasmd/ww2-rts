@@ -151,9 +151,12 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   A contact younger than `notice` does not cancel the operation and is not struck. Easy's `commit` is longer than Hard's.
 - Wait: armor still in the 60 second sightings, and worth more than the anti-tank guns and tanks the seat can send.
   No rifle attack-move onto that ground. The next rifle or machine-gun buy is an anti-tank gun until two are fielded.
-  An anti-tank gun already fielded is ordered toward the armor. The same threat is not waited out forever: when
-  `commit` ends, the sighting expires, or a later look sees that ground empty, a push is allowed again. Rifles still
-  do not walk onto armor that is remembered. An infantry crowd the seat cannot match waits for a machine gun.
+  An anti-tank gun already fielded is ordered toward the armor. The wait is that ground, not the whole army: another
+  point more than 28 m from the threat can still be taken, and the decision names that action `take-other` (or
+  `prepare` when every objective is the threat, `hold` on defense, `take` on a push). The same threat is not waited
+  out forever: when `commit` ends, the sighting expires, or a later look sees that ground empty, a push onto it is
+  allowed again. Rifles still do not walk onto armor that is remembered. An infantry crowd the seat cannot match
+  waits for a machine gun.
 - Defense: a watched enemy on a held point, a depot, or the base. Idle combat units are ordered toward it, and no
   second enemy objective is opened in that look. The horde wave director does not use these situations.
 

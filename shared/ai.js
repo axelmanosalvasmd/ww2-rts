@@ -357,6 +357,24 @@ function plan(observation, slot, opts, mem, send) {
       if (!mind.aim) mind.aim = { i: best, until: sit.until };
     }
   }
+  // A wait is about the ground it cannot take. Another point, clear of that threat, is still a fair attack.
+  if (mindful && sit?.kind === 'wait') {
+    const threatNear = (p) => !!(sit.at && Math.hypot(sit.at.x - p.x, sit.at.z - p.z) <= 28);
+    const owned = (p) => allied(view, p.owner, slot) && !p.cut;
+    const stale = sit.safe == null || !view.points[sit.safe] || threatNear(view.points[sit.safe]) || owned(view.points[sit.safe]);
+    if (stale) {
+      const scout = mine.find(u => !u.air && !UNITS[u.type].medic) ?? mine[0];
+      let best = -1, bestScore = Infinity;
+      if (scout) view.points.forEach((p, i) => {
+        if (owned(p) || threatNear(p)) return;
+        if (defending && d(p, me.spawn) > 70) return;
+        const score = d(scout, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + pointExtra(mind, i) * 40;
+        if (score < bestScore) { bestScore = score; best = i; }
+      });
+      sit = { ...sit, safe: best >= 0 ? best : null };
+      if (best >= 0 && !mind.aim) mind.aim = { i: best, until: sit.until };
+    }
+  }
   let hands = 0, casts = 0, pushed = false, spentSupport = false;
   const takeHand = () => {
     if (!mindful) return true;
@@ -577,6 +595,8 @@ function plan(observation, slot, opts, mem, send) {
       // attack-move to it and meet whatever sits on the road
       if (allied(view, p.owner, slot) && (!p.cut || d(u, p) <= CFG.pointRadius + 16)) return;
       if (defending && d(p, me.spawn) > 70) return; // defenders stay near home
+      // While waiting on a threat, only the clear point is worth a march. The dangerous one is not.
+      if (mindful && sit?.kind === 'wait' && (sit.safe == null || i !== sit.safe) && !(allied(view, p.owner, slot) && p.cut)) return;
       // the center is worth double VP, villages feed manpower. A point that has already killed our squads
       // looks worse. The point this commander already picked keeps a small pull until that choice expires.
       const loyal = mindful && mind.aim && mind.aim.i === i ? 18 : 0;
@@ -598,7 +618,8 @@ function plan(observation, slot, opts, mem, send) {
       for (const u of group) { if (!takeHand()) return; const s = spotNear(view, p); orders.push([u.id, s.x, s.z]); }
       return;
     }
-    if (mindful && sit && sit.kind !== 'push') return; // waiting or holding does not open an enemy point
+    if (mindful && sit?.kind === 'defense') return; // holding does not open another enemy point
+    if (mindful && sit?.kind === 'wait' && i !== sit.safe) return; // the other point is the action; this ground is the threat
     if (mindful && sit?.kind === 'push' && sit.point != null && i !== sit.point) return; // the operation already has its objective
     if (mindful && pushed) return; // one enemy point per look. The other can wait until the next decision.
     if (now < L.firstAssault || !group.length || group.length + heading[i] < Math.min(L.wave, mine.length)) return;
@@ -662,12 +683,13 @@ function plan(observation, slot, opts, mem, send) {
     for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (soft(list[i][0]) && hot(list[i][1], list[i][2])) list.splice(i, 1);
   }
   if (mindful && sit) {
+    const action = sit.kind === 'defense' ? 'hold' : sit.kind === 'wait' ? (sit.safe != null ? 'take-other' : 'prepare') : 'take';
     mind.operation = {
       kind: sit.kind, until: sit.until, point: sit.point ?? null, threatId: sit.threatId ?? null,
-      at: sit.at ? { x: sit.at.x, z: sit.at.z } : null, counter: sit.counter ?? null,
+      at: sit.at ? { x: sit.at.x, z: sit.at.z } : null, counter: sit.counter ?? null, safe: sit.safe ?? null,
       failedAt: sit.point != null ? (mind.points[sit.point]?.failed ?? sit.failedAt ?? 0) : (sit.failedAt ?? 0),
     };
-    mind.decision = { situation: sit.kind, buy, aim: mind.aim ? mind.aim.i : (sit.point ?? null) };
+    mind.decision = { situation: sit.kind, action, buy, aim: mind.aim ? mind.aim.i : (sit.point ?? sit.safe ?? null) };
   } else mind.decision = { buy, aim: mind.aim ? mind.aim.i : null };
   if (retreat.length) submit({ t: 'retreat', ids: retreat });
   if (orders.length) submit({ t: 'move', orders });

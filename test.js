@@ -3841,7 +3841,29 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const cover = aiCommands(siren, 0, {}, 7, { level: 'normal' });
   assert.ok(cover.commands.some(c => c.t === 'support' && c.kind === 'cover'), 'an announced enemy air strike is answered at once with fighter cover');
   assert.ok(!cover.commands.some(c => c.t === 'support' && c.kind !== 'cover'), 'the fresh tank is not struck on the look it appears');
+
+  // A player who will not walk rifles into a tank still takes the other point.
+  const split = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 40 }, { x: 75, y: 40 }], points: [{ x: 20, y: 40 }, { x: 60, y: 40 }] };
+  const board = createGame(split, ['AI', 'enemy'], false, [0, 1]);
+  board.units.clear(); board.players[0].mp = 1000;
+  // Far enough that losing the tank does not count as seeing that ground empty (rifle vision is 36 m).
+  const foot = [0, 1].map(i => { const u = massiveInternals.spawnUnit(board, 0, 'rifle'); Object.assign(u, { x: 12 + i, z: 20, cd: 999 }); return u; });
+  const armor = massiveInternals.spawnUnit(board, 1, 'tank');
+  Object.assign(armor, { x: board.points[0].x, z: board.points[0].z });
+  board.points[0].owner = 1; board.points[1].owner = 1;
+  board.players[0].visible.add(armor.id);
+  const acted = {};
+  aiCommands(board, 0, acted, 7, { level: 'normal' });
+  board.players[0].visible.delete(armor.id); board.units.delete(armor.id);
+  const other = aiCommands(board, 0, acted, 7, { level: 'normal' });
+  assert.equal(acted.mind.decision.situation, 'wait', 'the tank is still a wait');
+  assert.equal(acted.mind.decision.action, 'take-other', 'the action is the clear point, not a freeze');
+  assert.ok(!onto(other.commands, foot.map(u => u.id), board.points[0]), 'rifles are not sent onto the tank point');
+  assert.ok(onto(other.commands, foot.map(u => u.id), board.points[1]), 'the squads take the other point');
+  const otherBuy = other.commands.filter(c => c.t === 'buy').map(c => c.unit);
+  assert.ok(otherBuy.includes('at') && !otherBuy.includes('rifle') && !otherBuy.includes('mg'), 'the purchase is still the missing anti-tank gun');
   console.log('AI situation: wait, empty ground, expired sighting, escorted gun, lasting attack, defense, young contact, fighter cover, and repeated looks checked');
+  console.log('AI action: a remembered tank keeps rifles off that point while the squads take a different one');
 }
 
 // A blown bridge is put back using the public map and the seat's remembered terrain; one still standing is left alone.
