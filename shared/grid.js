@@ -37,11 +37,11 @@ export class SpatialGrid {
         if (bucket) for (const record of bucket) if (this.units.get(record.unit.id) === record.unit && match(record.unit)) result.push(record);
       }
     }
-    if (ordered) result.sort((a, b) => a.order - b.order);
+    if (ordered && result.length > 1) result.sort((a, b) => a.order - b.order);
     return result.map(record => record.unit);
   }
   radius(at, radius, match = () => true) {
-    return this.candidates(at, radius).filter(u => Math.hypot(u.x - at.x, u.z - at.z) <= radius && match(u));
+    return this.candidates(at, radius, true, u => Math.hypot(u.x - at.x, u.z - at.z) <= radius && match(u));
   }
   nearest(at, radius, match = () => true) {
     let best = null, distance = radius;

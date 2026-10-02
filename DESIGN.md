@@ -21,8 +21,12 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 - Each spawn is a visible HQ: tinted reinforce zone, a ring of real-size sandbags, a canvas wall tent with guy lines,
   crates and a field table, a guyed flagpole with the team flag, name label. H jumps home.
 - Spawns are shuffled each match: a 3-way map is never perfectly fair on a square grid.
-- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawns are listed in order around the map; teammates
-  get neighbouring spawns and fewer players spread out (spawnSlots). The host sets teams, each player picks a faction.
+- Up to 6 players, 2-6 spawns per map, maps up to 256x256. Spawn order in the map file does not matter: spawnSlots
+  tries every layout and keeps the one with teammates closest together and enemies furthest apart, measured as
+  walking distance over the terrain (spawnDistances: water, cliffs and houses block, a ford cell costs 6), so a team
+  shares a river bank. Fewer players spread out, and a free-for-all spreads evenly (closest enemies as far apart as
+  possible). Each match picks at random among layouts within 3% of the best, so which side a team gets changes.
+  The host sets teams, each player picks a faction.
   Teams share vision, can't target each other, hold each other's points, and win on combined VP; the goal scales
   with average team size (3v3 plays to 3600) so team games last about as long as a 1v1.
 - Factions are cosmetic (USA / Germany / USSR by slot). Same roster and stats for everyone:
@@ -749,12 +753,31 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Damage ladder: finished structures smoke at 0.66 hp or below and burn at 0.33 or below. Posture: crouch at
   suppression 50, prone at 90 (crouch at most in a trench), and lean when retreating. LOD: simple soldier model beyond
   110 m (80 m on Low) with 4 m hysteresis. Corpses are capped at 200 and live 25 s.
+- Draw budget (2026-10-01): soldiers are drawn instanced, one InstancedMesh per baked figure (type, faction, color,
+  kit, near or far) with posture weights per man (`drawSoldiers` in `client/unit-models.js`); each man keeps his own
+  hidden mesh for posing, selection and corpses, and squads off screen are skipped. Health bars show only on hurt,
+  suppressed, selected or hovered units. The relief casts no shadow (it still receives them). Dug or bombed cells
+  re-place only nearby scenery props, and the 3D terrain pieces and minimap terrain are redone at most 4 times a second.
 - Adaptive snapshot interval: rooms start at every 2 ticks (10 Hz) and stretch to 3, then 4, when the snapshot-tick p95
   over 50 samples exceeds 40 ms. They recover one step after 10 s under 24 ms. The client smooths units over the
   measured gap (60 to 400 ms).
 - Snapshot cache: `snapshotCache(g)` is built once per send and passed as the fifth argument to `snapshotFor`. Without
   it, `snapshotFor` reads live state. Owner orders and the mode row with Assault total and Annihilation bunkers are
   cached. Rally, contested and the fog lift stay per player.
+- Snapshot deltas (server.js `trimmed`): the WebSocket compresses messages over 1 KB (permessage-deflate). Each client
+  gets only the unit rows that changed since its last snapshot plus `gone` (ids that died or went under fog), from
+  `unitDelta(sent, rows)`; wrecks and resource nodes go only when their room-level version moves. A start or reconnect
+  resets the seat's record, so its next snapshot is whole. Spectators share one stream: one build and one string per
+  broadcast, one terrain memory on the game (`g.watchPending`, fed by `logCell`), and a joining spectator makes the
+  next broadcast whole. The client (and the test harness) rebuild full lists before anything reads them.
+  `terrainFor` skips its pending replay until a cell changes, a mine is found or a vision pass runs.
+- Delta self-check: players saw dead or fogged units (bars and icons, "target not visible") until a reload. The cause
+  was a server process started before the deltas serving the newer client from disk: it sent every row and no gone
+  list, and the client only drops what gone names. The client now clears its rows for a snapshot without `held`
+  (an older server's full list). Each snapshot carries `held`, the count and xor of the ids the client should hold.
+  On a mismatch the client warns in the console ("unit rows out of sync") and sends `resync` (at most once a second);
+  the server marks that seat (or the spectator stream) full, and the next snapshot has `all`, which makes the client
+  replace its rows.
 - As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
   fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
   gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign
@@ -1424,7 +1447,7 @@ samples. Per-match seeds, outcomes and simulation lengths are saved in
 - Each squad remains one server unit. Its rendered men follow the authoritative center in world space, with different stride phases, response times and turning rates. A small separation pass keeps shoulders apart during corners. Visual offsets stay within the formation's footprint and a 0.65 m allowance.
 - Leg IK builds eight marching frames and four frames each for moving aim, crouch walking and prone crawling. Their weights follow each man's actual travel, with a planted foot during walking. Idle returns to the existing standing, kneeling or prone pose. The first three posture morphs retain their original indices.
 - Moving fire blends toward an aiming gait over 0.3 s. Weapon tips use the same morph weights and pose transform as the geometry, so muzzle flashes stay attached while aiming, carrying or changing posture. Retreat still carries the weapon.
-- Hidden, newly visible and transported squads reset their visual followers. Trench seating stays fixed, and leaving a destroyed trench restores the home slots. Men sample local ground height outside trenches. Health still controls the visible men and their corpse positions.
+- Hidden, newly visible and transported squads reset their visual followers. Trench seating stays fixed, and leaving a destroyed trench restores the home slots. Men sample local ground height outside trenches. Health still controls which men are visible and where each corpse is placed. A corpse is that man in a slack fallen pose, uniform, helmet and kit included, not the combat prone he aims from. Corpses are instanced up to 200 across the match, and each one sinks while it fades.
 - Near and far figures retain one draw per soldier. Gait weights, pose values and muzzle vectors are reused per man. Across all factions and kits, 180 cached near/far geometries add 36.47 MiB of baked morph attributes, with an estimated 48.63 MiB of extra GPU morph textures. A standalone 100-squad (1,500-men) animation benchmark measured 4.57 ms median and 53.67 ms p95 wall time over 300 frames during concurrent test runs. The combined Massive-match GPU measurements are recorded in `docs/issue-batch-verification.md`.
 - The model viewer's `motion=1` mode walks, stops and turns a squad. `posture=1` and `posture=2` check low movement, and the lower row shows an individual soldier.
 
@@ -1433,3 +1456,10 @@ samples. Per-match seeds, outcomes and simulation lengths are saved in
 Click and box selection use projected bounds of each visible model mesh, squad centers and health bars. Posture bounds blend with the rendered morph weights, and near-plane intersections are clipped before projection. Selection and owner rings never count as troop geometry. Garrisoned squads use their roof bars. A box selects a squad when it overlaps any displayed mesh bounds, with 6 px of click forgiveness around those bounds; houses and scenery never block troop selection. Troops take priority over production buildings on a click. Double-click uses the same visible targets and excludes dead squads, passengers and parked aircraft. Release distance also detects a box drag when a mousemove event was missed. Saved groups retain living passenger and parked-aircraft IDs but skip them during recall until they become selectable again. This changes input targeting only, with no balance changes.
 
 Full raw results and source manifests: [behavior balance evidence](docs/behavior-balance-2026-10-01.md). Combined browser checks and GPU measurements: [verification](docs/issue-batch-verification.md).
+
+## Conscript population and smoke (2026-10-01)
+
+- Units can take a fraction of the army limit: `UNITS[type].pop` (default 1), read through `popUse`. Conscripts are 0.75. `popOf`, paratrooper reservations, the buy check (`pop + popUse(unit) > popCap`), the client's `availability`/`buyCount` and the HUD all weigh units the same way.
+- Smoke blocks a sight line only when the line is at least `CFG.smokeSight` (15 m) long. `los` and the fog's `fogLos` share the rule, so the drawn fog matches what units can see and shoot. Cloud sizes and durations are unchanged.
+- Why: a unit inside smoke was hidden beyond the 6 m close-sight rule and could not be targeted at all, so tank smoke and smoke barrages made units close to invulnerable. Conscripts were meant as human waves but were held to the same squad count as everyone else.
+- 150 AI matches, default map, seed 1000, before -> after: USA/Germany/USSR 39/58/53 -> 46/46/58, median 473 s -> 465 s.

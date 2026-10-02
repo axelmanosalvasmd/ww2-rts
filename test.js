@@ -324,8 +324,16 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }));
   command(g, 0, { t: 'ability', ids: [t.id] });
   assert.equal(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), false, 'smoke blocks LOS');
+  assert.ok(los(g, { x: 20 - CFG.smokeSight + 1, z: 20 }, { x: 20, z: 20 }), 'a unit close by sees into the smoke');
   run(g, 15);
   assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), 'smoke clears');
+}
+// Conscripts take three quarters of a place in the army limit.
+{
+  const g = fresh(), before = popOf(g, 0);
+  g.players[0].mp = 1000;
+  for (let i = 0; i < 4; i++) put(g, 0, 'rifle', 20 + i * 4, 20).type = 'conscript';
+  assert.equal(popOf(g, 0) - before, 3, 'four conscript squads count as three');
 }
 
 // Catch-up: trailing players earn more manpower.
@@ -843,10 +851,20 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
 }
 {
   // spawn assignment: teammates neighbour, fewer players spread out
+  const ring = (a, b) => Math.min(Math.abs(a - b), 6 - Math.abs(a - b));
   assert.deepEqual(spawnSlots(6, [0, 1], false), [0, 3], '1v1 on a 6-spawn map sits opposite');
-  assert.deepEqual(spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [0, 3, 1, 4, 2, 5], '3v3 sides');
-  assert.deepEqual(spawnSlots(6, [0, 1, 2], false), [0, 2, 4], '3-way FFA spread');
+  const sides = spawnSlots(6, [0, 1, 0, 1, 0, 1], false), [a0, a1, a2] = [sides[0], sides[2], sides[4]];
+  assert.ok(ring(a0, a1) + ring(a1, a2) + ring(a0, a2) === 4, '3v3: each team holds three neighbouring spawns');
+  const ffa = spawnSlots(6, [0, 1, 2], false);
+  assert.ok(ring(ffa[0], ffa[1]) === 2 && ring(ffa[1], ffa[2]) === 2, '3-way FFA spreads evenly');
   for (let i = 0; i < 20; i++) { const s = spawnSlots(6, [0, 0, 1, 1, 2, 2]); assert.equal(new Set(s).size, 6, 'no shared spawns'); }
+  // on a real map teammates share a river bank: Pegasus Bridge lists two spawns north of the river, then two south
+  const peg = JSON.parse(readFileSync('maps/pegasus-bridge.json', 'utf8'));
+  for (let i = 0; i < 20; i++) {
+    const g = createGame(peg, ['a', 'b', 'c', 'd'], true, [0, 1, 0, 1]), north = (p) => p.spawn.z < peg.h * CELL / 2;
+    assert.equal(north(g.players[0]), north(g.players[2]), '2v2: teammates spawn on the same side of the river');
+    assert.notEqual(north(g.players[0]), north(g.players[1]), '2v2: the other team spawns across it');
+  }
 }
 
 // Army size accepts only named settings and scales each supported mode without changing the balance values.
@@ -3313,6 +3331,25 @@ const referenceNearCover = (g, u) => {
   } finally { delete globalThis.document; delete globalThis.addEventListener; } // node has neither
 }
 
+// Unit row deltas: a fresh client gets every row, a row that stops changing is not resent, a unit that dies or goes
+// under fog is named in gone, and a spectator joining the shared stream (full) gets every row again.
+{
+  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]), sent = new Map(), rows = () => snapshotFor(g, 0, []).units;
+  const first = sim.unitDelta(sent, rows());
+  assert.ok(first.units.length >= 2 && first.units.length === rows().length && !first.gone, 'a fresh join gets the full set');
+  const quiet = sim.unitDelta(sent, rows());
+  assert.deepEqual([quiet.units, quiet.gone, quiet.all], [[], undefined, undefined], 'unchanged units are not resent');
+  const [moved, dead] = [...g.units.values()].filter(u => u.owner === 0);
+  moved.x += 3; g.units.delete(dead.id);
+  const next = sim.unitDelta(sent, rows());
+  assert.deepEqual([next.units.map(r => r[0]), next.gone], [[moved.id], [dead.id]], 'only the changed row is sent, the removed unit is gone');
+  // held fingerprints what the client should hold, so a drifted client can tell
+  const xor = (ids) => ids.reduce((a, id) => a ^ id, 0), ids = rows().map(r => r[0]);
+  assert.deepEqual(next.held, [ids.length, xor(ids)], 'held: the count and xor of the rows the client holds');
+  const full = sim.unitDelta(sent, rows(), true);
+  assert.ok(full.units.length === rows().length && full.all, 'full resends every row and tells the client to replace its own');
+}
+
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
 {
   const g = massiveFixture(), memories = g.players.map(p => new Map(p.terrainMemory ?? []));
@@ -3334,6 +3371,7 @@ const referenceNearCover = (g, u) => {
   let comparison = 0;
   const check = (slot, full = false, snapshot = false) => {
     const expected = referenceTerrainFor(slot, full);
+    g.visionTick = (g.visionTick ?? 0) + 1; // the hand edits to sight below stand in for a vision pass, which terrainFor waits on
     const actual = snapshot ? snapshotFor(g, slot, [], []).cells : sim.terrainFor(g, slot, full);
     assert.deepEqual(actual, expected, `incremental terrain comparison ${comparison++}: viewer ${slot}, full ${full}`);
     assert.deepEqual([...g.players[slot].terrainMemory], [...memories[slot]], 'incremental terrain preserves ordered remembered tuples');
@@ -3801,11 +3839,11 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
-    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats',
+    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
       body + '\nreturn timedRoomTick;')(
       thinkEvery, g => { g.tick++; },
       (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
-      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}));
+      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
@@ -4198,7 +4236,8 @@ async function serverHarness() {
   };
   const connect = async (code, { token = 'token-' + clients.length, name = 'Soldier', hello = true } = {}) => {
     const serverSide = new Promise(resolve => accepting.push(resolve));
-    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`);
+    // no compression: zlib runs off the main thread, and settleServer's few milliseconds assume a message is sent at once
+    const ws = new WebSocket(`ws://127.0.0.1:${module.server.address().port}/ws?room=${code}`, { perMessageDeflate: false });
     const messages = [], errors = [];
     const client = {
       code, token, ws, messages, log: messages, errors, closed: false, serverSide,
@@ -4208,7 +4247,18 @@ async function serverHarness() {
       async close() { if (ws.readyState !== 3) ws.close(); await waitFor(() => client.closed, 'client closes'); await settleServer(); },
       wait(type, predicate = () => true, after = 0) { return waitFor(() => messages.slice(after).find(message => message.t === type && predicate(message)), `client receives ${type}`); },
     };
-    ws.on('message', raw => messages.push(JSON.parse(String(raw))));
+    // snapshots carry changed unit rows, gone ids and the wrecks and nodes only when they change: rebuild them as client/main.js does
+    const rows = new Map(); let prev = null;
+    ws.on('message', raw => {
+      const m = JSON.parse(String(raw));
+      if (m.t === 'start') { rows.clear(); prev = null; }
+      if (m.t === 's') {
+        for (const id of m.gone ?? []) rows.delete(id);
+        for (const row of m.units) rows.set(row[0], row);
+        m.sent = m.units; m.units = [...rows.values()]; m.wrecks ??= prev?.wrecks; m.nodes ??= prev?.nodes; prev = m;
+      }
+      messages.push(m);
+    });
     ws.on('close', () => { client.closed = true; });
     ws.on('error', error => errors.push(error)); clients.push(client);
     await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
@@ -5339,8 +5389,9 @@ for (const lookupFinished of [false, true]) {
 
 // Classic keeps training separate from unit orders, and Engineers finish queued field and building work.
 {
-  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 70, y: 70 }, { x: 5, y: 70 }], points: [{ x: 40, y: 40 }] };
-  const classic = (teams = [0, 1]) => createGame(map, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 5, y: 5 }, { x: 5, y: 70 }, { x: 70, y: 70 }], points: [{ x: 40, y: 40 }] };
+  // the 1v1 uses the first two spawns only, so player 0 holds the top-left corner and the enemy the bottom-left
+  const classic = (teams = [0, 1], m = teams.length > 2 ? map : { ...map, spawns: map.spawns.slice(0, 2) }) => createGame(m, teams.map((_, i) => String(i)), false, teams, teams.map((_, i) => i), { mode: 'classic' });
   const g = classic(), p = g.players[0]; p.mp = 5000;
   const eng = [...g.units.values()].find(u => u.owner === 0 && u.type === 'engineer'), hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
   for (const u of [...g.units.values()]) if (!UNITS[u.type].structure && u !== eng) g.units.delete(u.id);
@@ -5619,7 +5670,7 @@ for (const lookupFinished of [false, true]) {
     for (let i = 0; i < 60; i++) animate(march, 1 / 60, eye);
     assert.equal(leader.hi[0].morphTargetInfluences[posture - 1], 1, 'idle low figures return to their planted suppression pose');
   }
-  const { rigOf, AIM_SHIFT } = await import('./client/models/infantry.js');
+  const { rigOf, soldierKit, AIM_SHIFT } = await import('./client/models/infantry.js');
   march.cover = 2; march.supp = 100; march.trench = march.models.map(() => [0, 0]);
   animate(march, POSTURE.blend + 0.01, eye);
   assert.equal(march.squad.w[1], 1, 'trench keeps the crouching posture');
@@ -5647,14 +5698,140 @@ for (const lookupFinished of [false, true]) {
 
   const bodies = createBodies(), scene = new THREE.Scene(), world = new THREE.Group();
   scene.add(world);
+  const deadRoot = new THREE.Group(), dead = { type: 'rifle', root: deadRoot, models: [], turret: null };
+  buildModel(dead, deadRoot, look, 0, UNITS.rifle);
+  bodies.add(world, 3, 0.2, 4, dead.models[0], 1.2);
+  const fallen = world.children.find((o) => o.isInstancedMesh);
+  fallen.geometry.computeBoundingBox();
+  const bb = fallen.geometry.boundingBox, span = (a) => bb.max[a] - bb.min[a];
+  assert.ok(fallen.geometry.attributes.color && fallen.geometry.attributes.matId, 'a corpse keeps the soldier colors and materials');
+  assert.ok(fallen.geometry.attributes.position.count > 500 && fallen.geometry.type !== 'CapsuleGeometry', 'a corpse is the soldier mesh, not a capsule');
+  assert.ok(Math.max(span('x'), span('z')) > span('y') * 2 && span('y') < 0.85, `a corpse lies down (${span('x').toFixed(2)} x ${span('y').toFixed(2)} x ${span('z').toFixed(2)})`);
+  assert.ok(bb.min.y > -0.001 && bb.min.y < 0.02, 'the body rests on the ground');
+  const placed = new THREE.Matrix4();
+  fallen.getMatrixAt(0, placed);
+  const at = new THREE.Vector3().setFromMatrixPosition(placed), facing = new THREE.Euler().setFromRotationMatrix(placed, 'YXZ');
+  assert.ok(Math.abs(at.x - 3) < 1e-4 && Math.abs(at.y - 0.2) < 1e-4 && Math.abs(at.z - 4) < 1e-4, 'the corpse is placed where the man fell');
+  assert.ok(Math.abs(facing.y - 1.2) < 1e-3, 'it keeps the facing it was given');
+  const mgRoot = new THREE.Group(), mg = { type: 'mg', root: mgRoot, models: [], turret: null };
+  buildModel(mg, mgRoot, { ...look, color: 0xc43a31 }, 1, UNITS.mg);
+  bodies.add(world, 1, 0, 1, mg.models[0], 0);
+  const pools = world.children.filter((o) => o.isInstancedMesh);
+  assert.equal(pools.length, 2, 'a different uniform gets its own pooled mesh');
+  assert.ok(pools[0].geometry !== pools[1].geometry, 'the two pools do not share one body');
+  assert.equal(bodies.count, 2, 'both men are on the field');
   let most = 0;
   for (let i = 0; i < 600; i++) { bodies.add(world, i % 50, 0.3, i / 50); bodies.update(0.02); most = Math.max(most, bodies.count); }
   assert.ok(most <= CORPSES.cap && most > CORPSES.cap - 20, `corpses stay at or under the cap (${most})`);
-  assert.equal(world.children.find((o) => o.isInstancedMesh).count, bodies.count, 'one instanced mesh draws them all');
+  const drawn = world.children.filter((o) => o.isInstancedMesh).reduce((n, o) => n + o.count, 0);
+  assert.equal(drawn, bodies.count, 'the pooled meshes draw every corpse');
   for (let s = 0; s < CORPSES.life + CORPSES.fade + 1; s += 0.5) bodies.update(0.5);
   assert.equal(bodies.count, 0, 'old bodies fade out and leave');
   bodies.add(world, 0, 0, 0); scene.remove(world); bodies.update(0.1);
   assert.equal(bodies.count, 0, 'a finished match empties the pool');
+
+  // drawSoldiers: two rifle squads of one look draw as one instanced mesh per figure; their own meshes leave the camera
+  const { drawSoldiers, crowd } = await import('./client/unit-models.js');
+  const squads = [0, 1].map((i) => { const r = new THREE.Group(), u = { type: 'rifle', root: r, models: [], x: i * 10, z: 0, supp: 0, flags: 0, cover: 0 }; buildModel(u, r, look, 0, UNITS.rifle); r.position.x = u.x; return u; });
+  const cam = new THREE.PerspectiveCamera(42, 1.5, 1, 2200); cam.position.set(5, 30, 40); cam.lookAt(5, 0, 0);
+  for (const u of squads) animate(u, 0.1, cam.position);
+  drawSoldiers(squads, cam);
+  const batches = crowd.children.filter((m) => m.count), men = squads.flatMap((u) => u.models).flatMap((m) => m.userData.hi);
+  assert.equal(batches.reduce((n, m) => n + m.count, 0), men.length, 'every man is one instance');
+  assert.equal(batches.length, new Set(men.map((m) => m.geometry)).size, 'one draw call per figure');
+  assert.ok(men.every((m) => !m.layers.test(cam.layers)), 'the men no longer draw themselves');
+  cam.lookAt(5, 0, 400); drawSoldiers(squads, cam);
+  assert.ok(crowd.children.every((m) => !m.count), 'squads behind the camera are left out');
+  // The mesh the pool instances is the slack fallen build. These squads use their own pools so the two-uniform
+  // check above stays a leader and one gunner. Landmarks come from the living aiming prone; the measured mesh is
+  // the one createBodies placed.
+  const segDist = (p, a, b) => {
+    const ab = b.clone().sub(a), t = Math.min(1, Math.max(0, p.clone().sub(a).dot(ab) / (ab.lengthSq() || 1)));
+    return p.distanceTo(a.clone().addScaledVector(ab, t));
+  };
+  const placeCorpse = (type, index, fac, color) => {
+    const root = new THREE.Group(), squad = { type, root, models: [], turret: null };
+    buildModel(squad, root, { ...look, color }, fac, UNITS[type]);
+    const man = squad.models[index], src = man.userData.hi[0].geometry, aim = src.userData.prone;
+    assert.ok(aim && src.userData.fallen, `${type} ${index}: the aiming prone stays on the man, and the fallen build is separate`);
+    assert.equal(man.userData.hi[0].morphTargetInfluences.length, 23, `${type} ${index}: the fallen pose is not another morph`);
+    const pool = createBodies(), field = new THREE.Group();
+    pool.add(field, 2, 0.2, 3, man, 0.4);
+    const mesh = field.children.find((o) => o.isInstancedMesh);
+    assert.ok(mesh && mesh.count === 1, `${type} ${index}: the corpse is instanced`);
+    assert.ok(mesh.geometry.attributes.color && mesh.geometry.attributes.matId, `${type} ${index}: corpse keeps colors and materials`);
+    assert.ok(mesh.geometry.attributes.position.count > 500 && mesh.geometry.type !== 'CapsuleGeometry', `${type} ${index}: corpse is the soldier mesh, not a capsule`);
+    mesh.geometry.computeBoundingBox();
+    const box = mesh.geometry.boundingBox, wide = (axis) => box.max[axis] - box.min[axis];
+    assert.ok(Math.max(wide('x'), wide('z')) > wide('y') * 2 && wide('y') < 0.85, `${type} ${index}: corpse lies down`);
+    assert.ok(box.min.y > -0.001 && box.min.y < 0.02, `${type} ${index}: corpse rests on the ground`);
+    const placed = new THREE.Matrix4();
+    mesh.getMatrixAt(0, placed);
+    const at = new THREE.Vector3().setFromMatrixPosition(placed), facing = new THREE.Euler().setFromRotationMatrix(placed, 'YXZ');
+    assert.ok(Math.abs(at.x - 2) < 1e-4 && Math.abs(at.y - 0.2) < 1e-4 && Math.abs(at.z - 3) < 1e-4, `${type} ${index}: corpse is placed where he fell`);
+    assert.ok(Math.abs(facing.y - 0.4) < 1e-3, `${type} ${index}: corpse keeps the facing it was given`);
+    const scale = man.scale.x, P = aim.position, C = mesh.geometry.attributes.position;
+    assert.equal(C.count, P.count, `${type} ${index}: corpse vertices match the living man`);
+    let minY = Infinity;
+    for (let i = 0; i < P.count; i++) minY = Math.min(minY, P.getY(i) * scale);
+    const aimAt = (i) => new THREE.Vector3(P.getX(i) * scale, P.getY(i) * scale - minY, P.getZ(i) * scale);
+    const corAt = (i) => new THREE.Vector3().fromBufferAttribute(C, i);
+    const prone = rigOf(type, fac, index, 2);
+    const near = (point, radius) => {
+      const idx = [];
+      for (let i = 0; i < P.count; i++) if (new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(point) < radius) idx.push(i);
+      return idx;
+    };
+    const chestIdx = near(prone.body.at(new THREE.Vector3(0, 1.02, 0)), 0.12);
+    assert.ok(chestIdx.length >= 8, `${type} ${index}: the aiming prone has a chest to measure`);
+    const meanY = (idx, pos) => idx.reduce((sum, i) => sum + pos(i).y, 0) / idx.length;
+    const chestDrop = meanY(chestIdx, aimAt) - meanY(chestIdx, corAt);
+    let elbowMove = 0;
+    for (const arm of prone.arms) {
+      const idx = near(arm.elbow, 0.07);
+      assert.ok(idx.length > 0, `${type} ${index}: the aiming prone has an elbow to measure`);
+      let moved = 0;
+      for (const i of idx) moved += aimAt(i).distanceTo(corAt(i));
+      elbowMove = Math.max(elbowMove, moved / idx.length);
+    }
+    let handMove = 0;
+    for (const arm of prone.arms) {
+      const idx = near(arm.hand, 0.06);
+      if (!idx.length) continue;
+      let moved = 0;
+      for (const i of idx) moved += aimAt(i).distanceTo(corAt(i));
+      handMove = Math.max(handMove, moved / idx.length);
+    }
+    let barrel = null;
+    if (prone.W) {
+      const a = new THREE.Vector3().applyMatrix4(prone.W), b = new THREE.Vector3(prone.info.L, 0, 0).applyMatrix4(prone.W);
+      const idx = [];
+      for (let i = 0; i < P.count; i++) if (segDist(new THREE.Vector3().fromBufferAttribute(P, i), a, b) < 0.04) idx.push(i);
+      assert.ok(idx.length > 4, `${type} ${index}: the aiming prone has a barrel to measure`);
+      const aimC = new THREE.Vector3(), corC = new THREE.Vector3();
+      for (const i of idx) { aimC.add(aimAt(i)); corC.add(corAt(i)); }
+      aimC.multiplyScalar(1 / idx.length); corC.multiplyScalar(1 / idx.length);
+      let far = new THREE.Vector3(), best = 0;
+      for (const i of idx) {
+        const p = corAt(i), dd = p.distanceTo(corC);
+        if (dd > best) { best = dd; far = p; }
+      }
+      barrel = { shift: corC.distanceTo(aimC), dot: Math.abs(far.clone().sub(corC).normalize().dot(b.clone().sub(a).normalize())) };
+    }
+    return { chestDrop, elbowMove, handMove, barrel, kit: soldierKit(type, index) };
+  };
+  const rifleman = placeCorpse('rifle', 1, 0, look.color);
+  assert.equal(rifleman.kit, 'rifle', 'the checked rifleman is not the squad leader');
+  assert.ok(rifleman.chestDrop > 0.08, `a dead rifleman rests his chest lower than the sighting lean (${rifleman.chestDrop.toFixed(3)})`);
+  assert.ok(rifleman.elbowMove > 0.2, `a dead rifleman's elbows leave the prone support (${rifleman.elbowMove.toFixed(3)})`);
+  assert.ok(rifleman.barrel && rifleman.barrel.shift > 0.3 && rifleman.barrel.dot < 0.45, `a dead rifleman's weapon leaves the aim line (shift ${rifleman.barrel?.shift.toFixed(3)}, dot ${rifleman.barrel?.dot.toFixed(3)})`);
+  const ranger = placeCorpse('ranger', 0, 0, look.color);
+  assert.ok(ranger.chestDrop > 0.08 && ranger.elbowMove > 0.2, `a dead ranger lies slack, not sighting (chest ${ranger.chestDrop.toFixed(3)}, elbows ${ranger.elbowMove.toFixed(3)})`);
+  assert.ok(ranger.barrel && ranger.barrel.shift > 0.3 && ranger.barrel.dot < 0.45, `a dead ranger's weapon leaves the aim line (shift ${ranger.barrel?.shift.toFixed(3)}, dot ${ranger.barrel?.dot.toFixed(3)})`);
+  const gunner = placeCorpse('mg', 0, 1, 0xc43a31);
+  assert.equal(gunner.kit, 'gunner', 'the crew check is the man who was on the gun');
+  assert.ok(gunner.chestDrop > 0.08 && gunner.handMove > 0.25, `a dead gunner is not frozen on an empty grip (chest ${gunner.chestDrop.toFixed(3)}, hands ${gunner.handMove.toFixed(3)})`);
+  console.log(`fallen versus aim passed: rifle chest ${rifleman.chestDrop.toFixed(3)} elbows ${rifleman.elbowMove.toFixed(3)} barrel shift ${rifleman.barrel.shift.toFixed(3)} dot ${rifleman.barrel.dot.toFixed(3)}; ranger chest ${ranger.chestDrop.toFixed(3)} elbows ${ranger.elbowMove.toFixed(3)} barrel shift ${ranger.barrel.shift.toFixed(3)} dot ${ranger.barrel.dot.toFixed(3)}; mg chest ${gunner.chestDrop.toFixed(3)} hands ${gunner.handMove.toFixed(3)}`);
 }
 // Spatial queries keep the brute-force order, including borders, duplicate positions and exact ties.
 {
