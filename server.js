@@ -6,7 +6,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, snapshotCache, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS } from './shared/sim.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
 import { think, observe, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
@@ -119,13 +119,36 @@ const hostOf = (room) => {
 const MAX_SPECTATORS = 8, EVERYTHING = { has: () => true };
 const everyone = (room) => [...room.players, ...room.spectators];
 const isHost = (room, p) => { const h = hostOf(room); return h >= 0 ? room.players[h] === p : room.spectators.find(connected) === p; };
-function watchGame(g, s) {
+// The spectators share one terrain memory on the game (logCell feeds g.watchPending), so a snapshot replays only new
+// cells; a spectator's start gets a fresh memory (the defaults) and so the whole terrain.
+function watchGame(g, terrainMemory = new Map(), terrainPending = new Set(g.cellLog.keys())) {
   const players = [...g.players];
-  // ponytail: every changed cell is replayed per snapshot (terrainFor drops the known ones). Keep a pending set per spectator if heavily scarred maps make this slow.
-  players[0] = { ...players[0], terrainMemory: s.terrain, terrainPending: new Set(g.cellLog.keys()), visible: EVERYTHING };
+  players[0] = { ...players[0], terrainMemory, terrainPending, visible: EVERYTHING };
   return { ...g, players, reveal: true, skipFog: true };
 }
-const sendWatchers = (room, shots, cells, cache, extra) => room.spectators.forEach(s => connected(s) && send(s.ws, { ...snapshotFor(watchGame(room.game, s), 0, shots, cells, cache), ...extra }));
+// What a client already holds, so a snapshot carries only what changed: unit rows (unitDelta), and the wrecks and
+// resource nodes, resent only when their version moves. Seats keep their own (p.net, reset by sendStart); spectators
+// share one stream (room.watchNet), sent in full again when one joins.
+const LISTS = ['wrecks', 'nodes'];
+function trimmed(room, net, msg, cache) {
+  if (room.listCache !== cache) {
+    room.listCache = cache;
+    for (const k of LISTS) { const json = JSON.stringify(cache[k] ?? null), l = (room.lists ??= {})[k] ??= { v: 0 }; if (l.json !== json) Object.assign(l, { json, v: l.v + 1 }); }
+  }
+  Object.assign(msg, unitDelta(net.sent, msg.units, net.full));
+  for (const k of LISTS) { if (!net.full && net[k] === room.lists[k].v) delete msg[k]; else net[k] = room.lists[k].v; }
+  net.full = false;
+  return msg;
+}
+const sendSeat = (room, i, shots, cells, cache, extra) => { const p = room.players[i]; if (connected(p)) p.ws.send(JSON.stringify(trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(room.game, i, shots, cells, cache), ...extra }, cache))); };
+// one snapshot for all spectators, built and stringified once
+function sendWatchers(room, shots, cells, cache, extra) {
+  const watching = room.spectators.filter(connected), g = room.game;
+  if (!watching.length) return;
+  const view = watchGame(g, g.watchTerrain ??= new Map(), g.watchPending ??= new Set(g.cellLog.keys()));
+  const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, { ...snapshotFor(view, 0, shots, cells, cache), ...extra }, cache));
+  for (const s of watching) s.ws.send(json);
+}
 // new players default to their own team (free-for-all) and the next faction in the cycle
 // assault needs someone on the defending team and someone attacking it
 const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
@@ -179,8 +202,8 @@ async function startMatch(room) {
 
 // watcher: a spectator, who gets seat i's start without a fog mask (the client then hides nothing)
 function sendStart(room, i, watcher) {
-  if (watcher) watcher.terrain = new Map();
-  const g = watcher ? watchGame(room.game, watcher) : room.game, ws = (watcher ?? room.players[i]).ws;
+  if (watcher) { if (room.watchNet) room.watchNet.full = true; } else room.players[i].net = { sent: new Map() }; // the next snapshot carries everything
+  const g = watcher ? watchGame(room.game) : room.game, ws = (watcher ?? room.players[i]).ws;
   send(ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(g, i, true), fog: watcher ? undefined : fogFor(g, i, true), names: room.game.players.map((p, k) => room.players[k]?.name ?? p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction), weather: weatherRow(room.game) });
   if (room.pause) send(ws, pauseMessage(room));
 }
@@ -226,7 +249,7 @@ function pauseTick(room) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
     const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
     const cache = snapshotCache(g);
-    room.players.forEach((p, i) => connected(p) && send(p.ws, { ...snapshotFor(g, i, shots, cells, cache), online, ping }));
+    room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
     sendWatchers(room, shots, cells, cache, { online, ping });
   }
   return true;
@@ -284,7 +307,8 @@ function scheduleSeatCleanup(room, player) {
   }, 10_000);
 }
 
-export const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
+// compression cuts a late-game snapshot about threefold (11.6 KB to 3.7 KB); small messages go as they are
+export const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024, perMessageDeflate: { threshold: 1024 } });
 wss.on('connection', (ws, req) => {
   const code = new URL(req.url, 'http://x').searchParams.get('room') || '';
   if (!/^[a-z0-9]{3,12}$/i.test(code)) return ws.close(1008, 'bad room');
@@ -359,6 +383,10 @@ wss.on('connection', (ws, req) => {
       room.defenderTeam = msg.v; lobby(room);
     } else if (msg.t === 'start' && host && room.state !== 'play' && room.players.length > 0 && room.players.length <= seats(room) && assaultReady(room)) {
       await startMatch(room);
+    } else if (msg.t === 'resync' && room.state === 'play') {
+      // the client's unit rows drifted from what we sent (it checks held): the next snapshot replaces them all
+      const net = seated ? me.net : room.watchNet;
+      if (net) net.full = true;
     } else if (msg.t === 'restart' && host && room.state === 'play' && room.game) {
       await startMatch(room); // same map, mode and teams, from scratch
     } else if (msg.t === 'end' && host && room.state === 'play') {
@@ -412,7 +440,7 @@ function holdEnding(room) {
     const shots = g.shots, cells = g.newCells; g.shots = []; g.newCells = [];
     const online = room.players.map(p => connected(p) || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
     const cache = snapshotCache(g);
-    room.players.forEach((p, i) => connected(p) && send(p.ws, { ...snapshotFor(g, i, shots, cells, cache), online, ping }));
+    room.players.forEach((_, i) => sendSeat(room, i, shots, cells, cache, { online, ping }));
     sendWatchers(room, shots, cells, cache, { online, ping });
   }
   if (g.held < HOLD_TICKS) return true;
@@ -436,8 +464,9 @@ function timedRoomTick(room) {
   if (g.mode?.kind === 'horde') seats.push(g.mode.slot);
   // AI observations refresh only when human snapshots are due. Turns between sends use the previous view.
   room.aiViews ??= [];
+  let built = null; // the cache is built once per send tick; human snapshots reuse it (AI orders this tick show next send)
   if (sent && seats.length) {
-    const cache = snapshotCache(g);
+    const cache = built = snapshotCache(g);
     for (const i of seats) room.aiViews[i] = observe(g, i, cache);
   }
   // AI decisions follow the selected difficulty, staggered by seat. The Horde and human handovers use Normal.
@@ -451,10 +480,10 @@ function timedRoomTick(room) {
     const watched = !!room.spectators?.some(s => s.ws?.readyState === 1);
     if (recipients.length || watched) {
       const online = room.players.map(p => !!p.ws || !!p.ai), ping = room.players.map(p => (p.ai ? -1 : p.rtt ?? null));
-      const cacheAt = process.hrtime.bigint(), cache = snapshotCache(g);
+      const cacheAt = process.hrtime.bigint(), cache = built ?? snapshotCache(g);
       snapshotBuild += Number(process.hrtime.bigint() - cacheAt) / 1e6;
       for (const i of recipients) {
-        const p = room.players[i], buildAt = process.hrtime.bigint(), msg = { ...snapshotFor(g, i, shots, cells, cache), online, ping };
+        const p = room.players[i], buildAt = process.hrtime.bigint(), msg = trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(g, i, shots, cells, cache), online, ping }, cache);
         snapshotBuild += Number(process.hrtime.bigint() - buildAt) / 1e6;
         const stringifyAt = process.hrtime.bigint(), json = JSON.stringify(msg);
         snapshotStringify += Number(process.hrtime.bigint() - stringifyAt) / 1e6;

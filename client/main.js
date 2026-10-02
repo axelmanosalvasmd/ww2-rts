@@ -37,7 +37,7 @@ import { createAviation } from './aircraft.js';
 import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
-import { buildModel, animate, createBodies, setSurfaces, setBuildings } from './unit-models.js';
+import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers } from './unit-models.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
 import { renderReport } from './report.js';
@@ -364,6 +364,7 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 2200);
 setupLight(renderer, scene, camera); // tone, sun + sky fill, haze, Graphics High/Low (client/light.js)
+scene.add(crowd); // every soldier, one instanced draw per figure (drawSoldiers in client/unit-models.js)
 const resize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
 addEventListener('resize', resize); resize();
 
@@ -408,7 +409,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
@@ -480,6 +481,14 @@ function startGame(m, restored = null) {
 // ---------- terrain that can change mid-match (digging, destruction) ----------
 let terrain = null;
 let props = null;
+// big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
+const terrainDue = { pieces: false, minimap: false, wait: 0 };
+function terrainFrame(dt) {
+  if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap)) return;
+  if (terrainDue.pieces && terrain) buildStructures();
+  if (terrainDue.minimap) mmImage = null;
+  terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
+}
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
 function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state); }
 
@@ -507,11 +516,12 @@ function applyCells(cells) {
   }
   terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
   if (shaped.length) {
-    relief.update(shaped); props?.refresh(); water?.changed(shaped); mmImage = null; // the fog overlay follows the relief through onGeometry
     const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
-    refreshTerrain(Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL);
+    const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
+    relief.update(shaped); props?.refresh(box); water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
+    refreshTerrain(...box);
   }
-  if (pieces) buildStructures();
+  if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
   coverPreview.dirty(); // cover marks follow new cells and shot-up walls
 }
 
@@ -564,7 +574,7 @@ function makeUnit(id, type, owner) {
   else buildModel(v, root, f, facOf(owner), def); // soldiers, vehicles, guns and structures, merged per part (client/unit-models.js)
   // billboarded health + suppression bars
   v.bars = new THREE.Group(); v.bars.position.y = barY(type);
-  const bg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
+  const bg = v.barBg = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.4, 0.42, 1);
   v.hpBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: f.color, depthTest: false })); v.hpBar.scale.set(2.3, 0.2, 1); v.hpBar.position.set(0, 0.07, 0.01);
   v.suppBar = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: 0xffd23a, depthTest: false })); v.suppBar.scale.set(2.3, 0.1, 1); v.suppBar.position.set(0, -0.11, 0.01);
   bg.renderOrder = 3; v.hpBar.renderOrder = v.suppBar.renderOrder = 4;
@@ -578,11 +588,14 @@ function makeUnit(id, type, owner) {
   return v;
 }
 
-// pooled and capped; the oldest fade out (client/unit-models.js)
+// pooled and capped; the oldest fade and sink (client/unit-models.js)
 const bodies = createBodies();
+const corpseAt = new THREE.Vector3(), corpseQ = new THREE.Quaternion(), corpseE = new THREE.Euler();
 function corpse(v, man) {
-  const p = man.getWorldPosition(new THREE.Vector3());
-  bodies.add(world, p.x, hAt(p.x, p.z) + 0.3, p.z);
+  const p = man.getWorldPosition(corpseAt);
+  man.getWorldQuaternion(corpseQ);
+  corpseE.setFromQuaternion(corpseQ, 'YXZ');
+  bodies.add(world, p.x, hAt(p.x, p.z), p.z, man, corpseE.y + (Math.random() - 0.5) * 0.4);
   man.visible = false;
 }
 
@@ -623,6 +636,7 @@ function seatTrench(v) {
 const hulks = new Map(); // wreck id -> its model
 function removeUnit(v) {
   world.remove(v.bars);
+  for (const m of [v.barBg, v.hpBar, v.suppBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
   if (isAir(v.type)) {
     // a plane shot down falls as its own copy, drawn from the 'planedown' shot (client/aircraft.js); this one just goes
     aviation.release(v); world.remove(v.root);
@@ -661,7 +675,28 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 
 // ---------- snapshots ----------
 
+// The server sends only the unit rows that changed and the ids gone (dead or under fog), and the wrecks and resource
+// nodes only when they change; the full lists are put back together here, so everything after reads whole snapshots.
+const unitRows = new Map();
+let resyncAt = -Infinity;
 function applySnapshot(s) {
+  // a full resend replaces everything held; so does a snapshot without held, from a server older than the deltas that
+  // sends every row each time and never a gone list (a server left running across an update)
+  if (s.all || !s.held) unitRows.clear();
+  for (const id of s.gone ?? []) unitRows.delete(id);
+  for (const row of s.units) unitRows.set(row[0], row);
+  // held: what the server thinks this client now holds. A mismatch means a stale unit is drawn (dead, or fogged) or a
+  // live one is missing; ask for a full resend instead of waiting for a reload (at most once a second)
+  if (s.held) {
+    let xor = 0;
+    for (const id of unitRows.keys()) xor ^= id;
+    if ((unitRows.size !== s.held[0] || xor !== s.held[1]) && performance.now() - resyncAt > 1000) {
+      console.warn(`unit rows out of sync at tick ${s.tick}: holding ${unitRows.size}, the server sent ${s.held[0]}; asking for a full resend`);
+      resyncAt = performance.now(); sendCmd({ t: 'resync' });
+    }
+  }
+  s.units = [...unitRows.values()];
+  s.wrecks ??= lastSnap?.wrecks; s.nodes ??= lastSnap?.nodes;
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();
@@ -679,7 +714,7 @@ function applySnapshot(s) {
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
     v.shield.visible = !!cl;
-    if (cl) { v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; }
+    if (cl && v.coverLook !== cl) { v.coverLook = cl; v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; } // material writes only on a change
     // inside a building: the squad disappears into it; its bars float above the roof
     setOwnerRing(v.base, flags & 1 ? 0xffffff : look(owner).color);
     // men drawn, not men counted: a squad may be drawn as a bigger block (client/unit-models.js), so health maps onto it
@@ -690,13 +725,14 @@ function applySnapshot(s) {
     v.base.visible = !v.garr;
     // riding in a halftrack: not drawn, not selectable; it comes back when it gets out
     if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = v.bars.visible = !riding; if (riding) selected.delete(id); }
-    if (UNITS[type].camo) v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; }));
+    if (UNITS[type].camo && v.camo !== (flags & 256)) { v.camo = flags & 256; v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; })); }
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
-    v.hpBar.material.color.set(frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
+    const hpColor = frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a, suppColor = supp >= 90 ? 0xff3b2a : 0xffd23a;
+    if (v.hpColor !== hpColor) v.hpBar.material.color.set(v.hpColor = hpColor);
     v.suppBar.visible = supp > 0;
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
-    v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
+    if (v.suppColor !== suppColor) v.suppBar.material.color.set(v.suppColor = suppColor);
   }
   autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {
@@ -1242,12 +1278,15 @@ document.addEventListener('mouseleave', () => cancelInput(false));
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 renderer.domElement.addEventListener('wheel', (e) => rig.wheel(e), { passive: false });
 
-const screenOf = (v) => { const p = new THREE.Vector3(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, front: p.z < 1 }; };
+const screenV = new THREE.Vector3(), screenAt = {};
+// out: reuse one object (pick does, per unit per call); left out, a new one
+const screenOf = (v, out = {}) => { const p = screenV.set(v.x, hAt(v.x, v.z) + 1 + (v.type && isAir(v.type) ? AIR_ALT : 0), v.z).project(camera); out.x = (p.x + 1) / 2 * innerWidth; out.y = (1 - p.y) / 2 * innerHeight; out.front = p.z < 1; return out; };
+let hovered = null, hoverFoe = false, hoverTick = 0, lastCursor = '';
 function pick(mx, my, test, r) {
   let best = null, bd = Infinity;
   for (const v of units.values()) {
     if (!test(v) || v.flags & RIDING_FLAG) continue; // a squad inside a halftrack cannot be clicked
-    const s = screenOf(v), d = Math.hypot(s.x - mx, s.y - my);
+    const s = screenOf(v, screenAt), d = Math.hypot(s.x - mx, s.y - my);
     if (s.front && d < (r ?? (isVeh(v.type) ? 45 : 32)) && d < bd) { bd = d; best = v; }
   }
   return best;
@@ -1498,6 +1537,9 @@ renderer.setAnimationLoop(() => {
     if (v.turret) v.turret.rotation.y = -(v.aim - v.rot);
     v.bars.position.set(v.x, gy + (v.garr ? 7.5 : barY(v.type)), v.z); v.bars.quaternion.copy(camera.quaternion);
     v.sel.visible = selected.has(v.id);
+    // the health bar only when it says something: hurt, suppressed (its own bar), selected or under the cursor; a
+    // garrisoned squad keeps it, since its roof bar is what you click (client/selection-view.js)
+    v.barBg.visible = v.hpBar.visible = v.sel.visible || v === hovered || v.hpBar.scale.x < 2.299 || v.supp > 0 || v.garr;
     if (v.range) v.range.visible = ranges && v.sel.visible;
     if (v.trench) seatTrench(v);
     animate(v, sdt, camera.position, hAt); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
@@ -1535,8 +1577,13 @@ renderer.setAnimationLoop(() => {
   } else if (aimMesh) { world.remove(aimMesh); aimMesh = null; }
   coverPreview.frame(dt);
   for (const m of strikeMarks.values()) m.frame(m.t > 0, now);
-  renderer.domElement.style.cursor = targeting ? 'cell' : selected.size && pick(mouse.x, mouse.y, v => foe(v.owner)) ? 'crosshair' : 'default';
+  // the unit under the cursor, every fourth frame (units move under a still mouse too)
+  if (++hoverTick % 4 === 0) { hovered = mouse.inside ? pick(mouse.x, mouse.y, () => true) : null; hoverFoe = !!selected.size && !!pick(mouse.x, mouse.y, v => foe(v.owner)); }
+  const cursor = targeting ? 'cell' : selected.size && hoverFoe ? 'crosshair' : 'default';
+  if (cursor !== lastCursor) renderer.domElement.style.cursor = lastCursor = cursor;
+  terrainFrame(dt);
   apron?.update();
+  drawSoldiers(units.values(), camera);
   renderFrame(cam, groundMesh); // shadows and haze follow the view
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });

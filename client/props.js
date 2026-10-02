@@ -313,9 +313,32 @@ export function createProps({ map, grid, hAt, parent }) {
     meshes.set(kind, list);
   }
   let nodes = [], disposed = false;
-  const matrix = new THREE.Matrix4(), colour = new THREE.Color(), barkColour = new THREE.Color(), scale = new THREE.Vector3(), turn = new THREE.Quaternion(), at = new THREE.Vector3();
+  const matrix = new THREE.Matrix4(), scale = new THREE.Vector3(), turn = new THREE.Quaternion(), at = new THREE.Vector3();
   const UP = new THREE.Vector3(0, 1, 0);
-  function refresh() {
+  // where one prop stands, as drawn: c.at is its kind (null: not shown), c.m its matrix, c.col and c.bark its tints
+  function place(c) {
+    c.at = null;
+    if (c.kind === 'grass' && gfx.low) return;
+    if (!visible(c, grid, { heights: map.heights, nodes, low: gfx.low })) return;
+    const kind = kindFor(c, map.heights), crop = kind === 'crop';
+    // each tree or bush its own height, girth and heading; leafy kinds also their own shade of green
+    const f = (k) => ((c.seed >>> k) & 255) / 255, leafy = kind !== 'rocks' && kind !== 'fence' && kind !== 'haystack' && kind !== 'supplies';
+    const girth = leafy && !crop ? 0.9 + 0.2 * f(4) : 1, tall = leafy ? 0.88 + 0.24 * f(12) : 1;
+    scale.set(c.scale * girth, c.scale * tall, c.scale * girth);
+    turn.setFromAxisAngle(UP, c.angle);
+    c.m = matrix.compose(at.set(c.x, hAt(c.x, c.z) - 0.035, c.z), turn, scale).toArray(c.m);
+    const tint = 0.88 + ((c.seed >>> 8) % 101) / 600, colour = c.col ??= new THREE.Color();
+    if (!leafy) colour.setRGB(tint, tint, tint);
+    else if (crop) colour.setRGB(tint * 1.3, tint * 1.06, tint * 0.56); // ripe wheat
+    else if (kind === 'deciduous' && (c.seed >>> 16) % 9 === 0) colour.setRGB(tint * 1.08, tint * 1.0, tint * 0.72); // a tree turning
+    else colour.setRGB(tint * (0.94 + f(18) * 0.1), tint * (0.97 + f(20) * 0.05), tint * (0.86 + f(22) * 0.12));
+    (c.bark ??= new THREE.Color()).setRGB(tint, tint, tint);
+    c.at = kind;
+  }
+  // box [x0, z0, x1, z1] (world units): only the props near those cells are placed again (a prop looks up to two
+  // cells away, its anchor included); the rest keep where they stood. Left out: all of them.
+  const PAD = 3 * CELL;
+  function refresh(box) {
     if (disposed) return;
     for (const [kind, list] of meshes) for (const mesh of list) {
       mesh.count = 0;
@@ -323,29 +346,18 @@ export function createProps({ map, grid, hAt, parent }) {
       mesh.castShadow = kind !== 'grass' && kind !== 'crop' && !gfx.low;
     }
     for (const c of cached) {
-      if (c.kind === 'grass' && gfx.low) continue;
-      if (!visible(c, grid, { heights: map.heights, nodes, low: gfx.low })) continue;
-      const kind = kindFor(c, map.heights), list = meshes.get(kind), i = list[0].count, crop = kind === 'crop';
-      // each tree or bush its own height, girth and heading; leafy kinds also their own shade of green
-      const f = (k) => ((c.seed >>> k) & 255) / 255, leafy = kind !== 'rocks' && kind !== 'fence' && kind !== 'haystack' && kind !== 'supplies';
-      const girth = leafy && !crop ? 0.9 + 0.2 * f(4) : 1, tall = leafy ? 0.88 + 0.24 * f(12) : 1;
-      scale.set(c.scale * girth, c.scale * tall, c.scale * girth);
-      turn.setFromAxisAngle(UP, c.angle);
-      matrix.compose(at.set(c.x, hAt(c.x, c.z) - 0.035, c.z), turn, scale);
-      const tint = 0.88 + ((c.seed >>> 8) % 101) / 600;
-      if (!leafy) colour.setRGB(tint, tint, tint);
-      else if (crop) colour.setRGB(tint * 1.3, tint * 1.06, tint * 0.56); // ripe wheat
-      else if (kind === 'deciduous' && (c.seed >>> 16) % 9 === 0) colour.setRGB(tint * 1.08, tint * 1.0, tint * 0.72); // a tree turning
-      else colour.setRGB(tint * (0.94 + f(18) * 0.1), tint * (0.97 + f(20) * 0.05), tint * (0.86 + f(22) * 0.12));
+      if (!box || c.at === undefined || (c.x > box[0] - PAD && c.x < box[2] + PAD && c.z > box[1] - PAD && c.z < box[3] + PAD)) place(c);
+      if (!c.at) continue;
+      const list = meshes.get(c.at), i = list[0].count;
       for (const mesh of list) {
-        mesh.setMatrixAt(i, matrix);
-        mesh.setColorAt(i, mesh.userData.role === 'bark' ? barkColour.setRGB(tint, tint, tint) : colour);
+        mesh.instanceMatrix.array.set(c.m, i * 16);
+        mesh.setColorAt(i, mesh.userData.role === 'bark' ? c.bark : c.col);
         mesh.count = i + 1;
       }
     }
     for (const list of meshes.values()) for (const mesh of list) { mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true; }
   }
-  const unsubscribe = gfx.onChange(refresh);
+  const unsubscribe = gfx.onChange(() => refresh());
   refresh();
   return {
     group, refresh,

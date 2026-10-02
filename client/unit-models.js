@@ -21,10 +21,10 @@ import { lightHeavy } from './models/armor-lightheavy.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
 import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
-// unit-sized shapes, scaled per part (body: the corpses; client/models/infantry.js builds the soldiers)
+// unit-sized shapes, scaled per part. Soldiers, including the fallen ones, come from client/models/infantry.js.
 const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
-  body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), plane: new THREE.PlaneGeometry(1, 1),
+  plane: new THREE.PlaneGeometry(1, 1),
 };
 
 // barracks roof: a triangle pushed out along the hut
@@ -174,10 +174,10 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
       buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT || material === VEHICLE_PAINT ? colorOf(d.paint) : null, mat: d.mat });
     });
     list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT || material === VEHICLE_PAINT, look, group.position.y) }));
-    if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle);
+    if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle, poses.fallen);
     baked.set(key, list);
   }
-  return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; return m; });
+  return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; m.userData.baked = material; return m; });
 }
 // bake in place: the group keeps its transform and gets the baked meshes as its only children
 function bake(group, key, shadow, look = 'vehicle') {
@@ -189,7 +189,7 @@ function bake(group, key, shadow, look = 'vehicle') {
 // Formation slots in local space (+x = forward). Gun crews stand behind the gun.
 // Line infantry is drawn as a battalion: a block of ranks with more men than the sim counts (def.models), front rank
 // first so the rear ranks thin out as the squad loses health. Purely a look; main.js maps health onto the men drawn.
-// ponytail: one mesh per man, so about 3x the draw calls for these squads; instance the men if big armies drop frames
+// Each man is his own mesh here; drawSoldiers() below draws all men of one figure as one instanced draw call.
 const block = (cols, rows, gap = 0.65) => Array.from({ length: cols * rows }, (_, i) => [((rows - 1) / 2 - Math.floor(i / cols)) * gap, (i % cols - (cols - 1) / 2) * gap]);
 const SLOTS = {
   rifle: block(5, 3),
@@ -223,7 +223,7 @@ export const postureOf = (supp, flags, cover) => (flags & 1 ? 3 : supp >= POSTUR
 // The posture morph targets: poses holds the figure's kneeling, prone and running builds ({position, normal}, the
 // same vertices as the standing one). Each is stored undone by its pose's lean, squash and shift, which animate()
 // applies to the whole body, so the two cancel at full weight.
-function poseMorphs(g, poses, gait = [], muzzle) {
+function poseMorphs(g, poses, gait = [], muzzle, fallen = null) {
   const n = g.attributes.position.count, pos = [], nor = [], tips = muzzle ? [muzzle.clone()] : null;
   const frames = [...poses.map((p, i) => ({ ...p, posture: i + 1 })), ...gait];
   for (const frame of frames) {
@@ -237,12 +237,15 @@ function poseMorphs(g, poses, gait = [], muzzle) {
       q.setXYZ(i, mx / len, my / len, N.getZ(i) / len);
     }
     pos.push(p); nor.push(q);
+    // the idle aiming prone, before this undo. Corpses do not use it; they use userData.fallen.
+    if (k === 2 && !g.userData.prone) g.userData.prone = { position: P, normal: N };
     if (tips) {
       const tip = frame.muzzle ?? muzzle, x = tip.x - tx, y = tip.y - ty;
       tips.push(new THREE.Vector3(x * c + y * s, (y * c - x * s) / sy, tip.z));
     }
   }
   g.userData.muzzles = tips;
+  if (fallen) g.userData.fallen = fallen;
   g.morphAttributes.position = pos; g.morphAttributes.normal = nor;
   g.computeBoundingSphere();
 }
@@ -404,60 +407,183 @@ export function animate(v, dt, eye, groundAt) {
     man.position.set(motion.localX + ox * s, floor + sink + oy * s, motion.localZ);
     man.rotation.y = motion.localYaw;
     u.pose.rotation.z = mp[0]; u.pose.scale.y = mp[1]; u.pose.position.set(mp[2] - ox, mp[3] - oy, 0);
-    for (const m of u.meshes) {
+    for (const m of sq.far ? u.lo : u.hi) { // the hidden level of detail keeps its last weights
       for (let j = 0; j < 3; j++) m.morphTargetInfluences[j] = pw[j + 1];
       for (let j = 0; j < gait.length; j++) m.morphTargetInfluences[j + 3] = gait[j];
     }
   }
 }
 
-// Corpses: one instanced mesh (one draw call) holding up to CAP bodies. Past SOFT bodies the oldest starts to fade;
-// a body also fades once it is LIFE seconds old; faded bodies leave the pool.
-export const CORPSES = { cap: 200, soft: 184, life: 25, fade: 1.5 };
-export function createBodies() {
-  const { cap, soft, life, fade: FADE } = CORPSES;
-  const geo = GEO.body.clone(), fade = new THREE.InstancedBufferAttribute(new Float32Array(cap).fill(1), 1);
-  geo.setAttribute('fade', fade);
-  const material = new THREE.MeshLambertMaterial({ color: 0x3a372c, transparent: true });
-  material.onBeforeCompile = (sh) => {
-    sh.vertexShader = 'attribute float fade;\nvarying float vFade;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFade = fade;');
-    sh.fragmentShader = 'varying float vFade;\n' + sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vFade );');
-  };
-  const mesh = new THREE.InstancedMesh(geo, material, cap);
-  mesh.count = 0; mesh.frustumCulled = false;
-  const list = [], m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), at = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
-  const changed = () => { mesh.instanceMatrix.needsUpdate = true; fade.needsUpdate = true; };
-  function drop(i) {
-    const last = list.length - 1;
-    if (i !== last) { mesh.getMatrixAt(last, m4); mesh.setMatrixAt(i, m4); fade.array[i] = fade.array[last]; list[i] = list[last]; }
-    list.pop(); mesh.count = list.length; changed();
+// Soldiers drawn instanced: every man keeps his own mesh (animate() poses it; the level of detail, picking, selection
+// and the corpses read it), but drawSoldiers() hides those meshes from the camera and draws every visible man of one
+// baked figure (type, faction, color, kit, near or far) in one InstancedMesh under crowd, posture weights included.
+// Squads off screen are left out. Without drawSoldiers (the viewer, portraits, the tests) each man draws himself.
+// A man whose material was swapped (main.js clones it for see-through camouflage) still draws himself.
+export const crowd = new THREE.Group();
+const pools = new Map(), HIDDEN = 1 << 31, frustum = new THREE.Frustum(), clip = new THREE.Matrix4(), ball = new THREE.Sphere();
+function grow(p) {
+  const cap = Math.max(64, p.cap * 2), mesh = new THREE.InstancedMesh(p.geometry, p.material, cap), n = p.geometry.morphAttributes.position.length + 1;
+  mesh.morphTexture = new THREE.DataTexture(new Float32Array(n * cap), n, cap, THREE.RedFormat, THREE.FloatType);
+  mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  if (p.mesh) { mesh.instanceMatrix.array.set(p.mesh.instanceMatrix.array); mesh.morphTexture.image.data.set(p.mesh.morphTexture.image.data); p.mesh.removeFromParent(); p.mesh.dispose(); }
+  crowd.add(mesh); p.mesh = mesh; p.cap = cap;
+}
+// once per frame, after animate(), before rendering; units: the units to draw, camera: the view
+export function drawSoldiers(units, camera) {
+  camera.updateMatrixWorld();
+  frustum.setFromProjectionMatrix(clip.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  for (const p of pools.values()) p.n = 0;
+  for (const v of units) {
+    // ponytail: a 25 m ball around the squad covers its spread-out men; widen it if men pop at the screen edge
+    if (!v.squad || !v.root.visible || !frustum.intersectsSphere(ball.set(v.root.position, 25))) continue;
+    v.root.updateMatrixWorld();
+    for (const man of v.models) {
+      if (!man.visible) continue;
+      for (const m of man.userData.meshes) {
+        if (!m.visible) continue;
+        if (m.material !== m.userData.baked) { m.layers.mask = 1; continue; }
+        let p = pools.get(m.geometry);
+        if (!p) pools.set(m.geometry, p = { geometry: m.geometry, material: m.material, cap: 0, n: 0, mesh: null });
+        if (p.n === p.cap) grow(p);
+        m.layers.mask = HIDDEN;
+        p.mesh.setMatrixAt(p.n, m.matrixWorld); p.mesh.setMorphAt(p.n++, m);
+      }
+    }
   }
-  function clear() { list.length = 0; mesh.count = 0; }
+  for (const p of pools.values()) { p.mesh.count = p.n; p.mesh.instanceMatrix.needsUpdate = true; p.mesh.morphTexture.needsUpdate = true; }
+}
+
+// Corpses: the soldier's own fallen build, instanced, up to CAP bodies in all. One mesh per uniform, so a battle
+// still draws a handful of corpse batches instead of one mesh per man. Past SOFT bodies the oldest starts to fade
+// and sink; a body also fades once it is LIFE seconds old; faded bodies leave the pool. The aiming prone stays on
+// the living morphs; a body is the slack pose, not a man still sighting from the dirt.
+export const CORPSES = { cap: 200, soft: 184, life: 25, fade: 1.5, sink: 0.45 };
+const corpseGeos = new Map();
+// The fallen build, scaled like the living man and resting on y = 0. Colors and materials stay with the vertices.
+function fallenGeometry(man) {
+  const mesh = man.userData.hi?.[0] ?? man.userData.lo?.[0];
+  const src = mesh?.geometry, pose = src?.userData.fallen;
+  if (!pose) throw new Error('a corpse needs the soldier\'s fallen build');
+  const scale = man.scale?.x || 1, key = `${src.uuid}|${scale}`;
+  let geo = corpseGeos.get(key);
+  if (geo) return geo;
+  const n = pose.position.count, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+  const P = pose.position, N = pose.normal;
+  let minY = Infinity;
+  for (let i = 0; i < n; i++) {
+    const y = P.getY(i) * scale;
+    if (y < minY) minY = y;
+  }
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = P.getX(i) * scale; pos[i * 3 + 1] = P.getY(i) * scale - minY; pos[i * 3 + 2] = P.getZ(i) * scale;
+    nor[i * 3] = N.getX(i); nor[i * 3 + 1] = N.getY(i); nor[i * 3 + 2] = N.getZ(i);
+  }
+  geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  if (src.attributes.color) geo.setAttribute('color', src.attributes.color.clone());
+  if (src.attributes.matId) geo.setAttribute('matId', src.attributes.matId.clone());
+  if (src.index) geo.setIndex(src.index.clone());
+  geo.computeBoundingSphere();
+  corpseGeos.set(key, geo);
+  return geo;
+}
+function corpseMaterial() {
+  // same textured paint as a living soldier, plus a per-body fade. Registered with the texture loader so a corpse
+  // picks up wool and steel when the textures arrive, not only the paint it had at startup.
+  const material = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, depthWrite: true }), { mat: 'wool', grime: true });
+  const prev = material.onBeforeCompile;
+  const prevKey = material.customProgramCacheKey?.bind(material);
+  material.onBeforeCompile = (shader, renderer) => {
+    prev.call(material, shader, renderer);
+    shader.vertexShader = 'attribute float fade;\nvarying float vFade;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvFade = fade;');
+    shader.fragmentShader = 'varying float vFade;\n' + shader.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vFade );');
+  };
+  material.customProgramCacheKey = () => `corpse-fade|${prevKey ? prevKey() : 'paint'}`;
+  return material;
+}
+export function createBodies() {
+  const { cap, soft, life, fade: FADE, sink } = CORPSES;
+  const material = corpseMaterial();
+  const pools = new Map(), bodies = [];
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), at = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+  let worldRef = null, fallback = null;
+  const changed = (pool) => { pool.mesh.instanceMatrix.needsUpdate = true; pool.fade.needsUpdate = true; };
+  function poolFor(src) {
+    let pool = pools.get(src.uuid);
+    if (pool) return pool;
+    const fade = new THREE.InstancedBufferAttribute(new Float32Array(cap).fill(1), 1);
+    const geo = src.clone();
+    geo.setAttribute('fade', fade);
+    const mesh = new THREE.InstancedMesh(geo, material, cap);
+    mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = false;
+    if (worldRef) worldRef.add(mesh);
+    pool = { mesh, fade, list: [] };
+    pools.set(src.uuid, pool);
+    return pool;
+  }
+  function place(pool, b, yOff) {
+    e.set(0, b.yaw, 0); q.setFromEuler(e); at.set(b.x, b.y + yOff, b.z);
+    pool.mesh.setMatrixAt(b.slot, m4.compose(at, q, one));
+  }
+  function drop(i) {
+    const b = bodies[i], pool = b.pool, slot = b.slot, last = pool.list.length - 1;
+    if (slot !== last) {
+      const moved = pool.list[last];
+      pool.mesh.getMatrixAt(last, m4); pool.mesh.setMatrixAt(slot, m4);
+      pool.fade.array[slot] = pool.fade.array[last];
+      moved.slot = slot; pool.list[slot] = moved;
+    }
+    pool.list.pop(); pool.mesh.count = pool.list.length; changed(pool);
+    const end = bodies.length - 1;
+    if (i !== end) bodies[i] = bodies[end];
+    bodies.pop();
+  }
+  function clear() {
+    bodies.length = 0;
+    for (const pool of pools.values()) { pool.list.length = 0; pool.mesh.count = 0; changed(pool); }
+  }
+  function soldierOf(man) {
+    if (man) return man;
+    if (!fallback) {
+      const root = new THREE.Group(), v = { type: 'rifle', root, models: [], turret: null };
+      buildModel(v, root, { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, 0, { w: null });
+      fallback = v.models[0];
+    }
+    return fallback;
+  }
   return {
-    get count() { return list.length; },
-    // a body lying where a soldier fell; world is the match's scene group
-    add(world, x, y, z) {
-      if (mesh.parent !== world) { world.add(mesh); clear(); }
+    get count() { return bodies.length; },
+    // a soldier lying where he fell. man is that man (his prone build and scale); yaw is the direction he faces.
+    // without a man, a rifleman stands in, so a caller that only has a place still gets a soldier rather than a capsule.
+    add(world, x, y, z, man = null, yaw = null) {
+      if (worldRef !== world) { clear(); worldRef = world; for (const pool of pools.values()) world.add(pool.mesh); }
       let live = 0, oldest = -1, most = -1;
-      list.forEach((b, i) => {
-        if (b.out === undefined) { live++; if (oldest < 0 || b.age > list[oldest].age) oldest = i; }
-        else if (most < 0 || b.out < list[most].out) most = i;
+      bodies.forEach((b, i) => {
+        if (b.out === undefined) { live++; if (oldest < 0 || b.age > bodies[oldest].age) oldest = i; }
+        else if (most < 0 || b.out < bodies[most].out) most = i;
       });
-      if (live >= soft && oldest >= 0) list[oldest].out = FADE;
-      if (list.length >= cap) drop(most >= 0 ? most : oldest);
-      e.set(0, Math.random() * 6, Math.PI / 2); q.setFromEuler(e); at.set(x, y, z);
-      mesh.setMatrixAt(list.length, m4.compose(at, q, one)); fade.array[list.length] = 1;
-      list.push({ age: 0 }); mesh.count = list.length; changed();
+      if (live >= soft && oldest >= 0) bodies[oldest].out = FADE;
+      if (bodies.length >= cap) drop(most >= 0 ? most : oldest);
+      const who = soldierOf(man), pool = poolFor(fallenGeometry(who));
+      const b = { age: 0, x, y, z, yaw: yaw ?? Math.random() * Math.PI * 2, pool, slot: pool.list.length };
+      pool.list.push(b); bodies.push(b);
+      place(pool, b, 0); pool.fade.array[b.slot] = 1; pool.mesh.count = pool.list.length; changed(pool);
     },
     update(dt) {
-      if (list.length && !mesh.parent?.parent) clear(); // the match ended: its world left the scene
-      for (let i = list.length - 1; i >= 0; i--) {
-        const b = list[i];
+      if (bodies.length && worldRef && !worldRef.parent) clear(); // the match ended: its world left the scene
+      for (let i = bodies.length - 1; i >= 0; i--) {
+        const b = bodies[i];
         b.age += dt;
         if (b.out === undefined && b.age >= life) b.out = FADE;
         if (b.out === undefined) continue;
         b.out -= dt;
-        if (b.out <= 0) drop(i); else { fade.array[i] = b.out / FADE; fade.needsUpdate = true; }
+        if (b.out <= 0) drop(i);
+        else {
+          b.pool.fade.array[b.slot] = b.out / FADE;
+          place(b.pool, b, -(1 - b.out / FADE) * sink);
+          changed(b.pool);
+        }
       }
     },
   };

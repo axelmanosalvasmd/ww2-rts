@@ -5,6 +5,21 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Conscripts take three quarters of a place in the army limit, so the USSR can field a third more squads than anyone else (32 instead of 24 in Classic). The army count in the HUD can show quarters, and a unit only goes into the queue if the whole unit fits.
+- Smoke is no longer a cloak of invulnerability. It still blocks sight lines 15 m and longer, so it screens you from tanks and guns at range, but anything closer sees and shoots through it. Before, a unit in smoke could not be seen or hit beyond 6 m.
+- Balance, 150 AI matches on the default map (seed 1000), before -> after both changes: faction wins USA/Germany/USSR 39/58/53 -> 46/46/58, median length 473 s -> 465 s, runner-up VP share 0.44 -> 0.44. The USSR edges up from 35% to 39%, inside the swing earlier runs showed.
+- Fixed: dead or fogged units (yours and the enemy's) stayed on screen with their health bars and icons ("That target is not visible" when you attacked them) until a reload. The cause: a game server started before the snapshot deltas, serving the newer page, which only drops a unit the server names as gone. The page now treats a snapshot from such a server as the full list. Each snapshot also says which units your game should hold; if it ever disagrees, your game asks for a full resend and repairs itself within a fraction of a second, and the browser console shows "unit rows out of sync".
+
+- Teammates now spawn on the same side of the map. Spawns are matched by walking distance over the terrain, so a river, cliff or sea between two spawns keeps them on different teams: on Pegasus Bridge, Ardennes, Seawall, Kasserine and Monte Cassino a 2v2 or 3v3 always splits one bank against the other. Before, spawns were dealt in map-file order with a random rotation, which could put teammates on opposite banks. Which side your team gets still changes each match, and a free-for-all spreads players evenly.
+- Smoother play on slow connections: snapshots are compressed, and each one now carries only the units that changed (plus the ones that died or slipped into fog), with wrecks and resource nodes sent only when they change. Measured on Six Fronts with Endless armies over 300 s of AI play (360 units at the end): late-game snapshots went from 10.2 KB to 7.3 KB raw and about 2.7 KB on the wire (3.7 KB compressed before the deltas, 10.2 KB uncompressed before this change). Building and encoding snapshots for six players went from 11.4 ms to 6.6 ms per send.
+- Spectators: the server builds one snapshot for all of them instead of one each, and replays only new terrain changes (1.0 ms and 23.6 KB down to 0.4 ms and 15.4 KB per broadcast, at 3000 changed cells). A spectator who joins late still gets the whole map and every unit.
+- The client only touches health bar, suppression bar, cover shield and sniper camouflage materials when their look changes, instead of on every unit every snapshot.
+- Left for later: the team fog pass (`teamFog`) still reruns on every vision pass; it is already shared per team and cached between passes.
+
+- Smoother big battles: all soldiers that look the same are now drawn together in one go instead of one by one, so 30 infantry squads cost about 60 draw calls instead of about 250 (fewer still at a distance), and squads off screen are skipped. Health bars only show on units that are hurt, suppressed, selected or under the cursor. The terrain no longer casts shadows on itself, the weather stops re-applying the light once it has settled, digging and shelling re-place only the nearby trees and rebuild the trenches and minimap at most 4 times a second, and the cursor check under the mouse runs every fourth frame. Bar materials are now freed when a unit is removed. To check in the browser: soldiers posing and walking, the far-away models, sniper camouflage and the `?perf` draw-call count.
+- Fallen soldiers stay the soldiers who fell. A dead man lies as if he fell rather than aiming from the dirt. He keeps his uniform, helmet and kit, stays where he dropped, then sinks and fades. Bodies are no longer brown capsules. Up to 200 stay on the field, in one draw per uniform.
+- Left for later: a wiped gun crew's weapon still disappears with the squad. Vehicle wrecks are still the real hull, darkened.
+
 - Computer opponents play as a commander for the match, instead of issuing every perfect order on the same look.
   Each look is one situation: wait, hold, or attack, and that plan stays until the objective falls, the push fails,
   a watched enemy hits something they hold, or the time they gave it runs out. Easy keeps a plan longer than Hard.
@@ -22,6 +37,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Control groups remember their formation: Ctrl+number saves it, recalling the group brings it back.
 - Less clutter: fortifications moved into a **Build** menu and dig patterns into a **Trenches** menu. Their hotkeys still work with the menus closed.
 - Left for later: queued legs do not keep the march-together pace, and a group's saved formation does not include its facing.
+
+- Big battles run smoother on the server. Unit separation uses its own fine 4 m grid and filters before sorting, vision shares one nearby-enemy query per 16 m cell, mortars count a target's neighbours from one query, radius queries filter before sorting, and the server builds the snapshot cache once per send tick instead of twice. Bastogne Horde (3 AI, endless army, 6000 ticks, seeded) at 300 to 399 units: step p50/p95 7.7/21.5 ms to 6.4/13.1 ms, worst step 34.5 to 21.7 ms, snapshot p50 3.1 to 1.5 ms. Same final state hash before and after, so replays and AI results are unchanged. One side effect: orders an AI gives on a send tick reach human snapshots one send later (about 0.1 s).
+- Checked and left alone: the path budget counts findPath calls (default 4096 per tick, so it never limits), not node expansions. It does not explain step spikes: the slowest steps in the run above had no path work, and the heaviest path tick (5042 expansions) took 9 ms.
 
 - Spectator mode. In the lobby, "Watch as a spectator" gives up your seat; "Take a seat" sits you back down. A
   spectator sees the whole map with no fog, every army and every shot, and has no orders, resources, recruit bar or
