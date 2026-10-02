@@ -132,6 +132,38 @@ only through `command()`.
   for human and AI armies alike. A mine painted in the editor belongs to nobody and is not counted. The uncommitted
   difficulty branch has not been merged or edited.
 
+## AI decisions (2026-10-02)
+
+A seat AI is one commander with a private match memory (`shared/ai-mind.js`), not a list of reflexes that all fire
+every look. The horde wave is unchanged: it still attack-moves the bunker and still arms every squad.
+
+- A new enemy is noted the look it appears and acted on only after `notice` seconds (Easy 2.5, Normal 1.25, Hard 0.5).
+  Strikes, grenades, satchels, barrages and Hard's focus retarget wait that long. An announced enemy air strike is
+  still answered at once, because the siren is public. One support call per look.
+- March orders are capped per look (`hands`: 4, 6, 8). Reopening a cut point is not capped. One enemy-held point is
+  attacked per look. The point it picks keeps a small pull for `commit` seconds (16, 10, 6) unless that push is failing.
+- Auto-retreat is no longer switched on for every squad at the first look. Squads are armed when they are sent into
+  a fight, or once an enemy they have watched is within 40 m. Hurt squads still get an explicit retreat order.
+- Learning uses only own losses and sightings. A squad that disappears within 28 m of a remembered enemy type adds
+  one point of respect for that type (cap 6). Respect for tanks, mediums or Tigers makes the next rifle or MG buy an
+  AT gun (until two are fielded) even after the armor leaves vision. Two infantry losses pull a machine gun.
+  A squad lost within 20 m of a point adds a failure there (cap 4). Each failure adds 40 m to that point's score and
+  0.45 to the force margin the next attack needs, counting at most three. Capturing a point removes one failure and
+  one point of every respect, so the commander can change its mind. The memory is wiped with the match.
+- Each look names one situation, stored on the seat's private operation: `wait`, `defense`, or `push`. Purchases,
+  the one support call, and marches follow it. Support aims at that fight, or at an announced enemy air strike.
+  A contact younger than `notice` does not cancel the operation and is not struck. Easy's `commit` is longer than Hard's.
+- Wait: armor still in the 60 second sightings, and worth more than the anti-tank guns and tanks the seat can send.
+  No rifle attack-move onto that ground. The next rifle or machine-gun buy is an anti-tank gun until two are fielded.
+  An anti-tank gun already fielded is ordered toward the armor. The wait is that ground, not the whole army: another
+  point more than 28 m from the threat can still be taken, and the decision names that action `take-other` (or
+  `prepare` when every objective is the threat, `hold` on defense, `take` on a push). The same threat is not waited
+  out forever: when `commit` ends, the sighting expires, or a later look sees that ground empty, a push onto it is
+  allowed again. Rifles still do not walk onto armor that is remembered. An infantry crowd the seat cannot match
+  waits for a machine gun.
+- Defense: a watched enemy on a held point, a depot, or the base. Idle combat units are ordered toward it, and no
+  second enemy objective is opened in that look. The horde wave director does not use these situations.
+
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
 - Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of
@@ -771,6 +803,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   broadcast, one terrain memory on the game (`g.watchPending`, fed by `logCell`), and a joining spectator makes the
   next broadcast whole. The client (and the test harness) rebuild full lists before anything reads them.
   `terrainFor` skips its pending replay until a cell changes, a mine is found or a vision pass runs.
+- Delta self-check: players saw dead or fogged units (bars and icons, "target not visible") until a reload. The cause
+  was a server process started before the deltas serving the newer client from disk: it sent every row and no gone
+  list, and the client only drops what gone names. The client now clears its rows for a snapshot without `held`
+  (an older server's full list). Each snapshot carries `held`, the count and xor of the ids the client should hold.
+  On a mismatch the client warns in the console ("unit rows out of sync") and sends `resync` (at most once a second);
+  the server marks that seat (or the spectator stream) full, and the next snapshot has `all`, which makes the client
+  replace its rows.
 - As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
   fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
   gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign
@@ -1411,3 +1450,10 @@ samples. Per-match seeds, outcomes and simulation lengths are saved in
 Click and box selection use projected bounds of each visible model mesh, squad centers and health bars. Posture bounds blend with the rendered morph weights, and near-plane intersections are clipped before projection. Selection and owner rings never count as troop geometry. Garrisoned squads use their roof bars. A box selects a squad when it overlaps any displayed mesh bounds, with 6 px of click forgiveness around those bounds; houses and scenery never block troop selection. Troops take priority over production buildings on a click. Double-click uses the same visible targets and excludes dead squads, passengers and parked aircraft. Release distance also detects a box drag when a mousemove event was missed. Saved groups retain living passenger and parked-aircraft IDs but skip them during recall until they become selectable again. This changes input targeting only, with no balance changes.
 
 Full raw results and source manifests: [behavior balance evidence](docs/behavior-balance-2026-10-01.md). Combined browser checks and GPU measurements: [verification](docs/issue-batch-verification.md).
+
+## Conscript population and smoke (2026-10-01)
+
+- Units can take a fraction of the army limit: `UNITS[type].pop` (default 1), read through `popUse`. Conscripts are 0.75. `popOf`, paratrooper reservations, the buy check (`pop + popUse(unit) > popCap`), the client's `availability`/`buyCount` and the HUD all weigh units the same way.
+- Smoke blocks a sight line only when the line is at least `CFG.smokeSight` (15 m) long. `los` and the fog's `fogLos` share the rule, so the drawn fog matches what units can see and shoot. Cloud sizes and durations are unchanged.
+- Why: a unit inside smoke was hidden beyond the 6 m close-sight rule and could not be targeted at all, so tank smoke and smoke barrages made units close to invulnerable. Conscripts were meant as human waves but were held to the same squad count as everyone else.
+- 150 AI matches, default map, seed 1000, before -> after: USA/Germany/USSR 39/58/53 -> 46/46/58, median 473 s -> 465 s.

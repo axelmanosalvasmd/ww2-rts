@@ -6,6 +6,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 ## Unreleased
 
 - Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A line of bombs is a ragged run: the banks wander and the bright rim is gone on dug ground, instead of a row of equal pale bowls. A wrecked house is broken wall stubs and spilled rubble, not a shorter box. Feet can sit a couple of metres off the visible lip, because the lip slides and the ground under a unit does not.
+- Conscripts take three quarters of a place in the army limit, so the USSR can field a third more squads than anyone else (32 instead of 24 in Classic). The army count in the HUD can show quarters, and a unit only goes into the queue if the whole unit fits.
+- Smoke is no longer a cloak of invulnerability. It still blocks sight lines 15 m and longer, so it screens you from tanks and guns at range, but anything closer sees and shoots through it. Before, a unit in smoke could not be seen or hit beyond 6 m.
+- Balance, 150 AI matches on the default map (seed 1000), before -> after both changes: faction wins USA/Germany/USSR 39/58/53 -> 46/46/58, median length 473 s -> 465 s, runner-up VP share 0.44 -> 0.44. The USSR edges up from 35% to 39%, inside the swing earlier runs showed.
+- Fixed: dead or fogged units (yours and the enemy's) stayed on screen with their health bars and icons ("That target is not visible" when you attacked them) until a reload. The cause: a game server started before the snapshot deltas, serving the newer page, which only drops a unit the server names as gone. The page now treats a snapshot from such a server as the full list. Each snapshot also says which units your game should hold; if it ever disagrees, your game asks for a full resend and repairs itself within a fraction of a second, and the browser console shows "unit rows out of sync".
+
 - Teammates now spawn on the same side of the map. Spawns are matched by walking distance over the terrain, so a river, cliff or sea between two spawns keeps them on different teams: on Pegasus Bridge, Ardennes, Seawall, Kasserine and Monte Cassino a 2v2 or 3v3 always splits one bank against the other. Before, spawns were dealt in map-file order with a random rotation, which could put teammates on opposite banks. Which side your team gets still changes each match, and a free-for-all spreads players evenly.
 - Smoother play on slow connections: snapshots are compressed, and each one now carries only the units that changed (plus the ones that died or slipped into fog), with wrecks and resource nodes sent only when they change. Measured on Six Fronts with Endless armies over 300 s of AI play (360 units at the end): late-game snapshots went from 10.2 KB to 7.3 KB raw and about 2.7 KB on the wire (3.7 KB compressed before the deltas, 10.2 KB uncompressed before this change). Building and encoding snapshots for six players went from 11.4 ms to 6.6 ms per send.
 - Spectators: the server builds one snapshot for all of them instead of one each, and replays only new terrain changes (1.0 ms and 23.6 KB down to 0.4 ms and 15.4 KB per broadcast, at 3000 changed cells). A spectator who joins late still gets the whole map and every unit.
@@ -16,6 +21,18 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fallen soldiers stay the soldiers who fell. A dead man lies as if he fell rather than aiming from the dirt. He keeps his uniform, helmet and kit, stays where he dropped, then sinks and fades. Bodies are no longer brown capsules. Up to 200 stay on the field, in one draw per uniform.
 - Left for later: a wiped gun crew's weapon still disappears with the squad. Vehicle wrecks are still the real hull, darkened.
 
+- Computer opponents play as a commander for the match, instead of issuing every perfect order on the same look.
+  Each look is one situation: wait, hold, or attack, and that plan stays until the objective falls, the push fails,
+  a watched enemy hits something they hold, or the time they gave it runs out. Easy keeps a plan longer than Hard.
+  A tank they saw and then lost still keeps their rifles off that ground, and the next rifle or machine-gun purchase
+  becomes an anti-tank gun, until the sighting is a minute old, they look and the ground is empty, or the wait runs out.
+  If they already have an anti-tank gun, that gun goes toward the tank and the rifles stay back. The rest of the army
+  does not freeze: a point clear of that tank is still taken. A watched enemy on a
+  point, depot, or base they hold pulls idle squads there and stops a second attack for that look. A unit they have
+  only just spotted does not break the plan and is not struck yet. An announced enemy air strike is still answered
+  at once. When squads die on a point, the next push asks for a bigger margin and prefers a different point. Taking
+  a point spends some of that caution, so a lesson can fade. The memory lasts one match. It is not a language model,
+  and it still sees only what a player in that seat would see. A large AI-versus-AI balance sample was not rerun.
 - New **Formation** menu in the Orders panel: line, block, column and wedge (Shift+V cycles), Tighten and Spread (`[` and `]`) to re-form units where they stand, March together (the group moves at its slowest unit's pace) and Snap to trenches (infantry placed next to a trench step into it). Mortars, rockets and medics stand in the rear rank.
 - A wider right-drag now fits more units side by side, so a long drag gives fewer ranks. A double right-click turns the selection to face a spot without moving.
 - Control groups remember their formation: Ctrl+number saves it, recalling the group brings it back.

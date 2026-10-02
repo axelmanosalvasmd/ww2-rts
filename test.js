@@ -324,8 +324,16 @@ const put = (g, owner, type, x, z) => { command(g, owner, { t: 'buy', unit: type
   assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }));
   command(g, 0, { t: 'ability', ids: [t.id] });
   assert.equal(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), false, 'smoke blocks LOS');
+  assert.ok(los(g, { x: 20 - CFG.smokeSight + 1, z: 20 }, { x: 20, z: 20 }), 'a unit close by sees into the smoke');
   run(g, 15);
   assert.ok(los(g, { x: 5, z: 20 }, { x: 35, z: 20 }), 'smoke clears');
+}
+// Conscripts take three quarters of a place in the army limit.
+{
+  const g = fresh(), before = popOf(g, 0);
+  g.players[0].mp = 1000;
+  for (let i = 0; i < 4; i++) put(g, 0, 'rifle', 20 + i * 4, 20).type = 'conscript';
+  assert.equal(popOf(g, 0) - before, 3, 'four conscript squads count as three');
 }
 
 // Catch-up: trailing players earn more manpower.
@@ -3329,12 +3337,17 @@ const referenceNearCover = (g, u) => {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['A', 'B'], false, [0, 1]), sent = new Map(), rows = () => snapshotFor(g, 0, []).units;
   const first = sim.unitDelta(sent, rows());
   assert.ok(first.units.length >= 2 && first.units.length === rows().length && !first.gone, 'a fresh join gets the full set');
-  assert.deepEqual(sim.unitDelta(sent, rows()), { units: [], gone: undefined }, 'unchanged units are not resent');
+  const quiet = sim.unitDelta(sent, rows());
+  assert.deepEqual([quiet.units, quiet.gone, quiet.all], [[], undefined, undefined], 'unchanged units are not resent');
   const [moved, dead] = [...g.units.values()].filter(u => u.owner === 0);
   moved.x += 3; g.units.delete(dead.id);
   const next = sim.unitDelta(sent, rows());
   assert.deepEqual([next.units.map(r => r[0]), next.gone], [[moved.id], [dead.id]], 'only the changed row is sent, the removed unit is gone');
-  assert.equal(sim.unitDelta(sent, rows(), true).units.length, rows().length, 'full resends every row');
+  // held fingerprints what the client should hold, so a drifted client can tell
+  const xor = (ids) => ids.reduce((a, id) => a ^ id, 0), ids = rows().map(r => r[0]);
+  assert.deepEqual(next.held, [ids.length, xor(ids)], 'held: the count and xor of the rows the client holds');
+  const full = sim.unitDelta(sent, rows(), true);
+  assert.ok(full.units.length === rows().length && full.all, 'full resends every row and tells the client to replace its own');
 }
 
 // Incremental terrain matches the prior ordered scan for each viewer's independent history.
@@ -3539,8 +3552,12 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   g.players[0].visible = new Set([wounded.id, current.id]);
   squad.forEach((u, i) => Object.assign(u, { x: 50.5, z: 50.5 + i * 0.5, cd: 999, targetId: current.id, attackId: current.id,
     orders: [{ t: 'amove', x: 81, z: 83 }], amove: null }));
-  const focused = aiCommands(g, 0, {}, 431, { level: 'hard' }).commands;
-  assert.ok(focused.some(c => c.t === 'attack' && c.target === wounded.id && c.ids.length === 2), 'Hard switches both shooters to the wounded visible squad');
+  const memory = {};
+  const firstLook = aiCommands(g, 0, memory, 431, { level: 'hard' }).commands;
+  assert.ok(!firstLook.some(c => c.t === 'attack'), 'Hard watches a fight before it retargets');
+  g.tick = 20;
+  const focused = aiCommands(g, 0, memory, 431, { level: 'hard' }).commands;
+  assert.ok(focused.some(c => c.t === 'attack' && c.target === wounded.id && c.ids.length === 2), 'once the wounded squad has been watched, Hard switches both shooters onto it');
   assert.deepEqual(focused.find(c => c.t === 'amove' && c.queue)?.orders, squad.map(u => [u.id, 81, 83]), 'a second focus order preserves the already queued onward destination');
   current.retreating = true; wounded.retreating = true;
   const stopped = aiCommands(g, 0, {}, 431, { level: 'hard' }).commands;
@@ -3551,7 +3568,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
 // A newly spotted gun's private stationary timer cannot authorize an artillery call.
 {
   const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]), memory = {};
-  const mg = massiveInternals.spawnUnit(g, 1, 'mg'); Object.assign(mg, { x: 45, z: 5, still: 0 });
+  const mg = massiveInternals.spawnUnit(g, 1, 'mg'); Object.assign(mg, { x: g.points[0].x, z: g.points[0].z, still: 0 });
   g.players[0].visible.add(mg.id); g.players[0].mp = 1000;
   const hiddenTimer = structuredClone(g); hiddenTimer.units.get(mg.id).still = 100;
   const first = aiEquivalent(g, hiddenTimer, 0, {}, 37, 'artillery uses observed stillness');
@@ -3587,8 +3604,12 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   roundedTwin.players[0].mp = 1000.99; roundedTwin.players[0].sup.recon = 1.99;
   Object.assign(roundedTwin.strikes[0], { x: 5.04, z: 5.04, dir: 0.04, t: -0.01, live: true });
   const commands = aiEquivalent(g, roundedTwin, 0, {}, 190, 'wire-equivalent precision changes do not affect decisions');
-  assert.ok(commands.some(c => c.t === 'support' && c.kind === 'dive' && c.x === 45 && c.z === 5), 'support aims at rounded visible coordinates');
+  assert.ok(!commands.some(c => c.t === 'support' && c.kind === 'dive'), 'a tank spotted on this look is not struck yet');
   assert.ok(!commands.some(c => c.t === 'support' && c.kind === 'cover'), 'a zero-countdown announcement is already active in the public view');
+  const watched = {};
+  aiCommands(g, 0, watched, 190);
+  g.tick = 40;
+  assert.ok(aiCommands(g, 0, watched, 190).commands.some(c => c.t === 'support' && c.kind === 'dive' && c.x === 45 && c.z === 5), 'once the tank has been watched, the dive aims at its rounded position');
   const control = structuredClone(g); control.players[0].visible.delete(tank.id);
   assert.notDeepEqual(aiCommands(control, 0, {}, 190).commands, commands, 'negative control: hiding a visible tank changes decisions');
 }
@@ -3689,7 +3710,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const open = field(false), plain = aiCommands(open.g, 0, {}, 5).commands;
   const dug = plain.find(c => c.t === 'entrench');
   assert.ok(dug && dug.ids.includes(open.squad.id) && dug.pattern === 'arc', 'a squad holding open ground entrenches');
-  assert.ok(plain.some(c => c.t === 'stance' && c.key === 'autoRetreat' && c.on === true && c.ids.includes(open.squad.id)), 'the army is put on auto-retreat');
+  assert.ok(!plain.some(c => c.t === 'stance'), 'a squad holding a quiet point is not armed to retreat before any fight');
   // Trench already stands around the point (public map): no new entrenchment, the squad takes cover in it instead.
   const dugIn = field(true); dugIn.squad.x += 6; // beside the trench, still on the point
   const known = aiCommands(dugIn.g, 0, {}, 5).commands;
@@ -3716,6 +3737,171 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   // A squad already on a mass entrenchment is not given another one.
   open.squad.entrench = { jobs: [{ x: 1, z: 1 }], active: 0, crew: 1 };
   assert.ok(!aiCommands(open.g, 0, {}, 5).commands.some(c => c.t === 'entrench'), 'a squad on a mass entrenchment is not ordered to entrench again');
+}
+
+// A fight is watched before squads are told to fall back. The order is a decision, not a switch flipped at match start.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const squad = massiveInternals.spawnUnit(g, 0, 'rifle'), foe = massiveInternals.spawnUnit(g, 1, 'rifle');
+  Object.assign(squad, { x: 80, z: 80 }); Object.assign(foe, { x: 88, z: 80 });
+  g.players[0].visible.add(foe.id);
+  const memory = {};
+  assert.ok(!aiCommands(g, 0, memory, 5).commands.some(c => c.t === 'stance'), 'the first look at an enemy does not arm auto-retreat');
+  g.tick = 40;
+  const armed = aiCommands(g, 0, memory, 5).commands.find(c => c.t === 'stance' && c.key === 'autoRetreat' && c.on === true);
+  assert.ok(armed && armed.ids.includes(squad.id), 'after the contact has been watched, the squad in that fight is told to fall back if it breaks');
+}
+
+// Losses stay in the commander's head after the killer leaves sight, and a point that ate squads is avoided.
+{
+  const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
+  const rifle = massiveInternals.spawnUnit(g, 0, 'rifle'), tank = massiveInternals.spawnUnit(g, 1, 'tank');
+  Object.assign(rifle, { x: 40, z: 40 }); Object.assign(tank, { x: 48, z: 40 });
+  g.players[0].visible.add(tank.id);
+  const memory = {};
+  aiCommands(g, 0, memory, 11);
+  g.units.delete(rifle.id); g.players[0].visible.delete(tank.id); g.players[0].mp = 1000;
+  const learned = aiCommands(g, 0, memory, 11).commands.filter(c => c.t === 'buy').map(c => c.unit);
+  assert.ok(memory.mind.respect.tank >= 1, 'a squad lost beside a tank is remembered as a tank');
+  assert.ok(learned.includes('at') && !learned.includes('rifle'), 'the next buy is an AT gun even though the tank is no longer in sight');
+
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 40 }, { x: 75, y: 40 }], points: [{ x: 20, y: 40 }, { x: 55, y: 40 }] };
+  const field = createGame(map, ['AI', 'enemy'], false, [0, 1]); field.units.clear(); field.players[0].mp = 0;
+  const held = field.points[0];
+  const lost = [0, 1, 2].map(() => massiveInternals.spawnUnit(field, 0, 'rifle'));
+  lost.forEach(u => Object.assign(u, { x: held.x, z: held.z }));
+  const mind = {};
+  aiCommands(field, 0, mind, 3);
+  lost.forEach(u => field.units.delete(u.id));
+  aiCommands(field, 0, mind, 3);
+  assert.equal(mind.mind.points[0].failed, 3, 'three squads lost on a point are three failures');
+  const fresh = massiveInternals.spawnUnit(field, 0, 'rifle');
+  Object.assign(fresh, field.players[0].spawn);
+  const march = aiCommands(field, 0, mind, 3);
+  assert.equal(mind.mind.decision.aim, 1, 'the next decision picks the other point');
+  const step = march.commands.find(c => c.t === 'move' || c.t === 'amove');
+  assert.ok(step && step.orders.some(([, x]) => x > 70), 'the squad is sent toward the point that has not killed anyone');
+}
+
+// A remembered tank is a threat the rifles do not walk into. The plan holds, then it can change.
+{
+  const onto = (commands, ids, at, r = 28) => commands.some(c => (c.t === 'amove' || c.t === 'move') && c.orders?.some(([id, x, z]) => ids.includes(id) && Math.hypot(x - at.x, z - at.z) <= r));
+  const field = () => {
+    const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
+    g.units.clear(); g.players[0].mp = 1000;
+    const rifles = [0, 1].map(i => { const u = massiveInternals.spawnUnit(g, 0, 'rifle'); Object.assign(u, { x: 8 + i * 2, z: 8, cd: 999 }); return u; });
+    const tank = massiveInternals.spawnUnit(g, 1, 'tank');
+    Object.assign(tank, { x: g.points[0].x, z: g.points[0].z });
+    g.points[0].owner = 1;
+    g.players[0].visible.add(tank.id);
+    return { g, rifles, tank, at: { x: g.points[0].x, z: g.points[0].z } };
+  };
+  const seen = field(), memory = {};
+  aiCommands(seen.g, 0, memory, 7, { level: 'normal' });
+  seen.g.players[0].visible.delete(seen.tank.id); seen.g.units.delete(seen.tank.id);
+  const waiting = aiCommands(seen.g, 0, memory, 7, { level: 'normal' });
+  assert.equal(memory.mind.decision.situation, 'wait', 'a tank that left sight, and is still stronger than the rifles, is a wait');
+  assert.ok(!onto(waiting.commands, seen.rifles.map(u => u.id), seen.at), 'rifles are not attack-moved onto a tank the seat still remembers');
+  const bought = waiting.commands.filter(c => c.t === 'buy').map(c => c.unit);
+  assert.ok(bought.includes('at') && !bought.includes('rifle') && !bought.includes('mg'), 'with no anti-tank gun fielded, the next rifle or machine-gun buy is anti-tank');
+  seen.g.tick = 20 * 61;
+  const expired = aiCommands(seen.g, 0, memory, 7, { level: 'normal' });
+  assert.notEqual(memory.mind.decision.situation, 'wait', 'once the sighting is older than a minute the wait is over');
+  assert.ok(onto(expired.commands, seen.rifles.map(u => u.id), seen.at), 'after the sighting expires the rifles may attack that ground');
+
+  const looked = field(), lookedAt = {};
+  aiCommands(looked.g, 0, lookedAt, 7, { level: 'normal' });
+  looked.g.players[0].visible.delete(looked.tank.id); looked.g.units.delete(looked.tank.id);
+  aiCommands(looked.g, 0, lookedAt, 7, { level: 'normal' });
+  Object.assign(looked.rifles[0], { x: looked.at.x, z: looked.at.z + 30 });
+  const empty = aiCommands(looked.g, 0, lookedAt, 7, { level: 'normal' });
+  assert.notEqual(lookedAt.mind.decision.situation, 'wait', 'looking at the empty ground retires the remembered tank');
+  assert.ok(onto(empty.commands, [looked.rifles[0].id], looked.at) || onto(empty.commands, looked.rifles.map(u => u.id), looked.at), 'once the ground has been seen empty a later decision may attack');
+
+  const escorted = field();
+  const gun = massiveInternals.spawnUnit(escorted.g, 0, 'at');
+  Object.assign(gun, { x: 10, z: 10, cd: 999 });
+  const gunMemory = {};
+  aiCommands(escorted.g, 0, gunMemory, 7, { level: 'normal' });
+  escorted.g.players[0].visible.delete(escorted.tank.id); escorted.g.units.delete(escorted.tank.id);
+  const withGun = aiCommands(escorted.g, 0, gunMemory, 7, { level: 'normal' });
+  assert.ok(onto(withGun.commands, [gun.id], escorted.at), 'the anti-tank gun is ordered toward the remembered armor');
+  assert.ok(!onto(withGun.commands, escorted.rifles.map(u => u.id), escorted.at), 'the rifles are not sent onto that armor alone');
+
+  const same = field(), base = {};
+  aiCommands(same.g, 0, base, 7, { level: 'normal' });
+  same.g.players[0].visible.delete(same.tank.id); same.g.units.delete(same.tank.id);
+  aiCommands(same.g, 0, base, 7, { level: 'normal' });
+  const leftMem = structuredClone(base), rightMem = structuredClone(base);
+  const left = aiCommands(same.g, 0, leftMem, 7, { level: 'normal' });
+  const right = aiCommands(same.g, 0, rightMem, 7, { level: 'normal' });
+  assert.deepEqual(left.commands, right.commands, 'the same view, memory, level, and tick produce the same orders');
+  assert.equal(leftMem.mind.decision.situation, rightMem.mind.decision.situation, 'both looks name the same situation');
+  assert.equal(leftMem.mind.decision.situation, 'wait');
+
+  const pace = field();
+  const easy = {}, hard = {};
+  aiCommands(pace.g, 0, easy, 7, { level: 'easy' });
+  aiCommands(pace.g, 0, hard, 7, { level: 'hard' });
+  assert.ok(easy.mind.operation.until > hard.mind.operation.until, 'Easy keeps an operation longer than Hard');
+  assert.equal(easy.mind.decision.situation, hard.mind.decision.situation);
+
+  const map = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 40 }, { x: 75, y: 40 }], points: [{ x: 20, y: 40 }, { x: 60, y: 40 }] };
+  const hold = createGame(map, ['AI', 'enemy'], false, [0, 1]);
+  hold.units.clear(); hold.players[0].mp = 0;
+  const squads = [0, 1].map(i => { const u = massiveInternals.spawnUnit(hold, 0, 'rifle'); Object.assign(u, { x: 12 + i, z: 81, cd: 999 }); return u; });
+  hold.points[0].owner = 0; hold.points[1].owner = 1;
+  const plan = {};
+  aiCommands(hold, 0, plan, 4, { level: 'normal' });
+  assert.equal(plan.mind.decision.situation, 'push');
+  assert.equal(plan.mind.operation.point, 1);
+  const foe = massiveInternals.spawnUnit(hold, 1, 'rifle');
+  Object.assign(foe, { x: hold.points[0].x, z: hold.points[0].z, cd: 999 });
+  hold.players[0].visible.add(foe.id);
+  const young = aiCommands(hold, 0, plan, 4, { level: 'normal' });
+  assert.equal(plan.mind.decision.situation, 'push', 'a contact younger than the notice delay does not cancel the attack');
+  assert.equal(plan.mind.operation.point, 1);
+  assert.ok(!young.commands.some(c => c.t === 'attack' || c.t === 'support' || (c.t === 'ability' && c.ids)), 'a contact younger than the notice delay is not struck yet');
+  hold.tick = 40;
+  const defending = aiCommands(hold, 0, plan, 4, { level: 'normal' });
+  assert.equal(plan.mind.decision.situation, 'defense', 'a watched enemy on a held point becomes a defense');
+  assert.ok(onto(defending.commands, squads.map(u => u.id), foe, 20), 'idle squads are ordered toward the threat on the held point');
+  assert.ok(!defending.commands.some(c => (c.t === 'amove' || c.t === 'move') && c.orders?.some(([, x]) => x > 100)), 'that look does not open the other enemy point');
+
+  const siren = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]);
+  siren.units.clear(); siren.players[0].mp = 1000;
+  const watcher = massiveInternals.spawnUnit(siren, 0, 'rifle');
+  Object.assign(watcher, { x: 40, z: 40, cd: 999 });
+  const freshTank = massiveInternals.spawnUnit(siren, 1, 'tank');
+  Object.assign(freshTank, { x: 140, z: 140 });
+  siren.players[0].visible.add(freshTank.id);
+  siren.strikes.push({ kind: 'bombing', owner: 1, x: 42, z: 40, dir: 0, t: 4, live: false, left: 1, next: 0 });
+  const cover = aiCommands(siren, 0, {}, 7, { level: 'normal' });
+  assert.ok(cover.commands.some(c => c.t === 'support' && c.kind === 'cover'), 'an announced enemy air strike is answered at once with fighter cover');
+  assert.ok(!cover.commands.some(c => c.t === 'support' && c.kind !== 'cover'), 'the fresh tank is not struck on the look it appears');
+
+  // A player who will not walk rifles into a tank still takes the other point.
+  const split = { w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)), spawns: [{ x: 4, y: 40 }, { x: 75, y: 40 }], points: [{ x: 20, y: 40 }, { x: 60, y: 40 }] };
+  const board = createGame(split, ['AI', 'enemy'], false, [0, 1]);
+  board.units.clear(); board.players[0].mp = 1000;
+  // Far enough that losing the tank does not count as seeing that ground empty (rifle vision is 36 m).
+  const foot = [0, 1].map(i => { const u = massiveInternals.spawnUnit(board, 0, 'rifle'); Object.assign(u, { x: 12 + i, z: 20, cd: 999 }); return u; });
+  const armor = massiveInternals.spawnUnit(board, 1, 'tank');
+  Object.assign(armor, { x: board.points[0].x, z: board.points[0].z });
+  board.points[0].owner = 1; board.points[1].owner = 1;
+  board.players[0].visible.add(armor.id);
+  const acted = {};
+  aiCommands(board, 0, acted, 7, { level: 'normal' });
+  board.players[0].visible.delete(armor.id); board.units.delete(armor.id);
+  const other = aiCommands(board, 0, acted, 7, { level: 'normal' });
+  assert.equal(acted.mind.decision.situation, 'wait', 'the tank is still a wait');
+  assert.equal(acted.mind.decision.action, 'take-other', 'the action is the clear point, not a freeze');
+  assert.ok(!onto(other.commands, foot.map(u => u.id), board.points[0]), 'rifles are not sent onto the tank point');
+  assert.ok(onto(other.commands, foot.map(u => u.id), board.points[1]), 'the squads take the other point');
+  const otherBuy = other.commands.filter(c => c.t === 'buy').map(c => c.unit);
+  assert.ok(otherBuy.includes('at') && !otherBuy.includes('rifle') && !otherBuy.includes('mg'), 'the purchase is still the missing anti-tank gun');
+  console.log('AI situation: wait, empty ground, expired sighting, escorted gun, lasting attack, defense, young contact, fighter cover, and repeated looks checked');
+  console.log('AI action: a remembered tank keeps rifles off that point while the squads take a different one');
 }
 
 // A blown bridge is put back using the public map and the seat's remembered terrain; one still standing is left alone.
