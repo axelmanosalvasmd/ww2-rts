@@ -439,12 +439,16 @@ function startGame(m, restored = null) {
   const assault = ['assault', 'annihilation', 'horde'].includes(lobbyState?.mode); // no VP in these
   points = map.points.filter(p => !assault || (p.mp ?? 1) > 0).map((p) => {
     const g = new THREE.Group(); g.position.set((p.x + 0.5) * CELL, hAt((p.x + 0.5) * CELL, (p.y + 0.5) * CELL), (p.y + 0.5) * CELL);
-    const cp = capturePoint(CFG.pointRadius, classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`); // Classic: points pay Munitions
+    const kind = { radio: 'Radio post · ', depot: 'Supply depot · ' }[p.kind] ?? '';
+    const cp = capturePoint(CFG.pointRadius, kind + (classicMode() ? `+${(p.vp ?? 1) * CFG.classic.munPerVp} Mun/s` : p.vp > 1 && !assault ? `★ ${p.vp}× VP` : `+${p.mp ?? 1} MP/s`)); // Classic: points pay Munitions
     g.add(cp.group, mesh(GEO.cyl, mat(0x5a4a36), 0.07, 8, 0.07, 0, 4, 0));
     // shown while the point is cut off from its owner's HQ and pays nothing (supply lines)
     const cutTag = label('Cut off: no supply', { color: 0xb8322a }); cutTag.position.y = 13; cutTag.visible = false; g.add(cutTag);
+    // shown while your side can't take it: it needs another point held first (map.points[i].needs)
+    const lockTag = label('Locked: take the linked point first (dashed on the minimap)', { color: 0xb8a04a }); lockTag.position.y = 15; lockTag.visible = false; g.add(lockTag);
     world.add(g);
-    return { g, set: cp.set, frame: cp.frame, cut: (on) => { cutTag.visible = !!on; } };
+    const n = map.points[p.needs], link = n && { x: (n.x + 0.5) * CELL, z: (n.y + 0.5) * CELL };
+    return { g, link, set: cp.set, frame: cp.frame, cut: (on) => { cutTag.visible = !!on; }, lock: (on) => { lockTag.visible = !!on; } };
   });
 
   // fog of war overlay: the server's mask of what my team sees (client/fog.js)
@@ -490,7 +494,7 @@ function terrainFrame(dt) {
   terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
-function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state); }
+function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state, lastStart.map.buildings); }
 
 // bombs and shells lower the ground: patch the map's height rows
 function setLevel(map, cell, lv) {
@@ -1465,7 +1469,10 @@ function drawMinimap() {
   const col = (slot) => css(look(slot).color);
   lastSnap.points.forEach(([owner], i) => { const p = points[i]?.g.position; if (!p) return; c.beginPath(); c.arc(p.x, p.z, CFG.pointRadius, 0, Math.PI * 2); c.fillStyle = owner >= 0 ? col(owner) + '99' : '#dddddd66'; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1 / S; c.stroke();
     // cut off from its HQ: a red cross through it
-    if (lastSnap.points[i][4]) { const r = CFG.pointRadius * 0.7; c.beginPath(); c.moveTo(p.x - r, p.z - r); c.lineTo(p.x + r, p.z + r); c.moveTo(p.x + r, p.z - r); c.lineTo(p.x - r, p.z + r); c.strokeStyle = '#d0362c'; c.lineWidth = 3 / S; c.stroke(); } });
+    if (lastSnap.points[i][4]) { const r = CFG.pointRadius * 0.7; c.beginPath(); c.moveTo(p.x - r, p.z - r); c.lineTo(p.x + r, p.z + r); c.moveTo(p.x + r, p.z - r); c.lineTo(p.x - r, p.z + r); c.strokeStyle = '#d0362c'; c.lineWidth = 3 / S; c.stroke(); }
+    // locked for your side: dashed to the point it needs
+    const to = points[i].link;
+    if (lastSnap.points[i][5] && to) { c.beginPath(); c.setLineDash([6 / S, 4 / S]); c.moveTo(p.x, p.z); c.lineTo(to.x, to.z); c.strokeStyle = '#d6b25e'; c.lineWidth = 2 / S; c.stroke(); c.setLineDash([]); } });
   (lastStart?.spawns || []).forEach((sp, i) => { c.fillStyle = col(i); c.fillRect(sp.x - 5, sp.z - 5, 10, 10); c.strokeStyle = '#000'; c.strokeRect(sp.x - 5, sp.z - 5, 10, 10); });
   for (const [kind, x, z, dir, , owner] of lastSnap.strikes || []) {
     const sp = SUPPORT[kind]; if (!sp) continue;

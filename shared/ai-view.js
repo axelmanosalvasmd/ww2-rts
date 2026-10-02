@@ -120,7 +120,7 @@ export function viewFor(g, slot, memory = {}, cache) {
     units: new Map(snap.units.map(row => { const u = decodeUnit(row); return [u.id, u]; })),
     players: g.players.map((p, i) => ({ slot: i, name: p.name, team: p.team, faction: p.faction, spawn: { ...p.spawn }, out: snap.out[i], vp: snap.vp[i] })),
     points: g.points.map((p, i) => ({ x: p.x, z: p.z, vp: p.vp, mp: p.mp,
-      owner: snap.points[i][0], capper: snap.points[i][1], progress: snap.points[i][2], contested: !!snap.points[i][3], cut: !!snap.points[i][4] })),
+      owner: snap.points[i][0], capper: snap.points[i][1], progress: snap.points[i][2], contested: !!snap.points[i][3], cut: !!snap.points[i][4], locked: !!snap.points[i][5] })),
     nodes: (snap.nodes ?? []).map(([x, z, rate, fuel]) => ({ x, z, rate, fuel: !!fuel })),
     // my side's own mines, and apart from them the enemy mines its builder squads have found
     mines: [...(memory.mines ?? [])].filter(c => !snap.foundMines.includes(c)).map(c => ({ x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL })),

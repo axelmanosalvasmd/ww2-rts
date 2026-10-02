@@ -46,6 +46,7 @@ const ALERTS = {
   unitLost: { name: 'alert_unit_lost', gap: 4, voice: 'lost' },
   air: { name: 'alert_air', gap: 4 },
   ready: { name: 'alert_ready', gap: 1.5 },
+  event: { name: 'alert_air', gap: 1 }, // a map's scripted event (trigger)
 };
 const MAX_PLAYING = 32, VOICE_GAP = 2.5;
 

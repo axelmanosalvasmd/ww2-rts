@@ -69,7 +69,7 @@ export function createLobbyView(host) {
     world.add(out.relief.mesh);
     await step();
     const pieces = new THREE.Group(); world.add(pieces);
-    buildStructures(pieces, grid, map.rows, out.hAt);
+    buildStructures(pieces, grid, map.rows, out.hAt, undefined, map.buildings);
     await step();
     out.water = createWater(grid, map, out.hAt); if (out.water) world.add(out.water.mesh);
     await step();

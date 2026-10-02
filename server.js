@@ -67,8 +67,14 @@ async function saveMap(req, res, name) {
   try { map = JSON.parse(Buffer.concat(chunks)); } catch { return json(400, { error: 'bad JSON' }); }
   const err = validateMap(map);
   if (err) return json(400, { error: err });
-  const clean = { name: map.name, w: map.w, h: map.h, rows: map.rows, ...(map.heights && { heights: map.heights }), spawns: map.spawns.map(({ x, y }) => ({ x, y })),
-    points: map.points.map(({ x, y, vp, mp }) => ({ x, y, vp: vp ?? 1, mp: mp ?? 1 })), ...(map.defend && { defend: map.defend }) };
+  // every field validateMap checks, and nothing else
+  const clean = { name: map.name, w: map.w, h: map.h, rows: map.rows, ...(map.heights && { heights: map.heights }),
+    spawns: map.spawns.map(({ x, y, assault }) => ({ x, y, ...(assault && { assault }) })),
+    points: map.points.map(({ x, y, vp, mp, kind, needs }) => ({ x, y, vp: vp ?? 1, mp: mp ?? 1, ...(kind && { kind }), ...(needs !== undefined && { needs }) })),
+    ...(map.defend && { defend: map.defend }), ...(map.assaultTime !== undefined && { assaultTime: map.assaultTime }),
+    ...(map.naval && { naval: true }), ...(map.trenchFacing && { trenchFacing: true }),
+    ...(map.buildings?.length && { buildings: map.buildings.map(({ x, y, kind }) => ({ x, y, kind })) }),
+    ...(map.triggers?.length && { triggers: map.triggers.map(({ at, say, blow }) => ({ at, ...(say !== undefined && { say }), ...(blow && { blow }) })) }) };
   await writeFile(join(MAPS, name + '.json'), JSON.stringify(clean, null, 1));
   hordeList = null;
   json(200, { ok: true });

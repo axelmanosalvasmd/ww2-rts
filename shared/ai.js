@@ -347,7 +347,7 @@ function plan(observation, slot, opts, mem, send) {
     const scout = mine.find(u => !u.air && !UNITS[u.type].medic) ?? mine[0];
     let best = -1, bestScore = Infinity;
     if (scout) view.points.forEach((p, i) => {
-      if (allied(view, p.owner, slot) && !p.cut) return;
+      if ((allied(view, p.owner, slot) && !p.cut) || p.locked) return;
       if (defending && d(p, me.spawn) > 70) return;
       const score = d(scout, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + pointExtra(mind, i) * 40;
       if (score < bestScore) { bestScore = score; best = i; }
@@ -366,7 +366,7 @@ function plan(observation, slot, opts, mem, send) {
       const scout = mine.find(u => !u.air && !UNITS[u.type].medic) ?? mine[0];
       let best = -1, bestScore = Infinity;
       if (scout) view.points.forEach((p, i) => {
-        if (owned(p) || threatNear(p)) return;
+        if (owned(p) || threatNear(p) || p.locked) return;
         if (defending && d(p, me.spawn) > 70) return;
         const score = d(scout, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + pointExtra(mind, i) * 40;
         if (score < bestScore) { bestScore = score; best = i; }
@@ -593,7 +593,7 @@ function plan(observation, slot, opts, mem, send) {
     view.points.forEach((p, i) => {
       // a point of ours that is cut off from the HQ is a target again, for units not already at it: they
       // attack-move to it and meet whatever sits on the road
-      if (allied(view, p.owner, slot) && (!p.cut || d(u, p) <= CFG.pointRadius + 16)) return;
+      if ((allied(view, p.owner, slot) && (!p.cut || d(u, p) <= CFG.pointRadius + 16)) || p.locked) return;
       if (defending && d(p, me.spawn) > 70) return; // defenders stay near home
       // While waiting on a threat, only the clear point is worth a march. The dangerous one is not.
       if (mindful && sit?.kind === 'wait' && (sit.safe == null || i !== sit.safe) && !(allied(view, p.owner, slot) && p.cut)) return;

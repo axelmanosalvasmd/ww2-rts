@@ -238,7 +238,7 @@ export function createHud(ctx) {
     if (v.supp >= 90) t.push(['pin', 'Pinned']); else if (v.supp >= 50) t.push(['sup', 'Suppressed']);
     if (!v.garr) { if (v.cover === 2) t.push(['cov', 'In trench']); else if (v.cover === 3) t.push(['cov', 'By cover']); else if (v.cover) t.push(['cov', 'In cover']); }
     if (v.flags & 16) t.push(['', 'Digging']); else if (v.flags & 1024) t.push(['', 'Waiting for MP to dig']);
-    if (v.flags & 32) t.push(['cov', `Garrisoned: ${CFG.houses[v.flags >> 16 & 3].name}`]);
+    if (v.flags & 32) t.push(['cov', `Garrisoned: ${CFG.houses[v.flags >> 20 & 7].name}`]);
     if (v.flags & 64) t.push(['', 'Attack-move']);
     for (const [bit, nm] of Object.values(STANCE)) if (v.flags & bit) t.push(['', nm]);
     if (UNITS[v.type].building && v.built < 1) t.push(['', `Building ${Math.round(v.built * 100)}%`]);

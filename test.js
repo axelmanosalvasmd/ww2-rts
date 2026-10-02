@@ -679,12 +679,78 @@ const hilly = (heights) => { const g = createGame({ ...blank(empty), heights }, 
   for (const y of [10, 11, 12, 13]) rows[y] = '.'.repeat(8) + 'BBBBBB' + '.'.repeat(6);
   const g = fresh(rows), shed = 20, brick = 4 * 20, stone = 10 * 20 + 8;
   assert.deepEqual([shed, brick, stone].map(c => g.house[c]), [0, 1, 2], 'type follows the size of the block');
-  assert.deepEqual([shed, brick, stone].map(c => g.cellHp[c]), CFG.houses.map(h => h.hp), 'each type has its own hit points');
-  assert.deepEqual([shed, brick, stone].map(c => sim.garrisonMul(g, c)), CFG.houses.map(h => h.mul), 'whole walls give the full protection');
+  assert.deepEqual([shed, brick, stone].map(c => g.cellHp[c]), CFG.houses.slice(0, 3).map(h => h.hp), 'each type has its own hit points');
+  assert.deepEqual([shed, brick, stone].map(c => sim.garrisonMul(g, c)), CFG.houses.slice(0, 3).map(h => h.mul), 'whole walls give the full protection');
   g.cellHp[brick] /= 2;
   assert.ok(Math.abs(sim.garrisonMul(g, brick) - (CFG.houses[1].mul + CFG.houses[1].worn) / 2) < 1e-6, 'a half-wrecked cell gives half as much');
   const u = put(g, 0, 'rifle', 3, 21); Object.assign(u, { garrison: stone });
-  assert.equal(snapshotFor(g, 0, []).units.find(r => r[0] === u.id)[12] >> 16 & 3, 2, 'the snapshot says which type the squad is in');
+  assert.equal(snapshotFor(g, 0, []).units.find(r => r[0] === u.id)[12] >> 20 & 7, 2, 'the snapshot says which type the squad is in');
+}
+
+// Map data: named buildings, stone bridges, point kinds and links, triggers.
+{
+  // a shed named a church is a church: its hit points, and the snapshot says so
+  const rows = [...empty]; rows[1] = 'B' + '.'.repeat(19);
+  rows[6] = '.'.repeat(5) + 'W'.repeat(10) + '.'.repeat(5); rows[7] = '.'.repeat(5) + 'W'.repeat(4) + '==' + 'W'.repeat(4) + '.'.repeat(5);
+  rows[8] = '.'.repeat(5) + 'W'.repeat(10) + '.'.repeat(5);
+  const map = { name: 't', ...blank(rows), buildings: [{ x: 0, y: 1, kind: 'church' }, { x: 10, y: 7, kind: 'stone bridge' }] };
+  assert.equal(validateMap(map), null);
+  const g = createGame(map, ['a', 'b'], false); g.units.clear();
+  assert.equal(g.house[20], 3, 'the named type wins over the size');
+  assert.equal(g.cellHp[20], CFG.houses[3].hp);
+  const u = put(g, 0, 'rifle', 1, 3); u.garrison = 20;
+  assert.equal(snapshotFor(g, 0, []).units.find(r => r[0] === u.id)[12] >> 20 & 7, 3, 'a church garrison shows as one');
+  // the stone bridge: both cells of its span are tough, a dive bomb's worth doesn't drop it
+  const deck = 7 * 20 + 9;
+  assert.equal(g.cellHp[deck], CFG.terrainHp['='] * CFG.stoneBridge);
+  assert.equal(g.cellHp[deck + 1], CFG.terrainHp['='] * CFG.stoneBridge, 'the whole span, not just the named cell');
+  sim.damageCells(g, [], { x: 19, z: 15 }, 1, SUPPORT.dive.terrain);
+  assert.equal(g.chars[deck], '=', 'a stone bridge shrugs off one bomb');
+  assert.ok(validateMap({ ...map, buildings: [{ x: 3, y: 3, kind: 'church' }] }), 'a type must sit on its house');
+  assert.ok(validateMap({ ...map, buildings: [{ x: 0, y: 1, kind: 'castle' }] }), 'only known types');
+}
+{
+  // triggers: at its time the bridge goes with whoever is on it, and everyone hears about it
+  const rows = [...empty];
+  rows[7] = '.'.repeat(5) + 'W'.repeat(4) + '==' + 'W'.repeat(4) + '.'.repeat(5);
+  const map = { name: 't', ...blank(rows), buildings: [{ x: 9, y: 7, kind: 'stone bridge' }], triggers: [{ at: 1, say: 'The bridge is going up!' }, { at: 2, blow: [9, 7, 10, 7], say: 'Bridge down' }] };
+  assert.equal(validateMap(map), null);
+  assert.ok(validateMap({ ...map, triggers: [{ at: 5 }] }), 'a trigger does something');
+  assert.ok(validateMap({ ...map, triggers: [{ at: 5, blow: [9, 7, 30, 7] }] }), 'the box stays on the map');
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { weather: false }); g.units.clear();
+  const u = put(g, 0, 'rifle', 19, 15);
+  let said = [];
+  for (let i = 0; i < 50; i++) { step(g); said.push(...snapshotFor(g, 1, g.shots).shots.filter(s => s.k === 'say').map(s => s.text)); g.shots = []; }
+  assert.deepEqual(said, ['The bridge is going up!', 'Bridge down'], 'each message once, to the other side too');
+  assert.equal(g.chars[7 * 20 + 9], 'W', 'the bridge is gone');
+  assert.equal(g.chars[7 * 20 + 10], 'W', 'all of it');
+  assert.ok(!g.units.has(u.id), 'the squad on it went with it');
+}
+{
+  // point kinds and links
+  const pts = [{ x: 5, y: 10, kind: 'radio' }, { x: 15, y: 10, kind: 'depot', needs: 0 }];
+  const map = { name: 't', ...blank(empty), points: pts };
+  assert.equal(validateMap(map), null);
+  assert.ok(validateMap({ ...map, points: [{ ...pts[0], needs: 1 }, pts[1]] }), 'points that need each other are refused');
+  assert.ok(validateMap({ ...map, points: [{ ...pts[0], kind: 'castle' }, pts[1]] }), 'only known kinds');
+  const g = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { weather: false, supply: false }); g.units.clear();
+  g.players.forEach(p => (p.spawn = { x: -1000, z: -1000 }));
+  // locked: a squad on point 2 gets nowhere until its side holds point 1
+  const r = put(g, 0, 'rifle', g.points[1].x, g.points[1].z);
+  assert.equal(snapshotFor(g, 0, []).points[1][5], 1, 'the snapshot tells the side it is locked');
+  run(g, CFG.captureTime + 2);
+  assert.equal(g.points[1].owner, -1, 'a locked point is not taken');
+  g.points[0].owner = 0;
+  run(g, CFG.captureTime + 2);
+  assert.equal(g.points[1].owner, 0, 'with the needed point held it is');
+  // the radio post (held) speeds support cooldowns
+  g.players[0].sup.artillery = g.players[1].sup.artillery = 10;
+  run(g, 2);
+  assert.ok(Math.abs(g.players[0].sup.artillery - (10 - 2 * CFG.radioCd)) < 0.01 && Math.abs(g.players[1].sup.artillery - 8) < 0.01, 'radio post: faster cooldowns');
+  // the depot (held) reinforces like home
+  r.hp = UNITS.rifle.hpPer * 2; g.players[0].mp = 1000;
+  run(g, CFG.reinforceEvery + 1);
+  assert.ok(r.hp > UNITS.rifle.hpPer * 2, 'a squad at its depot is reinforced');
 }
 
 // Veterancy: damage dealt earns stars; stars make a squad better.

@@ -324,7 +324,7 @@ function houses(C) {
   const dims = (r) => { const a = r.x1 - r.x0, b = r.y1 - r.y0; return [Math.min(a, b), Math.max(a, b)]; };
   const area = (r) => (r.x1 - r.x0) * (r.y1 - r.y0);
   // what each block is in the game (0 timber shed, 1 brick house, 2 stone building): the look follows it
-  const types = houseKinds(Array.from(C.foot, f => (f ? 'B' : '.')), w);
+  const types = houseKinds(Array.from(C.foot, f => (f ? 'B' : '.')), w, C.buildings);
   for (const r of rects) r.type = types[r.y0 * w + r.x0];
   if (rects.length >= 4) {
     // churches: the biggest long stone block, one more per 25 houses, at least 40 cells apart
@@ -338,6 +338,8 @@ function houses(C) {
   }
   // about half of the big timber blocks are barns, the rest big sheds
   for (const r of rects) if (r.type === 0 && dims(r)[0] >= 3 && rnd(r.x0, r.y0, 8) < 0.5) r.kind = 'barn';
+  // a map's landmarks (CFG.houses 3 and 4): a church wears the church look, a factory a multi-storey block, both stone
+  for (const r of rects) if (r.type > 2) { r.kind = r.type === 3 ? 'church' : 'block'; r.type = 2; }
   for (const r of rects) {
     const [s, l] = dims(r), alongX = r.x1 - r.x0 >= r.y1 - r.y0;
     if (s >= 5) r.kind = 'block';
@@ -805,10 +807,17 @@ function hospitals(C) {
 // ---------- bridges: plank deck, edge beams, railings and stone cutwaters on the water sides ----------
 function bridges(C) {
   const { w, h, at, hAt } = C;
+  // stone bridges (map.buildings): the whole span the entry sits on gets a stone deck
+  const stone = new Set(), q = (C.buildings ?? []).filter(b => b.kind === 'stone bridge' && at(b.x, b.y) === '=').map(b => [b.x, b.y]);
+  for (const [x, y] of q) stone.add(y * w + x);
+  for (const [x, y] of q) for (const [dx, dy] of DIR4) {
+    const k = (y + dy) * w + x + dx;
+    if (!stone.has(k) && at(x + dx, y + dy) === '=') { stone.add(k); q.push([x + dx, y + dy]); }
+  }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (at(x, y) !== '=') continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL, g = hAt(cx, cz), top = g + 0.22;
-    put('wood', cx, top - 0.15, cz, CELL, 0.3, CELL, 0, 1);
+    put(stone.has(y * w + x) ? 'stone' : 'wood', cx, top - 0.15, cz, CELL, 0.3, CELL, 0, 1);
     for (const [dx, dy] of DIR4) {
       const nb = at(x + dx, y + dy);
       if (nb !== 'W' && nb !== 'F') continue;
@@ -826,18 +835,18 @@ function bridges(C) {
 // ---------- the map's pieces ----------
 let state = null;
 function rebuild() {
-  const { group, grid, orig, hAt, cells } = state, h = grid.length, w = grid[0]?.length ?? 0;
+  const { group, grid, orig, hAt, cells, buildings } = state, h = grid.length, w = grid[0]?.length ?? 0;
   clearGroup(group);
   // stage: 0 whole, 1 damaged, 2 nearly gone (bits 3-4 of the cell state the server sends)
-  const C = { grid, orig, hAt, w, h, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
+  const C = { grid, orig, hAt, w, h, buildings, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
   houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); hospitals(C); bridges(C);
   flush(group, C.low);
 }
 // group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height;
-// cells: the per-cell state bytes, if any
-export function buildStructures(group, grid, orig, hAt, cells) {
+// cells: the per-cell state bytes, if any; buildings: the map's named buildings (map.buildings)
+export function buildStructures(group, grid, orig, hAt, cells, buildings) {
   if (state && state.group !== group) clearGroup(state.group);
-  state = { group, grid, orig, hAt, cells };
+  state = { group, grid, orig, hAt, cells, buildings };
   rebuild();
 }
 gfx.onChange(() => { if (state?.group.parent) rebuild(); });

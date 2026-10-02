@@ -5,6 +5,28 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- New map, **The Great Bridge** (Assault): hold or take a great stone bridge into a river town. At 5:00 the
+  defenders' engineers start wiring it, at 7:00 it is blown with anyone still on it, and from then on the attack has
+  to go round by a ford far to the north or a plank rail bridge far to the south. The town square can only be taken
+  by the side holding the bridge's east end. Attackers win 4 of 20 AI 1v1 assaults.
+- Maps can say more:
+  - **Landmarks**: a house can be named a church (upper floors see 1.6x as far, 700 hp a cell) or a factory
+    (1000 hp a cell, 0.2x incoming fire inside). Both have their own look. A bridge can be a stone bridge, which
+    takes 12x the hits of a plank one: one bomb no longer drops it.
+  - **Point kinds**: a radio post makes its side's off-map support recharge 1.5x as fast; a supply depot reinforces
+    and repairs like home.
+  - **Linked points**: a point can need another one; a side can only take it while holding that one. The point shows
+    "Locked" and a dashed line to the point it needs on the minimap, and the AI leaves it alone until then.
+  - **Scripted events (triggers)**: at a set time a map can put a message on everyone's screen and blow up every
+    structure in a box (a bridge, a row of houses).
+  - The editor's select tool sets a house's or bridge's type, and the point panel sets a point's kind and link.
+    Triggers are written in the map file for now (no editor control).
+- Fixed: saving a map in the editor dropped its naval, trench-facing and Assault clock settings and every spawn's
+  "Assault only" flag. Three Islands, No Man's Land, the XL maps, Bastogne, Helm's Deep and Stalingrad Factory lost
+  them when saved. The editor and server now keep every setting the map check knows.
+- Left for later: cells that hold two things (a mine under a road, wire in woods). Mines are a terrain type today,
+  so it means changing every mine check and how fog hides them.
+
 - Shell holes, rubble and burnt ground are blast marks instead of filled squares. A lone hit is strongest in the middle and leaves grass in the corners. A bombed block is one torn patch, with bites along the edge and craters that run together. A line of bombs is a ragged run: the banks wander and the bright rim is gone on dug ground, instead of a row of equal pale bowls. A wrecked house is broken wall stubs and spilled rubble, not a shorter box. Feet can sit a couple of metres off the visible lip, because the lip slides and the ground under a unit does not.
 - Trenches are real cuts in the ground now: the terrain drops 0.9 m along every trench, with sloped walls and the
   channel running on between connected cells. Men in a trench stand on its floor instead of sinking through flat

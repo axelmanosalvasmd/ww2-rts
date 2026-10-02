@@ -21,7 +21,8 @@ const NOT_AIR = new Set(['artillery', 'smoke', 'cover']);
 
 // minimap ping color per kind: signal red for danger, brass for a point won, the HUD's text color for the rest
 const RED = '#d4574a', BRASS = '#d6b25e', CHALK = '#e2dfd3';
-const COLOR = { attack: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK };
+const COLOR = { attack: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK, event: BRASS };
+const LIVES = { event: 15 }; // a map's scripted message stays up long enough to read
 
 const now = () => performance.now() / 1000;
 const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) <= r;
@@ -46,7 +47,7 @@ function init(h) {
     const el = e.target.closest?.('.alert'), a = el && lines.find(l => l.el === el);
     if (!a) return;
     e.stopPropagation(); e.preventDefault();
-    hooks.jump(a.x, a.z);
+    if (a.x != null) hooks.jump(a.x, a.z);
   });
   addEventListener('resize', place);
 }
@@ -112,6 +113,8 @@ function snapshot(s, prev) {
   if (!prev) { reset(); return; } // first snapshot of a match (or after a reconnect): nothing to compare yet
   const me = hooks.me(), friend = (slot) => slot >= 0 && hooks.friend(slot);
   if (s.winner != null || s.out?.[me]) return;
+  // the map's scripted events (triggers) speak to everyone
+  for (const sh of s.shots ?? []) if (sh.k === 'say') push('event', sh.text, sh.x, sh.z);
   const before = new Map(prev.units.map(u => [u[0], u]));
   const after = new Map(s.units.map(u => [u[0], u]));
   const shotsAt = new Map();
@@ -199,7 +202,7 @@ function frame() {
   if (!lines.length) return;
   const t = now();
   for (let i = lines.length - 1; i >= 0; i--) {
-    const a = lines[i], left = LIFE - (t - a.born);
+    const a = lines[i], left = (LIVES[a.kind] ?? LIFE) - (t - a.born);
     if (left <= 0) { a.el.remove(); lines.splice(i, 1); }
     else if (left < FADE) a.el.style.opacity = (left / FADE).toFixed(2);
   }
@@ -211,8 +214,8 @@ function drawPings(c, S) {
   const t = now();
   c.save();
   for (const a of lines) {
-    if (a.kind === 'ping') continue;
-    const age = t - a.born, fade = Math.max(0, Math.min(1, (LIFE - age) / FADE));
+    if (a.kind === 'ping' || a.x == null) continue;
+    const age = t - a.born, fade = Math.max(0, Math.min(1, ((LIVES[a.kind] ?? LIFE) - age) / FADE));
     const ring = (rpx, alpha) => {
       c.globalAlpha = fade * alpha;
       c.beginPath(); c.arc(a.x, a.z, rpx / S, 0, Math.PI * 2);
@@ -227,7 +230,7 @@ function drawPings(c, S) {
 }
 
 // the newest alert still showing, for Space
-const newest = () => (lines[0] ? { x: lines[0].x, z: lines[0].z } : null);
+const newest = () => { const a = lines.find(l => l.x != null); return a ? { x: a.x, z: a.z } : null; };
 const pinging = () => lines.length > 0;
 
 // `lines` (the texts showing, newest first) is for poking at it from devtools via window.__game.alerts

@@ -1526,3 +1526,32 @@ Full raw results and source manifests: [behavior balance evidence](docs/behavior
 - Smoke blocks a sight line only when the line is at least `CFG.smokeSight` (15 m) long. `los` and the fog's `fogLos` share the rule, so the drawn fog matches what units can see and shoot. Cloud sizes and durations are unchanged.
 - Why: a unit inside smoke was hidden beyond the 6 m close-sight rule and could not be targeted at all, so tank smoke and smoke barrages made units close to invulnerable. Conscripts were meant as human waves but were held to the same squad count as everyone else.
 - 150 AI matches, default map, seed 1000, before -> after: USA/Germany/USSR 39/58/53 -> 46/46/58, median 473 s -> 465 s.
+
+## Map data: landmarks, point kinds and links, triggers (2026-10-02)
+- `buildings: [{ x, y, kind }]`: an entry on any cell of a house names its type from `CFG.houses` (church: 700 hp,
+  0.25x, garrison vision 1.6; factory: 1000 hp, 0.2x, vision 1.4; or a size type by name). `min: Infinity` keeps
+  the landmarks out of the size rule. `kind: 'stone bridge'` on a bridge cell makes its whole span take
+  `CFG.stoneBridge` (12) times the hits, so one bomb or satchel no longer drops it. The client draws churches with the
+  church look, factories as multi-storey blocks and stone bridges with a stone deck. The house type now rides in unit
+  flag bits 20-22 (it was 16-17, which only fit four types).
+- Point `kind`: `radio` (the holding side's support cooldowns run `CFG.radioCd` 1.5x as fast) or `depot` (reinforce
+  and repair within `CFG.reinforceRadius`, like home). A point that is cut off from its HQ does neither. Chosen
+  because both work through code the AI and client already read: cooldowns and reinforcement need no new AI logic.
+  A radio post that reveals ground was dropped: it would mean a new source in the fog masks.
+- Point `needs: <index>`: a side takes the point only while it holds the needed one (both sides, so put it on the
+  path from the side it should slow down). The snapshot's point row has a 6th value, 1 when your side is locked out;
+  the client shows "Locked" and a dashed minimap line, and the AI skips locked points when picking targets. Loops are
+  refused by `validateMap`.
+- `triggers: [{ at, say?, blow? }]`: at `at` seconds, `say` goes to every player as a 15 s alert line and `blow`
+  wrecks every structure in the box `[x0, y0, x1, y1]` (a bridge drops whole with anyone on it). Time is the only
+  condition so far; "point taken" or "area entered" can follow when a scenario needs one. No editor control yet.
+- The editor and the server keep every field `validateMap` checks (they dropped naval, trenchFacing, assaultTime and
+  spawn `assault` flags before).
+- Not done: cells holding two things (a mine under a road). Mines are the `N` terrain type, so a layer means touching
+  every mine check, the fog rule that hides them and the client's road drawing.
+- The Great Bridge (120x100, `tools/genmap-bridge.mjs`): Assault, attackers west, defenders in a river town east. A
+  stone bridge on the main road is blown at 7:00 (warnings at 5:00 and 6:40); the ways round are a ford to the north
+  and a plank rail bridge to the south. The town square (depot) needs the bridge's east end. With the defender spawns
+  on the map's east edge (x 113) the AI defender never reached the bridge (it holds points within 70 m of home) and
+  attackers won 3/4 (2v2); spawns moved into the town (x 102). 20 AI 1v1 assaults: attackers win 4/20 (Seawall, kept,
+  is 4/20). The AI attacker uses the ford and once rebuilt a plank bridge where the great one fell.

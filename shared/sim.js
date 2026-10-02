@@ -95,7 +95,15 @@ export const CFG = {
   // house types, by the size of the block on the map (min cells). hp: per cell. mul: incoming accuracy on a squad inside
   // while its cell is whole, worn: when the cell is about to come down (it slides between the two as the cell is shot up)
   houses: [{ name: 'wooden shed', min: 0, hp: 250, mul: 0.55, worn: 0.85 }, { name: 'brick house', min: 11, hp: 400, mul: 0.35, worn: 0.7 },
-    { name: 'stone building', min: 24, hp: 650, mul: 0.25, worn: 0.55 }],
+    { name: 'stone building', min: 24, hp: 650, mul: 0.25, worn: 0.55 },
+    // landmarks: only a map's `buildings` list makes one (min: Infinity). vision: replaces garrisonVision for a squad inside
+    { name: 'church', min: Infinity, hp: 700, mul: 0.25, worn: 0.55, vision: 1.6 },
+    { name: 'factory', min: Infinity, hp: 1000, mul: 0.2, worn: 0.45, vision: 1.4 }],
+  // a bridge the map's `buildings` list calls a 'stone bridge' takes this many times a plank bridge's hits
+  stoneBridge: 12,
+  // point kinds: a held radio post speeds its team's support cooldowns, a held supply depot reinforces and repairs
+  // like home (CFG.reinforceRadius around it)
+  radioCd: 1.5,
   // veterancy: damage dealt (as multiples of the unit's cost) for 1/2/3 stars, and what each star is worth
   vetXp: [1, 2.5, 5], vetAcc: 0.1, vetArmor: 0.08, vetSupp: 0.15,
   // elevation: height level per cell. 1 level of difference is a slope, more is a cliff.
@@ -430,10 +438,28 @@ export function validateMap(m) {
   if (m.trenchFacing !== undefined && typeof m.trenchFacing !== 'boolean') return 'trenchFacing must be true or false';
   if (!Array.isArray(m.points) || m.points.length < 1 || m.points.length > 9) return 'needs 1-9 capture points';
   for (const p of m.points) if (!p || !int(p.x, 0, m.w - 1) || !int(p.y, 0, m.h - 1) || TERRAIN[at(p)] & MOVE || !numIn(p.vp ?? 1, 0, 5) || !numIn(p.mp ?? 1, 0, 5)) return 'points must be on open ground, vp and mp 0-5';
+  if (m.points.some(p => p.kind !== undefined && !POINT_KINDS.includes(p.kind))) return 'point kind must be one of ' + POINT_KINDS.join(', ');
+  if (m.points.some((p, i) => p.needs !== undefined && (!int(p.needs, 0, m.points.length - 1) || p.needs === i))) return 'a point can only need another point';
+  // a loop of points that need each other could never be taken
+  for (let i = 0; i < m.points.length; i++) for (let k = 0, j = i; m.points[j].needs !== undefined; k++) { j = m.points[j].needs; if (k > m.points.length) return 'points need each other in a loop'; }
+  if (m.buildings !== undefined && (!Array.isArray(m.buildings) || m.buildings.length > 500)) return 'buildings must be a list (up to 500)';
+  for (const b of m.buildings ?? []) {
+    if (!b || !int(b.x, 0, m.w - 1) || !int(b.y, 0, m.h - 1)) return 'buildings must be inside the map';
+    if (b.kind === 'stone bridge' ? at(b) !== '=' : at(b) !== 'B' || !CFG.houses.some(h => h.name === b.kind)) return `building at ${b.x},${b.y}: a house type (${CFG.houses.map(h => h.name).join(', ')}) on a house, or 'stone bridge' on a bridge`;
+  }
+  if (m.triggers !== undefined && (!Array.isArray(m.triggers) || m.triggers.length > 20)) return 'triggers must be a list (up to 20)';
+  for (const t of m.triggers ?? []) {
+    if (!t || !numIn(t.at, 0, 7200)) return 'a trigger needs at: 0-7200 seconds';
+    if (t.say !== undefined && (typeof t.say !== 'string' || !t.say.length || t.say.length > 140)) return 'a trigger says 1-140 characters';
+    if (t.blow !== undefined && !(Array.isArray(t.blow) && t.blow.length === 4 && int(t.blow[0], 0, m.w - 1) && int(t.blow[2], t.blow[0], m.w - 1)
+      && int(t.blow[1], 0, m.h - 1) && int(t.blow[3], t.blow[1], m.h - 1))) return 'a trigger blows a box [x0, y0, x1, y1] inside the map';
+    if (t.say === undefined && t.blow === undefined) return 'a trigger must say or blow something';
+  }
   return null;
 }
 
 export const MAX_PLAYERS = 6;
+export const POINT_KINDS = ['radio', 'depot']; // what a capture point can be besides plain (see CFG.radioCd)
 // spawns a mode can use: an `assault: true` spawn (say, inside the defenders' fortress) only exists in Assault
 export const spawnsFor = (map, mode) => map.spawns.map((s, i) => i).filter(i => mode === 'assault' || !map.spawns[i].assault);
 // team VP needed to win: scaled by average team size, so a 3v3 lasts about as long as a 1v1
@@ -523,8 +549,14 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     }),
     // vp/mp per second while held; the map can make some points worth more
     // Assault and Annihilation have no VP, so points that only pay VP are left out (clients filter the same way)
-    points: map.points.filter(p => !noVp || (p.mp ?? 1) > 0).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0, cut: false })),
+    points: map.points.filter(p => !noVp || (p.mp ?? 1) > 0).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, vp: p.vp ?? 1, mp: p.mp ?? 1, owner: -1, capper: -1, progress: 0, cut: false, kind: p.kind, needs: -1 })),
   };
+  // needs: a team takes this point only while it holds that one (an index into the map's points, here into g.points;
+  // a needed point the mode left out asks for nothing)
+  const kept = map.points.filter(p => !noVp || (p.mp ?? 1) > 0);
+  kept.forEach((p, i) => { if (p.needs !== undefined) g.points[i].needs = kept.indexOf(map.points[p.needs]); });
+  // triggers: the map's scripted events, each fired once (see runTriggers)
+  g.triggers = (map.triggers ?? []).map(t => ({ ...t, done: false }));
   map.rows.forEach((row, y) => [...row].forEach((ch, x) => { g.flags[y * map.w + x] = TERRAIN[ch] ?? 0; }));
   g.chars = [...map.rows.join('')];
   g.roads = g.chars.includes('D'); // no roads: vehicle paths skip the road arithmetic
@@ -535,7 +567,13 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.aid = new Map(); // Field Hospital cell -> the slot that put it up
   // supply lines (not in Horde, whose waves would cut every point): opts.supply === false turns them off
   g.supply = opts.supply !== false && !horde;
-  g.house = houseKinds(g.chars, map.w);
+  g.house = houseKinds(g.chars, map.w, map.buildings);
+  // stone bridges: every cell of the span the entry sits on takes CFG.stoneBridge times the hits
+  for (const b of map.buildings ?? []) {
+    if (b.kind !== 'stone bridge') continue;
+    g.tough ??= new Float32Array(g.chars.length).fill(1);
+    for (const c of span(g, b.y * map.w + b.x)) g.tough[c] = CFG.stoneBridge;
+  }
   // trenchFacing: the map's trenches face like dug ones, each away from the spawn nearest to it (its side's rear)
   if (map.trenchFacing) {
     g.trenchFront = new Float32Array(g.chars.length).fill(NaN);
@@ -911,8 +949,10 @@ const coverQ = (g, c) => {
 };
 // which type each house cell is (an index into CFG.houses). Worked out once, so a house that loses cells keeps its type.
 // chars: the map's cells in row order, w: its width (the client draws each type from the same answer)
-export function houseKinds(chars, w) {
+// buildings: the map's list; an entry on any cell of a house gives the whole house that type by name
+export function houseKinds(chars, w, buildings = []) {
   const kind = new Uint8Array(chars.length), seen = new Uint8Array(chars.length);
+  const named = new Map(buildings.map(b => [b.y * w + b.x, CFG.houses.findIndex(h => h.name === b.kind)]).filter(([, k]) => k >= 0));
   for (let c0 = 0; c0 < kind.length; c0++) {
     if (chars[c0] !== 'B' || seen[c0]) continue;
     const q = [c0]; seen[c0] = 1;
@@ -920,13 +960,13 @@ export function houseKinds(chars, w) {
       if (n < 0 || n >= kind.length || seen[n] || chars[n] !== 'B' || (Math.abs(n - q[i]) === 1 && Math.floor(n / w) !== Math.floor(q[i] / w))) continue;
       seen[n] = 1; q.push(n);
     }
-    const k = CFG.houses.findLastIndex(h => q.length >= h.min);
+    const k = q.reduce((a, c) => named.get(c) ?? a, CFG.houses.findLastIndex(h => q.length >= h.min));
     for (const c of q) kind[c] = k;
   }
   return kind;
 }
 // a structure cell's full hit points
-const maxHp = (g, c) => (g.chars[c] === 'B' ? CFG.houses[g.house[c]].hp : CFG.terrainHp[g.chars[c]] ?? 0);
+const maxHp = (g, c) => (g.chars[c] === 'B' ? CFG.houses[g.house[c]].hp : (CFG.terrainHp[g.chars[c]] ?? 0) * (g.tough?.[c] ?? 1));
 // incoming accuracy on a squad in house cell c: the type's protection, less as the cell is shot up
 export const garrisonMul = (g, c) => { const k = CFG.houses[g.house[c]]; return k.worn + (k.mul - k.worn) * Math.max(0, g.cellHp[c]) / k.hp; };
 // does the trench at u face fire from `from`? (no shooter known, or a map-drawn trench: yes)
@@ -1101,6 +1141,7 @@ function setCell(g, c, ch) {
   if (g.chars[c] === 'N') { g.mines.delete(c); g.mineSeen.delete(c); }
   if (g.chars[c] === 'A') g.aid.delete(c);
   if (g.chars[c] === 'Q') g.wrecks = g.wrecks.filter(w => w.c !== c); // the hull goes with its cell
+  if (g.tough) g.tough[c] = 1; // a bridge built again where a stone one fell is a plank one
   g.flags[c] = next | (g.shoal?.[c] ? SHOAL : 0); g.chars[c] = ch; g.cellHp[c] = maxHp(g, c);
   if (g.trenchFront) g.trenchFront[c] = NaN; // the digging sets a new trench's front after this
   g.fires?.delete(c);
@@ -2435,7 +2476,7 @@ const within = (q, dx, dz, r, strict) => {
 };
 // A ground unit's sight: the match weather (visionOf), high ground and an upper floor see farther, rain sees less.
 // updateVision and the fog masks both read it, so the drawn fog can't drift from what the team sees.
-const visionRange = (g, u, def) => visionOf(g, u) * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
+const visionRange = (g, u, def) => visionOf(g, u) * (1 + CFG.highGroundVision * levelAt(g, u.x, u.z)) * (u.garrison >= 0 ? CFG.houses[g.house[u.garrison]].vision ?? CFG.garrisonVision : 1) * (1 - CFG.weather.sight * (g.wx?.rain ?? 0));
 const fogReach = (g, u, def) => (u.air ? def.vision : Math.max(6, visionRange(g, u, def), def.building ? def.vision : 0));
 const NO_SMOKE = [];
 const smokesNear = (g, u, reach) => (g.smokes.length ? g.smokes.filter(s => Math.hypot(s.x - u.x, s.z - u.z) < reach + s.r) : NO_SMOKE);
@@ -2709,6 +2750,36 @@ function weather(g, dt) {
   else if ((wx.next -= dt) <= 0) { wx.raining = !wx.raining; const [lo, hi] = wx.raining ? W.rain : W.dry; wx.next = lo + rng(g) * (hi - lo); }
   wx.rain = Math.min(1, Math.max(0, wx.rain + (wx.raining ? dt : -dt) / 20));
   wx.wet = kind === 'mud' ? 1 : Math.min(1, Math.max(0, wx.wet + (wx.rain > 0.5 ? dt / W.soak : -dt / W.dryOut)));
+}
+// the cells joined to c by a side that are its type: a whole house, a bridge's whole span
+function span(g, c) {
+  const ch = g.chars[c], out = [c], seen = new Set(out);
+  for (let i = 0; i < out.length; i++) {
+    const x = out[i] % g.w;
+    for (const n of [out[i] - g.w, out[i] + g.w, x > 0 ? out[i] - 1 : -1, x < g.w - 1 ? out[i] + 1 : -1]) {
+      if (n >= 0 && n < g.chars.length && !seen.has(n) && g.chars[n] === ch) { seen.add(n); out.push(n); }
+    }
+  }
+  return out;
+}
+// The map's scripted events (validateMap has the format): `at` seconds into the match, `say` goes to every player and
+// `blow` wrecks every structure in its box [x0, y0, x1, y1]: houses fall, a bridge drops whole with anyone on it.
+// ponytail: time is the only condition; add "point taken" or "area entered" when a scenario needs one
+function runTriggers(g, list) {
+  const now = g.tick * TICK;
+  for (const t of g.triggers) {
+    if (t.done || now < t.at) continue;
+    t.done = true;
+    const at = t.blow ? { x: (t.blow[0] + t.blow[2] + 1) / 2 * CELL, z: (t.blow[1] + t.blow[3] + 1) / 2 * CELL } : null;
+    if (t.blow) {
+      const [x0, y0, x1, y1] = t.blow;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if (g.cellHp[y * g.w + x] > 0) wreckCell(g, list, y * g.w + x);
+        if ((x - x0) % 4 === Math.min(2, (x1 - x0) >> 1) && (y - y0) % 4 === Math.min(2, (y1 - y0) >> 1)) g.shots.push({ k: 'bomb', x: (x + 0.5) * CELL, z: (y + 0.5) * CELL, pub: true }); // the charges going off
+      }
+    }
+    if (t.say) g.shots.push({ k: 'say', text: t.say, ...at, pub: true });
+  }
 }
 function wreckCell(g, list, c, into = CFG.wreck[g.chars[c]]) {
   const x = (c % g.w + 0.5) * CELL, z = (Math.floor(c / g.w) + 0.5) * CELL, was = g.chars[c];
@@ -3134,7 +3205,11 @@ export function step(g) {
   g.strikes = g.strikes.filter(s => !s.live || s.left > 0);
   antiAir(g, list, dt);
   if (g.covers) { for (const c of g.covers) c.t -= dt; g.covers = g.covers.filter(c => c.t > 0); }
-  for (const p of g.players) for (const k of SUPPORT_TYPES) p.sup[k] -= dt;
+  for (const p of g.players) {
+    const radio = g.points.some(q => q.kind === 'radio' && !q.cut && allied(g, q.owner, p.slot)) ? CFG.radioCd : 1;
+    for (const k of SUPPORT_TYPES) p.sup[k] -= dt * radio;
+  }
+  if (g.triggers?.length) runTriggers(g, list);
   for (const s of g.smokes) s.t -= dt * (1 + 0.5 * (g.wx?.rain ?? 0));
   weather(g, dt);
   if (g.fires.size && g.tick % 10 === 0) burn(g, list, dt * 10);
@@ -3143,7 +3218,10 @@ export function step(g) {
 
   // reinforce / repair near your own spawn (Classic: near any own or allied Production Building), paid in manpower
   const bases = g.mode?.kind === 'classic' ? list.filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0) : null;
-  const atBase = (u) => (bases ? bases.some(b => allied(g, b.owner, u.owner) && dist(u, b) <= CFG.reinforceRadius) : dist(u, g.players[u.owner].spawn) <= CFG.reinforceRadius);
+  // a supply depot point its side holds (and is not cut off from) counts as home too
+  const depots = g.points.filter(q => q.kind === 'depot' && q.owner >= 0 && !q.cut);
+  const atBase = (u) => (bases ? bases.some(b => allied(g, b.owner, u.owner) && dist(u, b) <= CFG.reinforceRadius) : dist(u, g.players[u.owner].spawn) <= CFG.reinforceRadius)
+    || depots.some(q => allied(g, q.owner, u.owner) && dist(u, q) <= CFG.reinforceRadius);
   // forward aid, infantry only and slower: near their side's Field Hospital, or beside (or inside) a halted halftrack
   const tents = [...g.aid].map(([c, by]) => ({ by, ...cellCenter(g, c) })), tracks = list.filter(h => UNITS[h.type].carries && !UNITS[h.type].naval && h.hp > 0 && h.still >= 2);
   const atAid = (u) => UNITS[u.type].infantry && (tents.some(t => allied(g, t.by, u.owner) && dist(u, t) <= CFG.aid.radius) || tracks.some(h => allied(g, h.owner, u.owner) && dist(u, h) <= CFG.aid.carrier));
@@ -3187,6 +3265,7 @@ export function step(g) {
     p.contested = on.some(u => !allied(g, u.owner, on[0].owner));
     if (!on.length || p.contested) continue;
     const s = on[0].owner, rate = dt / CFG.captureTime;
+    if (p.needs >= 0 && !allied(g, g.points[p.needs].owner, s)) continue; // locked: take the point it needs first
     if (allied(g, p.owner, s)) p.progress = 1;
     else if (p.owner >= 0) { p.progress -= rate; if (p.progress <= 0) { p.owner = -1; p.progress = 0; p.capper = s; } }
     else {
@@ -3325,7 +3404,7 @@ export function terrainFor(g, slot, full = false) {
 const rounded = (v) => Math.round(v * 10) / 10;
 export const AUTO_FLAG = 16384; // a unit's autocast is on; only its owner is told (1024 marks a mass entrenchment)
 export const RIDING_FLAG = 262144, CARGO_FLAG = 524288; // inside a carrier (its side sees that); a carrier with a squad in it
-const unitFlags = (g, u) => (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 16 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0);
+const unitFlags = (g, u) => (u.riding ? RIDING_FLAG : 0) | (u.cargo ? CARGO_FLAG : 0) | (u.retreating ? 1 : 0) | (u.buff > 0 ? 2 : 0) | (u.ap ? 4 : 0) | (u.reinf > 0 || g.tick - (u.healAt ?? -1e9) < 12 ? 8 : 0) | (u.dig ? 16 : 0) | (u.garrison >= 0 ? 32 | g.house[u.garrison] << 20 : 0) | (u.amove ? 64 : 0) | (u.build ? 128 : 0) | (UNITS[u.type].camo && u.still >= 3 && g.tick - (u.shotAt ?? -1e9) >= 80 ? 256 : 0) | (u.air && !airborne(u) ? 512 : 0) | (u.entrench ? 1024 : 0) | (dusty(g, u) ? 32768 : 0);
 function unitRow(g, u) {
   const r = rounded;
   return [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId || 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
@@ -3341,7 +3420,7 @@ function playerRow(row, slot, seen) {
   const result = row.slice();
   result[9] = row[9] && seen(row[9]) ? row[9] : 0;
   result[11] = row[2] === slot ? row[11] : 0;
-  if (row[2] !== slot) result[12] = row[12] & (2047 | 32768 | 196608 | RIDING_FLAG); // stances and autocast are the owner's business, dust is everyone's
+  if (row[2] !== slot) result[12] = row[12] & (2047 | 32768 | 7 << 20 | RIDING_FLAG); // stances and autocast are the owner's business, dust is everyone's
   return result;
 }
 
@@ -3424,7 +3503,7 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     ghosts: cache ? cache.teams.get(p.team).ghosts?.filter(gh => !seen(gh[0])) : g.mode?.kind === 'classic' ? knownBuildings(g, slot).filter(gh => !seen(gh.id)).map(gh => [gh.id, gh.type, gh.owner, r(gh.x), r(gh.z), r(gh.built)]) : undefined,
     // flags: 1 retreating, 2 ability active, 4 AP loaded, 8 reinforcing, 16 digging, 32 garrisoned, 64 attack-moving.
     // 128 building a site, 256 hidden sniper, 512 plane at base, 1024 on a mass entrenchment; own units only: 2048
-    // holding fire, 4096 holding position, 8192 auto-retreat, 16384 autocast on; 65536 and 131072: the type of house a garrison is in (CFG.houses). Then veterancy stars, then how far a
+    // holding fire, 4096 holding position, 8192 auto-retreat, 16384 autocast on; bits 20-22: the type of house a garrison is in (CFG.houses). Then veterancy stars, then how far a
     // building is built (0-1). Cooldowns only for your own units.
     units: cache ? cache.units.filter(row => seen(row[0])).map(row => playerRow(row, slot, seen)) : [...g.units.values()].filter(u => seen(u.id))
       .map(u => [u.id, u.type, u.owner, r(u.x), r(u.z), r(u.rot), r(u.aim), Math.ceil(u.hp), Math.round(u.supp), u.targetId && seen(u.targetId) ? u.targetId : 0, inTrench(g, u) ? 2 : inCover(g, u) ? 1 : UNITS[u.type].infantry && nearCover(g, u) ? 3 : 0,
@@ -3449,8 +3528,9 @@ export function snapshotFor(g, slot, shots, cells = [], cache) {
     points: g.points.map((q, i) => {
       // A contest is readable only when at least two teams' on-point units are already visible.
       const teams = new Set((q.contested ? q.onPoint : []).filter(seen).map(id => g.players[g.units.get(id)?.owner]?.team).filter(t => t !== undefined));
-      // the last one: 1 when the point is cut off from its owner's HQ and pays nothing
-      return [...(cache ? cache.points[i] : [q.owner, q.capper, r(q.progress)]), teams.size > 1 ? 1 : 0, q.cut ? 1 : 0];
+      // then 1 when the point is cut off from its owner's HQ and pays nothing, then 1 when your side can't take it
+      // until it holds the point this one needs
+      return [...(cache ? cache.points[i] : [q.owner, q.capper, r(q.progress)]), teams.size > 1 ? 1 : 0, q.cut ? 1 : 0, q.needs >= 0 && !allied(g, q.owner, slot) && !allied(g, g.points[q.needs].owner, slot) ? 1 : 0];
     }),
     vp: cache ? cache.vp : g.players.map(q => Math.floor(q.vp)),
     // enemy mines this team's builder squads have found (the terrain shows them next to its own): cell indexes

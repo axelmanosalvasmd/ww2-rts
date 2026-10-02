@@ -1,6 +1,6 @@
 // Map editor (/?edit). Reuses the game's renderer: every change rebuilds the world through startGame.
 import * as THREE from 'three';
-import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor } from '/shared/sim.js';
+import { CELL, CFG, validateMap, findPath, TERRAIN, levelOf, levelChar, MAX_PLAYERS, createGame, spawnsFor, POINT_KINDS } from '/shared/sim.js';
 
 const TOOLS = [
   ['sel', 'Select / move'], ['.', 'Ground'], ['B', 'Building'], ['H', 'Hedgerow'], ['#', 'Wall'], ['+', 'Crater'], ['T', 'Trench'], ['X', 'Barbed wire'], ['Y', 'Tank traps'],
@@ -48,7 +48,14 @@ export async function start(api) {
   $('edPw').value = store.get('ww2-edit-pw') || '';
 
   // ---------- model ----------
-  const snapshot = () => ({ name: $('edTitle').value || name, w: map.w, h: map.h, rows: grid.map(r => r.join('')), heights: heights.map(r => r.map(levelChar).join('')), spawns: map.spawns, points: map.points, ...(map.defend?.every(i => i < map.spawns.length) && { defend: map.defend }) });
+  // the whole map, so settings the editor has no control for (naval, trenchFacing, assaultTime, triggers) survive a save.
+  // A named building whose house or bridge was painted over is dropped.
+  const snapshot = () => {
+    const rows = grid.map(r => r.join(''));
+    return { ...map, name: $('edTitle').value || name, rows, heights: heights.map(r => r.map(levelChar).join('')),
+      buildings: (map.buildings ?? []).filter(b => rows[b.y]?.[b.x] === (b.kind === 'stone bridge' ? '=' : 'B')),
+      defend: map.defend?.every(i => i < map.spawns.length) ? map.defend : undefined };
+  };
   function load(m, n) {
     map = m; name = n; grid = m.rows.map(r => [...r]); sel = -1; picked = null;
     heights = (m.heights || m.rows.map(r => '0'.repeat(r.length))).map(r => [...r].map(levelOf));
@@ -133,11 +140,21 @@ export async function start(api) {
   function pointPanel() {
     const p = map.points[sel];
     $('edPoint').innerHTML = p ? `<div class="row">Point ${sel + 1}: VP/s <input id="edVp" type="number" min="0" max="5" step="0.5" value="${p.vp}" style="width:56px">
-      MP/s <input id="edMp" type="number" min="0" max="5" step="0.5" value="${p.mp}" style="width:56px"><button id="edDel" title="Delete">✕</button></div>` : '';
+      MP/s <input id="edMp" type="number" min="0" max="5" step="0.5" value="${p.mp}" style="width:56px"><button id="edDel" title="Delete">✕</button></div>
+      <div class="row">Kind <select id="edPtKind" title="Radio post: faster support cooldowns for the side holding it. Supply depot: reinforces and repairs like home">
+        <option value="">plain</option>${POINT_KINDS.map(k => `<option ${k === p.kind ? 'selected' : ''}>${k}</option>`).join('')}</select>
+      Needs <select id="edNeeds" title="A side can only take this point while it holds the one picked here"><option value="">nothing</option>${map.points.map((_, i) => (i === sel ? '' : `<option value="${i}" ${i === p.needs ? 'selected' : ''}>point ${i + 1}</option>`)).join('')}</select></div>` : '';
     if (!p) return;
     $('edVp').onchange = () => { p.vp = Math.max(0, Math.min(5, +$('edVp').value || 0)); rebuild(); };
     $('edMp').onchange = () => { p.mp = Math.max(0, Math.min(5, +$('edMp').value || 0)); rebuild(); };
-    $('edDel').onclick = () => { map.points.splice(sel, 1); sel = -1; rebuild(); };
+    $('edPtKind').onchange = (e) => { if (e.target.value) p.kind = e.target.value; else delete p.kind; rebuild(); };
+    $('edNeeds').onchange = (e) => { if (e.target.value) p.needs = +e.target.value; else delete p.needs; rebuild(); };
+    $('edDel').onclick = () => {
+      map.points.splice(sel, 1);
+      // links follow the renumbering; one to the deleted point goes
+      for (const q of map.points) if (q.needs === sel) delete q.needs; else if (q.needs > sel) q.needs--;
+      sel = -1; rebuild();
+    };
   }
 
   // ---------- tools ----------
@@ -201,11 +218,22 @@ export async function start(api) {
       box.position.set(cx, api.hAt(cx, cz) + 0.3, cz); box.renderOrder = 6; hl.add(box);
     }
     $('edSel').textContent = `Selected ${NAMES[picked.ch] || 'structure'} (${picked.cells.length} cells): drag to move, Delete removes, Esc deselects`;
+    // a house or bridge can be given a type (map.buildings); "by size" leaves it to the game
+    const kinds = picked.ch === 'B' ? CFG.houses.map(h => h.name) : picked.ch === '=' ? ['stone bridge'] : null;
+    if (!kinds) return;
+    const own = (b) => picked.cells.some(([x, y]) => b.x === x && b.y === y), cur = map.buildings?.find(own)?.kind ?? '';
+    $('edSel').insertAdjacentHTML('beforeend', `<div class="row">Type <select id="edKind"><option value="">${picked.ch === 'B' ? 'by size' : 'plank bridge'}</option>${kinds.map(k => `<option ${k === cur ? 'selected' : ''}>${k}</option>`).join('')}</select></div>`);
+    $('edKind').onchange = (e) => {
+      map.buildings = (map.buildings ?? []).filter(b => !own(b));
+      if (e.target.value) map.buildings.push({ x: picked.cells[0][0], y: picked.cells[0][1], kind: e.target.value });
+      rebuild();
+    };
   }
   function commitMove() {
     const [ox, oy] = dragOffset;
     if (!picked?.cells || (!ox && !oy)) return;
     for (const [x, y] of picked.cells) grid[y][x] = '.';
+    for (const b of map.buildings ?? []) if (picked.cells.some(([x, y]) => b.x === x && b.y === y)) { b.x += ox; b.y += oy; } // its type moves with it
     picked.cells = picked.cells.map(([x, y]) => [x + ox, y + oy]).filter(([x, y]) => grid[y]?.[x] !== undefined);
     for (const [x, y] of picked.cells) grid[y][x] = picked.ch;
   }
