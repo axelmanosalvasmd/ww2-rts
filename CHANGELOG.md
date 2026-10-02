@@ -5,6 +5,13 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Computer opponents play as a commander for the match, instead of issuing every perfect order on the same look.
+  A unit or point they just spotted is watched before they call a strike, throw a grenade, or retarget a fight.
+  They send one attack at a time, and they only tell a squad to fall back once that squad is going into a fight.
+  When a tank wipes one of their squads, later purchases shift to anti-tank even after the tank leaves sight.
+  When squads die on a point, the next push asks for a bigger margin and prefers a different point. Taking a point
+  spends some of that caution, so a lesson can fade. The memory lasts one match. It is not a language model, and
+  it still sees only what a player in that seat would see. A large AI-versus-AI balance sample was not rerun.
 - New **Formation** menu in the Orders panel: line, block, column and wedge (Shift+V cycles), Tighten and Spread (`[` and `]`) to re-form units where they stand, March together (the group moves at its slowest unit's pace) and Snap to trenches (infantry placed next to a trench step into it). Mortars, rockets and medics stand in the rear rank.
 - A wider right-drag now fits more units side by side, so a long drag gives fewer ranks. A double right-click turns the selection to face a spot without moving.
 - Control groups remember their formation: Ctrl+number saves it, recalling the group brings it back.
