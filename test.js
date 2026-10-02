@@ -1999,14 +1999,18 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   assert.equal(validateMap({ ...m, spawns: [{ ...m.spawns[0], assault: true }, { ...m.spawns[1], assault: true }, m.spawns[2]] }), 'needs 2+ spawns that every mode can use');
 }
 
-// Pending paratroopers reserve a population slot until the squad arrives or its plane is shot down.
+// Pending paratroopers reserve population for the whole stick until it arrives or its plane is shot down.
 {
+  const stick = SUPPORT.para.units.length;
+  const short = fresh(); short.players[0].mp = 10000;
+  for (let i = 0; i < popCap(short) - stick + 1; i++) put(short, 0, 'rifle', 10, 10);
+  assert.equal(command(short, 0, { t: 'support', kind: 'para', x: 20, z: 12 }), 'pop', 'no drop without room for the whole stick');
   for (const intercepted of [false, true]) {
     const g = fresh(); g.players[0].mp = 10000;
-    for (let i = 0; i < popCap(g) - 1; i++) put(g, 0, 'rifle', 10, 10);
+    for (let i = 0; i < popCap(g) - stick; i++) put(g, 0, 'rifle', 10, 10);
     const count = g.units.size;
     command(g, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
-    assert.equal(g.strikes.length, 1, 'paratroopers accepted with one free population slot');
+    assert.equal(g.strikes.length, 1, 'paratroopers accepted with room for the stick');
     assert.equal(popOf(g, 0), popCap(g), 'pending paratroopers reserve population');
     const mp = g.players[0].mp;
     command(g, 0, { t: 'buy', unit: 'rifle' });
@@ -2014,12 +2018,13 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
     assert.equal(g.players[0].mp, mp, 'rejected recruitment does not spend manpower');
     if (intercepted) g.covers = [{ team: 1, x: 20, z: 12, r: SUPPORT.cover.radius, t: SUPPORT.para.delay + 1 }];
     run(g, SUPPORT.para.delay + 0.2);
-    assert.equal(g.units.size, count + (intercepted ? 0 : 1), 'accepted drop arrives unless intercepted');
+    assert.equal(g.units.size, count + (intercepted ? 0 : stick), 'accepted drop arrives unless intercepted');
     assert.equal(g.strikes.length, 0, `paratroopers ${intercepted ? 'shot down' : 'delivered'} leave no pending strike`);
     assert.equal(popOf(g, 0), g.units.size, 'the resolved drop has no pending reservation');
     if (intercepted) {
       command(g, 0, { t: 'buy', unit: 'rifle' });
       assert.equal(g.units.size, count + 1, 'a shoot-down releases the reserved population');
+      assert.equal(popOf(g, 0), popCap(g) - stick + 1, 'the whole stick was released');
     }
   }
 }
@@ -2064,14 +2069,15 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
   run(d, SUPPORT.dive.delay + 0.5);
   assert.ok(tank.hp <= 0 || !d.units.has(tank.id), 'a dive bomber kills a tank it lands on');
   assert.equal(d.strikes.length, 0, 'delivered dive bomber leaves no pending strike');
-  // paratroopers: only where your side can see, and they arrive as a rifle squad
+  // paratroopers: only where your side can see, and they arrive as two rifle squads and an MG team
   const pa = fresh(); pa.players[0].mp = 1000;
   const eye = put(pa, 0, 'rifle', 10, 10); run(pa, 0.3);
   command(pa, 0, { t: 'support', kind: 'para', x: 300, z: 300 });
   assert.equal(pa.strikes.length, 0, 'no drop where nobody sees');
   command(pa, 0, { t: 'support', kind: 'para', x: 20, z: 12 });
   run(pa, SUPPORT.para.delay + 0.5);
-  assert.equal([...pa.units.values()].filter(u => u.owner === 0 && u.type === 'rifle').length, 2, 'a squad dropped in');
+  assert.equal([...pa.units.values()].filter(u => u.owner === 0 && u.type === 'rifle').length, 3, 'two rifle squads dropped in');
+  assert.equal([...pa.units.values()].filter(u => u.owner === 0 && u.type === 'mg').length, 1, 'with an MG team');
   assert.equal(pa.strikes.length, 0, 'delivered paratroopers leave no pending strike');
   // fighter cover intercepts the next enemy strike over it (but never recon)
   const fc = fresh(); fc.players[0].mp = fc.players[1].mp = 2000;
@@ -5705,7 +5711,7 @@ for (const lookupFinished of [false, true]) {
   const trooper = [...drop.units.values()].find(u => u.owner === 0 && u.type === 'rifle' && u !== scout);
   assert.ok(trooper, 'paratroopers landed');
   assert.deepEqual(trooper.path, [], 'paratroopers have no rally route');
-  assert.ok(Math.hypot(trooper.x - 20, trooper.z - 12) < 3, 'paratroopers landed at the chosen point');
+  assert.ok(Math.hypot(trooper.x - 20, trooper.z - 12) < SUPPORT.para.spread + 3, 'paratroopers landed around the chosen point');
   const at = { x: trooper.x, z: trooper.z };
   run(drop, 1);
   assert.deepEqual({ x: trooper.x, z: trooper.z }, at, 'paratroopers stay at the drop point');

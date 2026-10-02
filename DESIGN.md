@@ -487,6 +487,9 @@ Base building as a third lobby mode next to Conquest and Assault. Terms are defi
 - Off-map air support adds Dive Bomber, Paratroopers and Fighter Cover (point supports, one click). Support planes
   (recon, strafe, bombing, dive, paratroopers) can be shot down on arrival: fighter cover always (and is used up; never
   recon), each flak in range rolls its chance (flak gun / mobile flak 35%, emplacement 45%).
+- Paratroopers (2026-10-02): a stick of two rifle squads and an MG team (`SUPPORT.para.units`), landing 6 m apart
+  around the spot. The call needs army room for the whole stick (`dropPop`) and reserves it while the plane flies.
+  One rifle squad for 260 MP was 2.6x its own price, so nobody called it.
 - Commandable planes fly sorties (not hovering units): base -> out -> on station (50s fuel, or ammo for the
   ground-attack plane) -> home -> rearm 30s. One altitude, no collisions, no terrain. Base = the nearest own Airfield
   in Classic, else an off-map airbase 40 m out past the HQ. No air cap (the user asked for strong counters instead):

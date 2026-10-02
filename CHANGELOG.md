@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Paratroopers drop a whole stick now: two rifle squads and an MG team land in a ring around the spot you pick,
+  instead of one rifle squad. Same price (260 MP / 90 Munitions in Classic) and cooldown, so the call is worth its
+  cost (350 MP of units; before it was 2.6x the price of the one squad it brought). It needs room for all three
+  under the army limit and reserves it until they land or the plane is shot down. 120 AI matches on the default map:
+  USA/GER/USSR 44/38/38 (was 41/41/38), 9.3 min either way; the AI rarely calls paratroopers (it needs 6+ units and
+  a visible enemy-held point), so this barely measures the change. Left for later: AI use of paratroopers.
 - Map rework, from research on RTS map design (Company of Heroes map rules, StarCraft map papers): eleven Conquest
   maps get cover along their open approaches and, where there is room, a home point per HQ.
   - Killing fields broken up: every long open stretch on the walk between HQs and points now has shell holes beside

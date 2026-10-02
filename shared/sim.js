@@ -304,10 +304,10 @@ export const SUPPORT = {
   smoke: { name: 'Smoke Barrage', cost: 50, cd: 40, delay: 3, len: 36, width: 14, clouds: 5, cloud: 7, dur: 20 },
   // a stick of heavy bombs along the line: flattens houses, big craters, deadly to tanks
   bombing: { name: 'Bombing Run', cost: 250, cd: 120, delay: 6, len: 40, width: 8, shells: 6, every: 0.2, blast: 7, dig: 4.2, inf: 60, veh: 150, supp: 90, terrain: 400 },
-  // point supports (one click, no direction): a precise single heavy bomb, a squad dropped behind the lines,
+  // point supports (one click, no direction): a precise single heavy bomb, a stick of squads dropped behind the lines,
   // and fighters that intercept the next enemy air strike over the area (never recon)
   dive: { name: 'Dive Bomber', cost: 180, cd: 75, delay: 5, point: true, blast: 5, dig: 3.2, inf: 80, veh: 400, supp: 90, terrain: 500 },
-  para: { name: 'Paratroopers', cost: 260, cd: 90, delay: 6, point: true, unit: 'rifle' },
+  para: { name: 'Paratroopers', cost: 260, cd: 90, delay: 6, point: true, units: ['rifle', 'rifle', 'mg'], spread: 6 },
   cover: { name: 'Fighter Cover', cost: 120, cd: 90, delay: 2, point: true, dur: 60, radius: 40 },
 };
 // which supports arrive by plane (flak and fighter cover can shoot those down)
@@ -413,8 +413,10 @@ function payAb(g, u) {
 // units a player fields, trains or has incoming with paratroopers (planes count too)
 // how much of the army limit one unit takes: 1, or its own pop (Conscripts are cheap bodies)
 export const popUse = (type) => UNITS[type].pop ?? 1;
+// the army limit a support's drop needs (0 for supports that bring no units)
+export const dropPop = (kind) => (SUPPORT[kind].units ?? []).reduce((a, t) => a + popUse(t), 0);
 export const popOf = (g, slot) => [...g.units.values()].reduce((a, u) => a + (u.owner === slot ? (UNITS[u.type].structure ? (u.queue ?? []).reduce((n, t) => n + popUse(t), 0) : popUse(u.type)) : 0), 0)
-  + g.strikes.reduce((a, s) => a + (s.owner === slot && !s.live && SUPPORT[s.kind].unit ? popUse(SUPPORT[s.kind].unit) : 0), 0);
+  + g.strikes.reduce((a, s) => a + (s.owner === slot && !s.live ? dropPop(s.kind) : 0), 0);
 export const popCap = (g) => Math.round((g.mode?.kind === 'classic' ? CFG.classic.popCap : CFG.popCap) * (g.army?.pop ?? 1));
 export const supCost = (g, k) => (g.mode?.kind === 'classic' ? { cur: 'mun', cost: SUPPORT[k].mun } : { cur: 'mp', cost: SUPPORT[k].cost });
 
@@ -1919,7 +1921,7 @@ export function command(g, slot, cmd, auto = false) {
   } else if (cmd.t === 'support' && typeof cmd.kind === 'string' && Object.hasOwn(SUPPORT, cmd.kind)) {
     const p = g.players[slot], sp = SUPPORT[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), { cur, cost } = supCost(g, cmd.kind);
     if (x === null || z === null || p.sup[cmd.kind] > 0 || !(p[cur] >= cost)) return x === null || z === null ? 'blocked' : p.sup[cmd.kind] > 0 ? 'cooldown' : cur;
-    if (sp.unit && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) >= popCap(g))) return !teamSees(g, p.team, { x, z }) ? 'unseen' : 'pop';
+    if (sp.units && (!teamSees(g, p.team, { x, z }) || popOf(g, slot) + dropPop(cmd.kind) > popCap(g))) return !teamSees(g, p.team, { x, z }) ? 'unseen' : 'pop';
     p[cur] -= cost; p.sup[cmd.kind] = sp.cd;
     tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
@@ -3219,7 +3221,13 @@ export function step(g) {
         blast(g, list, s, sp.blast, sp, s.owner);
         digAt(g, s, sp.dig);
       } else if (s.kind === 'para') {
-        if (!g.players[s.owner].out && popOf(g, s.owner) < popCap(g)) { const u = spawnUnit(g, s.owner, sp.unit); Object.assign(u, cellCenter(g, nearestFree(g, s.x, s.z))); updateGrid(g, u); g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true }); }
+        // the stick lands around the spot, each squad on the nearest open ground to its own place in the ring
+        sp.units.forEach((type, i) => {
+          if (g.players[s.owner].out || popOf(g, s.owner) + popUse(type) > popCap(g)) return;
+          const a = s.dir + i * 2 * Math.PI / sp.units.length, u = spawnUnit(g, s.owner, type);
+          Object.assign(u, cellCenter(g, nearestFree(g, s.x + Math.cos(a) * sp.spread, s.z + Math.sin(a) * sp.spread))); updateGrid(g, u);
+          g.shots.push({ k: 'chutes', x: u.x, z: u.z, pub: true });
+        });
       } else if (s.kind === 'cover') {
         (g.covers ??= []).push({ team: g.players[s.owner].team, owner: s.owner, x: s.x, z: s.z, r: sp.radius, t: sp.dur });
         s.left = 0;

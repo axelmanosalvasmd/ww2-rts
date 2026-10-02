@@ -1,4 +1,4 @@
-import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, abCost, levelOf, teamSees } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
@@ -62,7 +62,7 @@ export function availability(s, cfg = CFG, action = {}) {
     if (cd > 0) return no(`Cooldown ${cooldownSeconds(cd)} s`);
     const { cur, cost } = supCost(s, action.kind), money = resources(s, cur === 'mp' ? cost : 0, 0, cur === 'mun' ? cost : 0);
     if (!money.ok) return money;
-    return action.kind === 'para' ? population() : yes();
+    return action.kind === 'para' ? population(null, dropPop('para')) : yes();
   }
   if (action.t === 'build') {
     if (!classic) return no('Unavailable in this mode');
