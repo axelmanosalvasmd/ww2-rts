@@ -132,6 +132,38 @@ only through `command()`.
   for human and AI armies alike. A mine painted in the editor belongs to nobody and is not counted. The uncommitted
   difficulty branch has not been merged or edited.
 
+## AI decisions (2026-10-02)
+
+A seat AI is one commander with a private match memory (`shared/ai-mind.js`), not a list of reflexes that all fire
+every look. The horde wave is unchanged: it still attack-moves the bunker and still arms every squad.
+
+- A new enemy is noted the look it appears and acted on only after `notice` seconds (Easy 2.5, Normal 1.25, Hard 0.5).
+  Strikes, grenades, satchels, barrages and Hard's focus retarget wait that long. An announced enemy air strike is
+  still answered at once, because the siren is public. One support call per look.
+- March orders are capped per look (`hands`: 4, 6, 8). Reopening a cut point is not capped. One enemy-held point is
+  attacked per look. The point it picks keeps a small pull for `commit` seconds (16, 10, 6) unless that push is failing.
+- Auto-retreat is no longer switched on for every squad at the first look. Squads are armed when they are sent into
+  a fight, or once an enemy they have watched is within 40 m. Hurt squads still get an explicit retreat order.
+- Learning uses only own losses and sightings. A squad that disappears within 28 m of a remembered enemy type adds
+  one point of respect for that type (cap 6). Respect for tanks, mediums or Tigers makes the next rifle or MG buy an
+  AT gun (until two are fielded) even after the armor leaves vision. Two infantry losses pull a machine gun.
+  A squad lost within 20 m of a point adds a failure there (cap 4). Each failure adds 40 m to that point's score and
+  0.45 to the force margin the next attack needs, counting at most three. Capturing a point removes one failure and
+  one point of every respect, so the commander can change its mind. The memory is wiped with the match.
+- Each look names one situation, stored on the seat's private operation: `wait`, `defense`, or `push`. Purchases,
+  the one support call, and marches follow it. Support aims at that fight, or at an announced enemy air strike.
+  A contact younger than `notice` does not cancel the operation and is not struck. Easy's `commit` is longer than Hard's.
+- Wait: armor still in the 60 second sightings, and worth more than the anti-tank guns and tanks the seat can send.
+  No rifle attack-move onto that ground. The next rifle or machine-gun buy is an anti-tank gun until two are fielded.
+  An anti-tank gun already fielded is ordered toward the armor. The wait is that ground, not the whole army: another
+  point more than 28 m from the threat can still be taken, and the decision names that action `take-other` (or
+  `prepare` when every objective is the threat, `hold` on defense, `take` on a push). The same threat is not waited
+  out forever: when `commit` ends, the sighting expires, or a later look sees that ground empty, a push onto it is
+  allowed again. Rifles still do not walk onto armor that is remembered. An infantry crowd the seat cannot match
+  waits for a machine gun.
+- Defense: a watched enemy on a held point, a depot, or the base. Idle combat units are ordered toward it, and no
+  second enemy objective is opened in that look. The horde wave director does not use these situations.
+
 ## Assault mode (attack & defend)
 - Host picks Conquest (VP race) or Assault in the lobby, and which team defends; every other team attacks as one.
 - Each defender gets a Command Bunker (3000 hp, MG slit, always visible) between their HQ and a generated line of

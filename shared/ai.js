@@ -1,7 +1,9 @@
-// Simple AI player. Runs on the server every couple of seconds and plays through command(),
-// exactly like a human would. Planning receives only a detached per-seat observation.
+// Seat commander. Runs on the server every couple of seconds and plays through command(),
+// from a detached per-seat observation. Each look it picks one situation, wait, hold, or attack,
+// and keeps that operation while the reason for it still holds.
 import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los } from './sim.js';
 import { viewFor } from './ai-view.js';
+import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
 
@@ -162,10 +164,13 @@ const HEAVY = new Set(['tank', 'medium', 'tiger']);
 //               this many seconds; ratio: the wave must be worth this much more than the enemies seen there (0 = any)
 //   baseArmy    army size before it marches on an enemy base    retreat: health share at which a squad falls back
 //   focus       units in a fight shoot the same target          guard: defend the points it holds in Conquest
+//   notice      seconds a new contact is watched before a strike, a grenade, or a retarget
+//   hands       march orders one look can give (a push already chosen is one order, not one per squad)
+//   casts       abilities one look can throw                    commit: seconds it sticks with the point it picked
 export const AI_LEVELS = {
-  easy: { every: 120, adaptive: false, supReserve: 250, munReserve: 40, supGap: 45, cluster: 2, wave: 3, firstAssault: 150, ratio: 0, baseArmy: 10, retreat: 0.35 },
-  normal: { every: 40, adaptive: true, supReserve: 100, munReserve: 0, supGap: 0, cluster: 2, wave: 3, firstAssault: 0, ratio: 0, baseArmy: 6, retreat: 0.35 },
-  hard: { every: 20, adaptive: true, memory: true, supReserve: 100, munReserve: 0, supGap: 0, cluster: 3, best: true, wave: 2, firstAssault: 0, ratio: 1.2, baseArmy: 6, retreat: 0.5, focus: true, guard: true },
+  easy: { every: 120, adaptive: false, supReserve: 250, munReserve: 40, supGap: 45, cluster: 2, wave: 3, firstAssault: 150, ratio: 0, baseArmy: 10, retreat: 0.35, notice: 2.5, hands: 4, casts: 1, commit: 16 },
+  normal: { every: 40, adaptive: true, supReserve: 100, munReserve: 0, supGap: 0, cluster: 2, wave: 3, firstAssault: 0, ratio: 0, baseArmy: 6, retreat: 0.35, notice: 1.25, hands: 6, casts: 2, commit: 10 },
+  hard: { every: 20, adaptive: true, memory: true, supReserve: 100, munReserve: 0, supGap: 0, cluster: 3, best: true, wave: 2, firstAssault: 0, ratio: 1.2, baseArmy: 6, retreat: 0.5, focus: true, guard: true, notice: 0.5, hands: 8, casts: 3, commit: 6 },
 };
 export const AI_LEVEL_NAMES = Object.keys(AI_LEVELS);
 export const thinkEvery = (level) => (Object.hasOwn(AI_LEVELS, level) ? AI_LEVELS[level] : AI_LEVELS.normal).every;
@@ -239,10 +244,56 @@ function plan(observation, slot, opts, mem, send) {
   // Classic: only what my finished buildings can train
   const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
   const mine = all.filter(u => u.type !== 'engineer'); // Engineers build; everyone else fights
-  // auto-retreat on for the whole army: a broken unit runs the moment it breaks, not at the next decision
-  const steady = all.filter(u => !u.air && !u.autoRetreat);
-  if (steady.length) submit({ t: 'stance', ids: steady.map(u => u.id), key: 'autoRetreat', on: true });
-  const seenTanks = Math.max([...me.visible].filter(id => HEAVY.has(view.units.get(id)?.type)).length, counters ? seenArmor : 0);
+  // The horde is a wave, not a player: it still arms every squad. A seat commander arms squads when it
+  // sends them into a fight, or once that fight has been watched, not the whole army at the first look.
+  const mindful = !horde;
+  const mind = beginMind(view, slot, mem, mindful ? 1 : 0);
+  if (horde) {
+    const steady = all.filter(u => !u.air && !u.autoRetreat);
+    if (steady.length) submit({ t: 'stance', ids: steady.map(u => u.id), key: 'autoRetreat', on: true });
+  }
+  // One situation for this look, from the seat's own sightings and the operation it already committed to.
+  // Wait: a remembered threat it cannot answer. Hold: a watched enemy on ground it owns. Attack: one objective.
+  let sit = null;
+  let armorSightings = [];
+  const enemies = [...me.visible].map(id => view.units.get(id)).filter(Boolean);
+  const watched = (e) => !mindful || knownSince(mind, e?.id, now, L.notice);
+  if (mindful) {
+    dropEmptyGround(mem, view, slot, now);
+    const sightings = liveSightings(mem, view, slot, now);
+    armorSightings = sightings.filter(s => ARMOR.has(s.type));
+    mind.released ??= [];
+    if (mind.operation?.kind === 'wait' && mind.operation.threatId != null && !(now + 1e-9 < mind.operation.until)
+      && !mind.released.includes(mind.operation.threatId)) mind.released.push(mind.operation.threatId);
+    const onHeld = enemies.filter(e => watched(e) && !e.air && !UNITS[e.type].structure && e.hp > 0).filter(e => {
+      const onPoint = view.points.some(p => allied(view, p.owner, slot) && d(e, p) <= CFG.pointRadius + 4);
+      const onDepot = [...view.units.values()].some(u => u.type === 'depot' && u.owner === slot && d(e, u) <= 24);
+      const onBase = d(e, me.spawn) <= 32 || [...view.units.values()].some(u => u.type === 'hq' && u.owner === slot && d(e, u) <= 32);
+      return onPoint || onDepot || onBase;
+    }).sort((a, b) => d(a, me.spawn) - d(b, me.spawn) || a.id - b.id)[0];
+    if (onHeld) {
+      const until = mind.operation?.kind === 'defense' && mind.operation.threatId === onHeld.id && now + 1e-9 < mind.operation.until
+        ? mind.operation.until : now + L.commit;
+      sit = { kind: 'defense', until, point: null, threatId: onHeld.id, at: { x: onHeld.x, z: onHeld.z }, counter: null, failedAt: 0 };
+    } else if (operationHolds(mind.operation, view, slot, mind, now, sightings)) {
+      sit = mind.operation;
+    } else {
+      const answer = mine.filter(u => ANTI_ARMOR.has(u.type)).reduce((a, u) => a + worth(u), 0);
+      const armorVal = armorSightings.reduce((a, s) => a + (s.val ?? 0), 0);
+      const openArmor = armorSightings.filter(s => !mind.released.includes(s.id));
+      const crowd = sightings.filter(s => UNITS[s.type]?.infantry);
+      const crowdVal = crowd.reduce((a, s) => a + (s.val ?? 0), 0);
+      const foot = mine.filter(u => UNITS[u.type].infantry).reduce((a, u) => a + worth(u), 0);
+      if (openArmor.length && armorVal > answer + 1e-9) {
+        const s = openArmor[0];
+        sit = { kind: 'wait', until: now + L.commit, point: null, threatId: s.id, at: { x: s.x, z: s.z }, counter: count('at') < 2 ? 'at' : null, failedAt: 0 };
+      } else if (crowd.length >= 4 && crowdVal > foot + 1e-9 && count('mg') < 1 && !mind.released.includes(crowd[0].id)) {
+        const s = crowd[0];
+        sit = { kind: 'wait', until: now + L.commit, point: null, threatId: s.id, at: { x: s.x, z: s.z }, counter: 'mg', failedAt: 0 };
+      } else sit = { kind: 'push', until: now + L.commit, point: null, threatId: null, at: null, counter: null, failedAt: 0 };
+    }
+  }
+  const seenTanks = Math.max([...me.visible].filter(id => HEAVY.has(view.units.get(id)?.type)).length, counters ? seenArmor : 0, mindful ? armorSightings.length : 0);
 
   // shopping: counter tanks it has seen, get one tank once the infantry is out, a mortar for dug-in enemies, a sniper
   // against infantry crowds, an armored car to scout and raid, else 2 rifles per MG
@@ -267,6 +318,11 @@ function plan(observation, slot, opts, mem, send) {
   if (want === 'rifle' && canBuild('ranger', me.faction) && count('ranger') < 2 && count('rifle') >= 1) buy = 'ranger';
   // Tiger only when it's affordable right now: saving up for it starved the German army
   if (canBuild('tiger', me.faction) && count('tiger') < 1 && mine.length >= 5 && affords('tiger') && (want === 'tank' || want === 'rifle')) buy = 'tiger';
+  // A tank that already wiped a squad, or one this seat still remembers, changes the next buy after it leaves sight.
+  if (mindful) {
+    const learned = lesson(mind, buy, count('at'), count('mg')) || sit?.counter || null;
+    if (learned) buy = learned;
+  }
   // Classic: keep an Engineer while there are nodes to build on
   // Classic: no building for it, or no Fuel for a vehicle: infantry instead
   if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
@@ -284,9 +340,56 @@ function plan(observation, slot, opts, mem, send) {
   }
 
   const orders = [], assault_ = [], retreat = [], pending = view.points.map(() => []), heading = [...load];
-  const enemies = [...me.visible].map(id => view.units.get(id)).filter(Boolean);
   const enemyOrder = new Map(enemies.map((u, i) => [u.id, i]));
   const enemiesNear = (at, r) => grid.radius(at, r).filter(u => enemyOrder.has(u.id)).sort((a, b) => enemyOrder.get(a.id) - enemyOrder.get(b.id));
+  // The attack's objective is chosen once, before support, so a strike aims at that push and not at some other cluster.
+  if (mindful && sit?.kind === 'push' && sit.point == null) {
+    const scout = mine.find(u => !u.air && !UNITS[u.type].medic) ?? mine[0];
+    let best = -1, bestScore = Infinity;
+    if (scout) view.points.forEach((p, i) => {
+      if (allied(view, p.owner, slot) && !p.cut) return;
+      if (defending && d(p, me.spawn) > 70) return;
+      const score = d(scout, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + pointExtra(mind, i) * 40;
+      if (score < bestScore) { bestScore = score; best = i; }
+    });
+    if (best >= 0) {
+      sit = { ...sit, point: best, at: { x: view.points[best].x, z: view.points[best].z }, failedAt: mind.points[best]?.failed ?? 0 };
+      if (!mind.aim) mind.aim = { i: best, until: sit.until };
+    }
+  }
+  // A wait is about the ground it cannot take. Another point, clear of that threat, is still a fair attack.
+  if (mindful && sit?.kind === 'wait') {
+    const threatNear = (p) => !!(sit.at && Math.hypot(sit.at.x - p.x, sit.at.z - p.z) <= 28);
+    const owned = (p) => allied(view, p.owner, slot) && !p.cut;
+    const stale = sit.safe == null || !view.points[sit.safe] || threatNear(view.points[sit.safe]) || owned(view.points[sit.safe]);
+    if (stale) {
+      const scout = mine.find(u => !u.air && !UNITS[u.type].medic) ?? mine[0];
+      let best = -1, bestScore = Infinity;
+      if (scout) view.points.forEach((p, i) => {
+        if (owned(p) || threatNear(p)) return;
+        if (defending && d(p, me.spawn) > 70) return;
+        const score = d(scout, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + pointExtra(mind, i) * 40;
+        if (score < bestScore) { bestScore = score; best = i; }
+      });
+      sit = { ...sit, safe: best >= 0 ? best : null };
+      if (best >= 0 && !mind.aim) mind.aim = { i: best, until: sit.until };
+    }
+  }
+  let hands = 0, casts = 0, pushed = false, spentSupport = false;
+  const takeHand = () => {
+    if (!mindful) return true;
+    if (hands >= L.hands) return false;
+    hands += 1;
+    return true;
+  };
+  const armSet = new Set();
+  const arm = (u) => { if (mindful && u && !u.air && !u.autoRetreat && !u.retreating) armSet.add(u.id); };
+  const cast = (cmd) => {
+    if (mindful && casts >= L.casts) return false;
+    if (submit(cmd) !== undefined) return false;
+    casts += 1;
+    return true;
+  };
 
   // off-map support, keeping some MP back so reinforcing never stalls (Easy keeps more, and waits between calls)
   const can = (k) => { const { cur, cost } = supCost(view, k); return me.sup[k] <= 0 && me[cur] >= cost + (cur === 'mp' ? L.supReserve : L.munReserve) && now - mem.called >= L.supGap; };
@@ -294,7 +397,8 @@ function plan(observation, slot, opts, mem, send) {
   const cluster = (min, r, test = () => true) => {
     let best = null, most = min - 1;
     for (const e of enemies) {
-      const near = enemiesNear(e, r).filter(o => test(o) && d(o, e) <= r);
+      if (!watched(e)) continue;
+      const near = enemiesNear(e, r).filter(o => test(o) && watched(o) && d(o, e) <= r);
       if (near.length <= most) continue;
       const at = { x: near.reduce((a, o) => a + o.x, 0) / near.length, z: near.reduce((a, o) => a + o.z, 0) / near.length };
       if (!L.best) return at;
@@ -304,18 +408,24 @@ function plan(observation, slot, opts, mem, send) {
     return best;
   };
   const clearOfFriends = at => !grid.radius(at, 10).some(u => allied(view, u.owner, slot) && !u.air && d(u, at) < 10);
-  const call = (kind, at, dir) => { if (at && !submit({ t: 'support', kind, x: at.x, z: at.z, dir })) mem.called = now; };
+  // One support call per look. A siren (fighter cover) can be that call. A unit just spotted is not a target yet.
+  const call = (kind, at, dir) => {
+    if (spentSupport || !at) return;
+    // Cover answers a siren wherever it is. Every other call has to be the fight this look already chose.
+    if (mindful && kind !== 'cover' && sit?.at && d(at, sit.at) > 40) return;
+    if (!submit({ t: 'support', kind, x: at.x, z: at.z, dir })) { mem.called = now; spentSupport = true; }
+  };
   // bombs for tanks and for squads holed up in houses
   // an enemy air strike announced near my units: put fighter cover over it (cover arrives in 2s, strikes take 3-6s)
   const incoming = view.strikes.find(q => q.t > 0 && !allied(view, q.owner, slot) && SUPPORT_PLANE(q.kind) && mine.some(u => d(u, q) < 25));
   if (incoming && can('cover')) call('cover', incoming);
-  const heavy = enemies.find(e => e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'flaktrack');
+  const heavy = enemies.find(e => (e.type === 'tank' || e.type === 'medium' || e.type === 'tiger' || e.type === 'flaktrack') && watched(e));
   if (heavy && can('dive')) call('dive', heavy);
   const dropZone = view.points.find(q => q.owner >= 0 && !allied(view, q.owner, slot) && view.sees(q));
-  if (dropZone && !horde && mine.length >= 6 && can('para')) call('para', dropZone);
-  const bombTarget = enemies.find(e => e.type === 'tank') || enemies.find(e => e.garrison >= 0);
+  if (dropZone && !horde && mine.length >= 6 && can('para') && (!mindful || pointReady(mind, view.points.indexOf(dropZone), now, L.notice))) call('para', dropZone);
+  const bombTarget = enemies.find(e => (e.type === 'tank' || e.garrison >= 0) && watched(e));
   if (bombTarget && can('bombing')) call('bombing', bombTarget);
-  else if (can('artillery')) call('artillery', cluster(L.cluster, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && now - e.firstStillAt > 3 && (!L.best || clearOfFriends(e))));
+  else if (can('artillery')) call('artillery', cluster(L.cluster, 8) || enemies.find(e => (e.type === 'mg' || e.type === 'at') && watched(e) && now - e.firstStillAt > 3 && (!L.best || clearOfFriends(e))));
   else if (can('strafe')) call('strafe', cluster(L.cluster, 10, o => UNITS[o.type].infantry));
   if (can('recon') && !enemies.length && (classic || me.mp > 250)) call('recon', view.points.find(p => p.owner >= 0 && !allied(view, p.owner, slot)));
   const hurt = u => { const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer); return frac < L.retreat || (def.models > 1 && alive(u) <= 1) || (u.supp >= 90 && frac < 0.6); };
@@ -326,7 +436,7 @@ function plan(observation, slot, opts, mem, send) {
   if (adapt) {
     const free = mine.filter(u => !u.retreating && !u.targetId);
     // a hurt squad is left to the normal logic, which pulls it back to reinforce
-    const send = (u, at) => { if (worth(u) < UNITS[u.type].cost * 0.4 || hurt(u)) return; busy.add(u.id); if (!u.amove || d(u.amove, at) > 6) assault_.push([u.id, at.x, at.z]); };
+    const send = (u, at) => { if (worth(u) < UNITS[u.type].cost * 0.4 || hurt(u)) return; busy.add(u.id); arm(u); if (!u.amove || d(u.amove, at) > 6) assault_.push([u.id, at.x, at.z]); };
     if (rush.length) {
       // everyone home to meet it, Engineers out of the way
       const c = { x: rush.reduce((a, e) => a + e.x, 0) / rush.length, z: rush.reduce((a, e) => a + e.z, 0) / rush.length };
@@ -365,7 +475,7 @@ function plan(observation, slot, opts, mem, send) {
       go.push(u); val += worth(u);
     }
     if (val < foeVal) continue;
-    for (const u of go) { busy.add(u.id); if (d(u, at) > 12 && (!u.amove || d(u.amove, at) > 6)) assault_.push([u.id, at.x, at.z]); }
+    for (const u of go) { busy.add(u.id); arm(u); if (d(u, at) > 12 && (!u.amove || d(u.amove, at) > 6)) assault_.push([u.id, at.x, at.z]); }
   }
   // rule 3, attack timing: march on a base only with an army worth 1.3x what that enemy was recently seen fielding
   const target = bunkers[0], myVal = mine.reduce((a, u) => a + worth(u), 0);
@@ -388,28 +498,50 @@ function plan(observation, slot, opts, mem, send) {
   // that fell back to a Barracks away from the HQ used to head out again half empty)
   const bases = classic ? [...view.units.values()].filter(b => UNITS[b.type].produces && b.built >= 1 && b.hp > 0 && allied(view, b.owner, slot)) : null;
   const atBase = (u) => (bases ? bases.some(b => d(u, b) <= CFG.reinforceRadius) : d(u, me.spawn) <= CFG.reinforceRadius);
+  const idleCombat = (u) => !u.air && !u.retreating && !busy.has(u.id) && !UNITS[u.type].medic && !u.path.length && !u.attackId && !u.targetId && !u.dig && !u.entrench && u.enter < 0 && u.fireAt < 0;
+  // A watched threat on ground we hold: idle squads go there, and the attack loop will not open another objective.
+  if (mindful && sit?.kind === 'defense' && sit.at) {
+    for (const u of mine) {
+      if (!idleCombat(u)) continue;
+      if (!takeHand()) break;
+      assault_.push([u.id, sit.at.x, sit.at.z]);
+      arm(u);
+      busy.add(u.id);
+    }
+  }
+  // Remembered armor: the anti-tank gun goes toward it. Rifles are taken off that ground at the end of the look.
+  if (mindful && armorSightings.length && sit && sit.kind !== 'defense') {
+    const spot = armorSightings[0];
+    for (const u of mine) {
+      if (!ANTI_ARMOR.has(u.type) || !idleCombat(u)) continue;
+      if (!takeHand()) break;
+      assault_.push([u.id, spot.x, spot.z]);
+      arm(u);
+      busy.add(u.id);
+    }
+  }
   for (const u of mine) {
     if (u.air) continue; // planes are flown above
     if (busy.has(u.id)) continue;
     const def = UNITS[u.type], frac = u.hp / (def.models * def.hpPer), home = atBase(u);
     if (u.retreating) continue;
 
-    // abilities
+    // abilities: a few throws per look, and not at a squad that was spotted on this same look
     const target = view.units.get(u.targetId);
     if (u.cd <= 0) {
       if (def.ab.id === 'grenade') {
         // lob it at a dug-in MG or AT gun, or any squad sitting in cover
-        const t = enemiesNear(u, def.ab.range + 4).find(e => UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(view, e)));
-        if (t) submit({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
-      } else if (def.ab.id === 'suppress' && target) submit({ t: 'ability', ids: [u.id] });
-      else if (def.ab.id === 'ap' && target?.type === 'tank') submit({ t: 'ability', ids: [u.id] });
-      else if (def.ab.id === 'smoke' && frac < 0.5 && !home) submit({ t: 'ability', ids: [u.id] });
+        const t = enemiesNear(u, def.ab.range + 4).find(e => watched(e) && UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(view, e)));
+        if (t) cast({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
+      } else if (def.ab.id === 'suppress' && target && watched(target)) cast({ t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'ap' && target?.type === 'tank' && watched(target)) cast({ t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'smoke' && frac < 0.5 && !home) cast({ t: 'ability', ids: [u.id] });
       else if (def.ab.id === 'satchel') {
         // demolish a house the enemy is holding, or plant it on a tank
-        const t = enemiesNear(u, 20).find(e => (e.garrison >= 0 || !UNITS[e.type].infantry) && d(u, e) <= 20);
-        if (t) submit({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
-      } else if (def.ab.id === 'ura' && (u.supp >= 50 || (u.amove && enemiesNear(u, 30).some(e => d(u, e) < 30)))) submit({ t: 'ability', ids: [u.id] });
-      else if (def.ab.id === 'barrage') { const t = (L.best && cluster(L.cluster, 8, e => d(u, e) <= def.ab.range)) || enemiesNear(u, def.ab.range).find(e => e.garrison >= 0 && d(u, e) <= def.ab.range && (!L.best || clearOfFriends(e))); if (t) submit({ t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
+        const t = enemiesNear(u, 20).find(e => watched(e) && (e.garrison >= 0 || !UNITS[e.type].infantry) && d(u, e) <= 20);
+        if (t) cast({ t: 'ability', ids: [u.id], x: t.x, z: t.z });
+      } else if (def.ab.id === 'ura' && (u.supp >= 50 || (u.amove && enemiesNear(u, 30).some(e => watched(e) && d(u, e) < 30)))) cast({ t: 'ability', ids: [u.id] });
+      else if (def.ab.id === 'barrage') { const t = (L.best && cluster(L.cluster, 8, e => d(u, e) <= def.ab.range)) || enemiesNear(u, def.ab.range).find(e => watched(e) && e.garrison >= 0 && d(u, e) <= def.ab.range && (!L.best || clearOfFriends(e))); if (t) cast({ t: 'ability', ids: [u.id], x: t.x, z: t.z }); }
     }
     // save hurt units instead of letting them die: retreat, get reinforced, come back
     if (!horde && !home && hurt(u)) { retreat.push(u.id); continue; }
@@ -418,7 +550,7 @@ function plan(observation, slot, opts, mem, send) {
     if (def.medic) { if (!u.path.length && d(u, front) > 8) orders.push([u.id, front.x, front.z]); continue; }
     // tanks knock down houses that enemy squads are hiding in
     if (def.w.shellTerrain && !u.targetId && u.fireAt < 0) {
-      const house = enemiesNear(u, 60).find(e => e.garrison >= 0 && d(u, e) < 60);
+      const house = enemiesNear(u, 60).find(e => watched(e) && e.garrison >= 0 && d(u, e) < 60);
       if (house) { submit({ t: 'fireat', ids: [u.id], x: house.x, z: house.z }); continue; }
     }
     if (u.path.length || u.attackId || u.nade || u.dig || u.enter >= 0 || u.fireAt >= 0) continue;
@@ -450,9 +582,12 @@ function plan(observation, slot, opts, mem, send) {
     // otherwise go for the closest point we don't hold, spreading out across targets
     let best = -1, bestScore = Infinity;
     // attackers with a big enough army go for the bunkers
-    if (bunkers.length && mine.length >= Math.round(L.baseArmy * caution) && strongEnough) {
-      const b = bunkers.sort((a, c) => d(u, a) - d(u, c))[0];
-      assault_.push([u.id, b.x, b.z]);
+    if (bunkers.length && mine.length >= Math.round(L.baseArmy * caution) && strongEnough && !(mindful && sit && sit.kind !== 'push')) {
+      if (takeHand()) {
+        const b = bunkers.sort((a, c) => d(u, a) - d(u, c))[0];
+        assault_.push([u.id, b.x, b.z]);
+        arm(u);
+      }
       continue;
     }
     view.points.forEach((p, i) => {
@@ -460,11 +595,16 @@ function plan(observation, slot, opts, mem, send) {
       // attack-move to it and meet whatever sits on the road
       if (allied(view, p.owner, slot) && (!p.cut || d(u, p) <= CFG.pointRadius + 16)) return;
       if (defending && d(p, me.spawn) > 70) return; // defenders stay near home
-      // the center is worth double VP, villages feed manpower
-      const score = d(u, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10;
+      // While waiting on a threat, only the clear point is worth a march. The dangerous one is not.
+      if (mindful && sit?.kind === 'wait' && (sit.safe == null || i !== sit.safe) && !(allied(view, p.owner, slot) && p.cut)) return;
+      // the center is worth double VP, villages feed manpower. A point that has already killed our squads
+      // looks worse. The point this commander already picked keeps a small pull until that choice expires.
+      const loyal = mindful && mind.aim && mind.aim.i === i ? 18 : 0;
+      const score = d(u, p) + load[i] * 40 - (p.vp - 1) * 25 - p.mp * 10 + (mindful ? pointExtra(mind, i) * 40 : 0) - loyal;
       if (score < bestScore) { bestScore = score; best = i; }
     });
     if (best < 0) continue; // we hold everything: stay put
+    if (mindful && !mind.aim) mind.aim = { i: best, until: now + L.commit };
     load[best]++;
     pending[best].push(u);
   }
@@ -473,9 +613,15 @@ function plan(observation, slot, opts, mem, send) {
   pending.forEach((group, i) => {
     const p = view.points[i];
     if (p.owner < 0 || allied(view, p.owner, slot)) {
-      for (const u of group) { const s = spotNear(view, p); (p.cut ? assault_ : orders).push([u.id, s.x, s.z]); }
+      // a cut point is reopened immediately: the supply rule is the same at every difficulty
+      if (p.cut) { for (const u of group) { const s = spotNear(view, p); assault_.push([u.id, s.x, s.z]); } return; }
+      for (const u of group) { if (!takeHand()) return; const s = spotNear(view, p); orders.push([u.id, s.x, s.z]); }
       return;
     }
+    if (mindful && sit?.kind === 'defense') return; // holding does not open another enemy point
+    if (mindful && sit?.kind === 'wait' && i !== sit.safe) return; // the other point is the action; this ground is the threat
+    if (mindful && sit?.kind === 'push' && sit.point != null && i !== sit.point) return; // the operation already has its objective
+    if (mindful && pushed) return; // one enemy point per look. The other can wait until the next decision.
     if (now < L.firstAssault || !group.length || group.length + heading[i] < Math.min(L.wave, mine.length)) return;
     const ids = new Set(group.map(u => u.id));
     const there = mine.filter(u => !u.air && !u.retreating && !ids.has(u.id) && (d(u, p) <= 25 || [u.amove, u.path.at(-1)].some(at => at && d(at, p) <= CFG.pointRadius + 2)));
@@ -484,11 +630,13 @@ function plan(observation, slot, opts, mem, send) {
       : enemiesNear(p, 25).filter(e => d(e, p) <= 25 && !UNITS[e.type].structure).map(worth);
     const foeVal = foes.reduce((a, v) => a + v, 0), ourVal = [...group, ...there].reduce((a, u) => a + worth(u), 0);
     if (foeVal > 1.5 * ourVal) return;
-    if (ourVal < L.ratio * foeVal) return;
+    // losses on this point raise the margin the next push has to bring
+    if (ourVal < (L.ratio + (mindful ? pointExtra(mind, i) * 0.45 : 0)) * foeVal) return;
     // screen the assault with smoke, 60% of the way in; attack-move, so they fight their way in past the defenders
     const c = centroid(group);
     if (can('smoke')) call('smoke', toward(c, p, d(c, p) * 0.6), Math.atan2(p.z - c.z, p.x - c.x) + Math.PI / 2); // wall across the approach
-    for (const u of group) { const s = spotNear(view, p); assault_.push([u.id, s.x, s.z]); }
+    pushed = true;
+    for (const u of group) { const s = spotNear(view, p); assault_.push([u.id, s.x, s.z]); arm(u); }
   });
   // Hard: units in a fight shoot together at the target they can kill best (the most value per second of their combined
   // fire, finishing hurt units first), instead of each picking its own. Only units already in range, out in the open.
@@ -497,12 +645,12 @@ function plan(observation, slot, opts, mem, send) {
     const dps = (u, inf) => hit(u, inf) * (UNITS[u.type].w.perModel ? alive(u) : 1) / UNITS[u.type].w.interval;
     const shooters = mine.filter(u => !u.air && !u.retreating && u.targetId && u.garrison < 0 && !u.nade && !u.dig && u.fireAt < 0 && !UNITS[u.type].w.salvo && !retreat.includes(u.id));
     // (a squad running away isn't chased: they'd follow it into its own lines)
-    const targets = enemies.filter(e => !e.air && !UNITS[e.type].structure && e.hp > 0 && !e.retreating), used = new Set();
+    const targets = enemies.filter(e => watched(e) && !e.air && !UNITS[e.type].structure && e.hp > 0 && !e.retreating), used = new Set();
     // a focus target that moved out of range or behind cover isn't chased either: back to the attack-move (or hold here)
     const stop = mine.filter(u => !u.air && u.attackId && !retreat.includes(u.id) && (t => t && me.visible.has(t.id) && (t.retreating || d(u, t) > UNITS[u.type].w.range || !los(view, u, t)))(view.units.get(u.attackId)));
     const next = (u) => u.orders?.find(o => o.kind === 2) ?? u;
     if (stop.length) submit({ t: 'amove', orders: stop.map(u => [u.id, next(u).x, next(u).z]) });
-    for (let k = 0; k < 4 && shooters.length - used.size >= 2; k++) {
+    for (let k = 0; k < (mindful ? 1 : 4) && shooters.length - used.size >= 2; k++) {
       let best = null, bestScore = 0, team = null;
       for (const e of targets) {
         const def = UNITS[e.type], full = def.models * def.hpPer, inf = def.infantry;
@@ -526,6 +674,23 @@ function plan(observation, slot, opts, mem, send) {
       if (resume.length) submit({ t: 'amove', orders: resume, queue: true });
     }
   }
+  if (mindful) for (const u of mine) if (!u.air && !u.autoRetreat && !u.retreating && enemies.some(e => watched(e) && d(u, e) < 40)) arm(u);
+  if (armSet.size) submit({ t: 'stance', ids: [...armSet], key: 'autoRetreat', on: true });
+  // Rifles do not walk onto armor this seat still remembers. The gun, if one was ordered, stays in that order.
+  if (mindful && armorSightings.length) {
+    const hot = (x, z) => armorSightings.some(s => Math.hypot((s.x ?? 0) - x, (s.z ?? 0) - z) <= 28);
+    const soft = (id) => { const u = view.units.get(id); return !!u && !ANTI_ARMOR.has(u.type); };
+    for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (soft(list[i][0]) && hot(list[i][1], list[i][2])) list.splice(i, 1);
+  }
+  if (mindful && sit) {
+    const action = sit.kind === 'defense' ? 'hold' : sit.kind === 'wait' ? (sit.safe != null ? 'take-other' : 'prepare') : 'take';
+    mind.operation = {
+      kind: sit.kind, until: sit.until, point: sit.point ?? null, threatId: sit.threatId ?? null,
+      at: sit.at ? { x: sit.at.x, z: sit.at.z } : null, counter: sit.counter ?? null, safe: sit.safe ?? null,
+      failedAt: sit.point != null ? (mind.points[sit.point]?.failed ?? sit.failedAt ?? 0) : (sit.failedAt ?? 0),
+    };
+    mind.decision = { situation: sit.kind, action, buy, aim: mind.aim ? mind.aim.i : (sit.point ?? sit.safe ?? null) };
+  } else mind.decision = { buy, aim: mind.aim ? mind.aim.i : null };
   if (retreat.length) submit({ t: 'retreat', ids: retreat });
   if (orders.length) submit({ t: 'move', orders });
   if (assault_.length) submit({ t: 'amove', orders: assault_ });
