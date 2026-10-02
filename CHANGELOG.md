@@ -13,6 +13,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Less clutter: fortifications moved into a **Build** menu and dig patterns into a **Trenches** menu. Their hotkeys still work with the menus closed.
 - Left for later: queued legs do not keep the march-together pace, and a group's saved formation does not include its facing.
 
+- Big battles run smoother on the server. Unit separation uses its own fine 4 m grid and filters before sorting, vision shares one nearby-enemy query per 16 m cell, mortars count a target's neighbours from one query, radius queries filter before sorting, and the server builds the snapshot cache once per send tick instead of twice. Bastogne Horde (3 AI, endless army, 6000 ticks, seeded) at 300 to 399 units: step p50/p95 7.7/21.5 ms to 6.4/13.1 ms, worst step 34.5 to 21.7 ms, snapshot p50 3.1 to 1.5 ms. Same final state hash before and after, so replays and AI results are unchanged. One side effect: orders an AI gives on a send tick reach human snapshots one send later (about 0.1 s).
+- Checked and left alone: the path budget counts findPath calls (default 4096 per tick, so it never limits), not node expansions. It does not explain step spikes: the slowest steps in the run above had no path work, and the heaviest path tick (5042 expansions) took 9 ms.
+
 - Spectator mode. In the lobby, "Watch as a spectator" gives up your seat; "Take a seat" sits you back down. A
   spectator sees the whole map with no fog, every army and every shot, and has no orders, resources, recruit bar or
   alerts (the banner under the scores says "Spectating"). Anyone who opens the invite while a match runs, or when all
