@@ -408,7 +408,7 @@ function startGame(m, restored = null) {
     for (const id of restored.selected || []) if (Number.isSafeInteger(id)) selected.add(id);
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
-  fx.length = 0; lastSnap = null; hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
@@ -661,7 +661,14 @@ const airShot = (sh) => AIR_SHOTS.has(sh.k) && !(sh.k === 'flak' && (sh.t !== un
 
 // ---------- snapshots ----------
 
+// The server sends only the unit rows that changed and the ids gone (dead or under fog), and the wrecks and resource
+// nodes only when they change; the full lists are put back together here, so everything after reads whole snapshots.
+const unitRows = new Map();
 function applySnapshot(s) {
+  for (const id of s.gone ?? []) unitRows.delete(id);
+  for (const row of s.units) unitRows.set(row[0], row);
+  s.units = [...unitRows.values()];
+  s.wrecks ??= lastSnap?.wrecks; s.nodes ??= lastSnap?.nodes;
   fogOfWar?.snapshot(s); // before the freeze: each fog change builds on the last one
   if (window.__freeze) return; // debug: hold the scene still (e.g. to inspect models)
   const arrived = performance.now();
@@ -679,7 +686,7 @@ function applySnapshot(s) {
     v.stars.forEach((st, i) => (st.visible = i < v.vet));
     const cl = !v.garr && COVER_LOOK[cover];
     v.shield.visible = !!cl;
-    if (cl) { v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; }
+    if (cl && v.coverLook !== cl) { v.coverLook = cl; v.shield.material.color.set(cl[0]); v.shield.material.opacity = cl[1]; } // material writes only on a change
     // inside a building: the squad disappears into it; its bars float above the roof
     setOwnerRing(v.base, flags & 1 ? 0xffffff : look(owner).color);
     // men drawn, not men counted: a squad may be drawn as a bigger block (client/unit-models.js), so health maps onto it
@@ -690,13 +697,14 @@ function applySnapshot(s) {
     v.base.visible = !v.garr;
     // riding in a halftrack: not drawn, not selectable; it comes back when it gets out
     if (!isAir(type)) { const riding = !!(flags & RIDING_FLAG); v.root.visible = v.bars.visible = !riding; if (riding) selected.delete(id); }
-    if (UNITS[type].camo) v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; }));
+    if (UNITS[type].camo && v.camo !== (flags & 256)) { v.camo = flags & 256; v.models.forEach(man => man.traverse(o => { if (o.isMesh && !o.material.userData.camo) { o.material = o.material.clone(); o.material.userData.camo = true; o.material.transparent = true; } if (o.isMesh) o.material.opacity = flags & 256 ? 0.45 : 1; })); }
     const frac = Math.max(0, hp / (def.models * def.hpPer));
     v.hpBar.scale.x = 2.3 * frac; v.hpBar.position.x = -1.15 * (1 - frac);
-    v.hpBar.material.color.set(frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a);
+    const hpColor = frac > 0.5 ? look(owner).color : frac > 0.25 ? 0xe08a2a : 0xd02a1a, suppColor = supp >= 90 ? 0xff3b2a : 0xffd23a;
+    if (v.hpColor !== hpColor) v.hpBar.material.color.set(v.hpColor = hpColor);
     v.suppBar.visible = supp > 0;
     v.suppBar.scale.x = 2.3 * supp / 100; v.suppBar.position.x = -1.15 * (1 - supp / 100);
-    v.suppBar.material.color.set(supp >= 90 ? 0xff3b2a : 0xffd23a);
+    if (v.suppColor !== suppColor) v.suppBar.material.color.set(v.suppColor = suppColor);
   }
   autocast.adopt(s.units, me, classicMode()); // new units of a type take the player's remembered autocast choice
   for (const sh of s.shots) {

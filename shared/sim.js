@@ -1003,6 +1003,8 @@ function logCell(g, c, change) {
   else g.cellLog[index] = latest;
   // Keep each viewer's changes independently of the transient snapshot batch.
   for (const p of g.players) p.terrainPending?.add(index);
+  g.watchPending?.add(index); // the spectators' shared terrain memory (server.js)
+  g.terrainVersion = (g.terrainVersion ?? 0) + 1;
   g.newCells.push(change);
 }
 
@@ -2637,7 +2639,7 @@ function sweepMines(g, list) {
     const bit = 1 << g.players[u.owner].team, cx = Math.floor(u.x / CELL), cy = Math.floor(u.z / CELL);
     for (let y = Math.max(0, cy - r); y <= Math.min(g.h - 1, cy + r); y++) for (let x = Math.max(0, cx - r); x <= Math.min(g.w - 1, cx + r); x++) {
       const c = y * g.w + x;
-      if (g.chars[c] === 'N' && !mineKnown(g, c, g.players[u.owner].team) && dist(u, cellCenter(g, c)) <= M.detect) g.mineSeen.set(c, (g.mineSeen.get(c) ?? 0) | bit);
+      if (g.chars[c] === 'N' && !mineKnown(g, c, g.players[u.owner].team) && dist(u, cellCenter(g, c)) <= M.detect) { g.mineSeen.set(c, (g.mineSeen.get(c) ?? 0) | bit); g.terrainVersion = (g.terrainVersion ?? 0) + 1; }
     }
   }
 }
@@ -3181,7 +3183,11 @@ function planOf(g, u) {
 export function terrainFor(g, slot, full = false) {
   const p = g.players[slot], memory = p.terrainMemory ??= new Map();
   const pending = p.terrainPending ??= new Set(g.cellLog.keys());
-  if (!pending.size) return full ? [...memory.values()] : [];
+  // What is still pending waits on a new cell, a found mine or a vision pass; until one comes there is nothing to redo.
+  // ponytail: a ruin's teamSees check also follows live positions, so it can show up one vision pass (4 ticks) later.
+  const key = `${g.terrainVersion ?? 0}:${g.visionTick ?? -1}`;
+  if (!pending.size || (!full && pending.key === key)) return full ? [...memory.values()] : [];
+  pending.key = key;
   const changes = [], visible = new Map();
   // Unseen footprints stay pending. Replay order also preserves remembered terrain order.
   for (const index of [...pending].sort((a, b) => a - b)) {
@@ -3261,6 +3267,20 @@ export function seenBy(g, slot, id) {
   const u = g.units.get(id);
   // A plane is seen only while it flies, even between vision updates. The end-of-match reveal shows everything.
   return (g.reveal && !!u) || allied(g, u?.owner ?? -1, slot) || (g.players[slot].visible.has(id) && (!u?.air || airborne(u)));
+}
+
+// The unit rows one client still needs. sent maps id to the row it last got (start and reconnect begin with an empty
+// map); full sends every row anyway (a spectator joined the shared stream). Returns the rows that changed and the ids
+// that are gone (dead, or hidden by fog) for the client to drop. sent is updated.
+export function unitDelta(sent, rows, full = false) {
+  const units = [], gone = new Set(sent.keys());
+  for (const row of rows) {
+    const old = sent.get(row[0]);
+    gone.delete(row[0]);
+    if (full || !old || row.some((v, i) => v !== old[i])) { units.push(row); sent.set(row[0], row); }
+  }
+  for (const id of gone) sent.delete(id);
+  return { units, gone: gone.size ? [...gone] : undefined };
 }
 
 export function snapshotFor(g, slot, shots, cells = [], cache) {

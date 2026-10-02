@@ -759,6 +759,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Snapshot cache: `snapshotCache(g)` is built once per send and passed as the fifth argument to `snapshotFor`. Without
   it, `snapshotFor` reads live state. Owner orders and the mode row with Assault total and Annihilation bunkers are
   cached. Rally, contested and the fog lift stay per player.
+- Snapshot deltas (server.js `trimmed`): the WebSocket compresses messages over 1 KB (permessage-deflate). Each client
+  gets only the unit rows that changed since its last snapshot plus `gone` (ids that died or went under fog), from
+  `unitDelta(sent, rows)`; wrecks and resource nodes go only when their room-level version moves. A start or reconnect
+  resets the seat's record, so its next snapshot is whole. Spectators share one stream: one build and one string per
+  broadcast, one terrain memory on the game (`g.watchPending`, fed by `logCell`), and a joining spectator makes the
+  next broadcast whole. The client (and the test harness) rebuild full lists before anything reads them.
+  `terrainFor` skips its pending replay until a cell changes, a mine is found or a vision pass runs.
 - As merged with rounds 1 and 2: snapshot terrain is each player's own memory (`terrainFor`, from the round 2 fog
   fixes), outside the cache, so the `cells` argument of `snapshotFor` is unused and a second build in the same tick
   gets only what the first one left. `command()` has one guard for bad slots, units, support, forts and foreign
