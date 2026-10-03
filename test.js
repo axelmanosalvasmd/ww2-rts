@@ -3694,10 +3694,20 @@ for (const f of readdirSync('maps')) {
   assert.equal(g.winner, null);
   bunkers.find(b => b.owner === 2).hp = 0; run(g, 0.1);
   assert.equal(g.winner, null, 'team 1 still has a bunker');
+  assert.ok(g.players[2].out && !g.players[3].out, 'a player whose bunker falls is out, the teammate plays on');
+  assert.equal(command(g, 2, { t: 'buy', unit: 'rifle' }), 'blocked', 'and can no longer call in units');
+  assert.equal([...g.units.values()].some(u => u.owner === 2), false, 'their army passes to the teammate');
   bunkers.find(b => b.owner === 3).hp = 0; run(g, 0.1);
   assert.equal(g.winner, 0, 'last side with a bunker wins');
   const solo = createGame(map, ['a'], false, [0], [0], { mode: 'annihilation' });
   run(solo, 1); assert.equal(solo.winner, null, 'a solo test never ends by itself');
+  // howitzers barely dent an Annihilation bunker: a slow menace, not the way to crack it
+  const shelled = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'annihilation' });
+  const hb = [...shelled.units.values()].find(u => u.type === 'bunker' && u.owner === 1), hp = hb.hp;
+  shelled.salvos.push({ x: hb.x, z: hb.z, owner: 0, left: 10, next: 0, w: UNITS.howitzer.w, spread: 0 });
+  run(shelled, 3);
+  const dent = hp - hb.hp;
+  assert.ok(dent > 0 && dent <= 10 * UNITS.howitzer.w.terrain * CFG.assault.howitzerMul + 1e-6, `10 howitzer shells barely dent the bunker (${Math.round(dent)} of ${hp})`);
 }
 
 // A defeated Annihilation team cannot act while two other teams keep fighting.

@@ -32,6 +32,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ### Other recent unreleased changes
 
+- Annihilation: a player whose bunker is destroyed is now out of the match, even while a teammate still has one.
+  They can no longer call in units or give orders, and their army passes to the nearest teammate. Before, they could
+  keep spawning units until their whole team lost.
+- Annihilation: howitzers do a tenth of their old damage to bunkers. Ten shells used to take half a bunker
+  (1500 of 3000), now they take 150, so one gun needs about 40 minutes alone. Left unanswered, a battery of them
+  still grinds a bunker down. Not yet balance-tested in AI matches.
 - A lag recorder for diagnosing multiplayer lag. Hosting with start.cmd now records, every 5 seconds, the server's
   real tick rate and timing plus each player's ping, connection backlog, frame rate and update gaps to
   `logs/diag-<room>.jsonl`. After a laggy match, `node tools/diag.mjs` reads the newest recording and says whether

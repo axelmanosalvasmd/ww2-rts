@@ -12,7 +12,8 @@ export const CFG = {
   // Assault mode: attackers must destroy every defender's command bunker before the clock runs out.
   assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11,
     // Annihilation: every player gets a fortified bunker; a team is out when its last bunker falls. No clock.
-    annihilationMp: 300, annihilationBase: 4.5 },
+    // howitzerMul: howitzer shells on an Annihilation bunker. A slow menace if ignored, never the way to crack one.
+    annihilationMp: 300, annihilationBase: 4.5, howitzerMul: 0.1 },
   // Horde: co-op defense of one shared bunker against waves. budget: wave 1's MP worth of units, x growth per wave,
   // x defending players x the army size's income. field: the most horde units on the map per defender (fieldMax in
   // all); the rest of the wave waits in reserve. heal: bunker hp share restored per cleared wave. reveal: with this few
@@ -2740,7 +2741,8 @@ function hurt(g, t, src, fall, owner) {
   // concrete takes an explosive's demolition value (the same number that wrecks houses)
   const base = UNITS[t.type].structure ? src.terrain ?? src.veh : inf ? src.inf : src.veh;
   // the bunker is built to take a bombardment: off-map strikes barely touch it, it has to be taken on the ground
-  const shrug = (t.type === 'bunker' && SUPPORT_SRC.has(src) ? CFG.assault.supportMul : 1) * bunkerMul(g, t);
+  const shrug = (t.type === 'bunker' && SUPPORT_SRC.has(src) ? CFG.assault.supportMul : 1) * bunkerMul(g, t)
+    * (t.type === 'bunker' && src === UNITS.howitzer.w && g.mode?.kind === 'annihilation' ? CFG.assault.howitzerMul : 1);
   t.hp -= base * shrug * fall * (t.retreating ? CFG.retreatDamage : 1) * (t.garrison >= 0 ? src.antiGarrison ?? CFG.trenchBlastMul : inTrench(g, t) ? CFG.trenchBlastMul : 1) * (1 - CFG.vetArmor * vet(t));
   if (inf) t.supp = Math.min(100, t.supp + src.supp * (1 - CFG.vetSupp * vet(t)));
   g.shots.push({ t: t.id, fo: owner, to: t.owner, x: t.x, z: t.z, k: 'hurt', kill: t.hp <= 0 });
@@ -3373,15 +3375,6 @@ export function step(g) {
     died(g, u, UNITS[u.type], k >= 0 && !allied(g, k, u.owner) ? k : -1);
   }
 
-  if (g.mode?.kind === 'annihilation') {
-    const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
-    for (const pl of g.players) {
-      if (pl.out || left.has(pl.team)) continue;
-      pl.out = true; pl.inc = 0;
-      for (const u of g.units.values()) if (u.owner === pl.slot) g.units.delete(u.id);
-    }
-  }
-
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
   // teammates standing on it keep it theirs.
   for (const p of g.points) {
@@ -3433,27 +3426,17 @@ export function step(g) {
     if (g.mode.timeLeft <= 0 && !g.mode.suddenDeath) { g.mode.suddenDeath = true; for (const b of list) if (b.queue) b.queue = []; }
     if (g.mode.suddenDeath) for (const b of list) if (UNITS[b.type].produces && b.hp > 0) b.hp -= UNITS[b.type].hpPer * CFG.classic.decay * dt;
     for (const b of list) if (UNITS[b.type].building && b.hp <= 0 && g.units.has(b.id)) { g.units.delete(b.id); wreckBuilding(g, b); died(g, b, UNITS[b.type], -1); }
-    for (const pl of g.players) {
-      if (pl.out || [...g.units.values()].some(u => u.owner === pl.slot && UNITS[u.type].produces)) continue;
-      pl.out = true;
-      // the army goes to the nearest surviving teammate (no pop cap for it); buildings (depots) go down
-      const mates = g.players.filter(q => q.team === pl.team && !q.out);
-      for (const u of [...g.units.values()]) {
-        if (u.owner !== pl.slot) continue;
-        if (UNITS[u.type].building || !mates.length) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); continue; }
-        const to = mates.sort((a, b) => dist(a.spawn, u) - dist(b.spawn, u))[0];
-        Object.assign(u, { owner: to.slot, orders: [], build: 0, attackId: 0, amove: null, path: [], retreating: false });
-      }
-    }
+    eliminate(g, u => UNITS[u.type].produces);
     const left = new Set(g.players.filter(p => !p.out).map(p => p.team));
     if (g.winner === null && g.mode.teams > 1 && left.size <= 1) finish(g, left.size ? [...left][0] : -1, 'hq', g.fallen?.hq); // -1 = draw
     return;
   }
   if (g.mode?.kind === 'horde') return stepHorde(g, dt);
   if (g.mode?.kind === 'annihilation') {
-    // a team is out when its last bunker falls; the last team with one standing wins
-    const left = new Set(g.players.filter(p => !p.out).map(p => p.team));
+    // a player is out when their bunker falls (no more production); a team when its last one does
+    const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
     if (g.winner === null && g.mode.teams > 1 && left.size <= 1) finish(g, left.size ? [...left][0] : -1, 'bunkers', g.fallen?.bunker);
+    if (g.winner === null) eliminate(g, u => u.type === 'bunker' && u.hp > 0); // the losing army stays for the end reveal
     return;
   }
   if (g.mode) {
@@ -3468,6 +3451,22 @@ export function step(g) {
 }
 
 const isStructure = (u) => !!UNITS[u.type].structure;
+// Puts out every player who no longer owns a unit that keeps them alive. Their army goes to the nearest surviving
+// teammate (no pop cap for it); their buildings go down.
+function eliminate(g, keeps) {
+  for (const pl of g.players) {
+    if (pl.out || [...g.units.values()].some(u => u.owner === pl.slot && keeps(u))) continue;
+    pl.out = true;
+    const mates = g.players.filter(q => q.team === pl.team && !q.out);
+    for (const u of [...g.units.values()]) {
+      if (u.owner !== pl.slot) continue;
+      if (UNITS[u.type].building || !mates.length) { g.units.delete(u.id); if (UNITS[u.type].building) wreckBuilding(g, u); continue; }
+      const to = mates.sort((a, b) => dist(a.spawn, u) - dist(b.spawn, u))[0];
+      Object.assign(u, { owner: to.slot, orders: [], build: 0, attackId: 0, amove: null, path: [], retreating: false });
+    }
+  }
+}
+
 // The match is decided: the winning team id (-1 for a draw), why ('hq', 'bunkers', 'structures', 'timer' or 'vp'; a
 // draw is always 'draw') and the decisive spot (else the map center). From here the fog is lifted for everyone
 // (snapshotFor) and nothing more counts toward the story.

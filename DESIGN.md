@@ -218,10 +218,14 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
 ## Annihilation mode
 - Every player gets Assault's fortified bunker (`fortify()` in sim.js, shared with Assault). No clock, no VP: a team is
   out when its last bunker falls, last team with one wins. 300 MP start, +4.5/s base, points pay MP only.
-- When a team's last bunker falls, all its players are marked out, their remaining units are removed and their
-  manpower income stops. Humans keep their seat and team vision for spectating and reconnects. They cannot recruit,
-  issue orders or call support, and the AI stops planning. Losing one bunker does not eliminate a team with another
-  bunker standing. Defeated players' command panels, selection and targeting are disabled in Annihilation and Classic.
+- A player whose own bunker falls is out at once (same `eliminate()` as Classic): no more buying or orders, their army
+  goes to the nearest teammate. When the last bunker falls the losing army stays on the field for the end reveal.
+- Howitzer shells do a tenth of their demolition value to a bunker here (`CFG.assault.howitzerMul` 0.1): 15 per
+  shell, 200 shells to drop one alone (about 40 min for one gun, 13 for three). A menace if ignored, never the
+  way to crack a bunker.
+- Out players (and their teams) earn no manpower and do not count on capture points. Humans keep their seat and team
+  vision for spectating and reconnects; their command panels, selection and targeting are disabled in Annihilation
+  and Classic, and the AI stops planning.
 - The AI treats it like an attacker in Assault: it captures points and goes for the nearest enemy bunker once it has
   6+ units. AI runs, time to finish: 1v1 Three Crossroads 4:47-26:43 (8 games), River Towns 5:41-23:45 (4),
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
