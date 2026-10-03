@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { gfx, watchFps } from './gfx.js';
 import { MOODS, DEFAULT_MOOD, TONE } from './moods.js';
+import { t as tr } from './i18n.js';
 
 // The sun sits up and to the right of each player's opening view, so shadows fall toward the lower left of the screen
 // (as in the concept) whichever spawn you get. It stays put in the world when you rotate.
@@ -67,7 +68,7 @@ export function setMood(M) {
 
 function applyGfx() {
   const low = gfx.low;
-  const type = low ? THREE.BasicShadowMap : THREE.PCFShadowMap, text = `Graphics: ${low ? 'Low' : 'High'}`;
+  const type = low ? THREE.BasicShadowMap : THREE.PCFShadowMap, text = tr(`Graphics: ${low ? 'Low' : 'High'}`);
   if (renderer.shadowMap.type !== type) renderer.shadowMap.type = type; // three rebuilds the map on a type change
   sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
   sun.shadow.radius = low ? 1 : 2.5 * mood.soft;
@@ -80,7 +81,7 @@ function applyGore() { if (goreBtn) goreBtn.textContent = `Gore: ${gfx.gore ? 'O
 function notice(msg) {
   const el = document.getElementById('status');
   if (!el) return;
-  el.textContent = msg;
+  el.textContent = msg = tr(msg);
   setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 6000);
 }
 

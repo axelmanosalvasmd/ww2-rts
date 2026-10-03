@@ -3,6 +3,7 @@
 // size and background, and whether bad numbers turn amber and red. Saved per browser; '?perf' in the URL shows every
 // number for that visit without changing what is saved.
 import { perf } from './perf.js';
+import { t as tr } from './i18n.js';
 
 const KEY = 'ww2-stats';
 const k = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -87,7 +88,7 @@ export function createStats({ box, sheet, menuButton, under, clear, storage, bef
   function render(s) {
     if (!settings.show || !s) return;
     for (const { d, val } of rows) {
-      const text = d.show(s), level = settings.warn && d.warn ? d.warn(s) : 0;
+      const text = tr(d.show(s)), level = settings.warn && d.warn ? d.warn(s) : 0;
       if (val.textContent !== text) val.textContent = text;
       val.dataset.warn = level ? (level === 2 ? 'red' : 'amber') : '';
     }

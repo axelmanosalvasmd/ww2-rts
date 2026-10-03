@@ -209,7 +209,7 @@ export function createHud(ctx) {
         const vp = tm.mem.reduce((a, i) => a + (s.vp?.[i] ?? 0), 0), goal = winVp(teams);
         frac = vp / goal; num = `${vp} / ${goal}`; u = 'VP';
       } else if (kind === 'assault') {
-        const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => UNITS[v.type]?.structure && v.hp > 0 && teams[v.owner] === tm.t);
+        const def = tm.t === s.mode.defenderTeam, own = units.filter((v) => v.type === 'bunker' && v.hp > 0 && teams[v.owner] === tm.t);
         role = def ? 'Defending' : 'Attacking';
         if (def) { const hp = own.reduce((a, v) => a + v.hp, 0), total = s.mode.total ?? tm.mem.length, max = total * UNITS.bunker.hpPer; frac = max ? hp / max : 0; u0 = 'Structures left'; num = `${own.length} / ${total}`; }
       } else if (kind === 'horde') {
@@ -310,7 +310,9 @@ export function createHud(ctx) {
       orderBtn('data-f="spread"', 'f_spread', label('spread'), `Spread (${label('spread')}): wider spacing; the selection re-forms where it stands`) +
       orderBtn('data-f="together"', 'f_together', '', 'March together: the group moves at the pace of its slowest unit and arrives in one piece') +
       orderBtn('data-f="snap"', 'f_snap', '', 'Snap to trenches: infantry placed within 3 m of a trench step into it');
-    if (m === 'build') return Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
+    // outside Classic the Build menu also puts up a Flak Emplacement (in Classic the Engineers' card has it)
+    if (m === 'build') return (ctx.classic() ? '' : orderBtn('data-a="bld:flakpos"', 'flakpos', '', `${UNITS.flakpos.name}: shoots down planes and air strikes within ${UNITS.flakpos.aa.range} m. Click where; the selected builder squads put it up in ${UNITS.flakpos.buildTime}s, more squads build faster`)) +
+      Object.entries(FORTS).map(([k, f]) => orderBtn(`data-a="fort:${k}"`, k, FORT_BADGES[k], `${f.name}${FORT_KEYS[k] ? ` (${FORT_KEYS[k]})` : ''}: ${FORT_TIP[k] ?? ''}. ${lineFort(k) && k !== 'trench' ? 'Click where it starts, then where it ends: one piece, or a continuous line that every selected builder squad works on. Price per piece' : 'Click where; the nearest builder squad puts it across its approach'}`)).join('');
     return ENTRENCH_TYPES.map((k) => orderBtn(`data-a="ent:${k}"`, `e_${k}`, k === 'line' ? badge('entrench:line') : '',
       `${ENTRENCH[k]}${k === 'line' ? ` (${label('entrench:line')})` : ''}: ${ENTRENCH_TIP[k]}. Every selected builder squad digs; each segment is paid as it is started. Shift on the second click queues it. Right-click a planned pattern with other squads to send them to help`)).join('');
   }
@@ -340,7 +342,7 @@ export function createHud(ctx) {
         b.onclick = (e) => {
           if (a === 'retreat') ctx.retreat(); else if (a === 'amove') ctx.amove(); else if (a === 'stop') ctx.stop(); else if (a === 'area') ctx.area();
           else if (a === 'unload') ctx.unload(); else if (a === 'cover') ctx.takeCover(e.shiftKey); else if (a.startsWith('st:')) ctx.stance(a.slice(3)); else if (a.startsWith('ent:')) ctx.entrench(a.slice(4));
-          else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else ctx.ability(a);
+          else if (a.startsWith('fort:')) ctx.dig(a.slice(5)); else if (a.startsWith('bld:')) ctx.build(a.slice(4)); else ctx.ability(a);
         };
         if (UNITS[a]) b.oncontextmenu = (e) => { e.preventDefault(); ctx.autocast(a); };
       });
@@ -365,6 +367,7 @@ export function createHud(ctx) {
       const a = b.dataset.a, val = b.lastElementChild;
       let result = { ok: true, reason: '' }, txt = '';
       if (a.startsWith('fort:')) { const kind = a.slice(5), f = FORTS[kind]; result = check({ t: 'dig', kind }); txt = `${f.cost} MP`; }
+      else if (a.startsWith('bld:')) { const kind = a.slice(4); result = check({ t: 'build', kind }); txt = `${UNITS[kind].cost} MP`; }
       else if (a === 'cover') result = check({ t: 'cover' });
       else if (a === 'unload') { const n = sel.filter((v) => v.flags & CARGO_FLAG).length; result = n ? result : { ok: false, reason: 'No squad on board' }; txt = n ? 'full' : 'empty'; }
       else if (a.startsWith('st:')) {

@@ -43,6 +43,7 @@ const UI = { click: { gain: 0.45, gap: 0.05 }, recruit: { gain: 0.5, gap: 0.1 },
 // alerts: the sound, how long before the same alert may sound again, and a voice line that follows it
 const ALERTS = {
   attack: { name: 'alert_attack', gap: 6, voice: 'fire' },
+  base: { name: 'alert_attack', gap: 6, voice: 'fire' },
   pointWon: { name: 'alert_point_won', gap: 1 },
   pointLost: { name: 'alert_point_lost', gap: 1 },
   unitLost: { name: 'alert_unit_lost', gap: 4, voice: 'lost' },

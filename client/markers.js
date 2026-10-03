@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { UNITS, CELL } from '/shared/sim.js';
 import { drawSymbol } from './symbols.js';
 import { Builder, Batch, overlayMat, makeOverlay } from './overlay.js';
+import { t as tr } from './i18n.js';
 export { setTerrain, refreshTerrain } from './overlay.js';
 
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
@@ -221,12 +222,12 @@ export function fadeLabels(k) { for (const e of labels.values()) e.mat.opacity =
 function paintLabel(e) {
   // the sprite shows the canvas at about a third of its size, so 3 canvas px of edge reads as a 1 px hairline
   const st = LABEL[e.style], c = e.cv.getContext('2d'), W = e.cv.width, H = st.h, bh = H - 12, y0 = 6, pad = 16;
-  const sw = e.color != null ? bh - 22 : 0, lead = sw ? sw + 14 : 0;
+  const sw = e.color != null ? bh - 22 : 0, lead = sw ? sw + 14 : 0, text = tr(e.text);
   c.clearRect(0, 0, W, H);
   if ('letterSpacing' in c) c.letterSpacing = st.spacing + 'px';
   let px = st.px; c.font = st.font(px);
-  while (c.measureText(e.text).width > W - 2 * pad - lead - 8 && px > 12) c.font = st.font(px -= 2);
-  const bw = Math.min(W - 4, c.measureText(e.text).width + 2 * pad + lead), x0 = (W - bw) / 2;
+  while (c.measureText(text).width > W - 2 * pad - lead - 8 && px > 12) c.font = st.font(px -= 2);
+  const bw = Math.min(W - 4, c.measureText(text).width + 2 * pad + lead), x0 = (W - bw) / 2;
   rounded(c, x0 + 1.5, y0 + 1.5, bw - 3, bh - 3, 5); c.fillStyle = PLATE; c.fill();
   c.lineWidth = 3; c.strokeStyle = HAIRLINE; c.stroke();
   if (sw) {
@@ -235,7 +236,7 @@ function paintLabel(e) {
     drawSymbol(c, 'hq', sx + sw / 2, H / 2, sw * 0.86, { color: lum(e.color) > 0.6 ? '#1a1d1f' : '#f2efe6' });
   }
   c.fillStyle = LABEL_TEXT; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(e.text, x0 + lead + (bw - lead) / 2, H / 2 + 2);
+  c.fillText(text, x0 + lead + (bw - lead) / 2, H / 2 + 2);
 }
 let fontsHooked = false;
 function hookFonts() {

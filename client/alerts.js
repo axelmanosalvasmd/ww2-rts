@@ -15,14 +15,15 @@ const MERGE = 2;            // seconds: a loss this soon after another nearby on
 const SOUND_GAP = 1.5;      // seconds between two sounds of the same kind
 const AIR_MARGIN = 25;      // metres beyond a strike's reach that still concern you
 const HOME_RADIUS = 20;     // a retreating unit that vanishes this close to home went home, it didn't die
+const BASE_RADIUS = 40;     // a hit this close to your spawn, or on your own HQ or bunker, is "base under attack"
 const QUIET_ON_SCREEN = true; // no "under attack" for a fight you are looking at (it can fire once you look away)
 // support that is not an air threat: barrages are support but not aircraft (CONTEXT.md), fighter cover only defends
 const NOT_AIR = new Set(['artillery', 'smoke', 'cover']);
 
 // minimap ping color per kind: signal red for danger, brass for a point won, the HUD's text color for the rest
 const RED = '#d4574a', BRASS = '#d6b25e', CHALK = '#e2dfd3';
-const COLOR = { attack: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK, event: BRASS };
-const LIVES = { event: 15 }; // a map's scripted message stays up long enough to read
+const COLOR = { attack: RED, base: RED, unitLost: RED, pointLost: RED, air: RED, pointWon: BRASS, ready: CHALK, ping: CHALK, event: BRASS };
+const LIVES = { event: 15, base: 10 }; // a map's scripted message stays up long enough to read, a base alert to notice
 
 const now = () => performance.now() / 1000;
 const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) <= r;
@@ -98,13 +99,13 @@ function groups(list) {
 }
 const mid = (g) => ({ x: g.reduce((s, v) => s + v.x, 0) / g.length, z: g.reduce((s, v) => s + v.z, 0) / g.length });
 
-function underAttack(at, text) {
+function underAttack(at, text, kind = 'attack') {
   const t = now();
   quiet = quiet.filter(q => q.until > t);
   if (quiet.some(q => near(q, at, AREA))) return;
   if (QUIET_ON_SCREEN && hooks.onScreen(at.x, at.z)) return; // you can see it; no cooldown, so it fires once you look away
   quiet.push({ x: at.x, z: at.z, until: t + ATTACK_EVERY });
-  push('attack', text, at.x, at.z);
+  push(kind, text, at.x, at.z);
 }
 
 // Compare this snapshot with the one before it and raise whatever alerts follow.
@@ -136,7 +137,9 @@ function snapshot(s, prev) {
     const big = g.find(h => UNITS[h.type].structure);
     const text = big ? `${nameOf(big.type, big.owner)} under attack`
       : g.length === 1 ? `${nameOf(g[0].type, g[0].owner)} under attack` : 'Units under attack';
-    underAttack(big ?? mid(g), text);
+    const at = big ?? mid(g), home = hooks.home();
+    if (home && (near(at, home, BASE_RADIUS) || big?.owner === me)) underAttack(at, 'Our base is under attack!', 'base');
+    else underAttack(at, text);
   }
 
   // points: captured, lost, or an enemy standing on one of yours

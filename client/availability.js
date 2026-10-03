@@ -1,4 +1,4 @@
-import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees } from '../shared/sim.js';
+import { UNITS, FORTS, CFG, TERRAIN, CELL, priceOf, supCost, popCap, popUse, dropPop, abCost, levelOf, teamSees, buildKinds, builderTypes } from '../shared/sim.js';
 
 // Server denials deliberately contain no target details.
 export const DENY_SENTENCES = Object.freeze({
@@ -67,9 +67,9 @@ export function availability(s, cfg = CFG, action = {}) {
     return action.kind === 'para' ? population(null, dropPop('para')) : yes();
   }
   if (action.t === 'build') {
-    if (!classic) return no('Unavailable in this mode');
+    if (!buildKinds(classic).includes(action.kind)) return no('Unavailable in this mode');
     if (sudden) return no(DENY_SENTENCES.suddenDeath);
-    const crew = selected.filter((v) => v.type === 'engineer');
+    const crew = selected.filter((v) => builderTypes(classic).includes(v.type));
     if (!crew.length) return no(DENY_SENTENCES.noBuilders);
     if (crew.every((v) => v.flags & 1)) return no(DENY_SENTENCES.retreating);
     const def = UNITS[action.kind], money = resources(s, def.cost); if (!money.ok) return money;
@@ -133,5 +133,6 @@ export function placementState(s, map, grid, teams) {
     nodes: (s.nodes ?? []).map(([x, z]) => ({ x, z, c: (Math.floor(z / CELL) - 1) * w + Math.floor(x / CELL) - 1,
       depot: us.find((v) => v.type === 'depot' && Math.hypot(v.x - x, v.z - z) < 1)?.id ?? 0 })),
   };
+  g.initialTerrain = { chars: [...map.rows.join('')], height: g.height }; // the map as drawn: what "Fill in" works back to
   return { game: g, sees: (slot, at) => teamSees(g, teams[slot] ?? slot, at) };
 }

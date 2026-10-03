@@ -15,7 +15,8 @@ export const CFG = {
   assault: { time: 900, directMul: 0.25, supportMul: 0.05, attackerMp: 320, attackerBase: 5, defenderMp: 250, defenderBase: 3.5, fortRadius: 11,
     // Annihilation: every player gets a fortified bunker; a team is out when its last bunker falls. No clock.
     // howitzerMul: howitzer shells on an Annihilation bunker. A slow menace if ignored, never the way to crack one.
-    annihilationMp: 300, annihilationBase: 4.5, howitzerMul: 0.1 },
+    // baseFlak: finished Flak Emplacements every fortified base starts with, inside its trench line
+    annihilationMp: 300, annihilationBase: 4.5, howitzerMul: 0.1, baseFlak: 4 },
   // Horde: co-op defense of one shared bunker against waves. budget: wave 1's MP worth of units, x growth per wave,
   // x defending players x the army size's income. field: the most horde units on the map per defender (fieldMax in
   // all); the rest of the wave waits in reserve. heal: bunker hp share restored per cleared wave. reveal: with this few
@@ -300,6 +301,10 @@ UNITS.shipyard = building({ name: 'Shipyard', cost: 150, hpPer: 1500, radius: 3,
 UNITS.flakpos = building({ name: 'Flak Emplacement', cost: 100, hpPer: 1500, radius: 2, vision: 40, size: 2, buildTime: 20, aa: { range: 55, dps: 40, chance: 0.45 } });
 UNITS.worldbase = building({ name: 'Regional Military Base', cost: 0, hpPer: 600, radius: 3, vision: 18, size: 3, produces: true, classic: true });
 export const BUILDABLE = ['depot', 'barracks', 'motorpool', 'airfield', 'flakpos', 'shipyard'];
+// outside Classic the fort builder squads can still put up anti-air: what they build, and who builds what where
+export const FIELD_BUILDS = ['flakpos'];
+export const buildKinds = (classic) => (classic ? BUILDABLE : FIELD_BUILDS);
+export const builderTypes = (classic) => (classic ? ['engineer'] : CFG.fortBuilders);
 // Classic: seconds to train each unit at its building
 for (const [t, s] of Object.entries({ engineer: 12, rifle: 15, conscript: 12, mg: 18, flak: 20, mortar: 20, sniper: 20, medic: 15, ranger: 20, at: 22, halftrack: 22, lcvp: 20, gunboat: 25, destroyer: 75, armoredcar: 25, flaktrack: 30, fighter: 30, attacker: 35, bomber: 45, rocket: 30, tank: 35, medium: 40, tankdestroyer: 40, tiger: 50, churchill: 50, commando: 22, howitzer: 30, flamer: 20 })) UNITS[t].train = s;
 // Classic: vehicles cost Fuel and less MP
@@ -585,7 +590,6 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
     factions = [...factions, [1, 2, 0].find(f => !factions.includes(f)) ?? 1];
     teams = [...names.map(() => 0), 1]; names = [...names, horde ? 'Horde' : 'Enemy'];
   }
-
   if (assault) {
     const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
@@ -668,7 +672,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   if (tutorial) setupTutorial(g, g.players.length - 1, TUTORIAL_TOOLS);
   if (assault) {
     setupAssault(g, opts.defenderTeam, map.assaultTime);
-    g.mode.total = [...g.units.values()].filter(u => UNITS[u.type].structure).length;
+    g.mode.total = [...g.units.values()].filter(u => u.type === 'bunker').length; // the flak emplacements don't count
   }
   if (opts.mode === 'annihilation') {
     g.mode = { kind: 'annihilation', teams: new Set(teams).size };
@@ -728,7 +732,7 @@ export function hordeWave(n, defenders, income = 1) {
 function stepHorde(g, dt) {
   const H = CFG.horde, m = g.mode, bunker = g.units.get(m.bunker), boss = g.players[m.slot];
   if (g.winner !== null) return;
-  if (!bunker || bunker.hp <= 0) return finish(g, m.attackerTeam, 'structures', g.fallen?.structure);
+  if (!bunker || bunker.hp <= 0) return finish(g, m.attackerTeam, 'structures', g.fallen?.bunker);
   if (!m.active) {
     if ((m.timeLeft -= dt) > 0) return;
     m.wave++; m.active = true; m.timeLeft = 0;
@@ -777,6 +781,16 @@ function fortify(g, p) {
   const b = spawnUnit(g, p.slot, 'bunker');
   const at = nearestFree(g, p.spawn.x + Math.cos(toward) * 5 * CELL / 2, p.spawn.z + Math.sin(toward) * 5 * CELL / 2);
   Object.assign(b, cellCenter(g, at), { rot: toward, aim: toward });
+  // flak emplacements in a ring inside the trenches, two toward the front and two on the rear flanks
+  const size = UNITS.flakpos.size;
+  for (let i = 0; i < CFG.assault.baseFlak; i++) {
+    const a = toward + [0.7, -0.7, 2.1, -2.1][i % 4] + Math.floor(i / 4) * 0.35;
+    for (const rr of [6, 5, 7, 4, 8]) {
+      const c = cellOf(g, p.spawn.x + Math.cos(a) * rr * CELL - size * CELL / 2, p.spawn.z + Math.sin(a) * rr * CELL - size * CELL / 2);
+      const cells = c >= 0 && footprint(g, c, size);
+      if (cells && canStamp(g, cells) && !cells.some(k => dist(cellCenter(g, k), b) < UNITS.bunker.radius + 1)) { placeBuilding(g, p.slot, 'flakpos', c, true); break; }
+    }
+  }
 }
 
 // ---------- Classic: buildings and resource nodes ----------
@@ -2252,13 +2266,13 @@ export function command(g, slot, cmd, auto = false) {
     tally(g, slot, 'supportCalls'); if (cur === 'mp') tally(g, slot, 'mpSpent', cost);
     const dir = angle(cmd.dir) ?? Math.atan2(z - p.spawn.z, x - p.spawn.x);
     g.strikes.push({ kind: cmd.kind, owner: slot, x, z, dir, t: sp.delay, left: sp.shells ? supShells(p.faction, cmd.kind) : sp.dur ?? 0, next: 0, live: false });
-  } else if (cmd.t === 'build' && isConstructionMode(g) && !g.mode.suddenDeath && BUILDABLE.includes(cmd.kind)) {
+  } else if (cmd.t === 'build' && !g.mode?.suddenDeath && buildKinds(isConstructionMode(g)).includes(cmd.kind)) {
     // Engineers put up a building: a depot on the free node nearest the click, anything else centered on the click.
-    // Paid up front; the team must see the spot.
-    const p = g.players[slot], def = UNITS[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL);
-    const engineers = ids.map(mine).filter(u => u?.type === 'engineer' && !u.retreating);
+    // Outside construction modes the fort builder squads put up flak emplacements the same way. Paid up front; the team must see the spot.
+    const p = g.players[slot], def = UNITS[cmd.kind], x = num(cmd.x, g.w * CELL), z = num(cmd.z, g.h * CELL), can = builderTypes(isConstructionMode(g));
+    const engineers = ids.map(mine).filter(u => can.includes(u?.type) && !u.retreating);
     const crew = engineers.filter(u => cmd.queue !== true || (u.orders?.length ?? 0) < 8);
-    if (!crew.length || x === null || z === null || p.mp < def.cost) return !crew.length ? (engineers.length ? 'queueFull' : ids.map(mine).some(u => u?.type === 'engineer' && u.retreating) ? 'retreating' : 'noBuilders') : x === null || z === null ? 'blocked' : 'mp';
+    if (!crew.length || x === null || z === null || p.mp < def.cost) return !crew.length ? (engineers.length ? 'queueFull' : ids.map(mine).some(u => can.includes(u?.type) && u.retreating) ? 'retreating' : 'noBuilders') : x === null || z === null ? 'blocked' : 'mp';
     if (def.needs && ![...g.units.values()].some(b => b.owner === slot && b.type === def.needs && b.built >= 1)) return 'needs';
     const place = placementCheck(g, { kind: cmd.kind, x, z, team: p.team }, at => teamSees(g, p.team, at));
     if (!place.ok) return place.reason;
@@ -2274,8 +2288,8 @@ export function command(g, slot, cmd, auto = false) {
     // Engineers join a site, or repair a damaged building of their own team
     const b = g.units.get(cmd.id);
     if (!b || !UNITS[b.type].building || !allied(g, b.owner, slot) || (b.built >= 1 && b.hp >= UNITS[b.type].hpPer)) return 'unseen';
-    const crew = ids.map(mine).filter(u => u?.type === 'engineer' && !u.retreating);
-    if (!crew.length) return ids.some(id => mine(id)?.type === 'engineer' && mine(id).retreating) ? 'retreating' : 'noBuilders';
+    const can = builderTypes(isConstructionMode(g)), crew = ids.map(mine).filter(u => can.includes(u?.type) && !u.retreating);
+    if (!crew.length) return ids.some(id => can.includes(mine(id)?.type) && mine(id).retreating) ? 'retreating' : 'noBuilders';
     let assigned = false;
     for (const u of crew) {
       if (cmd.queue === true) { if (enqueueOrder(u, { t: 'assist', ids: [u.id], id: b.id, x: b.x, z: b.z })) assigned = true; continue; }
@@ -3255,7 +3269,7 @@ export function step(g) {
   const dt = TICK;
   rebuildGrid(g);
   g.tick++;
-  if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure);
+  if (g.winner === null && (g.tick === 1 || g.tick % SAMPLE_EVERY === 0)) sample(g, isStructure(g));
   stepWeather(g);
   if (g.tick % 4 === 1) updateVision(g);
   // Recount paid segments so cancelled work and dead diggers no longer hold up a project.
@@ -3492,8 +3506,8 @@ export function step(g) {
   // repaired instead, for free but slowly (and slower than Sudden Death decay).
   for (const [id, n] of crews) {
     const s = g.units.get(id), def = UNITS[s.type], crew = n ** CFG.classic.crew;
-    if (s.built >= 1) { s.hp = Math.min(def.hpPer, s.hp + def.hpPer * Math.min(CFG.classic.repair * crew, g.mode.suddenDeath ? CFG.classic.decay * 0.6 : Infinity) * dt); continue; }
-    if (g.mode.suddenDeath) continue; // construction stops
+    if (s.built >= 1) { s.hp = Math.min(def.hpPer, s.hp + def.hpPer * Math.min(CFG.classic.repair * crew, g.mode?.suddenDeath ? CFG.classic.decay * 0.6 : Infinity) * dt); continue; }
+    if (g.mode?.suddenDeath) continue; // construction stops
     const rate = crew / (def.buildTime ?? 1) * dt;
     s.built = Math.min(1, s.built + rate);
     if (s.built >= 1) tally(g, s.owner, 'built');
@@ -3739,14 +3753,15 @@ export function step(g) {
     // assault: the attackers win when the last bunker falls, the defenders when the clock runs out
     if (g.winner !== null) return; // the clock stops once decided
     g.mode.timeLeft -= dt;
-    if (![...g.units.values()].some(u => UNITS[u.type].structure && u.hp > 0)) finish(g, g.mode.attackerTeam, 'structures', g.fallen?.structure);
+    if (![...g.units.values()].some(u => u.type === 'bunker' && u.hp > 0)) finish(g, g.mode.attackerTeam, 'structures', g.fallen?.bunker); // flak emplacements don't count
     else if (g.mode.timeLeft <= 0) finish(g, g.mode.defenderTeam, 'timer');
     return;
   }
   for (const pl of g.players) if (teamVp(pl.team) >= g.winVp && g.winner === null) finish(g, pl.team, 'vp', lastCapture(g, pl.team)); // winner = team id
 }
 
-const isStructure = (u) => !!UNITS[u.type].structure;
+// what the timeline counts as a team's structures: Classic's buildings, elsewhere the bunkers (not their flak)
+const isStructure = (g) => (u) => !!UNITS[u.type].structure && (isConstructionMode(g) || u.type === 'bunker');
 const TUTORIAL_TOOLS = { CELL, spawnUnit, command, finish };
 // Puts out every player who no longer owns a unit that keeps them alive. Their army goes to the nearest surviving
 // teammate (no pop cap for it); their buildings go down.
@@ -3769,7 +3784,7 @@ function eliminate(g, keeps) {
 // (snapshotFor) and nothing more counts toward the story.
 export function finish(g, winner, reason, at) {
   if (g.winner !== null) return;
-  sample(g, isStructure);
+  sample(g, isStructure(g));
   const c = at ?? { x: g.w * CELL / 2, z: g.h * CELL / 2 };
   Object.assign(g, { winner, endReason: winner === -1 ? 'draw' : reason, endAt: { x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10 }, endTick: g.tick, reveal: true });
 }

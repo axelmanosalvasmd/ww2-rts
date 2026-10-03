@@ -260,6 +260,11 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
 - Howitzer shells do a tenth of their demolition value to a bunker here (`CFG.assault.howitzerMul` 0.1): 15 per
   shell, 200 shells to drop one alone (about 40 min for one gun, 13 for three). A menace if ignored, never the
   way to crack a bunker.
+- Base anti-air (2026-10-02): `fortify()` (Assault defenders, every Annihilation player, the Horde base) also places
+  `CFG.assault.baseFlak` (4) finished Flak Emplacements about 6 cells from the spawn, two toward the front and two on
+  the rear flanks. Outside Classic the fort builder squads (`CFG.fortBuilders`) may build one more with the 'build'
+  command (`FIELD_BUILDS`; Classic keeps Engineers and `BUILDABLE`). Emplacements are buildings: Assault's win, its
+  "structures left" total and the timeline count bunkers only.
 - Out players (and their teams) earn no manpower and do not count on capture points. Humans keep their seat and team
   vision for spectating and reconnects; their command panels, selection and targeting are disabled in Annihilation
   and Classic, and the AI stops planning.
@@ -780,7 +785,8 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Lobby: the room form on one gunmetal panel in the HUD's style; Start is the one brass button. The match report,
   tooltips, banners, alerts and the end-of-match notice (a quiet panel, no stamp) share the panel and type. The map
   editor takes the same panel, type and colors.
-- Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area), point captured /
+- Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area; a hit within 40 m
+  of your spawn or on your own HQ or bunker is "Our base is under attack!", a filled red pulsing line for 10 s), point captured /
   lost, unit lost, enemy Air Support incoming, unit ready and building finished (Classic). One line each in a short list
   above the minimap (newest on top, gone after ~6 s), a minimap ping and a short sound. Space jumps to the newest alert
   while one is showing, otherwise it focuses the selection as before. No kill feed, no damage numbers.
@@ -1070,6 +1076,22 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   if desired and set `PLAYWRIGHT_MODULE` to its index.mjs; `CHROMIUM_PATH` overrides `/snap/bin/chromium`.
 - Not a hardened internet launch yet: connection/command rate limits, per-IP room budgets, compute admission,
   editor isolation, moderation, deployment and persistent accounts are separate work. No gameplay balance changes.
+
+### Language: English and Spanish (2026-10-02)
+
+World Conquest currently uses the English fallback for its new interface text. Its Spanish dictionary entries remain for later.
+
+The game code keeps writing English. `client/i18n.js` translates what reaches the page: in Spanish a
+MutationObserver rewrites text nodes and the `title`, `aria-label` and `placeholder` attributes, and the few canvas
+labels (floating world labels, the paper map title) call `t()`. `client/es.js` is the dictionary, keyed by the
+English text. A key with `{0}`, `{1}` is a pattern whose holes are translated in turn ('Enemy {0} incoming' also
+translates the unit); a hole never spans a sentence break, and a hole right before `%` only takes a number. Texts
+the HUD glues together (name, hotkey, description, cost) are split by sentence, then at the first `: ` or ` · `,
+then a trailing `(hotkey)`, and each piece is looked up. Code that compares a node's text to what it is about to
+write (`setText` in hud.js, endgame.js, stats.js, feedback.js, light.js) compares the translated text, so nothing
+is rewritten every frame. Terms: Manpower = Mano de obra (MO), Munitions = Munición (Mun), Fuel = Combustible
+(Comb), VP = PV, HQ = CG, squad = pelotón. The choice lives in `localStorage` (`ww2rts-lang`) and a change reloads
+the page. Adding text to the game means adding its Spanish to `client/es.js`.
 
 ### Runtime
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).

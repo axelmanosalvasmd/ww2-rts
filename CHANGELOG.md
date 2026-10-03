@@ -5,6 +5,29 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed: clicking Fill in froze the game. Its placement preview read the map's original terrain, which the
+  browser's copy of the map did not have, so it threw an error every frame and stopped the game loop. The preview now
+  has the map as drawn and matches the server.
+- The game can be played in Spanish. A language picker (English / Español) sits at the top of the room screen and
+  the match browser; the choice is saved per browser and a Spanish browser starts in Spanish. Everything written on
+  screen is translated: lobby, mode and map descriptions, HUD, tooltips, alerts, the F1 controls sheet, the stats
+  overlay, the match report, the tutorial (Sgt. Hollis), the map editor and floating world labels. Model names
+  (M4 Sherman, Panzer IV) stay as they are. Unit voices and sound stay English.
+- Left for later: the map editor's file-validation errors from the server (only seen when saving a broken map) are
+  still English. A text the dictionary misses shows in English; `/play?i18n=log` lists them in `window.i18nMisses`.
+
+- Annihilation, Assault and Horde bases now start with four Flak Emplacements inside their trench line, so a base
+  can defend itself against planes and air strikes (each one has a 45% chance to shoot down a strike passing within
+  55 m, so four together stop about 9 strikes in 10).
+- Flak Emplacements can be built outside Classic. Select Rifles or Conscripts, open Build, pick Flak Emplacement and
+  click where it goes: 100 MP, 20 s with one squad, faster with more. Assault still ends when the bunker falls; the
+  flak does not have to be destroyed, and the "structures left" count only counts bunkers.
+- A new alert when your base is under attack. Anything of yours hit within 40 m of your spawn, or your own HQ or
+  bunker, raises "Our base is under attack!" in a filled red line that pulses and stays 10 s, with the attack sound.
+  Like the other alerts it waits if you are already looking at the fight.
+- Fixed: construction outside Classic could crash on a missing mode (now guarded). Not tuned in AI matches yet: AIs
+  do not build flak themselves.
+
 ### 2026-10-03: World Conquest (`b82c9c6`)
 
 - Added World Conquest: scout a generated continent of 64 or 128 regions, destroy local defenses, claim land
@@ -21,8 +44,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed infantry and tanks stopping at a river bank instead of finding a ford. With six players and 64 mobile
   units each, local server ticks measured 27.32 ms p95 on Huge and 31.37 ms on Massive. Other desktop work was
   running; these bounded samples do not establish full-match pacing or browser frame rates.
-- Fixed a missing upstream language module that prevented the lobby and battlefield from loading. English
-  remains the available language. Browser entry modules now have a served-dependency check.
+- Kept the lobby and battlefield language module available while integrating Spanish support. Browser entry
+  modules now have a served-dependency check.
+- Preserved Engineer construction in World Conquest while integrating buildable flak in other modes. New
+  World Conquest text currently falls back to English in the Spanish interface. Translation remains for later.
 - The tutorial progression check now runs first and reports unit routes, bridge health and capture state on
   failure. Its simulated combat clears pending artillery before the crossing. Tutorial gameplay is unchanged.
 

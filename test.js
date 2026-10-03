@@ -3709,6 +3709,28 @@ for (const f of readdirSync('maps')) {
   run(shelled, 3);
   const dent = hp - hb.hp;
   assert.ok(dent > 0 && dent <= 10 * UNITS.howitzer.w.terrain * CFG.assault.howitzerMul + 1e-6, `10 howitzer shells barely dent the bunker (${Math.round(dent)} of ${hp})`);
+  // every base starts with finished flak emplacements, and builder squads can put up more outside Classic
+  for (const pl of shelled.players) {
+    const own = [...shelled.units.values()].filter(u => u.owner === pl.slot && u.type === 'flakpos');
+    assert.equal(own.length, CFG.assault.baseFlak, `${pl.name} starts with ${CFG.assault.baseFlak} flak emplacements`);
+    assert.ok(own.every(u => u.built === 1 && Math.hypot(u.x - pl.spawn.x, u.z - pl.spawn.z) < 10 * CELL), 'finished, inside the base');
+  }
+  const fg = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'annihilation' });
+  const squad = [...fg.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  const before = [...fg.units.values()].filter(u => u.type === 'flakpos').length;
+  fg.players[0].mp = 1000;
+  let spot = null;
+  for (let dx = -20; dx <= 20 && !spot; dx += 4) for (let dz = -20; dz <= 20 && !spot; dz += 4) {
+    const at = { x: squad.x + dx, z: squad.z + dz };
+    if (sim.placementCheck(fg, { kind: 'flakpos', ...at }, () => true).ok) spot = at;
+  }
+  assert.ok(spot, 'a free spot near the squad');
+  assert.equal(command(fg, 0, { t: 'build', ids: [squad.id], kind: 'barracks', ...spot }), 'blocked', 'outside Classic squads build no other building');
+  assert.equal(command(fg, 0, { t: 'build', ids: [squad.id], kind: 'flakpos', ...spot }), undefined, 'a rifle squad builds flak outside Classic');
+  run(fg, 60);
+  const site = [...fg.units.values()].find(u => u.type === 'flakpos' && u.owner === 0 && Math.hypot(u.x - spot.x, u.z - spot.z) < 3);
+  assert.ok(site && site.built === 1, 'the squad finishes it');
+  assert.equal([...fg.units.values()].filter(u => u.type === 'flakpos').length, before + 1);
 }
 
 // A defeated Annihilation team cannot act while two other teams keep fighting.
@@ -4565,14 +4587,15 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.equal(g.timeline.length, samples, 'and the timeline stops');
   assert.equal(g.winner, 0, 'the winner never changes');
 
-  // Assault: the last structure falling, or the clock
+  // Assault: the bunker falling (its flak emplacements don't count), or the clock
   const as = () => createGame(map, ['att', 'def'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 1 });
-  const a = as(), structs = [...a.units.values()].filter(u => UNITS[u.type].structure), last = structs.at(-1);
-  structs.slice(0, -1).forEach(s => (s.hp = 0)); run(a, 0.1);
-  assert.equal(a.winner, null, 'a structure still stands');
+  const a = as(), last = [...a.units.values()].find(u => u.type === 'bunker'), flak = [...a.units.values()].filter(u => u.type === 'flakpos');
+  assert.ok(flak.length >= 2, 'the defender starts with flak emplacements');
+  flak.forEach(s => (s.hp = 0)); run(a, 0.1);
+  assert.equal(a.winner, null, 'the bunker still stands');
   last.hp = 0; run(a, 0.1);
   assert.equal(a.winner, 0); assert.equal(a.endReason, 'structures');
-  assert.ok(near(a.endAt, last), 'it ends where the last structure fell');
+  assert.ok(near(a.endAt, last), 'it ends where the bunker fell');
   const t = as(); t.mode.timeLeft = 0.01; run(t, 0.1);
   assert.equal(t.winner, 1); assert.equal(t.endReason, 'timer');
   assert.deepEqual(t.endAt, { x: t.w * CELL / 2, z: t.h * CELL / 2 }, 'a timer win ends over the middle of the map');
@@ -6012,7 +6035,7 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual(point.onPoint, [], 'an empty point keeps no stale infantry ids');
 
   const assault = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 1, 1, 0], [0, 1, 2, 0], { mode: 'assault', defenderTeam: 1 });
-  const structures = [...assault.units.values()].filter(u => UNITS[u.type].structure);
+  const structures = [...assault.units.values()].filter(u => u.type === 'bunker');
   assert.equal(assault.mode.total, structures.length, 'Assault records the starting structure count');
   assert.equal(assault.mode.total, 2, 'each defender contributes one starting structure');
   assert.equal(snapshotFor(assault, 0, []).mode.total, 2, 'the Assault snapshot includes its starting total');
@@ -7715,6 +7738,9 @@ console.log('all command feedback checks passed');
   const order = { kind: 'barracks', x: hq.x, z: hq.z };
   assert.equal(placementCheck(view.game, order, at => view.sees(0, at)).reason,
     placementCheck(g, order, at => teamSees(g, p.team, at)).reason, 'preview and server share blocked footprint and sight rules');
+  // "Fill in" reads the map as drawn: the preview has it, so aiming one no longer throws (and stopped the frame loop)
+  const fill = { kind: 'fill', x: hq.x + 10 * CELL, z: hq.z, dir: 0 };
+  assert.deepEqual(placementCheck(view.game, fill, () => true), placementCheck(g, fill, () => true), 'the Fill in preview matches the server');
 
   const oldSet = globalThis.setTimeout, oldClear = globalThis.clearTimeout;
   const pending = new Map(); let next = 0, sounds = 0;
@@ -8279,6 +8305,20 @@ console.log('all infantry model checks passed');
   if (process.env.GOAL_SCRATCH) writeFileSync(`${process.env.GOAL_SCRATCH}/scar-pixels.log`, lines.join('\n') + '\n');
 }
 console.log('all destruction paint checks passed');
+
+// Spanish (client/i18n.js): exact texts, patterns whose holes are translated too, and the texts the HUD glues together
+{
+  const { spanish } = await import('./client/i18n.js');
+  assert.equal(spanish('Pause match'), 'Pausar partida');
+  assert.equal(spanish('  Leave game '), '  Abandonar juego ', 'whitespace around a text stays');
+  assert.equal(spanish('Enemy Rifle Squad incoming'), 'Llega enemigo: Pelotón de fusileros', 'a hole is translated in turn');
+  assert.equal(spanish('Training Rifle Squad 40% (2/5)'), 'Entrenando Pelotón de fusileros 40% (2/5)', 'a hole before % is the number');
+  assert.equal(spanish('M4 Sherman (Medium Tank): Mainline tank. 380 MP'), 'M4 Sherman (Tanque medio): Tanque principal. 380 MO');
+  assert.equal(spanish('Artillery Barrage (C): 10 shells on an area after a 5s warning (UK: 15, the 25-pounder doctrine). Aim: click the center, move to turn, click to call it in'),
+    'Barrera de artillería (C): 10 proyectiles sobre una zona tras un aviso de 5 s (Reino Unido: 15, la doctrina del 25 libras). Apuntar: clic en el centro, mueve para girar, clic para pedirlo');
+  assert.equal(spanish('Panzer IV'), 'Panzer IV', 'model names stay');
+  console.log('spanish checks passed');
+}
 
 await stopServerHarness(); // the last server check is done
 // The public lobby checks own a fresh server with a deliberately small room cap.
