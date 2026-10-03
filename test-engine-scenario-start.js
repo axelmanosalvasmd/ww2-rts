@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { validateMap } from './shared/sim.js';
+import { migrateWorldMap } from './shared/world-layers.js';
 Object.assign(process.env,{PORT:'0',PUBLIC_URL:'http://test',EDIT_PASSWORD:'test'});
 const service=await import('./server.js');clearInterval(service.loop);
 if(!service.server.listening) await new Promise(resolve=>service.server.once('listening',resolve));
@@ -30,6 +31,15 @@ try {
  assert.equal((await host.wait('deny',before)).reason,'scenario');await host.wait('lobby',before);
  assert.equal(room.state,'play');assert.equal(room.game,game,'failed restart retains prior authoritative world');assert.equal(room.map,map);assert.equal(room.matchId,matchId);assert.equal(room.starting,null);
  const tick=game.tick;service.tickRooms();assert(game.tick>tick,'prior match continues after rejected restart');
+ fixture=migrateWorldMap(fixture);fixture.scenario.groups[0].units=[];
+ for (const [key,ch] of [['objects','R'],['mines','N']]) { const row=[...fixture.layers[key][9]];row[9]=ch;fixture.layers[key][9]=row.join(''); }
+ const row=[...fixture.rows[9]];row[9]='N';fixture.rows[9]=row.join('');
+ fixture.scenario.triggers=[{id:'maskedEntry',scope:'match',recipients:'side',side:0,condition:{kind:'time',seconds:0},repeat:{mode:'once'},actions:[{kind:'reinforce',group:'elite',side:0,roster:[{type:'armoredcar',count:1}],at:[9,9],order:{kind:'hold'},expires:5}]}];
+ assert.equal(validateMap(fixture),null,'mine over rubble is a valid authored layered map');before=host.messages.length;await host.send({t:'restart'});
+ assert.equal((await host.wait('deny',before)).reason,'scenario');await host.wait('lobby',before);
+ assert.equal(room.state,'play');assert.equal(room.game,game,'masked blocked entry cannot replace the prior world');assert.equal(room.map,map);assert.equal(room.matchId,matchId);assert.equal(room.starting,null);
+ assert.equal(host.messages.slice(before).filter(m=>m.t==='start').length,0,'masked entry rejection sends no partial restart');
+ const retainedTick=game.tick;service.tickRooms();assert(game.tick>retainedTick,'prior match continues after masked entry rejection');
  await host.send({t:'ping',c:17});assert.equal((await host.wait('pong')).c,17,'server remains responsive');
  console.log('Scenario start rollback checks passed');
 } finally {

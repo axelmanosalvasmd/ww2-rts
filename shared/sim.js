@@ -3758,10 +3758,11 @@ const SCENARIO_TOOLS = {
   now: g => g.tick * TICK,
   allowed(g, action, side) {
     if (action.kind !== 'reinforce') return true;
-    const p = g.players[side];
+    const p = g.players[side], c = action.at[1] * g.w + action.at[0];
+    const entry = composeWorldCell(g.initialTerrain.ground[c], g.initialTerrain.objects[c]);
     return !!p && !p.out && !(g.mode?.kind === 'horde' && side === g.mode.slot)
       && action.roster.every(r => scenarioTypeAllowed(g, side, r.type)
-        && !(TERRAIN[g.initialTerrain.chars[action.at[1] * g.w + action.at[0]]] & blockOf(UNITS[r.type])));
+        && !(TERRAIN[entry] & blockOf(UNITS[r.type])));
   },
   arrive(g, side, type, at, order) {
     if (!scenarioTypeAllowed(g, side, type)) return null;

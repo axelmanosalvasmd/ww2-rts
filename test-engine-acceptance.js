@@ -2,6 +2,10 @@
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import * as sim from './shared/sim.js';
+import { mkdtemp, symlink, unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { migrateWorldMap } from './shared/world-layers.js';
 
 Object.assign(process.env, { PORT: '0', EDIT_PASSWORD: 'test', PUBLIC_URL: 'http://test' });
 const server = await import('./server.js');
@@ -11,6 +15,7 @@ server.clock.setTimeout = () => null;
 let fixtureNow = Date.now();
 server.clock.now = () => fixtureNow;
 const clients = [], failures = [], fixtures = new Map();
+let savedMissionLink;
 const originalRead = server.mapFiles.read, originalList = server.mapFiles.list;
 server.mapFiles.list = async () => [...await originalList(), ...[...fixtures.keys()].map(name => `${name}.json`)];
 server.mapFiles.read = name => fixtures.has(name) ? Promise.resolve(JSON.stringify(fixtures.get(name))) : originalRead(name);
@@ -58,9 +63,9 @@ async function tick(count = 2) {
     }
   }
 }
-async function start(code, map = blankMap(), mode = 'classic', teams = [0, 0, 1]) {
+async function start(code, map = blankMap(), mode = 'classic', teams = [0, 0, 1], savedName) {
   assert.equal(sim.validateMap(map), null, 'the public validator accepts the fixture');
-  const name = `engine-${code}`; fixtures.set(name, map);
+  const name = savedName ?? `engine-${code}`; if (!savedName) fixtures.set(name, map);
   const seats = [];
   for (let i = 0; i < teams.length; i++) seats.push(await connect(code, `${code}${i}`));
   for (let i = 0; i < teams.length; i++) await seats[0].send({ t: 'team', slot: i, v: teams[i] });
@@ -144,20 +149,35 @@ try {
   });
 
   await check('scenario capture ownership, exactly once rewards and durable private objectives', async () => {
-    const map = blankMap();
-    map.scenario = { version: 1, areas: [], groups: [{ id: 'arrival', units: [] }],
+    const authored = blankMap(), wall = [...authored.rows[50]]; wall[52] = wall[53] = '#'; authored.rows[50] = wall.join('');
+    const map = migrateWorldMap(authored);
+    const combined = { kind: 'all', conditions: [{ kind: 'time', seconds: 30 }, { kind: 'areaEntry', area: 'crossroads-area', side: 0 }, { kind: 'capture', target: 'crossroads', side: 0 }] };
+    map.scenario = { version: 1, areas: [{ id: 'crossroads-area', box: [46, 46, 50, 50] }], groups: [{ id: 'arrival', units: [] }],
       objectives: [{ id: 'hold', text: { en: 'Hold the crossroads', es: 'Defiende el cruce' }, recipients: 'side', side: 0 }],
-      triggers: [{ id: 'captured', scope: 'match', side: 0, recipients: 'side', condition: { kind: 'capture', target: 'crossroads', side: 0 }, repeat: { mode: 'once' },
-        actions: [{ kind: 'objectiveActivate', objective: 'hold' }, { kind: 'reinforce', group: 'arrival', side: 0, roster: [{ type: 'rifle', count: 2 }], at: [50, 48], order: { kind: 'hold' }, expires: 5 },
+      triggers: [{ id: 'captured', scope: 'match', side: 0, recipients: 'side', condition: combined, repeat: { mode: 'once' },
+        actions: [{ kind: 'objectiveActivate', objective: 'hold' }, { kind: 'reinforce', group: 'arrival', side: 0, roster: [{ type: 'rifle', count: 2 }], at: [50, 48], order: { kind: 'move', at: [54, 48] }, expires: 5 },
           { kind: 'say', text: { en: 'Crossroads held', es: 'Cruce defendido' }, recipients: 'side', side: 0 }] },
-        { id: 'completed', scope: 'match', side: 0, recipients: 'side', condition: { kind: 'triggerComplete', trigger: 'captured' }, repeat: { mode: 'once' }, actions: [{ kind: 'objectiveComplete', objective: 'hold' }] }] };
-    const { g, seats: [host, ally, rival] } = await start('mission', map, 'conquest');
+        { id: 'completed', scope: 'match', side: 0, recipients: 'side', condition: { kind: 'triggerComplete', trigger: 'captured' }, repeat: { mode: 'once' }, actions: [{ kind: 'objectiveComplete', objective: 'hold' }] },
+        { id: 'bounded', scope: 'match', side: 0, recipients: 'side', condition: combined, repeat: { mode: 'whileTrue', cooldown: 2, max: 2 }, actions: [{ kind: 'damage', box: [52, 50, 52, 50], damage: 20 }, { kind: 'say', text: { en: 'Breach pulse', es: 'Pulso de apertura' }, recipients: 'side', side: 0 }] },
+        { id: 'destroyed', scope: 'match', side: 0, recipients: 'side', condition: { kind: 'all', conditions: [{ kind: 'time', seconds: 34 }, { kind: 'triggerComplete', trigger: 'bounded' }] }, repeat: { mode: 'once' }, actions: [{ kind: 'destroy', box: [52, 50, 52, 50] }] }] };
+    const evidence = await mkdtemp(join(tmpdir(), 'ww2-saved-mission-')), savedName = `engine-mission-${process.pid}`;
+    savedMissionLink = join(import.meta.dirname, 'maps', `${savedName}.json`);
+    await symlink(join(evidence, 'mission.json'), savedMissionLink);
+    const url = `http://127.0.0.1:${server.server.address().port}/maps/${savedName}.json`, headers = { 'x-edit-password': 'test', 'content-type': 'application/json' };
+    const save = await fetch(url, { method: 'POST', headers, body: JSON.stringify(map) }); assert.equal(save.status, 200, await save.text());
+    const reload = await fetch(url, { headers }); assert.equal(reload.status, 200); const saved = await reload.json();
+    assert.deepEqual(saved.scenario, map.scenario, 'authenticated save/reload retains combined conditions and bounded repeats');
+    assert.deepEqual(saved.layers, map.layers, 'saved mission retains its independent world layers');
+    const { g, seats: [host, ally, rival] } = await start('mission', saved, 'conquest', [0, 0, 1], savedName);
     const squad = owned(g, 0, 'rifle'), point = g.points[0];
     place(squad, point.x - 12, point.z); await tick();
     const beforeUnits = host.latest('s').units.filter(u => u[2] === 0 && u[1] === 'rifle').length, since = host.messages.length;
     assert.equal(host.latest('s').scenario.objectives.length, 0, 'objective waits for an actual capture');
     await host.send({ t: 'move', orders: [[squad.id, point.x, point.z]] }); await tick(400);
     assert.equal(host.latest('s').points[0][0], 0, `normal infantry movement captures the authored objective for its owner (${JSON.stringify({ unit: row(host, squad.id), point: host.latest('s').points[0], denied: host.messages.filter(m => m.t === 'deny') })})`);
+    assert.equal(host.latest('s').scenario.objectives.length, 0, 'capture and area entry cannot bypass the authored elapsed-time delay');
+    assert.equal(host.latest('s').units.filter(u => u[2] === 0 && u[1] === 'rifle').length, beforeUnits, 'delayed trigger grants no early reinforcement');
+    await tick(320);
     const objective = host.latest('s').scenario.objectives.find(o => o.id === 'hold');
     assert.equal(objective.state, 'complete'); assert.ok(objective.execution, 'durable objective identifies its execution');
     assert.equal(host.latest('s').units.filter(u => u[2] === 0 && u[1] === 'rifle').length, beforeUnits + 2, 'capture gives exactly the authored reinforcements to the selected owner');
@@ -165,10 +185,24 @@ try {
     assert.equal(ally.latest('s').scenario.objectives.length, 0, 'private side objective stays private from an ally');
     assert.equal(rival.latest('s').scenario.objectives.length, 0, 'private side objective stays private from an enemy');
     assert.ok(!events(rival).some(event => event.text === 'Crossroads held'), 'enemy receives no private scenario announcement');
+    const pulses = events(host, since).filter(event => event.text === 'Breach pulse');
+    assert.equal(pulses.length, 2, 'persistent combined condition obeys the finite repeat maximum');
+    assert.equal((pulses[1].atTick - pulses[0].atTick) * sim.TICK, 2, 'repeat effects obey the authored simulation-time cooldown');
+    assert.equal(new Set(pulses.map(event => event.execution)).size, 2, 'each bounded repeat has its own execution identity');
+    for (const id of g.scenario.groups.arrival) {
+      assert.equal(g.units.get(id).moveOutcome, 'completed', 'reinforcements complete their ordinary authored move order');
+      assert.ok(Math.hypot(row(host, id)[3] - 109, row(host, id)[4] - 97) < 6, 'delivered arrivals reach the target area using ordinary infantry cover placement');
+    }
+    assert.equal(host.terrain.get(50 * g.w + 52)?.[1], '+', 'normal scenario destruction reaches the owner as changed terrain');
+    assert.equal(g.chars[50 * g.w + 53], '#', 'authored destruction leaves the neighboring wall intact');
     const resumed = await connect('mission', 'mission0'); await resumed.wait('start'); await tick(40);
     assert.deepEqual(resumed.latest('s').scenario.objectives.find(o => o.id === 'hold'), objective, 'reconnect preserves objective state and execution');
     assert.equal(resumed.latest('s').units.filter(u => u[2] === 0 && u[1] === 'rifle').length, beforeUnits + 2, 'reconnect does not repeat the reward');
     assert.ok(!events(resumed).some(event => event.text === 'Crossroads held'), 'reconnect does not replay a completed cue');
+    assert.ok(!events(resumed).some(event => event.text === 'Breach pulse'), 'reconnect cannot replay capped repeat notices');
+    assert.equal(g.scenario.triggers['bounded@match'].count, 2); assert.equal(g.scenario.deferred.length, 0);
+    await writeFile(join(evidence, 'readback.json'), JSON.stringify({ objective, repeatCount: 2, pulses, reinforcementCount: 2, captureOwner: host.latest('s').points[0][0], destroyed: host.terrain.get(50 * g.w + 52), reconnectObjective: resumed.latest('s').scenario.objectives.find(o => o.id === 'hold'), replayedNotices: events(resumed).filter(event => ['Crossroads held', 'Breach pulse'].includes(event.text)) }, null, 2));
+    console.log(`Saved authored mission evidence: ${evidence}`);
   });
 
   await check('road mine placement, clearing, hidden memory and separate bombardment', async () => {
@@ -325,6 +359,7 @@ try {
 } finally {
   server.clock.setTimeout = () => null;
   server.mapFiles.read = originalRead; server.mapFiles.list = originalList;
+  if (savedMissionLink) await unlink(savedMissionLink);
   for (const client of clients) client.ws.terminate();
   for (const ws of server.wss.clients) ws.terminate();
   server.rooms.clear();

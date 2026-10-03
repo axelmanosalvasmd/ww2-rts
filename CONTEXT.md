@@ -34,8 +34,12 @@ A co-op mode: every player shares one HQ and defends one Command Bunker against 
 _Avoid_: survival, tower defense, zombies
 
 **Wave**:
-One numbered attack of the Horde. It is dead when no horde ground unit is left on the map or in its Reserve, and only then does the break before the next one start.
+One numbered attack of the Horde. It ends after its purchase budget is exhausted and no Horde ground unit remains on the map or in its Reserve. Only then does the break before the next Wave start.
 _Avoid_: round, level
+
+**Wave profile**:
+The broad category announced before a Wave: mixed, infantry, armor or siege. It changes the unit mix within the
+Horde's usual unlocks and purchase budget.
 
 **Reserve**:
 The part of a Wave that has not entered the map yet. It walks on at the attacker spawns as units die and room opens up.
@@ -64,6 +68,10 @@ _Avoid_: extractor, refinery
 
 **Production Building**:
 A building that trains units in Classic or World Conquest: HQ, Barracks, Motor Pool or Airfield.
+
+**Waiting recruit**:
+A paid unit behind the active recruit in a Production Building. Cancelling it refunds its original MP and Fuel
+charge and keeps the active recruit's progress. The active recruit cannot be cancelled.
 
 **HQ**:
 Each player's home: the spawn and reinforce zone. In Classic and World Conquest it is also a Production Building (Engineers, rifle squads) that every player starts with.
@@ -121,6 +129,13 @@ _Avoid_: mass dig, auto-trench
 **Segment**:
 One fortification of a pattern: four trench cells, or five of barbed wire.
 
+**Control group**:
+Own units assigned to a numbered group for selection and orders. A unit may belong to several groups.
+
+**Move to group**:
+An explicit transfer of selected eligible units. It removes them from their other control groups and adds them to
+the destination group without removing that group's existing members.
+
 ## Air
 
 **Sortie**:
@@ -156,6 +171,25 @@ _Avoid_: climate, season, conditions (in player-facing text)
 **Shower**:
 A spell of rain that comes and goes during a match in Clear, Ground fog and Mud weather. It shortens sight and soaks the ground, which slows vehicles off the roads until it dries. Rain weather is rain all match; Snow has no showers.
 
+**Structural section**:
+One part of a building or bridge with its own health, material and supports. A local breach can fail that part
+while supported sections remain standing.
+
+**Anchor**:
+A section with a direct support connection to the ground. Other sections need an intact chain of neighboring
+supports leading to an Anchor.
+
+**Material**:
+The substance assigned to a surface or object, such as soil, road, wood, stone, concrete or steel. It affects
+deformation, fire and contact response.
+
+**Scenario**:
+An authored mission with conditions and effects for announcements, objectives, reinforcements and destruction.
+It uses the match's ordinary units, ownership and combat rules.
+
+**Scenario event**:
+A named rule that acts when its conditions are met. It may run once or repeat with a finite limit and cooldown.
+
 ## Interface
 
 **Command Card**:
@@ -169,3 +203,7 @@ _Avoid_: auto-ability, auto mode
 **Alert**:
 A short notice to one side that something needs its attention: it is under attack, it captured or lost a Point, it lost a unit, enemy Air Support is coming, or (in Classic or World Conquest) a unit or building is ready. Unlike an Air Support announcement, which everyone sees on the map, an Alert goes only to the side it concerns.
 _Avoid_: notification, toast, event
+
+**Alert history**:
+The latest 100 delivered Alerts in the current match, with their original text, match time and recorded location.
+Revisiting one moves the camera without refreshing its information or repeating its sound.
