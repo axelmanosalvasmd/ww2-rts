@@ -75,11 +75,11 @@ const tryStore = (fn) => { try { return fn(); } catch { return null; } };
 
 const EDIT = new URLSearchParams(location.search).has('edit'); // /?edit opens the map editor instead of a match
 
-// the bare link always lands in the same room, so friends can keep one bookmark; #code picks any other room
+// /play keeps the old default room; the bare site URL is now the public directory.
 const MAIN_ROOM = 'main';
 const address = roomAddress(location.hash, MAIN_ROOM), { room, seat } = address;
 if (location.hash !== address.hash) history.replaceState(null, '', location.pathname + location.search + address.hash);
-const roomLink = (base) => base + (room === MAIN_ROOM ? '/' : '/#' + room);
+const roomLink = (base) => base + '/play#' + room;
 addEventListener('hashchange', () => location.reload()); // edited the #code by hand: go to that room
 // A room keeps its seat across tabs; an explicit seat suffix lets another person use this browser.
 const local = tryStore(() => localStorage), session = tryStore(() => sessionStorage);
@@ -118,13 +118,15 @@ controlsSheet.addEventListener('close', () => {
   if (controlsSheet.dataset.onboarding === 'true') tryStore(() => localStorage.setItem('ww2-controls-seen', '1'));
   delete controlsSheet.dataset.onboarding;
 });
-const token = roomToken({ room, seat, local, session, create: () => Math.random().toString(36).slice(2) + Date.now().toString(36) });
+const entry = new URLSearchParams(location.search);
+const listing = { public: entry.get('public') === 'true', title: entry.get('title') || 'Open skirmish' };
+const token = roomToken({ room, seat, local, session, create: () => Array.from(crypto.getRandomValues(new Uint8Array(20)), n => n.toString(16).padStart(2, '0')).join('') });
 const matchMemory = matchStorage(token, local, session);
-$('name').value = tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
+$('name').value = entry.get('name')?.slice(0, 16) || tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
 $('link').value = roomLink(location.origin);
 $('roomCode').value = room;
 // Room box: type a code to join (or make) that room; New room makes a private one
-const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.hash = roomAddress('#' + code + (seat ? '&seat=' + seat : ''), MAIN_ROOM).hash; location.reload(); };
+const goRoom = (code) => { code = code.trim().toLowerCase(); if (!/^[a-z0-9]{3,12}$/.test(code)) { $('roomCode').value = room; return; } location.assign('/play#' + code + (seat ? '&seat=' + seat : '')); };
 $('joinRoom').onclick = () => goRoom($('roomCode').value);
 $('roomCode').addEventListener('keydown', (e) => e.key === 'Enter' && goRoom($('roomCode').value));
 $('newRoom').onclick = () => goRoom(Math.random().toString(36).slice(2, 7));
@@ -142,7 +144,7 @@ let watching = false; // a spectator: no seat, the whole map, no orders (the ser
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching }), // a spectator who reconnects keeps watching
+  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching, listing }), // a spectator who reconnects keeps watching
 });
 setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => connection.send(m);
@@ -163,7 +165,7 @@ connection.on('full', (m) => {
   $('overlay').classList.remove('hidden'); $('hud').classList.add('hidden');
   $('start').classList.add('hidden'); $('addAi').classList.add('hidden'); // no seat yet: the next lobby message shows them again for whoever is host
   positionRoomBanners();
-  $('lobbyMsg').textContent = m.reason === 'started' ? 'A match is running in this room. You will join when it ends.' : 'This room is full. You will join when a seat opens.';
+  $('lobbyMsg').textContent = m.reason === 'capacity' ? 'The server cannot create more rooms right now. Browse matches to join an existing room, or wait for a retry.' : m.reason === 'started' ? 'A match is running in this room. You will join when it ends.' : 'This room is full. You will join when a seat opens.';
 });
 connection.on('replaced', () => { seatActive = false; $('connectionBanner').classList.add('hidden'); $('replacedSeat').classList.remove('hidden'); });
 connection.on('left', () => {
@@ -311,6 +313,7 @@ function renderLobby(m) {
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
   $('overlay').classList.toggle('hidden', m.state === 'play');
   const n = m.players.length, host = !!m.amHost, lobby = m.state === 'lobby';
+  const seatLimit = m.listed ? Math.min(COLORS.length, m.spawns ?? 3) : COLORS.length;
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   const level = (p, i) => p.ai ? ' ' + pick('level', i, AI_LEVELS.indexOf(p.level ?? 'normal'), ['Easy', 'Normal', 'Hard'], host).replace('<select', '<select title="AI difficulty" aria-label="AI difficulty"') : '';
@@ -319,9 +322,9 @@ function renderLobby(m) {
     return `<div class="slot"><span class="swatch" style="background:${css(COLORS[i])}"></span>
       <span class="who"><span class="nm">${esc(p.name)}</span><span class="muted">${[i === m.you && 'you', !p.connected && 'offline', i === m.host && 'host'].filter(Boolean).join(', ')}</span></span>
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}${level(p, i)}</span>${kick}</div>`;
-  }).join('') + (n < COLORS.length ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
+  }).join('') + (n < seatLimit ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
   $('watchBtn').textContent = watching ? 'Take a seat' : 'Watch as a spectator';
-  $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= COLORS.length));
+  $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= seatLimit));
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: el.dataset.kind === 'level' ? AI_LEVELS[+el.value] : +el.value })));
   $('start').classList.toggle('hidden', !host || m.state === 'play');
@@ -341,7 +344,7 @@ function renderLobby(m) {
   $('defSel').innerHTML = teamIds.map(t => `<option value="${t}" ${t === m.defenderTeam ? 'selected' : ''}>Team ${t + 1} defends (${m.players.filter(p => p.team === t).map(p => esc(p.name)).join(', ')})</option>`).join('');
   $('defSel').disabled = !host || !lobby;
   const assaultOk = !assault || (m.players.some(p => p.team === m.defenderTeam) && m.players.some(p => p.team !== m.defenderTeam));
-  $('addAi').classList.toggle('hidden', !host || !lobby || n >= COLORS.length);
+  $('addAi').classList.toggle('hidden', !host || !lobby || n >= seatLimit);
   // "3v3", "2v2v2", "1v1", or FFA when nobody shares a team
   const sizes = [...new Set(m.players.map(p => p.team))].map(t => m.players.filter(p => p.team === t).length);
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');

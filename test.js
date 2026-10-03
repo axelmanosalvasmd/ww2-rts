@@ -8187,3 +8187,8 @@ console.log('all infantry model checks passed');
 console.log('all destruction paint checks passed');
 
 await stopServerHarness(); // the last server check is done
+// The public lobby checks own a fresh server with a deliberately small room cap.
+{
+  const { execFileSync } = await import('node:child_process');
+  execFileSync(process.execPath, ['test-public-lobby.js'], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 30000 });
+}

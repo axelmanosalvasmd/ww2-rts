@@ -977,6 +977,36 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Not hidden yet: terrain changes in fog still reach every client, as noted under Classic.
 
 ## Tech
+### Public lobby (first slice)
+- `/` is a lightweight HTML/CSS/JS match directory, without Three.js or a game WebSocket. It reuses the room UI's
+  gunmetal, khaki hairlines, brass, two-pixel corners and Barlow Semi Condensed typography. No new UI framework.
+- `/play` serves the existing game. Legacy `/#code` links redirect there with the hash and alternate seat intact.
+  `/?edit` remains the editor. `/play` without a code retains the legacy main room. New invite links use `/play#code`.
+- `GET /api/rooms` is a no-store, explicit-field projection of in-memory rooms. Only explicitly listed rooms with
+  a connected human player appear. It includes no seat tokens, player names, private state or unlisted codes.
+  Connected spectators alone do not keep a room listed. Full and in-progress rooms stay visible but cannot be
+  joined from the directory. Players can filter by mode or open seats; the list refreshes every five seconds while
+  the page is visible. Failed refreshes clear stale join actions and show an offline state.
+- The first WebSocket hello creates a room as before. Its optional `listing: { public, title }` sets visibility
+  and a sanitized, 48-character title only on creation. Later joiners cannot change either. Legacy creation is
+  unlisted. Metadata travels from the create form to the game through query parameters, never in shared invite links.
+  Nicknames persist locally where storage is available and also travel in that initial URL.
+- Quick Play refreshes the directory, picks an open Conquest room with the most connected humans, or creates a
+  public Conquest room on the default map. This is discovery, not an atomic matchmaker: seats are not reserved.
+  All existing host settings remain available inside a room. Unlisted does not mean authenticated or secret.
+  Listed rooms enforce the selected map's seat limit for new players, taking a seat and adding AI. Late joiners
+  become spectators if the room filled before they connected. Unlisted rooms keep the old lobby seating behavior.
+- `MAX_ROOMS` defaults to 32 (bounded 1-256) across all rooms, including unlisted ones. A new room beyond that cap
+  receives `{t:'full', reason:'capacity'}` and retries normally. Existing rooms remain reachable. Existing cleanup
+  removes rooms after 60 seconds with no connected clients. This is not a compute-capacity guarantee.
+- Tests: `node test-public-lobby.js` exercises the real HTTP/WebSocket server and is included by `node test.js`.
+  `tools/test-public-lobby-browser.mjs` adds optional Playwright checks with separate player contexts, legacy links,
+  unlisted creation, desktop/mobile screenshots, filters and network failure. Install Playwright outside this repo
+  if desired and set `PLAYWRIGHT_MODULE` to its index.mjs; `CHROMIUM_PATH` overrides `/snap/bin/chromium`.
+- Not a hardened internet launch yet: connection/command rate limits, per-IP room budgets, compute admission,
+  editor isolation, moderation, deployment and persistent accounts are separate work. No gameplay balance changes.
+
+### Runtime
 - Plain JS ES modules, no build step. Deps: `ws` (server), `three` (client).
 - Server-authoritative: `shared/sim.js` runs at 20 Hz on the server and snapshots go out at 10 Hz (every 3 or 4
   ticks while a room falls behind, see round 3 above).
