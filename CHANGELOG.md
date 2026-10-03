@@ -5,7 +5,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-
 - A fourth faction: the UK, picked in the lobby like the others. Its own units: the Churchill VII (480 MP, max 1),
   a slow infantry tank with the thickest front on the map (takes 60% from the front, the Tiger 70%) and a modest
   75 mm gun, and Commandos (190 MP, 5 men), raiders with Stens and satchel charges who hide when they keep still,
@@ -71,6 +70,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Fixed: spawn placement measured walking distance through cliffs, so two spawns on either side of a cliff counted
   as neighbours. A step of more than one level now blocks that measure, like water and houses already did.
 
+### 2026-10-03: Public lobby (`b2dc9ab`)
+
 - A public match browser now opens at the site's main address, using the same gunmetal panels, khaki borders,
   brass accents and condensed type as the room UI. Pick a nickname, filter live rooms by mode or open seats,
   use Quick Play for Conquest, create a public or unlisted room, or enter a room code. No account is needed.
@@ -87,6 +88,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   moderation and atomic Quick Play seat reservations. A room can fill or start between browsing and joining;
   the existing game flow then offers a spectator seat. Gameplay balance is unchanged.
 
+### Other unreleased changes
 
 - Fixed: long floating labels shrank their letters to fit a fixed plate, so the "Locked" tag over a linked point was
   unreadable. A long label now gets a wider plate at the normal letter size, and the locked tag reads "Locked: take
