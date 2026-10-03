@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Rebuilt geometry and materials (`c60f4ce`)
+
 - Rebuilt tank castings, wheels and tracks, infantry faces and weapons, aircraft fuselages and canopies, and base
   buildings with smoother shapes and more mechanical detail. Ships now have curved hulls, cambered decks, open
   bridges, torpedo tubes and shaped gunhouses, with Blender finishing for panel edges and normals.
