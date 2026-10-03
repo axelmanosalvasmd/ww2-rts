@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Model detail, lighting and movement (`fce8526`)
+
 - Vehicles settle as they accelerate and turn, boats gently ride the water, and soldiers ease between stride
   frames and crouching or crawling movement. Selection markers stay level and muzzle effects follow the models.
 - Shaded units and buildings stay readable under brighter sky and ground fill. Clouds have softer edges, and
@@ -36,7 +38,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   `docs/strategic-world-generator-verification.md` for measured results and limits.
 
 ### Earlier unreleased changes
-
 
 - Fixed: clicking Fill in froze the game. Its placement preview read the map's original terrain, which the
   browser's copy of the map did not have, so it threw an error every frame and stopped the game loop. The preview now
