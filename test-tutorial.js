@@ -43,8 +43,10 @@ import * as sim from './shared/sim.js';
   next(6);
   command(g, 0, { t: 'retreat', ids: [mine()[0].id] }); next(7);
   until(() => enemies().length === 2 && enemies().every(u => u.garrison >= 0), 400); // the stone house's garrison walks in
+  // Advancing resets mode.spawned for the new step, which has no new defenders. Keep the house occupants.
+  const houseDefenders = enemies();
   assert.equal(command(g, 0, { t: 'support', kind: 'artillery', x: 63.5 * CELL, z: 17.5 * CELL }), undefined); next(8);
-  for (const u of enemies()) u.hp = 0;
+  for (const u of houseDefenders) u.hp = 0;
   // Combat is resolved by the fixture. A pending random shell must not wreck the crossing under the walkers.
   g.strikes = [];
   go(62, 22);

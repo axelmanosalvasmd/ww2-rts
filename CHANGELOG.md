@@ -48,8 +48,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   modules now have a served-dependency check.
 - Preserved Engineer construction in World Conquest while integrating buildable flak in other modes. New
   World Conquest text currently falls back to English in the Spanish interface. Translation remains for later.
-- The tutorial progression check now runs first and reports unit routes, bridge health and capture state on
-  failure. Its simulated combat clears pending artillery before the crossing. Tutorial gameplay is unchanged.
+- Fixed the tutorial progression fixture losing its house defenders when the next step began. Simulated combat
+  now removes those defenders and clears pending artillery before crossing. The check runs first with route,
+  bridge and capture diagnostics. Tutorial gameplay is unchanged.
 
 ### 2026-10-03: Defeated players spectate (`14cbe41`)
 
