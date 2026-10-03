@@ -1,0 +1,16 @@
+{
+  "image_path": "/Users/judiazm/Projects/ww2-rts/art/model-reference-2026-10-03/infantry-realism-v3.png",
+  "prompt": "A single full-body photorealistic WWII German regular army infantryman, historical field-grey wool M40 tunic and trousers, correct fitted dark field-grey M35 steel helmet low on the brow with realistic wide flared side skirt, worn black leather ankle boots and grey gaiters, black leather belt with natural brown field gear and ammunition pouches. Adult man age 30 with natural human anatomy, detailed angular face, visible nose eyes lips and ears, five fingers. Museum quality scanned human game character, extremely realistic materials with dense fine wool weave, natural small cloth folds at knees elbows waistband and armpits, stitching, seams, lapels, chest pockets and tunic buttons, dusty creased leather, chipped helmet. Neutral A-pose: standing upright balanced, feet shoulder width apart, both arms out 35 degrees away from torso, elbows straight, hands open relaxed pointing down; arms and legs clearly separated. Single subject entirely visible from helmet to soles with generous margin, near frontal view very slightly from his left, orthographic presentation. No rifle, no text, no symbols, no armband, no display base, no dramatic shadows. Even diffuse white studio illumination, isolated cutout. Must look like a real uniformed person, with a lean normal physique, not a plastic toy or cartoon.",
+  "revised_prompt": "A single full-body photorealistic WWII German regular army infantryman, historical field-grey wool M40 tunic and trousers, correct fitted dark field-grey M35 steel helmet low on the brow with realistic wide flared side skirt, worn black leather ankle boots and grey gaiters, black leather belt with natural brown field gear and ammunition pouches. Adult man age 30 with natural human anatomy, detailed angular face, visible nose eyes lips and ears, five fingers. Museum quality scanned human game character, extremely realistic materials with dense fine wool weave, natural small cloth folds at knees elbows waistband and armpits, stitching, seams, lapels, chest pockets and tunic buttons, dusty creased leather, chipped helmet. Neutral A-pose: standing upright balanced, feet shoulder width apart, both arms out 35 degrees away from torso, elbows straight, hands open relaxed pointing down; arms and legs clearly separated. Single subject entirely visible from helmet to soles with generous margin, near frontal view very slightly from his left, orthographic presentation. No rifle, no text, no symbols, no armband, no display base, no dramatic shadows. Even diffuse white studio illumination, isolated cutout. Must look like a real uniformed person, with a lean normal physique, not a plastic toy or cartoon. Output the isolated subject on a genuinely transparent background with actual alpha.",
+  "size": "1024x1536",
+  "quality": "low",
+  "format": "png",
+  "is_transparent": true,
+  "input_image": null,
+  "ts": "2026-10-03T20:46:44Z",
+  "image_model": "gpt-image-2-codex",
+  "resolved_background": "transparent",
+  "transparency_mode": "native",
+  "requested_image_model": null,
+  "resolved_quality": "medium"
+}

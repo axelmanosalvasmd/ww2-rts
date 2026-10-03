@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "reference_sha256": "2ef9e54534412725d742d6d82fb4563026c51db80d16e09b70ccdd1ad27f8e7c",
+  "reference_sidecar": "infantry-realism-v3.png.json",
+  "backend": "pixal3d",
+  "backend_license_metadata": {
+    "name": "MIT (code + flow weights); DINOv3 License (bundled encoder)",
+    "url": "https://huggingface.co/raven38/pixal3d-sv-q8_0-v1"
+  },
+  "parameters": {
+    "fov": 0.3490658503988659,
+    "gsh": null,
+    "gss": 10.0,
+    "matted": true,
+    "res": 1024,
+    "seed": 42,
+    "steps": 8
+  },
+  "original_mesh_sha256": "0e095fe3638244d45d93f8edb7c4dce2305504bacb7791b44e63a021d6c10b27",
+  "retopology": {
+    "faces": 6000,
+    "atlas": 2048,
+    "voxel": 0.0018,
+    "angle": 89.0
+  },
+  "surface": {
+    "metallic": 0.0,
+    "roughness": 0.9,
+    "ior": 1.45
+  },
+  "retained_mesh": "infantry-retopo-v3.glb",
+  "retained_mesh_sha256": "aaa7eb917e8468cdfe2d59195bdf33fc3b44aceb0747b9ef8be872d7d055cff5",
+  "runtime_textures": {
+    "color": [
+      2048,
+      2048
+    ],
+    "normal": [
+      1024,
+      1024
+    ]
+  },
+  "rig": "infantry-rig-v3.blend",
+  "rig_builder": "tools/blender/rig-infantry.py",
+  "original_run": "ww2-infantry-realism-20261003-v3"
+}

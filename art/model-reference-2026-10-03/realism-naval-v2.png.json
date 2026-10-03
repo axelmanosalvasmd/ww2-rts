@@ -6,7 +6,6 @@
   "format": "png",
   "is_transparent": false,
   "input_image": null,
-  "response_id": "resp_026d45ab22185ad2016ac160be8ca487d1b4df201261f5820c",
   "ts": "2026-10-03T20:09:09Z",
   "image_model": "gpt-image-2-codex",
   "resolved_background": "opaque",

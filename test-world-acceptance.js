@@ -18,7 +18,7 @@ async function waitFor(fn, label) {
 async function connect(room, token) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: false });
   const messages = [], rows = new Map(), terrain = new Map(), lists = {};
-  const c = { ws, messages, terrain, latest: t => messages.filter(m => m.t === t).at(-1),
+  const c = { ws, messages, terrain, room, latest: t => messages.filter(m => m.t === t).at(-1),
     async send(m) { ws.send(JSON.stringify(m)); await settle(); },
     wait: (t, after = 0) => waitFor(() => messages.slice(after).find(m => m.t === t), `missing ${t} for ${token}`) };
   clients.push(c);
@@ -40,7 +40,15 @@ async function connect(room, token) {
   await c.wait('lobby');
   return c;
 }
-async function tick(n = 4) { for (let i = 0; i < n; i++) server.tickRooms(); await settle(); }
+async function tick(n = 4) {
+  for (let i = 0; i < n; i++) server.tickRooms();
+  // Large synchronous advances can leave snapshots queued beyond a fixed 12 ms delay.
+  await waitFor(() => clients.every(c => {
+    if (c.ws.readyState !== WebSocket.OPEN) return true;
+    const room = server.rooms.get(c.room), game = room?.game;
+    return !game || (c.latest('s')?.tick ?? -1) >= game.tick - Math.max(4, room.snapEvery ?? 2) + 1;
+  }), 'clients did not receive the final simulation snapshots');
+}
 async function start(code, teams = [0, 1], size = 'huge') {
   const seats = [];
   for (let i = 0; i < teams.length; i++) seats.push(await connect(code, `${code}${i}`));

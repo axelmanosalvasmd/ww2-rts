@@ -57,6 +57,8 @@ Lab, and validate the generated payload through the actual runtime adapter. Do n
 already-mounted `buildModel` geometry or interpolate shader material IDs. Compare the
 finished silhouette with its reference and inspect the actual game render.
 
+For the fitted textured infantry source and its 15-bone skin, read `tools/blender/infantry.md`.
+
 ## Reference workflows
 
 When the user asks for generated reference images or tileable textures, use their

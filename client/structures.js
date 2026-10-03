@@ -782,9 +782,9 @@ function traps(C) {
 
 // ---------- mines: a dark disc half sunk in the turf (the server only tells you about your own side's) ----------
 function mines(C) {
-  const { w, h, at, hAt } = C;
+  const { w, h, at, hAt, mineGrid } = C;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (at(x, y) !== 'N') continue;
+    if (!(mineGrid ? mineGrid[y]?.[x] : at(x, y) === 'N')) continue;
     const cx = (x + 0.5) * CELL, cz = (y + 0.5) * CELL;
     put('dark', cx, hAt(cx, cz) + 0.06, cz, 0.7, 0.14, 0.7, rnd(x, y, 150) * 6.28, 0.7);
   }
@@ -835,18 +835,18 @@ function bridges(C) {
 // ---------- the map's pieces ----------
 let state = null;
 function rebuild() {
-  const { group, grid, orig, hAt, cells, buildings } = state, h = grid.length, w = grid[0]?.length ?? 0;
+  const { group, grid, orig, hAt, cells, buildings, mineGrid } = state, h = grid.length, w = grid[0]?.length ?? 0;
   clearGroup(group);
   // stage: 0 whole, 1 damaged, 2 nearly gone (bits 3-4 of the cell state the server sends)
-  const C = { grid, orig, hAt, w, h, buildings, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
+  const C = { grid, orig, hAt, w, h, buildings, mineGrid, low: gfx.low, at: (x, y) => grid[y]?.[x], tint: new Map(), stage: (x, y) => (cells ? cells[y * w + x] >> 3 & 3 : 0) };
   houses(C); rubble(C); hedges(C); walls(C); trenches(C); wire(C); traps(C); mines(C); hospitals(C); bridges(C);
   flush(group, C.low);
 }
 // group: emptied and refilled; grid: current rows (arrays of chars); orig: the map file's rows; hAt(x, z): ground height;
 // cells: the per-cell state bytes, if any; buildings: the map's named buildings (map.buildings)
-export function buildStructures(group, grid, orig, hAt, cells, buildings) {
+export function buildStructures(group, grid, orig, hAt, cells, buildings, mineGrid) {
   if (state && state.group !== group) clearGroup(state.group);
-  state = { group, grid, orig, hAt, cells, buildings };
+  state = { group, grid, orig, hAt, cells, buildings, mineGrid };
   rebuild();
 }
 gfx.onChange(() => { if (state?.group.parent) rebuild(); });

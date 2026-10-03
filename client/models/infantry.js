@@ -16,6 +16,7 @@
 // a man by 1.35, conscripts by 1.25). An aimed weapon's muzzle sits where client/fx.js HAND (BAZ for the bazooka)
 // puts the muzzle flash, moved by AIM_SHIFT in the other postures.
 import * as THREE from 'three';
+import { authoredInfantry } from './infantry-authored.js';
 import { merge, extrudeProfile, chamferBox, tube as metalTube, lathe, ao } from './geom.js';
 
 const TAU = Math.PI * 2;
@@ -829,69 +830,46 @@ function bootGeo(color) {
   bootCache.set(color, geo);
   return geo;
 }
-let palmGeo;
-function handGeo() {
-  if (!palmGeo) palmGeo = tube([v3(-0.035, 0, 0), v3(-0.008, 0, 0), v3(0.016, -0.002, 0), v3(0.03, -0.006, 0)],
-    [[0.016, 0.021], [0.022, 0.025], [0.022, 0.024], [0.015, 0.019]], 6, v3(0, 1, 0),
-    { bottom: { p: v3(-0.037, 0, 0) }, top: { p: v3(0.032, -0.006, 0) } });
-  return palmGeo;
+const gripCache = new Map();
+function handGeo(side = 0) {
+  if (gripCache.has(side)) return gripCache.get(side);
+  const parts = [{ geo: new THREE.SphereGeometry(1, 16, 10), m: chain(T(-.005, .001, 0), SC(.032, .017, .026)), mat: 'plain' }];
+  for (let i = 0; i < 4; i++) {
+    const z = -.020 + i * .013;
+    const tip = i === 0 || i === 3 ? -.017 : -.024;
+    parts.push({ geo: tube([v3(.012,.008,z),v3(.028,.007,z),v3(.034,-.006,z),v3(.026,tip,z),v3(.010,tip,z)],
+      [.006,.0068,.0065,.0058,.0048], 8, v3(0,0,1), { top: { p: v3(.009,tip,z) } }), mat: 'plain' });
+  }
+  const z = side ? 1 : -1;
+  parts.push({ geo: tube([v3(-.015,-.001,z*.021),v3(-.002,-.018,z*.029),v3(.016,-.025,z*.022),v3(.023,-.023,z*.010)],
+    [.009,.009,.008,.0055], 10, v3(0,1,0), { top: { p: v3(.024,-.022,z*.008) } }), mat: 'plain' });
+  const grip = merge(parts); gripCache.set(side, grip); return grip;
 }
 
-function nearParts(r, ctx) {
-  const { F, job, fac, type } = ctx, P = [], b = r.body, add = (geo, color, m, mat) => P.push({ geo, color: color ?? 0xffffff, m: m ?? new THREE.Matrix4(), mat });
-  const sniper = job === 'sniper' || (type === 'sniper' && job === 'spotter');
-  // torso: the tunic down over the hips, the hem a shade darker
-  const cols = 12, torsoY = [0.6, 0.625, 0.68, 0.745, 0.8, 0.855, 0.92, 0.975, 1.02, 1.065, 1.1, 1.135, 1.16, 1.19];
-  const torso = gridGeo(torsoY.map((y) => Array.from({ length: cols }, (_, j) => b.at(clothAt(y, (j / cols) * TAU)))), {
-    color: (i) => shade(fac === 3 && i < 2 ? F.legs : F.tunic, i === 0 ? 0.9 : 1), bottom: { p: b.at(v3(0, 0.6, 0)), c: shade(fac === 3 ? F.legs : F.tunic, 0.8) } });
-  add(sniper && fac ? camoFaces(torso, CAMO[fac], 14) : torso, null, null, 'wool');
-  // Turned collar leaves or the gymnastyorka's stand collar, a closure and fitted pocket flaps.
-  const cloth = shade(F.tunic, sniper && fac ? 0.9 : 1.08);
-  for (const side of [-1, 1]) {
-    if (fac !== 2) add(clothPanel(b, [[1.155, side * 0.12], [1.146, side * 0.57], [1.126, side * 0.65], [1.12, side * 0.34], [1.133, side * 0.16]]), cloth, null, 'wool');
-    add(clothPanel(b, [[1.075, side * 0.22], [1.075, side * 0.68], [0.995, side * 0.65], [0.995, side * 0.2]]), shade(F.tunic, 0.92), null, 'wool');
-    add(clothPanel(b, [[1.078, side * 0.2], [1.078, side * 0.7], [1.049, side * 0.65], [1.049, side * 0.22]], 0.013), cloth, null, 'wool');
-  }
-  if (fac === 2) add(band(b, 1.164, 1.19, 0.005, 8), cloth, null, 'wool');
-  const closureTop = fac === 2 ? 1.165 : 1.11, closureBottom = fac === 2 ? 1.025 : 0.83;
-  add(clothPanel(b, [[closureTop, -0.055], [closureTop, 0.055], [closureBottom, 0.055], [closureBottom, -0.055]], 0.01), shade(F.tunic, 0.83), null, 'wool');
-  // belt and webbing
-  add(band(b, 0.775, 0.825, 0.009), F.web, null, F.webMat);
-  if (fac === 0) for (const s of [1, -1]) add(strap(b, [[0.82, 0.42 * s], [0.95, 0.4 * s], [1.05, 0.45 * s], [1.115, 0.75 * s], [1.15, 1.4 * s], [1.1, 2.2 * s], [1.0, 2.6 * s], [0.82, 2.72 * s]], 0.038), F.web, null, F.webMat);
-  if (fac === 1) for (const s of [1, -1]) add(strap(b, [[0.82, 0.5 * s], [0.96, 0.42 * s], [1.06, 0.45 * s], [1.12, 0.8 * s], [1.15, 1.4 * s], [1.1, 2.4 * s], [1.0, 2.95 * s]], 0.028), F.web, null, F.webMat);
-  // pouches on the belt front, then each faction's bags
-  const crew = !['rifle', 'leader', 'smg', 'sniper', 'engineer', 'bazooka', 'bren', 'tommy'].includes(job.replace(/[BC]$/, ''));
-  if (fac !== 3) for (const s of [1, -1]) add(bagGeo(0.045, 0.075, fac === 1 ? 0.12 : 0.11, fac === 1 ? 0x2a2724 : F.web, { pouch: true, mat: F.webMat }), null, onTorso(b, 0.805, 0.5 * s, 0.03), F.webMat);
-  add(box(0.014, 0.036, 0.05), fac === 1 ? 0x686862 : 0x9a9275, onTorso(b, 0.8, 0, 0.024), 'gunmetal');
-  if (fac === 0) {
-    add(new THREE.CylinderGeometry(0.034, 0.034, 0.1, 6), 0x5d6147, chain(onTorso(b, 0.74, -2.1, 0.03), SC(0.65, 1, 1)), 'canvas'); // canteen
-    if (!crew && !job.startsWith('engineer')) add(bagGeo(0.075, 0.18, 0.18, F.bag), null, onTorso(b, 0.97, Math.PI, 0.026), 'canvas'); // haversack
-  } else if (fac === 1) {
-    add(bagGeo(0.065, 0.12, 0.15, F.bag), null, onTorso(b, 0.73, -2.2, 0.026), 'canvas'); // bread bag
-    if (job !== 'flamer') add(new THREE.CylinderGeometry(0.038, 0.038, 0.22, 6), 0x4f5549, chain(onTorso(b, 0.84, -2.75, 0.045), RX(-0.35)), 'armor-paint'); // gas mask can (the flamer's tanks are there)
-    add(box(0.024, 0.16, 0.075), 0x4a4236, onTorso(b, 0.72, 2.3, 0.02), 'wood'); // entrenching tool
-  } else if (fac === 3) {
-    // '37 pattern: the braces from the basic pouches over the shoulders, crossed on the back under the small pack
-    for (const s of [1, -1]) add(strap(b, [[0.98, 0.42 * s], [1.07, 0.5 * s], [1.13, 0.8 * s], [1.15, 1.4 * s], [1.1, 2.2 * s], [0.98, 2.85 * s], [0.86, 3.45 * s], [0.81, 3.7 * s]], 0.034), F.web, null, F.webMat);
-    for (const s of [1, -1]) add(bagGeo(0.064, 0.13, 0.105, F.web, { pouch: true }), null, onTorso(b, 0.955, 0.42 * s, 0.034), F.webMat); // basic pouches, high on the chest
-    add(new THREE.CylinderGeometry(0.036, 0.036, 0.12, 5), 0x5e5a44, chain(onTorso(b, 0.73, -2.25, 0.034), SC(0.7, 1, 1)), 'canvas'); // water bottle in its carrier
-    add(box(0.03, 0.12, 0.11), F.web, onTorso(b, 0.73, Math.PI, 0.026), F.webMat); // entrenching tool carrier
-    if (!crew && !job.startsWith('engineer')) add(bagGeo(0.08, 0.17, 0.2, F.bag), null, onTorso(b, 1.0, Math.PI, 0.03), 'canvas'); // small pack
-    if (type === 'commando') {
-      // the toggle rope coiled over the left shoulder to the right hip
-      const loop = [[1.14, 1.5], [1.01, 0.6], [0.88, -0.35], [0.82, -1.3], [0.97, -2.6], [1.14, 2.35]].map(([y, a]) => b.at(torsoAt(y, a, 0.045)));
-      const rows = tubeRows([loop.at(-1), ...loop, loop[0]], Array(loop.length + 2).fill(0.02), 3, v3(0, 1, 0)).slice(1, loop.length + 1);
-      add(gridGeo([...rows, rows[0]], { color: (i, j) => shade(0xc2b58c, j % 2 ? 0.85 : 1) }), null, null, 'canvas');
+function authoredParts(r, ctx) {
+  const { F, job, fac } = ctx, P = [], b = r.body;
+  const add = (geo, color, m, mat) => P.push({ geo, color: color ?? 0xffffff, m: m ?? new THREE.Matrix4(), mat });
+  add(authoredInfantry(r, ctx), null, null, 'plain');
+  r.arms.forEach((arm, side) => {
+    const fore = arm.hand.clone().sub(arm.elbow).normalize();
+    const up = r.W ? v3(...(side === 0 ? [0,-1,0] : [0,0,1])).transformDirection(r.W) : v3(1,0,0).transformDirection(b.U);
+    add(handGeo(side), 0xa87862, basis(arm.hand, fore, up), 'plain');
+  });
+
+  if (fac !== 1) {
+    // A complete scalp closes the reference head beneath alternate helmet silhouettes.
+    add(new THREE.SphereGeometry(1, 24, 16), 0x312c25, chain(r.H, T(-.032,.007,0), SC(.077,.087,.067)), 'plain');
+    const cap = ctx.type === 'conscript' && job !== 'leader', beret = ctx.type === 'commando';
+    if (cap) add(pilotkaGeo(), 0x77714f, chain(r.H, T(.005, -.015, 0), SC(1.08, 1, 1.06)), 'wool');
+    else if (beret) add(beretGeo(), null, chain(r.H, T(.005, -.015, 0), SC(1.08, 1, 1.06)), 'wool');
+    else {
+      const kind = ctx.type === 'sniper' && fac === 2 ? 'hood' : F.helmet, helmet = HELMETS[kind];
+      const color = (i, j, p) => shade(helmet.color, .94 + .06 * hash(p.x * 50, p.y * 50, p.z * 50));
+      add(helmetGeo(kind, 32, color), null, chain(r.H, T(.006, helmet.y + .032, 0), RZ(helmet.tilt), SC(.94,.94,.94)), kind === 'hood' ? 'wool' : 'armor-paint');
     }
-  } else {
-    if (!crew && type !== 'conscript' && type !== 'engineer') add(bagGeo(0.06, 0.14, 0.16, F.bag), null, onTorso(b, 0.94, Math.PI, 0.03), 'canvas'); // veshmeshok
-    if (job.startsWith('rifle') || job === 'leader' || job.startsWith('engineer')) {
-      // the rolled greatcoat over the left shoulder to the right hip
-      const loop = [[1.13, 1.45], [1.0, 0.55], [0.86, -0.4], [0.8, -1.3], [0.96, -2.65], [1.13, 2.3]].map(([y, a]) => b.at(torsoAt(y, a, 0.026)));
-      const rows = tubeRows([loop.at(-1), ...loop, loop[0]], Array(loop.length + 2).fill(0.055), 6, v3(0, 1, 0)).slice(1, loop.length + 1);
-      add(gridGeo([...rows, rows[0]], { color: (i, j) => shade(F.roll, i === 1 || i === 4 ? 0.62 : j % 2 ? 0.9 : 1) }), null, null, 'wool');
-    }
+
   }
+
   if (job === 'flamer') {
     // the tanks on his back, and the hose from under them round his right hip to the gun
     const back = (y, dz, out) => chain(onTorso(b, y, Math.PI, out), T(0, 0, dz));
@@ -927,74 +905,28 @@ function nearParts(r, ctx) {
       add(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 4, 1, true), F.wood, onTorso(b, 1.1, Math.PI, 0.075), 'wood'); // handle
     }
   }
-  // head, then the helmet or cap
-  const H = r.H, cap = type === 'conscript' && job !== 'leader', beret = type === 'commando';
-  const neckBase = b.at(v3(0, 1.17, 0)), neckTop = v3(-0.014, -0.068, 0).applyMatrix4(H);
-  add(tube([neckBase, neckBase.clone().lerp(neckTop, 0.5), neckTop], [0.03, 0.029, 0.028], 8, v3(0, 0, 1)), SKIN, null, 'plain');
-  add(headGeo(cap || beret || (sniper && fac === 2), !cap && !beret), null, chain(H, SC(0.93, 1, 0.93)), 'plain');
-  for (const side of [-1, 1]) {
-    const eye = chain(H, T(0.061, 0.006, side * 0.026), RY(Math.PI / 2 + side * 0.42));
-    add(new THREE.PlaneGeometry(0.013, 0.0045), 0xb7ad99, eye, 'plain');
-    add(new THREE.CircleGeometry(0.0024, 8), 0x3b3028, eye.clone().multiply(T(0, 0, 0.0005)), 'plain');
-    add(new THREE.PlaneGeometry(0.015, 0.002), 0x654b3c, eye.clone().multiply(T(0, 0.0034, 0.0008)), 'plain');
-    add(new THREE.SphereGeometry(1, 8, 5), shade(SKIN, 0.96), chain(H, T(-0.018, -0.012, side * 0.06), SC(0.012, 0.023, 0.008)), 'plain');
-    add(new THREE.SphereGeometry(1, 6, 3), shade(SKIN, 0.72), chain(H, T(-0.014, -0.013, side * 0.067), SC(0.006, 0.013, 0.0018)), 'plain');
-  }
-  add(new THREE.PlaneGeometry(0.024, 0.004), 0x78564b, chain(H, T(0.071, -0.043, 0), RY(Math.PI / 2)), 'plain');
-  if (cap) add(pilotkaGeo(), 0x77714f, chain(H, T(0.004, 0, 0), RX(0.15)), 'wool');
-  else if (beret) {
-    add(beretGeo(), null, H, 'wool');
-    add(box(0.008, 0.024, 0.02), 0xb9b2a0, chain(H, T(0.074, 0.062, -0.031), RY(0.42)), 'gunmetal'); // cap badge
-  } else {
-    const kind = sniper && fac === 2 ? 'hood' : F.helmet, Hd = HELMETS[kind];
-    const net = fac === 0 || fac === 3 ? (i, j, p) => shade(Hd.color, 0.82 + 0.18 * hash(p.x * 40, p.y * 40, p.z * 40)) : (i, j, p) => shade(Hd.color, 0.93 + 0.07 * hash(p.x * 30, p.y * 30, p.z * 30));
-    let g = helmetGeo(kind, 16, net);
-    if (sniper && fac) g = camoFaces(g, CAMO[fac], 30);
-    add(g, null, chain(H, T(0, Hd.y + 0.015, 0), RZ(Hd.tilt), SC(0.94, 0.94, 0.94)), kind === 'hood' ? 'wool' : 'armor-paint');
-  }
-  if (!cap && !beret && !(sniper && fac === 2)) {
-    // Two narrow ribbons from the helmet sides to the chin. They share the soldier mesh.
-    const strapRows = [[-0.005, -0.01, 0.069], [0.042, -0.072, 0.043]].map(([x, y, z]) => [v3(x - 0.006, y, z), v3(x + 0.006, y, z)]);
-    for (const side of [-1, 1]) {
-      const rows = strapRows.map(row => row.map(p => v3(p.x, p.y, p.z * side)));
-      if (side === 1) rows.forEach(row => row.reverse());
-      add(gridGeo(rows, { open: true }), F.web, H, F.webMat);
-    }
-  }
-  // legs: trousers, then the boots or leggings or puttees, then the boot itself
-  for (const L of r.legs) {
-    const thigh = L.knee.clone().sub(L.hip).normalize(), shin = L.ankle.clone().sub(L.knee).normalize(), edge = L.ankle.clone().lerp(L.knee, F.wrapUp);
-    const trouserPts = [L.hip.clone().addScaledVector(thigh, -0.045), L.hip.clone().lerp(L.knee, 0.24), L.hip.clone().lerp(L.knee, 0.63),
-      L.hip.clone().lerp(L.knee, 0.91), L.knee.clone().lerp(edge, 0.22), edge];
-    add(tube(trouserPts, [[0.06, 0.061], [0.08, 0.077], [0.078, 0.075], [0.068, 0.064], [0.063, 0.062], [0.058, 0.053]], 8, L.pole,
-      { color: (i, j) => shade(F.legs, i === 3 && j % 2 ? 0.93 : 1) }), null, null, 'wool');
-    const wrap = F.wrap ?? F.boots, n = fac === 2 ? 5 : 4, top = fac === 1 ? 0.07 : fac === 2 ? 0.062 : 0.066;
-    add(tube(Array.from({ length: n }, (_, i) => edge.clone().lerp(L.ankle, i / (n - 1))), Array.from({ length: n }, (_, i) => top + (0.048 - top) * (i / (n - 1))), 8, L.pole,
-      { color: (i) => shade(wrap, (fac === 2 || fac === 3) && i % 2 ? 0.86 : 1) }), null, null, F.wrapMat);
-    if (fac === 3 && L === r.legs[0]) {
-      // the battledress map pocket on the front of the left thigh
-      const out = r.legs[0].hip.clone().sub(r.legs[1].hip).normalize(), front = L.pole.clone().addScaledVector(thigh, -L.pole.dot(thigh)).normalize();
-      add(box(0.15, 0.014, 0.1), shade(F.legs, 1.05), basis(L.hip.clone().lerp(L.knee, 0.5).addScaledVector(front.addScaledVector(out, 0.4).normalize(), 0.07), thigh, front), 'wool');
-    }
-    add(bootGeo(F.boots), null, basis(L.ankle, L.toe, L.knee.clone().sub(L.ankle)), 'leather');
-  }
-  // arms: sleeves, the owner's band on the left upper arm, fists
-  r.arms.forEach((a, side) => {
-    const upper = a.elbow.clone().sub(a.sho).normalize(), fore = a.hand.clone().sub(a.elbow).normalize(), wrist = a.hand.clone().addScaledVector(fore, -FIST);
-    const pole = a.elbow.clone().sub(a.sho.clone().lerp(a.hand, 0.5));
-    add(tube([a.sho.clone().addScaledVector(upper, -0.025), a.sho.clone().lerp(a.elbow, 0.2), a.sho.clone().lerp(a.elbow, 0.64),
-      a.elbow, a.elbow.clone().lerp(wrist, 0.37), wrist.clone().addScaledVector(fore, -0.027), wrist],
-      [[0.059, 0.055], [0.063, 0.057], [0.052, 0.046], [0.048, 0.043], [0.046, 0.04], [0.035, 0.031], [0.03, 0.029]], 8, pole,
-      { color: (i, j) => shade(F.tunic, i === 6 ? 0.83 : i === 3 && j % 2 ? 0.94 : 1) }), null, null, 'wool');
-    if (side === 0) add(tube([0.36, 0.56].map(t => a.sho.clone().lerp(a.elbow, t)), [0.059, 0.055], 8, pole), ctx.owner, null, 'canvas');
-    add(handGeo(), shade(SKIN, 0.97), basis(a.hand, fore, pole), 'plain');
-  });
-  // the weapon in the hands or on the back, then what he carries
+
   if (r.W) for (const p of r.info.parts) add(p.geo, p.color, r.W.clone().multiply(p.m), p.mat);
   if (r.sling) for (const p of weapon('carbine', F, 2).parts) add(p.geo, p.color, r.sling.clone().multiply(p.m), p.mat);
   for (const t of r.things) for (const p of item(t.kind, F, false)) add(p.geo, p.color, t.m.clone().multiply(p.m), p.mat);
   return P;
 }
+
+function mergeFigure(parts) {
+  const geo = merge(parts);
+  if (parts.some(p => p.geo.attributes.modelUV)) {
+    const uv = new Float32Array(geo.attributes.position.count * 3);
+    let offset = 0;
+    for (const part of parts) {
+      if (part.geo.attributes.modelUV) uv.set(part.geo.attributes.modelUV.array, offset * 3);
+      offset += part.geo.attributes.position.count;
+    }
+    geo.setAttribute('modelUV', new THREE.BufferAttribute(uv, 3));
+  }
+  return geo;
+}
+
+const nearParts = authoredParts;
 
 // ---------------------------------------------------------------- the far figure
 
@@ -1030,17 +962,17 @@ const shadeFalloff = (p, n) => (0.85 + 0.15 * smooth(p.y / 0.5)) * (1 + 0.1 * Ma
 function figure(ctx, far) {
   const muzzle = (r) => r.W ? v3(r.info.L, 0, 0).applyMatrix4(r.W) : null;
   const rigs = [0, 1, 2, 3].map((k) => solve(ctx, k));
-  const geos = rigs.map((r) => merge(far ? farParts(r, ctx) : nearParts(r, ctx)));
+  const geos = rigs.map((r) => mergeFigure(far ? farParts(r, ctx) : nearParts(r, ctx)));
   const n = geos[0].attributes.position.count;
   geos.forEach((g, k) => { if (g.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: posture ${k} has ${g.attributes.position.count} vertices, not ${n}`); });
   const body = ao(geos[0], { falloff: shadeFalloff });
   body.userData.muzzle = muzzle(rigs[0]);
   body.userData.poses = geos.slice(1).map((g, i) => ({ position: g.attributes.position, normal: g.attributes.normal, muzzle: muzzle(rigs[i + 1]) }));
-  const fallenRig = solve(ctx, 'fallen'), fallenGeo = merge(far ? farParts(fallenRig, ctx) : nearParts(fallenRig, ctx));
+  const fallenRig = solve(ctx, 'fallen'), fallenGeo = mergeFigure(far ? farParts(fallenRig, ctx) : nearParts(fallenRig, ctx));
   if (fallenGeo.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: fallen pose has ${fallenGeo.attributes.position.count} vertices, not ${n}`);
   body.userData.fallen = { position: fallenGeo.attributes.position, normal: fallenGeo.attributes.normal };
   body.userData.gait = [[3, 8], [0, 4], [1, 4], [2, 4]].flatMap(([posture, count]) => Array.from({ length: count }, (_, i) => {
-    const r = solve(ctx, posture, i / count), g = merge(far ? farParts(r, ctx) : nearParts(r, ctx));
+    const r = solve(ctx, posture, i / count), g = mergeFigure(far ? farParts(r, ctx) : nearParts(r, ctx));
     if (g.attributes.position.count !== n) throw new Error(`${ctx.type} ${ctx.job}: gait changed topology`);
     return { position: g.attributes.position, normal: g.attributes.normal, posture, muzzle: muzzle(r) };
   }));

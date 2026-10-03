@@ -1,5 +1,11 @@
 # WW2 model references
 
+The later infantry replacement uses `infantry-realism-v3.png`, a generated transparent
+A-pose reference. `infantry-face-v3.png` is an additional portrait study, not a runtime
+texture. The accepted reduced surface is `infantry-retopo-v3.glb`; the editable rig
+is `infantry-rig-v3.blend`. See `tools/blender/infantry.md` for the reconstruction,
+Blender fitting and runtime texture workflow. Shared sidecars omit account and request IDs.
+
 Three images generated with the requested Codex Image skill on 2026-10-03. These are visual modeling references, not verified historical blueprints. Runtime model changes should use their proportions and material treatment with judgment.
 
 | File | Subjects | Requested size | Actual size | Requested quality | Resolved quality |

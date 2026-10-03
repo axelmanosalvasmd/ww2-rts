@@ -18,6 +18,9 @@ export const bindings = [
   binding('mute', 'KeyM', 'M', 'Toggle audio'),
   binding('unload', 'KeyE', 'Shift+E', 'Unload the selected halftracks', 'global', { shift: true }),
   binding('alert', 'Space', 'Space', 'Jump to the newest alert, or center the selection'),
+  binding('alertHistory', 'KeyH', 'Alt+H', 'Open or close Alert history', 'global', { alt: true }),
+  binding('alertPrevious', 'ArrowLeft', 'Alt+Left', 'Visit the previous Alert', 'global', { alt: true }),
+  binding('alertNext', 'ArrowRight', 'Alt+Right', 'Visit the next Alert', 'global', { alt: true }),
   binding('follow', 'Space', 'Shift+Space', 'Follow the selection', 'global', { shift: true }),
   binding('rally', 'KeyH', 'Shift+H', 'Set the army rally point', 'global', { shift: true }),
   binding('home', 'KeyH', 'H', 'Go home and select the Classic HQ'),
@@ -39,6 +42,7 @@ export const bindings = [
     .map(([code, key]) => binding(code === 'KeyQ' ? 'rotateLeft' : code === 'KeyE' ? 'rotateRight' : ['KeyW', 'ArrowUp'].includes(code) ? 'panForward' : ['KeyS', 'ArrowDown'].includes(code) ? 'panBack' : ['KeyA', 'ArrowLeft'].includes(code) ? 'panLeft' : 'panRight', code, key, code === 'KeyQ' || code === 'KeyE' ? 'Rotate the camera' : 'Pan the camera')),
   ...Array.from({ length: 9 }, (_, i) => i + 1).flatMap((n) => [
     binding(`group:recall:${n}`, `Digit${n}`, `${n}`, `Recall group ${n}; tap twice to center`),
+    binding(`group:transfer:${n}`, `Digit${n}`, `Alt+${n}`, `Move selected units to group ${n} and remove them from other groups`, 'global', { alt: true }),
     binding(`group:set:${n}`, `Digit${n}`, `Ctrl+${n}`, `Set group ${n}`, 'global', { ctrl: true }),
     binding(`group:append:${n}`, `Digit${n}`, `Shift+${n}`, `Append selection to group ${n}`, 'global', { shift: true }),
     binding(`group:append:${n}`, `Digit${n}`, `Ctrl+Shift+${n}`, `Append selection to group ${n}`, 'global', { ctrl: true, shift: true }),

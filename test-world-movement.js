@@ -77,7 +77,9 @@ try {
   let reached = false, detoured = false;
   for (let n=0; n<1000 && !reached; n+=2) {
     await tick(2); const row=host.units.get(rifle.id); assert.ok(row,'moving squad remains in its own snapshot');
-    const x=Math.floor(row[3]/CELL), z=Math.floor(row[4]/CELL);
+    // Snapshots round positions to 0.1 m, which can put a legal edge position on the wall.
+    // Check exact collision coordinates while keeping arrival checks on received snapshots.
+    const x=Math.floor(rifle.x/CELL), z=Math.floor(rifle.z/CELL);
     assert.ok(x!==wallX || z<wallZ-3 || z>wallZ+3, 'ordinary movement never enters the wall');
     detoured ||= Math.abs(row[4]-start.z)>5;
     reached = Math.hypot(row[3]-target.x,row[4]-target.z)<3;

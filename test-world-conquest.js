@@ -17,7 +17,7 @@ async function connect(room, token) {
   const ws = new WebSocket(`ws://127.0.0.1:${server.server.address().port}/ws?room=${room}`, { perMessageDeflate: false });
   const messages = [], units = new Map();
   const client = {
-    ws, messages,
+    ws, messages, room,
     latest: t => messages.filter(m => m.t === t).at(-1),
     async send(message) { ws.send(JSON.stringify(message)); await settle(); },
     wait: (t, after = 0) => waitFor(() => messages.slice(after).find(m => m.t === t), `missing ${t}`),
@@ -40,7 +40,12 @@ async function connect(room, token) {
 }
 async function tick(count = 2) {
   for (let i = 0; i < count; i++) server.tickRooms();
-  await settle();
+  // Advancing simulation is synchronous; receiving its WebSocket snapshots is not.
+  // Wait for each client to catch up even when a large world fills the socket queue.
+  await waitFor(() => clients.every(client => {
+    const room = server.rooms.get(client.room), game = room?.game;
+    return !game || (client.latest('s')?.tick ?? -1) >= game.tick - Math.max(4, room.snapEvery ?? 2) + 1;
+  }), 'clients did not receive the final simulation snapshots');
 }
 
 try {

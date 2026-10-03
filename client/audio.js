@@ -57,6 +57,8 @@ let ctx = null, master, comp, buses, index = null, loading = null, started = fal
 let player = { faction: 0, slot: 0 }, voiceName = null;
 const buffers = new Map(), playing = [], lastStart = new Map(), lastAlert = new Map(), lastLine = new Map();
 let ear = { x: 0, z: 0, dist: 85, yaw: 0 }, earAt = 0, voiceUntil = 0, mutedFrom = 0.8, slider = null;
+let environmentState = { wind: { gain: 0.055, pan: 0 } };
+let ambientDuckUntil = 0;
 const beds = new Map(); // loops driven by a set of positions (tank engines): name -> { src, gain, pan }
 
 const now = () => ctx.currentTime;
@@ -123,6 +125,35 @@ function place(pos, range) {
   return { gain, pan: Math.max(-1, Math.min(1, side / (d + 25))) * 0.8 };
 }
 
+// Four quiet synthesized loops keep Weather and terrain sounds independent, with no extra asset requests.
+function environmentalBuffer(kind) {
+  const key = `amb:${kind}`;
+  if (buffers.has(key)) return buffers.get(key);
+  const seconds = 8, rate = ctx.sampleRate, buf = ctx.createBuffer(1, seconds * rate, rate), data = buf.getChannelData(0);
+  let seed = { wind: 41, water: 73, woodland: 107, rain: 149 }[kind], low = 0;
+  for (let i = 0; i < data.length; i++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const noise = seed / 2147483648 - 1;
+    low += (noise - low) * 0.08;
+    const t = i / rate, flutter = 0.7 + 0.3 * Math.sin(t / seconds * Math.PI * 6);
+    data[i] = (kind === 'rain' ? noise * 0.35 : kind === 'water' ? noise * 0.2 + low * 0.8 : low * 2) * flutter;
+    // Join the endpoints quietly. The two short tapers avoid a click when the loop wraps.
+    data[i] *= Math.min(1, i / (rate * 0.04), (data.length - 1 - i) / (rate * 0.04));
+  }
+  buffers.set(key, buf);
+  return buf;
+}
+
+function duckAmbience(seconds) {
+  if (!ctx || !buses) return;
+  const t = now();
+  ambientDuckUntil = Math.max(ambientDuckUntil, t + seconds);
+  const gain = buses.amb.gain;
+  gain.cancelScheduledValues(t);
+  gain.setTargetAtTime(0.32, t, 0.04);
+  gain.setTargetAtTime(1, ambientDuckUntil, 0.4);
+}
+
 function stop(p, fade = 0.05) {
   if (p.done) return;
   p.done = true;
@@ -172,6 +203,8 @@ function launch(key, { bus = 'sfx', pos, mix = {}, gain = 1, rate = 1, delay = 0
     src.start(t0, Math.min(offset, buf.duration - 0.05));
   }
   g.connect(pan).connect(buses[bus]);
+  if (bus === 'voice' || name.startsWith('alert_')) duckAmbience(Math.min(4, buf.duration + 0.2));
+  else if (bus === 'sfx' && level > 0.2) duckAmbience(0.45);
   const p = { name, src, gain: g, pan, pos, mix, level: v, base: v / Math.max(at.gain, 1e-3) };
   playing.push(p);
   lastStart.set(name, t0);
@@ -240,16 +273,33 @@ export const audio = {
     for (const p of playing) stop(p, 0.4);
     for (const b of beds.values()) stop(b, 0.4);
     beds.clear();
+    environmentState = { wind: { gain: 0.055, pan: 0 } };
+    ambientDuckUntil = 0;
+    if (buses) { buses.amb.gain.cancelScheduledValues(now()); buses.amb.gain.setValueAtTime(1, now()); }
   },
-  ambience() {
-    const buf = buffers.get('ambient');
-    if (!buf) return;
-    const src = ctx.createBufferSource(), g = ctx.createGain();
-    src.buffer = buf; src.loop = true; src.loopStart = buf.loopFrom ?? 0; src.loopEnd = buf.duration;
-    g.gain.setValueAtTime(0, now()); g.gain.linearRampToValueAtTime(MIX.ambient.gain, now() + 4);
-    src.connect(g).connect(buses.amb);
-    src.start(now(), Math.random() * buf.duration);
-    beds.set('ambient', { src, gain: g, name: 'ambient' });
+  ambience() { this.environment(environmentState); },
+  // Targets come from known nearby terrain and public Weather. Four beds are the fixed upper bound.
+  environment(targets) {
+    environmentState = targets;
+    if (!ctx || !started || ctx.state !== 'running') return;
+    for (const kind of ['wind', 'water', 'woodland', 'rain']) {
+      const key = `amb:${kind}`, target = targets[kind] ?? { gain: 0, pan: 0 };
+      let b = beds.get(key);
+      if (!b && target.gain > 0.001) {
+        const src = ctx.createBufferSource(), g = ctx.createGain(), pan = ctx.createStereoPanner(), filter = ctx.createBiquadFilter();
+        src.buffer = environmentalBuffer(kind); src.loop = true;
+        filter.type = kind === 'rain' ? 'highpass' : kind === 'water' ? 'bandpass' : 'lowpass';
+        filter.frequency.value = { wind: 280, water: 900, woodland: 650, rain: 1700 }[kind];
+        filter.Q.value = 0.45;
+        g.gain.value = 0;
+        src.connect(filter).connect(g).connect(pan).connect(buses.amb);
+        src.start(now());
+        beds.set(key, b = { src, gain: g, pan, name: key });
+      }
+      if (!b) continue;
+      b.gain.gain.setTargetAtTime(Math.max(0, Math.min(0.2, target.gain)), now(), 1.3);
+      b.pan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, target.pan)), now(), 0.8);
+    }
   },
 
   // camera focus point, zoom distance and yaw, once per frame
@@ -314,7 +364,7 @@ export const audio = {
   // seconds a loaded effect lasts (0 until it has loaded)
   length(name) { return buffers.get(name)?.duration ?? 0; },
   // for checks from devtools and the headless tests
-  stats() { return { state: ctx?.state ?? 'none', loaded: buffers.size, playing: playing.filter(p => !p.done).length, beds: [...beds.keys()], voice: voiceName, volume: this.volume }; },
+  stats() { return { state: ctx?.state ?? 'none', loaded: buffers.size, playing: playing.filter(p => !p.done).length, beds: [...beds.keys()], voice: voiceName, volume: this.volume, environment: environmentState }; },
   // 'click' | 'recruit' | 'error'
   ui(kind) {
     const u = UI[kind] ?? UI.click;

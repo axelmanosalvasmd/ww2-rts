@@ -100,3 +100,23 @@ not a large-army performance claim. Volume remained zero throughout testing.
 
 The local image-to-3D PT boat experiment is documented with the reference art. Its reduced
 meshes were rejected after visual inspection and are not used in the runtime.
+
+## Textured infantry replacement
+
+The direct 8k soldier reduction was rejected for torn features and detached triangles.
+The accepted input was rebuilt with a voxel surface and reduced to 5,984 triangles.
+Blender Lab created a fitted 15-bone armature, solved and filtered its weights, then
+exported the same weighted surface to the runtime and the retained editable `.blend`.
+Blend AI rendered the new source; MCP for Blender captured its material viewport.
+Both were opened for visual review. `infantry.md` records the retained inputs and rebuild.
+
+The in-app browser checked all factions, crouching, prone and moving poses. The final
+German and US close views retained the atlas and closed weapon grips. High to Low to
+High returned GL error 0. A fresh three-unit Conquest match with Ground fog completed
+a move from (27, 115) to (35, 111), with 60.1 FPS, 1.4 ms client work and 0.6 ms server
+tick in the sampled settled frame. This is a small-scene sample, not a stress benchmark.
+The audio module reported volume 0; console errors and GL errors were absent.
+
+The source and all poses pass checks for normalized weights, bounded geometry, atlas
+retention, distant meshes and stretched tiny triangles. Factions still share one face
+and base uniform cut. Independently authored historical uniforms remain future work.

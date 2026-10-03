@@ -111,7 +111,7 @@ const closeCam = new THREE.PerspectiveCamera(30, 1, 0.05, 3000);
 const { sun } = setupLight(renderer, scene, gameCam); // tone mapping, shadows, hemisphere fill, the sun, haze (the default mood)
 scene.background = new THREE.Color(bg);
 
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: GRASS }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: hex(q.get('ground')) ?? GRASS }));
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
 const grid = new THREE.GridHelper(48, 24, 0x4a5530, 0x56623a); // 2 m squares: the game's build grid
 grid.position.y = 0.02; grid.material.transparent = true; grid.material.opacity = 0.45;
@@ -247,6 +247,10 @@ function measure(cam, hide = []) {
   const was = [ground, grid, ...hide].map((o) => o.visible);
   [ground, grid, ...hide].forEach((o) => (o.visible = false));
   const info = renderer.info.render, sm = renderer.shadowMap;
+  // Initialize shadow textures before measuring a pass with shadow updates disabled.
+  // Otherwise the first draw can bind incompatible placeholder sampler types.
+  sm.autoUpdate = true; sm.needsUpdate = true;
+  renderer.render(scene, cam);
   sm.autoUpdate = false; sm.needsUpdate = false;
   renderer.info.reset(); renderer.render(scene, cam);
   const out = { calls: info.calls, tris: info.triangles };

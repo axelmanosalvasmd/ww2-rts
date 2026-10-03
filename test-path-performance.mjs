@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createGame, findPath, command, CELL } from './shared/sim.js';
+import { createGame, findPath, command, CELL, blockOf, UNITS, MOVE, SIGHT } from './shared/sim.js';
+import { vehiclePositionClear } from './shared/vehicle-motion.js';
 
-// Route hashes captured with shared/sim.js at 66a3734240d98d32d4c5ecd471bd7a1bbbc63336.
+// Existing route hashes were captured at 66a3734240d98d32d4c5ecd471bd7a1bbbc63336.
+// Only freshRoad and wornRoad change for the six-metre, hull-checked portal fixture.
 // All fixtures use the public game, path and command interfaces.
 const W = 40;
 const H = 30;
@@ -15,8 +17,8 @@ const routeOracle = {
   bunkerBase: 'ca40f1b77e8940d39a59c4d3227e14af5c409fcd293c061eb7191d0b0e415b59',
   bunkerNear: '9f197446e69527df75469b8a595ddbb2b546f1fd0bc4d186c8970599c5fcd170',
   groupMove: '8c0b031cc901b56c8dafc8d6ad52a3fed4ae8480457ad5ab3bc86f56cdc6271a',
-  freshRoad: 'b95e1eb0edccad101563a41457fda2ef792b2b7fbfc22aa3d472c675469202dd',
-  wornRoad: '8b9335ad1d7778398e189c3bcd47ab28f00f318cc2a19e7fcd53f2728a23ec74',
+  freshRoad: '357795d0df4e3151ec226ac54e3740cea85d12d51403df91c6c67446bbd98151',
+  wornRoad: 'ebc84399dc4d07d167c45b883dabfb8d941990c9729e34f5272a997b92bf54f7',
 };
 
 function mapWith(fill = '.') {
@@ -32,7 +34,16 @@ function mapWith(fill = '.') {
 }
 
 function newGame(map) {
-  return createGame(map, ['Blue', 'Red'], false, [0, 1], [0, 1], { weather: false, supply: false });
+  const g = createGame(map, ['Blue', 'Red'], false, [0, 1], [0, 1], { weather: false, supply: false });
+  // These cost/cache fixtures supply complete known state. Room tests verify recipient authority.
+  g.navigationObserved = true;
+  g.worldNearWalls = new Uint8Array(g.w * g.h);
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    for (let ny = Math.max(0, y - 1); ny <= Math.min(g.h - 1, y + 1); ny++) for (let nx = Math.max(0, x - 1); nx <= Math.min(g.w - 1, x + 1); nx++) {
+      if ((g.flags[ny * g.w + nx] & (MOVE | SIGHT)) === (MOVE | SIGHT)) g.worldNearWalls[y * g.w + x] = 1;
+    }
+  }
+  return g;
 }
 
 function rifle(g, x = 2, y = 15, ordinal = 0, type = 'rifle') {
@@ -55,6 +66,17 @@ function hash(value) {
 function expectRoute(label, actual, expected) {
   assert.equal(hash(actual), expected, `${label} route changed`);
 }
+
+function expectVehicleClear(g, from, points) {
+  assert.ok(points.length, 'a vehicle has a reachable route');
+  let at = from;
+  for (const [x, z] of points) {
+    const d = Math.hypot(x - at.x, z - at.z), rot = Math.atan2(z - at.z, x - at.x), n = Math.max(1, Math.ceil(d / 0.25));
+    for (let i = 0; i <= n; i++) assert.ok(vehiclePositionClear(g, { x: at.x + (x - at.x) * i / n, z: at.z + (z - at.z) * i / n, rot }, UNITS[from.type], blockOf(UNITS[from.type])), 'the selected vehicle route leaves room for its hull');
+    at = { x, z };
+  }
+}
+
 
 {
   const map = mapWith();
@@ -84,7 +106,9 @@ function expectRoute(label, actual, expected) {
   map.rows = rows.map(row => row.join(''));
   const g = newGame(map);
   const u = rifle(g, 3, 15, 0, 'tank');
-  expectRoute('vehicle roads and mud', route(g, u), routeOracle.roadMud);
+  const selected = route(g, u);
+  expectVehicleClear(g, u, selected);
+  expectRoute('vehicle roads and mud', selected, routeOracle.roadMud);
 }
 
 {
@@ -112,22 +136,33 @@ function expectRoute(label, actual, expected) {
 {
   const map = mapWith();
   const rows = map.rows.map(row => [...row]);
-  for (let y = 5; y < 25; y++) if (y !== 8 && y !== 22) {
+  // Six-metre portals admit the tank footprint; the former two-metre holes could not.
+  for (let y = 5; y < 25; y++) if (!(y >= 7 && y <= 9) && !(y >= 21 && y <= 23)) {
     for (let x = 18; x < 22; x++) rows[y][x] = 'B';
   }
-  for (let x = 12; x <= 27; x++) rows[8][x] = 'D';
-  for (let x = 12; x <= 27; x++) rows[22][x] = 'M';
+  for (let y = 7; y <= 9; y++) for (let x = 12; x <= 27; x++) rows[y][x] = 'D';
+  for (let y = 21; y <= 23; y++) for (let x = 12; x <= 27; x++) rows[y][x] = 'M';
   map.rows = rows.map(row => row.join(''));
   const g = newGame(map);
   const tank = rifle(g, 3, 15, 0, 'tank');
-  expectRoute('fresh road', route(g, tank), routeOracle.freshRoad);
+  const freshRoute = route(g, tank);
+  expectVehicleClear(g, tank, freshRoute);
+  expectRoute('fresh road', freshRoute, routeOracle.freshRoad);
   const roadCells = [...g.chars.keys()].filter(c => g.chars[c] === 'D');
   const mudCells = [...g.chars.keys()].filter(c => g.chars[c] === 'M');
   for (const c of roadCells) g.wear[c] = 1;
   for (const c of mudCells) g.wear[c] = 0;
-  expectRoute('worn road and shallow mud', route(g, tank), routeOracle.wornRoad);
+  const wornRoute = route(g, tank);
+  expectVehicleClear(g, tank, wornRoute);
+  expectRoute('worn road and shallow mud', wornRoute, routeOracle.wornRoad);
   g.wx = { wet: 1 };
-  expectRoute('wet road and mud after prior search', route(g, tank), routeOracle.freshRoad);
+  const wetRoute = route(g, tank);
+  expectVehicleClear(g, tank, wetRoute);
+  assert.notDeepEqual(wetRoute, wornRoute, 'wet ground costs refresh after a prior search without a topology change');
+  for (const c of roadCells) g.wear[c] = 0;
+  const wetFreshRoute = route(g, tank);
+  expectVehicleClear(g, tank, wetFreshRoute);
+  expectRoute('fresh road in wet ground', wetFreshRoute, routeOracle.freshRoad);
 }
 
 {
@@ -158,4 +193,25 @@ function expectRoute(label, actual, expected) {
   expectRoute('group move paths', [first.path.map(p => [p.x, p.z]), second.path.map(p => [p.x, p.z])], routeOracle.groupMove);
 }
 
-console.log('Passed 8 focused pathfinding scenarios.');
+{
+  const size = 512, N = size * size;
+  const g = { w: size, h: size, chars: Array(N).fill('.'), flags: new Uint16Array(N).fill(1024), height: new Int8Array(N), wear: new Float32Array(N),
+    worldKnown: true, navigationObserved: true, worldNearWalls: new Uint8Array(N), units: new Map(), mineSeen: new Map(), fires: new Map(), roads: false,
+    infantryRegionVersion: 0, vehicleRegionVersion: 0, navalRegionVersion: 0, obstructionVersion: 0, navigationKnowledgeVersion: 0 };
+  const to = { x: 995, z: 991 };
+  for (const type of ['rifle', 'tank']) {
+    const from = { type, x: 21, z: 21 }, samples = [];
+    let peakExpansions = 0;
+    for (let n = 0; n < 31; n++) {
+      const previous = g.pathStats?.expansions ?? 0, start = performance.now(), points = findPath(g, from, to);
+      const elapsed = performance.now() - start, expanded = g.pathStats.expansions - previous;
+      assert.ok(points.length && Math.hypot(points.at(-1).x - from.x, points.at(-1).z - from.z) < 120, 'large-map hierarchy produces a bounded useful route leg');
+      assert.ok(expanded <= 4096, 'a route leg stays within the fine-search expansion budget');
+      peakExpansions = Math.max(peakExpansions, expanded);
+      if (n) samples.push(elapsed);
+    }
+    samples.sort((a, b) => a - b);
+    console.log(`512x512 ${type}: warm median ${samples[15].toFixed(2)} ms, p95 ${samples[28].toFixed(2)} ms, peak ${peakExpansions} expansions`);
+  }
+}
+console.log('Passed 8 focused pathfinding scenarios and bounded large-map searches.');
