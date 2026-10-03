@@ -1731,3 +1731,33 @@ about the HQs' center, found by checking which transforms send HQs to HQs and mo
   before and after the rework. Research agrees a map built for one format compromises the other. Left as is.
 - Found: `spawnDistances` (shared/sim.js) says cliffs block but only checks houses and water, so seating on cliff
   maps can misjudge who is near whom. Left for the pathfinding work.
+
+
+## Performance update handling (2026-10-03)
+
+Ground painting keeps the existing `paint(grid, state)` interface. The ground module owns sparse scar neighborhoods
+and a stable noise lattice, preserving the original raster pixels. A frame adapter is optional: matches use RAF,
+a soft 6 ms raster target and at most two 4-cell tiles per frame. The target is checked after each tile and before
+upload, so it does not guarantee a 6 ms frame. Pending dirty tiles merge across snapshots and always use the latest
+captured cell attributes. One upload per paint frame regenerates mipmaps once. Initial painting, texture readiness
+and the editor stay synchronous. Replacing or disposing ground cancels pending work; owner tokens protect newer
+handles when a same-sized backing canvas is reused.
+
+The corpse module owns its fallen geometry and instance buffers. The camera chooses near or far fallen detail,
+with the existing soldier distance thresholds and 4 m hysteresis. Frustum tests use transformed fallen bounds,
+including blast motion and sinking. Logical bodies still age when hidden. Pools grow to demand, preserve existing
+matrices during growth, and release geometry and instance buffers when the last body of that look expires. The
+shared textured material stays reusable. Deaths after camera setup are packed in the next frame; camera-free
+viewers retain immediate placement.
+
+The paper-map module reports an optional render object only when its fade reaches exactly one and the desk covers
+all four view corners within the camera clip range. Other views render the full scene. World updates, corpse expiry,
+camera input and performance metrics continue. Map symbols use up to 1.5 device pixels per CSS pixel and update at
+30 Hz with immediate camera, resize and terrain redraws. Gore has its own notification seam, separate from graphics
+quality rebuilds.
+
+Path search reuses exact double-precision cell costs within one search. A new generation invalidates the costs on
+every new search, retaining current terrain, wear, weather and bunker insertion, movement and death. No movement,
+economy or balance rule changed. `node test.js` includes the focused performance checks; CI also runs
+`node test-world.js`. `tools/test-render-browser.html` provides the native WebGL adapter check when served from the
+repository root by a local static server.

@@ -4,6 +4,7 @@
 const KEY = 'ww2-gfx', AUTO_KEY = 'ww2-gfx-auto';
 const store = (fn) => { try { return fn(); } catch { return null; } };
 const subs = new Set();
+const goreSubs = new Set();
 let level = store(() => localStorage.getItem(KEY)) === 'low' ? 'low' : 'high';
 const GORE_KEY = 'ww2-gore';
 let gore = store(() => localStorage.getItem(GORE_KEY)) !== 'off';
@@ -21,12 +22,15 @@ export const gfx = {
   // blood and torn bodies when men die in a blast (client/fx.js gore); bodies are thrown either way. On by default.
   get gore() { return gore; },
   setGore(on) {
-    gore = !!on;
+    const next = !!on;
+    if (next === gore) return;
+    gore = next;
     store(() => localStorage.setItem(GORE_KEY, gore ? 'on' : 'off'));
-    subs.forEach((fn) => fn(level));
+    goreSubs.forEach((fn) => fn(gore));
   },
-  // fn(level) runs whenever the setting changes; returns an unsubscribe function
+  // Quality changes rebuild terrain and materials. Gore changes only notify their own listeners.
   onChange(fn) { subs.add(fn); return () => subs.delete(fn); },
+  onGoreChange(fn) { goreSubs.add(fn); return () => goreSubs.delete(fn); },
 };
 
 // Call once per rendered frame with the frame time in seconds. onDrop(message) runs if it switched to Low by itself.

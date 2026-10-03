@@ -1479,13 +1479,14 @@ export function findPath(g, from, to) {
   // A command bunker is a unit, not cells (it shoots out of its slit, so its footprint cannot block sight): routes
   // treat its ground as nearly solid and the ring around it like a wall's side. Not blocked outright, so an order
   // aimed at the bunker itself still finds a way.
-  // ponytail: scans every unit per search; cache the list if more structures without cells appear
+  // Refresh the live bunkers per search, including one inserted, moved or killed between commands.
   const posts = [];
   for (const u of g.units?.values() ?? []) if (u.type === 'bunker' && u.hp > 0) posts.push(u);
   const postR = UNITS.bunker.radius;
   const postCost = (n) => {
     let k = 0;
-    for (const p of posts) { const d = Math.hypot((n % W + 0.5) * CELL - p.x, (Math.floor(n / W) + 0.5) * CELL - p.z); k += d < postR + 1 ? 30 : d < postR + 3 ? CFG.wallHug : 0; }
+    const x = (n % W + 0.5) * CELL, z = (Math.floor(n / W) + 0.5) * CELL;
+    for (const p of posts) { const d = Math.hypot(x - p.x, z - p.z); k += d < postR + 1 ? 30 : d < postR + 3 ? CFG.wallHug : 0; }
     return k;
   };
   const throughPost = (a, b) => posts.some(p => dist(a, p) >= postR + 1.5 && dist(b, p) >= postR + 1.5 && segHits(a, b, p, postR + 1.5));
@@ -1495,6 +1496,10 @@ export function findPath(g, from, to) {
     if (labels[goal] < 0 || labels[start] !== labels[goal]) { stats.failed++; stats.regionRejected++; return []; }
   }
   const b = buffersFor(N), gen = nextGeneration(b), { gs, came, seen, closed } = b, near = nearWalls(g);
+  // Every reached cell has already had its costs computed in this search. Reuse those exact doubles across
+  // incoming edges, but refresh them on the next search so terrain, weather and live bunkers stay current.
+  const moveCosts = veh ? (b.moveCosts ??= new Float64Array(b.gs.length)) : null;
+  const postCosts = posts.length ? (b.postCosts ??= new Float64Array(b.gs.length)) : null;
   const gx = goal % W, gy = Math.floor(goal / W);
   const hq = (c) => { const dx = Math.abs(c % W - gx), dy = Math.abs(Math.floor(c / W) - gy); return (Math.max(dx, dy) + 0.414 * Math.min(dx, dy)) * low; };
   b.heapLength = 0; heapPush(b, hq(start), start);
@@ -1504,7 +1509,7 @@ export function findPath(g, from, to) {
     if (c === goal) break;
     if (closed[c] === gen) continue;
     closed[c] = gen; stats.expansions++;
-    const x = c % W, y = Math.floor(c / W);
+    const x = c % W, y = Math.floor(c / W), height = level(g, c);
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       const nx = x + dx, ny = y + dy;
@@ -1512,12 +1517,14 @@ export function findPath(g, from, to) {
       const n = ny * W + nx;
       if (g.flags[n] & block || closed[n] === gen) continue;
       if (dx && dy && (g.flags[y * W + nx] & block || g.flags[ny * W + x] & block || mined(y * W + nx) || mined(ny * W + x))) continue;
-      const climb = level(g, n) - level(g, c);
+      const climb = level(g, n) - height;
       if (Math.abs(climb) > 1) continue; // cliff
-      if (dx && dy && (Math.abs(level(g, y * W + nx) - level(g, c)) > 1 || Math.abs(level(g, ny * W + x) - level(g, c)) > 1)) continue;
+      if (dx && dy && (Math.abs(level(g, y * W + nx) - height) > 1 || Math.abs(level(g, ny * W + x) - height) > 1)) continue;
       // uphill costs a bit more, hugging a wall a little, wire a lot, fire more; a vehicle's step costs the time its
       // ground takes (road, mud, churn)
-      const cost = gs[c] + (dx && dy ? 1.414 : 1) * (veh ? Math.max(low, 1 / groundMul(g, n, true)) : 1) + Math.max(0, climb) * 0.5 + near[n] * CFG.wallHug + (posts.length ? postCost(n) : 0) + (!veh && g.flags[n] & WIRE ? 4 : 0) + (burning && g.fires.has(n) ? 8 : 0) + (mined(n) ? 30 : 0);
+      const moveCost = veh ? (seen[n] === gen ? moveCosts[n] : (moveCosts[n] = Math.max(low, 1 / groundMul(g, n, true)))) : 1;
+      const postPenalty = posts.length ? (seen[n] === gen ? postCosts[n] : (postCosts[n] = postCost(n))) : 0;
+      const cost = gs[c] + (dx && dy ? 1.414 : 1) * moveCost + Math.max(0, climb) * 0.5 + near[n] * CFG.wallHug + postPenalty + (!veh && g.flags[n] & WIRE ? 4 : 0) + (burning && g.fires.has(n) ? 8 : 0) + (mined(n) ? 30 : 0);
       if (seen[n] !== gen || cost < gs[n]) { gs[n] = cost; came[n] = c; seen[n] = gen; heapPush(b, cost + hq(n), n); }
     }
   }

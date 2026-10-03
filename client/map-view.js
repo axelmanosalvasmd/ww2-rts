@@ -5,7 +5,7 @@
 //   draped over the ground mesh, with a desk under it past the map's edge;
 // - a sepia wash read straight from the fog texture: darker where you have never scouted, lighter where you have
 //   but cannot see now (enemies there are simply not on the map, the server never sends them);
-// - a flat screen overlay drawn every frame at screen resolution, so it stays sharp on any map size: every unit as
+// - a flat screen overlay drawn at 30 Hz while the camera is still, or immediately when it moves: every unit as
 //   its map symbol in its owner's color, capture points, strikes, your units' orders in grease pencil, the map's
 //   name and a compass.
 // The floating 3D labels fade out while the map is up (client/markers.js fadeLabels).
@@ -17,6 +17,7 @@ const PAPER = '#e8dec3', INK = '#3b3226', CONTOUR = '#9a6b3c', WATER = '#9fbcc4'
 const PENCIL = { move: '#2f3d6b', attack: '#a3241c', retreat: '#6b5a2f', other: '#3b3226' };
 // where the fade runs, as a share of the widest zoom
 const FROM = 0.7, TO = 0.9;
+const DRAW_INTERVAL = 1 / 30, MAX_DPR = 1.5;
 
 // grid: terrain rows of cell chars, w and h in cells, geometry: the relief's (its uv spans the map), hAt(x, z),
 // fog: client/fog.js state or null, units: the live unit map, colorOf(slot) -> css color, title: the map's name,
@@ -62,7 +63,8 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
   view.after(overlay);
   const ctx = overlay.getContext('2d');
 
-  let fade = 0, dirty = true;
+  let fade = 0, dirty = true, drawAge = DRAW_INTERVAL, renderObject = null;
+  const drawnView = new THREE.Matrix4(), drawnProjection = new THREE.Matrix4();
   const at = (x, y) => grid[y]?.[x];
 
   function paint() {
@@ -119,6 +121,20 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
   // world (x, z) on the ground -> overlay pixels, or null behind the camera
   const p3 = new THREE.Vector3();
   let sw = 0, sh = 0, dpr = 1;
+  // Only the opaque desk can hide every battlefield pass. Panning or a steep view can uncover its edge.
+  const ray = new THREE.Ray(), deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
+  const halfDesk = Math.max(MW, MH) * SPAN / 2;
+  function coversView() {
+    for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      ray.origin.copy(camera.position);
+      ray.direction.set(x, y, 0.5).unproject(camera).sub(ray.origin).normalize();
+      if (ray.direction.y >= 0 || !ray.intersectPlane(deskPlane, hit)) return false;
+      if (Math.abs(hit.x - MW / 2) >= halfDesk || Math.abs(hit.z - MH / 2) >= halfDesk) return false;
+      hit.project(camera);
+      if (hit.z < -1 || hit.z > 1) return false;
+    }
+    return true;
+  }
   function screen(x, z) {
     p3.set(x, hAt(Math.min(MW - 0.01, Math.max(0, x)), Math.min(MH - 0.01, Math.max(0, z))), z).project(camera);
     return p3.z > 1 ? null : { x: (p3.x + 1) / 2 * sw, y: (1 - p3.y) / 2 * sh };
@@ -144,7 +160,7 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
 
   const KIND = [null, 'move', 'attack', 'retreat', 'attack', 'attack', 'attack', 'other', 'other', 'other'];
   function draw() {
-    dpr = devicePixelRatio || 1;
+    dpr = Math.min(MAX_DPR, devicePixelRatio || 1);
     const cw = Math.round(innerWidth * dpr), ch = Math.round(innerHeight * dpr);
     if (overlay.width !== cw || overlay.height !== ch) { overlay.width = cw; overlay.height = ch; }
     sw = cw; sh = ch;
@@ -217,20 +233,33 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
     object,
     // fade: 0 (3D) to 1 (the map), so other layers can fade with it
     get fade() { return fade; },
+    // Null keeps the full battlefield visible during fades or when the desk does not cover the screen.
+    get renderObject() { return renderObject; },
     // the relief replaced its geometry (a crater)
-    setGeometry(g) { paperMesh.geometry = washMesh.geometry = g; },
+    setGeometry(g) { paperMesh.geometry = washMesh.geometry = g; drawAge = DRAW_INTERVAL; },
     // the terrain changed (craters, wrecked houses): repainted the next time the map shows
     refresh() { dirty = true; },
     // every frame: zoom is the camera distance as a share of the widest zoom
     frame(dt, zoom) {
       const t = Math.min(1, Math.max(0, (zoom - FROM) / (TO - FROM))), want = t * t * (3 - 2 * t);
       fade += (want - fade) * Math.min(1, dt * 8);
+      if ((want === 0 || want === 1) && Math.abs(want - fade) < 0.001) fade = want;
+      camera.updateMatrixWorld();
+      renderObject = fade === 1 && coversView() ? object : null;
       const on = fade > 0.01;
       object.visible = on; overlay.style.opacity = on ? fade.toFixed(3) : '0';
       paperMat.opacity = deskMat.opacity = fade; washMat.uniforms.k.value = fade * 0.55;
-      if (!on) { if (overlay.width) overlay.width = 0; return; }
+      if (!on) { if (overlay.width) overlay.width = 0; drawAge = DRAW_INTERVAL; return; }
+      const changed = dirty;
       if (dirty) { dirty = false; paint(); }
-      draw();
+      drawAge += dt;
+      const ratio = Math.min(MAX_DPR, devicePixelRatio || 1);
+      const resized = overlay.width !== Math.round(innerWidth * ratio) || overlay.height !== Math.round(innerHeight * ratio);
+      const moved = !drawnView.equals(camera.matrixWorld) || !drawnProjection.equals(camera.projectionMatrix);
+      if (changed || resized || moved || drawAge + 1e-8 >= DRAW_INTERVAL) {
+        draw(); drawAge = 0;
+        drawnView.copy(camera.matrixWorld); drawnProjection.copy(camera.projectionMatrix);
+      }
     },
     dispose() { texture.dispose(); paperMat.dispose(); washMat.dispose(); deskTex.dispose(); deskMat.dispose(); deskMesh.geometry.dispose(); overlay.remove(); },
   };
