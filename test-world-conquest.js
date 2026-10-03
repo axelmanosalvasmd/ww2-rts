@@ -62,6 +62,10 @@ try {
   const state = await host.wait('s');
   assert.equal(state.world.owned, 1, 'each player starts with one home region');
   assert.ok(state.world.regions.length < 64, 'undiscovered regions are omitted');
+  assert.ok(state.world.regions.every(r => Array.isArray(r.runs)), 'irregular territory exposes only explored runs');
+  assert.equal(start.map.world.regionMap, undefined, 'authoritative membership stays secret');
+  assert.equal(start.map.world.waterways, undefined, 'complete river network stays secret');
+  assert.equal(state.world.waterways, undefined, 'snapshots never expose river network diagnostics');
   console.log('World Conquest start and discovery checks passed');
 
   // Arrange a nearby battle without waiting for a cross-continent march. All actions and assertions use clients.

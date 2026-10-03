@@ -46,6 +46,7 @@ import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
 import { createCoverPreview } from './cover-preview.js';
 import { createMapView } from './map-view.js';
+import { territoryEdges } from '/shared/world-territories.js';
 import { createWorldRegions } from './world-regions.js';
 import { createAutocast } from './autocast.js';
 import { t as tr } from './i18n.js';
@@ -1561,7 +1562,8 @@ function drawMinimap() {
   const col = (slot) => css(look(slot).color);
   for (const r of lastSnap.world?.regions ?? []) {
     c.strokeStyle = regionTeamColor(r.team); c.lineWidth = 1 / S;
-    if (r.bounds) { const [x0, z0, x1, z1] = r.bounds; c.strokeRect(x0, z0, x1 - x0, z1 - z0); }
+    if (r.runs) { c.beginPath(); for(const [x,y,xx,yy] of territoryEdges(r.runs)){c.moveTo(x*2,y*2);c.lineTo(xx*2,yy*2);}c.stroke(); }
+    else if (r.bounds) { const [x0, z0, x1, z1] = r.bounds; c.strokeRect(x0, z0, x1 - x0, z1 - z0); }
     c.beginPath(); c.arc(r.x, r.z, CFG.pointRadius, 0, Math.PI * 2);
     c.fillStyle = regionTeamColor(r.team); c.fill();
     if (r.locked) { c.strokeStyle = '#d6b25e'; c.stroke(); }

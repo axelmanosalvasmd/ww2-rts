@@ -43,17 +43,19 @@ try {
   const host = await connect('river-host'); await connect('river-rival');
   host.send({t:'mode',v:'world'}); host.send({t:'start'}); await host.barrier();
   await until(() => host.start,'world start received'); await tick(4);
-  // Use the world that reproduced the fractional-bank stall. Commands and results still cross real sockets.
+  // Keep the previous movement-test seed by default; network cases override it. Orders cross real sockets.
   const room = server.rooms.get('worldriver');
-  room.map = generateWorldMap({ seed: 4111514762, players: 2, teams: [0, 1] });
+  room.map = generateWorldMap({ seed: Number(process.env.WORLD_RIVER_SEED ?? 4111514762), players: 2, teams: [0, 1] });
   const g = room.game = createGame(room.map, ['river-host', 'river-rival'], true, [0, 1], [0, 1], { mode: 'world', weather: 'clear' });
   for (const p of room.players) p.net = { sent: new Map(), full: true };
   await tick(4);
-  const riverX = g.chars.slice(0,g.w).indexOf('W');
+  const mains=room.map.world.waterways.rivers.filter(r=>r.kind==='main');
+  const fords=mains.map(r=>room.map.world.waterways.crossings.find(c=>c.river===r.id&&c.type==='F'));
+  const fordY=fords[0].y, riverX=fords[0].x;
   assert.ok(riverX>0,'generated mainland has its river');
   const rifle = [...g.units.values()].find(u=>u.owner===0 && u.type==='rifle');
   // Controlled deployments isolate navigation from recruitment, damage and unrelated battles.
-  const start = {x:riverX*CELL-30,z:127}, target={x:riverX*CELL+180,z:127};
+  const start = {x:riverX*CELL-40,z:fordY*CELL}, target={x:fords.at(-1).x*CELL+60,z:fords.at(-1).y*CELL};
   Object.assign(rifle,start,{path:[],orders:[],worldGoal:null,attackId:0,targetId:0,build:0});
   const tank={...rifle,id:g.nextId++,type:'tank',hp:UNITS.tank.hpPer,x:start.x-4,z:start.z+4,path:[],orders:[],worldGoal:null};
   g.units.set(tank.id,tank);
@@ -61,14 +63,26 @@ try {
   await tick(4);
   host.send({t:'move',orders:[[rifle.id,target.x,target.z],[tank.id,target.x,target.z+4]]}); await host.barrier();
   let reached=false, ford=false;
-  for(let n=0;n<2400 && !reached;n+=4){
+  const crossed=new Set(), bankStates=new Map();
+  for(let n=0;n<2400*mains.length && !reached;n+=4){
     await tick(4);
     const rows=[host.units.get(rifle.id),host.units.get(tank.id)];
     assert.ok(rows.every(Boolean),'both controlled forces remain visible to their owner');
     for(const row of rows) {
       const x=Math.floor(row[3]/CELL),y=Math.floor(row[4]/CELL);
-      if(row[3]>riverX*CELL+0.15 && row[3]<(riverX+2)*CELL-0.15){
-        assert.ok(Math.abs(y%64-32)<=2,`a moving force crosses the river only at a generated ford: ${JSON.stringify({type:row[1],x:row[3],z:row[4],riverX,cell:g.chars[y*g.w+x],flags:g.flags[y*g.w+x]})}`);ford=true;
+      assert.notEqual(g.chars[y*g.w+x],'W','ordinary units never cross impassable water');
+      if(g.chars[y*g.w+x]==='F') ford=true;
+      for(const river of mains) {
+        const key=`${row[0]}:${river.id}`, channel=river.path[y], delta=x-channel.x;
+        const bank=delta < -channel.radius-1 ? -1 : delta > channel.radius+1 ? 1 : 0;
+        const state=bankStates.get(key) ?? {bank:0,ford:false};
+        const declaredFord=room.map.world.waterways.crossings.some(c=>c.river===river.id && c.type==='F' && Math.abs(y-c.y)<=4);
+        if(!bank && Math.abs(delta)<=channel.radius && g.chars[y*g.w+x]==='F' && declaredFord) state.ford=true;
+        if(bank) {
+          if(state.bank && bank!==state.bank && state.ford) crossed.add(key);
+          state.bank=bank; state.ford=false;
+        }
+        bankStates.set(key,state);
       }
     }
     reached=Math.hypot(rows[0][3]-target.x,rows[0][4]-target.z)<4 && Math.hypot(rows[1][3]-target.x,rows[1][4]-(target.z+4))<4;
@@ -76,8 +90,9 @@ try {
   if(!ford || !reached) console.log(JSON.stringify({seed:g.world.seed,riverX,rows:[host.units.get(rifle.id),host.units.get(tank.id)],plans:host.latest.plans.filter(p=>p[0]===rifle.id||p[0]===tank.id),routes:[rifle.path,tank.path],goals:[rifle.worldGoal,tank.worldGoal]}));
   assert.ok(ford,'the original movement order discovers and uses a ford');
   assert.ok(reached,`both long destinations complete after crossing (seed ${g.world.seed})`);
+  for(const unit of [rifle,tank]) for(const river of mains) assert.ok(crossed.has(`${unit.id}:${river.id}`),`${unit.type} crossed main river ${river.id} through a ford`);
   assert.equal(host.denied.length,0,'rifle and tank use accepted ordinary move orders');
-  console.log('World rifle and tank long orders discover a generated ford and cross the river');
+  console.log(`World rifle and tank long orders crossed all ${mains.length} main rivers through generated fords`);
 } finally {
   server.clock.setTimeout=()=>null;
   for(const c of clients)c.ws.terminate();

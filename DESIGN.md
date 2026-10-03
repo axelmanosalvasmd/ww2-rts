@@ -5,8 +5,10 @@ WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 ## World Conquest (2026-10-03)
 
 World Conquest is a separate multiplayer mode with a generated, connected continent. Huge has 64 regions;
-Massive has 128. Huge spans 1,024 by 1,024 metres and Massive spans 2,048 by 1,024 metres. Each region is
-128 metres across. Each player starts with one home region, an HQ, an Engineer Squad and a Rifle Squad.
+Massive has 128. Huge spans 1,024 by 1,024 metres and Massive spans 2,048 by 1,024 metres.
+Regions have irregular boundaries derived from terrain-cost growth around their objectives, with typical
+spacing around 128 metres rather than fixed square ownership. Each player starts with one home region,
+an HQ, an Engineer Squad and a Rifle Squad.
 The remaining regions have local hostile defenders. No region grants free troops or a captured production queue.
 
 Destroy a region's defending military base and defending Production Buildings, then occupy its capture point
@@ -38,6 +40,50 @@ A six-seat stress fixture with 64 mobile units per seat and intact guards measur
 Other desktop work was running. Prepared Huge AI expansion gained one region in 30 simulated seconds,
 with the first gain at 17.3 seconds. Natural-start pacing and faction balance remain unmeasured. See
 [the performance report](docs/world-conquest-performance.md) for the workload and limits.
+
+## Variable river networks, generator v3 (unreleased)
+
+Hydrology has an independent seeded random stream. Each world selects 1-3 main rivers and 0-3
+tributaries. Main courses use bounded, terrain-cost dynamic programming inside seeded meander envelopes.
+Every main river runs from the northern boundary to the southern boundary; a lake remains connected to
+the first main river. This release does not add arbitrary compass orientations or a physical flow simulator.
+
+Tributaries start inland, converge on a named parent river, and use the existing ford terrain along their
+length. They slow land units rather than making every stream a bridge choke point. Main channels widen
+below junctions, up to a capped radius of six cells. Each main river gets two destructible bridges and two
+permanent fords, with tank-width approaches integrated into the road network. Crossing approaches preserve
+existing shallow water, including tributaries. All channel surfaces use the engine's existing level-zero
+water plane; terrain-aware routing and valley carving avoid uphill segments without adding stepped water.
+
+Full paths, parent IDs and crossing diagnostics are authoritative map data only. They are not sent in live
+start maps or snapshots. Generator version is now 3, so the same numeric seed has a new layout compared
+with v2. Classic maps and combat/movement terrain rules are unchanged.
+
+Tests cover river-count diversity, tributary continuity/confluences, nonascending channel surfaces,
+downstream widening, final-raster preservation, hidden diagnostics, and bridge-destroyed tank clearance.
+Real socket movement tests send both a rifle squad and tank across every main river in two- and three-river
+worlds. Reproduction and current verification: `docs/world-waterways-verification.md`.
+
+## Strategic world generation v2 (unreleased)
+
+Generation builds low-frequency hills, cliff-forming ridge chains and broad saddles within existing levels 0-4.
+A winding zero-level river feeds a lake, with two destructible bridge crossings and two durable fords. Roads
+use terrain-cost routing on a coarse graph, a connected proximity backbone and extra loops. Tank-width
+verges and terraced slopes preserve movement; towns never overwrite reserved corridors. Forest stands
+are spatially correlated. Water and height retain existing combat and movement semantics.
+
+Weighted multi-source territory growth produces a server-only membership raster. Water is unowned.
+Bounds remain culling metadata for authoritative regions and legacy fixtures, not ownership tests.
+New clients receive only explored horizontal membership runs. Battlefield borders, paper map, minimap,
+AI construction and home alerts understand that format. Original rectangular fixtures remain supported.
+
+The original v2 scope was one river/lake/ridge family, superseded by v3 hydrology above. Region sites remain
+stratified to maintain objective density. Home selection preserves nearby neutral expansion and clear
+construction space, but is not a full travel-time/economic fairness optimizer. Additional landscape families,
+more extensive topology repair and measured human pacing remain future work.
+
+Verification and current-host stress limitations: `docs/strategic-world-generator-verification.md`.
+Historical M3 Max performance above is for the previous generator and is not a v2 performance claim.
 
 ## Game
 - Tactics skirmish, with base building in Classic and World Conquest. PvP: teams or free-for-all, joined by room link (`/#code`). The host can add AI opponents.
