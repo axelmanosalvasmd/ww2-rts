@@ -462,6 +462,9 @@ function cromwellBuild(f) {
     T.add(squadronSign(0.22, f.color, '2'), 0xffffff, place([0.32, 0.44, s * 0.94], [0, 0, s], [0, 1, 0], 1), 'plain');
     T.add(star(1, { color: WHITE, ring: WHITE, segments: 16 }), 0xffffff, place([-0.38, 0.44, s * 0.94], [0, 0, s], [0, 1, 0], 0.19), 'plain');
   }
+  T.box(IRON, 0.15, 0.025, 0.03, cx, TH + 0.245, cz);
+  for (const dx of [-0.06, 0.06]) T.box(IRON, 0.025, 0.04, 0.03, cx + dx, TH + 0.22, cz);
+  for (const z of [-0.56, 0.56]) T.box(IRON, 0.03, 0.12, 0.075, -1.345, 0.53, z);
   T.add(TF.geometry());
   return { hull: H, turret: T };
 }

@@ -27,6 +27,7 @@ const C = (h) => new THREE.Color(h);
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 const BOX = new THREE.BoxGeometry(1, 1, 1);
+const PORT = new THREE.PlaneGeometry(1, 1);
 const MIRROR = new THREE.Matrix4().makeScale(1, 1, -1);
 const NOCAMO = [1, 1, 1, 0], NOHINGE = [0, 0, 0];
 
@@ -397,7 +398,7 @@ function livery(top, under = null, line = -0.3, wash = 0.06) {
   };
 }
 // canopy glass: dark, catching the grey of the sky on its sides and more of it on top, plain (no paint texture)
-const glass = (n) => { const c = C(GLASS).lerp(C(SKY), 0.1 + 0.36 * Math.max(0, n.y) ** 2); c.mat = 'plain'; return c; };
+const glass = (n) => { const c = C(GLASS).lerp(C(SKY), 0.2 + 0.42 * Math.max(0, n.y) ** 2); c.mat = 'plain'; return c; };
 // exhaust soot: how much darker a fuselage point is behind exhaust stacks ending at x1 along a row at height y
 // (spread: how far it reaches aft; drop: how much the stain sags as it trails back)
 const sootAt = (p, { x1, y, spread = 1.4, h = 0.16, drop = 0.06 }) => {
@@ -674,8 +675,13 @@ function p51(K) {
   const base = (p, n, i) => { const c = metal(p, n, i); return n.y > 0 ? c.lerp(up, 0.4 * n.y) : c.lerp(down, -0.3 * n.y); };
   K.paint = owned(K, (p, n, i) => (i.tag === 'fus' && p.x > 1.5 && p.x < 3.42 && Math.sin(i.t) > 0.82 ? od.clone() : base(p, n, i)), [-2.75, -2.4], [{ x1: 2.08, y: 0.2, spread: 1.5 }]);
   const fus = K.hull([[-3.95, 0.04, 0.12, 0.44], [-3.6, 0.16, 0.48, 0.4], [-3.0, 0.3, 0.74, 0.33], [-2.0, 0.48, 0.98, 0.23], [-1.0, 0.68, 1.12, 0.16], [-0.1, 0.84, 1.22, 0.12], [0.7, 0.9, 1.24, 0.1], [1.5, 0.9, 1.2, 0.08], [2.4, 0.84, 1.06, 0.06], [3.1, 0.74, 0.84, 0.04], [3.5, 0.6, 0.62, 0.04]], { seg: 18, cuts: [-2.75, -2.4, 1.5, 3.42], angles: [0.961, PI - 0.961] });
-  K.canopy(fus, [[1.45, 0.06, 0.0], [1.33, 0.44, 0.22], [1.1, 0.56, 0.4], [0.7, 0.6, 0.5], [0.25, 0.56, 0.48], [-0.15, 0.42, 0.32], [-0.5, 0.18, 0.1], [-0.68, 0.04, 0.0]], { p: 2, frames: [1.08], bars: [{ a: 0.95, x0: 1.08, x1: 2 }, { a: PI - 0.95, x0: 1.08, x1: 2 }], seg: 14 });
+  K.canopy(fus, [[1.45, 0.06, 0.0], [1.33, 0.44, 0.22], [1.1, 0.56, 0.4], [0.7, 0.6, 0.5], [0.25, 0.56, 0.48], [-0.15, 0.42, 0.32], [-0.5, 0.18, 0.1], [-0.68, 0.04, 0.0]], { p: 2, frames: [1.08], bars: [0.08, PI - 0.08, { a: 0.95, x0: 1.08, x1: 2 }, { a: PI - 0.95, x0: 1.08, x1: 2 }], frame: METAL, seg: 14 });
   const w = K.wing([[0, 1.15, -1.15, -0.3, 0.15], [4.6, 0.55, -0.5, 0.1, 0.11]], { n: 7, round: 0.18, hinge: [0.76, 2.55] });
+  // Six short muzzle ports sit flush with the leading edge.
+  for (const s of [1, -1]) for (const z of [1.65, 1.84, 2.03]) {
+    const p = w.plan(z);
+    K.rod([p.le - 0.09, p.y, s * z], [p.le + 0.025, p.y, s * z], 0.027, DARK, 5);
+  }
   K.wing([[0, -2.95, -3.92, 0.26, 0.1], [2.0, -3.3, -3.82, 0.26, 0.09]], { tag: 'tail', nk: 4, n: 3, round: 0.08, hinge: [0.6] });
   K.fin([[0, -2.25, -3.98, 0, 0.1], [0.25, -2.9, -3.99, 0, 0.1], [0.7, -3.18, -3.97, 0, 0.1], [1.35, -3.48, -3.9, 0, 0.09]], { y: 0.44, nk: 4, n: 4, round: 0.28, smooth: true, hinge: [0.6] });
   // the dorsal fillet running forward from the fin along the spine
@@ -705,6 +711,11 @@ function p47(K) {
   K.hull([[-3.6, 0.1, 0.5, 0.56], [-2.4, 0.28, 0.62, 0.76], [-1.0, 0.4, 0.66, 0.95], [-0.1, 0.48, 0.62, 1.1], [0.3, 0.52, 0.56, 1.16]], { seg: 10, shadow: false, caps: [false, true], cuts: [-3.0, -2.65] });
   K.canopy(fus, [[2.25, 0.34, 0.02], [2.02, 0.76, 0.38], [1.6, 0.88, 0.56], [1.0, 0.88, 0.6], [0.5, 0.78, 0.56], [0.2, 0.56, 0.5]], { p: 2.6, frames: [1.85, 1.3, 0.75], bars: [PI / 2], seg: 12 });
   const w = K.wing([[0, 1.25, -1.35, -0.5, 0.15], [5.6, 0.85, -0.4, -0.1, 0.1]], { n: 6, round: 1.7, hinge: [0.76, 3.2] });
+  // The eight gun openings follow the swept leading edge without adding separate meshes.
+  for (const s of [1, -1]) for (const z of [2.65, 2.82, 2.99, 3.16]) {
+    const p = w.plan(z);
+    K.add(PORT, xf(p.le + 0.008, p.y, s * z, 0, PI / 2, 0, 0.065, 0.07, 1), DARK, 'plain');
+  }
   K.wing([[0, -3.45, -4.6, 0.33, 0.1], [2.3, -3.85, -4.45, 0.33, 0.09]], { tag: 'tail', nk: 4, n: 3, round: 1.0, hinge: [0.62] });
   K.fin([[0, -2.9, -4.72, 0, 0.1], [0.3, -3.45, -4.74, 0, 0.1], [1.25, -3.95, -4.7, 0, 0.09]], { y: 0.6, nk: 4, n: 4, round: 0.7, smooth: true, hinge: [0.6] });
   const bombGeo = bomb(1.7, 0.3, { segments: 8 }), tubeGeo = tube([[-0.5, 0, 0], [1.4, 0, 0]], 0.085, { radial: 6, caps: false }), mouth = lathe([[0.075, 0], [0, 0.01]], 6, { axis: 'x' });

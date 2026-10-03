@@ -24,9 +24,9 @@ const SIZE = 512; // each layer is drawn into SIZE x SIZE texels
 // rust and grain whose color is the point), fade (how much of the paint's saturation the weather took) and film (how
 // much of the grime's dust film it holds; dark bare steel and rubber shed most of it, so it does not read as rust).
 export const LAYERS = {
-  'armor-paint': { texels: 170, strength: 0.85, hue: 0.12, fade: 0.35 },
-  'cast-armor': { texels: 210, strength: 0.85, hue: 0.06, fade: 0.35 },
-  gunmetal: { texels: 480, strength: 0.7, hue: 0.12, fade: 0.1, film: 0.35 },
+  'armor-paint': { texels: 170, strength: 0.65, hue: 0, fade: 0.2, file: 'armor-paint-refined.jpg' },
+  'cast-armor': { texels: 210, strength: 0.45, hue: 0.04, fade: 0.2 },
+  gunmetal: { texels: 480, strength: 0.45, hue: 0.06, fade: 0.08, film: 0.35 },
   'track-steel': { texels: 420, strength: 0.9, hue: 0.2, fade: 0, film: 0.35 },
   rubber: { texels: 480, strength: 0.7, hue: 0, fade: 0.3, film: 0.35 },
   wood: { texels: 600, strength: 0.75, hue: 0.35, fade: 0.1 },
@@ -67,7 +67,7 @@ export function loadModelTextures(base = '/client/textures/models/') {
   const loader = new THREE.ImageLoader(), images = [];
   let left = MATS.length;
   const done = () => { if (--left === 0) pack(images); };
-  MATS.forEach((name, i) => loader.load(`${base}${name}.jpg`, (img) => { images[i] = img; done(); }, undefined, () => { console.warn(`model texture ${name} did not load`); done(); }));
+  MATS.forEach((name, i) => loader.load(`${base}${LAYERS[name].file ?? name + '.jpg'}`, (img) => { images[i] = img; done(); }, undefined, () => { console.warn(`model texture ${name} did not load`); done(); }));
 }
 
 function pack(images) {

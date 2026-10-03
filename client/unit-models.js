@@ -16,11 +16,13 @@ import { modelMaterial } from './model-textures.js';
 import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier, AIM_SHIFT } from './models/infantry.js';
 import { moveSquad, gaitWeights } from './squad-motion.js';
+import { moveModel } from './model-motion.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
 import { churchill } from './models/churchill.js';
 import { cromwell } from './models/cromwell.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
+import { navalModel } from './models/naval.js';
 import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
 // unit-sized shapes, scaled per part. Soldiers, including the fallen ones, come from client/models/infantry.js.
@@ -329,48 +331,19 @@ export function buildModel(v, root, f, fac, def) {
       part(GEO.box, post, 0.3, 3, 0.3, -0.8, 1.5, -1.8), part(GEO.box, post, 0.3, 3, 0.3, -0.8, 1.5, 1.8),
       part(GEO.box, DARK, 0.3, 5.5, 0.3, 2.2, 2.75, 2.4), part(GEO.box, DARK, 3, 0.25, 0.25, 1.1, 5.4, 2.4), part(GEO.cyl, DARK, 0.03, 2, 0.03, 0, 4.4, 2.4));
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
-  } else if (type === 'lcvp') {
-    // landing craft: a flat-bottomed open box, square bow ramp forward (+x), the coxswain's position aft, one MG
-    const hull = new THREE.Group(), paint = f.vehicle;
-    hull.add(part(GEO.box, DARK, 10, 0.4, 3, 0, 0.1, 0), part(GEO.box, paint, 10, 1.3, 0.14, 0, 0.9, 1.45), part(GEO.box, paint, 10, 1.3, 0.14, 0, 0.9, -1.45),
-      part(GEO.box, paint, 0.14, 1.3, 3, -5, 0.9, 0), part(GEO.box, paint, 0.2, 1.6, 3, 5.05, 1, 0), part(GEO.box, paint, 1.4, 0.9, 1.3, -4.1, 1.7, 0.6),
-      part(GEO.cyl, DARK, 0.05, 1.2, 0.05, -4.3, 2.2, -0.8).rotateZ(Math.PI / 2));
+  } else if (type === 'lcvp' || type === 'gunboat' || type === 'destroyer') {
+    const model = navalModel(type, own, f), hull = new THREE.Group();
+    hull.add(part(model.hull, 0xffffff));
     root.add(bake(hull, key + '|hull', true));
-    v.models.push(root);
-  } else if (type === 'gunboat') {
-    // motor torpedo boat, 24 m: a long planing hull, a pointed bow, the bridge amidships, torpedo tubes along the
-    // sides and a turning autocannon aft (v.turret)
-    const hull = new THREE.Group(), grey = 0x5f666b;
-    hull.add(part(GEO.box, grey, 19, 1.8, 5.4, -1.5, 0.5, 0), part(GEO.box, grey, 3.8, 1.8, 3.8, 8, 0.5, 0).rotateY(Math.PI / 4),
-      part(GEO.box, 0x3d3a34, 19, 0.15, 5.2, -1.5, 1.45, 0), part(GEO.box, grey, 4, 1.8, 3, 1.5, 2.3, 0), part(GEO.box, DARK, 3.6, 0.5, 3.1, 2, 2.9, 0),
-      part(GEO.cyl, 0x4a4f52, 0.3, 6, 0.3, 3, 1.9, 2.3).rotateZ(Math.PI / 2), part(GEO.cyl, 0x4a4f52, 0.3, 6, 0.3, 3, 1.9, -2.3).rotateZ(Math.PI / 2),
-      part(GEO.box, f.color, 1.2, 0.8, 0.05, -10.5, 2.4, 0), part(GEO.cyl, DARK, 0.06, 4, 0.06, 0.5, 4.4, 0));
-    v.turret = new THREE.Group(); v.turret.position.set(-6, 1.6, 0);
-    v.turret.add(part(GEO.box, grey, 1.6, 0.8, 1.6, 0, 0.4, 0), part(GEO.cyl, DARK, 0.09, 2.2, 0.09, 1.5, 0.9, 0).rotateZ(Math.PI / 2));
-    root.add(hull, v.turret); v.fxTip = [2.6, 0.9, 0];
-    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
-    v.models.push(root);
-  } else if (type === 'destroyer') {
-    // destroyer at true size: 110 m long, 11 m beam, two gun mounts forward (the front one turns: v.turret), the
-    // bridge and two funnels amidships, two mounts aft, flak in between; the owner's colour on the funnel bands
-    const hull = new THREE.Group(), grey = 0x6b7177, light = 0x868c91, deck = 0x5d5246;
-    hull.add(part(GEO.box, grey, 96, 5, 11, -5, 1.2, 0), part(GEO.box, grey, 9, 5, 9, 43, 1.2, 0).rotateY(Math.PI / 4),
-      part(GEO.box, deck, 96, 0.3, 10.6, -5, 3.8, 0), part(GEO.box, 0x2e3236, 98, 0.6, 11.2, -5, -0.9, 0),
-      part(GEO.box, light, 20, 4.5, 8, 14, 6.2, 0), part(GEO.box, light, 8, 3.5, 7, 20, 10, 0), part(GEO.box, DARK, 7.6, 0.8, 7.2, 20.5, 11.2, 0),
-      part(GEO.cyl, 0x52575c, 1.8, 7, 2.3, 4, 8.5, 0), part(GEO.cyl, 0x52575c, 1.8, 7, 2.3, -8, 8.5, 0),
-      part(GEO.cyl, f.color, 1.85, 1, 2.35, 4, 10.5, 0), part(GEO.cyl, f.color, 1.85, 1, 2.35, -8, 10.5, 0),
-      part(GEO.cyl, DARK, 0.25, 20, 0.25, 15, 16, 0), part(GEO.box, DARK, 0.2, 0.2, 6, 15, 21, 0),
-      part(GEO.box, light, 6, 2.6, 4, -22, 5.2, 0), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, 1.2).rotateZ(Math.PI / 3), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, -1.2).rotateZ(Math.PI / 3));
-    // four gun mounts, A and B (raised) forward, X and Y aft; all of them turn (v.mounts), A doubles as v.turret
-    v.mounts = [[33, 4], [25, 5.2], [-36, 4], [-44, 4]].map(([x, y]) => {
-      const m = new THREE.Group(); m.position.set(x, y, 0);
-      m.add(part(GEO.box, light, 5, 2.4, 4, 0, 1.2, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, 4.5, 1.6, 0).rotateZ(Math.PI / 2));
-      bake(m, key + '|mount', true);
-      return m;
-    });
-    v.turret = v.mounts[0]; v.fxTip = [7.5, 1.6, 0];
-    root.add(hull, ...v.mounts);
-    bake(hull, key + '|hull', true);
+    if (model.turret) {
+      const mounts = model.mounts.map((at) => {
+        const mount = new THREE.Group(); mount.position.set(...at);
+        mount.add(part(model.turret, 0xffffff));
+        return bake(mount, key + '|mount', true);
+      });
+      root.add(...mounts); v.turret = mounts[0]; v.fxTip = model.tip;
+      if (type === 'destroyer') v.mounts = mounts;
+    }
     v.models.push(root);
   } else if (type === 'bunker' || type === 'worldbase') {
     const shell = new THREE.Group();
@@ -427,7 +400,7 @@ export function buildModel(v, root, f, fac, def) {
 // swap to the far-away model beyond the LOD distance. eye is the camera position.
 export function animate(v, dt, eye, groundAt) {
   const sq = v.squad;
-  if (!sq) return;
+  if (!sq) { moveModel(v, dt); return; }
   const lim = gfx.low ? LOD.low : LOD.high, dx = eye.x - v.x, dy = eye.y - v.root.position.y, dz = eye.z - v.z, d2 = dx * dx + dy * dy + dz * dz;
   const far = sq.far ? d2 > (lim - 4) ** 2 : d2 > (lim + 4) ** 2;
   if (far !== sq.far) {

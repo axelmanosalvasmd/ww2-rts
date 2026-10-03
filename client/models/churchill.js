@@ -418,6 +418,11 @@ function churchill7(f) {
       T.box(k % 2 ? LINK : dim(LINK, 0.88), 0.2, 0.42, 0.05, x, 0.3, s * (z + 0.03), 0, ry, 0, 'track-steel').box(LINK_LIT, 0.05, 0.1, 0.04, x, 0.3, s * (z + 0.06), 0, ry, 0);
     });
   }
+  // Raised grab handles on the cupola and loader's hatch keep their openings visible.
+  for (const [z, y] of [[0.42, TH + 0.245], [-0.42, TH + 0.08]]) {
+    T.box(IRON, 0.15, 0.025, 0.03, -0.3, y, z);
+    for (const dx of [-0.06, 0.06]) T.box(IRON, 0.025, 0.045, 0.03, -0.3 + dx, y - 0.025, z);
+  }
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.5, Y, 0], tip: [1.25 + gL, 0.36, 0], s: 0.82, height: 1.4 };
 }

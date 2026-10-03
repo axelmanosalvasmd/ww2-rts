@@ -493,6 +493,15 @@ function airfield(fac, own, vehicle) {
   for (const p of insignia(fac, 0.5)) add(p.geo, p.color, xf(1.2, 0.1, 0.8).multiply(FLAT).multiply(p.m));      // roundel painted on the apron
   // control tower with a glass cab, a flat roof and a pennant in the owner's colour
   box(0xb8ab8a, 0.9, 1.1, 0.9, 1.9, 0.6, 1.9); box(vehicle, 1.2, 0.5, 1.2, 1.9, 1.4, 1.9); box(GLASS, 1.22, 0.26, 1.22, 1.9, 1.42, 1.9); box(0x6b6554, 1.4, 0.08, 1.4, 1.9, 1.72, 1.9);
+  // Cab posts divide the glazing, and an external ladder reaches the observation platform.
+  for (const dx of [-0.61, 0.61]) for (const dz of [-0.61, 0.61]) box(0x6b6554, 0.055, 0.32, 0.055, 1.9 + dx, 1.43, 1.9 + dz);
+  for (const s of [-1, 1]) {
+    box(0x6b6554, 0.05, 0.27, 0.035, 1.9, 1.42, 1.9 + s * 0.617);
+    box(0x6b6554, 0.035, 0.27, 0.05, 1.9 + s * 0.617, 1.42, 1.9);
+    box(0x5c5a4f, 0.035, 1.25, 0.04, 2.4, 0.67, 1.9 + s * 0.17);
+  }
+  for (let i = 0; i < 6; i++) box(0x5c5a4f, 0.045, 0.035, 0.38, 2.405, 0.14 + i * 0.2, 1.9);
+  box(0x3b3830, 0.015, 0.64, 0.35, 1.9, 0.4, 1.442);
   add(SRC.cyl, 0x4a3f30, xf(1.9, 2.25, 1.9, 0, 0, PI / 2, 1, 0.03, 0.03)); box(own, 0.5, 0.28, 0.03, 2.15, 2.5, 1.9);
   // fuel drums and crates by the hangar
   for (let i = 0; i < 3; i++) add(SRC.cyl, [0x4f5a38, 0x6e5836, 0x4f5a38][i], xf(1.3 + i * 0.5, 0.25, 2.9, 0, 0, PI / 2, 0.5, 0.22, 0.22));

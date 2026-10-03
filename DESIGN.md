@@ -1907,3 +1907,28 @@ every new search, retaining current terrain, wear, weather and bunker insertion,
 economy or balance rule changed. `node test.js` includes the focused performance checks; CI also runs
 `node test-world.js`. `tools/test-render-browser.html` provides the native WebGL adapter check when served from the
 repository root by a local static server.
+
+## Model finish and Blender workflow (2026-10-03)
+
+- Naval models use shaped chine hulls, deck fittings, glazed bridges and individual gun mounts. The landing
+  craft keeps its open passenger well and bow ramp. Patrol boats keep two draws, landing craft one, and
+  destroyers five. Gun pivots and muzzle points retain the existing animation and firing contracts.
+- Naval geometry is cached by faction and owner paint, with material tags in the same shared texture array as
+  other vehicles. Checks cover all four factions, finite geometry, face winding, footprints, mount counts and
+  budgets of 1,000 / 2,200 / 4,000 triangles for landing craft / patrol boats / destroyers.
+- Multi-view concept sheets and a neutral painted-steel texture were generated using the Codex Image workflow.
+  The sheets are visual guidance, not historical blueprints. The shipped armor texture is a 512-pixel JPEG;
+  faction colors still come from vertex paint. The earlier texture remains available as a source asset.
+- The Blender setup is project-scoped for Codex and Claude Code. Modeling and scene inspection use the existing
+  three-integration workflow, while the browser model viewer remains the authority for shipped rendering.
+  Simulation movement, collision rules, weapon stats and balance are unchanged by this visual pass.
+
+- Infantry detail stays within 900 triangles per near soldier and 145 per far soldier; the far geometry and
+  posture/gait topology are preserved. Vehicle and aircraft fittings use the existing merged meshes and budgets.
+  Base-building windows, framing and equipment remain one draw per building.
+- Land hulls lean slightly with acceleration and steering; boats use bounded pitch, roll and heave. A visual
+  child group keeps position, heading and ground markers stable. Muzzle effects follow the animated geometry.
+  Infantry gait weights ease between poses and stride length settles when suppression changes posture.
+- Sky and ground fill expose shaded model details without adding lights or shadow maps. Cloud edges soften;
+  river mist and fog banks share a weather-tinted shader with mild UV distortion and a near-camera fade.
+  Mist stops drifting under reduced-motion preferences. Graphics Low retains its existing cheaper effects.

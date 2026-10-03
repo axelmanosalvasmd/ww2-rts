@@ -323,7 +323,7 @@ function ownerMarks(owner, { side: [sx, sy, zs, n = 0.04], roof: [rx, ry, hz], w
 
 // ---------------------------------------------------------------- M4 Sherman (and the Calliope on it)
 
-function shermanHull(paint, { cans = true } = {}) {
+function shermanHull(paint, { cans = true, applique = true } = {}) {
   const P = paint, lite = tone(P, 1.1), items = [];
   // upper hull, its sponsons over the inner half of the tracks: 56 degree glacis, flat deck, sloped rear deck
   items.push(at(G.extrudeProfile([[2.6, 1.0], [1.55, 1.66], [-2.25, 1.66], [-2.62, 1.5], [-2.62, 1.0]], 2.4, 0.05, { segments: 1 }), P));
@@ -370,6 +370,14 @@ function shermanHull(paint, { cans = true } = {}) {
   // stars on the sponson sides
   const side = G.star(1, { color: WHITE });
   for (const s of [-1, 1]) items.push(mark(side, 0.35, 1.33, s * 1.2, [0, 0, s], 0.24));
+  if (applique) for (const side of [-1, 1]) {
+    // Welded ammunition protection plates sit above the bogies without hiding the national star.
+    for (const [x, w] of [[1.0, 0.65], [-0.7, 0.5], [-1.75, 0.55]]) items.push(box(w, 0.34, 0.035, tone(P, 0.92), x, 1.31, side * 1.22));
+  }
+  if (applique) for (const z of [-0.5, 0.5]) {
+    items.push(box(0.15, 0.025, 0.03, STEEL, 1.25, 1.75, z, 0, 0, 0, 'gunmetal'));
+    for (const dx of [-0.06, 0.06]) items.push(box(0.025, 0.04, 0.03, STEEL, 1.25 + dx, 1.725, z, 0, 0, 0, 'gunmetal'));
+  }
   items.push(vvss(P));
   return finish(items, { height: 1.2 });
 }
@@ -435,6 +443,11 @@ function shermanTurret(paint, owner, { roofGun = true, stowage = true } = {}) {
   if (stowage) {
     items.push({ geo: spin([[0, -0.5], [0.11, -0.5], [0.11, 0.5], [0, 0.5]], CANVAS, 8), matrix: G.xf(-1.28, 0.42, 0), mat: 'canvas' });
     items.push(box(0.1, 0.34, 1.0, tone(P, 0.9), -1.34, 0.3, 0), box(0.3, 0.05, 1.0, tone(P, 0.9), -1.3, 0.54, 0));
+  }
+  if (stowage) for (const z of [-0.33, 0.42]) {
+    const y = z < 0 ? 0.93 : 1.015;
+    items.push(box(0.14, 0.024, 0.028, STEEL, -0.24, y, z, 0, 0, 0, 'gunmetal'));
+    for (const dx of [-0.055, 0.055]) items.push(box(0.025, 0.04, 0.028, STEEL, -0.24 + dx, y - 0.025, z, 0, 0, 0, 'gunmetal'));
   }
   // white stars on the turret sides
   const star = G.star(1, { color: WHITE }), zs = sideZ(SHERMAN_BODY, 0.46, -0.3);
@@ -600,6 +613,7 @@ function panzerTurret(paint, owner) {
   // commander's cupola at the back: vision blocks round its wall, the hatch ring on top; roof hatch and a vent
   items.push({ geo: upright(spin([[0.26, 0], [0.29, 0.08], [0.29, 0.15], [0.24, 0.19], [0.19, 0.2], [0.19, 0.24], [0, 0.24]], (b, s) => (b === 1 ? (s % 2 ? DARK : lite) : b === 4 ? P : b === 0 ? P : lite), 8)), matrix: G.xf(-0.82, 0.7, 0) });
   items.push(box(0.36, 0.04, 0.3, jit(lite, 4, 4), 0.25, 0.72, 0.3), box(0.1, 0.05, 0.1, STEEL, 0.35, 0.73, -0.25));
+  items.push(box(0.14, 0.025, 0.025, STEEL, 0.25, 0.758, 0.3, 0, 0, 0, 'gunmetal'));
   items.push(...ownerMarks(owner, { side: [0.3, 0.36, 1.04, 0], roof: [-0.28, 0.706, 0.45], w: 0.34 }));
   return items;
 }
@@ -714,8 +728,14 @@ function t34Turret(paint, owner) {
   items.push(at(snout, tone(lite, CAST), 0.86, T34_GUN.y, 0, 0, 0, 0, 'cast-armor'));
   const L = T34_GUN.L;
   items.push(at(gun([[0.075, 0], [0.062, 0.2], [0.054, L - 0.06], [0.064, L - 0.04], [0.064, L]], P).geo, 0xffffff, T34_GUN.x, T34_GUN.y, 0));
+  // Infantry grab rails follow the turret cheeks and keep a small gap from the cast armor.
+  for (const side of [-1, 1]) {
+    items.push(box(0.66, 0.035, 0.035, STEEL, -0.55, 0.47, side * 0.73, 0, side * -0.16, 0, 'gunmetal'));
+    for (const x of [-0.87, -0.23]) items.push(box(0.035, 0.035, 0.08, STEEL, x, 0.47, side * (x < -0.5 ? 0.66 : 0.77), 0, 0, 0, 'gunmetal'));
+  }
   // the two round roof hatches, periscopes, a vent; red stars on the rear side faces
   for (const z of [-0.3, 0.3]) items.push({ geo: upright(spin([[0.21, 0], [0.21, 0.04], [0.17, 0.07], [0, 0.08]], jit(lite, z, 6), 8)), matrix: G.xf(-0.4, 0.64, z) });
+  for (const z of [-0.3, 0.3]) items.push(box(0.15, 0.025, 0.03, STEEL, -0.4, 0.733, z, 0, 0, 0, 'gunmetal'));
   for (const z of [-0.4, 0.4]) items.push(box(0.12, 0.07, 0.08, DARK, 0.3, 0.66, z));
   items.push(box(0.14, 0.05, 0.14, STEEL, 0.15, 0.665, 0, 0, 0, 0, 'gunmetal'));
   const star = G.star(1, { color: 0xb02a20, border: WHITE, edge: 0.08 }), zs = sideZ(T34_BODY, 0.28, -0.5);
@@ -978,7 +998,7 @@ const MODELS = {
     (P, C) => ({ hull: panzerHull(german(P), true), turret: finish(panzerTurret(german(P), C), { ...TURRET, ...GREY }), ring: PANZER.ring, tip: PANZER.tip }),
     (P, C) => ({ hull: t34Hull(P), turret: finish(t34Turret(P, C), TURRET), ring: T34.ring, tip: T34.tip }),
   ],
-  rocket: [(P, C) => ({ hull: shermanHull(P, { cans: false }), turret: finish([...shermanTurret(P, C, { roofGun: false, stowage: false }), ...calliopeRack(P, C)], TURRET), ring: SHERMAN.ring, tip: SHERMAN.tip })],
+  rocket: [(P, C) => ({ hull: shermanHull(P, { cans: false, applique: false }), turret: finish([...shermanTurret(P, C, { roofGun: false, stowage: false }), ...calliopeRack(P, C)], TURRET), ring: SHERMAN.ring, tip: SHERMAN.tip })],
   flaktrack: [null, (P, C) => {
     const t = wirbelwindTurret(german(P), C);
     // the open turret sits on the hull's center line, a little behind the Panzer IV's turret

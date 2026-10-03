@@ -104,11 +104,35 @@ const rimGeo = (R, w, seg) => once(`rim|${R}|${w}|${seg}`, () => { const h = w /
 const hubGeo = (R, w, seg) => once(`hub|${R}|${w}|${seg}`, () => { const h = w / 2; return turn([[R * 0.5, h * 0.78], [R * 0.24, h * 0.84], [R * 0.15, h * 0.98], [0, h * 1.0]], seg); });
 const backGeo = (R, w, seg) => once(`back|${R}|${w}|${seg}`, () => new THREE.CircleGeometry(R * 0.66, seg).rotateY(Math.PI).translate(0, 0, -w * 0.44));
 function wheel(p, P, R, w, x, y, z, side = 1, { seg = 20, hub = P.mid, ry = 0 } = {}) {
-  const m = G.xf(x, y, z, 0, ry, 0, 1, 1, side), hs = seg >= 18 ? 10 : 8;
+  const m = G.xf(x, y, z, 0, ry, 0, 1, 1, side), detailed = seg >= 18, hs = detailed ? 8 : 6;
+  // Spend wheel vertices on the pressed disc and fasteners rather than invisible tire subdivisions.
+  seg = Math.min(seg, 16);
   p.mat(tireGeo(R, w, seg), P.rubber, m);
   p.mat(rimGeo(R, w, hs), P.deep, m);
   p.mat(hubGeo(R, w, hs), hub, m);
   p.mat(backGeo(R, w, hs), P.deep, m);
+  for (let k = 0; k < 5; k++) {
+    const a = k * TAU / 5;
+    p.mat(wheelDisc(R * 0.034, 6), P.steel, m.clone().multiply(G.xf(R * 0.3 * Math.cos(a), R * 0.3 * Math.sin(a), w * 0.435)));
+  }
+  if (detailed) for (let k = 0; k < 4; k++) {
+    const a = (k + 0.5) * TAU / 4;
+    p.mat(wheelDisc(R * 0.065, 6), P.hole, m.clone().multiply(G.xf(R * 0.415 * Math.cos(a), R * 0.415 * Math.sin(a), w * 0.41)));
+  }
+  if (detailed) p.mat(wheelDisc(R * 0.145, 8), P.dark, m.clone().multiply(G.xf(0, 0, w * 0.505)));
+}
+
+// Flat hexagonal fasteners and disc openings share the wheel's outward face, including spare wheels.
+function wheelDisc(R, n) {
+  return once(`wheel-disc|${R}|${n}`, () => {
+    const g = new THREE.BufferGeometry(), pos = [], normal = [], index = [];
+    for (let k = 0; k < n; k++) { const a = k * TAU / n; pos.push(R * Math.cos(a), R * Math.sin(a), 0); normal.push(0, 0, 1); }
+    for (let k = 1; k < n - 1; k++) index.push(0, k, k + 1);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+    g.setIndex(index);
+    return g;
+  });
 }
 // a road wheel of a half-track run: a flat steel disc with a hub boss, axle along z, its face at +z (the belt hides
 // the rim). spokes: that many spokes with dark openings between them

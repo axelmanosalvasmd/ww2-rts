@@ -5,7 +5,9 @@ const seedOf = (id, i) => ((Math.imul((id ?? 0) + 1, 1664525) + Math.imul(i + 1,
 export function gaitWeights(phase, blend, count, output, offset = 0) {
   const weights = output ?? new Array(Math.max(0, count)).fill(0);
   if (!count || !blend) return weights;
-  const frame = ((phase % 1) + 1) % 1 * count, first = Math.floor(frame), t = frame - first;
+  const frame = ((phase % 1) + 1) % 1 * count, first = Math.floor(frame), fraction = frame - first;
+  // Ease each morph into the next pose so arms and boots do not change velocity abruptly at a frame boundary.
+  const t = fraction * fraction * (3 - 2 * fraction);
   weights[offset + first] = (1 - t) * blend; weights[offset + (first + 1) % count] += t * blend;
   return weights;
 }
@@ -63,7 +65,9 @@ export function moveSquad(v, elapsed) {
       if (m.blend < 0.002) m.blend = 0;
       // A full cycle travels two steps. Phase follows actual travel, including each man's different turn arc.
       const stride = v.flags & 1 ? 1.24 : v.supp >= 90 && v.cover !== 2 ? 0.48 : v.supp >= 50 ? 0.76 : 1.24;
-      if (walk) m.phase = (m.phase + m.speed * dt / (stride * man.scale.x) * (0.96 + seed * 0.08)) % 1;
+      m.stride ??= stride;
+      m.stride += (stride - m.stride) * (1 - Math.exp(-dt * 8));
+      if (walk) m.phase = (m.phase + m.speed * dt / (m.stride * man.scale.x) * (0.96 + seed * 0.08)) % 1;
     }
     const dx = m.x - x, dz = m.z - z;
     m.localX = dx * c - dz * s; m.localZ = dx * s + dz * c;

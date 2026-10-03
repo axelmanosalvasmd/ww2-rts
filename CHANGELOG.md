@@ -5,6 +5,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Vehicles settle as they accelerate and turn, boats gently ride the water, and soldiers ease between stride
+  frames and crouching or crawling movement. Selection markers stay level and muzzle effects follow the models.
+- Shaded units and buildings stay readable under brighter sky and ground fill. Clouds have softer edges, and
+  river mist and fog banks use the weather color, gentle wisps, and a fade near the camera.
+- Naval craft now have shaped hulls, detailed bridges, deck fittings and working gun mounts. Landing craft
+  have ribbed ramps, benches and an open passenger well. Both landing-craft muzzle flashes match their barrels.
+  Movement and combat rules are unchanged.
+- Infantry uniforms and equipment, tank fittings, wheel hubs, aircraft canopies and weapons, and base buildings
+  have clearer detail. Refined painted metal and subtler cast-armor and gunmetal grain keep the faction
+  colors easier to distinguish.
+- Added the three project-scoped Blender integrations for Codex and Claude Code, reusable modeling instructions,
+  model export and review tools, and generated multi-view art references.
+
 ### 2026-10-03: Strategic geography (source commit `b351ea1`)
 
 - World Conquest seeds now choose 1-3 main rivers and 0-3 small tributaries. Streams are fordable along their length, join larger rivers, and widen the main channel downstream. Each main river has its own bridges and permanent fords; road approaches preserve shallow streams instead of paving them over.
@@ -23,6 +36,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   `docs/strategic-world-generator-verification.md` for measured results and limits.
 
 ### Earlier unreleased changes
+
 
 - Fixed: clicking Fill in froze the game. Its placement preview read the map's original terrain, which the
   browser's copy of the map did not have, so it threw an error every frame and stopped the game loop. The preview now

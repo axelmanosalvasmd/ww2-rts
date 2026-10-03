@@ -6064,6 +6064,7 @@ for (const lookupFinished of [false, true]) {
 {
   const THREE = await import('three');
   const { mergeParts, mergeMeshes, buildModel, animate, postureOf, POSTURE, LOD, CORPSES, createBodies, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
+  const { baseMat, matId } = await import('./client/models/geom.js');
   const box = new THREE.BoxGeometry(1, 1, 1);
   const merged = mergeParts([{ geo: box, matrix: new THREE.Matrix4().makeTranslation(2, 0, 0) }, { geo: box, matrix: new THREE.Matrix4().makeScale(-1, 2, 1).setPosition(-2, 0, 0) }], false);
   assert.equal(merged.attributes.position.count, 2 * box.attributes.position.count, 'merge keeps every vertex');
@@ -6257,7 +6258,12 @@ for (const lookupFinished of [false, true]) {
       for (let i = 0; i < P.count; i++) if (new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(point) < radius) idx.push(i);
       return idx;
     };
-    const chestIdx = near(prone.body.at(new THREE.Vector3(0, 1.02, 0)), 0.12);
+    // Measure the cloth chest across its width. A center sphere loses samples when torso rings are simplified.
+    const chestFrame = prone.body.on(1.02).clone().invert(), chestIdx = [], cloth = matId('wool');
+    for (let i = 0; i < P.count; i++) {
+      const p = new THREE.Vector3().fromBufferAttribute(P, i).applyMatrix4(chestFrame);
+      if (baseMat(mesh.geometry.attributes.matId.getX(i)) === cloth && p.y > 0.98 && p.y < 1.07 && Math.abs(p.x) < 0.13 && Math.abs(p.z) < 0.17) chestIdx.push(i);
+    }
     assert.ok(chestIdx.length >= 8, `${type} ${index}: the aiming prone has a chest to measure`);
     const meanY = (idx, pos) => idx.reduce((sum, i) => sum + pos(i).y, 0) / idx.length;
     const chestDrop = meanY(chestIdx, aimAt) - meanY(chestIdx, corAt);
@@ -7909,6 +7915,58 @@ console.log('all availability checks passed');
   assert.ok(G.ao(bb, { falloff: () => 0.5 }).attributes.color.array.every((v) => v === 0.5), 'ao: a custom falloff');
 }
 console.log('all model toolkit checks passed');
+
+await import('./test-model-motion.mjs');
+
+// Ships retain their animation contracts while their shaped hulls stay within a small mesh budget.
+{
+  const THREE = await import('three');
+  const { buildModel, VEHICLE_PAINT } = await import('./client/unit-models.js');
+  const { navalModel } = await import('./client/models/naval.js');
+  const look = { vehicle: 0x59623d, color: 0x3b73d6 };
+  for (const fac of [0, 1, 2, 3]) for (const [type, draws, budget, length, beam] of [
+    ['lcvp', 1, 1000, 10.4, 3.1], ['gunboat', 2, 2200, 22.5, 5.5], ['destroyer', 5, 4000, 104, 11.6],
+  ]) {
+    const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
+    buildModel(v, root, look, fac, UNITS[type]);
+    const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push(o); });
+    assert.equal(meshes.length, draws, `${label}: one draw per hull or moving mount`);
+    assert.ok(meshes.every(m => m.material === VEHICLE_PAINT), `${label}: shared vehicle material`);
+    assert.ok(meshes.reduce((n, m) => n + m.geometry.index.count / 3, 0) <= budget, `${label}: triangle budget`);
+    const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+    assert.ok(size.x <= length && size.x >= length * 0.95 && size.z <= beam, `${label}: preserved footprint`);
+    for (const m of meshes) {
+      const g = m.geometry, P = g.attributes.position, N = g.attributes.normal, I = g.index;
+      assert.ok(P.array.every(Number.isFinite) && N.array.every(Number.isFinite) && g.attributes.matId && g.attributes.color, `${label}: finite textured geometry`);
+      const a = new THREE.Vector3(), b = a.clone(), c = a.clone(), face = a.clone(), n = a.clone();
+      for (let i = 0; i < I.count; i += 3) {
+        const ids = [I.getX(i), I.getX(i + 1), I.getX(i + 2)];
+        a.fromBufferAttribute(P, ids[0]); b.fromBufferAttribute(P, ids[1]); c.fromBufferAttribute(P, ids[2]);
+        face.subVectors(b, a).cross(c.sub(a)); n.set(0, 0, 0);
+        for (const id of ids) n.add(new THREE.Vector3().fromBufferAttribute(N, id));
+        assert.ok(face.lengthSq() > 1e-15 && face.dot(n) >= -1e-8, `${label}: faces agree with normals`);
+      }
+    }
+    if (type === 'lcvp') {
+      const P = meshes[0].geometry.attributes.position;
+      for (const z of [-0.8, 0.8]) {
+        const tip = new THREE.Vector3(-3.7, 2.2, z);
+        let nearest = Infinity;
+        for (let i = 0; i < P.count; i++) nearest = Math.min(nearest, new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(tip));
+        assert.ok(nearest < 0.06, `${label}: both gun barrels meet the existing effect tips`);
+      }
+    }
+    if (type !== 'lcvp') {
+      const tip = new THREE.Vector3(...v.fxTip), P = v.turret.children[0].geometry.attributes.position;
+      let nearest = Infinity;
+      for (let i = 0; i < P.count; i++) nearest = Math.min(nearest, new THREE.Vector3().fromBufferAttribute(P, i).distanceTo(tip));
+      assert.ok(nearest < 0.2, `${label}: muzzle remains on the barrel`);
+      if (type === 'destroyer') assert.ok(v.mounts.length === 4 && v.mounts[0] === v.turret, `${label}: all four guns still traverse`);
+    }
+    assert.equal(navalModel(type, fac, look), navalModel(type, fac, look), `${label}: geometry reused`);
+  }
+}
+console.log('all naval model checks passed');
 
 // Armor keeps one hull and one traversing draw, outward faces and muzzle points, inside the model budgets.
 {

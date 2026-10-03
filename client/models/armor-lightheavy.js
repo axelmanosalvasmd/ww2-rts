@@ -358,6 +358,7 @@ function stuart(f) {
     T.add(star(1, { color: WHITE }), 0xffffff, place([0.2, 0.38, s * (wallZ(0.38) + 0.004)], [0, lean[1], s * lean[2]], [0, lean[2], -s * lean[1]], 0.27), 'plain');
     T.add(number('12', 0.28, f.color), 0xffffff, place([-0.36, 0.38, s * (wallZ(0.38) + 0.004)], [0, lean[1], s * lean[2]], [0, lean[2], -s * lean[1]], 1), 'plain');
   }
+  T.box(IRON, 0.13, 0.025, 0.03, 0, TH + 0.115, 0.26).box(IRON, 0.13, 0.025, 0.03, 0, TH + 0.04, -0.28);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.2, 1.64, 0], tip: [1.06 + 1.85, 0.38, 0], s: 1 };
 }
@@ -427,6 +428,7 @@ function panzer2(f) {
     T.add(number('21', 0.26, f.color), 0xffffff, place([-0.28, 0.28, s * (wallZ(0.28) + 0.004)], nrm, up, 1), 'plain');
     T.box(IRON, 0.12, 0.06, 0.02, 0.44, 0.38, s * (wallZ(0.38) - 0.005), 0, s * 0.6, 0);
   }
+  T.box(IRON, 0.13, 0.025, 0.03, -0.28, TH + 0.235, 0).box(IRON, 0.12, 0.025, 0.03, 0.3, TH + 0.04, -0.26);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.12, 1.62, -0.1], tip: [1.18 + 1.2, 0.28, 0.2], s: 1 };
 }
@@ -502,6 +504,8 @@ function t70(f) {
     T.add(star(1, { color: RED, border: WHITE, edge: 0.12 }), 0xffffff, place([0.14, 0.34, s * (wallZ(0.34) + 0.005)], nrm, up, 0.2), 'plain');
     T.add(number('24', 0.26, f.color), 0xffffff, place([-0.32, 0.34, s * (wallZ(0.34) + 0.005)], nrm, up, 1), 'plain');
   }
+  T.box(IRON, 0.15, 0.025, 0.03, -0.14, TH + 0.12, -0.08);
+  for (const dx of [-0.06, 0.06]) T.box(IRON, 0.025, 0.035, 0.03, -0.14 + dx, TH + 0.095, -0.08);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.33, 1.5, -0.24], tip: [0.98 + 1.65, 0.32, 0], s: 1 };
 }
@@ -667,6 +671,9 @@ function tiger(f) {
       T.box(LINK_LIT, 0.05, 0.12, 0.04, x + (nx / l) * 0.07, 0.44, s * (z + (nz / l) * 0.07), 0, ry, 0);
     });
   }
+  // Hatch latches and bin clasps read separately from the welded roof and storage box.
+  T.box(IRON, 0.14, 0.025, 0.03, -0.75, RH + 0.265, -0.75).box(IRON, 0.14, 0.025, 0.03, -0.3, 0.897, 0.55);
+  for (const z of [-0.38, 0.38]) T.box(IRON, 0.03, 0.13, 0.08, -1.92, 0.44, z);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [-0.1, 1.91, 0], tip: [1.9 + gL, 0.42, 0], s: 0.94, height: 1.3 };
 }

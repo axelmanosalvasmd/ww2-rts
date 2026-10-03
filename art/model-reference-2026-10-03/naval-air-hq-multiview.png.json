@@ -1,0 +1,21 @@
+{
+  "image_path": "/Users/judiazm/Projects/ww2-rts/art/model-reference-2026-10-03/naval-air-hq-multiview.png",
+  "prompt": "Production modeling reference sheet for a grounded realistic WW2 real-time strategy game. Neutral light gray studio background, orthographic views without perspective distortion, restrained matte materials and readable shapes. Exactly three rows and five columns with small headings FRONT, LEFT, BACK, RIGHT, TOP. Row one: a WWII PT patrol torpedo boat with long narrow planing hull, low cabin, deck gun and paired torpedo tubes, full bow and stern visible. Row two: a P-51 Mustang propeller fighter, realistic fuselage, wings, tail, canopy and nose propeller, full wing span visible. Row three: a compact single-storey timber military headquarters building, pitched roof, timber siding, front entry, modest windows, tiny radio aerial, sandbag stacks against base. Each row shows exactly the same subject from front, left side, back, right side, and top. Within each row use identical scale in all five cells. Match structure and shape across the five views. Every cell includes the full silhouette including boat bow and stern, airplane wings and tails, building roof and aerial. No dramatic lighting, no exaggerated toys, no background scenery. Grid with ample spacing. This is visual design reference rather than a historical blueprint.",
+  "revised_prompt": "Production modeling reference sheet for a grounded realistic WW2 real-time strategy game. Neutral light gray studio background, orthographic views without perspective distortion, restrained matte materials and readable shapes. Exactly three rows and five columns with small headings FRONT, LEFT, BACK, RIGHT, TOP. Row one: a WWII PT patrol torpedo boat with long narrow planing hull, low cabin, deck gun and paired torpedo tubes, full bow and stern visible. Row two: a P-51 Mustang propeller fighter, realistic fuselage, wings, tail, canopy and nose propeller, full wing span visible. Row three: a compact single-storey timber military headquarters building, pitched roof, timber siding, front entry, modest windows, tiny radio aerial, sandbag stacks against base. Each row shows exactly the same subject from front, left side, back, right side, and top. Within each row use identical scale in all five cells. Match structure and shape across the five views. Every cell includes the full silhouette including boat bow and stern, airplane wings and tails, building roof and aerial. No dramatic lighting, no exaggerated toys, no background scenery. Grid with ample spacing. This is visual design reference rather than a historical blueprint.",
+  "quality": "low",
+  "format": "png",
+  "is_transparent": false,
+  "input_image": null,
+  "response_id": "resp_0fa3529984eb9b94016ac15a13dac887d1b37a7207112b1b1c",
+  "ts": "2026-10-03T19:40:44Z",
+  "image_model": "gpt-image-2-codex",
+  "resolved_background": "opaque",
+  "transparency_mode": null,
+  "requested_image_model": null,
+  "resolved_quality": "medium",
+  "actual_dimensions": {
+    "width": 1536,
+    "height": 1024
+  },
+  "requested_dimensions": "2048x2048"
+}

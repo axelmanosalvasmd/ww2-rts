@@ -272,7 +272,7 @@ function singleUnit() {
   if (def.faction >= 0 && def.faction !== fac) warnings.push(`In the game only ${FACTIONS[def.faction].name} fields ${type}; this is what the model code builds for ${FACTIONS[fac].name}`);
   const v = makeUnit(type), air = !!def.air;
   pose(v); placeShadow(v);
-  if (moving && v.squad) motionUnit = v;
+  if (moving && !air) motionUnit = v;
   // close views lift a plane so its lowest point is 1.5 m over the ground; the game view flies it at AIR_ALT
   const lift = air ? 1.5 - bounds([v.root]).min.y : 0;
   const man = v.squad ? v.models[0] : null;
