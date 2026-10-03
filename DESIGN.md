@@ -23,6 +23,22 @@ those still held by local defenders. Classic's production-loss defeat and Sudden
 Huge match length is 45 to 60 minutes, a balance target that needs playtesting rather than a victory timer.
 The full acceptance criteria are in [the World Conquest spec](docs/world-conquest-spec.md) and issue #37.
 
+World tuning starts at 0.65 MP/s per region, with another 0.6 MP/s for cities, 0.3 Fuel/s for industrial
+regions and 0.5 Munitions/s for resource regions. Team income is split among active teammates and uses the
+selected army income multiplier. Captured land adds 2 population capacity per region, shared across active
+teammates, with a maximum of 160 per player. Recovering an HQ costs 200 MP; an Engineer uses its normal cost.
+
+Distant movement plans 64 metre legs beyond 96 metres, using only remembered terrain. The original destination
+remains active across legs, queued moves wait for full arrival and retreat continues to friendly ground.
+Bank recovery returns to the unit's open cell before continuing, so ordinary ground units can find a ford.
+Region capture uses ordered nearby-unit queries and indexes production blockers once per tick.
+
+A six-seat stress fixture with 64 mobile units per seat and intact guards measured Huge server tick p95/max
+27.32/32.05 ms and Massive 31.37/32.90 ms on the M3 Max. Long-move barrier maximums were 23.54/55.77 ms.
+Other desktop work was running. Prepared Huge AI expansion gained one region in 30 simulated seconds,
+with the first gain at 17.3 seconds. Natural-start pacing and faction balance remain unmeasured. See
+[the performance report](docs/world-conquest-performance.md) for the workload and limits.
+
 ## Game
 - Tactics skirmish, with base building in Classic and World Conquest. PvP: teams or free-for-all, joined by room link (`/#code`). The host can add AI opponents.
 - Win: first to 1200 VP. The center gives 2 VP/s and no manpower; villages give 1 VP/s + 1.5 MP/s.

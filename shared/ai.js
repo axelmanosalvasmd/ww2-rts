@@ -578,8 +578,12 @@ function plan(observation, slot, opts, mem, send) {
       const regions = (view.world?.regions ?? []).filter(r => r.team !== me.team);
       const target = regions.filter(r => !r.locked || mine.length >= L.wave).sort((a, b) => d(u, a) - d(u, b))[0];
       if (target && (target.locked || def.infantry)) {
-        const base = target.locked && enemies.filter(e => UNITS[e.type].structure && e.hp > 0 && insideRegion(target, e)).sort((a, b) => d(u, a) - d(u, b))[0];
-        if (base && takeHand()) { submit({ t: 'attack', ids: [u.id], target: base.id }); arm(u); }
+        const base = target.locked && known.filter(e => insideRegion(target, e)).sort((a, b) => d(u, a) - d(u, b))[0];
+        if (base && takeHand()) {
+          if (me.visible.has(base.id)) submit({ t: 'attack', ids: [u.id], target: base.id });
+          else assault_.push([u.id, base.x, base.z]);
+          arm(u);
+        }
         else if (d(u, target) > CFG.pointRadius - 2 && takeHand()) {
           assault_.push([u.id, target.x, target.z]); arm(u);
         }
