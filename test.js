@@ -6843,6 +6843,8 @@ for (const lookupFinished of [false, true]) {
   until(() => enemies().length === 2 && enemies().every(u => u.garrison >= 0), 400); // the stone house's garrison walks in
   assert.equal(command(g, 0, { t: 'support', kind: 'artillery', x: 63.5 * CELL, z: 17.5 * CELL }), undefined); next(8);
   for (const u of enemies()) u.hp = 0;
+  // Combat is resolved by the fixture. A pending random shell must not wreck the crossing under the walkers.
+  g.strikes = [];
   go(62, 22); until(() => g.winner !== null, 3000);
   assert.deepEqual([g.winner, g.endReason], [0, 'tutorial'], 'taking the bridgehead wins the tutorial');
   assert.equal(said, STEPS.reduce((a, s) => a + s.say.length, 0), 'every step said all its lines');
