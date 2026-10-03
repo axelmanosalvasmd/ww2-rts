@@ -535,6 +535,14 @@ export function tickRooms() {
     timedRoomTick(room);
   }
 }
-export const loop = setInterval(tickRooms, TICK * 1000);
+// Windows timers fire in ~15.6 ms steps, so setInterval(50) really ran every ~62 ms (16 ticks/s, the game at 80%
+// speed). Poll often and run the ticks the clock says are due. More than 4 behind (a stall): drop the backlog.
+const TICK_NS = BigInt(Math.round(TICK * 1e9));
+let dueAt = process.hrtime.bigint();
+export const loop = setInterval(() => {
+  const now = process.hrtime.bigint();
+  for (let n = 0; dueAt <= now && n < 4; n++) { tickRooms(); dueAt += TICK_NS; }
+  if (dueAt <= now) dueAt = now + TICK_NS;
+}, 10);
 
 server.listen(PORT, HOST, () => console.log(`ww2-rts on http://${HOST}:${PORT}`));

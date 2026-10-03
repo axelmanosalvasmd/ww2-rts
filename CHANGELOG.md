@@ -41,7 +41,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   box; `?perf` now shows every number in the overlay for that visit.
 - Loss counts pings the server has not answered within 3 seconds over the last minute. The connection is TCP, so
   nothing is really dropped; a lost ping means the connection stalled.
-
+- Fixed: on a Windows host the game ran at 80% speed. The 50 ms tick timer really fired every ~62 ms (Windows
+  timers step in ~15.6 ms), so the server stepped 16 times a second instead of 20 and sent 8 snapshots a second
+  instead of 10, which made unit movement look laggy. The server now runs the ticks the clock says are due.
 - A fourth faction: the UK, picked in the lobby like the others. Its own units: the Churchill VII (480 MP, max 1),
   a slow infantry tank with the thickest front on the map (takes 60% from the front, the Tiger 70%) and a modest
   75 mm gun, and Commandos (190 MP, 5 men), raiders with Stens and satchel charges who hide when they keep still,
