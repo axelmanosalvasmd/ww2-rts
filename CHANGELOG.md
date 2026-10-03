@@ -5,6 +5,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- A stats overlay for checking how the game runs. Open it from the menu (Stats overlay) and tick the numbers you want:
+  frame rate, frame time, worst frame, script time, draw calls, triangles, render scale, memory; ping, jitter, loss,
+  updates per second, the longest gap between updates, update size, download rate and the server's tick time; units,
+  effect particles and bodies. Quick picks set Basic (FPS, ping, loss), Performance, Network or Everything. You also
+  choose where it sits (top left, center or right), a list or one line, the size, the background, and whether bad
+  numbers turn amber and red. F2 shows or hides it, and the choice is saved per browser. It replaces the old `?perf`
+  box; `?perf` now shows every number in the overlay for that visit.
+- Loss counts pings the server has not answered within 3 seconds over the last minute. The connection is TCP, so
+  nothing is really dropped; a lost ping means the connection stalled.
+
 - A fourth faction: the UK, picked in the lobby like the others. Its own units: the Churchill VII (480 MP, max 1),
   a slow infantry tank with the thickest front on the map (takes 60% from the front, the Tiger 70%) and a modest
   75 mm gun, and Commandos (190 MP, 5 men), raiders with Stens and satchel charges who hide when they keep still,

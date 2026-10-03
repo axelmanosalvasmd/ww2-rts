@@ -316,6 +316,7 @@
 </style>
 <link rel="stylesheet" href="/client/alerts.css">
 <link rel="stylesheet" href="/client/connection.css">
+<link rel="stylesheet" href="/client/stats.css">
 <script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
 </head>
 <body>
@@ -363,7 +364,7 @@
     <button id="captureNow" title="Capture mouse: keeps the cursor inside the game so edge scrolling always works. Click again or press Esc to let go" aria-label="Capture mouse" aria-pressed="false"><svg class="ico" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M6 14L94 14L94 86L6 86ZM13 21L87 21L87 79L13 79ZM38 28L38 68L47 60L53 73L59.5 70L53.5 57.5L65 57.5Z"/></svg></button>
     <button id="controlsBtn" title="Controls and mouse help (F1)" aria-label="Controls, F1">? <kbd>F1</kbd></button>
   </div>
-  <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
+  <div id="menu" class="panel hidden"><button id="pauseBtn">Pause match</button><button id="restartBtn">Restart match</button><button id="endBtn">End match (back to lobby)</button><div id="offlineSeats"></div><button id="leaveBtn">Leave game</button><button id="edgeBtn">Edge scroll: On</button><button id="captureBtn" title="Keep the cursor inside the game while you play, so pushing past the screen edge always scrolls. Esc lets go">Capture mouse: In fullscreen</button><button id="panBtn">Pan speed: Normal</button><button id="statsBtn" title="Frame rate, ping, loss and other numbers over the game (F2 shows or hides)">Stats overlay: Off</button><label class="vol" title="Effects, voices and alerts. M mutes">Volume<input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label></div>
   <div id="top"><div id="scores" class="panel"></div><div id="status" class="panel"></div></div>
   <div id="econ" class="panel">
     <div class="res">
@@ -381,6 +382,7 @@
   <canvas id="minimap" width="240" height="240"></canvas>
   <div id="hint" class="panel"></div>
   <div id="following" class="panel hidden"></div>
+  <div id="statsOverlay" class="hidden" aria-hidden="true"></div>
 </div>
 <dialog id="controlsSheet" aria-labelledby="controlsTitle">
   <div class="sheet">
@@ -406,6 +408,7 @@
         <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</dt><dd>Pan</dd>
         <dt><kbd>Q</kbd> / <kbd>E</kbd></dt><dd>Rotate left / right</dd>
         <dt><kbd>F1</kbd></dt><dd>Open or close this sheet</dd>
+        <dt><kbd>F2</kbd></dt><dd>Show or hide the stats overlay (pick the numbers in the menu)</dd>
         <dt><kbd>M</kbd></dt><dd>Mute or unmute audio</dd>
       </dl></section>
       <section><h3>Units and orders</h3><dl>
@@ -433,6 +436,25 @@
         <dt>Support keys</dt><dd><kbd>Z</kbd> Recon, <kbd>C</kbd> Artillery, <kbd>V</kbd> Strafe, <kbd>B</kbd> Smoke, <kbd>N</kbd> Bombing, <kbd>U</kbd> Dive, <kbd>P</kbd> Paratroops, <kbd>I</kbd> Air cover</dd>
       </dl></section>
     </div>
+  </div>
+</dialog>
+<!-- the stat checkboxes and the select options come from client/stats.js -->
+<dialog id="statsSheet" aria-labelledby="statsTitle">
+  <div class="sheet">
+    <header><h2 id="statsTitle">Stats overlay</h2><button class="stat-close" type="button" aria-label="Close stats overlay settings">Close <kbd>Esc</kbd></button></header>
+    <div class="stat-top">
+      <label class="check"><input type="checkbox" name="show"><span>Show the overlay</span><kbd>F2</kbd></label>
+      <div class="stat-presets-row"><span class="muted">Quick pick</span><div class="stat-presets"></div></div>
+    </div>
+    <div class="stat-picks"></div>
+    <h3>Look</h3>
+    <div class="stat-look">
+      <label>Position<select name="pos"></select></label>
+      <label>Layout<select name="layout"></select></label>
+      <label>Size<select name="size"></select></label>
+      <label>Background<select name="bg"></select></label>
+    </div>
+    <label class="check"><input type="checkbox" name="warn"><span>Color warnings: amber, then red, when a number is bad</span></label>
   </div>
 </dialog>
 <div id="box" class="hidden"></div>

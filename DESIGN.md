@@ -993,6 +993,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   radius + 1.5 m of it unless an end of the segment is already there. A cost, not a block, so a move or attack aimed
   at the bunker still gets a route.
 - Hosted on the owner's PC in Ecuador, reached by friends over Tailscale (`tailscale serve`).
+- Stats overlay (2026-10-03, `client/stats.js`, numbers from `client/perf.js`): Menu > Stats overlay picks which
+  numbers show (frame, network, game), where (top left, center or right, under the HUD panel there), the layout,
+  size and background, and whether bad numbers turn amber and red. F2 shows or hides it; saved per browser in
+  `ww2-stats`; `?perf` shows every number for one visit. Loss comes from the latency ping (every 2 s): a ping with no
+  pong within 3 s is lost, counted over the last 30. The socket is TCP, so loss means a stall, not a dropped packet.
+  Jitter is the mean change between consecutive pings. The pong carries `srv: [p95 ms, snapEvery]` from the room's
+  tick meter during a match; the p95 is over the ticks that sent a snapshot, the number the meter holds to 40 ms.
 
 ## Roadmap
 1. ~~Tracer bullet~~ 2. ~~Combat~~ 3. ~~LOS + fog~~ 4. ~~Points, VP, manpower, call-ins~~ (MVP)
