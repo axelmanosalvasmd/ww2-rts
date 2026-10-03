@@ -168,7 +168,7 @@ try {
     const oldHome = g.world.regions.find(r => r.home === 0), friendly = g.world.regions.find(r => r.home === 1);
     const rifle = ownedUnit(g, 0, 'rifle'), engineer = ownedUnit(g, 0, 'engineer'), enemy = ownedUnit(g, 2, 'rifle');
     ownedUnit(g, 0, 'hq').hp = 0;
-    place(rifle, { x: friendly.x + 12, z: friendly.z + 8 });
+    place(rifle, { x: friendly.x + 12, z: friendly.z + 12 });
     place(engineer, { x: friendly.x + 12, z: friendly.z - 8 });
     place(enemy, { x: oldHome.x + 10, z: oldHome.z });
     await tick(8);
@@ -182,6 +182,10 @@ try {
     assert.ok(host.latest('s').units.some(u => u[0] === rifle.id && u[2] === 0), 'the member retains command ownership of surviving troops');
     assert.ok(inRegion(friendly, host.latest('s').home), 'home shortcut relocates into surviving team land');
     assert.deepEqual(host.latest('s').home, host.latest('s').world.home, 'both home protocol surfaces agree');
+    // Start outside the arrival radius for the four ticks used to observe the active retreat.
+    const beforeRetreat = host.latest('s'), walker = beforeRetreat.units.find(u => u[0] === rifle.id);
+    assert.ok(Math.hypot(walker[3] - beforeRetreat.home[0], walker[4] - beforeRetreat.home[1])
+      > CFG.reinforceRadius + UNITS.rifle.speed * CFG.retreatSpeed * TICK * 4, 'fixture leaves time to observe retreat');
     await host.send({ t: 'retreat', ids: [rifle.id] });
     await tick(4);
     const plan = host.latest('s').plans.find(p => p[0] === rifle.id);

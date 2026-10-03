@@ -48,6 +48,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   modules now have a served-dependency check.
 - Preserved Engineer construction in World Conquest while integrating buildable flak in other modes. New
   World Conquest text currently falls back to English in the Spanish interface. Translation remains for later.
+- World acceptance checks now run before the long AI proofs. The relocated-retreat fixture starts outside the
+  home arrival radius so it can observe an active retreat before arrival.
 - Fixed the tutorial progression fixture losing its house defenders when the next step began. Simulated combat
   now removes those defenders and clears pending artillery before crossing. The check runs first with route,
   bridge and capture diagnostics. Tutorial gameplay is unchanged.

@@ -13,6 +13,14 @@ import { createAutocast } from './client/autocast.js';
 import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
 await import('./test-tutorial.js');
+// The large-world checks use real clients and a fresh authoritative server.
+{
+  const { execFileSync } = await import('node:child_process');
+  for (const file of ['test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
+    execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
+  }
+}
+
 
 // Sight rays ending on a cell border must stop at the destination, including mixed-sign diagonals.
 {
@@ -8331,12 +8339,4 @@ await stopServerHarness(); // the last server check is done
 {
   const { execFileSync } = await import('node:child_process');
   execFileSync(process.execPath, ['test-performance.mjs'], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 240000 });
-}
-
-// The large-world checks use real clients and a fresh authoritative server.
-{
-  const { execFileSync } = await import('node:child_process');
-  for (const file of ['test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
-    execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
-  }
 }
