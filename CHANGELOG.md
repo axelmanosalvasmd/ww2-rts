@@ -32,6 +32,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ### Other recent unreleased changes
 
+- A tutorial. The Tutorial button on the start page opens a private room and starts it at once (it is also a mode
+  in the room's Mode list, so friends can play it co-op). Sergeant Hollis walks you from a glider landing to a
+  bridge on a small map of its own, one goal at a time, with the goal always shown under the top bar: move to a
+  hedgerow, clear orchard sentries from cover, take the crossroads, recruit an AT gun (Tab W E), kill the tank that
+  comes down the road, grenade a farm trench (F), send a squad home to refill (R), shell the stone house with
+  artillery (C) and take the bridgehead, which wins. The enemy is a side nobody plays: its units stay where the
+  script puts them and fight what comes. Steps that need money top your manpower up.
+- Found while testing: a map's first-snapshot alerts are dropped by the client on purpose, so the tutorial holds
+  each step's lines until 2 s into the match.
 - Annihilation, merging #36 with the per-player rule: a player is out the moment their bunker falls (their army
   goes to a teammate), now settled at the start of the tick, so their infantry can no longer finish a capture on that
   tick. Out players earn nothing and do not count on points (from #36). When the match is decided the losing army is

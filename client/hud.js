@@ -178,6 +178,8 @@ export function createHud(ctx) {
       } else if (kind === 'assault') {
         setText(mode, mine === s.mode.defenderTeam ? 'Assault: hold out' : 'Assault: take the bunker'); setText(clk, clock(s.mode.timeLeft));
         score.lead.title = mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker before the clock runs out';
+      } else if (kind === 'tutorial') {
+        setText(mode, 'Tutorial'); setText(clk, `${s.mode.step + 1} / ${s.mode.steps}`); score.lead.title = s.mode.goal ?? '';
       } else if (kind === 'classic') {
         setText(mode, s.mode.suddenDeath ? 'Sudden death' : 'Sudden death in'); setText(clk, s.mode.suddenDeath ? '' : clock(s.mode.timeLeft));
         mode.classList.toggle('danger', !!s.mode.suddenDeath);

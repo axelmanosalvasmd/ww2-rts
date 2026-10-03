@@ -120,7 +120,7 @@ controlsSheet.addEventListener('close', () => {
   delete controlsSheet.dataset.onboarding;
 });
 const entry = new URLSearchParams(location.search);
-const listing = { public: entry.get('public') === 'true', title: entry.get('title') || 'Open skirmish' };
+const listing = { public: entry.get('public') === 'true', title: entry.get('title') || 'Open skirmish', tutorial: entry.get('tutorial') === '1' };
 const token = roomToken({ room, seat, local, session, create: () => Array.from(crypto.getRandomValues(new Uint8Array(20)), n => n.toString(16).padStart(2, '0')).join('') });
 const matchMemory = matchStorage(token, local, session);
 $('name').value = entry.get('name')?.slice(0, 16) || tryStore(() => localStorage.getItem('ww2-name')) || 'Soldier' + Math.floor(Math.random() * 90 + 10);
@@ -269,6 +269,7 @@ const MODE_INFO = {
   assault: 'One team defends a fortified command bunker. Everyone else attacks and must destroy it before the clock runs out.',
   annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
   classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks, Motor Pool and Airfield.',
+  tutorial: 'Learn to play: Sergeant Hollis walks you from a glider landing to a bridge, one order at a time. Friends can join as co-op.',
   horde: 'Co-op: everyone shares one HQ and defends one command bunker against waves that keep growing. The next wave comes when the last one is dead. How far can you get?',
 };
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');

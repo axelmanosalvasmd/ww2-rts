@@ -230,6 +230,23 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
   6+ units. AI runs, time to finish: 1v1 Three Crossroads 4:47-26:43 (8 games), River Towns 5:41-23:45 (4),
   Kasserine Pass 3v3 28:40 and 29:54. None stalled out to the 40 minute cap.
 
+## Tutorial (built 2026-10-02)
+- Mode `tutorial` on `maps/tutorial.json` (72x44, west to east: HQ, hedgerow, orchard, crossroads, farm trench,
+  river, bridge with a stone house at its east end). The script is `STEPS` in `shared/tutorial.js`: each step has a
+  goal (sent as `mode.goal` and shown under the top bar), the sergeant's lines (map `say` alerts, held until 2 s in
+  so the client's baseline snapshot does not swallow them), enemies to spawn and a `done()` check. Finishing the
+  last step ends the match with reason `tutorial`.
+- The enemy is an extra player like the Horde (added after the last name, faction nobody picked). Nothing thinks for
+  it: its units hold where they are spawned, attack-move or garrison when told, and never auto-retreat. All humans
+  share the first spawn on team 0 (co-op works); supply lines are off. Steps that need money raise manpower to a
+  floor (250 for the AT gun, 200 for the barrage).
+- Entry: the start page's Tutorial button sends `listing.tutorial` in hello; the server makes an unlisted room in
+  that mode and starts it when the player is in. The host can also pick Tutorial in any room; the map is fixed to the
+  tutorial map while that mode is on.
+- Checked by a test that walks every step (fights won by setting hp to 0). One real-combat headless playthrough
+  reached the bridge step; the tank stops to fire at the first thing it sees, so a player has to bring the AT gun to
+  it. Not tuned with real players yet.
+
 ## Horde mode (decided and built 2026-10-01)
 Co-op: 1-5 players (humans or AI teammates) defend against Waves from the Horde, an extra AI player that
 `createGame` adds after the last name (so no room seat maps to it; the server thinks for it). There is no winning:

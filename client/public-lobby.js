@@ -15,6 +15,7 @@ else {
     try { localStorage.setItem('ww2-name', name); } catch {}
     const query = new URLSearchParams({ name });
     if (listing) { query.set('public', String(listing.public)); query.set('title', listing.title); }
+    if (listing?.tutorial) query.set('tutorial', '1');
     location.assign('/play?' + query + '#' + room);
   }
   function create() {
@@ -66,6 +67,7 @@ else {
   $('joinForm').onsubmit = e => { e.preventDefault(); enter($('roomCode').value.trim().toLowerCase()); };
   $('modeFilter').onchange = render; $('openOnly').onchange = render;
   $('refresh').onclick = () => { notice(''); refresh(); };
+  $('tutorial').onclick = () => enter(code(), { public: false, title: 'Tutorial', tutorial: true });
   $('quickPlay').onclick = async () => {
     $('quickPlay').disabled = true; notice('');
     try {

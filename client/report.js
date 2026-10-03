@@ -6,7 +6,8 @@ const PALETTE = ['#3b73d6', '#cc3a2e', '#ece6d6', '#e2832b', '#9b5cd4', '#35b6c0
 const COLUMNS = [['kills', 'Kills'], ['losses', 'Losses'], ['built', 'Built'], ['captures', 'Captures'],
   ['mpSpent', 'Manpower spent'], ['supportCalls', 'Support calls'], ['planesDowned', 'Planes downed']];
 const DECIDED = { vp: 'on victory points', bunkers: 'when the last bunker fell', structures: 'when the last defending structure fell',
-  timer: 'when the clock ran out', hq: 'when the last Production Building fell', draw: 'in a draw' };
+  timer: 'when the clock ran out', hq: 'when the last Production Building fell', draw: 'in a draw',
+  tutorial: 'when the bridge was taken' };
 const STRIP = '#15181a', LIGHT = '#e2dfd3', FONT = "500 13px 'Barlow Semi Condensed', 'Arial Narrow', sans-serif";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

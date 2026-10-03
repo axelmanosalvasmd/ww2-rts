@@ -30,6 +30,7 @@ if (!PUBLIC_URL) execFile('tailscale', ['status', '--json'], (err, out) => {
 });
 const ROOT = import.meta.dirname;
 const MAP = JSON.parse(readFileSync(join(ROOT, 'maps/default.json'), 'utf8'));
+const TUTORIAL_SPAWNS = JSON.parse(readFileSync(join(ROOT, 'maps/tutorial.json'), 'utf8')).spawns;
 const MAPS = join(ROOT, 'maps'), MAP_NAME = /^[a-z0-9-]{1,32}$/;
 // Map files on disk for the lobby and match starts. Tests swap list and read to hold a load or serve a fixture map.
 export const mapFiles = { list: () => readdir(MAPS), read: (name) => readFile(join(MAPS, name + '.json'), 'utf8') };
@@ -173,8 +174,8 @@ function sendWatchers(room, shots, cells, cache, extra) {
 const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p => p.team === room.defenderTeam) && room.players.some(p => p.team !== room.defenderTeam));
 const newPlayer = (room, p) => ({ ...p, team: Array.from({ length: MAX_PLAYERS }, (_, i) => i).find(t => !room.players.some(q => q.team === t)), faction: room.players.length % 3 });
 // how many players the room's map seats in the room's mode (Assault-only spawns count only in Assault)
-// (Horde: everyone shares one HQ, and the horde takes the last seat)
-const seats = (room) => (room.mode === 'horde' ? MAX_PLAYERS - 1 : spawnsFor({ spawns: room.mapSpawns }, room.mode).length);
+// (Horde and Tutorial: everyone shares one HQ, and the enemy takes the last seat)
+const seats = (room) => (room.mode === 'horde' || room.mode === 'tutorial' ? MAX_PLAYERS - 1 : spawnsFor({ spawns: room.mapSpawns }, room.mode).length);
 
 async function lobby(room) {
   const maps = await listMaps(), horde = room.mode === 'horde' ? await hordeMaps() : undefined;
@@ -342,7 +343,9 @@ wss.on('connection', (ws, req) => {
       if (msg.t !== 'hello' || typeof msg.token !== 'string' || typeof msg.name !== 'string') return;
       room = rooms.get(code);
       if (!room && rooms.size >= MAX_ROOMS) { send(ws, { t: 'full', reason: 'capacity' }); return ws.close(); }
-      if (!room) rooms.set(code, room = { code, listed: msg.listing?.public === true, title: (typeof msg.listing?.title === 'string' ? msg.listing.title : 'Open skirmish').replace(/[<>&"'\x00-\x1f]/g, '').trim().slice(0, 48) || 'Open skirmish', players: [], spectators: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0, matchId: 0, mapName: 'default', mapSpawns: MAP.spawns });
+      // the Tutorial button makes a private room that starts the tutorial as soon as its player is in
+      const tutorial = !room && msg.listing?.tutorial === true;
+      if (!room) rooms.set(code, room = { code, listed: msg.listing?.public === true && !tutorial, title: (typeof msg.listing?.title === 'string' ? msg.listing.title : 'Open skirmish').replace(/[<>&"'\x00-\x1f]/g, '').trim().slice(0, 48) || 'Open skirmish', players: [], spectators: [], state: 'lobby', game: null, mode: tutorial ? 'tutorial' : 'conquest', defenderTeam: 0, matchId: 0, mapName: tutorial ? 'tutorial' : 'default', mapSpawns: tutorial ? TUTORIAL_SPAWNS : MAP.spawns });
       const token = String(msg.token || '').slice(0, 40), name = cleanName(msg.name);
       me = everyone(room).find(p => p.token === token && token);
       if (me) {
@@ -358,6 +361,7 @@ wss.on('connection', (ws, req) => {
       lobby(room);
       if (room.state !== 'lobby' && room.game) room.players.includes(me) ? sendStart(room, room.players.indexOf(me)) : sendStart(room, 0, me);
       if (room.pause?.reason === 'drop' && room.pause.player === me) resumeRoom(room);
+      if (tutorial && room.players[0] === me) await startMatch(room);
       return;
     }
     const slot = room.players.indexOf(me), seated = slot >= 0, host = isHost(room, me);
@@ -386,12 +390,14 @@ wss.on('connection', (ws, req) => {
       const map = await loadMap(msg.name);
       if (room.state === 'play' || me.ws !== ws || !isHost(room, me)) return;
       if (room.mode === 'horde' && !map.defend?.length) return; // Horde needs defender spawns
+      if (room.mode === 'tutorial') return; // the tutorial is scripted for its own map
       room.mapName = msg.name; room.mapSpawns = map.spawns; lobby(room);
     } else if ((msg.t === 'team' || msg.t === 'faction') && room.state !== 'play' && Number.isInteger(msg.slot) && msg.slot >= 0 && Number.isInteger(msg.v) && msg.v >= 0 && msg.v < (msg.t === 'team' ? MAX_PLAYERS : FACTION_COUNT)) {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
       if (p && (host ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
-    } else if (msg.t === 'mode' && host && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde'].includes(msg.v)) {
+    } else if (msg.t === 'mode' && host && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde', 'tutorial'].includes(msg.v)) {
+      if (msg.v === 'tutorial') Object.assign(room, { mapName: 'tutorial', mapSpawns: TUTORIAL_SPAWNS });
       if (msg.v === 'horde') {
         // Horde: a map with defender spawns (the first one, if the current map has none), and never Endless
         const ok = await hordeMaps(), name = ok.includes(room.mapName) ? room.mapName : ok[0];

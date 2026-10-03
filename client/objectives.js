@@ -8,7 +8,7 @@ const ROOF = { hq: 3.6, barracks: 4.7, motorpool: 3.7, bunker: 3.1, depot: 2.5, 
 
 export function createObjectives(hooks) {
   const pointState = [], damage = new Map(), active = [], projected = new THREE.Vector3();
-  let banner = null, bannerUntil = 0;
+  let banner = null, bannerUntil = 0, goal = null;
 
   function init() {
     if (!document.querySelector('link[data-objectives]')) {
@@ -17,11 +17,15 @@ export function createObjectives(hooks) {
     }
     banner = document.createElement('div'); banner.id = 'objective-banner'; banner.hidden = true;
     banner.setAttribute('role', 'status'); document.getElementById('hud').append(banner);
+    // the tutorial's current goal (snapshot mode.goal), up for as long as it stands
+    goal = document.createElement('div'); goal.id = 'objective-goal'; goal.hidden = true;
+    goal.setAttribute('role', 'status'); document.getElementById('hud').append(goal);
   }
 
   function reset() {
     pointState.length = 0; damage.clear(); active.length = 0; bannerUntil = 0;
     if (banner) banner.hidden = true;
+    if (goal) goal.hidden = true;
   }
 
   function collapse(sh) {
@@ -48,14 +52,15 @@ export function createObjectives(hooks) {
   }
 
   function placeBanner() {
-    if (!banner || banner.hidden) return;
-    const r = document.getElementById('top')?.getBoundingClientRect();
-    banner.style.top = `${Math.max(12, (r?.bottom ?? 100) + 6)}px`;
+    const r = document.getElementById('top')?.getBoundingClientRect(), top = Math.max(12, (r?.bottom ?? 100) + 6);
+    if (goal && !goal.hidden) goal.style.top = `${top}px`;
+    if (banner && !banner.hidden) banner.style.top = `${top + (goal && !goal.hidden ? goal.offsetHeight + 6 : 0)}px`;
   }
 
   // Read only the received units, never ghosts. Lost vision stops the emitter on the next snapshot.
   function snapshot(s) {
-    const time = now(), points = hooks.points();
+    const time = now(), points = hooks.points(), text = s.mode?.goal ? `Objective: ${s.mode.goal}` : '';
+    if (goal && goal.textContent !== text) { goal.textContent = text; goal.hidden = !text; placeBanner(); }
     for (let i = 0; i < (s.points ?? []).length; i++) {
       const [owner, capper, progress, contested = 0, cut = 0, locked = 0] = s.points[i], old = pointState[i];
       pointState[i] = { owner, flipped: old && old.owner !== owner ? time : old?.flipped ?? -Infinity };
@@ -114,7 +119,8 @@ export function createObjectives(hooks) {
         if (e.burning && e.fire <= 0) { e.fire = 0.16; hooks.effects.plume('fire', e.x, roof, e.z, e.radius); }
       }
     }
-    if (banner && !banner.hidden) { if (time >= bannerUntil) banner.hidden = true; else placeBanner(); }
+    if (banner && !banner.hidden && time >= bannerUntil) banner.hidden = true;
+    if (!banner?.hidden || !goal?.hidden) placeBanner();
   }
 
   return { init, reset, snapshot, frame, collapse,

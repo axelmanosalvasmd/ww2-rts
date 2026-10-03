@@ -1,6 +1,7 @@
 // Pure game logic. The server runs it; the client imports the tables for rendering.
 // Coordinates: world metres, x right, z down the map rows. Grid cells are CELL metres.
 import { tally, died, captured, lastCapture, sample, SAMPLE_EVERY } from './story.js';
+import { setupTutorial, stepTutorial } from './tutorial.js';
 import { gridFor, rebuildGrid, updateGrid, SpatialGrid } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
@@ -562,12 +563,15 @@ export function spawnSlots(nSpawns, teams, shuffle = true, dist = null) {
 // one more player, added here after the last name)
 export function createGame(map, names, shuffle = true, teams = names.map((_, i) => i), factions = names.map((_, i) => i % 3), opts = {}) {
   const horde = opts.mode === 'horde' && map.defend?.length > 0 && names.length < MAX_PLAYERS;
-  const assault = opts.mode === 'assault', noVp = assault || opts.mode === 'annihilation' || horde;
-  if (horde) {
-    // the horde wears a faction no defender picked (Germany first)
+  // tutorial: the players on one side at one HQ against an enemy nobody plays (shared/tutorial.js)
+  const tutorial = opts.mode === 'tutorial' && map.spawns.length > 1 && names.length < MAX_PLAYERS;
+  const assault = opts.mode === 'assault', noVp = assault || opts.mode === 'annihilation' || horde || tutorial;
+  if (horde || tutorial) {
+    // the horde (or the tutorial's enemy) wears a faction no player picked (Germany first)
     factions = [...factions, [1, 2, 0].find(f => !factions.includes(f)) ?? 1];
-    teams = [...names.map(() => 0), 1]; names = [...names, 'Horde'];
+    teams = [...names.map(() => 0), 1]; names = [...names, horde ? 'Horde' : 'Enemy'];
   }
+
   if (assault) {
     const attackerTeam = teams.find(t => t !== opts.defenderTeam) ?? opts.defenderTeam + 1;
     teams = teams.map(t => (t === opts.defenderTeam ? t : attackerTeam));
@@ -581,6 +585,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   }
   // horde: every defender shares the middle defender spawn as one HQ; the horde's own is the first attacker spawn
   if (horde) teams.forEach((t, i) => { spawnIdx[i] = t ? map.spawns.findIndex((_, k) => !map.defend.includes(k)) : map.defend[map.defend.length >> 1]; });
+  if (tutorial) teams.forEach((t, i) => { spawnIdx[i] = t; }); // the map's first spawn is the players', the second the enemy's
   const g = {
     w: map.w, h: map.h, flags: new Uint16Array(map.w * map.h),
     tick: 0, nextId: 1, winVp: winVp(teams), units: new Map(), shots: [], nades: [], salvos: [], smokes: [], strikes: [], wrecks: [], winner: null,
@@ -609,7 +614,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.mineSeen = new Map(); // mine cell -> bits of the teams whose builder squads have found it
   g.aid = new Map(); // Field Hospital cell -> the slot that put it up
   // supply lines (not in Horde, whose waves would cut every point): opts.supply === false turns them off
-  g.supply = opts.supply !== false && !horde;
+  g.supply = opts.supply !== false && !horde && !tutorial;
   g.house = houseKinds(g.chars, map.w, map.buildings);
   // stone bridges: every cell of the span the entry sits on takes CFG.stoneBridge times the hits
   for (const b of map.buildings ?? []) {
@@ -642,8 +647,10 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   // The map clients download stays separate from later building footprints and terrain edits.
   g.initialTerrain = Object.freeze({ chars: Object.freeze([...g.chars]), height: g.height ? Object.freeze([...g.height]) : null });
   if (opts.mode === 'classic') setupClassic(g);
-  for (const p of g.players) if (!horde || p.team === 0) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, horde ? p.slot * 3 + i : i));
+  const shared = horde || tutorial; // one HQ for every player
+  for (const p of g.players) if (!shared || p.team === 0) (g.mode?.kind === 'classic' ? CFG.classic.startForce : CFG.startForce).forEach((t, i) => spawnUnit(g, p.slot, t, shared ? p.slot * 3 + i : i));
   if (horde) setupHorde(g, map);
+  if (tutorial) setupTutorial(g, g.players.length - 1, TUTORIAL_TOOLS);
   if (assault) {
     setupAssault(g, opts.defenderTeam, map.assaultTime);
     g.mode.total = [...g.units.values()].filter(u => UNITS[u.type].structure).length;
@@ -3440,6 +3447,7 @@ export function step(g) {
     return;
   }
   if (g.mode?.kind === 'horde') return stepHorde(g, dt);
+  if (g.mode?.kind === 'tutorial') return stepTutorial(g, TUTORIAL_TOOLS);
   if (g.mode?.kind === 'annihilation') {
     // a player is out when their bunker falls (no more production); a team when its last one does
     const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
@@ -3458,6 +3466,7 @@ export function step(g) {
 }
 
 const isStructure = (u) => !!UNITS[u.type].structure;
+const TUTORIAL_TOOLS = { CELL, spawnUnit, command, finish };
 // Puts out every player who no longer owns a unit that keeps them alive. Their army goes to the nearest surviving
 // teammate (no pop cap for it); their buildings go down.
 function eliminate(g, keeps) {
@@ -3545,7 +3554,7 @@ function unitRow(g, u) {
 function ordersRow(g, u) { return [u.id, u.orders.length, ...u.orders.flatMap(o => queuedPlan(g, u.owner, o).map(rounded))]; }
 function modeRow(g) {
   return g.mode && { kind: g.mode.kind, defenderTeam: g.mode.defenderTeam, attackerTeam: g.mode.attackerTeam, timeLeft: Math.max(0, Math.ceil(g.mode.timeLeft)), suddenDeath: !!g.mode.suddenDeath, total: g.mode.total, bunkers: g.mode.bunkers,
-    wave: g.mode.wave, left: g.mode.left, active: g.mode.active, slot: g.mode.slot };
+    wave: g.mode.wave, left: g.mode.left, active: g.mode.active, slot: g.mode.slot, goal: g.mode.goal, step: g.mode.step, steps: g.mode.steps };
 }
 function playerRow(row, slot, seen) {
   const result = row.slice();

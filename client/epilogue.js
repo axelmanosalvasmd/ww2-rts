@@ -18,6 +18,7 @@ const WHY = {
   structures: { victory: 'Every defending structure has fallen.', defeat: 'Every structure you defended has fallen.' },
   timer: { victory: 'The defenses held until the clock ran out.', defeat: 'The clock ran out before the defenses fell.' },
   hq: { victory: 'Your side has the last Production Buildings standing.', defeat: 'The enemy has the last Production Buildings standing.' },
+  tutorial: { victory: 'The bridge is ours. Training complete: you are ready for a real match.' },
 };
 const why = (reason, outcome) => (outcome === 'draw' ? 'No side is left standing.' : WHY[reason]?.[outcome] ?? '');
 
