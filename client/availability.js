@@ -132,5 +132,6 @@ export function placementState(s, map, grid, teams) {
     nodes: (s.nodes ?? []).map(([x, z]) => ({ x, z, c: (Math.floor(z / CELL) - 1) * w + Math.floor(x / CELL) - 1,
       depot: us.find((v) => v.type === 'depot' && Math.hypot(v.x - x, v.z - z) < 1)?.id ?? 0 })),
   };
+  g.initialTerrain = { chars: [...map.rows.join('')], height: g.height }; // the map as drawn: what "Fill in" works back to
   return { game: g, sees: (slot, at) => teamSees(g, teams[slot] ?? slot, at) };
 }

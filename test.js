@@ -7773,6 +7773,9 @@ console.log('all command feedback checks passed');
   const order = { kind: 'barracks', x: hq.x, z: hq.z };
   assert.equal(placementCheck(view.game, order, at => view.sees(0, at)).reason,
     placementCheck(g, order, at => teamSees(g, p.team, at)).reason, 'preview and server share blocked footprint and sight rules');
+  // "Fill in" reads the map as drawn: the preview has it, so aiming one no longer throws (and stopped the frame loop)
+  const fill = { kind: 'fill', x: hq.x + 10 * CELL, z: hq.z, dir: 0 };
+  assert.deepEqual(placementCheck(view.game, fill, () => true), placementCheck(g, fill, () => true), 'the Fill in preview matches the server');
 
   const oldSet = globalThis.setTimeout, oldClear = globalThis.clearTimeout;
   const pending = new Map(); let next = 0, sounds = 0;

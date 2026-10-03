@@ -5,6 +5,9 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed: clicking Fill in froze the game. Its placement preview read the map's original terrain, which the
+  browser's copy of the map did not have, so it threw an error every frame and stopped the game loop. The preview now
+  has the map as drawn and matches the server.
 - The game can be played in Spanish. A language picker (English / Español) sits at the top of the room screen and
   the match browser; the choice is saved per browser and a Spanish browser starts in Spanish. Everything written on
   screen is translated: lobby, mode and map descriptions, HUD, tooltips, alerts, the F1 controls sheet, the stats
