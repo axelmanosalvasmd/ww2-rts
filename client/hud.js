@@ -87,7 +87,7 @@ export function createHud(ctx) {
   }).observe($('buy'));
   let snapshot = null;
   const tooltips = installTooltips($('hud'));
-  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, ids: [...ctx.selected] });
+  const check = (action) => availability(snapshot, CFG, { ...action, slot: ctx.me, watching: ctx.watching, ids: [...ctx.selected] });
   const attempt = (action, run) => { const result = check(action); if (result.ok) run(); else ctx.explain(result.reason); };
   // A card purchase, by click or by letter: the same command and refusal either way. `many` (Shift+letter) sends the
   // command up to five times, as often as the limits allow; the server takes each one like a separate click.
@@ -194,7 +194,7 @@ export function createHud(ctx) {
         setText(tm.net[k], txt); tm.net[k].classList.toggle('danger', !!cls);
         const why = cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '';
         if (tm.net[k].title !== why) tm.net[k].title = why;
-        const out = kind === 'classic' && s.out?.[i];
+        const out = s.out?.[i];
         setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'assault' || i === s.mode?.slot ? '' : out ? 'Out' : `${held(i)} held`);
         tm.held[k].classList.toggle('danger', !!out);
       });

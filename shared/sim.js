@@ -3373,10 +3373,19 @@ export function step(g) {
     died(g, u, UNITS[u.type], k >= 0 && !allied(g, k, u.owner) ? k : -1);
   }
 
+  if (g.mode?.kind === 'annihilation') {
+    const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
+    for (const pl of g.players) {
+      if (pl.out || left.has(pl.team)) continue;
+      pl.out = true; pl.inc = 0;
+      for (const u of g.units.values()) if (u.owner === pl.slot) g.units.delete(u.id);
+    }
+  }
+
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
   // teammates standing on it keep it theirs.
   for (const p of g.points) {
-    const on = list.filter(u => u.hp > 0 && !u.retreating && !u.riding && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius);
+    const on = list.filter(u => u.hp > 0 && !g.players[u.owner].out && !u.retreating && !u.riding && UNITS[u.type].infantry && dist(u, p) <= CFG.pointRadius);
     p.onPoint = on.map(u => u.id);
     p.contested = on.some(u => !allied(g, u.owner, on[0].owner));
     if (!on.length || p.contested) continue;
@@ -3414,7 +3423,7 @@ export function step(g) {
     }
     if (pl.slot === g.mode?.slot) { pl.inc = 0; continue; } // the horde is paid per wave (stepHorde)
     const base = !g.mode ? CFG.mpBase : g.mode.kind === 'annihilation' ? CFG.assault.annihilationBase : pl.team === g.mode.defenderTeam ? CFG.assault.defenderBase : CFG.assault.attackerBase;
-    pl.inc = pl.away ? 0 : (base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer)) * g.army.income;
+    pl.inc = pl.away || pl.out ? 0 : (base + held.reduce((a, p) => a + p.mp, 0) + Math.min(CFG.catchupMax, (lead - teamVp(pl.team)) / CFG.catchupPer)) * g.army.income;
     pl.mp += pl.inc * dt;
   }
   if (g.mode?.kind === 'classic') {
@@ -3443,7 +3452,7 @@ export function step(g) {
   if (g.mode?.kind === 'horde') return stepHorde(g, dt);
   if (g.mode?.kind === 'annihilation') {
     // a team is out when its last bunker falls; the last team with one standing wins
-    const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
+    const left = new Set(g.players.filter(p => !p.out).map(p => p.team));
     if (g.winner === null && g.mode.teams > 1 && left.size <= 1) finish(g, left.size ? [...left][0] : -1, 'bunkers', g.fallen?.bunker);
     return;
   }

@@ -141,13 +141,18 @@ positionRoomBanners();
 
 let me = -1, names = [], lobbyState = null, lastSnap = null, rtt = null, paused = false, seatActive = true;
 let watching = false; // a spectator: no seat, the whole map, no orders (the server sends the first seat's view with the fog lifted)
+const observing = () => watching || !!lastSnap?.out?.[me];
+const observerControls = new Set(['ping', 'resync', 'name', 'pause', 'resume', 'restart', 'end', 'leave', 'handAi']);
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
   hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching, listing }), // a spectator who reconnects keeps watching
 });
 setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
-const sendCmd = (m) => connection.send(m);
+const sendCmd = (m) => {
+  if (lobbyState?.state === 'play' && observing() && !observerControls.has(m.t)) return false;
+  return connection.send(m);
+};
 const autocast = createAutocast({ storage: local, send: sendCmd }); // remembered per unit type (client/autocast.js)
 connection.on('lobby', renderLobby);
 connection.on('start', receiveStart);
@@ -306,6 +311,7 @@ async function previewMap(name, mode) {
 
 function renderLobby(m) {
   lobbyState = m; watching = !!m.spectator; document.body.classList.toggle('watching', watching);
+  document.body.classList.toggle('observing', watching || (m.state === 'play' && !!lastSnap?.out?.[me]));
   if (!(watching && m.state === 'play')) me = m.you; // a spectator's match view stays on the seat the start message named
   renderMatchMenu();
   // opened via localhost? friends can't use that address: hand out the public (Tailscale) one
@@ -421,6 +427,7 @@ function startGame(m, restored = null) {
     for (const [n, ids] of Object.entries(restored.groups || {})) if (/^[1-9]$/.test(n) && Array.isArray(ids)) groups[n] = ids.filter(Number.isSafeInteger);
   }
   fx.length = 0; lastSnap = null; unitRows.clear(); hulks.clear(); effects.reset(); for (const m of strikeMarks.values()) m.dispose(); strikeMarks.clear(); aviation.reset(); epilogue.reset(); snapshotAt = 0; snapshotGap = 100;
+  document.body.classList.toggle('observing', watching);
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
 
@@ -811,8 +818,12 @@ function applySnapshot(s) {
   const ending = !epilogue.active();
   epilogue.snapshot(s, teams[me] ?? me); // the first one with a winner starts the ending (client/epilogue.js)
   if (ending && epilogue.active()) { rig.skipIntro(); rig.cancelFollow(); } // the ending's camera glide takes over the camera
-  if (!watching) alerts.snapshot(s, lastSnap); // the alerts are a commander's, a spectator has no army
+  if (!watching && !s.out?.[me]) alerts.snapshot(s, lastSnap); // the alerts are a commander's, a spectator has no army
+  if (s.out?.[me] && !lastSnap?.out?.[me]) {
+    selected.clear(); selection.reset(); cancelInput(); cancelAim(); hud.setRecruit(false);
+  }
   lastSnap = s; drawWorks(s.works);
+  document.body.classList.toggle('observing', observing());
   updateHud(s);
   wx.snapshot(s);
   endgame.snapshot(s);
@@ -871,7 +882,7 @@ function chutes(x, z) {
 
 // client/hud.js draws the panels; it reads the match state and calls back into these actions
 const feedback = createFeedback($('hint'), () => blip('error'));
-const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, ids: [...selected], naval: lastStart?.map?.naval === true });
+const available = (action) => availability(lastSnap, CFG, { ...action, slot: me, watching, ids: [...selected], naval: lastStart?.map?.naval === true });
 const explainUnavailable = (result) => { if (!result.ok) feedback.show(result.reason); return !result.ok; };
 let placementCache = null;
 function placementView() {
@@ -1051,6 +1062,7 @@ const shellers = () => [...selected].map(id => units.get(id)).filter(v => v?.own
 const startArea = () => { if (shellers().length) { setAim('area'); blip(560); } else $('hint').textContent = 'Select a mortar, howitzer, rocket truck, destroyer or bomber to shell an area'; };
 function cancelAim() { clearFacing(); feedback.reset(); targeting = null; aimedUnit = null; aimCenter = null; $('hint').textContent = ''; }
 function setAim(kind, unit = null) {
+  if (observing()) return;
   clearFacing();
   feedback.reset();
   targeting = kind; aimedUnit = unit; aimCenter = null;
@@ -1220,7 +1232,7 @@ const centerSelection = (list) => {
   cam.x = list.reduce((sum, v) => sum + v.x, 0) / list.length;
   cam.z = list.reduce((sum, v) => sum + v.z, 0) / list.length;
 };
-const selection = createSelection({ units, selected, groups, owner: () => (watching ? -1 : me), definitions: UNITS, // a spectator selects nothing, so orders nothing
+const selection = createSelection({ units, selected, groups, owner: () => (observing() ? -1 : me), definitions: UNITS, // a spectator selects nothing, so orders nothing
   screenOf: (v) => screenOf(v), screenPointsOf: (v) => selectionPoints(v, camera, screenOf, innerWidth, innerHeight), viewport: () => ({ width: innerWidth, height: innerHeight }), center: centerSelection });
 const actions = {
   stop: () => { sendCmd({ t: 'stop', ids: [...selected] }); blip(330); },
@@ -1237,7 +1249,7 @@ const actions = {
     if (hq) { selected.clear(); selected.add(hq.id); }
   },
   clear: () => selected.clear(), cancelAim,
-  recruitMode: () => classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()),
+  recruitMode: () => { if (!observing()) classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()); },
   recruitOff: () => hud.setRecruit(false),
   army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
   idleEngineer: () => selection.findIdle(false, true),

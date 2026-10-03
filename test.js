@@ -2340,16 +2340,16 @@ assert.equal(validateMap({ ...JSON.parse(readFileSync('maps/default.json', 'utf8
 }
 
 // An incoming paratrooper drop cannot recreate an eliminated player's army.
-{
+for (const mode of ['classic', 'annihilation']) {
   const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
-  const g = createGame(map, ['a', 'b', 'c'], false, [0, 0, 1], [0, 1, 2], { mode: 'classic' });
-  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === 'hq');
-  g.players[0].mun = 1000;
+  const g = createGame(map, ['a', 'b', 'c'], false, mode === 'classic' ? [0, 0, 1] : [0, 1, 2], [0, 1, 2], { mode });
+  const hq = [...g.units.values()].find(u => u.owner === 0 && u.type === (mode === 'classic' ? 'hq' : 'bunker'));
+  g.players[0].mun = 1000; g.players[0].mp = 1000;
   command(g, 0, { t: 'support', kind: 'para', x: hq.x + 10, z: hq.z });
   assert.equal(g.strikes.length, 1, 'the visible drop is ordered before elimination');
   hq.hp = 0; step(g);
-  assert.equal(g.players[0].out, true, 'the player loses its last Production Building');
-  assert.equal(g.winner, null, 'its teammate keeps the match running');
+  assert.equal(g.players[0].out, true, `${mode}: the player loses its last base`);
+  assert.equal(g.winner, null, `${mode}: surviving players keep the match running`);
   run(g, SUPPORT.para.delay + 0.1);
   assert.equal([...g.units.values()].some(u => u.owner === 0), false, 'paratroopers do not revive an eliminated army');
 }
@@ -3700,6 +3700,47 @@ for (const f of readdirSync('maps')) {
   run(solo, 1); assert.equal(solo.winner, null, 'a solo test never ends by itself');
 }
 
+// A defeated Annihilation team cannot act while two other teams keep fighting.
+{
+  const map = JSON.parse(readFileSync('maps/default.json', 'utf8'));
+  const g = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 0, 1, 2], [0, 1, 2, 0], { mode: 'annihilation' });
+  const bunker = slot => [...g.units.values()].find(u => u.owner === slot && u.type === 'bunker');
+  const army = [...g.units.values()].filter(u => u.owner < 2 && !UNITS[u.type].structure);
+  g.players[0].mp = 1000; g.players[1].mp = 1000;
+  bunker(0).hp = 0; step(g);
+  assert.deepEqual(g.players.map(p => !!p.out), [false, false, false, false], 'one remaining allied bunker keeps both players active');
+  assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined, 'a surviving teammate allows recruitment');
+  const point = g.points[0], squad = army[0];
+  Object.assign(squad, { x: point.x, z: point.z, path: [] });
+  Object.assign(point, { owner: -1, capper: 0, progress: 0.999 });
+  bunker(1).hp = 0; step(g);
+  assert.deepEqual(g.players.map(p => !!p.out), [true, true, false, false], 'the last bunker eliminates every member of that team');
+  assert.equal(g.winner, null, 'two enemy teams are still fighting');
+  assert.ok(![...g.units.values()].some(u => u.owner < 2), 'the defeated army is removed');
+  assert.equal(point.owner, -1, 'defeated infantry cannot finish capturing on the defeat tick');
+  const balances = g.players.slice(0, 2).map(p => p.mp), spent = g.story.slice(0, 2).map(s => s.mpSpent);
+  for (const slot of [0, 1]) {
+    for (const cmd of [
+      { t: 'buy', unit: 'rifle' }, { t: 'support', kind: 'para', x: point.x, z: point.z },
+      { t: 'move', orders: [[squad.id, point.x + 10, point.z]] }, { t: 'rally', x: point.x, z: point.z },
+      { t: 'dig', ids: [squad.id], kind: 'trench', x: point.x, z: point.z },
+      { t: 'orders', commands: [{ t: 'buy', unit: 'rifle' }] },
+    ]) assert.equal(command(g, slot, cmd), 'blocked', `defeated player ${slot} cannot ${cmd.t}`);
+    for (const level of AI_LEVEL_NAMES) {
+      const submitted = [];
+      think(g, slot, { level, submit: cmd => { submitted.push(cmd); } });
+      assert.deepEqual(submitted, [], `${level} AI in defeated slot ${slot} submits no commands`);
+    }
+    assert.equal(snapshotFor(g, slot, []).out[slot], true, 'the client receives the defeat flag');
+  }
+  run(g, 10);
+  assert.deepEqual(g.players.slice(0, 2).map(p => p.mp), balances, 'defeated players earn no manpower');
+  assert.deepEqual(g.players.slice(0, 2).map(p => p.inc), [0, 0], 'the displayed income is zero');
+  assert.deepEqual(g.story.slice(0, 2).map(s => s.mpSpent), spent, 'blocked commands spend no resources');
+  assert.ok(![...g.units.values()].some(u => u.owner < 2), 'no defeated army is recreated');
+  assert.equal(command(g, 2, { t: 'buy', unit: 'rifle' }), undefined, 'the surviving teams can still recruit');
+}
+
 // AI proofs compare equal human observations, including histories, while hidden state changes.
 const aiRandom = seed => () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
 const aiDigest = g => createHash('sha256').update(JSON.stringify(g, (_key, value) => {
@@ -4901,24 +4942,29 @@ for (const lookupFinished of [false, true]) {
     assert.ok(hidden, 'an enemy unit Ann never saw: the fog holds while the match is on');
     assert.ok([...h.snapshots(ann), ...h.snapshots(ben)].every(s => s.end === undefined && s.winner === null && !('story' in s) && !('timeline' in s)), 'no end data while the match is on');
     assert.equal(lobbies(ann).at(-1).result, null, 'no result while the match is on');
-    const nSnaps = h.snapshots(ann).length;
+    const nSnaps = h.snapshots(ann).length, nBenSnaps = h.snapshots(ben).length;
+    const seenByBen = new Set(h.snapshots(ben).flatMap(s => s.units.map(u => u[0])));
+    const hiddenSurvivor = [...g.units.values()].find(u => u.owner === 0 && !UNITS[u.type].structure && !seenByBen.has(u.id));
+    assert.ok(hiddenSurvivor, 'the losing player has not seen a surviving enemy squad');
+    const benUnit = [...g.units.values()].find(u => u.owner === 1 && !UNITS[u.type].structure);
     for (const u of g.units.values()) if (u.type === 'bunker' && g.players[u.owner].team === 1) u.hp = 0;
     await decided(room);
-    const winTick = g.tick, thought = thinks, ids = g.nextId, benUnit = [...g.units.values()].find(u => u.owner === 1 && !UNITS[u.type].structure);
+    const winTick = g.tick, thought = thinks, ids = g.nextId;
     assert.equal(g.winner, 0); assert.equal(g.endReason, 'bunkers');
     // the hold: orders refused, everything in sight
     await ben.send({ t: 'buy', unit: 'rifle' }); await ben.send({ t: 'move', orders: [[benUnit.id, 5, 5]] });
     await h.tick(6);
     assert.equal(room.state, 'play', 'the match holds before the lobby');
     assert.equal(g.nextId, ids, 'no buying during the hold');
-    assert.ok(!benUnit.path.length || Math.hypot(benUnit.path.at(-1).x - 5, benUnit.path.at(-1).z - 5) > 1, 'no orders during the hold');
+    assert.equal(g.units.has(benUnit.id), false, 'the defeated army stays removed during the hold');
     assert.equal(snapshotFor(g, 0, []).units.length, g.units.size, 'full vision during the hold');
     await backInLobby(room, ann);
     assert.equal(thinks, thought, 'the AI stops thinking during the hold');
     assert.equal(g.tick - winTick, 60, 'the hold runs the sim at half speed: 60 steps in 6 s');
     const held = h.snapshots(ann).slice(nSnaps);
     assert.ok(held.length >= 55 && held.every(s => s.winner === 0 && s.end.reason === 'bunkers'), 'snapshots carry the end through the hold');
-    assert.ok(held.some(s => s.units.some(u => u[0] === hidden.id)), 'the fog lifts for everyone');
+    assert.ok(held.every(s => !s.units.some(u => u[0] === hidden.id)), 'defeated enemy units do not reappear during the ending');
+    assert.ok(h.snapshots(ben).slice(nBenSnaps).some(s => s.units.some(u => u[0] === hiddenSurvivor.id)), 'the losing player sees surviving enemy units when fog lifts');
     const ra = lobbies(ann).at(-1).result, rb = lobbies(ben).at(-1).result;
     assert.equal(ra.reason, 'bunkers'); assert.deepEqual(ra.at, g.endAt); assert.equal(ra.story.length, 3); assert.ok(ra.timeline.length >= 2);
     assert.ok(ra.story[1].losses + ra.story[2].losses >= 2, 'the bunkers are in the story');
@@ -7527,6 +7573,24 @@ console.log('all command feedback checks passed');
   u.type = 'mg';
   assert.equal(check({ t: 'ability', unit: 'mg', queue: true }).ok, false, 'instant abilities cannot defer cooldown');
   assert.equal(g.players[0].mun, 0, 'waiting abilities charge no munitions up front');
+}
+
+// Defeated players and spectators cannot use any command card, even with resources or stale own unit rows.
+{
+  const { availability, buyCount } = await import('./client/availability.js');
+  for (const mode of ['classic', 'annihilation']) {
+    const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c'], false, [0, 1, 2], [0, 1, 2], { mode });
+    g.players[0].mp = 10000; g.players[0].mun = 1000; g.players[0].fuel = 1000;
+    const active = snapshotFor(g, 0, []), defeated = { ...active, out: [true, false, false] };
+    const buy = { t: 'buy', slot: 0, unit: 'rifle' };
+    assert.equal(availability(active, CFG, buy).ok, true, `${mode}: active recruitment remains available`);
+    for (const t of ['buy', 'support', 'build', 'dig', 'ability', 'move', 'rally']) {
+      const action = { ...buy, t };
+      assert.deepEqual(availability(defeated, CFG, action), { ok: false, reason: 'You are spectating' }, `${mode}: defeated ${t} disabled`);
+      assert.equal(availability(active, CFG, { ...action, watching: true }).ok, false, 'a spectator cannot use the watched seat');
+    }
+    assert.equal(buyCount(defeated, CFG, buy, 5), 0, 'Shift recruitment buys no units after defeat');
+  }
 }
 
 // Availability uses real snapshots and prices, including queued units and completed buildings.
