@@ -2,6 +2,8 @@
 
 Recorded on 2026-10-03. This record describes controlled acceptance fixtures, source checks and measured workloads. Faction balance, native GPU performance and deployment status remain unverified.
 
+The initial measurements and browser captures below use the frozen engine before model PR #42. The follow-up was then rebased onto `4ca74ba82b0099bb8f09ee6a67ee271f035294fb`, preserving that change's models, movement correction, delivered-snapshot waits and exact-coordinate collision checks. The delayed-receiver regression remains, with exactly 700 simulation ticks and all completion assertions. [Final integration](#final-integration) records the combined source; earlier captures and timings do not establish the new models' performance.
+
 ## Multiplayer acceptance
 
 Run `node test-engine-acceptance.js`. The harness joins the existing room server with real WebSocket clients, negotiates compression, sends ordinary commands, and inspects each recipient's delivered messages. It stops the automatic loop and advances the server deliberately. Fixture maps, unit placement, starting funds, deterministic dispersion and one structural damage contact arrange the scenes. Commands, refunds, health, terrain, objectives, denials and reconnect state are observed through the protocol.
@@ -100,7 +102,7 @@ After the snapshot-delivery correction, the full `node test.js` passed in 669.08
 
 Before the snapshot-delivery correction, `node test.js` passed with exit code 0 in 666.910 seconds on merged base `6c7c5750802e649cfbede7379067cfa46246806a` plus the frozen follow-up source. All 28 subprocess groups ran, followed by the original 4,489 paired AI fog turns, 2,021 command-only orders, the full AI match, 11 server room-lifecycle scenarios and the remaining core and performance checks. Separate `node test-world.js` and `node test-path-performance.mjs` runs passed in 0.312 and 0.151 seconds. All 367 source, test and asset hashes remained identical across the three gates, with manifest digest `158f6fbb1e80312496e5caf4edc65d1722958913464a5e838f0e57cd9a854ba6`. Root verified the JSON results, before/after manifests and current files. Results are in `/tmp/ww2-39-scenario-final-gate-results.json`; logs and manifests use the `/tmp/ww2-39-scenario-final-` prefix.
 
-CI run `37154315183` subsequently reported delivered construction progress `0.8533333333333395` rather than `1`. Its log contained neither the World seed nor authoritative site progress. A controlled delayed receiver reproduced the same completion assertion while the server had already finished construction: at seeds `142761591` and `1`, the server was at tick `30704`, built `1`, while the client still held tick `30004`, built `0.013333333333333334`. This proves the test's fixed 12 ms sleep could inspect an older snapshot; it does not identify the unlogged CI seed. The helper now waits for each client's ordered native ping reply after its snapshots. The retained delayed-receiver regression passes at six seeds and asserts that waiting adds no simulation ticks. Its original 700-tick construction bound, full completion, paid training, HQ health and no-Sudden-Death checks remain intact. All six World acceptance groups passed. Test SHA-256 is `99b6091cc6e772230690c054868b2ea470aa8e2eafd090d1cc22291b77bda0a9`; controls and logs use `/tmp/ww2-39-deadline-transport-`, with the full acceptance log at `/tmp/ww2-39-deadline-final-acceptance.log`. Production source did not change.
+CI run `37154315183` subsequently reported delivered construction progress `0.8533333333333395` rather than `1`. Its log contained neither the World seed nor authoritative site progress. A controlled delayed receiver reproduced the same completion assertion while the server had already finished construction: at seeds `142761591` and `1`, the server was at tick `30704`, built `1`, while the client still held tick `30004`, built `0.013333333333333334`. This proves the test's fixed 12 ms sleep could inspect an older snapshot; it does not identify the unlogged CI seed. At that revision the helper waited for each client's ordered native ping reply after its snapshots. The delayed-receiver regression passed at six seeds and asserted that waiting added no simulation ticks. Its original 700-tick construction bound, full completion, paid training, HQ health and no-Sudden-Death checks remained intact. All six World acceptance groups passed. That test SHA-256 was `99b6091cc6e772230690c054868b2ea470aa8e2eafd090d1cc22291b77bda0a9`; controls and logs use `/tmp/ww2-39-deadline-transport-`, with the acceptance log at `/tmp/ww2-39-deadline-final-acceptance.log`. Production source did not change. The subsequent rebase retained the equivalent upstream delivered-snapshot wait instead of duplicating the helper fix.
 
 An earlier attempt failed at the World scouting detour assertion before the squad reached the wall. The fixture cleared the HQ's terrain footprint but retained its live body; atomically updating layers while preserving that footprint fixed the setup without changing movement code. The reproduced seed `142761591` and independent seeds `1` and `2` passed the original 150 m goal, queue, Stop and Retreat bounds. Detour verification now requires movement beside the actual wall. The failed run remains archived under `/tmp/ww2-39-failed-scouting-`. The successful fixture SHA-256 is `1b308c92d99e7dc252fdaa7bbf2618fc5b0ff59bd524a192ac07e34cf21854c1`.
 
@@ -189,3 +191,84 @@ A later completion capture recorded the actual internal audio buses on Linux Chr
 A final fresh-backend completion session on the Vostro closed the phase 8 death, hidden-enemy and large-army checks. It loaded the frozen simulation on port 3042 through the existing exported `mapFiles`/`rooms` seams; exact source hashes are in `/tmp/pr-proof-39/phase8-final/source-manifest.json`. The temporary fixture authored 120 Rifle squads, a tank and an enemy Tank Destroyer, then staged tank health `60/360` and population multiplier `12` once. Ordinary movement removed the damaged tank from the enemy client's delivered rows and detached its root; camera return while unobserved added no cue calls. Ordinary movement back restored current delivered health and a fresh live view. An ordinary attack then killed the tank: the living root disappeared, the enemy received wreck `128`, and fresh living-cue calls stopped while wreck/fire continued. The owner had no remaining sight source at the location, so its permanent wreck row was correctly withheld. The inspected 10.4-second H.264 death recording, screenshots, authoritative history and exact readbacks remain in `/tmp/pr-proof-39/phase8-final/`.
 
 In that same match, an ordinary host pause held delivered state fixed while the Graphics menu switched Low to High. The 120 squads contained 1,800 native soldier models. A proof-page wrapper counted actual native `man.position.set` calls without changing the evaluated pose: both settings performed 1,800 per visible frame and zero offscreen. Over approximately 2.5-second windows, Low recorded 23,400 visible calls over 13 frames and zero over 21 offscreen frames; High recorded 3,600 over two visible frames and zero over 12 offscreen frames. Two animation frames after return had all 120 squads detailed, none suspended, current pose positions and zero error against delivered root positions. Delivered rows, health and simulation tick `91` stayed identical across settings. The staged fixture and short work-count windows establish these contracts, not GPU FPS, isolated total CPU time or a general speedup. The mandatory behavior suite ran concurrently; timing workers had exited before Chrome started. Master/saved volume remained zero and hardware audio stayed disconnected in both seat tabs. Chrome and the fixture server closed after inspected screenshots and recordings. Failed initial cap/paused-command attempts are labeled as diagnostics in the evidence notes.
+
+
+## Final integration
+
+The follow-up source was frozen at `e2cfc2a62f18c4f735156d0012a52da713f49a8d` on model-integration base `4ca74ba82b0099bb8f09ee6a67ee271f035294fb`. The upstream movement fix, snapshot waits and exact-coordinate wall checks remain intact. The new delayed-receiver regression advances exactly 700 ticks and keeps the existing construction, training and HQ health assertions.
+
+### Refreshed paired AI pilot
+
+The unchanged pilot runner repeated all eight Default Conquest matches on the combined source. It used the same historical baseline `6bde9945f494a37fc9fa92e20f5f516d936daf96`, seeds, three Normal AI seats, Standard armies, fixed USA/Germany/USSR assignments and 20 Hz simulation/10 Hz observation schedule described above. Results are at `/tmp/ww2-39-integrated-pilot-pr42-final/`, including archived sources, raw orders and operations, conditions, verification and artifact hashes. Root independently checked all 97 live/archive source files, all artifact hashes and raw movement/operation identities.
+
+| Seed | Duration baseline / combined, seconds | First all-point ownership baseline / combined, seconds | Combat kills baseline / combined | Winner baseline / combined |
+| --- | --- | --- | --- | --- |
+| 41 | 592.50 / 399.85 | 56.60 / 58.55 | 25 / 9 | USA / USSR |
+| 92 | 802.15 / 600.85 | 43.30 / 32.55 | 30 / 18 | USSR / Germany |
+| 173 | 488.30 / 569.15 | 37.30 / 35.75 | 13 / 13 | Germany / USA |
+| 271 | 504.35 / 567.05 | 41.55 / 59.00 | 12 / 16 | USA / Germany |
+
+All eight matches ended by Victory Points. Median duration was 548.425 seconds before and 568.100 after; median first ownership of every Point was 42.425 and 47.150 seconds. Combat kills totaled 80 and 56. Observed USA/Germany/USSR wins were 2/1/1 before and 1/2/1 after. This comparison includes the entire engine and upstream traffic change. Four paired seeds do not establish faction balance or isolate AI strength.
+
+| Variant | Issued | Completed | Interrupted | Authoritative unreachable | Ended without arrival | Destroyed | Pending at match end |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Baseline | 865 | 402 | 407 | Unavailable | 3 | 27 | 26 |
+| Combined | 3601 | 1819 | 1723 | 0 | 0 | 12 | 47 |
+
+All 4,466 movement entries reconcile exactly to their terminal categories and unique identities. The combined engine recorded 87 unique assemble states, 59 advance, 58 engage, 65 withdraw, 33 regroup, 18 complete and 70 abandon, totaling 390 operation-state records. These counts use the same ledger definitions as the earlier pilot. Runtime fields include simultaneous mandatory tests and provide no performance claim.
+
+The runner SHA-256 remains `e043ada01b5852fe5d1d783938d5788f74c24b8fc3cab8c9f74ecad8710ff9a3`. Results SHA-256 is `6f9ffc7c9a0fc4eefc64ac188f56d3219a62b7b029304f233eca562a3d61479c`, conditions `7a082da33ea29e13c0baeb516cb30a9f9e67c69f128cf5faef778c068863774d`, and the 111-file artifact manifest `52c38750249641caed22de5b8d15d58a19d9ecf5bddb1f3111458dfc349bc7a0`.
+
+### Combined-source regression gates
+
+`node test.js` passed with exit code 0 in 933.749 seconds, including all 28 subprocess groups, all nine real-WebSocket engine acceptance scenes, 4,489 paired AI fog turns, 2,008 command-only orders, the full AI match and 11 room-lifecycle scenarios. `node test-world.js` and `node test-path-performance.mjs` passed in 0.303 and 0.144 seconds. The full suite ran concurrently with the browser and AI pilot, so elapsed time is not a performance comparison. All 379 source, test and asset hashes stayed unchanged across these gates. Root checked the logs, result JSON, identical before/after manifests and current files. The manifest digest is `99539df4ab1efcd1aa68b24df8afe62d0839211c9df5ce17eed78c5fdd2ad64d`; results are `/tmp/ww2-39-pr42-final-gate-results.json`, with logs and manifests under `/tmp/ww2-39-pr42-final-`.
+
+### Refreshed workload measurements
+
+After the tests, AI pilot and owned Chrome sessions exited, the unprofiled benchmark, separate profile and World benchmark ran sequentially on the same Linux i5-12400, Node `v24.21.0` and shared host described above. Reports were recorded at 22:13:04, 22:13:10 and 22:13:13 UTC. Their fixtures, commands and sample definitions are unchanged; direct cases still use seed `3936341`, 160 ticks and ten excluded warmup ticks. Root verified every report's source hash against the current files. These results supersede the earlier timing table for the combined source, while the historical baseline remains archived without a new run.
+
+| Combined workload | Tick p50 / p95 / p99, ms | Maximum, ms |
+| --- | --- | --- |
+| Quiet, 6 units | 0.077 / 0.345 / 0.446 | 0.810 |
+| 24 ordered bridge movers, 30 units | 0.251 / 1.511 / 1.695 | 1.715 |
+| Artillery support, 30 units | 0.288 / 1.739 / 4.315 | 9.269 |
+| 16 opposed tanks, 22 initial units | 0.846 / 2.459 / 3.703 | 6.475 |
+| 24-unit move commands, 30 units | 0.259 / 0.999 / 1.271 | 1.468 |
+| 24 authored support chains | 0.076 / 0.824 / 1.363 | 1.424 |
+| Six AI seats | 0.850 / 6.895 / 20.627 | 33.787 |
+| Four defenders, staged Wave 10 | 4.385 / 25.097 / 28.263 | 31.013 |
+| Production timer, two compressed clients | 1.616 / 3.680 / 6.294 | 6.294 |
+| Manually stepped server, two clients | 0.278 / 0.605 / 0.705 | 0.820 |
+
+The refreshed Horde case reached 240 field units and 240 reserves, with 151 ticks at the field cap, 242 path calls and 1,964,150 expansions. Its maximum AI phase was 27.672 ms. The historical baseline maximum was 728.910 ms, but baseline p95 was lower at 5.558 ms. Staggering spreads the work and does not establish a reduction in total CPU cost. The navigation case retained 480 searches and 44,848 expansions, with command p50/p95/p99 of 2.428/6.731/13.413 ms. Separate structural support updates were 0.111/1.648/4.562 ms, outside tick timing. The collapse fixture retained 192 failed sections, a 96-body peak and 207 settled rubble cells.
+
+The normal timer measured 60 ticks over 2,982.822 ms, with startup samples excluded, 30 snapshot phases and 60 decoded recipient snapshots. Its 58 receive gaps were 100.762/103.997/110.826 ms at p50/p95/p99. The single move-to-changed-unit probe was 96.059 ms and does not establish a latency distribution. Both sockets negotiated compression. Decoded JSON size was 818/1,435/2,278 bytes at p50/p95/p99, which is not compressed wire size.
+
+The separate 250-microsecond V8 profile estimated inclusive costs of 42.75 ms for navigation `findPath`, 4.50 ms for projectile `stepFlights`, 5.25 ms for collapse `damageWorldSection`, 6.50 ms for collapse `stepWorldDebris`, 144.50 ms for six-seat `think`, and 915.50 ms for Horde `flushHordeMovement`. Horde `findPath` had 2,022 self and 3,684 inclusive samples, estimated at 505.50 and 921.00 ms. These whole-case samples include setup and warmup, have profiler overhead and overlapping inclusive stacks, and must not be summed or substituted for unprofiled tick timing.
+
+The refreshed World benchmark retained six real sockets, the same staged resources, 24 mobile purchases per seat, 120 unpaced ticks and separate movement/AI probes. Random seeds differ from the earlier reports; there is no paired World baseline or causal before/after comparison.
+
+| Combined World fixture | Seed | Units | Tick call p50 / p95 / maximum, ms | Snapshot bytes p50 / p95 / maximum | End RSS, bytes |
+| --- | --- | --- | --- | --- | --- |
+| Huge | 2845283211 | 336 | 6.853 / 25.940 / 42.745 | 8,310 / 13,789 / 40,125 | 675,475,456 |
+| Massive | 2299040857 | 528 | 9.975 / 32.330 / 51.474 | 7,527 / 13,529 / 19,884 | 1,054,011,392 |
+
+Both maximums still exceed the 40 ms target. Six-second accelerated windows, staged deployment, disabled compression and random worlds limit the result. World p99 is unavailable because that benchmark stores p50/p95/maximum rather than raw samples.
+
+| Refreshed artifact | SHA-256 |
+| --- | --- |
+| `/tmp/ww2-engine-bench-pr42-final.json` | `ee08f75b03f254ea37cfeca3ccc432c5aa2275cf298a49bffb87cae2de5ee310` |
+| `/tmp/ww2-engine-bench-pr42-final-profile.json` | `deebee78c8d68aef5dccab369d1c8a0bfc1404b7c08538991528b9107d48d881` |
+| `/tmp/ww2-engine-world-pr42-final.json` | `e09782eef73261cdc792b1e23661e42cc1e60a7a2a887958e90f54c4ba15a52f` |
+
+The benchmark script remains `1877e42af8cb7e04c4e0d5d77d5152f0e4b943546b0c3251add94dcc00d3d269`. The combined local-traffic source is `abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6`; the recorded simulation, server and AI mind hashes above remain unchanged.
+
+### Refreshed muted browser proof
+
+A fresh backend on port 3043 loaded the combined source and new models through the existing exported test seams. The disclosed temporary fixture authored 120 Rifle squads, an owner tank and an enemy Tank Destroyer, then staged tank health `60/360` and population multiplier `12` once. All later movement, pause, graphics and attack actions used ordinary commands and controls. Source manifests and readbacks are under `/tmp/pr-proof-39/pr42-final/`; all 25 recorded source hashes match the combined files. Linux Chrome used SwiftShader, `--mute-audio`, saved volume `0`, master gain `0` and a proof-page block on the hardware audio destination in both tabs. Runtime errors were empty. Both tabs, the owned browser and fixture server closed before timing began.
+
+Ordinary movement hid the damaged tank from the enemy's delivered rows and detached its living root. Camera return while unobserved left its cue-call count unchanged. Ordinary movement back restored health `60`, stage 2 and a fresh live root. An ordinary attack killed the tank, invoked the native wreck callback and delivered wreck `128` to the observing enemy. The old living roots remained detached and fresh living-cue calls stopped after death. The owner no longer had sight there and correctly received no permanent wreck row. A delegating native-effects observer also recorded a real smoke allocation from seven to eight effects at the rear chassis mount `(-1.9391,2.0251,0)`. This establishes allocation and routing. Smoke is subtle in the inspected captures, so the stage value alone does not establish visual readability.
+
+With the match paused at tick `253`, the 120 squads retained 1,800 native soldier models, identical rows and 12,000 total health. A delegating wrapper counted actual native `man.position.set` calls: Low performed 19,800 over 11 visible frames and zero over 24 offscreen frames; High performed 1,800 over one visible frame and zero over 11 offscreen frames. Both settings returned all 120 squads to current detailed poses within two animation frames, with none suspended and zero root error. Low windows lasted 2.726/2.665 seconds. The High visible window took 18.493 seconds on software rendering; its offscreen window took about 2.780 seconds. These bounded work counts do not establish playable FPS, native GPU performance, isolated CPU savings or a general speedup.
+
+Root inspected the two image sheets and motion frames from the H.264 recordings. PR proof uses `army-gating-sheet.png`, `enemy-visibility-sheet.png`, `tank-death.mp4` and `army-high-gating.mp4` in that directory. The longer army clip includes the preliminary Low pass and slow software-rendered High flow. No media was committed to the repository. The older audio capture remains evidence for the unchanged audio routing, with its earlier source and controlled Alert disclosed above.
