@@ -30,6 +30,7 @@ const resources = (s, mp = 0, fuel = 0, mun = 0) =>
 // Reads only the player's snapshot. Queued recruits count toward both limits.
 export function availability(s, cfg = CFG, action = {}) {
   if (!s) return no('Waiting for the army');
+  if (action.watching || s.out?.[action.slot]) return no('You are spectating');
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
   const selected = own.filter((v) => (action.ids ?? []).includes(v.id));
   const classic = s.mode?.kind === 'classic', sudden = classic && s.mode.suddenDeath;

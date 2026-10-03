@@ -5,6 +5,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed defeated teams continuing to recruit and fight in Annihilation. Losing the team's last bunker now stops
+  its human and AI players, removes their remaining units and stops their manpower income. Defeated players
+  spectate with their team's vision; recruitment and order controls disappear, including in Classic.
+
 ### 2026-10-03: Performance regressions (`028ac23`)
 
 - Explosions keep their ragged crater and rubble outlines, but painting reuses nearby scar data and spreads live
