@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Final engine checks (`fff1245`)
+
 - Fixed authored reinforcement entries on mined ground using the underlying surface and object, so a mine marker
   cannot hide a vehicle-blocking obstacle during match admission.
 - AI assaults count Tank Destroyers as an answer to observed armor. Healthy supported attacks keep fighting a
