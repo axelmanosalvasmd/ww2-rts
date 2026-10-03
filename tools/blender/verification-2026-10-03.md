@@ -120,3 +120,7 @@ The audio module reported volume 0; console errors and GL errors were absent.
 The source and all poses pass checks for normalized weights, bounded geometry, atlas
 retention, distant meshes and stretched tiny triangles. Factions still share one face
 and base uniform cut. Independently authored historical uniforms remain future work.
+
+Final validation passed: `node test.js` (including 4,489 paired AI fog turns and
+the model, corpse and performance checks), `node test-world.js`, and the separately
+updated `node test-world-acceptance.js` snapshot-delivery regression checks.

@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Textured Blender infantry and engine integration (`855be86`)
+
 - Replaced near infantry bodies with a textured mesh fitted and weighted in Blender. Faces, cloth folds,
   boots and equipment now retain their surface detail through aiming, running, crouching and prone poses.
   All factions share the base cut, with different colors, helmets, weapons and specialist equipment.
