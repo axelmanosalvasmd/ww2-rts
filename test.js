@@ -6500,6 +6500,25 @@ for (const lookupFinished of [false, true]) {
   assert.equal(g.pathStats.dropped, 1, 'fresh order gets its own retry allowance');
 }
 
+// The lag recorder: browser numbers are clamped, and the reader blames the right side.
+{
+  const { cleanClient } = await import('./server/diag.js'), { summarize } = await import('./tools/diag.mjs');
+  assert.deepEqual(Object.values(cleanClient([60, -5, 'x', 1e9])).slice(0, 5), [60, 0, null, 1e6, null], 'untrusted numbers are clamped');
+  assert.equal(cleanClient('nope'), null);
+  const ok = { fps: 60, worst: 20, cpu: 4, snaps: 10, gap: 120, jitter: 5, loss: 0 };
+  const line = (tps, players) => ({ tps, tickP95: 2, snapEvery: 2, loopMax: 20, players });
+  const lines = Array.from({ length: 6 }, () => line(20, [
+    { slot: 0, name: 'fine', on: true, quiet: 1000, bufMax: 500, client: ok },
+    { slot: 1, name: 'slowpc', on: true, quiet: 1000, bufMax: 500, client: { ...ok, fps: 20, worst: 200, cpu: 30 } },
+    { slot: 2, name: 'badlink', on: true, quiet: 1000, bufMax: 90000, client: { ...ok, gap: 900 } },
+    { slot: 3, name: 'silent', on: true, quiet: null, bufMax: 0, client: null }, { slot: 4, ai: true }]));
+  const v = summarize(lines).verdicts.join('\n');
+  assert.ok(!/fine/.test(v) && !/SERVER/.test(v), 'a healthy player and server get no verdict');
+  assert.match(v, /slowpc.*BROWSER.*JavaScript-bound/); assert.match(v, /badlink.*send queue/); assert.match(v, /badlink.*stalls/);
+  assert.match(v, /silent.*no pings/); assert.ok(!/silent.*BROWSER/.test(v), 'no numbers is not a slow browser');
+  assert.match(summarize([line(16, [])]).verdicts[0], /SERVER/, 'a slow tick rate blames the server');
+}
+
 // Snapshot cadence reduces load, then recovers only after sustained spare capacity.
 {
   const { createTickMeter, recordTick, tickStats } = await import('./tickmeter.js');

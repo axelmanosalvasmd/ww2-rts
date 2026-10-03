@@ -12,6 +12,8 @@ echo.
 rem Listen on all interfaces too, so tailnet members can use http://<this PC's Tailscale IP>:3000. Windows Firewall
 rem decides who gets in: the rule "ww2-rts game (Tailscale only)" allows only Tailscale addresses (100.64.0.0/10).
 set HOST=0.0.0.0
+rem Record lag numbers to logs\diag-<room>.jsonl; read one with: node tools/diag.mjs
+set WW2_DIAG=1
 for /f %%i in ('tailscale ip -4 2^>nul') do echo   Or by Tailscale IP: http://%%i:3000
 echo.
 node server.js

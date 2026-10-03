@@ -32,6 +32,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ### Other recent unreleased changes
 
+- A lag recorder for diagnosing multiplayer lag. Hosting with start.cmd now records, every 5 seconds, the server's
+  real tick rate and timing plus each player's ping, connection backlog, frame rate and update gaps to
+  `logs/diag-<room>.jsonl`. After a laggy match, `node tools/diag.mjs` reads the newest recording and says whether
+  the lag came from the server, one player's connection, the host's connection (everyone at once) or a player's
+  browser. Players need to reload the page once so their browser starts sending its numbers.
 - A stats overlay for checking how the game runs. Open it from the menu (Stats overlay) and tick the numbers you want:
   frame rate, frame time, worst frame, script time, draw calls, triangles, render scale, memory; ping, jitter, loss,
   updates per second, the longest gap between updates, update size, download rate and the server's tick time; units,

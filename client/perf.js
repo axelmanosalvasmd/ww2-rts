@@ -45,6 +45,8 @@ export const perf = {
     if (Array.isArray(m.srv)) [stat.srvTick, stat.srvEvery] = m.srv;
     return rtt;
   },
+  // the numbers the server's lag recorder keeps (server/diag.js CLIENT_KEYS, same order), sent with each ping
+  diag: () => [stat.fps, stat.worst, stat.cpu, stat.snaps, stat.gap, stat.kbs, stat.ping, stat.jitter, stat.loss, stat.mem, stat.units, stat.fx],
   // fn(stat) after each one-second roll; returns an unsubscribe function
   onUpdate(fn) { subs.add(fn); return () => subs.delete(fn); },
   // once per frame, right after renderer.render(); start is the frame's performance.now() at its beginning

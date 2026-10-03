@@ -148,7 +148,7 @@ const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
   hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching, listing }), // a spectator who reconnects keeps watching
 });
-setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
+setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt, d: perf.diag() })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => {
   if (lobbyState?.state === 'play' && observing() && !observerControls.has(m.t)) return false;
   return connection.send(m);

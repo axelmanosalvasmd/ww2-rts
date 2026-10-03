@@ -13,8 +13,10 @@ import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
 import { createTickMeter, recordTick, tickStats } from './tickmeter.js';
+import { createDiag, cleanClient } from './server/diag.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
+const diag = process.env.WW2_DIAG === '1' ? createDiag({ dir: join(import.meta.dirname, 'logs') }) : null;
 const MAX_ROOMS = Math.max(1, Math.min(256, Math.floor(Number(process.env.MAX_ROOMS) || 32)));
 export const clock = {
   now: () => Date.now(),
@@ -363,6 +365,7 @@ wss.on('connection', (ws, req) => {
     if (msg.t === 'ping') {
       if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
+      if (diag) { me.diagAt = Date.now(); me.diagClient = cleanClient(msg.d); }
       // srv, for the stats overlay (client/stats.js): the slowest 5% of recent ticks that sent a snapshot in ms (the
       // number the tick meter holds to its 40 ms budget) and the ticks between snapshots
       const meter = room.state === 'play' && room.tickMeter;
@@ -533,6 +536,7 @@ export function tickRooms() {
     room.players.forEach((p, i) => (g.players[i].away = !p.ws && !p.ai));
     if (holdEnding(room)) continue;
     timedRoomTick(room);
+    diag?.tick(room, () => tickStats(room.tickMeter));
   }
 }
 // Windows timers fire in ~15.6 ms steps, so setInterval(50) really ran every ~62 ms (16 ticks/s, the game at 80%
@@ -541,6 +545,7 @@ const TICK_NS = BigInt(Math.round(TICK * 1e9));
 let dueAt = process.hrtime.bigint();
 export const loop = setInterval(() => {
   const now = process.hrtime.bigint();
+  if (dueAt <= now) diag?.lateBy(Number(now - dueAt) / 1e6);
   for (let n = 0; dueAt <= now && n < 4; n++) { tickRooms(); dueAt += TICK_NS; }
   if (dueAt <= now) dueAt = now + TICK_NS;
 }, 10);

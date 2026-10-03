@@ -1034,6 +1034,17 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   pong within 3 s is lost, counted over the last 30. The socket is TCP, so loss means a stall, not a dropped packet.
   Jitter is the mean change between consecutive pings. The pong carries `srv: [p95 ms, snapEvery]` from the room's
   tick meter during a match; the p95 is over the ticks that sent a snapshot, the number the meter holds to 40 ms.
+- Server tick clock (2026-10-03): the loop polls every 10 ms and runs the ticks `process.hrtime` says are due, at
+  most 4 per poll (a longer stall drops the backlog). `setInterval(50)` alone ran every ~62 ms on Windows.
+- Lag recorder (2026-10-03, `server/diag.js`, on with `WW2_DIAG=1`, which `start.cmd` sets): each ping carries the
+  browser's numbers (`perf.diag()`, order = `CLIENT_KEYS`). Every 5 s a playing room appends a line to
+  `logs/diag-<room>.jsonl`: real ticks/s, the latest a tick ran, event loop delay, tick p50/p95, and per player the
+  ping, ms since their last ping, the most bytes queued on their socket and their browser numbers. A paused window is
+  dropped. `node tools/diag.mjs [file]` (newest by default) prints percentiles and a verdict per side: SERVER (under
+  19 ticks/s, a tick over 40 ms, snapshots thinned, a loop stall over 100 ms), NETWORK per player (no ping for 6 s,
+  send queue over 32 KB, an update gap over 300 ms, jitter over 40 ms, any loss), SHARED (2+ players stalling in the
+  same window: the host's upload or relay), BROWSER (under 40 fps or a frame over 100 ms; over 10 ms of script per
+  frame means one core is the limit).
 
 ## Roadmap
 1. ~~Tracer bullet~~ 2. ~~Combat~~ 3. ~~LOS + fog~~ 4. ~~Points, VP, manpower, call-ins~~ (MVP)
