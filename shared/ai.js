@@ -6,6 +6,7 @@ import { viewFor } from './ai-view.js';
 import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
+import { insideKnownRegion } from './world-territories.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const SUPPORT_PLANE = (kind) => kind === 'strafe' || kind === 'bombing' || kind === 'dive' || kind === 'para';
@@ -785,7 +786,7 @@ function ownedGround(view, team, at) {
 }
 
 function insideRegion(region, at) {
-  return region.bounds && at.x >= region.bounds[0] && at.z >= region.bounds[1] && at.x < region.bounds[2] && at.z < region.bounds[3];
+  return insideKnownRegion(region, at, CELL);
 }
 
 function worldFrontier(view, from) {

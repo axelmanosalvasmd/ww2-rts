@@ -11,6 +11,7 @@
 // The floating 3D labels fade out while the map is up (client/markers.js fadeLabels).
 import * as THREE from 'three';
 import { drawSymbol } from './symbols.js';
+import { territoryEdges } from '/shared/world-territories.js';
 import { t as tr } from './i18n.js';
 import { CELL, CFG, UNITS, SUPPORT } from '/shared/sim.js';
 
@@ -178,7 +179,9 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
 
     for (const r of regions) {
       ctx.strokeStyle = teamColor?.(r.team) ?? INK; ctx.lineWidth = 1.5 * dpr;
-      if (r.bounds) {
+      if (r.runs) {
+        ctx.beginPath();for(const [x,y,xx,yy] of territoryEdges(r.runs)){const a=screen(x*2,y*2),b=screen(xx*2,yy*2);if(a&&b){ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}}ctx.stroke();
+      } else if (r.bounds) {
         const [x0, z0, x1, z1] = r.bounds, corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => screen(x, z));
         if (corners.every(Boolean)) { ctx.beginPath(); corners.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath(); ctx.stroke(); }
       }

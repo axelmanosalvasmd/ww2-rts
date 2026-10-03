@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CFG } from '/shared/sim.js';
+import { territoryEdges } from '/shared/world-territories.js';
 import { capturePoint, label } from './markers.js';
 
 // This layer receives only regions already discovered by the player's team.
@@ -21,6 +22,16 @@ export function createWorldRegions({ parent, hAt, colorOf, slotColor, team }) {
       const color = new THREE.Color(colorOf(r.team));
       v.cp.set(r.team >= 0 ? color.getHex() : null, r.capper >= 0 ? slotColor(r.capper) : null, r.progress ?? 0, !!r.contested);
       v.root.position.y = hAt(r.x, r.z);
+      if (r.runs) {
+        const key=`${r.team}:${JSON.stringify(r.runs)}`;
+        if(v.borderKey!==key){
+          v.borderKey=key; v.border?.geometry.dispose();v.border?.material.dispose();v.border?.removeFromParent();
+          const coords=[];
+          for(const [x,y,xx,yy] of territoryEdges(r.runs)) for(const [a,b] of [[x,y],[xx,yy]]) coords.push(new THREE.Vector3(a*2,hAt(a*2,b*2)+0.2,b*2));
+          v.border=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(coords),new THREE.LineBasicMaterial({color,transparent:true,opacity:0.55,depthWrite:false}));group.add(v.border);
+        }
+        continue;
+      }
       const borderKey = `${r.team}:${r.bounds?.join()}`;
       if (r.bounds && v.borderKey !== borderKey) {
         v.borderKey = borderKey;

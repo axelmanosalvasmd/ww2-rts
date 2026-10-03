@@ -5,6 +5,7 @@
 // minimap at the spot and a sound. Space jumps to the newest one; clicking a line does the same.
 import { UNITS, SUPPORT } from '/shared/sim.js';
 import { audio } from './audio.js';
+import { insideKnownRegion } from '/shared/world-territories.js';
 
 const LIFE = 6;             // seconds a line stays up
 const FADE = 0.6;           // last part of that it spends fading out
@@ -157,8 +158,7 @@ function snapshot(s, prev) {
   if (s.world) {
     const oldRegions = new Map((prev.world?.regions ?? []).map(r => [r.id, r]));
     const home = s.world.home ?? s.home, oldHome = prev.world?.home ?? prev.home;
-    const homeTeam = (regions, at) => at && regions.find(r => r.team >= 0 && r.bounds &&
-      at[0] >= r.bounds[0] && at[1] >= r.bounds[1] && at[0] < r.bounds[2] && at[1] < r.bounds[3])?.team;
+    const homeTeam = (regions, at) => at && regions.find(r => r.team >= 0 && insideKnownRegion(r,{x:at[0],z:at[1]}))?.team;
     const team = hooks.team?.() ?? homeTeam(s.world.regions ?? [], home) ?? homeTeam(prev.world?.regions ?? [], oldHome);
     for (const r of s.world.regions ?? []) {
       const was = oldRegions.get(r.id);

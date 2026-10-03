@@ -16,7 +16,7 @@ await import('./test-tutorial.js');
 // The large-world checks use real clients and a fresh authoritative server.
 {
   const { execFileSync } = await import('node:child_process');
-  for (const file of ['test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
+  for (const file of ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js', 'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
   }
 }

@@ -5,6 +5,7 @@ import { setupTutorial, stepTutorial } from './tutorial.js';
 import { gridFor, rebuildGrid, updateGrid, SpatialGrid } from './grid.js';
 import { planWeather, stepWeather, sightMul, weatherSpeed, weatherRow } from './weather.js';
 import { normalizeFace, slotSize, facingSpots } from './formation.js';
+import { knownTerritoryRuns } from './world-territories.js';
 import { generateWorldMap, WORLD_TUNING } from './world-conquest.js';
 
 export const CELL = 2;
@@ -853,6 +854,10 @@ function findSite(g, x, z, size, avoid = []) {
 // Region coordinates use world metres inside the simulation, independent of the legacy capture-point list.
 function worldRegionAt(g, at) {
   if (!g.world) return null;
+  if (g.world.regionMap) {
+    const x=Math.floor(at.x/CELL), y=Math.floor(at.z/CELL);
+    return x>=0&&y>=0&&x<g.w&&y<g.h ? g.world.regions[g.world.regionMap[y*g.w+x]] ?? null : null;
+  }
   if (!g.world.regionCells) return g.world.regions.find(r => r.bounds && at.x >= r.bounds[0] && at.z >= r.bounds[1] && at.x < r.bounds[2] && at.z < r.bounds[3]) ?? null;
   const span = g.world.regionCells * CELL, cols = g.w / g.world.regionCells;
   const x = Math.floor(at.x / span), y = Math.floor(at.z / span);
@@ -866,6 +871,7 @@ function worldHome(g, team, from) {
 function validateWorldMap(m) {
   const v = m.world, count = v.size === 'huge' ? 64 : v.size === 'massive' ? 128 : 0;
   if (!count || v.total !== count || !Array.isArray(v.regions) || v.regions.length !== count || v.regionCells !== WORLD_TUNING.regionCells) return 'invalid world regions';
+  if (v.regionMap && (v.regionMap.length !== m.w*m.h || v.regionMap.some(id=>!Number.isInteger(id)||id < -1||id>=count))) return 'invalid region membership';
   const homes = new Set(), ids = new Set();
   for (const r of v.regions) {
     if (!r || !Number.isInteger(r.id) || ids.has(r.id) || !Number.isInteger(r.x) || !Number.isInteger(r.y) || r.x < 0 || r.y < 0 || r.x >= m.w || r.y >= m.h || (TERRAIN[m.rows[r.y][r.x]] & MOVE) || !Array.isArray(r.bounds) || r.bounds.length !== 4) return 'invalid world region';
@@ -889,7 +895,7 @@ function validateWorldMap(m) {
 function setupWorld(g, map) {
   const error = validateWorldMap(map); if (error) throw new Error(error);
   g.mode = { kind: 'world', teams: new Set(g.players.map(p => p.team)).size, total: map.world.total };
-  g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
+  g.world = { size: map.world.size, total: map.world.total, seed: map.world.seed, regionMap: map.world.regionMap ? Int16Array.from(map.world.regionMap) : null, regionCells: map.world.regionCells, memory: new Map(), regions: map.world.regions.map(r => ({ ...r, x: (r.x + 0.5) * CELL, z: (r.y + 0.5) * CELL, bounds: r.bounds.map(v => v * CELL), team: r.home === undefined ? -1 : g.players[r.home].team, progress: r.home === undefined ? 0 : 1, capper: -1 })) };
   // An array property keeps the hostile local actor out of lobby seats, results and competitive team loops.
   Object.defineProperty(g.players, '-1', { value: { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: { x: 0, z: 0 }, visible: new Set(), mp: 0, mun: 0, fuel: 0 }, configurable: true });
   g.nodes = [];
@@ -1005,6 +1011,7 @@ export function worldMapFor(g, slot) {
 }
 function worldSnapshot(g, slot) {
   const p=g.players[slot], m=worldTerrainMemory(g,p.team), f=teamFog(g,p.team);
+  if (g.world.regionMap && m.runsVersion !== m.version) { m.runs=knownTerritoryRuns(g.world.regionMap,m.cells.keys(),g.w); m.runsVersion=m.version; }
   const knownBases = [...g.units.values()].filter(b => seenBy(g, slot, b.id)).concat(knownBuildings(g, slot));
   const infantry = [...g.units.values()].filter(u => u.hp > 0 && !u.retreating && !u.riding && UNITS[u.type].infantry && seenBy(g, slot, u.id));
   for (const r of g.world.regions) {
@@ -1016,9 +1023,10 @@ function worldSnapshot(g, slot) {
       const progress = current ? rounded(r.progress) : old?.progress ?? (r.team === p.team ? 1 : 0);
       const capper = current ? r.capper : old?.capper ?? -1;
       const contested = current ? (g.reveal ? !!r.contested : seenTeams.size > 1) : old?.contested ?? false;
-      m.regions.set(r.id,{id:r.id,name:r.name,kind:r.kind,team:r.team,x:r.x,z:r.z,bounds:[...r.bounds],progress,capper,locked,contested});
+      m.regions.set(r.id,{id:r.id,name:r.name,kind:r.kind,team:r.team,x:r.x,z:r.z,bounds:g.world.regionMap ? undefined : [...r.bounds],...(g.world.regionMap ? {runs:m.runs?.get(r.id)??[]} : {}),progress,capper,locked,contested});
     }
   }
+  if (g.world.regionMap) for (const [id,r] of m.regions) r.runs=m.runs?.get(id)??[];
   const own=[...g.units.values()].filter(u=>u.owner===slot && u.hp>0);
   const home=worldHome(g,p.team,p.spawn);
   return {home:[rounded(home.x),rounded(home.z)],size:g.world.size,total:g.world.total,owned:worldOwned(g,p.team),cap:popCap(g,slot),regions:[...m.regions.values()],recovery:{hq:WORLD_TUNING.recoverHQ,engineer:UNITS.engineer.cost,available:!p.out && (!own.some(u=>u.type==='hq') || !own.some(u=>u.type==='engineer'))}};
