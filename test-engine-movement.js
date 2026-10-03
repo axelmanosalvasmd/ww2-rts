@@ -97,6 +97,18 @@ try {
   assert.ok(passed, 'a tank passes a stationary protected unit and resumes its retained destination');
   assert.deepEqual(host.rows.get(parkedFoot.id).slice(3, 5), [56, 56], 'passing never displaces the protected blocker');
   fixture();
+  const leavingHQ = put('rifle', 40, 40), homeHQ = put('hq', 44, 38), homeEngineer = put('engineer', 48, 38);
+  homeEngineer.holdPos = true;
+  await tick(4); await move(leavingHQ, 76, 38);
+  let leftBase = false;
+  for (let n = 0; n < 500 && !leftBase; n += 4) {
+    await tick(4); const row = host.rows.get(leavingHQ.id);
+    leftBase = Math.hypot(row[3] - 76, row[4] - 38) < 2;
+  }
+  assert.ok(leftBase, 'a squad passes its HQ when another infantry squad occupies the proposed exit');
+  assert.deepEqual(host.rows.get(homeEngineer.id).slice(3, 5), [48, 38], 'the holding engineer is not displaced');
+  assert.deepEqual(host.rows.get(homeHQ.id).slice(3, 5), [44, 38], 'the HQ remains fixed');
+  fixture();
   const turning = put('tank', 30, 30);
 
   const wall = 16;

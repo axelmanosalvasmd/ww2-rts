@@ -5,6 +5,47 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Textured Blender infantry and engine integration (`855be86`)
+
+- Replaced near infantry bodies with a textured mesh fitted and weighted in Blender. Faces, cloth folds,
+  boots and equipment now retain their surface detail through aiming, running, crouching and prone poses.
+  All factions share the base cut, with different colors, helmets, weapons and specialist equipment.
+  Distant figures remain simplified. Closed grips replace the generated reference's open hands.
+- Fixed rifle squads getting stuck behind their own HQ when another infantry squad occupied a passing
+  route's exit. Infantry now uses the same soft separation for route checks as for nearby traffic.
+- Made World Conquest acceptance checks wait for delivered snapshots and use exact positions for wall
+  collision checks, avoiding false failures caused by socket delays and rounded network coordinates.
+- Fixed the model viewer drawing its first measurement before shadow textures existed, which caused
+  a startup WebGL error. Added a neutral floor-color option and retained the infantry reference,
+  reduced source, editable Blender rig and rebuild command in the repository.
+
+### 2026-10-03: Rebuilt geometry and materials (`c60f4ce`)
+
+- Rebuilt tank castings, wheels and tracks, infantry faces and weapons, aircraft fuselages and canopies, and base
+  buildings with smoother shapes and more mechanical detail. Ships now have curved hulls, cambered decks, open
+  bridges, torpedo tubes and shaped gunhouses, with Blender finishing for panel edges and normals.
+- Painted metal, bare metal, rubber, cloth, timber, asphalt and concrete now respond differently to light.
+  Fine fabric grain replaces coarse mottling, ship hulls avoid land mud, and a filtered sky reflection improves
+  metal on High graphics. Low keeps material response while omitting texture detail and reflections.
+- Fixed the model viewer sometimes reporting textures off while texture loading was still in progress.
+- Known issue left for separate work: World Conquest can receive an early snapshot before the client world is
+  ready. The same startup error was reproduced on unchanged master; it is unrelated to these visual changes.
+
+### 2026-10-03: Model detail, lighting and movement (`fce8526`)
+
+- Vehicles settle as they accelerate and turn, boats gently ride the water, and soldiers ease between stride
+  frames and crouching or crawling movement. Selection markers stay level and muzzle effects follow the models.
+- Shaded units and buildings stay readable under brighter sky and ground fill. Clouds have softer edges, and
+  river mist and fog banks use the weather color, gentle wisps, and a fade near the camera.
+- Naval craft now have shaped hulls, detailed bridges, deck fittings and working gun mounts. Landing craft
+  have ribbed ramps, benches and an open passenger well. Both landing-craft muzzle flashes match their barrels.
+  Movement and combat rules are unchanged.
+- Infantry uniforms and equipment, tank fittings, wheel hubs, aircraft canopies and weapons, and base buildings
+  have clearer detail. Refined painted metal and subtler cast-armor and gunmetal grain keep the faction
+  colors easier to distinguish.
+- Added the three project-scoped Blender integrations for Codex and Claude Code, reusable modeling instructions,
+  model export and review tools, and generated multi-view art references.
+
 ### 2026-10-03: Engine and game feel (`7e3dc83`)
 
 - Units anticipate traffic, yield through crowded crossings and keep their destination while rerouting around new

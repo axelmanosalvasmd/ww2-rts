@@ -6,8 +6,8 @@
 // shared by every plane of that kind (geometry and material), so a plane costs one draw call, one per propeller for
 // the blades and one more for all its blur discs together.
 // The owner's colour is kept to a unit marking: a narrow band round the rear fuselage and the spinner or cowl lips,
-// so the camouflage stays the real one. The body material draws the camouflage, panel and hinge lines per pixel and a
-// fill light in the paint's own colour (paintMaterial in models/planes.js); bare-metal planes get a shinier copy of it.
+// so the camouflage stays the real one. The physical body material draws camouflage, panel and hinge lines per pixel
+// (paintMaterial in models/planes.js); bare-metal planes get a reflective aluminium copy of it.
 //
 // Smoke, fire and flak bursts share the combat effect pool through ctx.air. Everything
 // here only draws: the simulation decides what happens, and the shots it sends say when.
@@ -72,9 +72,9 @@ function merge(parts) {
   for (const p of parts) {
     const g = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone();
     if (p.m) g.applyMatrix4(p.m);
-    const pa = g.attributes.position, na = g.attributes.normal, id = matId(p.mat);
+    const pa = g.attributes.position, na = g.attributes.normal, ca = g.attributes.color, id = matId(p.mat);
     c.set(p.color);
-    for (let i = 0; i < pa.count; i++) { pos.push(pa.getX(i), pa.getY(i), pa.getZ(i)); nor.push(na.getX(i), na.getY(i), na.getZ(i)); col.push(c.r, c.g, c.b); mat.push(id); }
+    for (let i = 0; i < pa.count; i++) { pos.push(pa.getX(i), pa.getY(i), pa.getZ(i)); nor.push(na.getX(i), na.getY(i), na.getZ(i)); col.push(c.r * (ca?.getX(i) ?? 1), c.g * (ca?.getY(i) ?? 1), c.b * (ca?.getZ(i) ?? 1)); mat.push(id); }
     g.dispose();
   }
   const out = new THREE.BufferGeometry();
@@ -103,10 +103,10 @@ export const ROLE_OF_SUPPORT = { recon: 'fighter', strafe: 'attacker', dive: 'at
 
 // the model textures (client/model-textures.js) on top of the planes' paint: aircraft paint (bare metal on the shiny
 // planes) wherever a part does not say otherwise, no grime
-const BODY_MAT = modelMaterial(paintMaterial(new THREE.MeshLambertMaterial({ vertexColors: true })), { mat: 'aircraft-paint' });
-const METAL_MAT = modelMaterial(paintMaterial(new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x3a3a3a, shininess: 26 })), { mat: 'aluminum' });
-const FIELD_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
-const BLADE_MAT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'aircraft-paint' });
+const BODY_MAT = modelMaterial(paintMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.63, metalness: 0 })), { mat: 'aircraft-paint' });
+const METAL_MAT = modelMaterial(paintMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.95 })), { mat: 'aluminum' });
+const FIELD_MAT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 }), { mat: 'aircraft-paint' });
+const BLADE_MAT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.63, metalness: 0 }), { mat: 'aircraft-paint' });
 const DISC_MAT = new THREE.MeshBasicMaterial({ color: 0x30302a, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
 const BOMB_GEO = merge([{ geo: SRC.cyl, color: 0x34362a, m: xf(0, 0, 0, 0, 0, 0, 1.5, .26, .26) }, { geo: SRC.cyl, color: TIP, m: xf(.3, 0, 0, 0, 0, 0, .15, .27, .27) }, { geo: SRC.cone, color: 0x34362a, m: xf(.95, 0, 0, 0, 0, 0, .4, .26, .26) }]);
 
@@ -470,29 +470,53 @@ export function createAviation(ctx) {
 // ---------- airfield model ----------
 
 function airfield(fac, own, vehicle) {
-  const parts = [], add = (geo, color, m) => parts.push({ geo, color, m });
-  const box = (color, sx, sy, sz, x, y, z) => add(SRC.box, color, xf(x, y, z, 0, 0, 0, sx, sy, sz));
-  // packed dirt apron and a pale grass-and-gravel strip with painted edges, centre dashes and threshold bars
-  box(0x7a6e50, 6.6, 0.06, 6.2, 0, 0.03, 0); box(0x8a7d5c, 5.6, 0.07, 5.2, 0.2, 0.035, 0.2);
-  box(0x9c937c, 8.6, 0.09, 2, 0, 0.045, -2);
-  for (const z of [-3, -1]) box(WHITE, 8.4, 0.1, 0.07, 0, 0.05, z);
-  for (let i = 0; i < 6; i++) box(WHITE, 0.7, 0.1, 0.12, -3.2 + i * 1.28, 0.05, -2);
-  for (const x of [-4, 4]) for (let i = 0; i < 4; i++) box(WHITE, 0.45, 0.1, 0.1, x * 0.97, 0.05, -2.55 + i * 0.37);
+  const parts = [], add = (geo, color, m, mat = null) => parts.push({ geo, color, m, mat });
+  const box = (color, sx, sy, sz, x, y, z, mat = null) => add(SRC.box, color, xf(x, y, z, 0, 0, 0, sx, sy, sz), mat);
+  const slab = (color, sx, sy, sz, x, y, z, mat, seed) => {
+    const g = new THREE.BoxGeometry(sx, sy, sz, 40, 1, 12), p = g.attributes.position, colors = [];
+    for (let i = 0; i < p.count; i++) {
+      const px = p.getX(i), pz = p.getZ(i), random = Math.sin(px * 127.1 + pz * 311.7 + seed) * 43758.5453;
+      const variation = 0.88 + 0.2 * (random - Math.floor(random));
+      const traffic = mat === 'asphalt' ? 0.13 * Math.exp(-pz * pz / 0.06) * Math.exp(-(((px + 0.3) / 3.6) ** 4)) : 0;
+      const k = variation - traffic; colors.push(k, k, k);
+    }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); add(g, color, xf(x, y, z), mat);
+  };
+  // A worn concrete apron meets a dark asphalt strip with faded edges, centre dashes and threshold bars.
+  box(0x777460, 6.6, 0.06, 6.2, 0, 0.03, 0, 'mud'); slab(0x929387, 5.6, 0.07, 5.2, 0.2, 0.035, 0.2, 'concrete', 71);
+  slab(0x545959, 8.6, 0.09, 2, 0, 0.045, -2, 'asphalt', 87);
+  const marking = 0xbcbbae;
+  for (const z of [-3, -1]) box(marking, 8.4, 0.014, 0.045, 0, 0.098, z, 'plain');
+  for (let i = 0; i < 6; i++) box(marking, 0.7, 0.014, 0.09, -3.2 + i * 1.28, 0.098, -2, 'plain');
+  for (const x of [-4, 4]) for (let i = 0; i < 4; i++) box(marking, 0.45, 0.014, 0.075, x * 0.97, 0.098, -2.55 + i * 0.37, 'plain');
   box(0x8a7d5c, 1.5, 0.08, 1.4, -1.4, 0.04, -0.4);
   // arched hangar, door end toward the strip: roof in the faction's vehicle colour, ribs, a door framed in the owner's colour
   const R = 1.45, arch = (r0, r1, depth, z, color, sy = 0.85) => {
     const s = new THREE.Shape(); s.moveTo(-r1, 0); s.absarc(0, 0, r1, PI, 0, true);
     if (r0 > 0) { s.lineTo(r0, 0); s.absarc(0, 0, r0, 0, PI, false); } else s.lineTo(-r1, 0);
-    const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 10 }); g.scale(1, sy, 1);
+    const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 20 }); g.scale(1, sy, 1);
     add(g, color, xf(-1.4, 0.06, z));
   };
-  arch(0, R, 3.2, -0.1, vehicle);
+  // A hollow shell exposes the hangar's floor and shaded back wall through the entrance.
+  arch(R - 0.075, R, 3.2, -0.1, vehicle);
+  arch(0, R - 0.08, 0.08, 3.02, 0x5a5d50);
+  box(0x514f43, R * 1.84, 0.05, 3.08, -1.4, 0.08, 1.5, 'plain');
   for (let i = 0; i < 6; i++) arch(R, R * 1.045, 0.09, 0.15 + i * 0.58, 0x2e3324);
-  arch(R * 0.76, R * 0.96, 0.1, -0.13, own); arch(0, R * 0.76, 0.06, -0.14, 0x24241f);
+  arch(R * 0.91, R * 0.97, 0.1, -0.13, own);
   for (const p of insignia(fac, 0.45)) add(p.geo, p.color, xf(-1.4, 0.06 + R * 0.85 + 0.03, 1.5).multiply(FLAT).multiply(p.m));
   for (const p of insignia(fac, 0.5)) add(p.geo, p.color, xf(1.2, 0.1, 0.8).multiply(FLAT).multiply(p.m));      // roundel painted on the apron
   // control tower with a glass cab, a flat roof and a pennant in the owner's colour
-  box(0xb8ab8a, 0.9, 1.1, 0.9, 1.9, 0.6, 1.9); box(vehicle, 1.2, 0.5, 1.2, 1.9, 1.4, 1.9); box(GLASS, 1.22, 0.26, 1.22, 1.9, 1.42, 1.9); box(0x6b6554, 1.4, 0.08, 1.4, 1.9, 1.72, 1.9);
+  add(new THREE.CylinderGeometry(0.59, 0.72, 1.1, 4).rotateY(PI / 4), 0xb8ab8a, xf(1.9, 0.6, 1.9), 'plain');
+  box(vehicle, 1.2, 0.5, 1.2, 1.9, 1.4, 1.9); box(GLASS, 1.22, 0.26, 1.22, 1.9, 1.42, 1.9, 'plain'); box(0x6b6554, 1.4, 0.08, 1.4, 1.9, 1.72, 1.9);
+  // Cab posts divide the glazing, and an external ladder reaches the observation platform.
+  for (const dx of [-0.61, 0.61]) for (const dz of [-0.61, 0.61]) box(0x6b6554, 0.055, 0.32, 0.055, 1.9 + dx, 1.43, 1.9 + dz);
+  for (const s of [-1, 1]) {
+    box(0x6b6554, 0.05, 0.27, 0.035, 1.9, 1.42, 1.9 + s * 0.617);
+    box(0x6b6554, 0.035, 0.27, 0.05, 1.9 + s * 0.617, 1.42, 1.9);
+    box(0x5c5a4f, 0.035, 1.25, 0.04, 2.4, 0.67, 1.9 + s * 0.17);
+  }
+  for (let i = 0; i < 6; i++) box(0x5c5a4f, 0.045, 0.035, 0.38, 2.405, 0.14 + i * 0.2, 1.9);
+  box(0x3b3830, 0.015, 0.64, 0.35, 1.9, 0.4, 1.442);
   add(SRC.cyl, 0x4a3f30, xf(1.9, 2.25, 1.9, 0, 0, PI / 2, 1, 0.03, 0.03)); box(own, 0.5, 0.28, 0.03, 2.15, 2.5, 1.9);
   // fuel drums and crates by the hangar
   for (let i = 0; i < 3; i++) add(SRC.cyl, [0x4f5a38, 0x6e5836, 0x4f5a38][i], xf(1.3 + i * 0.5, 0.25, 2.9, 0, 0, PI / 2, 0.5, 0.22, 0.22));

@@ -72,9 +72,9 @@ function solid(faces) {
   for (const { pts, out, uvs, c: shade = 1 } of faces) {
     a.fromArray(pts[0]); b.fromArray(pts[1]); c.fromArray(pts[2]);
     n.subVectors(b, a).cross(c.sub(a)).normalize();
-    let order = [0, 1, 2, 3];
-    if (n.dot(P3.fromArray(out)) < 0) { order = [0, 3, 2, 1]; n.negate(); }
-    for (const i of [order[0], order[1], order[2], order[0], order[2], order[3]]) {
+    let order = pts.length === 3 ? [0, 1, 2] : [0, 1, 2, 3];
+    if (n.dot(P3.fromArray(out)) < 0) { order = pts.length === 3 ? [0, 2, 1] : [0, 3, 2, 1]; n.negate(); }
+    for (const i of pts.length === 3 ? order : [order[0], order[1], order[2], order[0], order[2], order[3]]) {
       pos.push(...pts[i]); nor.push(n.x, n.y, n.z); uv.push(...uvs[i]); col.push(shade, shade, shade);
     }
   }
@@ -985,6 +985,9 @@ const darker = (hex, k) => mul(lin(hex), k);
 // half cylinder along x, radius 1, length 1, the round side up (open: shell; closed: end wall)
 const half = (open) => new THREE.CylinderGeometry(1, 1, 1, 12, 1, open, -Math.PI / 2, Math.PI).rotateZ(-Math.PI / 2).rotateX(-Math.PI / 2);
 const HALF = half(true), HALF_END = half(false);
+const TYRE = new THREE.TorusGeometry(0.32, 0.1, 4, 10).rotateX(Math.PI / 2);
+const ENGINE_CASE = new THREE.CylinderGeometry(0.27, 0.27, 0.74, 12).rotateZ(Math.PI / 2);
+const VALVE_COVER = new THREE.CapsuleGeometry(0.09, 0.51, 4, 8).rotateZ(Math.PI / 2);
 const oct = (top, bottom) => flat(new THREE.CylinderGeometry(top, bottom, 1, 8, 1).rotateY(Math.PI / 8));
 const BUNKER = { body: oct(2.3, 2.75), slab: oct(2.6, 2.6), turf: oct(1.5, 2.35) };
 const SANDBAG = 0x9c8a60;
@@ -992,6 +995,85 @@ const SANDBAG = 0x9c8a60;
 const CANVAS = 1, TIMBER = 2, CONCRETE = 3, SHEET_X = 4, BURLAP = 5, SHEET_Z = 6;
 const tx = (tex, ...parts) => parts.map(p => Object.assign(p, { tex }));
 const bagTint = (k) => mul(lin(SANDBAG), 0.9 + 0.2 * rnd(k, 3, 160));
+// Roof panels have separate upper and lower skins, closed edges and a short raised ridge.
+const HIP_ROOF = (() => {
+  const a = [-0.5, 0, -0.5], b = [0.5, 0, -0.5], c = [0.5, 0, 0.5], d = [-0.5, 0, 0.5];
+  const r0 = [0, 1, -0.2], r1 = [0, 1, 0.2], uv = [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const top = [[a, b, r0], [b, c, r1, r0], [c, d, r1], [d, a, r0, r1]];
+  const faces = top.map((pts, i) => ({ pts, out: [[0, 1, -1], [1, 1, 0], [0, 1, 1], [-1, 1, 0]][i], uvs: uv }));
+  for (const pts of top) faces.push({ pts: pts.map(([x, y, z]) => [x, y - 0.06, z]), out: [0, -1, 0], uvs: uv });
+  for (const [p, q] of [[a, b], [b, c], [c, d], [d, a]]) faces.push({ pts: [p, q, [q[0], -0.06, q[2]], [p[0], -0.06, p[2]]], out: [p[0] + q[0], 0, p[2] + q[2]], uvs: uv });
+  return solid(faces);
+})();
+// Corrugated steel follows the roof's shape. Smooth normals keep its highlights continuous.
+function roofShell(length, width, arch = false, slope = 0) {
+  const NX = arch ? 54 : 8, NZ = arch ? 32 : 120, pos = [], idx = [];
+  for (let side = 0; side < 2; side++) for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) {
+    const x = (i / NX - 0.5) * length, t = j / NZ;
+    if (arch) {
+      const r = width / 2 - side * 0.065 + 0.018 * Math.cos(x * Math.PI * 2 / 0.3);
+      pos.push(x, r * Math.sin(t * Math.PI), -r * Math.cos(t * Math.PI));
+    } else {
+      const z = (t - 0.5) * width;
+      pos.push(x, x * slope + 0.025 * Math.cos(z * Math.PI * 2 / 0.2) - side * 0.075, z);
+    }
+  }
+  const grid = (NX + 1) * (NZ + 1), quad = (a, b, c, d, flip) => idx.push(...(flip ? [a, c, b, a, d, c] : [a, b, c, a, c, d]));
+  for (let side = 0; side < 2; side++) for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) {
+    const a = side * grid + i * (NZ + 1) + j, b = a + NZ + 1;
+    quad(a, a + 1, b + 1, b, side === 1);
+  }
+  for (let i = 0; i < NX; i++) for (const j of [0, NZ]) {
+    const a = i * (NZ + 1) + j, b = a + NZ + 1;
+    quad(a, b, b + grid, a + grid, j === NZ);
+  }
+  for (let j = 0; j < NZ; j++) for (const i of [0, NX]) {
+    const a = i * (NZ + 1) + j;
+    quad(a, a + grid, a + grid + 1, a + 1, i === NX);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+const HUT_ROOF = roofShell(5.5, 4.9, true), WORKSHOP_ROOF = roofShell(3.75, 6, false, 0.7 / 3.75);
+// Canvas drapes over the ridge and hangs in scallops between the tied corners.
+const SUPPLY_TARP = (() => {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z), inside = V(0, 0.6, 0), panels = [];
+  for (const side of [-1, 1]) {
+    const rows = Array.from({ length: 13 }, (_, i) => Array.from({ length: 17 }, (_, j) => {
+      const u = j / 16, v = i / 12, x = (u - 0.5) * 1.98;
+      const z = side * 0.85 * Math.min(1, v * 1.8), roof = 1.49 - 0.3 * Math.min(1, v * 1.8);
+      const y = v < 0.56 ? roof - 0.055 * Math.sin(Math.PI * u) * Math.sin(v * Math.PI * 1.8) : 1.19 - (v - 0.56) / 0.44 * (0.91 - 0.045 * Math.cos(u * Math.PI * 6));
+      return V(x + 0.025 * Math.sin(u * Math.PI * 6) * v, y, z + side * 0.025 * Math.sin(u * Math.PI * 6) * v);
+    }));
+    panels.push({ geo: sheet(rows, inside), color: 0xffffff, m: new THREE.Matrix4() });
+  }
+  for (const s of [-1, 1]) {
+    const rows = Array.from({ length: 9 }, (_, i) => Array.from({ length: 13 }, (_, j) => {
+      const z = (j / 12 - 0.5) * 1.7, v = i / 8, roof = 1.49 - 0.3 * Math.abs(z / 0.85);
+      return V(s * (0.99 + 0.018 * Math.sin(j * Math.PI / 2) * v), roof * (1 - v) + (0.26 + 0.025 * Math.cos(j * Math.PI / 2)) * v, z);
+    }));
+    panels.push({ geo: sheet(rows, inside), color: 0xffffff, m: new THREE.Matrix4() });
+  }
+  return merge(panels);
+})();
+// A framed opening facing +x. The recess stays dark while the timber edges catch the sun.
+function framedOpening(P, x, y, z, width, height, trim, yaw = 0, door = false) {
+  const add = (c, dx, dy, dz, sx, sy, sz, tex = TIMBER) => {
+    const co = Math.cos(yaw), si = Math.sin(yaw);
+    P.push(...tx(tex, bx(c, sx, sy, sz, x + dx * co + dz * si, y + dy, z - dx * si + dz * co, yaw)));
+  };
+  for (const s of [-1, 1]) add(trim, 0.035, 0, s * (width / 2 + 0.03), 0.065, height + 0.12, 0.055);
+  add(trim, 0.04, height / 2 + 0.035, 0, 0.085, 0.07, width + 0.12);
+  add(darker(trim, 0.8), 0.065, -height / 2 - 0.02, 0, door ? 0.24 : 0.12, 0.045, width + 0.14);
+  if (door) {
+    for (const dy of [-height * 0.25, height * 0.25]) add(darker(trim, 0.85), 0.06, dy, 0, 0.035, 0.07, width * 0.85);
+    add(0x706c5c, 0.09, -0.1, -width * 0.32, 0.055, 0.08, 0.045, 0);
+  } else {
+    add(trim, 0.05, 0, 0, 0.025, height, 0.025);
+    add(0x344851, 0.012, 0, 0, 0.025, height * 0.86, width * 0.9, 0);
+    add(0x748a93, 0.027, height * 0.25, 0, 0.012, height * 0.28, width * 0.9, 0);
+  }
+}
 // a ring of rounded bags in arcs [from, to] (radians), two courses with the bottom two rows deep
 function bagArcs(P, radius, arcs, len, ht, depth) {
   arcs.forEach(([a0, a1], k) => {
@@ -1007,13 +1089,36 @@ const MODELS = {
   // command post: log blockhouse with a hipped roof, sandbagged door, radio mast and a flag
   hq: (f) => {
     const P = [], logs = 0x5e4a32, post = 0x3a2e20, slit = 0x16140f;
-    P.push(...tx(TIMBER, bx(0x5e5038, 5.9, 0.16, 5.9, 0, 0.08, 0), bx(0x7a6446, 4.4, 2.5, 4.4, 0, 1.41, 0)));
-    for (const y of [0.55, 1.15, 1.75, 2.35]) P.push(...tx(TIMBER, bx(logs, 4.5, 0.13, 4.5, 0, y, 0)));
+    P.push(...tx(TIMBER, bx(0x5e5038, 5.9, 0.16, 5.9, 0, 0.08, 0), bx(0x433623, 4.12, 2.5, 4.12, 0, 1.41, 0)));
+    // Individual rounded logs stop at the openings, leaving a real reveal behind each frame.
+    const spans = (cuts) => {
+      const out = []; let from = -2.34;
+      for (const [a, b] of cuts) { if (a > from) out.push([from, a]); from = b; }
+      if (from < 2.34) out.push([from, 2.34]); return out;
+    };
+    for (let row = 0; row < 9; row++) {
+      const y = 0.33 + row * 0.27, nearWindow = y > 1.4 && y < 1.99;
+      for (const s of [-1, 1]) {
+        const cutFront = s > 0 ? [...(nearWindow ? [[-1.78, -0.82]] : []), ...(y < 2.13 ? [[-0.67, 0.67]] : []), ...(nearWindow ? [[0.82, 1.78]] : [])] : [];
+        for (const [a, b] of spans(cutFront)) P.push(...tx(TIMBER, cyl(row & 1 ? logs : 0x705637, 0.15, b - a, 10, s * 2.2, y, (a + b) / 2, Math.PI / 2)));
+        for (const [a, b] of spans(nearWindow ? [[-1.63, -0.57], [0.57, 1.63]] : [])) P.push(...tx(TIMBER, cyl(row & 1 ? 0x705637 : logs, 0.15, b - a, 10, (a + b) / 2, y, s * 2.2, 0, Math.PI / 2)));
+      }
+    }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) P.push(...tx(TIMBER, bx(post, 0.32, 2.75, 0.32, sx * 2.2, 1.5, sz * 2.2)));
-    P.push(...tx(TIMBER, bx(post, 5.4, 0.18, 5.4, 0, 2.72, 0)), ...tx(CANVAS, part(PYRAMID, f.vehicle, 0, 2.8, 0, 5.6, 1.5, 5.6)));
+    P.push(...tx(TIMBER, bx(post, 5.4, 0.18, 5.4, 0, 2.72, 0)), ...tx(SHEET_Z, part(HIP_ROOF, f.vehicle, 0, 2.87, 0, 5.6, 1.32, 5.6)));
+    for (const s of [-1, 1]) P.push(...tx(TIMBER, bx(0x56412b, 5.64, 0.13, 0.1, 0, 2.84, s * 2.78), bx(0x56412b, 0.1, 0.13, 5.64, s * 2.78, 2.84, 0)));
+    P.push(...tx(SHEET_Z, bx(darker(f.vehicle, 0.72), 0.16, 0.09, 2.25, 0, 4.2, 0)));
     P.push(...tx(TIMBER, bx(0x2e2418, 0.1, 1.85, 1.1, 2.22, 1.08, 0)), bx(f.color, 0.08, 0.42, 1.7, 2.24, 2.3, 0));
-    for (const z of [-1.3, 1.3]) P.push(bx(slit, 0.08, 0.4, 0.8, 2.22, 1.7, z));
-    for (const s of [-1, 1]) for (const x of [-1.1, 1.1]) P.push(bx(slit, 0.9, 0.4, 0.08, x, 1.7, s * 2.22));
+    framedOpening(P, 2.27, 1.08, 0, 1.1, 1.85, 0x8b7956, 0, true);
+    P.push(...tx(TIMBER, bx(0x69573c, 0.55, 0.12, 1.42, 2.48, 0.2, 0)));
+    for (const z of [-1.3, 1.3]) {
+      P.push(bx(slit, 0.08, 0.4, 0.8, 2.22, 1.7, z));
+      framedOpening(P, 2.26, 1.7, z, 0.8, 0.4, 0x8b7956);
+    }
+    for (const s of [-1, 1]) for (const x of [-1.1, 1.1]) {
+      P.push(bx(slit, 0.9, 0.4, 0.08, x, 1.7, s * 2.22));
+      framedOpening(P, x, 1.7, s * 2.26, 0.9, 0.4, 0x8b7956, -s * Math.PI / 2);
+    }
     for (const s of [-1, 1]) for (let c = 0; c < 2; c++) for (let i = 0; i < 3 - c; i++)
       P.push(...tx(BURLAP, part(BAG, bagTint(s * 9 + c * 3 + i), 2.7, 0.18 + c * 0.3, s * (1.0 + 0.31 * c + i * 0.62), 0.6, 0.32, 0.42, Math.PI / 2)));
     P.push(cyl(0x2a2a26, 0.06, 4.6, 6, -1.6, 4.9, -1.6));
@@ -1024,11 +1129,16 @@ const MODELS = {
   // Nissen hut: corrugated half-cylinder with ribs, timber end walls, door and windows at the front, a stovepipe
   barracks: (f) => {
     const P = [], r = 2.45, rib = darker(f.vehicle, 0.68);
-    P.push(...tx(CONCRETE, bx(0x7e7c74, 5.9, 0.2, 5.9, 0, 0.1, 0)), ...tx(SHEET_X, part(HALF, f.vehicle, 0, 0.2, 0, 5.4, r, r)));
-    for (const x of [-2.0, -0.68, 0.64, 1.96]) P.push(...tx(SHEET_X, part(HALF, rib, x, 0.2, 0, 0.14, r + 0.05, r + 0.05)));
+    P.push(...tx(CONCRETE, bx(0x7e7c74, 5.9, 0.2, 5.9, 0, 0.1, 0)), ...tx(SHEET_X, part(HUT_ROOF, f.vehicle, 0, 0.2, 0)));
+    for (const x of [-2.0, -0.68, 0.64, 1.96]) P.push(...tx(SHEET_X, part(HALF, rib, x, 0.2, 0, 0.045, r + 0.025, r + 0.025)));
     for (const s of [-1, 1]) P.push(...tx(TIMBER, part(HALF_END, 0x7a6446, s * 2.72, 0.2, 0, 0.16, r - 0.02, r - 0.02)));
     P.push(...tx(TIMBER, bx(0x2e2418, 0.1, 1.9, 1.0, 2.82, 1.15, 0)), bx(f.color, 0.08, 0.3, 1.1, 2.83, 2.3, 0));
-    for (const z of [-1.3, 1.3]) P.push(bx(0x1e2226, 0.08, 0.55, 0.6, 2.82, 1.45, z), bx(0x1e2226, 0.08, 0.5, 0.55, -2.82, 1.45, z));
+    framedOpening(P, 2.87, 1.15, 0, 1.0, 1.9, 0x9b8b6d, 0, true);
+    for (const z of [-1.3, 1.3]) {
+      P.push(bx(0x1e2226, 0.08, 0.55, 0.6, 2.82, 1.45, z), bx(0x1e2226, 0.08, 0.5, 0.55, -2.82, 1.45, z));
+      framedOpening(P, 2.87, 1.45, z, 0.6, 0.55, 0x9b8b6d);
+      framedOpening(P, -2.87, 1.45, z, 0.55, 0.5, 0x9b8b6d, Math.PI);
+    }
     P.push(...tx(CONCRETE, bx(0x6e6c64, 0.3, 0.12, 1.4, 2.85, 0.26, 0)));
     P.push(cyl(0x2a2a26, 0.09, 1.2, 6, -1.4, 2.95, 0.9), bx(0x2a2a26, 0.26, 0.08, 0.26, -1.4, 3.58, 0.9));
     return P;
@@ -1036,24 +1146,46 @@ const MODELS = {
   // workshop: a lean-to shed with a ribbed roof at the back, an A-frame hoist with an engine on the chain out front,
   // drums, tires and a bench inside
   motorpool: (f) => {
-    const P = [], wood = 0x6e5a40, post = 0x4e3e2a, steel = 0x3a3a36, rib = darker(f.vehicle, 0.72), len = 3.75, tilt = Math.atan2(0.7, len);
+    const P = [], wood = 0x6e5a40, post = 0x4e3e2a, steel = 0x3a3a36, len = 3.75, tilt = Math.atan2(0.7, len);
     P.push(...tx(CONCRETE, bx(0x75736b, 5.9, 0.12, 5.9, 0, 0.06, 0)), ...tx(TIMBER, bx(wood, 0.25, 2.5, 5.8, -2.8, 1.25, 0)));
     for (const s of [-1, 1]) P.push(...tx(TIMBER, bx(wood, 3.3, 2.1, 0.2, -1.15, 1.05, s * 2.85), bx(post, 0.3, 3.2, 0.3, 0.5, 1.6, s * 2.65)));
-    P.push(...tx(SHEET_Z, bx(f.vehicle, len, 0.14, 6.0, -1.125, 2.9, 0, 0, 0, tilt)), bx(f.color, 0.1, 0.26, 6.0, 0.78, 3.28, 0));
-    for (let i = 0; i < 6; i++) P.push(...tx(SHEET_Z, bx(rib, len, 0.06, 0.1, -1.125, 2.99, -2.5 + i, 0, 0, tilt)));
+    P.push(...tx(SHEET_Z, part(WORKSHOP_ROOF, f.vehicle, -1.125, 2.97, 0)), bx(f.color, 0.1, 0.16, 6.0, 0.78, 3.28, 0));
+    for (const s of [-1, 1]) P.push(...tx(TIMBER, bx(post, len, 0.12, 0.12, -1.125, 2.88, s * 2.91, 0, 0, tilt)));
     for (const s of [-1, 1]) P.push(bx(steel, 0.14, 3.1, 0.14, 1.55, 1.55, s * 1.7, 0, 0, -0.2), bx(steel, 0.14, 3.1, 0.14, 2.25, 1.55, s * 1.7, 0, 0, 0.2));
-    P.push(bx(steel, 0.22, 0.22, 3.8, 1.9, 3.08, 0), bx(0x24241f, 0.05, 1.3, 0.05, 1.9, 2.32, 0.3), bx(0x45453f, 0.8, 0.6, 0.9, 1.9, 1.4, 0.3), bx(0x2a2a26, 0.3, 0.3, 0.5, 1.9, 1.85, 0.3));
-    P.push(bx(0x3a3a34, 1.1, 0.3, 0.7, 1.7, 0.27, -1.6), cyl(0x1c1c1a, 0.42, 0.24, 10, 2.3, 0.24, 2.2));
-    for (let i = 0; i < 3; i++) P.push(cyl(0x3a4a30, 0.32, 0.92, 8, -2.25, 0.58, -2.2 + i * 0.68), cyl(0x1c1c1a, 0.42, 0.24, 10, -2.15, 0.25 + i * 0.25, 2.1));
+    P.push(bx(steel, 0.22, 0.22, 3.8, 1.9, 3.08, 0), bx(0x24241f, 0.05, 1.3, 0.05, 1.9, 2.32, 0.3), part(ENGINE_CASE, 0x45453f, 1.9, 1.38, 0.3), bx(0x2a2a26, 0.3, 0.3, 0.5, 1.9, 1.85, 0.3));
+    // Separate cylinder banks and rounded valve covers surround the crankcase.
+    for (const s of [-1, 1]) {
+      P.push(part(VALVE_COVER, 0x787870, 1.9, 1.76, 0.3 + s * 0.24));
+      for (let i = 0; i < 3; i++) P.push(cyl(0x4d4f49, 0.105, 0.35, 10, 1.67 + i * 0.23, 1.57, 0.3 + s * 0.18, s * 0.5));
+    }
+    P.push(bx(0x32322e, 0.6, 0.16, 0.62, 1.9, 1.04, 0.3));
+    P.push(bx(0x3a3a34, 1.1, 0.3, 0.7, 1.7, 0.27, -1.6), part(TYRE, 0x1c1c1a, 2.3, 0.24, 2.2));
+    for (let i = 0; i < 3; i++) P.push(cyl(0x3a4a30, 0.32, 0.92, 8, -2.25, 0.58, -2.2 + i * 0.68), part(TYRE, 0x1c1c1a, -2.15, 0.25 + i * 0.25, 2.1));
     P.push(...tx(TIMBER, bx(wood, 0.7, 0.9, 1.8, -2.3, 0.51, 0.3)), bx(steel, 0.25, 0.2, 0.25, -2.1, 1.06, 0.9));
     return P;
   },
   // supply dump: tarp-covered stack, crates, fuel drums (one lying down), jerry cans and a pennant
   depot: (f) => {
     const P = [], crate = 0x6e5836, tarp = 0x8a7d5a;
-    P.push(...tx(TIMBER, bx(0x5a4a34, 3.8, 0.18, 3.8, 0, 0.09, 0)), ...tx(CANVAS, bx(tarp, 1.9, 1.1, 1.6, -0.75, 0.73, -0.8), part(GABLE, tarp, -0.75, 1.28, -0.8, 1.6, 1.0, 1.9, Math.PI / 2)));
+    P.push(...tx(TIMBER, bx(0x5a4a34, 3.8, 0.18, 3.8, 0, 0.09, 0)), ...tx(CANVAS, part(SUPPLY_TARP, tarp, -0.75, 0, -0.8)));
     P.push(...tx(TIMBER, bx(crate, 0.9, 0.7, 0.9, 0.95, 0.53, -1.05), bx(darker(crate, 0.85), 0.8, 0.6, 0.8, 0.9, 1.18, -1.0, 0.3), bx(crate, 0.6, 0.45, 0.6, 1.45, 0.4, 0.1)));
-    for (let i = 0; i < 5; i++) P.push(cyl(f.vehicle, 0.29, 0.88, 8, -1.45 + i * 0.62, 0.62, 1.2));
+    // Raised packing battens and drum rims still share the building's single mesh.
+    for (const [x, y, z, size, height, yaw] of [[0.95, 0.53, -1.05, 0.9, 0.7, 0], [0.9, 1.18, -1.0, 0.8, 0.6, 0.3], [1.45, 0.4, 0.1, 0.6, 0.45, 0]]) {
+      for (const s of [-1, 1]) {
+        const dz = s * size * 0.34;
+        P.push(...tx(TIMBER, bx(0x96805a, size + 0.025, 0.045, 0.065, x + dz * Math.sin(yaw), y + height / 2 + 0.02, z + dz * Math.cos(yaw), yaw)));
+        for (const side of [-1, 1]) {
+          const dx = side * (size / 2 + 0.018);
+          P.push(...tx(TIMBER, bx(0x8a724d, 0.035, height, 0.065, x + dx * Math.cos(yaw) + dz * Math.sin(yaw), y, z - dx * Math.sin(yaw) + dz * Math.cos(yaw), yaw)));
+        }
+      }
+    }
+    for (let i = 0; i < 5; i++) {
+      const x = -1.45 + i * 0.62;
+      P.push(cyl(f.vehicle, 0.29, 0.88, 8, x, 0.62, 1.2));
+      for (const y of [0.23, 1.01]) P.push(cyl(darker(f.vehicle, 0.65), 0.306, 0.045, 8, x, y, 1.2));
+      P.push(cyl(0x3a3a32, 0.045, 0.026, 5, x + 0.12, 1.073, 1.2));
+    }
     P.push(cyl(f.vehicle, 0.29, 0.88, 8, 0.85, 0.47, 0.25, Math.PI / 2));
     for (let i = 0; i < 4; i++) P.push(bx(darker(f.vehicle, 0.8), 0.16, 0.46, 0.34, -1.5 + i * 0.2, 0.41, 0.2));
     P.push(cyl(0x4a3f30, 0.04, 3.2, 6, 1.65, 1.78, -1.65), bx(f.color, 0.9, 0.55, 0.04, 1.2, 3.05, -1.65));
@@ -1078,7 +1210,7 @@ const MODELS = {
 // One material for every base building: vertex colours, and on parts that carry a surface id (uv.x), grain from one
 // channel of the packed detail texture, mapped from the model's own axes so it keeps its real size: R canvas,
 // G timber, B concrete; corrugated sheet adds 15 cm ridges that fade out before they could shimmer.
-const MODEL_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
+const MODEL_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
 MODEL_MAT.onBeforeCompile = (shader) => {
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nvarying float vDetail;\nvarying vec3 vObj;')

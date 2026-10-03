@@ -191,8 +191,13 @@ function palette(look) {
 // cap and bolt heads, or on spokes. The detailed face is +z (turn the wheel on the other side of a gun around); the
 // back is a plain disc.
 function wheelGeo(R, w, P, { spokes = 0, seg = 14, lugs = 12, bolts = 5, back = true } = {}) {
+  seg = Math.max(24, seg);
   const k = kit(), ri = R * 0.8, hub = R * 0.2, fw = w * 0.5;
-  k.turn(P.tire, [[ri, -w / 2], [R, -w * 0.4], [R, w * 0.4], [ri, w / 2]], seg, 0, 0, 0, 'z');
+  // Rounded shoulders and recessed beads make a tire rather than a straight rubber sleeve.
+  k.turn(P.tire, [[ri, -fw * 0.86], [R * 0.92, -fw], [R * 0.984, -fw * 0.65], [R, -fw * 0.23],
+    [R, fw * 0.23], [R * 0.984, fw * 0.65], [R * 0.92, fw], [ri, fw * 0.86]], seg, 0, 0, 0, 'z');
+  for (const side of [-1, 1]) k.turn(P.dark, [[ri * 0.98, side * fw * 0.84], [ri * 1.045, side * fw * 0.91],
+    [ri * 1.08, side * fw * 0.81]], seg, 0, 0, 0, 'z');
   // tread: darker blocks across the rubber
   const rt = R * Math.cos(Math.PI / seg) + 0.002;
   for (let i = 0; i < lugs; i++) {
@@ -387,7 +392,7 @@ function mgGun(fac, P) {
     leg(k, P, P.tripod, head, front);
     for (const s of [-1, 1]) leg(k, P, P.tripod, [0.97, 0.29, s * 0.05], [rear[0], rear[1], s * rear[2]]);
     k.rod(P.steel, [0.82, 0.17, 0], [0.94, 0.34, 0], 0.017, 5);                            // elevating screw
-    k.cyl(P.steel, 0.045, 0.045, 0.02, 8, 0.8, 0.15, 0, 'z');
+    handwheel(k, P, 0.8, 0.15, 0.015, 0.045);
     ammoBox(k, P, 0, 0.6, -0.46, -0.25);
     belt(k, P, [[0.62, 0.22, -0.46], [0.7, 0.3, -0.4], [0.82, 0.37, -0.28], [0.93, y + 0.0, -0.12], [0.99, y + 0.03, -0.075]]);
   } else if (fac === 1) {
@@ -489,7 +494,7 @@ function mgGun(fac, P) {
     const eb = [0.72, 0.17, 0], et = [0.73, y - 0.075, 0];
     k.rod(P.black, eb, lerp3(eb, et, 0.55), 0.022, 6);                                      // the elevating gear: a sleeve and the screw
     k.rod(P.steel, lerp3(eb, et, 0.5), et, 0.013, 5);
-    k.cyl(P.steel, 0.05, 0.05, 0.014, 8, 0.72, 0.24, 0.025, 'z');                         // its hand wheel
+    handwheel(k, P, 0.72, 0.24, 0.032, 0.05);                         // its hand wheel
     k.box(P.black, 0.05, 0.03, 0.06, 0.73, y - 0.07, 0);
     // a belt box on the right with the canvas belt rising to the feed block, the empty belt hanging left
     ammoBox(k, P, 3, 0.72, 0.46, 0.2);
@@ -631,7 +636,7 @@ function mortarGun(fac, P) {
       k.add(G.lathe([[0.024, 0], [0.03, 0], [0.03, 0.02], [0.024, 0.02]], 6, { axis: 'y' }), darkMetal, onTube(0.69, s * 0.08, 0));
     }
   } else k.rod(darkMetal, [cx + 0.02, cy - 0.06, 0], [bx + 0.32, 0.1, 0], 0.017, 5);              // the elevating screw
-  k.cyl(P.steel, 0.055, 0.055, 0.025, 8, cx + 0.02, cy - 0.06, 0.14, 'z');                    // the traverse handwheel on its crank
+  handwheel(k, P, cx + 0.02, cy - 0.06, 0.155, 0.055);                    // the traverse handwheel on its crank
   k.rod(darkMetal, [cx + 0.02, cy - 0.06, 0.08], [cx + 0.02, cy - 0.06, 0.14], 0.012, 4, false);
   // the sight on the left of the yoke: a bracket, the collimator block and a short telescope
   k.add(new THREE.BoxGeometry(0.05, 0.1, 0.05), P.black, onTube(0.6, -0.1, 0.02));
@@ -644,10 +649,9 @@ function mortarGun(fac, P) {
   const bp = bombParts(0.34, 0.04);
   {
     const x = 0.1, z = 0.56, rot = 0.15, w = 0.46, h = 0.15, d = 0.34;
-    k.add(softBox(w, h, d, 0.012), crateC, M(x, h / 2, z).ry(rot));
-    k.flat(P.hole, w - 0.05, d - 0.05, x, h + 0.0015, z, rot);
+    openCrate(k, crateC, w, h, d, M(x, 0, z).ry(rot));
     k.add(new THREE.BoxGeometry(w * 0.9, 0.012, 0.026), P.owner, M(x, h + 0.003, z).ry(rot).t(0, 0, d / 2 - 0.013));   // the owner's band on the rim
-    for (let i = 0; i < 4; i++) bomb(k, bp, bodyC, shade(bodyC, 0.7), bandC, M(x, h + 0.04, z).ry(rot).t(-0.17, 0, -0.12 + i * 0.08));
+    for (let i = 0; i < 4; i++) bomb(k, bp, bodyC, shade(bodyC, 0.7), bandC, M(x, h * 0.62, z).ry(rot).t(-0.17, 0, -0.12 + i * 0.08));
   }
   if (fac === 3) {
     // the British three-bomb carrier: three tubular cases side by side in a frame of two straps and a carrying handle,
@@ -708,9 +712,7 @@ function atGun(fac, P) {
   k.box(P.black, 0.2, 0.12, 0.14, x0 + 0.1, yb - 0.2, -0.17);                                       // the elevating gear case
   k.rod(P.steel, [x0 + 0.05, yb + 0.06, -0.13], [x0 - 0.06, yb + 0.16, -0.22], 0.014, 4);            // breech lever
   k.cyl(P.steel, 0.026, 0.026, 0.03, 6, x0 - 0.06, yb + 0.16, -0.22, 'y');
-  k.cyl(P.steel, 0.115, 0.115, 0.04, 10, -0.12, 0.82, -0.2, 'z');                                  // elevating handwheel with a hub and a crank
-  k.cyl(P.dark, 0.035, 0.035, 0.07, 6, -0.12, 0.82, -0.215, 'z');
-  k.rod(P.steel, [-0.12, 0.82, -0.2], [-0.12, 0.9, -0.24], 0.018, 4);
+  handwheel(k, P, -0.12, 0.82, -0.22, 0.115);
   k.rod(P.black, [-0.1, yb + 0.24, -0.12], [0.3, yb + 0.26, -0.12], 0.026, 6);                       // sight telescope
   k.box(P.black, 0.07, 0.07, 0.06, x0 + 0.02, yb + 0.24, -0.12);
   // barrel: heavy at the breech and stepping down along its length, then the muzzle device
@@ -758,7 +760,7 @@ function atGun(fac, P) {
     k.add(new THREE.BoxGeometry(w, h, d), crateC, M(cx, h / 2, cz).ry(rot));
     k.flat(P.hole, w - 0.05, d - 0.05, cx, h + 0.0015, cz, rot);
     k.add(new THREE.BoxGeometry(0.04, 0.012, d * 0.9), P.owner, M(cx, h + 0.004, cz).ry(rot).t(w * 0.32, 0, 0));
-    for (const dz of [-0.085, 0, 0.085]) k.add(shell, P.brass, M(cx, h + sr + 0.01, cz).ry(rot).t(-sl / 2, 0, dz));
+    for (const dz of [-0.085, 0, 0.085]) k.add(shell, P.brass, M(cx, h * 0.55, cz).ry(rot).t(-sl / 2, 0, dz));
   }
   shield(k, P, S, fac);
   return { geo: finish(k.geometry(), { span: 0.55 }), pivot: [S.pivot, 0, 0], tip: [x0 + L, yb, 0] };
@@ -915,12 +917,11 @@ function howitzerGun(fac, P) {
   {
     const cx = -1.25, cz = 0, rot = 0.15, w = 0.7, h = 0.2, d = 0.42, sr = fac === 2 ? 0.06 : 0.052;
     const crateC = fac === 0 ? shade(P.paint, 0.85) : P.wood, proj = made(mix(P.paint, 0x4e5230, 0.5), 'armor-paint');
-    k.add(new THREE.BoxGeometry(w, h, d), crateC, M(cx, h / 2, cz).ry(rot));
-    k.flat(P.hole, w - 0.06, d - 0.06, cx, h + 0.0015, cz, rot);
+    openCrate(k, crateC, w, h, d, M(cx, 0, cz).ry(rot), 0.03);
     k.add(new THREE.BoxGeometry(0.05, 0.012, d * 0.9), P.owner, M(cx, h + 0.004, cz).ry(rot).t(w * 0.34, 0, 0));
     for (const dz of [-0.13, 0, 0.13]) {
-      k.add(shellGeo(0.3, sr), P.brass, M(cx, h + sr + 0.01, cz).ry(rot).t(-0.32, 0, dz));
-      k.add(G.lathe([[0, 0], [sr, 0], [sr, 0.14], [sr * 0.4, 0.3], [0, 0.32]], 6, { axis: 'x' }), proj, M(cx, h + sr + 0.01, cz).ry(rot).t(-0.02, 0, dz));
+      k.add(shellGeo(0.3, sr), P.brass, M(cx, h * 0.55, cz).ry(rot).t(-0.32, 0, dz));
+      k.add(G.lathe([[0, 0], [sr, 0], [sr, 0.14], [sr * 0.4, 0.3], [0, 0.32]], 6, { axis: 'x' }), proj, M(cx, h * 0.55, cz).ry(rot).t(-0.02, 0, dz));
     }
     for (const [x, z] of [[-0.75, 0.62], [-0.9, 0.72]]) {
       k.cyl(P.brass, sr, sr, 0.3, 6, x, 0, z);
@@ -1001,9 +1002,22 @@ function seat(k, P, x, z, back = -1, y = 0.6) {
 }
 
 function handwheel(k, P, x, y, z, r = 0.12) {
-  k.cyl(P.steel, r, r, 0.03, 8, x, y, z, 'z');
-  k.cyl(P.dark, r * 0.35, r * 0.35, 0.06, 5, x, y, z - 0.015, 'z');
-  k.rod(P.steel, [x - r * 0.5, y + r * 0.3, z + 0.02], [x - r * 0.62, y + r * 0.4, z + 0.07], 0.01, 4, false);
+  // Open rim and three spokes let the carriage show through the control wheel.
+  k.turn(P.steel, [[r * 0.83, 0], [r, 0.009], [r, -0.009], [r * 0.83, 0]], 8, x, y, z, 'z');
+  const spoke = new THREE.BoxGeometry(r * 0.75, r * 0.15, 0.012);
+  spoke.setIndex(Array.from(spoke.index.array).slice(12)); // ends are inside the hub and rim
+  for (let i = 0; i < 3; i++) k.add(spoke, P.dark, M(x, y, z).rz(i * TAU / 3).t(r * 0.48, 0, 0));
+  k.cyl(P.dark, r * 0.24, r * 0.24, 0.04, 4, x, y, z - 0.02, 'z');
+  k.rod(P.steel, [x - r * 0.5, y + r * 0.3, z + 0.01], [x - r * 0.62, y + r * 0.4, z + 0.055], r * 0.085, 4, false);
+}
+
+// Open ammunition crate: a bottom and four walls, with rounds seated inside the cavity.
+function openCrate(k, color, w, h, d, frame, wall = 0.025) {
+  k.add(new THREE.BoxGeometry(w, wall, d), shade(color, 0.65), mat(frame).clone().multiply(new THREE.Matrix4().makeTranslation(0, wall / 2, 0)));
+  for (const side of [-1, 1]) {
+    k.add(new THREE.BoxGeometry(w, h, wall), color, mat(frame).clone().multiply(new THREE.Matrix4().makeTranslation(0, h / 2, side * (d - wall) / 2)));
+    k.add(new THREE.BoxGeometry(wall, h, d - 2 * wall), color, mat(frame).clone().multiply(new THREE.Matrix4().makeTranslation(side * (w - wall) / 2, h / 2, 0)));
+  }
 }
 
 // a barrel along +x from its breech (x = 0): heavy at the breech, a muzzle device of the given kind

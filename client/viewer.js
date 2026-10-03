@@ -82,10 +82,19 @@ function showWarnings() {
 // textures (wood, sandbags, building walls) load through three's default manager; count what is still in flight
 const manager = THREE.DefaultLoadingManager;
 let pending = 0;
-for (const [k, d] of [['itemStart', 1], ['itemEnd', -1], ['itemError', -1]]) {
-  const fn = manager[k];
-  manager[k] = (url) => { pending += d; fn(url); if (d < 0) dirty = true; };
-}
+const trackedLoads = new Map();
+const beginLoad = manager.itemStart, endLoad = manager.itemEnd;
+manager.itemStart = (url) => {
+  trackedLoads.set(url, (trackedLoads.get(url) ?? 0) + 1);
+  pending++; beginLoad(url);
+};
+manager.itemEnd = (url) => {
+  // Imported modules can start textures before these hooks exist. Their completion must not cancel a tracked load.
+  const count = trackedLoads.get(url) ?? 0;
+  if (count) { trackedLoads.set(url, count - 1); pending--; }
+  endLoad(url);
+  dirty = true; measured = false;
+};
 
 // ---------- renderer, scene and light, set up like main.js ----------
 setSurfaces(surface); setBuildings(buildingModel);
@@ -102,7 +111,7 @@ const closeCam = new THREE.PerspectiveCamera(30, 1, 0.05, 3000);
 const { sun } = setupLight(renderer, scene, gameCam); // tone mapping, shadows, hemisphere fill, the sun, haze (the default mood)
 scene.background = new THREE.Color(bg);
 
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: GRASS }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: hex(q.get('ground')) ?? GRASS }));
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
 const grid = new THREE.GridHelper(48, 24, 0x4a5530, 0x56623a); // 2 m squares: the game's build grid
 grid.position.y = 0.02; grid.material.transparent = true; grid.material.opacity = 0.45;
@@ -238,6 +247,10 @@ function measure(cam, hide = []) {
   const was = [ground, grid, ...hide].map((o) => o.visible);
   [ground, grid, ...hide].forEach((o) => (o.visible = false));
   const info = renderer.info.render, sm = renderer.shadowMap;
+  // Initialize shadow textures before measuring a pass with shadow updates disabled.
+  // Otherwise the first draw can bind incompatible placeholder sampler types.
+  sm.autoUpdate = true; sm.needsUpdate = true;
+  renderer.render(scene, cam);
   sm.autoUpdate = false; sm.needsUpdate = false;
   renderer.info.reset(); renderer.render(scene, cam);
   const out = { calls: info.calls, tris: info.triangles };
@@ -272,7 +285,7 @@ function singleUnit() {
   if (def.faction >= 0 && def.faction !== fac) warnings.push(`In the game only ${FACTIONS[def.faction].name} fields ${type}; this is what the model code builds for ${FACTIONS[fac].name}`);
   const v = makeUnit(type), air = !!def.air;
   pose(v); placeShadow(v);
-  if (moving && v.squad) motionUnit = v;
+  if (moving && !air) motionUnit = v;
   // close views lift a plane so its lowest point is 1.5 m over the ground; the game view flies it at AIR_ALT
   const lift = air ? 1.5 - bounds([v.root]).min.y : 0;
   const man = v.squad ? v.models[0] : null;

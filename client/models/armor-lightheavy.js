@@ -133,14 +133,24 @@ function bands(list, seg) {
 // A road wheel, axle along z, outer face toward +z: a rubber tire, a dished steel disc and a hub cap. spokes > 0 makes
 // the disc that many spokes with dark holes between (seg is then twice the spoke count). rubber = false makes the
 // rim bare steel (idlers). The back is left open: it faces the hull.
-function roadWheel(R, w, paint, { seg = 10, rim = 0.78, hub = 0.3, spokes = 0, tire = RUBBER, rubber = true } = {}) {
+function roadWheel(R, w, paint, { seg = 24, rim = 0.78, hub = 0.3, spokes = 0, tire = RUBBER, rubber = true } = {}) {
   const h = w / 2, Rr = R * rim, Rh = R * hub, tm = rubber ? 'rubber' : null;
-  return bands([
-    [[R, -h], [R, h * 0.4], tire, null, null, tm], [[R, h * 0.4], [Rr, h], tire, null, null, tm],
-    [[Rr, h], [Rh, h * 0.6], dim(paint, 1.12), spokes ? dim(paint, 0.2) : null, paint], [[Rh, h * 0.6], [0, h * 1.1], dim(paint, 0.85)],
-  ], spokes ? spokes * 2 : seg);
+  seg = Math.max(seg, 20);
+  const disc = bands([
+    [[R, -h], [R, h * 0.15], tire, null, null, tm], [[R, h * 0.15], [R * 0.96, h * 0.58], tire, null, null, tm],
+    [[R * 0.96, h * 0.58], [Rr, h * 0.88], tire, null, null, tm],
+    [[Rr, h * 0.88], [Rr * 0.92, h * 0.94], dim(paint, 1.16)],
+    [[Rr * 0.92, h * 0.94], [Rh * 1.38, h * 0.44], dim(paint, 1.04), spokes ? dim(paint, 0.2) : null, paint],
+    [[Rh * 1.38, h * 0.44], [Rh, h * 0.68], dim(paint, 0.86)],
+    [[Rh, h * 0.68], [Rh * 0.85, h * 1.12], paint], [[Rh * 0.85, h * 1.12], [0, h * 1.12], dim(paint, 0.85)],
+  ], spokes ? Math.max(seg, spokes * 4) : seg);
+  const bolts = flat('gunmetal');
+  for (let k = 0; k < 6; k++) {
+    const a = k * TAU / 6, cx = Rh * 1.1 * Math.cos(a), cy = Rh * 1.1 * Math.sin(a), r = R * 0.032;
+    bolts.poly(Array.from({ length: 6 }, (_, j) => { const b = j * TAU / 6; return [cx + r * Math.cos(b), cy + r * Math.sin(b), h * 0.68]; }), [0, 0, 1], IRON, 'gunmetal');
+  }
+  return merge([disc, bolts.geometry()]);
 }
-
 // A drive sprocket, axle along z, outer face toward +z: a toothed plate with worn-steel tooth edges and a hub.
 // Each tooth is three points (a pointed tooth), or four (flat-topped) with flat = true.
 function sprocketWheel(R, w, teeth, paint, { flat: flatTop = false } = {}) {
@@ -176,7 +186,7 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, color = LINK
   for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (hi.length > 1 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); }
   const loop = lo.slice(0, -1).concat(hi.slice(0, -1)), len = [0]; // counter-clockwise seen from +z
   for (let i = 1; i <= loop.length; i++) { const a = loop[i - 1], b = loop[i % loop.length]; len.push(len[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
-  const total = len[loop.length], n = Math.round(total / pitch), step = total / n;
+  const total = len[loop.length], n = Math.round(total / Math.min(pitch, 0.15)), step = total / n;
   const at = (s) => {
     let a = 0, b = loop.length;
     while (b - a > 1) { const m = (a + b) >> 1; if (len[m] <= s) a = m; else b = m; }
@@ -191,6 +201,14 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, color = LINK
     // the tread, except under the bottom run where nothing sees it; there the inner face (seen between the wheels)
     if (ny > -0.85) F.poly([[Ao[0], Ao[1], z0], [Bo[0], Bo[1], z0], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [nx, ny, 0], k % 2 ? lit : dark);
     else F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bi[0], Bi[1], z1], [Ai[0], Ai[1], z1]], [-nx, -ny, 0], k % 2 ? dark : dim(color, 0.7));
+    if (ny > -0.85) {
+      const u0 = 0.32, u1 = 0.56, rise = 0.027, inset = width * 0.08;
+      const a = [Ao[0] + (Bo[0] - Ao[0]) * u0, Ao[1] + (Bo[1] - Ao[1]) * u0], b = [Ao[0] + (Bo[0] - Ao[0]) * u1, Ao[1] + (Bo[1] - Ao[1]) * u1];
+      const c = [a[0] + nx * rise, a[1] + ny * rise], d = [b[0] + nx * rise, b[1] + ny * rise];
+      F.poly([[c[0], c[1], z0 + inset], [d[0], d[1], z0 + inset], [d[0], d[1], z1 - inset], [c[0], c[1], z1 - inset]], [nx, ny, 0], rim);
+      F.poly([[a[0], a[1], z0 + inset], [c[0], c[1], z0 + inset], [c[0], c[1], z1 - inset], [a[0], a[1], z1 - inset]], [-ny, nx, 0], rim2);
+      F.poly([[b[0], b[1], z0 + inset], [d[0], d[1], z0 + inset], [d[0], d[1], z1 - inset], [b[0], b[1], z1 - inset]], [ny, -nx, 0], rim2);
+    }
     const r = k % 2 ? rim : rim2;
     F.poly([[Ai[0], Ai[1], z1], [Bi[0], Bi[1], z1], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [0, 0, 1], [deep, deep, r, r]);
   }
@@ -358,6 +376,7 @@ function stuart(f) {
     T.add(star(1, { color: WHITE }), 0xffffff, place([0.2, 0.38, s * (wallZ(0.38) + 0.004)], [0, lean[1], s * lean[2]], [0, lean[2], -s * lean[1]], 0.27), 'plain');
     T.add(number('12', 0.28, f.color), 0xffffff, place([-0.36, 0.38, s * (wallZ(0.38) + 0.004)], [0, lean[1], s * lean[2]], [0, lean[2], -s * lean[1]], 1), 'plain');
   }
+  T.box(IRON, 0.13, 0.025, 0.03, 0, TH + 0.115, 0.26).box(IRON, 0.13, 0.025, 0.03, 0, TH + 0.04, -0.28);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.2, 1.64, 0], tip: [1.06 + 1.85, 0.38, 0], s: 1 };
 }
@@ -427,6 +446,7 @@ function panzer2(f) {
     T.add(number('21', 0.26, f.color), 0xffffff, place([-0.28, 0.28, s * (wallZ(0.28) + 0.004)], nrm, up, 1), 'plain');
     T.box(IRON, 0.12, 0.06, 0.02, 0.44, 0.38, s * (wallZ(0.38) - 0.005), 0, s * 0.6, 0);
   }
+  T.box(IRON, 0.13, 0.025, 0.03, -0.28, TH + 0.235, 0).box(IRON, 0.12, 0.025, 0.03, 0.3, TH + 0.04, -0.26);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.12, 1.62, -0.1], tip: [1.18 + 1.2, 0.28, 0.2], s: 1 };
 }
@@ -502,6 +522,8 @@ function t70(f) {
     T.add(star(1, { color: RED, border: WHITE, edge: 0.12 }), 0xffffff, place([0.14, 0.34, s * (wallZ(0.34) + 0.005)], nrm, up, 0.2), 'plain');
     T.add(number('24', 0.26, f.color), 0xffffff, place([-0.32, 0.34, s * (wallZ(0.34) + 0.005)], nrm, up, 1), 'plain');
   }
+  T.box(IRON, 0.15, 0.025, 0.03, -0.14, TH + 0.12, -0.08);
+  for (const dx of [-0.06, 0.06]) T.box(IRON, 0.025, 0.035, 0.03, -0.14 + dx, TH + 0.095, -0.08);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [0.33, 1.5, -0.24], tip: [0.98 + 1.65, 0.32, 0], s: 1 };
 }
@@ -557,7 +579,11 @@ function tiger(f) {
   const sp = [2.65, 0.74, 0.5], id = [-2.71, 0.62, 0.34];
   // interleaved road wheels: the outer row on the even stations, the inner row half hidden behind it
   const outer = roadWheel(R, 0.14, paint, { seg: 10, rim: 0.76, hub: 0.3, tire: 0x252721 }), inner = roadWheel(R, 0.14, dim(paint, 0.68), { seg: 8, rim: 0.76, hub: 0.3, tire: 0x252721 });
-  stations.forEach((x, k) => G.add(k % 2 ? inner : outer, 0xffffff, xf(x, wy, k % 2 ? tz - 0.18 : tz + 0.15)));
+  stations.forEach((x, k) => {
+    // Paired overlapping discs occupy two staggered planes around each torsion-bar station.
+    G.add(inner, 0xffffff, xf(x, wy, tz - 0.22));
+    G.add(k % 2 ? inner : outer, 0xffffff, xf(x, wy, k % 2 ? tz - 0.02 : tz + 0.15));
+  });
   G.add(sprocketWheel(sp[2], 0.24, 18, paint), 0xffffff, xf(sp[0], sp[1], tz + 0.04));
   G.add(idler(id[2], 0.18, 8, paint), 0xffffff, xf(id[0], id[1], tz + 0.04));
   G.add(trackBelt([[sp[0], sp[1], 0.44], ...stations.map((x) => [x, wy, R]), [id[0], id[1], id[2]]], tz, 0.72, { thick: t, pitch: 0.24 }));
@@ -610,17 +636,13 @@ function tiger(f) {
 
   // turret: the ring at x = -0.1; horseshoe walls (straight cheeks to the front plate), flat roof
   const outline = [[1.4, 1.12]];
-  for (let i = 0; i <= 10; i++) { const a = Math.PI / 2 + (i / 10) * Math.PI; outline.push([0.1 + 1.7 * Math.cos(a), 1.25 * Math.sin(a)]); }
+  for (let i = 0; i <= 36; i++) { const a = Math.PI / 2 + (i / 36) * Math.PI; outline.push([0.1 + 1.7 * Math.cos(a), 1.25 * Math.sin(a)]); }
   outline.push([1.4, -1.12]);
-  // the cheeks split in three, so the patches run across them
-  const walls = [];
-  outline.forEach((p, i) => {
-    walls.push(p);
-    const q = outline[i + 1];
-    if (q && (i === 0 || i === 11)) for (const k of [1 / 3, 2 / 3]) walls.push([p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k]);
-  });
+  // Keep the cheek edges unsplit so the flat cap has no collinear fan triangles.
+  const walls = outline;
   const ringAt = [-0.1, 1.91, 0], RH = 0.85;
-  T.add(vloft([0, 1].map((k) => ({ y: RH * k, pts: walls })), { normals: 30 }), paint);
+  const turretPlan = (k) => walls.map(([x, z]) => [0.1 + (x - 0.1) * k, z * k]);
+  T.add(vloft([{ y: 0, pts: turretPlan(0.987) }, { y: 0.06, pts: walls }, { y: RH - 0.03, pts: walls }, { y: RH, pts: turretPlan(0.994) }], { normals: 48 }), paint);
   // the patches on the walls: each wall segment cut into bands, patched like the hull
   const mid = [0.1, 0];
   walls.forEach((a, i) => {
@@ -643,7 +665,7 @@ function tiger(f) {
   for (let i = 0; i < walls.length; i++) patches(TF, [last[i], last[(i + 1) % walls.length], [0.1, 0]].map(P3), [0, 1, 0], { to: ringAt });
   // the broad mantlet and gun collar, patched like the walls; the stowage bin on the back
   const patched = (geo, x, y, z, k = 1) => paintBy(geo, (p) => { const c = col(paint); const [g, b] = PATCHES.map(([fn]) => fn([p.x + x + ringAt[0], p.y + y + ringAt[1], p.z + z])); return dim(b > 0 ? BROWN : g > 0 ? GREEN : c, k); });
-  T.add(patched(chamferBox(0.32, 0.75, 1.85, 0.08), 1.56, 0.42, 0, 0.97), 0xffffff, xf(1.56, 0.42, 0), 'cast-armor').cyl(dim(paint, 0.95), 0.17, 0.3, 1.86, 0.42, 0, 0, 0, -Math.PI / 2, 12, 'cast-armor');
+  T.add(patched(loft([{ x: -0.16, w: 1.7, h: 0.67, p: 4.5 }, { x: -0.1, w: 1.84, h: 0.75, p: 3.8 }, { x: 0.07, w: 1.85, h: 0.74, p: 3.6 }, { x: 0.16, w: 1.72, h: 0.65, p: 3.2 }], { segments: 36, normals: 56 }), 1.56, 0.42, 0, 0.97), 0xffffff, xf(1.56, 0.42, 0), 'cast-armor').cyl(dim(paint, 0.95), 0.17, 0.3, 1.86, 0.42, 0, 0, 0, -Math.PI / 2, 12, 'cast-armor');
   T.box(BLACK, 0.02, 0.06, 0.06, 1.725, 0.58, -0.38).box(BLACK, 0.02, 0.06, 0.06, 1.725, 0.58, -0.52).box(BLACK, 0.02, 0.05, 0.05, 1.725, 0.42, 0.45);
   // The 88: a long tube tapering to the muzzle and the double-baffle brake, two rounded baffles with a dark slot
   // between them and the dark bore.
@@ -651,7 +673,7 @@ function tiger(f) {
   const prof = [[0, 0], [gr * 1.12, 0], [gr * 1.12, 0.08], [gr, 0.12], [gm, b0 - 0.03], [gm * 1.2, b0], [br * 0.82, b0 + 0.015], [br, b0 + 0.05], [br, b0 + 0.14], [br * 0.88, b0 + 0.175],
     [waist, b0 + 0.185], [waist, b0 + 0.235], [br * 0.88, b0 + 0.245], [br, b0 + 0.28], [br, gL - 0.04], [br * 0.82, gL - 0.005], [bore, gL], [bore, gL - 0.14], [0, gL - 0.14]];
   const slot = (p) => { const r = Math.hypot(p.y, p.z); return (r < waist + 1e-3 && p.x > b0 + 0.18 && p.x < b0 + 0.24) || (r < bore + 1e-3 && p.x > gL - 0.145); };
-  T.add(tag(paintBy(lathe(prof, 12, { axis: 'x' }), (p) => (slot(p) ? col(BLACK) : dim(paint, 0.8))), 'gunmetal'), 0xffffff, xf(1.9, 0.42, 0));
+  T.add(tag(paintBy(lathe(prof, 24, { axis: 'x' }), (p) => (slot(p) ? col(BLACK) : dim(paint, 0.8))), 'gunmetal'), 0xffffff, xf(1.9, 0.42, 0));
   T.add(patched(chamferBox(0.5, 0.42, 1.2, 0.04), -1.66, 0.44, 0, 0.95), 0xffffff, xf(-1.66, 0.44, 0));
   // roof: cupola at the left rear with its vision slits, loader's hatch, ventilator
   const cup = paintBy(lathe([[0.36, 0], [0.36, 0.09], [0.33, 0.1], [0.33, 0.17], [0.36, 0.18], [0.3, 0.25], [0, 0.26]], 12), (p) => (Math.abs(Math.hypot(p.x, p.z) - 0.33) < 0.005 ? col(BLACK) : col(paint)));
@@ -667,6 +689,9 @@ function tiger(f) {
       T.box(LINK_LIT, 0.05, 0.12, 0.04, x + (nx / l) * 0.07, 0.44, s * (z + (nz / l) * 0.07), 0, ry, 0);
     });
   }
+  // Hatch latches and bin clasps read separately from the welded roof and storage box.
+  T.box(IRON, 0.14, 0.025, 0.03, -0.75, RH + 0.265, -0.75).box(IRON, 0.14, 0.025, 0.03, -0.3, 0.897, 0.55);
+  for (const z of [-0.38, 0.38]) T.box(IRON, 0.03, 0.13, 0.08, -1.92, 0.44, z);
   T.add(TF.geometry());
   return { hull: H, turret: T, ring: [-0.1, 1.91, 0], tip: [1.9 + gL, 0.42, 0], s: 0.94, height: 1.3 };
 }

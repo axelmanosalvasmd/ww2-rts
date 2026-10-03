@@ -701,7 +701,8 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     if (fixed) {
       // left and right barrels (wings): the first one alternates shot to shot, the second is the other side
       if (k === 0) v.fxGun = ((v.fxGun ?? 0) + 1) % 2;
-      v.root.updateWorldMatrix(true, false); v3.set(fixed[0], fixed[1], (k + v.fxGun) % 2 ? fixed[2] : -fixed[2]).applyMatrix4(v.root.matrixWorld); return true;
+      const body = type === 'lcvp' ? v.visualBody ?? v.root : v.root;
+      body.updateWorldMatrix(true, false); v3.set(fixed[0], fixed[1], (k + v.fxGun) % 2 ? fixed[2] : -fixed[2]).applyMatrix4(body.matrixWorld); return true;
     }
     if (type === 'bunker') {
       const dx = tx - v.x, dz = tz - v.z, d = Math.hypot(dx, dz) || 1;

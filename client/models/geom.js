@@ -20,7 +20,7 @@ import * as THREE from 'three';
 // The per-vertex 'matId' attribute holds the index here, PLAIN or UNSET. merge() items take `mat` (a name) for
 // the vertices their shape left UNSET, so a wheel keeps its rubber tire whatever its disc is made of; tag() sets
 // every vertex. mergeParts in client/unit-models.js works the same way with part(..., mat).
-export const MATS = ['armor-paint', 'cast-armor', 'gunmetal', 'track-steel', 'rubber', 'wood', 'canvas', 'wool', 'leather', 'aluminum', 'aircraft-paint', 'mud'];
+export const MATS = ['armor-paint', 'cast-armor', 'gunmetal', 'track-steel', 'rubber', 'wood', 'canvas', 'wool', 'leather', 'aluminum', 'aircraft-paint', 'mud', 'asphalt', 'concrete'];
 export const PLAIN = -1, UNSET = -2;
 // the id of a material name (null or undefined: UNSET); unknown names throw, so a typo shows up at once
 export function matId(name) {

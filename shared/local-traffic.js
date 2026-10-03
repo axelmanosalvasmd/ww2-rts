@@ -18,12 +18,12 @@ export function trafficStep(g, u, goal, context) {
   const { defs, grid, clear, coverRank, visible, dt } = context;
   if (!goal || protectedUnit(u)) { u.traffic = null; u.trafficWait = 0; return { goal, blocked: false }; }
   const def = defs[u.type], d = length(u, goal), dx = (goal.x - u.x) / (d || 1), dz = (goal.z - u.z) / (d || 1);
-  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, true, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && visible(v));
+  const radius = bodyRadius(def) + 7, nearby = grid.candidates(u, radius, true, v => v.id !== u.id && v.id !== u.board && v.hp > 0 && !v.air && !v.riding && v.garrison < 0 && !(def.infantry && defs[v.type].infantry) && visible(v));
   const velocity = Math.min(def.speed, d / dt), vx = dx * velocity, vz = dz * velocity;
   let conflict = null, time = Infinity;
   for (const v of nearby) {
     const vd = defs[v.type];
-    if (def.infantry && vd.infantry) continue; // Squad footprints keep their existing soft separation.
+    // Infantry pairs were excluded above, including from passing-leg occupancy.
     const wp = v.traffic?.goal ?? v.path?.[0], vl = wp ? length(v, wp) : 0;
     const vvx = v.vx ?? (wp ? (wp.x - v.x) / (vl || 1) * vd.speed : 0), vvz = v.vz ?? (wp ? (wp.z - v.z) / (vl || 1) * vd.speed : 0);
     const rx = v.x - u.x, rz = v.z - u.z, rvx = vvx - vx, rvz = vvz - vz;

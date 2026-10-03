@@ -15,12 +15,16 @@ import { gfx } from './gfx.js';
 import { modelMaterial } from './model-textures.js';
 import { MATS, UNSET, matId, baseMat } from './models/geom.js';
 import { soldier, AIM_SHIFT } from './models/infantry.js';
+import { infantryMaterial, loadInfantryTextures } from './infantry-material.js';
 import { moveSquad, gaitWeights } from './squad-motion.js';
+import { moveModel } from './model-motion.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
 import { churchill } from './models/churchill.js';
 import { cromwell } from './models/cromwell.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
+import { bakedNavalModel } from './models/blender-baked.js';
+import navalFinished from './models/naval-finished-data.js';
 import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
 // unit-sized shapes, scaled per part. Soldiers, including the fallen ones, come from client/models/infantry.js.
@@ -39,24 +43,14 @@ const ROOF = (() => {
 const DARK = 0x2a2a24;
 // one material for every plain-colored part; the color sits in the geometry, the texture detail comes from what each
 // vertex is made of (painted armor where a mesh built outside mergeParts does not say)
-export const PAINT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'armor-paint', grime: true });
-// Neutral tone mapping removes most of the low, neutral sky fill. Keep shaded vehicle paint readable with a
-// diffuse-colored bounce fill, strongest away from the sun. It follows the textured paint, including dark tires.
-const vehiclePaint = new THREE.MeshLambertMaterial({ vertexColors: true });
-vehiclePaint.onBeforeCompile = (shader) => {
-  shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  #if NUM_DIR_LIGHTS > 0
-    totalEmissiveRadiance += diffuseColor.rgb * (0.08 + 0.45 * (1.0 - max(dot(normal, directionalLights[0].direction), 0.0)));
-  #else
-    totalEmissiveRadiance += diffuseColor.rgb * 0.3;
-  #endif`);
-};
-vehiclePaint.customProgramCacheKey = () => 'vehicle-bounce-fill';
-export const VEHICLE_PAINT = modelMaterial(vehiclePaint, { mat: 'armor-paint', grime: true });
+export const PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }), { mat: 'armor-paint', grime: true });
+export const INFANTRY_PAINT = infantryMaterial(modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { mat: 'wool', grime: true }));
+// Painted steel, exposed tracks, tires and canvas share one draw while keeping separate surface responses.
+export const VEHICLE_PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0 }), { mat: 'armor-paint', grime: true });
 const colors = new Map();
 const colorOf = (hex) => colors.get(hex) || colors.set(hex, new THREE.Color(hex)).get(hex);
 const cloths = new Map();
-const cloth = (color) => cloths.get(color) || cloths.set(color, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide })).get(color);
+const cloth = (color) => cloths.get(color) || cloths.set(color, new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, side: THREE.DoubleSide })).get(color);
 // textured structure materials (sandbag, wood, darkwood): main.js passes client/surfaces.js surface(); without it
 // (the tests run in Node, where textures cannot load) each part keeps its plain color
 let skin = (_key, color) => color;
@@ -82,6 +76,7 @@ function part(geo, paint, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0, mat) {
 // the most anywhere. Planes have none (client/aircraft.js).
 export const LOOKS = {
   vehicle: { mat: 'armor-paint', mud: 0.75, dust: 0.18, most: 0.9 },
+  naval: { mat: 'armor-paint', mud: 0, dust: 0.03, most: 0.1 },
   gun: { mat: 'armor-paint', mud: 0.22, dust: 0.12, most: 0.7 },
   soldier: { mat: 'wool', mud: 0.3, dust: 0.2, most: 0.6 },
   structure: { mat: 'armor-paint', mud: 0.6, dust: 0.1, most: 0.8 },
@@ -92,7 +87,7 @@ const darkSteel = (c) => c && Math.max(c.r, c.g, c.b) < 0.032 && Math.max(c.r, c
 const smooth01 = (t) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k); };
 // grime at a height y above the model's feet (normal ny): mud low down, dust above it (a bit more on top faces)
 function grimeAt(L, y, ny) {
-  const mud = 1 - smooth01((y - L.mud * 0.1) / (L.mud * 0.9)), dust = L.dust ? L.dust + 0.12 * Math.max(0, ny) : 0;
+  const mud = L.mud > 0 ? 1 - smooth01((y - L.mud * 0.1) / (L.mud * 0.9)) : 0, dust = L.dust ? L.dust + 0.12 * Math.max(0, ny) : 0;
   return Math.min(L.most, Math.max(mud, dust), 0.98);
 }
 
@@ -107,12 +102,13 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
   const uv = !withColor && parts.every((p) => p.geo.attributes.uv); // texture coordinates only for textured materials
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = withColor ? new Float32Array(nv * 3) : null, uvs = uv ? new Float32Array(nv * 2) : null;
   const mat = withColor ? new Float32Array(nv) : null, L = LOOKS[look] ?? LOOKS.vehicle;
+  const atlas = parts.some(p => p.geo.attributes.modelUV) ? new Float32Array(nv * 3) : null;
   const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3();
   let vo = 0, io = 0;
   for (const p of parts) {
     const P = p.geo.attributes.position, N = p.geo.attributes.normal, U = p.geo.attributes.uv, I = p.geo.index;
     // a shape that brings its own vertex colors (client/models/geom.js wheels, tracks, markings) is tinted by the paint
-    const G = col ? p.geo.attributes.color : null, M = p.geo.attributes.matId;
+    const G = col ? p.geo.attributes.color : null, M = p.geo.attributes.matId, A = p.geo.attributes.modelUV;
     const fill = mat ? (p.mat != null ? matId(p.mat) : !G && darkSteel(p.color) ? GUNMETAL : matId(L.mat)) : 0;
     nm.getNormalMatrix(p.matrix);
     for (let i = 0; i < P.count; i++) {
@@ -121,6 +117,7 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
       t.fromBufferAttribute(N, i).applyMatrix3(nm).normalize().toArray(nor, (vo + i) * 3);
       if (col) p.color.toArray(col, (vo + i) * 3);
       if (G) { const o = (vo + i) * 3; col[o] *= G.getX(i); col[o + 1] *= G.getY(i); col[o + 2] *= G.getZ(i); }
+      if (atlas && A) { atlas[(vo + i) * 3] = A.getX(i); atlas[(vo + i) * 3 + 1] = A.getY(i); atlas[(vo + i) * 3 + 2] = A.getZ(i); }
       if (uvs) { uvs[(vo + i) * 2] = U.getX(i); uvs[(vo + i) * 2 + 1] = U.getY(i); }
       if (mat) {
         const own = M ? baseMat(M.getX(i)) : UNSET;
@@ -140,6 +137,7 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
   if (col) g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   if (mat) g.setAttribute('matId', new THREE.BufferAttribute(mat, 1));
   if (uvs) g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  if (atlas) g.setAttribute('modelUV', new THREE.BufferAttribute(atlas, 3));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   g.computeBoundingSphere();
   return g;
@@ -171,11 +169,11 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
     group.traverse((o) => {
       const d = o.userData;
       if (!d.geo) return;
-      const material = d.paint.isMaterial ? d.paint : look === 'vehicle' ? VEHICLE_PAINT : PAINT;
+      const material = d.paint.isMaterial ? d.paint : look === 'soldier' ? INFANTRY_PAINT : look === 'vehicle' || look === 'naval' ? VEHICLE_PAINT : PAINT;
       if (!buckets.has(material)) buckets.set(material, []);
-      buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT || material === VEHICLE_PAINT ? colorOf(d.paint) : null, mat: d.mat });
+      buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT || material === VEHICLE_PAINT || material === INFANTRY_PAINT ? colorOf(d.paint) : null, mat: d.mat });
     });
-    list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT || material === VEHICLE_PAINT, look, group.position.y) }));
+    list = [...buckets].map(([material, parts]) => ({ material, geometry: mergeParts(parts, material === PAINT || material === VEHICLE_PAINT || material === INFANTRY_PAINT, look, group.position.y) }));
     if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle, poses.fallen);
     baked.set(key, list);
   }
@@ -329,48 +327,19 @@ export function buildModel(v, root, f, fac, def) {
       part(GEO.box, post, 0.3, 3, 0.3, -0.8, 1.5, -1.8), part(GEO.box, post, 0.3, 3, 0.3, -0.8, 1.5, 1.8),
       part(GEO.box, DARK, 0.3, 5.5, 0.3, 2.2, 2.75, 2.4), part(GEO.box, DARK, 3, 0.25, 0.25, 1.1, 5.4, 2.4), part(GEO.cyl, DARK, 0.03, 2, 0.03, 0, 4.4, 2.4));
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
-  } else if (type === 'lcvp') {
-    // landing craft: a flat-bottomed open box, square bow ramp forward (+x), the coxswain's position aft, one MG
-    const hull = new THREE.Group(), paint = f.vehicle;
-    hull.add(part(GEO.box, DARK, 10, 0.4, 3, 0, 0.1, 0), part(GEO.box, paint, 10, 1.3, 0.14, 0, 0.9, 1.45), part(GEO.box, paint, 10, 1.3, 0.14, 0, 0.9, -1.45),
-      part(GEO.box, paint, 0.14, 1.3, 3, -5, 0.9, 0), part(GEO.box, paint, 0.2, 1.6, 3, 5.05, 1, 0), part(GEO.box, paint, 1.4, 0.9, 1.3, -4.1, 1.7, 0.6),
-      part(GEO.cyl, DARK, 0.05, 1.2, 0.05, -4.3, 2.2, -0.8).rotateZ(Math.PI / 2));
-    root.add(bake(hull, key + '|hull', true));
-    v.models.push(root);
-  } else if (type === 'gunboat') {
-    // motor torpedo boat, 24 m: a long planing hull, a pointed bow, the bridge amidships, torpedo tubes along the
-    // sides and a turning autocannon aft (v.turret)
-    const hull = new THREE.Group(), grey = 0x5f666b;
-    hull.add(part(GEO.box, grey, 19, 1.8, 5.4, -1.5, 0.5, 0), part(GEO.box, grey, 3.8, 1.8, 3.8, 8, 0.5, 0).rotateY(Math.PI / 4),
-      part(GEO.box, 0x3d3a34, 19, 0.15, 5.2, -1.5, 1.45, 0), part(GEO.box, grey, 4, 1.8, 3, 1.5, 2.3, 0), part(GEO.box, DARK, 3.6, 0.5, 3.1, 2, 2.9, 0),
-      part(GEO.cyl, 0x4a4f52, 0.3, 6, 0.3, 3, 1.9, 2.3).rotateZ(Math.PI / 2), part(GEO.cyl, 0x4a4f52, 0.3, 6, 0.3, 3, 1.9, -2.3).rotateZ(Math.PI / 2),
-      part(GEO.box, f.color, 1.2, 0.8, 0.05, -10.5, 2.4, 0), part(GEO.cyl, DARK, 0.06, 4, 0.06, 0.5, 4.4, 0));
-    v.turret = new THREE.Group(); v.turret.position.set(-6, 1.6, 0);
-    v.turret.add(part(GEO.box, grey, 1.6, 0.8, 1.6, 0, 0.4, 0), part(GEO.cyl, DARK, 0.09, 2.2, 0.09, 1.5, 0.9, 0).rotateZ(Math.PI / 2));
-    root.add(hull, v.turret); v.fxTip = [2.6, 0.9, 0];
-    bake(hull, key + '|hull', true); bake(v.turret, key + '|turret', true);
-    v.models.push(root);
-  } else if (type === 'destroyer') {
-    // destroyer at true size: 110 m long, 11 m beam, two gun mounts forward (the front one turns: v.turret), the
-    // bridge and two funnels amidships, two mounts aft, flak in between; the owner's colour on the funnel bands
-    const hull = new THREE.Group(), grey = 0x6b7177, light = 0x868c91, deck = 0x5d5246;
-    hull.add(part(GEO.box, grey, 96, 5, 11, -5, 1.2, 0), part(GEO.box, grey, 9, 5, 9, 43, 1.2, 0).rotateY(Math.PI / 4),
-      part(GEO.box, deck, 96, 0.3, 10.6, -5, 3.8, 0), part(GEO.box, 0x2e3236, 98, 0.6, 11.2, -5, -0.9, 0),
-      part(GEO.box, light, 20, 4.5, 8, 14, 6.2, 0), part(GEO.box, light, 8, 3.5, 7, 20, 10, 0), part(GEO.box, DARK, 7.6, 0.8, 7.2, 20.5, 11.2, 0),
-      part(GEO.cyl, 0x52575c, 1.8, 7, 2.3, 4, 8.5, 0), part(GEO.cyl, 0x52575c, 1.8, 7, 2.3, -8, 8.5, 0),
-      part(GEO.cyl, f.color, 1.85, 1, 2.35, 4, 10.5, 0), part(GEO.cyl, f.color, 1.85, 1, 2.35, -8, 10.5, 0),
-      part(GEO.cyl, DARK, 0.25, 20, 0.25, 15, 16, 0), part(GEO.box, DARK, 0.2, 0.2, 6, 15, 21, 0),
-      part(GEO.box, light, 6, 2.6, 4, -22, 5.2, 0), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, 1.2).rotateZ(Math.PI / 3), part(GEO.cyl, DARK, 0.15, 3.5, 0.15, -20.5, 6.5, -1.2).rotateZ(Math.PI / 3));
-    // four gun mounts, A and B (raised) forward, X and Y aft; all of them turn (v.mounts), A doubles as v.turret
-    v.mounts = [[33, 4], [25, 5.2], [-36, 4], [-44, 4]].map(([x, y]) => {
-      const m = new THREE.Group(); m.position.set(x, y, 0);
-      m.add(part(GEO.box, light, 5, 2.4, 4, 0, 1.2, 0), part(GEO.cyl, DARK, 0.18, 6, 0.18, 4.5, 1.6, 0).rotateZ(Math.PI / 2));
-      bake(m, key + '|mount', true);
-      return m;
-    });
-    v.turret = v.mounts[0]; v.fxTip = [7.5, 1.6, 0];
-    root.add(hull, ...v.mounts);
-    bake(hull, key + '|hull', true);
+  } else if (type === 'lcvp' || type === 'gunboat' || type === 'destroyer') {
+    const model = bakedNavalModel(navalFinished, type, own, f), hull = new THREE.Group();
+    hull.add(part(model.hull, 0xffffff));
+    root.add(bake(hull, key + '|hull', true, 'naval'));
+    if (model.turret) {
+      const mounts = model.mounts.map((at) => {
+        const mount = new THREE.Group(); mount.position.set(...at);
+        mount.add(part(model.turret, 0xffffff));
+        return bake(mount, key + '|mount', true, 'naval');
+      });
+      root.add(...mounts); v.turret = mounts[0]; v.fxTip = model.tip;
+      if (type === 'destroyer') v.mounts = mounts;
+    }
     v.models.push(root);
   } else if (type === 'bunker' || type === 'worldbase') {
     const shell = new THREE.Group();
@@ -399,6 +368,7 @@ export function buildModel(v, root, f, fac, def) {
     SLOTS[type].forEach(([x, z], i) => {
       // client/models/infantry.js builds the figure, near and far, with its kneeling, prone and running builds in
       // userData.poses for the posture morph targets
+      loadInfantryTextures();
       const s = soldier(figure, own, i, f), poses = (g) => g.children[0].userData.geo.userData;
       const hi = bakeMeshes(s.near, `${key}|man|${s.kit}`, false, poses(s.near), 'soldier'), lo = bakeMeshes(s.far, `${key}|far|${s.kit}`, false, poses(s.far), 'soldier');
       lo.forEach((m) => (m.visible = false));
@@ -427,7 +397,7 @@ export function buildModel(v, root, f, fac, def) {
 // swap to the far-away model beyond the LOD distance. eye is the camera position.
 export function animate(v, dt, eye, groundAt, detailed = true) {
   const sq = v.squad;
-  if (!sq) return;
+  if (!sq) { moveModel(v, dt); return; }
   const px = v.root.position.x, pz = v.root.position.z;
   const distance = sq.poseX === undefined ? 0 : Math.hypot(px - sq.poseX, pz - sq.poseZ);
   const travel = distance > 8 ? 0 : distance;
@@ -570,6 +540,7 @@ function fallenGeometry(src, scale) {
   geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (src.attributes.color) geo.setAttribute('color', src.attributes.color.clone());
   if (src.attributes.matId) geo.setAttribute('matId', src.attributes.matId.clone());
+  if (src.attributes.modelUV) geo.setAttribute('modelUV', src.attributes.modelUV.clone());
   if (src.index) geo.setIndex(src.index.clone());
   geo.computeBoundingSphere();
   return geo;
@@ -577,7 +548,7 @@ function fallenGeometry(src, scale) {
 function corpseMaterial() {
   // same textured paint as a living soldier, plus a per-body fade. Registered with the texture loader so a corpse
   // picks up wool and steel when the textures arrive, not only the paint it had at startup.
-  const material = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, depthWrite: true }), { mat: 'wool', grime: true });
+  const material = infantryMaterial(modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, transparent: true, depthWrite: true }), { mat: 'wool', grime: true }));
   const prev = material.onBeforeCompile;
   const prevKey = material.customProgramCacheKey?.bind(material);
   material.onBeforeCompile = (shader, renderer) => {

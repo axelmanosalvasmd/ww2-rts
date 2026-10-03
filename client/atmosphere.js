@@ -81,7 +81,7 @@ function cloudMaterial() {
       void main() {
         float a = texture2D( tNoise, vXZ / ${CLOUD_SCALE.toFixed(1)} + drift.xy ).r;
         float b = texture2D( tNoise, vXZ / ${(CLOUD_SCALE * 0.53).toFixed(1)} + drift.zw ).r;
-        float cover = smoothstep( 0.5, 0.64, a * 0.72 + b * 0.28 );
+        float cover = smoothstep( 0.46, 0.7, a * 0.72 + b * 0.28 );
         ${FOG_FADE}
         float alpha = cover * strength * ( 1.0 - smoothstep( fade.z, fade.w, length( vXZ - fade.xy ) ) ) * ( 1.0 - fogF );
         gl_FragColor = vec4( tint, alpha );
@@ -104,6 +104,48 @@ function wispTexture() {
   }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+// The same instanced sheets, with a small distortion inside the texture instead of more overlapping geometry.
+// Fade near the eye so a low camera does not cut through a bright sheet. Weather supplies the mist's tint.
+function mistMaterial(tWisp, opacity) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      ...fogUniforms(), tWisp: { value: tWisp }, uTime: { value: 0 }, uOpacity: { value: opacity },
+      uTint: { value: new THREE.Color(0xeceeea) },
+    },
+    vertexShader: /* glsl */`
+      #include <common>
+      #include <fog_pars_vertex>
+      varying vec2 vUv, vXZ;
+      varying float vNear;
+      void main() {
+        vec4 wp = modelMatrix * instanceMatrix * vec4( position, 1.0 );
+        vUv = uv;
+        vXZ = wp.xz;
+        vec4 mvPosition = viewMatrix * wp;
+        vNear = smoothstep( 6.0, 18.0, -mvPosition.z );
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: /* glsl */`
+      uniform sampler2D tWisp;
+      uniform float uTime, uOpacity;
+      uniform vec3 uTint;
+      varying vec2 vUv, vXZ;
+      varying float vNear;
+      #include <common>
+      #include <fog_pars_fragment>
+      void main() {
+        vec2 uv = vUv + 0.018 * vec2( sin( vXZ.y * 0.2 + uTime * 0.13 ), sin( vXZ.x * 0.17 - uTime * 0.11 ) );
+        float a = texture2D( tWisp, uv ).a * uOpacity * vNear;
+        if ( a < 0.004 ) discard;
+        ${FOG_FADE}
+        gl_FragColor = vec4( mix( uTint, fogColor, fogF ), a * ( 1.0 - 0.65 * fogF ) );
+        ${OUT}
+      }`,
+    transparent: true, depthWrite: false, fog: true,
+  });
 }
 
 // sheets over water cells, spaced out, kept off fords and bridges (where units cross); low ground if there is no water
@@ -375,7 +417,7 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
 
   const MIST_CAP = 36, wisp = wispTexture();
   const mist = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ map: wisp, color: 0xf3f0ea, transparent: true, opacity: 0.28, depthWrite: false, fog: true }), MIST_CAP);
+    mistMaterial(wisp, 0.28), MIST_CAP);
   mist.renderOrder = 0.7; mist.frustumCulled = false; mist.raycast = () => {}; mist.count = 0;
   root.add(mist);
   let sites = [];
@@ -383,7 +425,7 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
   // ground fog: wide low sheets over the whole map
   const BANK_CAP = 64;
   const banks = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ map: wisp, color: 0xeceeea, transparent: true, opacity: 0, depthWrite: false, fog: true }), BANK_CAP);
+    mistMaterial(wisp, 0), BANK_CAP);
   banks.renderOrder = 0.72; banks.frustumCulled = false; banks.raycast = () => {}; banks.count = 0;
   root.add(banks);
   let bankAt = [];
@@ -425,7 +467,9 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
     cloudMat.uniforms.strength.value = Math.min(0.32, M.clouds * cur.clouds);
     const u = coverMat.uniforms;
     u.uWet.value = cur.wet; u.uSheen.value = cur.sheen; u.uMud.value = cur.mud; u.uCover.value = cur.cover; u.uSky.value.copy(hazeNow);
-    banks.material.opacity = 0.34 * cur.banks;
+    mist.material.uniforms.uTint.value.setHex(M.top).lerp(hazeNow, 0.65);
+    banks.material.uniforms.uTint.value.copy(mist.material.uniforms.uTint.value);
+    banks.material.uniforms.uOpacity.value = 0.34 * cur.banks;
   }
 
   // Graphics Low keeps rain and snow with fewer particles and hides clouds and birds.
@@ -542,19 +586,22 @@ export function createAtmosphere({ scene, renderer, camera, cam }) {
       cloudMat.uniforms.drift.value.set(drift.x, drift.y, (drift.x * 1.6 + 0.37) % 1, (drift.y * 1.9 + 0.61) % 1);
     }
     if (cover.visible) coverMat.uniforms.uTime.value = t;
+    const mistT = reduceMotion ? 0 : t;
     if (mist.visible) {
+      mist.material.uniforms.uTime.value = mistT;
       for (let i = 0; i < mist.count; i++) {
-        const s = sites[i], w = Math.sin(t * 0.05 + s.ph) * 3, br = 1 + 0.08 * Math.sin(t * 0.11 + s.ph * 2);
-        p3.set(s.x + WX * w, s.y, s.z + WZ * w); q.setFromAxisAngle(UP, s.yaw + 0.05 * Math.sin(t * 0.03 + s.ph));
+        const s = sites[i], w = Math.sin(mistT * 0.05 + s.ph) * 3, br = 1 + 0.08 * Math.sin(mistT * 0.11 + s.ph * 2);
+        p3.set(s.x + WX * w, s.y, s.z + WZ * w); q.setFromAxisAngle(UP, s.yaw + 0.05 * Math.sin(mistT * 0.03 + s.ph));
         mist.setMatrixAt(i, m4.compose(p3, q, s3.set(s.sx * br, 1, s.sz * br)));
       }
       mist.instanceMatrix.needsUpdate = true;
     }
     if (banks.visible) {
+      banks.material.uniforms.uTime.value = mistT;
       // the banks drift with the wind and rise a little as they thin out
       const lift = (1 - cur.banks) * 3;
       for (let i = 0; i < banks.count; i++) {
-        const s = bankAt[i], w = Math.sin(t * 0.03 + s.ph) * 6, br = 1 + 0.1 * Math.sin(t * 0.07 + s.ph * 2);
+        const s = bankAt[i], w = Math.sin(mistT * 0.03 + s.ph) * 6, br = 1 + 0.1 * Math.sin(mistT * 0.07 + s.ph * 2);
         p3.set(s.x + WX * w, s.y + lift, s.z + WZ * w); q.setFromAxisAngle(UP, s.yaw);
         banks.setMatrixAt(i, m4.compose(p3, q, s3.set(s.sx * br, 1, s.sz * br)));
       }

@@ -732,27 +732,29 @@ the playable map. The HUD target remains `docs/concepts/g-hud-gunmetal.jpg`, and
 Richer procedural models are built with the toolkit in `client/models/geom.js` (rounded and chamfered boxes,
 lofted hulls, lathed barrels and helmets, wheels, tracks, tubes, painted markings, baked vertex shading). Each model
 still merges into one vertex-colored mesh on the shared paint material, so detail costs vertices, not draw calls.
-- Model textures (`client/model-textures.js`): units are textured so they read as weathered real equipment, not
-  painted toys. Twelve seamless layers generated with gpt-image-2 (`client/textures/models/`, 512 px: painted armor,
-  cast armor, gunmetal, track steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint, mud) sit in one
+- Model textures (`client/model-textures.js`): fourteen surface layers share one 512-pixel texture array. Twelve
+  model layers generated with GPT Image (`client/textures/models/`: painted armor, cast armor, gunmetal, track
+  steel, rubber, wood, canvas, wool, leather, aluminum, aircraft paint and mud), plus the existing road and plaster
+  images for asphalt and concrete, sit in one
   texture array. The shared materials (PAINT, VEHICLE_PAINT, the plane body and blades) sample each fragment's layer with triplanar
   mapping in the model's own space (after the posture morphs, so nothing swims on a turning turret or a prone
   soldier). The texture's light and dark scale the vertex color, so faction paint, markings and the owner color keep
-  their hue; paint is faded a little and mottled with broad blotches, and some layers (track steel, wood, leather)
+  their hue; paint is faded a little, and some layers (track steel, wood, leather)
   bring part of their own color. Grime is baked per vertex at merge time by height: a dust film everywhere and dried
-  mud clumps on lower hulls, wheels, tracks and boots (none on planes). No extra draw calls; on Low, and until the
-  textures load, the shader compiles without any of it. Tuning per layer (texels per metre, strength, hue, fade, and
+  mud clumps on lower hulls, wheels, tracks and boots (none on planes or ships). No extra draw calls; on Low, and until the
+  textures load, texture sampling and relief are omitted. Roughness and metalness still follow the material ID;
+  Low caps effective metalness at 0.25 so the diffuse sky fill keeps bare metal readable without reflections.
+  Tuning per layer (texels per metre, strength, hue, fade, roughness, metalness, relief and
   film: how much grime it holds) is in `LAYERS` at the top of the module. Grime is greyed and never much brighter than
   the part under it, so dark tracks, tires and gunmetal stay dark instead of turning into an orange band.
-- Vehicle shade (2026-10-01): Neutral tone mapping subtracts most neutral light at low brightness and leaves the
-  blue sky tint on dark grey paint. Vehicle meshes use their own shared Lambert material with a textured-albedo
-  bounce fill, strongest away from the sun. The world light and soldier/gun materials stay as before. The fill adds
-  no draws or texture samples. German and Soviet light-tank paints are warm grey and olive; the Sd.Kfz. 222's dark
+- Vehicle shade: units, corpses, planes and base buildings use Standard materials. A small filtered outdoor
+  environment provides reflections on High; Low omits it. Painted steel stays dielectric, while exposed gunmetal,
+  track steel and aluminum reflect more light. Texture detail also varies roughness and surface normals. The old
+  artificial emissive fill is removed. German and Soviet light-tank paints are warm grey and olive; the Sd.Kfz. 222's dark
   paint shades are warm grey. Stuart sponsons add a lower rivet row, T-70 sides have weld seams, Tiger wheels have
   wider rubber rims and distinct inner/outer depth, and ZSU shields sit below the barrel with a visible breech,
-  recoil rail and case tray. Counts (hull + turret): Stuart 2,976/3,000, Panzer II 2,974/3,000, T-70 2,818/3,000,
-  Tiger 4,907/5,000, ZSU-37 2,954/3,000. All armor models remain two draws; tests check budgets, normals and muzzle
-  points. Panzer IV before/after viewer captures on the Apple M3 Max confirm readable rear plates at 3,908 tris.
+  recoil rail and case tray. Current geometry budgets and validation are recorded in the model finish section below.
+  All armor models remain two draws; tests check budgets, normals and muzzle points.
 - Tagging what a part is made of: `part(geo, paint, sx, sy, sz, x, y, z, mat)` in `client/unit-models.js`,
   `{ geo, color, matrix, mat }` items in `geom.merge()`, or `tag(geo, mat)`. `mat` is a name from `MATS` in
   `client/models/geom.js` or `'plain'` (no texture: faces, glass, the soldier's base). A shape's own tags win over the
@@ -1988,3 +1990,51 @@ every new search, retaining current terrain, wear, weather and bunker insertion,
 economy or balance rule changed. `node test.js` includes the focused performance checks; CI also runs
 `node test-world.js`. `tools/test-render-browser.html` provides the native WebGL adapter check when served from the
 repository root by a local static server.
+
+## Model finish and Blender workflow (2026-10-03)
+
+- Naval models use shaped chine hulls, deck fittings, glazed bridges and individual gun mounts. The landing
+  craft keeps its open passenger well and bow ramp. Patrol boats keep two draws, landing craft one, and
+  destroyers five. Gun pivots and muzzle points retain the existing animation and firing contracts.
+- Naval geometry is cached by faction and owner paint, with material tags in the same shared texture array as
+  other vehicles. Raw hulls use curved transverse sections and cambered decks. Blender applies bounded bevels and
+  weighted normals, then exports a synchronous runtime payload with source hashes and separate tint masks.
+  Shared arrays are losslessly compressed in the 3.78 MB ES module and decoded once during module loading;
+  individual model construction stays synchronous. Final counts are 7,422 for landing craft, 15,680 for patrol
+  boats and 38,252 to 38,329 for destroyers, depending on faction.
+  Checks cover all four factions, finite geometry, face winding, footprints, mount counts and
+  budgets of 15,000 / 30,000 / 50,000 triangles for landing craft / patrol boats / destroyers.
+- Multi-view concept sheets and a neutral painted-steel texture were generated using the Codex Image workflow.
+  The sheets are visual guidance, not historical blueprints. The shipped armor texture is a 512-pixel JPEG;
+  faction colors still come from vertex paint. The earlier texture remains available as a source asset.
+- The Blender setup is project-scoped for Codex and Claude Code. Modeling and scene inspection use the existing
+  three-integration workflow, while the browser model viewer remains the authority for shipped rendering.
+  Simulation movement, collision rules, weapon stats and balance are unchanged by this visual pass.
+
+- Infantry detail stays within 3,000 triangles per near soldier and 145 per far soldier. Near figures have curved
+  limbs, facial features, shaped helmets and distinct weapon profiles. The far geometry and posture/gait contracts
+  are preserved. Field guns stay within 4,000 triangles. Armor uses curved castings or beveled welded plates, rounded
+  tires, perforated wheels and physical track cleats; budgets are 8,000 for light tanks, 18,000 for medium tanks and
+  20,000 for heavy tanks. Wheeled vehicles stay below 12,000 triangles. Aircraft budgets are 6,000 for fighters,
+  6,500 for attackers and 10,000 for bombers and transports. Base buildings retain one draw each, with thick roofs,
+  rounded log walls, glazed openings and recognizable workshop equipment.
+- Land hulls lean slightly with acceleration and steering; boats use bounded pitch, roll and heave. A visual
+  child group keeps position, heading and ground markers stable. Muzzle effects follow the animated geometry.
+  Infantry gait weights ease between poses and stride length settles when suppression changes posture.
+- Sky and ground fill expose shaded model details without adding lights or shadow maps. Cloud edges soften;
+  river mist and fog banks share a weather-tinted shader with mild UV distortion and a near-camera fade.
+  Mist stops drifting under reduced-motion preferences. Graphics Low retains its existing cheaper effects.
+- Standard shading costs more per fragment than Lambert. The shared texture array, merged draws and existing
+  infantry distance LOD remain in use. The reflection map is generated once per renderer, with no added per-frame
+  capture or post-processing pass. This visual pass does not claim a new frame-rate target.
+
+## Infantry asset and traffic maintenance (2026-10-03)
+
+Near infantry now uses a 5,984-triangle textured source fitted in Blender to the existing pose rig.
+Factions share its base uniform cut, with separate colors, helmets and weapons. The distant figures,
+weapon reach, muzzle positions, unit stats and combat rules are unchanged. Low graphics keeps the
+base-color atlas but skips its normal map. See `tools/blender/infantry.md` for the retained source and rebuild.
+
+Infantry pairs use soft separation throughout local traffic planning, including the occupancy tests
+for passing legs. A waiting engineer must not invalidate every route around a stationary HQ when
+those same infantry pairs would not block one another during ordinary travel.
