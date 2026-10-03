@@ -5,6 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+
 - A fourth faction: the UK, picked in the lobby like the others. Its own units: the Churchill VII (480 MP, max 1),
   a slow infantry tank with the thickest front on the map (takes 60% from the front, the Tiger 70%) and a modest
   75 mm gun, and Commandos (190 MP, 5 men), raiders with Stens and satchel charges who hide when they keep still,
@@ -69,6 +70,24 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   crowding. Routes now go around a standing bunker; an order aimed at the bunker still reaches it.
 - Fixed: spawn placement measured walking distance through cliffs, so two spawns on either side of a cliff counted
   as neighbours. A step of more than one level now blocks that measure, like water and houses already did.
+
+- A public match browser now opens at the site's main address, using the same gunmetal panels, khaki borders,
+  brass accents and condensed type as the room UI. Pick a nickname, filter live rooms by mode or open seats,
+  use Quick Play for Conquest, create a public or unlisted room, or enter a room code. No account is needed.
+- Public rooms show their name, map, mode, occupied seats, human/AI counts and match status. Unlisted and old
+  rooms stay out of the browser. Rooms without a connected human player disappear from it. Unlisted rooms are
+  link-accessible, not password-protected. Old /#code links and alternate-seat links still work; games now use
+  /play and room invite links point there. The room screen has a Browse matches link.
+- Room creation has a configurable server-wide limit (MAX_ROOMS, default 32), with a retry message when full.
+  This is an admission guard, not a measured safe number of simultaneous battles. New seat tokens and room codes
+  from the public lobby use browser cryptographic randomness. Invalid room titles fall back safely.
+- Listed rooms enforce the selected map's seat limit, including AI and spectators taking a seat. A late joiner
+  can watch instead of adding an extra player that prevents the match from starting.
+- Left for later: public deployment, abuse/rate limits, per-match compute budgets, editor isolation, accounts,
+  moderation and atomic Quick Play seat reservations. A room can fill or start between browsing and joining;
+  the existing game flow then offers a spectator seat. Gameplay balance is unchanged.
+
+
 - Fixed: long floating labels shrank their letters to fit a fixed plate, so the "Locked" tag over a linked point was
   unreadable. A long label now gets a wider plate at the normal letter size, and the locked tag reads "Locked: take
   the linked point first".

@@ -15,6 +15,7 @@ import { storyResult } from './shared/story.js';
 import { createTickMeter, recordTick, tickStats } from './tickmeter.js';
 
 const PORT = +(process.env.PORT || 3000), HOST = process.env.HOST || '127.0.0.1';
+const MAX_ROOMS = Math.max(1, Math.min(256, Math.floor(Number(process.env.MAX_ROOMS) || 32)));
 export const clock = {
   now: () => Date.now(),
   setTimeout: (fn, ms) => setTimeout(fn, ms),
@@ -85,6 +86,15 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 
 export const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname === '/api/rooms' && req.method === 'GET') {
+    const list = [...rooms.values()].filter(r => r.listed && r.players.some(p => !p.ai && connected(p))).map(r => ({
+      code: r.code, title: r.title, mode: r.mode, map: r.mapName, state: r.state,
+      humans: r.players.filter(p => !p.ai && connected(p)).length, ai: r.players.filter(p => p.ai).length,
+      occupied: r.players.length, capacity: seats(r), joinable: r.state === 'lobby' && r.players.length < seats(r),
+    }));
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    return res.end(JSON.stringify({ rooms: list }));
+  }
   // maps: list, fetch one, save one (password)
   if (url.pathname === '/maps') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(await listMaps())); }
   const mm = /^\/maps\/([^/]+?)(\.json)?$/.exec(url.pathname);
@@ -94,7 +104,8 @@ export const server = http.createServer(async (req, res) => {
     try { const body = await readFile(join(MAPS, mm[1] + '.json')); res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' }); return res.end(body); }
     catch { res.writeHead(404); return res.end('no such map'); }
   }
-  let file = url.pathname === '/' ? join(ROOT, 'client/index.html') : null;
+  let file = url.pathname === '/play' || (url.pathname === '/' && url.searchParams.has('edit')) ? join(ROOT, 'client/index.html')
+    : url.pathname === '/' ? join(ROOT, 'client/public-lobby.html') : null;
   for (const [prefix, dir] of Object.entries(STATIC)) {
     if (!url.pathname.startsWith(prefix)) continue;
     const base = join(ROOT, dir), p = normalize(join(base, url.pathname.slice(prefix.length)));
@@ -167,6 +178,7 @@ async function lobby(room) {
   const maps = await listMaps(), horde = room.mode === 'horde' ? await hordeMaps() : undefined;
   everyone(room).forEach((p) => { const i = room.players.indexOf(p); send(p.ws, {
     spectator: i < 0, amHost: isHost(room, p), spectators: room.spectators.map(s => s.name),
+    listed: !!room.listed,
     hordeMaps: horde, hordeBest: room.mode === 'horde' ? recordOf(room) : null,
     t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
     mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
@@ -327,7 +339,8 @@ wss.on('connection', (ws, req) => {
     if (!me) {
       if (msg.t !== 'hello' || typeof msg.token !== 'string' || typeof msg.name !== 'string') return;
       room = rooms.get(code);
-      if (!room) rooms.set(code, room = { code, players: [], spectators: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0, matchId: 0, mapName: 'default', mapSpawns: MAP.spawns });
+      if (!room && rooms.size >= MAX_ROOMS) { send(ws, { t: 'full', reason: 'capacity' }); return ws.close(); }
+      if (!room) rooms.set(code, room = { code, listed: msg.listing?.public === true, title: (typeof msg.listing?.title === 'string' ? msg.listing.title : 'Open skirmish').replace(/[<>&"'\x00-\x1f]/g, '').trim().slice(0, 48) || 'Open skirmish', players: [], spectators: [], state: 'lobby', game: null, mode: 'conquest', defenderTeam: 0, matchId: 0, mapName: 'default', mapSpawns: MAP.spawns });
       const token = String(msg.token || '').slice(0, 40), name = cleanName(msg.name);
       me = everyone(room).find(p => p.token === token && token);
       if (me) {
@@ -336,7 +349,7 @@ wss.on('connection', (ws, req) => {
         me.ws = ws; me.name = name;
         if (old && old !== ws) { send(old, { t: 'replaced' }); old.close(); }
       }
-      else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));
+      else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room)) && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));
       else if (room.spectators.length < MAX_SPECTATORS) room.spectators.push(me = { token, name, ws }); // no seat to take, or asked to watch
       else { send(ws, { t: 'full', reason: room.state === 'play' ? 'started' : 'seats' }); return ws.close(); }
       room.emptySince = null;
@@ -353,7 +366,7 @@ wss.on('connection', (ws, req) => {
       return send(ws, { t: 'pong', c: msg.c });
     }
     if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
-    else if (msg.t === 'addAi' && host && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
+    else if (msg.t === 'addAi' && host && room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room))) {
       addSeat(room, newPlayer(room, { token: '', name: `AI ${room.players.filter(p => p.ai).length + 1}`, ws: null, ai: true, level: 'normal' }));
       lobby(room);
     } else if (msg.t === 'level' && host && room.state === 'lobby' && Number.isInteger(msg.slot) && room.players[msg.slot]?.ai && AI_LEVEL_NAMES.includes(msg.v)) {
@@ -405,7 +418,7 @@ wss.on('connection', (ws, req) => {
       resumeRoom(room);
     } else if (msg.t === 'spectate' && seated && room.state === 'lobby' && room.spectators.length < MAX_SPECTATORS) {
       retainSeats(room, room.players.filter(p => p !== me)); room.spectators.push(me); lobby(room); // give up the seat and watch
-    } else if (msg.t === 'sit' && !seated && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {
+    } else if (msg.t === 'sit' && !seated && room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room))) {
       room.spectators = room.spectators.filter(s => s !== me); addSeat(room, Object.assign(me, newPlayer(room, me))); lobby(room);
     } else if (msg.t === 'leave' && seated && room.state === 'play' && !me.ai) {
       // an AI takes over your army so the match goes on for the others; you can join the lobby again afterwards
