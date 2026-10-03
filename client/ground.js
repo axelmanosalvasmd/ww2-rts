@@ -151,7 +151,7 @@ function cellAttrs(S, grid) {
   const scar = new Uint8Array(n); // 0 none, 1 shell or burnt, 2 rubble. The base material stays ordinary ground.
   const at = (x, y) => grid[y]?.[x];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x, ch = grid[y][x], L = levelOf(map.heights?.[y]?.[x] ?? '0');
+    const i = y * w + x, object = grid[y][x], ch = object === 'N' ? S.objectGrid?.[y]?.[x] && S.objectGrid[y][x] !== '.' ? S.objectGrid[y][x] : S.groundGrid?.[y]?.[x] ?? '.' : object, L = levelOf(map.heights?.[y]?.[x] ?? '0');
     const st = S.state ? S.state[i] : startState(ch, i), worn = st & 3;
     lev[i] = L;
     let p = GRASS, s = DIRT, a = 0;
@@ -714,7 +714,7 @@ export function createGround(map, renderer, { frames = null, budgetMs = 8, tiles
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
-  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state) => { S.state = state; paint(S, grid); },
+  return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state, groundGrid, objectGrid) => { S.state = state; S.groundGrid = groundGrid; S.objectGrid = objectGrid; paint(S, grid); },
     isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading,
     cells: () => S.attrs, version: () => S.version ?? 0, dispose: () => { if (S.owner === owner) { cancelPaint(S); S.attrs = null; } } };
 }

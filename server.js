@@ -8,8 +8,9 @@ import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
 import { generateWorldMap } from './shared/world-conquest.js';
+import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { think, observe, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
+import { think, observe, resetAI, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -36,8 +37,15 @@ const MAPS = join(ROOT, 'maps'), MAP_NAME = /^[a-z0-9-]{1,32}$/;
 // Map files on disk for the lobby and match starts. Tests swap list and read to hold a load or serve a fixture map.
 export const mapFiles = { list: () => readdir(MAPS), read: (name) => readFile(join(MAPS, name + '.json'), 'utf8') };
 const listMaps = async () => (await mapFiles.list()).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).filter(n => MAP_NAME.test(n)).sort();
-async function loadMap(name) {
-  try { const m = JSON.parse(await mapFiles.read(name)); return validateMap(m) ? MAP : m; } catch { return MAP; }
+async function loadMap(name, strict = false) {
+  try {
+    const m = JSON.parse(await mapFiles.read(name)), error = validateMap(m);
+    if (error) throw new Error(error);
+    return m;
+  } catch (error) {
+    if (strict) throw error;
+    return MAP;
+  }
 }
 // Horde runs on maps with defender spawns. The list is read once, and again after a map is saved (or a test swaps the reader).
 let hordeList = null, hordeRead = null;
@@ -62,12 +70,14 @@ if (!process.env.EDIT_PASSWORD && !existsSync(PW_FILE)) writeFileSync(PW_FILE, r
 const EDIT_PASSWORD = process.env.EDIT_PASSWORD || readFileSync(PW_FILE, 'utf8').trim();
 const sha = (v) => createHash('sha256').update(String(v)).digest();
 const passwordOk = (given) => timingSafeEqual(sha(given), sha(EDIT_PASSWORD));
+const MAX_MAP_BYTES = 8 * 1024 * 1024;
 
 async function saveMap(req, res, name) {
   const json = (code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };
   if (!passwordOk(req.headers['x-edit-password'] || '')) return json(403, { error: 'wrong password' });
   let size = 0; const chunks = [];
-  for await (const c of req) { size += c.length; if (size > 1_000_000) return json(413, { error: 'map too large' }); chunks.push(c); }
+  for await (const c of req) { size += c.length; if (size <= MAX_MAP_BYTES) chunks.push(c); }
+  if (size > MAX_MAP_BYTES) return json(413, { error: 'map too large' });
   let map;
   try { map = JSON.parse(Buffer.concat(chunks)); } catch { return json(400, { error: 'bad JSON' }); }
   const err = validateMap(map);
@@ -75,7 +85,18 @@ async function saveMap(req, res, name) {
   // every field validateMap checks, and nothing else
   const clean = { name: map.name, w: map.w, h: map.h, rows: map.rows, ...(map.heights && { heights: map.heights }),
     spawns: map.spawns.map(({ x, y, assault }) => ({ x, y, ...(assault && { assault }) })),
-    points: map.points.map(({ x, y, vp, mp, kind, needs }) => ({ x, y, vp: vp ?? 1, mp: mp ?? 1, ...(kind && { kind }), ...(needs !== undefined && { needs }) })),
+    points: map.points.map(({ id, x, y, vp, mp, kind, needs }) => ({ ...(id && { id }), x, y, vp: vp ?? 1, mp: mp ?? 1, ...(kind && { kind }), ...(needs !== undefined && { needs }) })),
+    ...(map.pointSequence !== undefined && { pointSequence: map.pointSequence }),
+    ...(map.worldVersion && { worldVersion: map.worldVersion }),
+    ...(map.layers && { layers: { ground: [...map.layers.ground], objects: [...map.layers.objects],
+      ...(map.layers.mines && { mines: [...map.layers.mines] }),
+      ...Object.fromEntries(['materials', 'groundMaterials', 'objectMaterials', 'mineMaterials']
+        .filter(key => map.layers[key] !== undefined)
+        .map(key => [key, map.layers[key].map(({ c, material }) => ({ c, material }))])) } }),
+    ...(map.structures && { structures: map.structures.map(({ id, kind, sections }) => ({ id, kind,
+      sections: sections.map(({ id: sectionId, c, hp, material, anchor, supports }) =>
+        ({ id: sectionId, c, hp, material, anchor, supports: [...supports] })) })) }),
+    ...(map.scenario && { scenario: structuredClone(map.scenario) }),
     ...(map.defend && { defend: map.defend }), ...(map.assaultTime !== undefined && { assaultTime: map.assaultTime }),
     ...(map.naval && { naval: true }), ...(map.trenchFacing && { trenchFacing: true }),
     ...(map.buildings?.length && { buildings: map.buildings.map(({ x, y, kind }) => ({ x, y, kind })) }),
@@ -105,7 +126,15 @@ export const server = http.createServer(async (req, res) => {
   if (mm) {
     if (!MAP_NAME.test(mm[1])) { res.writeHead(400); return res.end('bad map name'); }
     if (req.method === 'POST') return saveMap(req, res, mm[1]);
-    try { const body = await readFile(join(MAPS, mm[1] + '.json')); res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' }); return res.end(body); }
+    if (req.method !== 'GET') { res.writeHead(405); return res.end('method not allowed'); }
+    const credential = req.headers['x-edit-password'];
+    if (credential !== undefined && !passwordOk(credential)) { res.writeHead(403); return res.end('wrong password'); }
+    try {
+      const source = await mapFiles.read(mm[1]);
+      const body = credential === undefined ? JSON.stringify(mapForClient(JSON.parse(source))) : source;
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      return res.end(body);
+    }
     catch { res.writeHead(404); return res.end('no such map'); }
   }
   let file = url.pathname === '/play' || (url.pathname === '/' && url.searchParams.has('edit')) ? join(ROOT, 'client/index.html')
@@ -180,6 +209,25 @@ function trimmed(room, net, msg, cache) {
   return msg;
 }
 const sendSeat = (room, i, shots, cells, cache, extra) => { const p = room.players[i]; if (connected(p)) p.ws.send(JSON.stringify(trimmed(room, p.net ??= { sent: new Map() }, { ...snapshotFor(room.game, i, shots, cells, cache), ...extra }, cache))); };
+function watcherSnapshot(g, shots, cells, cache, extra) {
+  const msg = { ...snapshotFor(g, 0, shots, cells, cache), ...extra };
+  // A spectator has no seat. The projected seat supplies terrain and visible units,
+  // but its private jobs, orders and authored mission messages belong to that player.
+  for (const key of ['movement', 'queues', 'productionJobs', 'plans', 'orders', 'air', 'mp', 'inc', 'mun', 'fuel', 'fuelInc', 'upkeep', 'sup', 'rally', 'home', 'works', 'covers']) delete msg[key];
+  if (msg.world) {
+    msg.world = { ...msg.world };
+    for (const key of ['home', 'owned', 'cap', 'recovery']) delete msg.world[key];
+  }
+  msg.units = msg.units.map(row => {
+    if (row[2] !== 0) return row;
+    const publicRow = [...row]; publicRow[11] = 0; publicRow[12] &= ~(2048 | 4096 | 8192 | 16384);
+    return publicRow;
+  });
+  if (msg.scenario) msg.scenario = { ...msg.scenario,
+    objectives: msg.scenario.objectives.filter(objective => objective.recipients === 'public') };
+  msg.shots = msg.shots.filter(shot => shot.scenarioRecipients === undefined || shot.scenarioRecipients === 'public');
+  return msg;
+}
 // one snapshot for all spectators, built and stringified once
 function sendWatchers(room, shots, cells, cache, extra) {
   const watching = room.spectators.filter(connected), g = room.game;
@@ -187,12 +235,12 @@ function sendWatchers(room, shots, cells, cache, extra) {
   if (g.mode?.kind === 'world') {
     for (const s of watching) {
       const view = worldWatchGame(g, s);
-      send(s.ws, trimmed(room, s.net ??= { sent: new Map() }, { ...snapshotFor(view, 0, shots, cells, cache), ...extra }, cache));
+      send(s.ws, trimmed(room, s.net ??= { sent: new Map() }, watcherSnapshot(view, shots, cells, cache, extra), cache));
     }
     return;
   }
   const view = watchGame(g, g.watchTerrain ??= new Map(), g.watchPending ??= new Set(g.cellLog.keys()));
-  const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, { ...snapshotFor(view, 0, shots, cells, cache), ...extra }, cache));
+  const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, watcherSnapshot(view, shots, cells, cache, extra), cache));
   for (const s of watching) s.ws.send(json);
 }
 // new players default to their own team (free-for-all) and the next faction in the cycle
@@ -222,20 +270,37 @@ async function startMatch(room) {
   const starting = room.starting = {};
   const previous = { state: room.state, game: room.game };
   room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
-  const map = room.mode === 'world' ? generateWorldMap({ size: room.worldSize ?? 'huge', seed: randomBytes(4).readUInt32LE(), players: room.players.length, teams: room.players.map(p => p.team) }) : await loadMap(room.mapName);
+  let map;
+  try { map = room.mode === 'world' ? generateWorldMap({ size: room.worldSize ?? 'huge', seed: randomBytes(4).readUInt32LE(), players: room.players.length, teams: room.players.map(p => p.team) }) : await loadMap(room.mapName, true); }
+  catch {
+    if (room.starting !== starting || room.state !== 'play') return;
+    Object.assign(room, previous); room.starting = null;
+    for (const p of room.players) send(p.ws, { t: 'deny', cmd: 'start', reason: 'scenario' });
+    await lobby(room); return;
+  }
   if (room.starting !== starting || room.state !== 'play') return;
   if (room.mode === 'horde' && !map.defend?.length) {
     Object.assign(room, previous);
     for (const p of room.players) if (!connected(p)) autoPause(room, p);
     lobby(room); return;
   }
+  let game;
+  try {
+    game = createGame(map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army,
+      weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
+  } catch {
+    Object.assign(room, previous);
+    room.starting = null;
+    for (const p of room.players) send(p.ws, { t: 'deny', cmd: 'start', reason: 'scenario' });
+    await lobby(room);
+    return;
+  }
   resumeRoom(room);
   room.autoPaused = new Set(); room.matchId = (room.matchId ?? 0) + 1; // a new match: nobody has used their auto-pause yet
   room.result = null;
   room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
-  const game = room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army,
-    weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
+  room.game = game;
   const startView = snapshotCache(room.game), startSeats = [...room.players.keys()].filter(i => room.players[i].ai);
   if (room.game.mode?.kind === 'horde') startSeats.push(room.game.mode.slot); // the horde plays by the same view rules
   room.aiViews = [];
@@ -256,7 +321,7 @@ function sendStart(room, i, watcher) {
   const g = watcher ? (world ? worldWatchGame(room.game, watcher) : watchGame(room.game)) : room.game;
   const ws = (watcher ?? room.players[i]).ws, players = world ? room.game.players.slice(0, room.players.length) : room.game.players;
   const team = room.game.players[i].team;
-  send(ws, { t: 'start', matchId: room.matchId, map: world ? worldMapFor(g, i) : room.map, you: i,
+  send(ws, { t: 'start', matchId: room.matchId, map: world ? worldMapFor(g, i) : mapForClient(room.map), you: i,
     spawn: room.game.players[i].spawn, spawns: players.map(p => !world || p.team === team ? p.spawn : null),
     cells: terrainFor(g, i, true), fog: watcher && !world ? undefined : fogFor(g, i, true),
     names: players.map((p, k) => room.players[k]?.name ?? p.name), teams: players.map(p => p.team), factions: players.map(p => p.faction), weather: weatherRow(room.game) });
@@ -312,7 +377,11 @@ function pauseTick(room) {
 
 function handToAi(room, player) {
   Object.assign(player, { ai: true, ws: null, token: '', name: player.name + ' (AI)' });
-  if (room.game) (room.aiViews ??= [])[room.players.indexOf(player)] = null;
+  if (room.game) {
+    const slot = room.players.indexOf(player);
+    resetAI(room.game, slot);
+    (room.aiViews ??= [])[slot] = null;
+  }
   if (room.pause?.reason === 'drop' && room.pause.player === player) resumeRoom(room);
   if (!everyone(room).some(connected)) room.emptySince = clock.now();
   lobby(room);
@@ -386,6 +455,7 @@ wss.on('connection', (ws, req) => {
         const old = me.ws;
         clock.clearTimeout(me.cleanupTimer);
         me.ws = ws; me.name = name;
+        if (room.game && room.players.includes(me) && !me.ai) resetAI(room.game, room.players.indexOf(me));
         if (old && old !== ws) { send(old, { t: 'replaced' }); old.close(); }
       }
       else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room)) && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));

@@ -425,9 +425,18 @@ export function buildModel(v, root, f, fac, def) {
 
 // Per frame for each unit: soldiers blend toward the posture the snapshot asks for (over POSTURE.blend seconds) and
 // swap to the far-away model beyond the LOD distance. eye is the camera position.
-export function animate(v, dt, eye, groundAt) {
+export function animate(v, dt, eye, groundAt, detailed = true) {
   const sq = v.squad;
   if (!sq) return;
+  const px = v.root.position.x, pz = v.root.position.z;
+  const distance = sq.poseX === undefined ? 0 : Math.hypot(px - sq.poseX, pz - sq.poseZ);
+  const travel = distance > 8 ? 0 : distance;
+  sq.poseX = px; sq.poseZ = pz;
+  sq.poseTravel = (sq.poseTravel ?? 0) + travel;
+  sq.poseSpeed = dt > 0 ? travel / dt : 0;
+  if (!detailed || !v.root.visible) { sq.suspended = true; return; }
+  const returned = !!sq.suspended;
+  sq.suspended = false;
   const lim = gfx.low ? LOD.low : LOD.high, dx = eye.x - v.x, dy = eye.y - v.root.position.y, dz = eye.z - v.z, d2 = dx * dx + dy * dy + dz * dz;
   const far = sq.far ? d2 > (lim - 4) ** 2 : d2 > (lim + 4) ** 2;
   if (far !== sq.far) {
@@ -436,6 +445,7 @@ export function animate(v, dt, eye, groundAt) {
     if (sq.guns) { sq.guns.hi.visible = !far; sq.guns.lo.visible = far; }
   }
   const goal = postureOf(v.supp ?? 0, v.flags ?? 0, v.cover), w = sq.w, step = dt / POSTURE.blend;
+  if (returned) for (let i = 0; i < 4; i++) w[i] = i === goal ? 1 : 0;
   for (let i = 0; i < 4; i++) {
     const d = (i === goal ? 1 : 0) - w[i];
     if (d) { w[i] += Math.max(-step, Math.min(step, d)); }
@@ -443,7 +453,18 @@ export function animate(v, dt, eye, groundAt) {
   const aimGoal = sq.moveFire && v.tgt && !(v.flags & 1) ? 1 : 0;
   const aimBlend = sq.aimBlend ?? 0;
   sq.aimBlend = aimBlend + Math.max(-step, Math.min(step, aimGoal - aimBlend));
-  moveSquad(v, dt);
+  if (returned) {
+    sq.aimBlend = aimGoal;
+    sq.lastX = undefined;
+    moveSquad(v, 0);
+    const stride = v.flags & 1 ? 1.24 : goal === 2 ? 0.48 : goal === 1 ? 0.76 : 1.24;
+    for (const man of v.models) {
+      const m = man.userData.motion;
+      m.speed = sq.poseSpeed;
+      m.blend = v.trench || !man.visible ? 0 : Math.min(1, m.speed / 0.7);
+      m.phase = (m.seed + sq.poseTravel / (stride * man.scale.x)) % 1;
+    }
+  } else moveSquad(v, dt);
   const sum = w.reduce((a, b) => a + b, 0);
   const sink = v.cover === 2 && !v.trench ? -0.6 : 0; // men seated in a trench stand on its carved floor instead
   for (const man of v.models) {
@@ -491,6 +512,12 @@ function grow(p) {
   mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   if (p.mesh) { mesh.instanceMatrix.array.set(p.mesh.instanceMatrix.array); mesh.morphTexture.image.data.set(p.mesh.morphTexture.image.data); p.mesh.removeFromParent(); p.mesh.dispose(); }
   crowd.add(mesh); p.mesh = mesh; p.cap = cap;
+}
+// Prepare once after the camera moves, before any detailed squad work. The same 25 m margin covers draw packing.
+export function animationInterest(camera) {
+  camera.updateMatrixWorld();
+  frustum.setFromProjectionMatrix(clip.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  return (v, selected = false) => v.root.visible && (selected || frustum.intersectsSphere(ball.set(v.root.position, 25)));
 }
 // once per frame, after animate(), before rendering; units: the units to draw, camera: the view
 export function drawSoldiers(units, camera) {
@@ -747,4 +774,137 @@ export function createBodies() {
     // Release this manager's geometry and instance buffers when its owner is discarded. It can be reused.
     dispose() { clear(); worldRef = null; view = null; fallback = null; },
   };
+}
+
+// Clip surfaces inside failed recipient-known section columns. Shared baked meshes stay intact in their cache.
+function clipPolygon(poly, axis, boundary, greater) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const da = greater ? a[axis] - boundary : boundary - a[axis];
+    const db = greater ? b[axis] - boundary : boundary - b[axis];
+    if (da >= 0) out.push(a);
+    if ((da >= 0) !== (db >= 0)) {
+      const t = da / (da - db);
+      out.push({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t,
+        values: a.values.map((value, k) => value + (b.values[k] - value) * t) });
+    }
+  }
+  return out;
+}
+function subtractColumn(poly, hole) {
+  if (poly.every(p => p.x <= hole.x0) || poly.every(p => p.x >= hole.x1)
+    || poly.every(p => p.z <= hole.z0) || poly.every(p => p.z >= hole.z1)) return [poly];
+  const outside = [];
+  let remaining = poly;
+  for (const [axis, boundary, greater] of [['x', hole.x0, true], ['x', hole.x1, false], ['z', hole.z0, true], ['z', hole.z1, false]]) {
+    const piece = clipPolygon(remaining, axis, boundary, !greater);
+    if (piece.length >= 3) outside.push(piece);
+    remaining = clipPolygon(remaining, axis, boundary, greater);
+    if (remaining.length < 3) break;
+  }
+  return outside;
+}
+function breachGeometry(source, columns, worldMatrix) {
+  const layout = Object.entries(source.attributes).map(([name, attr]) => ({ name, attr, size: attr.itemSize, values: [] }));
+  const position = source.attributes.position, index = source.index, count = index?.count ?? position.count;
+  const at = new THREE.Vector3();
+  for (let i = 0; i < count; i += 3) {
+    let pieces = [Array.from({ length: 3 }, (_, corner) => {
+      const vertex = index ? index.getX(i + corner) : i + corner, values = [];
+      for (const { attr, size } of layout) for (let k = 0; k < size; k++) values.push(attr.getComponent(vertex, k));
+      at.fromBufferAttribute(position, vertex).applyMatrix4(worldMatrix);
+      return { x: at.x, z: at.z, values };
+    })];
+    for (const column of columns) pieces = pieces.flatMap(poly => subtractColumn(poly, column));
+    for (const poly of pieces) for (let k = 1; k < poly.length - 1; k++) {
+      // Plane clipping may leave coincident edge vertices. Those do not need a degenerate triangle.
+      const triangle = [poly[0], poly[k], poly[k + 1]], a = triangle[0].values, b = triangle[1].values, c = triangle[2].values;
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+      if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) < 1e-9) continue;
+      for (const vertex of triangle) {
+        let offset = 0;
+        for (const entry of layout) {
+          for (let n = 0; n < entry.size; n++) entry.values.push(vertex.values[offset++]);
+        }
+      }
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  for (const { name, size, values } of layout) geometry.setAttribute(name, new THREE.Float32BufferAttribute(values, size));
+  if (geometry.attributes.position.count) { geometry.computeBoundingBox(); geometry.computeBoundingSphere(); }
+  else { geometry.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3()); geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 0); }
+  geometry.userData.breach = true;
+  return geometry;
+}
+
+// Apply to a live building or its last-seen Ghost after delivered section changes. No impact is replayed here.
+export function updateBuildingBreach(v, sections, width, cell) {
+  if (!sections || !width || !cell) return false;
+  const id = `building:${v.id}`, failed = [];
+  for (const [c, section] of sections) if (section.structureId === id && section.state === 'failed') failed.push(c);
+  failed.sort((a, b) => a - b);
+  failed.length = Math.min(failed.length, 9);
+  const key = failed.join(',');
+  if (v.breach?.key === key) return false;
+  if (!failed.length && !v.breach) return false;
+  const state = v.breach ??= { key: '', meshes: [] };
+  if (!state.meshes.length) {
+    for (const child of v.root.children) if (child !== v.base && child !== v.sel) child.traverse(mesh => {
+      if (mesh.isMesh && !mesh.isInstancedMesh) state.meshes.push({ mesh, base: mesh.geometry });
+    });
+  }
+  const columns = failed.map(c => ({ x0: c % width * cell, x1: (c % width + 1) * cell, z0: Math.floor(c / width) * cell, z1: (Math.floor(c / width) + 1) * cell }));
+  const worldMatrix = new THREE.Matrix4().makeRotationY(-(v.trot ?? v.rot ?? 0));
+  worldMatrix.setPosition(v.tx ?? v.x ?? v.root.position.x, 0, v.tz ?? v.z ?? v.root.position.z);
+  for (const entry of state.meshes) {
+    if (entry.mesh.geometry !== entry.base) entry.mesh.geometry.dispose();
+    entry.mesh.geometry = failed.length ? breachGeometry(entry.base, columns, worldMatrix.clone().multiply(relative(entry.mesh, v.root))) : entry.base;
+  }
+  state.key = key;
+  return true;
+}
+
+export function releaseBuildingBreach(v) {
+  for (const { mesh, base } of v.breach?.meshes ?? []) {
+    if (mesh.geometry !== base) mesh.geometry.dispose();
+    mesh.geometry = base;
+  }
+  v.breach = null;
+}
+
+
+// Hull parts and the independently traversing turret tilt together. Owner and selection rings remain level.
+export function vehicleBody(v) {
+  if (v.visualChassis) return v.visualChassis;
+  const body = new THREE.Group();
+  body.name = 'vehicle-chassis';
+  for (const child of [...v.root.children]) if (child !== v.base && child !== v.sel) body.add(child);
+  v.root.add(body);
+  v.visualChassis = body;
+  return body;
+}
+
+// Cache a rear engine-deck point above the native hull, excluding the independently traversing gun and UI.
+export function vehicleDamageAnchor(v, target) {
+  const body = vehicleBody(v);
+  if (!v.damageAnchorLocal) {
+    const bounds = new THREE.Box3(), partBounds = new THREE.Box3();
+    const visit = node => {
+      if (node === v.turret || node === v.base || node === v.sel || v.mounts?.includes(node)) return;
+      if (node.isMesh && node.geometry) {
+        node.geometry.computeBoundingBox();
+        partBounds.copy(node.geometry.boundingBox).applyMatrix4(relative(node, body));
+        bounds.union(partBounds);
+      }
+      for (const child of node.children) visit(child);
+    };
+    for (const child of body.children) visit(child);
+    const extent = bounds.isEmpty() ? null : bounds.getSize(new THREE.Vector3());
+    v.damageAnchorLocal = extent
+      ? new THREE.Vector3(bounds.min.x + extent.x * 0.15, bounds.max.y + 0.18, (bounds.min.z + bounds.max.z) / 2)
+      : new THREE.Vector3(-1, 1.8, 0);
+  }
+  target.copy(v.damageAnchorLocal);
+  return body.localToWorld(target);
 }

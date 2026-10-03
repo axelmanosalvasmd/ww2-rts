@@ -25,6 +25,8 @@ import { UNITS, CELL } from '/shared/sim.js';
 import { gfx } from './gfx.js';
 import { audio } from './audio.js';
 import { wind } from './wind.js';
+import { vehicleDamageAnchor } from './unit-models.js';
+import { SECTION_MASS, DEBRIS_LIMITS } from '/shared/debris-motion.js';
 
 const TAU = Math.PI * 2, rand = Math.random, rr = (a, b) => a + (b - a) * rand();
 const lin = (hex, k = 1) => { const c = new THREE.Color(hex); return [c.r * k, c.g * k, c.b * k]; };
@@ -751,6 +753,86 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     }
   }
 
+  // A short streak at the server flight's current solution. It expires between frames rather than flying onward.
+  function projectileTrail(id, at, velocity, kind, effect) {
+    const st = GUNS[kind] ?? SMALL, speed = Math.hypot(velocity.x, velocity.y, velocity.z) || 1;
+    const particle = effect === 'boom' ? FX.nade : kind === 'mortar' || kind === 'howitzer' || kind === 'rocket' ? FX.rocket : st.tr ?? FX.tracerFaint;
+    const o = emit(particle, at.x, at.y, at.z, 0, 0, 0, effect === 'boom' ? 0.12 : st.w, 0.035);
+    if (o < 0) return;
+    S[o + 29] = -id; S[o + 22] = 0; S[o + 24] = effect === 'boom' ? 0 : Math.min(1.8, speed * 0.006);
+    // The streak's direction uses velocity without independently integrating its location.
+    S[o + 3] = velocity.x * 0.001; S[o + 4] = velocity.y * 0.001; S[o + 5] = velocity.z * 0.001;
+  }
+  function projectileRemove(id) {
+    for (let i = 0; i < n; i++) { const o = i * F; if (S[o + 29] === -id) S[o + 6] = S[o + 7]; }
+  }
+  function projectileLaunch(sh) {
+    // A filtered launch has no source ID when its muzzle is outside current vision.
+    if (sh.f === undefined || sh.effect === 'boom') return;
+    const indirect = UNITS[sh.kind]?.w?.salvo;
+    const st = indirect ? { ...SMALL, snd: sh.kind === 'destroyer' ? 'tankgun' : sh.kind === 'rocket' ? 'rockets' : 'mortar', flash: sh.kind === 'rocket' ? 0.5 : 1.3, smoke: 1 } : GUNS[sh.kind] ?? SMALL, d = Math.hypot(sh.v[0], sh.v[2]) || 1;
+    muzzle(sh.x, sh.y, sh.z, sh.v[0] / d, sh.v[2] / d, st.flash, st);
+    const burstGap = BURST_SND[st.snd];
+    if (!burstGap || clock - (lastBurst.get(sh.f) ?? -1e9) >= burstGap) { play(st.snd, sh.x, sh.z); lastBurst.set(sh.f, clock); }
+    if (lastBurst.size > 400) lastBurst.clear();
+  }
+  function projectileContact(sh) {
+    worldContact(sh);
+    if (sh.effect === 'boom') { explode(sh.x, sh.z, sh.kind === 'ranger' ? 3.2 : 2, { y: sh.y }); play('blast_small', sh.x, sh.z); return; }
+    if (sh.effect === 'rocket') { const size = sh.kind === 'mortar' ? 2.6 : sh.kind === 'howitzer' ? 4.2 : 3; explode(sh.x, sh.z, size, { y: sh.y }); play('blast_small', sh.x, sh.z); return; }
+    const st = GUNS[sh.kind] ?? SMALL;
+    if (sh.terminal) impact(sh.x, sh.y, sh.z, st, sh.hit ? 1 : 0);
+    else {
+      // A nonterminal hard contact makes sparks. It never schedules a blast.
+      emit(FX.flash, sh.x, sh.y, sh.z, 0, 0, 0, 0.18, 0.035);
+      for (let i = 0; i < (low() ? 2 : 4); i++) emit(FX.spark, sh.x, sh.y, sh.z, rr(-2, 2), rr(1, 3), rr(-2, 2), 0.04, 0.2);
+    }
+  }
+  const damageAt = new THREE.Vector3();
+  function vehicleDamage(v, level) {
+    level = Math.max(0, Math.min(2, level));
+    if (!level) return;
+    const at = vehicleDamageAnchor(v, damageAt);
+    const o = emit(FX.smoke, at.x, at.y, at.z, rr(-0.12, 0.12), 0.3 + level * 0.12, rr(-0.12, 0.12), 0.23 + level * 0.1, 1.5 + level * 0.4);
+    if (o >= 0) { S[o + 16] *= Math.min(0.55, level * 0.28); tint(o, 0.8 - level * 0.06); }
+  }
+
+  const sectionPoses = new Map(), sectionMatrix = new THREE.Object3D(), sectionColor = new THREE.Color();
+  const sectionMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 2.8, 0.2), new THREE.MeshStandardMaterial({ roughness: 1 }), DEBRIS_LIMITS.active);
+  sectionMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); sectionMesh.count = 0; sectionMesh.castShadow = true; sectionMesh.receiveShadow = true; sectionMesh.frustumCulled = false;
+  scene.add(sectionMesh);
+  function sectionPose(id, row) {
+    if (row.kind !== 'section' || !sectionPoses.has(id) && sectionPoses.size >= DEBRIS_LIMITS.active) return;
+    sectionPoses.set(id, row);
+  }
+  function sectionRemove(id) { sectionPoses.delete(id); }
+  function updateSections() {
+    let i = 0;
+    for (const row of sectionPoses.values()) {
+      sectionMatrix.position.set(row.x, row.y, row.z); sectionMatrix.rotation.set(0, -row.dir, -row.tilt, 'YXZ'); sectionMatrix.updateMatrix();
+      sectionMesh.setMatrixAt(i, sectionMatrix.matrix);
+      sectionColor.set(({ wood: 0x765e43, stone: 0x897d6b, concrete: 0x858179, steel: 0x42413d })[row.material] ?? 0x897d6b);
+      sectionMesh.setColorAt(i++, sectionColor);
+    }
+    sectionMesh.count = i; sectionMesh.visible = i > 0;
+    sectionMesh.instanceMatrix.needsUpdate = true;
+    if (sectionMesh.instanceColor) sectionMesh.instanceColor.needsUpdate = true;
+  }
+  function worldContact(sh) {
+    const collapsing = sh.k === 'collapse', material = sh.material ?? 'soil', impulse = Math.max(0.25, Math.min(4, sh.impulse ?? 1));
+    const preset = material === 'wood' ? FX.wood : material === 'steel' ? FX.metal : material === 'soil' || material === 'road' ? FX.clod : FX.masonry;
+    const dir = sh.dir ?? Math.atan2(sh.direction?.[2] ?? 0, sh.direction?.[0] ?? 1), gy = sh.y ?? hAt(sh.x, sh.z) + 0.6;
+    const speed = Math.min(3.2, impulse * 800 / (SECTION_MASS[material] ?? 1200)), count = collapsing ? (low() ? 5 : 9) : (low() ? 1 : 3);
+    for (let i = 0; i < count; i++) {
+      const angle = dir + rr(-0.65, 0.65), sp = speed * rr(0.65, 1);
+      emit(preset, sh.x + rr(-0.35, 0.35), gy, sh.z + rr(-0.35, 0.35), Math.cos(angle) * sp, rr(0.3, 0.7) * impulse, Math.sin(angle) * sp, collapsing ? rr(0.15, 0.28) : rr(0.06, 0.11), collapsing ? 1.5 : 0.45);
+    }
+    if (collapsing) {
+      for (let i = 0; i < (low() ? 2 : 4); i++) emit(FX.collapse, sh.x + rr(-0.7, 0.7), gy, sh.z + rr(-0.7, 0.7), Math.cos(dir) * speed * 0.3, 0.35, Math.sin(dir) * speed * 0.3, rr(0.7, 1.1), rr(1.5, 2.2));
+      play('collapse', sh.x, sh.z, 0, LIGHT);
+    }
+  }
+
   // ---------- smoke screens ----------
   // thick white smoke that rolls slowly in place: big, slowly turning puffs layered up to a few meters, renewed as
   // they fade, so the cloud reads as solid for as long as the server keeps it
@@ -986,6 +1068,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
   function snapshot(s, seen) {
     syncStrikes(s.strikes);
     for (const sh of s.shots) {
+      if (sh.local && (sh.k === 'flight' || sh.k === 'contact' || sh.k === 'expiry' || sh.physical)) continue;
       const k = sh.k, from = sh.f !== undefined && seen.has(sh.f) ? units.get(sh.f) : null;
       if (k === 'hurt') continue;
       if (k === 'throw') {
@@ -1011,7 +1094,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
       if (k === 'salvo') { salvo(sh, from); continue; }
       if (k === 'aa') { antiAir(sh, from, sh.t !== undefined && seen.has(sh.t) ? units.get(sh.t) : null); continue; }
       // every wrecked map cell is a collapse; hedges, wire and trees (they turn to open ground '.') only crunch
-      if (k === 'collapse') { collapse(sh.x, sh.z, 4, openCell(s, sh.x, sh.z) ? LIGHT : undefined); continue; }
+      if (k === 'collapse') { if (!sh.id) collapse(sh.x, sh.z, 4, openCell(s, sh.x, sh.z) ? LIGHT : undefined); continue; }
       if (k === 'smokeshells') { for (let i = 0; i < 3; i++) snd('smoke', i * 0.25, sh.x + rr(-6, 6), sh.z + rr(-6, 6)); continue; }
       if (UNITS[k]) directFire(sh, from, sh.t !== undefined && seen.has(sh.t));
     }
@@ -1067,6 +1150,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     clock += dt;
     runEvents(dt);
     updateFalls(dt);
+    updateSections();
     updateRockets(dt);
     updateWrecks(dt);
     updateColumns(dt);
@@ -1092,6 +1176,7 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
     for (const s of salvos) s.t = -1e9;
     for (const b of blasts) b.t = -1e9;
     wrecks.length = 0; clouds.clear(); fires.clear(); strikeSounds.clear(); falls.length = 0; // fallen unit models went with the old world
+    sectionPoses.clear(); sectionMesh.count = 0; sectionMesh.visible = false;
   }
 
   // A roof-sized burst from one source. objectives.js owns its cadence and the number of active buildings.
@@ -1121,5 +1206,5 @@ export function createEffects({ scene, camera, cam, hAt, units, airAlt = 20, map
   }
 
   const aaFire = (sh, from, to) => antiAir(sh, from, to, false);
-  return { update, snapshot, wreck, downPlane, aaFire, reset, explode, scorch, collapse, plume, air, blastNear, gore, get count() { return n; }, get shown() { return shown; } };
+  return { update, snapshot, projectileTrail, projectileRemove, projectileLaunch, projectileContact, vehicleDamage, sectionPose, sectionRemove, worldContact, wreck, downPlane, aaFire, reset, explode, scorch, collapse, plume, air, blastNear, gore, get count() { return n; }, get shown() { return shown; } };
 }
