@@ -40,6 +40,7 @@ import { endgame } from './endgame.js';
 import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers } from './unit-models.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
+import { createStats } from './stats.js';
 import { renderReport } from './report.js';
 import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
@@ -101,6 +102,11 @@ function openControls(onboarding = false) {
 }
 function closeControls() { if (controlsSheet.open) controlsSheet.close(); }
 $('controlsBtn').onclick = () => openControls();
+// the stats overlay (client/stats.js): Menu > Stats overlay picks the numbers and the look, F2 shows or hides it
+const stats = createStats({ box: $('statsOverlay'), sheet: $('statsSheet'), menuButton: $('statsBtn'), storage: tryStore(() => localStorage),
+  under: { tl: () => $('util'), tc: () => $('top'), tr: () => $('econ') }, clear: () => $('scores'),
+  beforeOpen: () => { cancelInput(); pointer.release(); } });
+$('statsBtn').onclick = () => { menuOpen(false); stats.open(); };
 $('controlsClose').onclick = closeControls;
 controlsSheet.addEventListener('pointerdown', (e) => {
   if (controlsSheet.dataset.onboarding !== 'true') return;
@@ -138,7 +144,7 @@ const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
   hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching }), // a spectator who reconnects keeps watching
 });
-setInterval(() => sendCmd({ t: 'ping', c: performance.now(), rtt }), 2000);
+setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => connection.send(m);
 const autocast = createAutocast({ storage: local, send: sendCmd }); // remembered per unit type (client/autocast.js)
 connection.on('lobby', renderLobby);
@@ -146,7 +152,7 @@ connection.on('start', receiveStart);
 connection.on('s', (m, size) => { perf.net(size); applySnapshot(m); });
 connection.on('ping', (m) => pings.receive(m));
 connection.on('deny', (m) => feedback.show(denySentence(m.reason, m.cmd)));
-connection.on('pong', (m) => { if (Number.isFinite(m.c)) rtt = Math.round(performance.now() - m.c); });
+connection.on('pong', (m) => { rtt = perf.pong(m) ?? rtt; });
 connection.on('pause', receivePause);
 connection.on('retry', ({ left, reason }) => {
   $('connectionBanner').textContent = reason === 'full' ? `Trying this room again in ${left} s` : `Connection lost. Retrying in ${left} s`;
@@ -1182,7 +1188,7 @@ function showFacing() {
 const pointer = createPointer({ view: renderer.domElement, tryStore, captureButton: $('captureBtn'), captureNow: $('captureNow'),
   playing: () => !EDIT && !$('hud').classList.contains('hidden') && $('overlay').classList.contains('hidden') });
 rig.init({ cam, camera, pitch: PITCH, keys, pointer, dragging: () => drag || facingGesture, world: () => world,
-  blocked: () => controlsSheet.open || !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
+  blocked: () => controlsSheet.open || stats.isOpen() || !$('menu').classList.contains('hidden') || !$('overlay').classList.contains('hidden') || !$('replacedSeat').classList.contains('hidden'),
   units, hAt, bounds: () => ({ w: MW, h: MH }), groundAt: (x, y) => groundAt(x, y), tryStore,
   // the clear band for framing: below the score and status panels, above the recruit bar
   band: () => { const t = $('top').getBoundingClientRect(), b = $('buy').getBoundingClientRect(); return { top: t.height ? t.bottom : 0, bottom: b.height ? b.top : innerHeight }; },
@@ -1253,7 +1259,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'F1' && !$('hud').classList.contains('hidden')) {
     e.preventDefault(); if (controlsSheet.open) closeControls(); else openControls(); return;
   }
-  if (controlsSheet.open) return;
+  if (e.code === 'F2' && !$('hud').classList.contains('hidden')) { e.preventDefault(); if (!e.repeat) stats.toggle(); return; }
+  if (controlsSheet.open || stats.isOpen()) return;
   if (rig.skipIntro()) { e.preventDefault(); return; }
   keys.add(e.code);
   if (EDIT) return;

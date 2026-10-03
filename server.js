@@ -350,7 +350,10 @@ wss.on('connection', (ws, req) => {
     if (msg.t === 'ping') {
       if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
-      return send(ws, { t: 'pong', c: msg.c });
+      // srv, for the stats overlay (client/stats.js): the slowest 5% of recent ticks that sent a snapshot in ms (the
+      // number the tick meter holds to its 40 ms budget) and the ticks between snapshots
+      const meter = room.state === 'play' && room.tickMeter;
+      return send(ws, { t: 'pong', c: msg.c, ...(meter && { srv: [Math.round(tickStats(meter).snapshotTick.p95 * 10) / 10, room.snapEvery] }) });
     }
     if (msg.t === 'name' && typeof msg.name === 'string') { me.name = cleanName(msg.name); lobby(room); }
     else if (msg.t === 'addAi' && host && room.state === 'lobby' && room.players.length < MAX_PLAYERS) {

@@ -1,0 +1,51 @@
+/* The stats overlay and its sheet (client/stats.js). The HUD's gunmetal panel and type; numbers are tabular so they
+   hold still as they change. stats.js sets the top from the panel the position sits under. */
+#hud > #statsOverlay { pointer-events: none; } /* the HUD's children take clicks; this one never does */
+#statsOverlay {
+  position: absolute; z-index: 19; /* under the open menu (20) */
+  white-space: nowrap; padding: 5px 9px; font: 500 14px/1.35 var(--type); color: var(--text); font-variant-numeric: tabular-nums;
+}
+#statsOverlay.pos-tl { left: var(--gap); }
+#statsOverlay.pos-tr { right: var(--gap); }
+#statsOverlay.pos-tc { left: 50%; transform: translateX(-50%); }
+#statsOverlay.layout-list { display: grid; grid-template-columns: auto auto; column-gap: 14px; }
+#statsOverlay.layout-list .stat { display: contents; }
+#statsOverlay.layout-list .stat-val { text-align: right; }
+#statsOverlay.layout-line { display: flex; flex-wrap: wrap; column-gap: 14px; max-width: calc(100vw - 2 * var(--gap)); }
+#statsOverlay.layout-line .stat { display: flex; gap: 5px; }
+#statsOverlay .stat-name { color: var(--dim); }
+#statsOverlay .stat-val[data-warn="amber"] { color: var(--brass); }
+#statsOverlay .stat-val[data-warn="red"] { color: var(--red-hi); }
+#statsOverlay.size-s { font-size: 12px; padding: 4px 7px; }
+#statsOverlay.size-l { font-size: 17px; padding: 6px 11px; }
+#statsOverlay.bg-panel { background: var(--panel-solid); border: 1px solid var(--line); border-radius: 2px; }
+#statsOverlay.bg-clear { background: rgba(25, 28, 30, 0.5); border: 1px solid var(--line-soft); border-radius: 2px; }
+#statsOverlay.bg-none { padding-left: 0; padding-right: 0; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 4px rgba(0, 0, 0, 0.7); }
+#statsOverlay.bg-none.pos-tl { left: calc(var(--gap) + 2px); }
+#statsOverlay.bg-none.pos-tr { right: calc(var(--gap) + 2px); }
+
+/* the sheet: a light backdrop, so the overlay stays readable while you change it */
+#statsSheet { width: min(700px, calc(100vw - 24px)); max-width: none; max-height: min(86vh, 720px); padding: 0; overflow: hidden; color: var(--text); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 2px; }
+#statsSheet::backdrop { background: rgba(8, 10, 11, 0.3); }
+#statsSheet .sheet { max-height: min(86vh, 720px); overflow: auto; padding: 16px; display: grid; gap: 12px; }
+#statsSheet header { position: sticky; top: -16px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -16px -16px 0; padding: 12px 16px; background: var(--panel-solid); border-bottom: 1px solid var(--line-soft); }
+#statsSheet h2 { margin: 0; font-size: 21px; }
+#statsSheet h3 { margin: 0; color: var(--brass); font-size: 16px; }
+#statsSheet input[type="checkbox"] { width: 15px; height: 15px; margin: 0; padding: 0; flex: none; accent-color: var(--brass); }
+#statsSheet .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+#statsSheet .stat-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+#statsSheet .stat-top > .check { font-weight: 600; }
+#statsSheet .stat-presets-row { display: flex; align-items: center; gap: 8px; }
+#statsSheet .stat-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+#statsSheet .stat-presets button { padding: 3px 9px; }
+#statsSheet .stat-picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 20px; }
+#statsSheet fieldset { min-width: 0; margin: 0; padding: 0; border: none; display: grid; gap: 5px; align-content: start; }
+#statsSheet legend { padding: 0 0 4px; color: var(--brass); font-weight: 600; font-size: 16px; }
+#statsSheet .stat-picks label { display: grid; grid-template-columns: 15px minmax(0, 1fr); column-gap: 8px; align-items: center; cursor: pointer; }
+#statsSheet .stat-picks small { grid-column: 2; color: var(--dim); font-size: 13px; line-height: 1.2; }
+#statsSheet .stat-look { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px; }
+#statsSheet .stat-look label { display: grid; gap: 3px; color: var(--dim); }
+@media (max-width: 640px) {
+  #statsSheet .stat-picks { grid-template-columns: minmax(0, 1fr); }
+  #statsSheet .stat-look { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
