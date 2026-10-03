@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rendering regression check</title>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+<style>body{font:16px system-ui;background:#f2f0e8;color:#172534;margin:24px}canvas{max-width:100%;border:1px solid #999}pre{white-space:pre-wrap}</style>
+<h1>Rendering regression check</h1>
+<p>Local fixture: real WebGL texture uploads and paper-map rendering. No game connection.</p>
+<pre id="result">Running...</pre>
+<script type="module">
+import * as THREE from 'three';
+import { createGround } from '../client/ground.js';
+import { createMapView } from '../client/map-view.js';
+import { buildModel, createBodies } from '../client/unit-models.js';
+import { UNITS } from '../shared/sim.js';
+const output = document.getElementById('result');
+const assert = (ok, message) => { if (!ok) throw new Error(message); };
+const result = {};
+try {
+  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+  renderer.setSize(480, 384); document.body.append(renderer.domElement);
+  const gl = renderer.getContext();
+  const pixels = () => { const out = new Uint8Array(480 * 384 * 4); gl.readPixels(0, 0, 480, 384, gl.RGBA, gl.UNSIGNED_BYTE, out); return out; };
+  const difference = (a, b) => a.reduce((maximum, value, i) => Math.max(maximum, Math.abs(value - b[i])), 0);
+  const w = 20, h = 16;
+  const map = { w, h, rows: Array(h).fill('.'.repeat(w)), heights: Array(h).fill('0'.repeat(w)), spawns: [], points: [] };
+  const grid = map.rows.map(row => [...row]), state = new Uint8Array(w * h), callbacks = new Map(); let id = 0;
+  const frames = { request(fn) { callbacks.set(++id, fn); return id; }, cancel(n) { callbacks.delete(n); } };
+  const ground = createGround(map, renderer, { frames, budgetMs: 6, tilesPerFrame: 2 });
+  await ground.loading; ground.paint(grid, state);
+  const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-w / 2, w / 2, h / 2, -h / 2, 0.1, 10);
+  camera.position.z = 2;
+  const material = new THREE.MeshBasicMaterial({ map: ground.tex, toneMapped: false });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material); scene.add(plane);
+  renderer.render(scene, camera);
+  assert(gl.getError() === gl.NO_ERROR, 'initial ground upload has a WebGL error');
+  let copies = 0;
+  const copy = renderer.copyTextureToTexture.bind(renderer);
+  renderer.copyTextureToTexture = (...args) => { copies++; return copy(...args); };
+  for (let y = 3; y < 11; y++) for (let x = 4; x < 14; x++) grid[y][x] = x < 8 ? 'R' : '+';
+  ground.paint(grid, state);
+  assert(callbacks.size === 1 && copies === 0, 'incremental painting must wait for its frame');
+  let paintedFrames = 0;
+  while (callbacks.size) {
+    const [n, fn] = callbacks.entries().next().value; callbacks.delete(n);
+    const previous = copies; fn(); paintedFrames++;
+    assert(copies - previous === 1, 'one texture copy per paint frame');
+    renderer.render(scene, camera);
+    assert(gl.getError() === gl.NO_ERROR, 'queued ground upload has a WebGL error');
+  }
+  const queuedPixels = pixels();
+  createGround({ ...map, w: w + 1, rows: Array(h).fill('.'.repeat(w + 1)) });
+  const full = createGround(map, renderer); await full.loading; full.paint(grid, state);
+  material.map = full.tex; material.needsUpdate = true; renderer.render(scene, camera);
+  const rasterDifference = difference(queuedPixels, pixels());
+  assert(rasterDifference <= 1, `queued GPU pixels differ from full paint by ${rasterDifference}`);
+  result.ground = { maxChannelDifference: rasterDifference, frames: paintedFrames, textureCopies: copies, glError: gl.getError() };
+
+  const mapCamera = new THREE.PerspectiveCamera(42, 480 / 384, 1, 2200);
+  mapCamera.position.set(w, 80, h); mapCamera.lookAt(w, 0, h); mapCamera.updateMatrixWorld();
+  const geometry = new THREE.PlaneGeometry(w * 2, h * 2); geometry.rotateX(-Math.PI / 2); geometry.translate(w, 0, h);
+  const fog = new THREE.DataTexture(new Uint8Array([0, 0, 0, 127]), 1, 1); fog.needsUpdate = true;
+  const paper = createMapView({ grid, w, h, geometry, hAt: () => 0, fog: { texture: fog }, units: new Map(), colorOf: () => '#123456',
+    title: 'Local rendering check', camera: mapCamera, view: renderer.domElement, state: () => ({ me: 0, selected: new Set() }) });
+  for (let i = 0; i < 100; i++) paper.frame(0.1, 1);
+  assert(paper.renderObject === paper.object, 'opaque paper must cover this fixture');
+  const fullScene = new THREE.Scene(); fullScene.add(paper.object);
+  const hidden = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial({ color: 'red' }));
+  hidden.position.set(w, 0, h); fullScene.add(hidden);
+  renderer.render(fullScene, mapCamera); const fullMapPixels = pixels(), fullCalls = renderer.info.render.calls;
+  renderer.render(paper.renderObject, mapCamera); const mapDifference = difference(fullMapPixels, pixels());
+  assert(mapDifference <= 1, `paper-only pixels differ by ${mapDifference}`);
+  result.paperMap = { maxChannelDifference: mapDifference, fullCalls, mapOnlyCalls: renderer.info.render.calls, glError: gl.getError() };
+  paper.dispose(); fog.dispose(); geometry.dispose(); hidden.geometry.dispose(); hidden.material.dispose();
+
+  const bodies = createBodies(), bodyScene = new THREE.Scene(), world = new THREE.Group(); bodyScene.add(world);
+  bodyScene.add(new THREE.AmbientLight(0xffffff, 2));
+  const unit = { type: 'rifle', root: new THREE.Group(), models: [], turret: null };
+  buildModel(unit, unit.root, { uniform: 0x6b7248, vehicle: 0x59623d, color: 0x3b73d6 }, 0, UNITS.rifle);
+  bodies.add(world, 0, 0, 0, unit.models[1], 0);
+  const close = new THREE.OrthographicCamera(-1.6, 1.6, 1.28, -1.28, .1, 20);
+  close.position.set(2, 3, 4); close.lookAt(0, .2, 0);
+  renderer.render(bodyScene, close); const nearTriangles = renderer.info.render.triangles;
+  const distant = new THREE.PerspectiveCamera(50, 1.5, .1, 2000); distant.position.set(0, 150, 0); distant.lookAt(0, 0, 0);
+  bodies.update(0, null, null, distant); renderer.render(bodyScene, close);
+  const farTriangles = renderer.info.render.triangles;
+  assert(farTriangles < nearTriangles * .4, 'far corpse detail must reduce actual submitted triangles');
+  result.corpses = { nearTriangles, farTriangles, glError: gl.getError() };
+  bodies.dispose(); full.dispose(); ground.dispose(); plane.geometry.dispose(); material.dispose(); renderer.dispose();
+  assert(Object.values(result).every(row => row.glError === gl.NO_ERROR), 'fixture ended with a WebGL error');
+  window.__renderCheck = { passed: true, ...result }; output.textContent = JSON.stringify(window.__renderCheck, null, 2);
+} catch (error) {
+  window.__renderCheck = { passed: false, error: String(error) }; output.textContent = JSON.stringify(window.__renderCheck, null, 2); console.error(error);
+}
+</script>

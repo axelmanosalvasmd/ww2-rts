@@ -5,6 +5,27 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Performance regressions (`028ac23`)
+
+- Explosions keep their ragged crater and rubble outlines, but painting reuses nearby scar data and spreads live
+  updates across frames. Newer updates replace pending work with the latest ground, so repainting cannot put old
+  damage back. The editor still paints immediately.
+- Nearby fallen soldiers keep their detailed poses and kit. Distant bodies use simpler models, bodies outside the
+  camera stay out of draw batches, and expired bodies release their buffers. Large groups of deaths are packed once
+  per frame rather than once per death.
+- The wide paper map avoids rendering the battlefield when its desk fully covers the view. Its symbols redraw at
+  30 Hz while the camera is still, with immediate camera and terrain updates, and its overlay caps pixel ratio at 1.5.
+  Toggling gore no longer rebuilds unrelated terrain, scenery, shadows or model materials.
+- Large movement orders reuse vehicle and bunker costs within each route search, while refreshing them for the
+  next search. Routes, wall clearance, mines and gameplay rules are unchanged.
+- Added regression checks for painting, graphics notifications, corpse lifetimes and movement routes, plus CI for
+  the game and world tests. Local WebGL checks compare queued ground painting and paper-map rendering against full
+  rendering, and check near and far corpse detail.
+- Left for later: initial ground painting and texture readiness still paint synchronously. Match FPS and GPU timing
+  need a separate live sample; this work did not alter or profile the running hosted match.
+
+### Other recent unreleased changes
+
 - A stats overlay for checking how the game runs. Open it from the menu (Stats overlay) and tick the numbers you want:
   frame rate, frame time, worst frame, script time, draw calls, triangles, render scale, memory; ping, jitter, loss,
   updates per second, the longest gap between updates, update size, download rate and the server's tick time; units,

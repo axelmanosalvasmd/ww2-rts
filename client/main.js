@@ -410,6 +410,7 @@ function startGame(m, restored = null) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
+  terrain?.ground.dispose();
   relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogOfWar?.dispose(); } // Play again reuses the page
   world = new THREE.Group(); scene.add(world);
@@ -424,7 +425,10 @@ function startGame(m, restored = null) {
   MW = map.w * CELL; MH = map.h * CELL;
 
   // ground: painted canvas (client/ground.js), reused across rebuilds of a same-sized map
-  const gp = createGround(map, renderer);
+  const gp = createGround(map, renderer, EDIT ? {} : {
+    frames: { request: callback => requestAnimationFrame(callback), cancel: id => cancelAnimationFrame(id) },
+    budgetMs: 6, tilesPerFrame: 2,
+  });
   terrain = { w: map.w, grid: map.rows.map(r => [...r]), ctx: gp.ctx, tex: gp.tex, px: gp.px, ground: gp, group: new THREE.Group() };
   world.add(terrain.group);
   // what the server says about a cell besides its type: wear, burnt, damage stage (see startState in shared/sim.js)
@@ -1580,8 +1584,7 @@ renderer.setAnimationLoop(() => {
     animate(v, sdt, camera.position, hAt); // posture from suppression and retreat, far-away soldiers (client/unit-models.js)
   }
   battleFrame(cam, units, me);
-  bodies.update(sdt, effects, hAt); // men killed by a blast are thrown (client/unit-models.js)
-  if (mapView) { mapView.frame(dt, cam.dist / rig.wide); fadeLabels(1 - Math.min(1, mapView.fade * 2)); }
+  bodies.update(sdt, effects, hAt, camera); // men killed by a blast are thrown (client/unit-models.js)
   for (let i = fx.length - 1; i >= 0; i--) {
     const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
@@ -1619,8 +1622,10 @@ renderer.setAnimationLoop(() => {
   if (cursor !== lastCursor) renderer.domElement.style.cursor = lastCursor = cursor;
   terrainFrame(dt);
   apron?.update();
-  drawSoldiers(units.values(), camera);
-  renderFrame(cam, groundMesh); // shadows and haze follow the view
+  if (mapView) { mapView.frame(dt, cam.dist / rig.wide); fadeLabels(1 - Math.min(1, mapView.fade * 2)); }
+  const mapRender = mapView?.renderObject;
+  if (!mapRender) drawSoldiers(units.values(), camera);
+  renderFrame(cam, groundMesh, mapRender); // shadows and haze follow the view when the battlefield is visible
   perf.frame(renderer, now, { units: units.size, fx: effects.count, corpses: bodies.count });
 });
 

@@ -8192,3 +8192,9 @@ await stopServerHarness(); // the last server check is done
   const { execFileSync } = await import('node:child_process');
   execFileSync(process.execPath, ['test-public-lobby.js'], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 30000 });
 }
+
+// Performance checks exercise the same painting, rendering and path interfaces used by the game.
+{
+  const { execFileSync } = await import('node:child_process');
+  execFileSync(process.execPath, ['test-performance.mjs'], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 240000 });
+}

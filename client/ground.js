@@ -227,30 +227,74 @@ function cellAttrs(S, grid) {
 }
 
 // Smooth noise at cell scale. The ground fBm is far too low-frequency to tear a scar's edge.
-function cellNoise(u, v, k) {
-  const x0 = Math.floor(u), y0 = Math.floor(v), tx = u - x0, ty = v - y0;
-  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
-  const n = (x, y) => rnd(x, y, k);
-  const a = n(x0, y0), b = n(x0 + 1, y0), c = n(x0, y0 + 1), d = n(x0 + 1, y0 + 1);
-  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+function createCellNoise() {
+  const lattice = [];
+  const sample = (x, y, k) => {
+    const layer = lattice[k] ??= [], row = layer[y] ??= [];
+    return row[x] ??= rnd(x, y, k);
+  };
+  return (u, v, k) => {
+    const x0 = Math.floor(u), y0 = Math.floor(v), tx = u - x0, ty = v - y0;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = sample(x0, y0, k), b = sample(x0 + 1, y0, k), c = sample(x0, y0 + 1, k), d = sample(x0 + 1, y0 + 1, k);
+    return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+  };
 }
 
-// Distance from (u, v) to the nearest scar-cell centre and the nearest clean-cell centre, plus which material is closer.
-function scarField(scar, w, h, u, v) {
-  let shell = 0, rubble = 0, dScar = 9, dClean = 9;
-  const x0 = u | 0, y0 = v | 0;
-  for (let y = y0 - 3; y <= y0 + 3; y++) {
-    for (let x = x0 - 3; x <= x0 + 3; x++) {
-      const d = Math.hypot(u - (x + 0.5), v - (y + 0.5));
-      const kind = (x >= 0 && y >= 0 && x < w && y < h) ? scar[y * w + x] : 0;
-      if (!kind) { if (d < dClean) dClean = d; continue; }
-      if (d < dScar) dScar = d;
-      if (d >= 2.4) continue;
-      const inf = (1 - d / 2.4) ** 2;
-      if (kind === 1) shell += inf; else rubble += inf;
+// Scar neighborhoods depend on cells, not texture pixels. Build each sparse neighborhood once per
+// paint, then share it between the shape and distance passes. The ordering matches the original rows.
+function createScarSampler(scar, depth, w, h, noise) {
+  const neighborhoods = [];
+  function nearby(u, v) {
+    const x0 = u | 0, y0 = v | 0, row = neighborhoods[y0] ??= [];
+    let result = row[x0];
+    if (result) return result;
+    const scars = [], clean = [];
+    let material = -1;
+    for (let y = y0 - 3; y <= y0 + 3; y++) {
+      let left = null, middle = null, right = null;
+      for (let x = x0 - 3; x <= x0 + 3; x++) {
+        const cell = y * w + x, kind = x >= 0 && y >= 0 && x < w && y < h ? scar[cell] : 0;
+        if (kind) {
+          scars.push(x + 0.5, y + 0.5, kind, depth[cell]);
+          material = material === -1 ? kind : material === kind ? kind : 0;
+        }
+        else if (x < x0) left = x + 0.5;
+        else if (x === x0) middle = x + 0.5;
+        else if (right === null) right = x + 0.5;
+      }
+      // Only the nearest clean center on each side can win on this row. Keep both sides of
+      // the middle too: bitwise truncation makes the first cell cover negative warped samples.
+      for (const x of [left, middle, right]) if (x !== null) clean.push(x, y + 0.5);
     }
+    result = { scars, clean, material, shapes: new Map() };
+    row[x0] = result;
+    return result;
   }
-  return { shell, rubble, dScar, dClean };
+  return (u, v) => scarWeights(nearby, noise, u, v);
+}
+
+// Distance from (u, v) to the nearest scar and clean centers. Compare squared clean distances,
+// then take one square root; only nearby scar centers need individual distances for their weight.
+function scarField(nearby, u, v) {
+  let shell = 0, rubble = 0, scarSquared = 81, cleanSquared = 81;
+  const { scars, clean, material } = nearby(u, v);
+  for (let i = 0; i < clean.length; i += 2) {
+    const dx = u - clean[i], dy = v - clean[i + 1], d = dx * dx + dy * dy;
+    if (d < cleanSquared) cleanSquared = d;
+  }
+  for (let i = 0; i < scars.length; i += 4) {
+    const dx = u - scars[i], dy = v - scars[i + 1], squared = dx * dx + dy * dy;
+    if (squared < scarSquared) scarSquared = squared;
+    if (material || squared >= 2.4 ** 2) continue;
+    const inf = (1 - Math.hypot(dx, dy) / 2.4) ** 2;
+    if (scars[i + 2] === 1) shell += inf; else rubble += inf;
+  }
+  // A single scar material normalizes to exactly one regardless of the individual weights.
+  if (material > 0 && scarSquared < 2.4 ** 2) {
+    shell = material === 1 ? 1 : 0; rubble = material === 2 ? 1 : 0;
+  }
+  return { shell, rubble, dScar: Math.sqrt(scarSquared), dClean: Math.sqrt(cleanSquared) };
 }
 
 // How destroyed the point (u, v) is, in cell coordinates. 0 is untouched ground, 1 is the middle of a blast.
@@ -259,42 +303,60 @@ function scarField(scar, w, h, u, v) {
 // it is a full cell inside the scar. A thin stick (a bombing run, a strafe) is not that patch and not a row of
 // disks: the sample slides along the run and the width pinches, so grass shows between some of the hits.
 // The low-frequency ground noise cannot do this. It is too smooth to tear a block.
-function scarWeights(scar, depth, w, h, u, v) {
-  let mass = 0, n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
-  const x0 = u | 0, y0 = v | 0;
-  for (let y = y0 - 3; y <= y0 + 3; y++) {
-    if (y < 0 || y >= h) continue;
-    for (let x = x0 - 3; x <= x0 + 3; x++) {
-      if (x < 0 || x >= w || !scar[y * w + x]) continue;
-      const cx = x + 0.5, cy = y + 0.5;
-      if (Math.hypot(u - cx, v - cy) > 3.2) continue;
+// The radius test changes only which scar centers participate. Adjacent pixels usually share
+// that set, so cache its mass and axis instead of recomputing covariance for every pixel.
+function scarShape({ scars, shapes }, u, v) {
+  let low = 0, high = 0, nearestSquared = Infinity;
+  for (let i = 0; i < scars.length; i += 4) {
+    const dx = u - scars[i], dy = v - scars[i + 1], squared = dx * dx + dy * dy, bit = i / 4;
+    if (squared < nearestSquared) nearestSquared = squared;
+    if (squared <= 3.2 ** 2) { if (bit < 32) low |= 1 << bit; else high |= 1 << (bit - 32); }
+  }
+  const key = (high >>> 0) * 4294967296 + (low >>> 0);
+  let shape = shapes.get(key);
+  if (!shape) {
+    let mass = 0, n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+    for (let i = 0; i < scars.length; i += 4) {
+      const bit = i / 4;
+      if (!(bit < 32 ? low & (1 << bit) : high & (1 << (bit - 32)))) continue;
+      const cx = scars[i], cy = scars[i + 1];
       n++; sx += cx; sy += cy; sxx += cx * cx; syy += cy * cy; sxy += cx * cy;
-      const dep = depth[y * w + x];
-      if (dep > mass) mass = dep;
+      if (scars[i + 3] > mass) mass = scars[i + 3];
     }
-  }
-  // A stick is long and only a few cells across. A square block, including the tested three-by-three, is not.
-  let run = null;
-  if (n >= 5) {
-    const mx = sx / n, my = sy / n;
-    const cxx = sxx / n - mx * mx, cyy = syy / n - my * my, cxy = sxy / n - mx * my;
-    const tr = cxx + cyy, det = cxx * cyy - cxy * cxy;
-    const disc = Math.max(0, tr * tr * 0.25 - det);
-    const major = tr * 0.5 + Math.sqrt(disc), minor = Math.max(0, tr * 0.5 - Math.sqrt(disc));
-    // A plane stick is a few cells wide, not one. A square block still fails the long-axis test.
-    if (major > 2.2 && minor < 1.65 && minor < major / 2.4) {
-      const ang = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
-      run = { ax: Math.cos(ang), ay: Math.sin(ang) };
+    // A stick is long and only a few cells across. A square block, including the tested three-by-three, is not.
+    let run = null;
+    if (n >= 5) {
+      const mx = sx / n, my = sy / n;
+      const cxx = sxx / n - mx * mx, cyy = syy / n - my * my, cxy = sxy / n - mx * my;
+      const tr = cxx + cyy, det = cxx * cyy - cxy * cxy;
+      const disc = Math.max(0, tr * tr * 0.25 - det);
+      const major = tr * 0.5 + Math.sqrt(disc), minor = Math.max(0, tr * 0.5 - Math.sqrt(disc));
+      // A plane stick is a few cells wide, not one. A square block still fails the long-axis test.
+      if (major > 2.2 && minor < 1.65 && minor < major / 2.4) {
+        const ang = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
+        run = { ax: Math.cos(ang), ay: Math.sin(ang) };
+      }
     }
+    // A single cell and a three-by-three stay gentle, or the tested corners fill in. A real shelled block does not.
+    const big = !run && mass >= 3;
+    const mid = !run && !big && mass >= 1.8;
+    shape = { n, run, big, mid };
+    shapes.set(key, shape);
   }
-  // A single cell and a three-by-three stay gentle, or the tested corners fill in. A real shelled block does not.
-  const big = !run && mass >= 3;
-  const mid = !run && !big && mass >= 1.8;
+  return { shape, nearestSquared };
+}
+
+function scarWeights(nearby, noise, u, v) {
+  const { shape, nearestSquared } = scarShape(nearby(u, v), u, v), { n, run, big, mid } = shape;
+  // Outside the maximum displaced reach, the blend is exactly zero. Avoid noise and distance
+  // sampling there; the conservative bound includes both octaves and the wide-patch ripple.
+  const reach = run ? Math.hypot(0.34, 0.42) : Math.SQRT2 * ((big ? 0.78 : mid ? 0.16 : 0.04) * 1.7 + (big ? 0.62 : 0));
+  if (!n || nearestSquared > (2.4 + reach + 1e-9) ** 2) return { cover: 0, shell: 0, rubble: 0 };
   let nu, nv, amp, biteAmp;
   if (run) {
     const s = u * run.ax + v * run.ay, t = -u * run.ay + v * run.ax;
-    const alongN = cellNoise(s * 0.18 + 2, t * 0.18 + 1, 31) * 2 - 1;
-    const acrossN = cellNoise(s * 0.31 + 5, 8.2, 32) * 2 - 1;
+    const alongN = noise(s * 0.18 + 2, t * 0.18 + 1, 31) * 2 - 1;
+    const acrossN = noise(s * 0.31 + 5, 8.2, 32) * 2 - 1;
     nu = u + run.ax * alongN * 0.34 + (-run.ay) * acrossN * 0.42;
     nv = v + run.ay * alongN * 0.34 + run.ax * acrossN * 0.42;
     amp = 0.42; biteAmp = 0.22;
@@ -303,8 +365,8 @@ function scarWeights(scar, depth, w, h, u, v) {
     amp = big ? 1.35 : mid ? 0.34 : 0.14;
     biteAmp = big ? 0.62 : mid ? 0.1 : 0.05;
     // Two octaves, so a side that is flat in the slow wave still gets torn by the faster one.
-    const slow = (pu, pv, k) => cellNoise(pu * 0.26 + k, pv * 0.24 + k * 1.3, k) * 2 - 1;
-    const fast = (pu, pv, k) => cellNoise(pu * 0.62 + k * 2, pv * 0.57 + 3, k) * 2 - 1;
+    const slow = (pu, pv, k) => noise(pu * 0.26 + k, pv * 0.24 + k * 1.3, k) * 2 - 1;
+    const fast = (pu, pv, k) => noise(pu * 0.62 + k * 2, pv * 0.57 + 3, k) * 2 - 1;
     // A product of sines, so every side of a wide blast is bitten even where the noise happens to be flat.
     // The two frequencies are not the cell spacing, so the notches do not line up with the map grid.
     const rip = big ? 0.62 : 0;
@@ -313,16 +375,16 @@ function scarWeights(scar, depth, w, h, u, v) {
     nv = v + slow(u + 8.4, v + 1.3, 5) * warp + fast(u + 4, v, 7) * warp * 0.7
       + Math.sin(u * 2.35 + v * 0.55) * Math.sin(v * 1.25 + u * 0.4 + 0.6) * rip;
   }
-  const field = scarField(scar, w, h, nu, nv);
-  const wave = cellNoise(u * 0.45 + 1.7, v * 0.45 + 4.2, 11) * 2 - 1;
-  const bite = cellNoise(u * 1.7 + 3.0, v * 1.4 + 6.0, 8) * 2 - 1;
+  const field = scarField(nearby, nu, nv);
+  const wave = noise(u * 0.45 + 1.7, v * 0.45 + 4.2, 11) * 2 - 1;
+  const bite = noise(u * 1.7 + 3.0, v * 1.4 + 6.0, 8) * 2 - 1;
   const inset = field.dClean - field.dScar;
   const shifted = inset - 0.08 + amp * wave + biteAmp * bite;
   let cover = shifted <= 0 ? 0 : shifted >= 0.65 ? 1 : shifted / 0.65;
   cover = cover * cover * (3 - 2 * cover);
   if (!run && !big && field.dScar < (mid ? 0.28 : 0.34)) cover = 1;
   if ((big && inset > 2.05) || (run && inset > 1.45)) {
-    const fleck = cellNoise(u * 3.1 + 4, v * 3.1 + 2, 19);
+    const fleck = noise(u * 3.1 + 4, v * 3.1 + 2, 19);
     cover = Math.max(cover, fleck > 0.93 ? 0.5 : 1);
   }
   if (cover > 1) cover = 1;
@@ -348,7 +410,7 @@ const tq = (m, i, j) => (tSwap[m]
 
 const wt = new Float32Array(NMAT);
 function raster(S, X0, Y0, W, H, img) {
-  const { P, w, h } = S, { prim, sec, amt, key, scar, near, depth } = S.attrs, d = img.data;
+  const { P, w, h } = S, { prim, sec, amt, key, near } = S.attrs, d = img.data;
   useTiles(ready && tiles);
   // everything that depends only on the column, worked out once
   const cU = new Float32Array(W), cWx = new Int32Array(W), cWy = new Int32Array(W), cP0 = new Int32Array(W), cP1 = new Int32Array(W), cPt = new Float32Array(W);
@@ -415,7 +477,7 @@ function raster(S, X0, Y0, W, H, img) {
       // the blast mark sits on the ordinary ground. Only pixels near a scar pay for it.
       const gx = u <= 0 ? 0 : u >= w ? w - 1 : u | 0, gy = v <= 0 ? 0 : v >= h ? h - 1 : v | 0;
       if (near[gy * w + gx]) {
-        const sc = scarWeights(scar, depth, w, h, u, v);
+        const sc = S.sampleScar(u, v);
         if (sc.cover > 0.015) {
           const cover = sc.cover, sd = tData[SHELL], sk = tq(SHELL, i, j), rd = tData[RUBBLE], rk = tq(RUBBLE, i, j);
           const shade = 0.48 + 0.52 * (1 - cover * cover);
@@ -518,6 +580,7 @@ function imageData(c, W, H) {
 }
 
 function fullPaint(S) {
+  cancelPaint(S);
   const t0 = performance.now(), { ctx, canvas, P } = S;
   if (ready && tilesP !== P) buildTiles(P);
   const t1 = performance.now(), band = TILE * P;
@@ -537,7 +600,7 @@ function fullPaint(S) {
   S.stats = { kind: 'full', ms: Math.round(t3 - t0), tiles: Math.round(t1 - t0), raster: Math.round(t2 - t1 - put), put: Math.round(put), overlays: Math.round(t3 - t2), px: canvas.width + 'x' + canvas.height };
 }
 
-function tilePaint(S, dirty) {
+function tilePaint(S, dirty, upload = true) {
   const t0 = performance.now(), { ctx, canvas, P, w, h } = S, tw = Math.ceil(w / TILE);
   let rx0 = Infinity, ry0 = Infinity, rx1 = 0, ry1 = 0;
   for (const k of dirty) {
@@ -550,19 +613,58 @@ function tilePaint(S, dirty) {
     ctx.restore();
     rx0 = Math.min(rx0, X); ry0 = Math.min(ry0, Y); rx1 = Math.max(rx1, X + W); ry1 = Math.max(ry1, Y + H);
   }
-  // send just the changed rectangle to the GPU (row 0 of the canvas is the top of the flipped texture)
+  const rectangle = { x0: rx0, y0: ry0, x1: rx1, y1: ry1 };
+  if (upload) uploadPaint(S, rectangle);
+  S.stats = { kind: 'tiles', tiles: dirty.size ?? dirty.length, ms: Math.round(performance.now() - t0) };
+  return rectangle;
+}
+
+// One upload per paint batch also generates the destination mipmaps just once.
+function uploadPaint(S, { x0, y0, x1, y1 }) {
+  // Row 0 of the canvas is the top of the flipped texture.
   if (S.renderer && S.uploaded) {
-    const W = rx1 - rx0, H = ry1 - ry0, px = ctx.getImageData(rx0, ry0, W, H);
+    const W = x1 - x0, H = y1 - y0, px = S.ctx.getImageData(x0, y0, W, H);
     const src = new THREE.DataTexture(px.data, W, H);
-    S.renderer.copyTextureToTexture(src, S.tex, null, new THREE.Vector2(rx0, canvas.height - ry0 - H));
+    S.renderer.copyTextureToTexture(src, S.tex, null, new THREE.Vector2(x0, S.canvas.height - y0 - H));
   } else S.tex.needsUpdate = true;
-  S.stats = { kind: 'tiles', tiles: dirty.size, ms: Math.round(performance.now() - t0) };
+}
+
+// Incremental painting can use a frame adapter. New snapshots merge their dirty tiles into the
+// pending work; each frame reads the latest immutable cell attributes, so old work cannot overwrite it.
+function cancelPaint(S) {
+  if (!S.pending) return;
+  S.frames.cancel(S.pending.id);
+  S.pending = null;
+}
+function queuePaint(S, dirty) {
+  if (S.pending) { for (const tile of dirty) S.pending.dirty.add(tile); return; }
+  const job = { dirty: new Set(dirty), id: null };
+  S.pending = job;
+  const frame = () => {
+    if (S.pending !== job) return;
+    const start = performance.now();
+    let painted = 0, rectangle = null;
+    while (job.dirty.size) {
+      const tile = job.dirty.values().next().value;
+      job.dirty.delete(tile);
+      const next = tilePaint(S, [tile], false);
+      if (!rectangle) rectangle = next;
+      else { rectangle.x0 = Math.min(rectangle.x0, next.x0); rectangle.y0 = Math.min(rectangle.y0, next.y0); rectangle.x1 = Math.max(rectangle.x1, next.x1); rectangle.y1 = Math.max(rectangle.y1, next.y1); }
+      if (++painted >= S.tilesPerFrame || performance.now() - start >= S.budgetMs) break;
+    }
+    uploadPaint(S, rectangle);
+    S.stats = { kind: 'tiles', tiles: painted, ms: Math.round(performance.now() - start), pending: job.dirty.size };
+    if (job.dirty.size) job.id = S.frames.request(frame);
+    else S.pending = null;
+  };
+  job.id = S.frames.request(frame);
 }
 
 // Repaint whatever changed since the last call (everything the first time).
 function paint(S, grid) {
   const prev = S.attrs;
   S.attrs = cellAttrs(S, grid);
+  S.sampleScar = createScarSampler(S.attrs.scar, S.attrs.depth, S.w, S.h, S.scarNoise ??= createCellNoise());
   S.version = (S.version ?? 0) + 1;
   const want = ready ? 'textured' : 'flat';
   if (!prev || S.painted !== want) return fullPaint(S);
@@ -575,17 +677,24 @@ function paint(S, grid) {
       for (let tx = Math.max(0, x - R) / TILE | 0; tx <= (Math.min(w - 1, x + R) / TILE | 0); tx++) dirty.add(ty * tw + tx);
   }
   if (!dirty.size) { S.stats = { kind: 'clean', tiles: 0 }; return; }
-  if (dirty.size > tw * Math.ceil(h / TILE) * 0.5) return fullPaint(S);
-  tilePaint(S, dirty);
+  if (dirty.size > tw * Math.ceil(h / TILE) * 0.5) {
+    if (!S.frames) return fullPaint(S);
+    for (let tile = 0; tile < tw * Math.ceil(h / TILE); tile++) dirty.add(tile);
+  }
+  if (S.frames) { queuePaint(S, dirty); S.stats = { kind: 'queued', tiles: dirty.size, pending: S.pending.dirty.size }; }
+  else tilePaint(S, dirty);
 }
 
 // The ground for a map. Reuses the canvas and GPU texture when the size matches (the editor rebuilds on every edit),
 // so a rebuild repaints only the cells that differ.
-export function createGround(map, renderer) {
+// frames: optional { request(callback), cancel(id) }. Without it, paint completes synchronously.
+// With it, the first paint and texture reloads stay synchronous; later changed tiles are coalesced
+// and painted within budgetMs (8 by default), at most tilesPerFrame (4) per requested frame.
+export function createGround(map, renderer, { frames = null, budgetMs = 8, tilesPerFrame = 4 } = {}) {
   if (!NA) buildNoise();
   const P = Math.max(8, Math.min(24, Math.floor((gfx.low ? 1280 : 2048) / Math.max(map.w, map.h))));
   if (!cur || cur.w !== map.w || cur.h !== map.h || cur.P !== P) {
-    if (cur) { cur.tex.dispose(); cur.material.dispose(); }
+    if (cur) { cancelPaint(cur); cur.tex.dispose(); cur.material.dispose(); }
     const canvas = document.createElement('canvas');
     canvas.width = map.w * P; canvas.height = map.h * P;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -596,11 +705,16 @@ export function createGround(map, renderer) {
     const made = cur;
     tex.onUpdate = () => { made.uploaded = true; };
   }
-  const S = cur;
+  const S = cur, owner = Symbol();
+  S.owner = owner;
+  if (S.pending && (S.map !== map || S.frames !== frames)) { cancelPaint(S); S.attrs = null; }
+  S.frames = frames;
+  S.budgetMs = Math.max(1, Number.isFinite(budgetMs) ? budgetMs : 8);
+  S.tilesPerFrame = Math.max(1, Math.floor(Number.isFinite(tilesPerFrame) ? tilesPerFrame : 4));
   S.map = map; S.renderer = renderer; S.fields = fieldsOf(map);
   S.repaint = () => fullPaint(S);
   if (typeof window !== 'undefined') window.__ground = S; // debug handle, like window.__game
   return { canvas: S.canvas, ctx: S.ctx, tex: S.tex, px: P, material: S.material, paint: (grid, state) => { S.state = state; paint(S, grid); },
     isRoad: (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && S.attrs?.prim[y * S.w + x] === ROAD, loading,
-    cells: () => S.attrs, version: () => S.version ?? 0 };
+    cells: () => S.attrs, version: () => S.version ?? 0, dispose: () => { if (S.owner === owner) { cancelPaint(S); S.attrs = null; } } };
 }

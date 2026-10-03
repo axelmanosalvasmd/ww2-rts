@@ -50,6 +50,7 @@ export function setupLight(r, s, c) {
   }
   setMood(MOODS[DEFAULT_MOOD]);
   gfx.onChange(applyGfx);
+  gfx.onGoreChange(applyGore);
   return { sun, hemi };
 }
 
@@ -71,8 +72,10 @@ function applyGfx() {
   sun.shadow.mapSize.set(low ? 1024 : 2048, low ? 1024 : 2048);
   sun.shadow.radius = low ? 1 : 2.5 * mood.soft;
   if (gfxBtn && gfxBtn.textContent !== text) gfxBtn.textContent = text; // setMood runs while the weather eases
-  if (goreBtn) goreBtn.textContent = `Gore: ${gfx.gore ? 'On' : 'Off'}`;
+  applyGore();
 }
+
+function applyGore() { if (goreBtn) goreBtn.textContent = `Gore: ${gfx.gore ? 'On' : 'Off'}`; }
 
 function notice(msg) {
   const el = document.getElementById('status');
@@ -84,7 +87,8 @@ function notice(msg) {
 // ---------- per frame ----------
 
 // cam is main.js's camera rig ({ x, z, y, dist }); ground is the terrain mesh (or null before a match).
-export function renderFrame(cam, ground) {
+// A fully opaque paper map supplies its own render object and needs no battlefield or shadow pass.
+export function renderFrame(cam, ground, renderObject = null) {
   const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   renderer.info.reset();
   if (ground) {
@@ -97,8 +101,8 @@ export function renderFrame(cam, ground) {
       view.mesh = ground; view.key = key;
     }
   }
-  followView(cam);
-  renderer.render(scene, camera);
+  if (!renderObject) followView(cam);
+  renderer.render(renderObject ?? scene, camera);
 }
 
 // Haze scales with zoom, and the sun's shadow box covers just what the camera sees, so shadows stay crisp.

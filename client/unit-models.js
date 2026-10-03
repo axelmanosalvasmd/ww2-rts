@@ -518,19 +518,15 @@ export function drawSoldiers(units, camera) {
 }
 
 // Corpses: the soldier's own fallen build, instanced, up to CAP bodies in all. One mesh per uniform, so a battle
-// still draws a handful of corpse batches instead of one mesh per man. Past SOFT bodies the oldest starts to fade
+// still draws a handful of corpse batches instead of one mesh per man. With a camera, distant bodies use the
+// simplified fallen build and off-screen bodies are omitted. Past SOFT bodies the oldest starts to fade
 // and sink; a body also fades once it is LIFE seconds old; faded bodies leave the pool. The aiming prone stays on
 // the living morphs; a body is the slack pose, not a man still sighting from the dirt.
 export const CORPSES = { cap: 200, soft: 184, life: 25, fade: 1.5, sink: 0.45 };
-const corpseGeos = new Map();
 // The fallen build, scaled like the living man and resting on y = 0. Colors and materials stay with the vertices.
-function fallenGeometry(man) {
-  const mesh = man.userData.hi?.[0] ?? man.userData.lo?.[0];
-  const src = mesh?.geometry, pose = src?.userData.fallen;
+function fallenGeometry(src, scale) {
+  const pose = src?.userData.fallen;
   if (!pose) throw new Error('a corpse needs the soldier\'s fallen build');
-  const scale = man.scale?.x || 1, key = `${src.uuid}|${scale}`;
-  let geo = corpseGeos.get(key);
-  if (geo) return geo;
   const n = pose.position.count, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
   const P = pose.position, N = pose.normal;
   let minY = Infinity;
@@ -542,14 +538,13 @@ function fallenGeometry(man) {
     pos[i * 3] = P.getX(i) * scale; pos[i * 3 + 1] = P.getY(i) * scale - minY; pos[i * 3 + 2] = P.getZ(i) * scale;
     nor[i * 3] = N.getX(i); nor[i * 3 + 1] = N.getY(i); nor[i * 3 + 2] = N.getZ(i);
   }
-  geo = new THREE.BufferGeometry();
+  const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (src.attributes.color) geo.setAttribute('color', src.attributes.color.clone());
   if (src.attributes.matId) geo.setAttribute('matId', src.attributes.matId.clone());
   if (src.index) geo.setIndex(src.index.clone());
   geo.computeBoundingSphere();
-  corpseGeos.set(key, geo);
   return geo;
 }
 function corpseMaterial() {
@@ -566,46 +561,125 @@ function corpseMaterial() {
   material.customProgramCacheKey = () => `corpse-fade|${prevKey ? prevKey() : 'paint'}`;
   return material;
 }
+// All body managers reuse one textured fade material. Geometry and instance buffers belong to the manager.
+let sharedCorpseMaterial = null;
 export function createBodies() {
   const { cap, soft, life, fade: FADE, sink } = CORPSES;
-  const material = corpseMaterial();
-  const pools = new Map(), bodies = [];
+  const material = sharedCorpseMaterial ??= corpseMaterial();
+  const looks = new Map(), bodies = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), at = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
-  let worldRef = null, fallback = null;
-  const changed = (pool) => { pool.mesh.instanceMatrix.needsUpdate = true; pool.fade.needsUpdate = true; };
-  function poolFor(src) {
-    let pool = pools.get(src.uuid);
-    if (pool) return pool;
-    const fade = new THREE.InstancedBufferAttribute(new Float32Array(cap).fill(1), 1);
-    const geo = src.clone();
-    geo.setAttribute('fade', fade);
-    const mesh = new THREE.InstancedMesh(geo, material, cap);
-    mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = false;
-    if (worldRef) worldRef.add(mesh);
-    pool = { mesh, fade, list: [] };
-    pools.set(src.uuid, pool);
+  const clip = new THREE.Matrix4(), frustum = new THREE.Frustum(), ball = new THREE.Sphere(), eye = new THREE.Vector3();
+  let worldRef = null, fallback = null, view = null;
+  function lookFor(man) {
+    const hi = man.userData.hi?.[0]?.geometry ?? man.userData.lo?.[0]?.geometry;
+    const lo = man.userData.lo?.[0]?.geometry ?? hi, scale = man.scale?.x || 1, key = `${hi.uuid}|${scale}`;
+    let look = looks.get(key);
+    if (!look) {
+      look = { key, refs: 0, hi, lo, scale, pools: new Map() };
+      looks.set(key, look);
+    }
+    return look;
+  }
+  function poolFor(look, far) {
+    const src = far ? look.lo : look.hi;
+    let pool = look.pools.get(src);
+    if (!pool) {
+      const geometry = fallenGeometry(src, look.scale);
+      pool = { geometry, mesh: null, fade: null, cap: 0, n: 0, list: [] };
+      look.pools.set(src, pool);
+    }
     return pool;
   }
-  function place(pool, b, yOff) {
-    e.set(b.fly?.rx ?? 0, b.yaw, b.fly?.rz ?? 0, 'YXZ'); q.setFromEuler(e); at.set(b.x, b.y + yOff, b.z);
-    pool.mesh.setMatrixAt(b.slot, m4.compose(at, q, one));
+  function grow(pool) {
+    const capacity = Math.min(cap, Math.max(16, pool.cap * 2));
+    const fade = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+    if (pool.fade) fade.array.set(pool.fade.array);
+    // Free the old uploaded fade attribute before replacing it. CPU geometry stays reusable after disposal.
+    if (pool.mesh) pool.geometry.dispose();
+    pool.geometry.setAttribute('fade', fade);
+    const mesh = new THREE.InstancedMesh(pool.geometry, material, capacity);
+    mesh.count = 0; mesh.castShadow = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    fade.setUsage(THREE.DynamicDrawUsage);
+    if (pool.mesh) {
+      mesh.instanceMatrix.array.set(pool.mesh.instanceMatrix.array);
+      mesh.boundingSphere = pool.mesh.boundingSphere?.clone() ?? null;
+      pool.mesh.removeFromParent(); pool.mesh.dispose();
+    }
+    worldRef.add(mesh); pool.mesh = mesh; pool.fade = fade; pool.cap = capacity;
+  }
+  function release(look) {
+    for (const pool of look.pools.values()) {
+      pool.mesh?.removeFromParent(); pool.mesh?.dispose(); pool.geometry.dispose();
+    }
+    look.pools.clear(); looks.delete(look.key);
+  }
+  function place(b) {
+    e.set(b.fly?.rx ?? 0, b.yaw, b.fly?.rz ?? 0, 'YXZ'); q.setFromEuler(e);
+    const yOff = b.fly || b.out === undefined ? 0 : -(1 - b.out / FADE) * sink;
+    at.set(b.x, b.y + yOff, b.z); m4.compose(at, q, one);
+  }
+  function append(pool, b) {
+    if (pool.n === pool.cap) grow(pool);
+    b.pool = pool; b.slot = pool.n;
+    pool.mesh.setMatrixAt(pool.n, m4);
+    pool.fade.array[pool.n] = b.out === undefined ? 1 : b.out / FADE;
+    pool.list[pool.n++] = b;
+    pool.mesh.count = pool.n;
+    // Incremental bounds enclose the placed spheres without rescanning the whole pool for each new death.
+    ball.copy(pool.geometry.boundingSphere).applyMatrix4(m4);
+    pool.mesh.boundingSphere ??= new THREE.Sphere();
+    if (pool.n === 1) pool.mesh.boundingSphere.copy(ball);
+    else pool.mesh.boundingSphere.union(ball);
+  }
+  function changed(pool) { pool.mesh.instanceMatrix.needsUpdate = true; pool.fade.needsUpdate = true; }
+  function draw() {
+    if (!worldRef) return;
+    if (view) {
+      view.updateWorldMatrix(true, false); worldRef.updateWorldMatrix(true, false);
+      view.getWorldPosition(eye);
+      frustum.setFromProjectionMatrix(clip.multiplyMatrices(view.projectionMatrix, view.matrixWorldInverse));
+    }
+    for (const look of looks.values()) for (const pool of look.pools.values()) { pool.n = 0; pool.list.length = 0; }
+    const lim = gfx.low ? LOD.low : LOD.high;
+    for (const b of bodies) {
+      b.pool = null;
+      place(b);
+      if (view) {
+        at.setFromMatrixPosition(m4).applyMatrix4(worldRef.matrixWorld);
+        const distance2 = at.distanceToSquared(eye);
+        b.far = b.far ? distance2 > (lim - 4) ** 2 : distance2 > (lim + 4) ** 2;
+      } else b.far = false;
+      const pool = poolFor(b.look, b.far);
+      // Use the fallen pose's sphere and the full instance/world transform, including blast tumbles and sinking.
+      if (view && !frustum.intersectsSphere(ball.copy(pool.geometry.boundingSphere).applyMatrix4(m4).applyMatrix4(worldRef.matrixWorld))) continue;
+      append(pool, b);
+    }
+    for (const look of looks.values()) for (const pool of look.pools.values()) {
+      if (!pool.mesh) continue;
+      pool.mesh.count = pool.n;
+      if (pool.n) changed(pool);
+    }
   }
   function drop(i) {
-    const b = bodies[i], pool = b.pool, slot = b.slot, last = pool.list.length - 1;
-    if (slot !== last) {
-      const moved = pool.list[last];
-      pool.mesh.getMatrixAt(last, m4); pool.mesh.setMatrixAt(slot, m4);
-      pool.fade.array[slot] = pool.fade.array[last];
-      moved.slot = slot; pool.list[slot] = moved;
+    const b = bodies[i], pool = b.pool;
+    if (pool) {
+      const last = --pool.n;
+      if (b.slot !== last) {
+        const moved = pool.list[last];
+        pool.mesh.getMatrixAt(last, m4); pool.mesh.setMatrixAt(b.slot, m4);
+        pool.fade.array[b.slot] = pool.fade.array[last];
+        pool.list[b.slot] = moved; moved.slot = b.slot;
+      }
+      pool.list.pop(); pool.mesh.count = pool.n; changed(pool);
     }
-    pool.list.pop(); pool.mesh.count = pool.list.length; changed(pool);
+    if (--b.look.refs === 0) release(b.look);
     const end = bodies.length - 1;
     if (i !== end) bodies[i] = bodies[end];
     bodies.pop();
   }
   function clear() {
     bodies.length = 0;
-    for (const pool of pools.values()) { pool.list.length = 0; pool.mesh.count = 0; changed(pool); }
+    for (const look of [...looks.values()]) release(look);
   }
   function soldierOf(man) {
     if (man) return man;
@@ -621,7 +695,7 @@ export function createBodies() {
     // a soldier lying where he fell. man is that man (his prone build and scale); yaw is the direction he faces.
     // without a man, a rifleman stands in, so a caller that only has a place still gets a soldier rather than a capsule.
     add(world, x, y, z, man = null, yaw = null) {
-      if (worldRef !== world) { clear(); worldRef = world; for (const pool of pools.values()) world.add(pool.mesh); }
+      if (worldRef !== world) { clear(); worldRef = world; view = null; }
       let live = 0, oldest = -1, most = -1;
       bodies.forEach((b, i) => {
         if (b.out === undefined) { live++; if (oldest < 0 || b.age > bodies[oldest].age) oldest = i; }
@@ -629,15 +703,19 @@ export function createBodies() {
       });
       if (live >= soft && oldest >= 0) bodies[oldest].out = FADE;
       if (bodies.length >= cap) drop(most >= 0 ? most : oldest);
-      const who = soldierOf(man), pool = poolFor(fallenGeometry(who));
-      const b = { age: 0, x, y, z, yaw: yaw ?? Math.random() * Math.PI * 2, pool, slot: pool.list.length };
-      pool.list.push(b); bodies.push(b);
-      place(pool, b, 0); pool.fade.array[b.slot] = 1; pool.mesh.count = pool.list.length; changed(pool);
+      const look = lookFor(soldierOf(man));
+      const b = { age: 0, x, y, z, yaw: yaw ?? Math.random() * Math.PI * 2, look, far: false };
+      look.refs++; bodies.push(b);
+      // The game already has a camera after its first frame. Pack all deaths once in update(), not once per death.
+      // Viewers without a camera keep immediate placement through a touched-pool append.
+      if (!view) { const pool = poolFor(look, false); place(b); append(pool, b); changed(pool); }
     },
     // fx (client/fx.js effects, optional): a man who died beside a blast in the last moment is thrown away from it,
     // tumbling, and lands where he comes down (ground(x, z) is the height there). fx.gore adds the blood.
-    update(dt, fx = null, ground = null) {
-      if (bodies.length && worldRef && !worldRef.parent) clear(); // the match ended: its world left the scene
+    // camera is optional for viewers/tests. The game supplies it after camera movement each frame.
+    update(dt, fx = null, ground = null, camera = null) {
+      view = camera;
+      if (worldRef && !worldRef.parent) { clear(); worldRef = null; } // the match ended: its world left the scene
       for (let i = bodies.length - 1; i >= 0; i--) {
         const b = bodies[i];
         b.age += dt;
@@ -657,19 +735,16 @@ export function createBodies() {
           b.x += f.vx * dt; b.y += f.vy * dt; b.z += f.vz * dt; f.rx += f.wx * dt; f.rz += f.wz * dt;
           const g = ground(b.x, b.z);
           if (f.vy < 0 && b.y <= g) { b.y = g; b.fly = null; } // ponytail: snaps flat on landing; a settle roll if it looks off
-          place(b.pool, b, 0); changed(b.pool);
           continue;
         }
         if (b.out === undefined && b.age >= life) b.out = FADE;
         if (b.out === undefined) continue;
         b.out -= dt;
         if (b.out <= 0) drop(i);
-        else {
-          b.pool.fade.array[b.slot] = b.out / FADE;
-          place(b.pool, b, -(1 - b.out / FADE) * sink);
-          changed(b.pool);
-        }
       }
+      draw();
     },
+    // Release this manager's geometry and instance buffers when its owner is discarded. It can be reused.
+    dispose() { clear(); worldRef = null; view = null; fallback = null; },
   };
 }
