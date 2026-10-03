@@ -13,10 +13,11 @@ import { SHAPES } from '/shared/formation.js';
 import { SUPPORT_KEYS, FORT_KEYS, FORT_BADGES, BUILD_KEYS, CARD_KEYS, label, badge } from './keys.js';
 import { availability, buyCount, cooldownSeconds } from './availability.js';
 import { setAvailability, installTooltips } from './feedback.js';
+import { t as tr } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const setText = (el, t) => { if (el && el.textContent !== t) el.textContent = t; };
+const setText = (el, t) => { t = tr(t); if (el && el.textContent !== t) el.textContent = t; }; // tr: compare in the shown language
 const setHTML = (el, h) => { if (el && el._html !== h) { el._html = h; el.innerHTML = h; } };
 const show = (el, on) => el && el.classList.toggle('hidden', !on);
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.max(0, t) % 60).padStart(2, '0')}`;
@@ -192,7 +193,7 @@ export function createHud(ctx) {
       tm.mem.forEach((i, k) => {
         const [cls, txt] = net(i);
         setText(tm.net[k], txt); tm.net[k].classList.toggle('danger', !!cls);
-        const why = cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '';
+        const why = tr(cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '');
         if (tm.net[k].title !== why) tm.net[k].title = why;
         const out = s.out?.[i];
         setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'assault' || i === s.mode?.slot ? '' : out ? 'Out' : `${held(i)} held`);
@@ -379,36 +380,54 @@ export function createHud(ctx) {
   // Outside Classic: every unit you can recruit, always shown. In Classic: what the selection can make (a building's
   // units and its queue, or the Engineers' buildings), rebuilt only when the selected building or builder changes.
   let cardKey = '';
-  // The card letters: Q W E R T, A S D F G, Z X C V B over the cards in reading order (across the groups). Each card
-  // keeps its purchase in b._buy so a letter and a click run the same code. Cards past the 15th stay click-only.
-  const slots = () => [...$('buy').querySelectorAll('[data-unit], [data-train]')];
+  // The card letters: Q W E R T, A S D F G, Z X C V B in reading order. In recruit mode they go on the groups first
+  // (Q Infantry, W Support weapons, ...), and once a group is picked, on its cards: Q Q buys Rifles. A Classic
+  // building's cards are lettered straight away. Each card keeps its purchase in b._buy so a letter and a click run
+  // the same code. Cards past the 15th stay click-only.
+  let grp = -1; // recruit mode: the picked group, -1 while the letters are on the groups
+  const slots = () => {
+    const card = $('buy'), groups = [...card.querySelectorAll('.grp')];
+    if (ctx.classic()) return [...card.querySelectorAll('[data-train]')];
+    return grp < 0 ? groups : [...(groups[grp]?.querySelectorAll('[data-unit]') ?? [])];
+  };
   function lettered() {
-    slots().forEach((b, i) => { if (CARD_KEYS[i]) b.insertAdjacentHTML('beforeend', `<kbd class="key">${CARD_KEYS[i]}</kbd>`); });
+    const card = $('buy');
+    card.querySelectorAll('.key').forEach((k) => k.remove());
+    slots().forEach((b, i) => { if (CARD_KEYS[i]) (b.querySelector(':scope > .hd') ?? b).insertAdjacentHTML('beforeend', `<kbd class="key">${CARD_KEYS[i]}</kbd>`); });
+    card.querySelectorAll('.grp').forEach((g, i) => g.classList.toggle('open', i === grp));
+    card.classList.toggle('picked', grp >= 0);
   }
   function pressCard(n, many) {
     const b = slots()[n - 1];
     if (!b) return false;
+    if (b.classList.contains('grp')) { grp = n - 1; lettered(); quietBadges(); return true; }
     b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 140);
     b._buy(many);
     return true;
   }
+  // Esc in recruit mode: back from a group to the groups, then out
+  function recruitBack() {
+    if (grp < 0) return setRecruit(false);
+    grp = -1; lettered(); quietBadges();
+  }
   // A letter on a card belongs to the card, so the support and order badges that show the same letter go quiet.
   function quietBadges() {
-    const used = $('buy').classList.contains('lettered') ? CARD_KEYS.slice(0, slots().length) : [];
+    const used = $('buy').classList.contains('lettered') ? CARD_KEYS.slice(0, slots().length) : []; // the letters in use right now
     for (const k of document.querySelectorAll('#support kbd, #abil kbd')) k.classList.toggle('quiet', used.includes(k.textContent));
   }
   // Recruit mode (outside Classic): the letters show on the cards and the header tab reads "Recruiting".
   let recruiting = false;
   function setRecruit(on) {
-    recruiting = !!on && !ctx.classic();
+    recruiting = !!on && !ctx.classic(); grp = -1;
     const card = $('buy'), tab = card.querySelector('[data-recruit]');
     card.classList.toggle('lettered', recruiting);
+    if (!ctx.classic()) lettered();
     quietBadges();
     if (tab) {
       tab.setAttribute('aria-pressed', String(recruiting));
       tab.innerHTML = recruiting ? `Recruiting <kbd>${label('recruitOff')}</kbd>` : `Recruit <kbd>${label('recruitMode')}</kbd>`;
-      tab.title = recruiting ? `Letters buy the cards; Shift+letter buys five. ${label('recruitMode')}, ${label('recruitOff')} or a right-click stops`
-        : `Recruit by letter (${label('recruitMode')}): each card gets a key, Shift+key buys five. WASD pans again when you stop`;
+      tab.title = recruiting ? `A letter opens a group, a second letter buys from it (Q Q: Rifles); Shift+letter buys five. ${label('recruitOff')} goes back a step, ${label('recruitMode')} or a right-click stops`
+        : `Recruit by letter (${label('recruitMode')}): a letter opens a group, a second buys from it, Shift buys five. WASD pans again when you stop`;
     }
   }
   addEventListener('mousedown', (e) => { if (e.button === 2 && recruiting) setRecruit(false); }, { capture: true });
@@ -530,6 +549,6 @@ export function createHud(ctx) {
     tooltips.update();
   }
 
-  return { buildSupport, buildCard, update, pressCard, setRecruit, recruiting: () => recruiting,
+  return { buildSupport, buildCard, update, pressCard, setRecruit, recruitBack, recruiting: () => recruiting,
     lettered: () => ctx.classic() && !!$('buy').querySelector('[data-train]'), hasCard: (n) => !!slots()[n - 1] };
 }

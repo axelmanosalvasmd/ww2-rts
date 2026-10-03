@@ -262,6 +262,10 @@
   .uc .key { position: absolute; left: 3px; bottom: 4px; padding: 0 3px; display: none; color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
   #buy.lettered .uc .key { display: block; }
   #buy.lettered .uc .cost { padding-left: 18px; }
+  /* recruit mode: a letter on each group's header until one is picked, then the other groups fade back */
+  #buy .hd .key { display: none; color: var(--brass); border-color: rgba(214, 178, 94, 0.5); }
+  #buy.lettered .hd .key { display: inline-block; }
+  #buy.picked .grp:not(.open) { opacity: 0.45; }
   /* a card bought by its letter: the pressed look for a moment, the hairline brass */
   .uc.hit, .uc.hit:hover:not(:disabled) { background: var(--cell-lo); border-color: var(--brass); }
   /* a letter the cards are using: the order or support badge with the same letter hides until the cards give it back */
@@ -322,7 +326,7 @@
 <body>
 <div id="overlay">
   <div class="card">
-    <div class="row" style="justify-content:space-between"><h1>Three Crossroads</h1><a href="/">Browse matches</a></div>
+    <div class="row" style="justify-content:space-between"><h1>Three Crossroads</h1><span class="row"><select id="langSel" aria-label="Language" title="Language" style="flex:none"></select><a href="/">Browse matches</a></span></div>
     <h2 id="result" class="hidden"></h2>
     <div id="report" class="hidden"></div>
     <div class="cols">
@@ -458,6 +462,7 @@
   </div>
 </dialog>
 <div id="box" class="hidden"></div>
+<script type="module" src="/client/i18n.js"></script>
 <script type="module" src="/client/main.js"></script>
 </body>
 </html>

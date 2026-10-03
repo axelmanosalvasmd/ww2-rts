@@ -817,15 +817,18 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Fort keys are a Shift layer: T trench, Shift+Y sandbags, Shift+U wire, Shift+I traps, Shift+O nest. Plain Y/U/I/O
   keep the Classic build and support actions. `client/keys.js` is the single binding table and test.js rejects
   duplicate chords.
-- Recruit by letter (2026-10-01): outside Classic, Tab or Backquote toggles recruit mode. The Command Card cards take
-  Q W E R T / A S D F G / Z X C V B in reading order, a letter buys exactly like a click (same availability check and
+- Recruit by letter (2026-10-01, two keys since 2026-10-02): outside Classic, Tab or Backquote toggles recruit mode.
+  Like StarCraft's build menus it takes two letters: the first picks a Command Card group (Q Infantry, W Support
+  weapons, E Vehicles, R Aircraft, T Naval, in the order shown), the second a card in it, Q W E R T / A S D F G /
+  Z X C V B in reading order, so Q Q buys Rifles. The group stays open for more buys; Esc goes back to the groups,
+  then out. The other groups fade while one is open, and every card stays clickable. A letter buys exactly like a click (same availability check and
   refusal reason), and Shift+letter buys five or as many as MP, Fuel, the army limit and the type limit allow
   (`buyCount` in `client/availability.js`). The server still gets one 'buy' per unit. The mode lasts until Tab,
   Backquote, Esc or a right-click, and a new match starts with it off. A letter that has a card buys, so while the mode
   is on WASD, Q/E, the orders on those keys (X stop, R retreat, F ability, G attack-move, T trench) and the support calls
   on Z C V B are suspended, and their badges hide so the screen never shows one letter doing two things. The arrows still
   pan, Ctrl+A, N/U/P/I and the Shift fort keys still work. A letter with no card under it keeps its usual action,
-  camera keys included (Conquest has 14 cards for 15 letters, so B still aims smoke). In Classic, a selected production
+  camera keys included (at the group step only Q W E R T are taken, inside a group only as many letters as it has cards). In Classic, a selected production
   building's train cards answer to the same letters without a mode ('building' context, Shift buys five up to that
   building's queue room): an HQ takes Q and W, so A S D E still pan and rotate. Classic Tab only explains this.
   Keys.js contexts are ranked (targeting 2, recruit and building 1, the rest 0): the highest rank wins, and test.js

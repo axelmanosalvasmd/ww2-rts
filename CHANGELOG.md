@@ -32,6 +32,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ### Other recent unreleased changes
 
+- Recruiting by letter now works like StarCraft's build menus. Press Tab, then a letter for the group (Q Infantry,
+  W Support weapons, E Vehicles, R Aircraft, T Naval), then a letter for the unit: Tab Q Q buys a Rifle Squad. The
+  group stays open so you can keep buying; Esc steps back to the groups, then closes. Before, all the cards were
+  lettered in one long row, so later units sat on awkward keys.
 - Smoother zoomed-out map in big fights: the paper war map no longer repaints itself on every shell crater, only
   at most every 3 seconds while it is up.
 - Annihilation: a player whose bunker is destroyed is now out of the match, even while a teammate still has one.

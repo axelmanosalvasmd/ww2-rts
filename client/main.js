@@ -47,6 +47,7 @@ import { roomAddress, roomToken, matchStorage } from './room-session.js';
 import { createCoverPreview } from './cover-preview.js';
 import { createMapView } from './map-view.js';
 import { createAutocast } from './autocast.js';
+import { t as tr } from './i18n.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
 const FACTIONS = [
@@ -201,8 +202,8 @@ function receiveStart(m) {
   if (tryStore(() => localStorage.getItem('ww2-controls-seen')) !== '1') openControls(true);
   saveMatchView();
   if (document.hidden && !resume) { // a new match, not the same one coming back after a drop
-    stopTitleFlash(); document.title = 'Match started';
-    titleFlash = setInterval(() => { document.title = document.title === normalTitle ? 'Match started' : normalTitle; }, 1000);
+    stopTitleFlash(); document.title = tr('Match started');
+    titleFlash = setInterval(() => { document.title = document.title === normalTitle ? tr('Match started') : normalTitle; }, 1000);
   }
 }
 function receivePause(m) {
@@ -1250,7 +1251,7 @@ const actions = {
   },
   clear: () => selected.clear(), cancelAim,
   recruitMode: () => { if (!observing()) classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()); },
-  recruitOff: () => hud.setRecruit(false),
+  recruitOff: () => hud.recruitBack(),
   army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
   idleEngineer: () => selection.findIdle(false, true),
   panForward: () => {}, panBack: () => {}, panLeft: () => {}, panRight: () => {}, rotateLeft: () => {}, rotateRight: () => {},
