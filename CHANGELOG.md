@@ -18,8 +18,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   and queue. Falling sections and wrecks use gravity, mass, contacts and damping, then become persistent obstacles.
   Active debris is capped at 96 bodies, 8 contacts each and 2.5 seconds before settling. Fire wears sections before collapse.
 - Large idle Horde groups receive orders four at a time every 100 ms, clearing a 238-unit staged launch in at most
-  6 seconds at normal 10 Hz delivery, or 12 seconds at adaptive 5 Hz delivery. In the paired Wave 10 Massive bridge
-  fixture, maximum tick time changed from 728.910 to 35.813 ms, while p95 increased from 5.558 to 28.005 ms.
+  6 seconds at normal 10 Hz delivery, or 12 seconds at adaptive 5 Hz delivery. In the baseline and rebased Wave 10 Massive bridge
+  fixture, maximum tick time changed from 728.910 to 32.601 ms, while p95 increased from 5.558 to 27.244 ms.
   The earlier integrated engine reached 1,047.132 ms before staggering. Direct player orders remain immediate.
 - Enemy AI keeps combined-arms assaults together, regroups after contact and can withdraw from a losing fight.
   Horde Waves announce their mixed, infantry, armor or siege category before arriving; defining purchases target
@@ -34,7 +34,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   state; public map previews conceal mines and future scenario source, while authenticated editing preserves them.
 - Added the source-backed implementation spec, research, multiplayer acceptance scenes and performance reports.
   Generated a transparent rubble atlas through the configured Codex image proxy. Effect prioritization remains outside this change.
-- Large World fixtures still exceeded the 40 ms tick budget at their maximum: 42.063 ms on Huge and 58.508 ms on
+- Large World fixtures still exceeded the 40 ms tick budget at their maximum: 47.787 ms on Huge and 124.532 ms on
   Massive. Native GPU performance and broader faction balance remain unverified.
 - CI allows 30 minutes for the expanded regression suite, including the full AI fog proof and World tests.
 

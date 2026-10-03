@@ -1261,12 +1261,13 @@ Large idle Horde launches keep a private Wave-scoped FIFO and submit four ordina
 6 seconds including the first observation wait. Adaptive 5 Hz delivery doubles that bound to 12 seconds. Dead units, changed owner/orders, a break, a new Wave and a
 controller reset discard stale work. Fielded units still count toward ordinary Wave completion; direct player
 commands retain immediate path searches. This spreads initial searches without reducing total search work.
-The final paired four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
-35.813 ms on the final engine, including a 30.845 ms maximum AI phase, over 160 ticks on the local i5-12400.
-The earlier integrated engine reached 1,047.132 ms before staggering. Both final paired fixtures reached the existing
-240 field and Reserve caps. Final p95 increased from 5.558 to 28.005 ms, with more path work spread across ticks;
+The baseline and rebased four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
+32.601 ms on the final engine, including a 29.161 ms maximum AI phase, over 160 ticks on the local i5-12400.
+The earlier integrated engine reached 1,047.132 ms before staggering. Both fixtures reached the existing
+240 field and Reserve caps. The baseline predates the strategic geography merge and was not rerun. Final p95
+increased from 5.558 to 27.244 ms, with more path work spread across ticks;
 this is a bounded fixture measurement, not a total CPU reduction or universal latency guarantee.
-Current-only Huge/Massive World fixtures measured 22.642/35.896 ms p95, with 42.063/58.508 ms maximums above the
+Current-only Huge/Massive World fixtures measured 30.607/49.943 ms p95, with 47.787/124.532 ms maximums above the
 40 ms tick budget. Their random seeds, staged resources, unpaced ticks and disabled compression limit comparison.
 Exact conditions and source hashes are in the [verification record](docs/engine-game-feel-verification.md#measured-workloads).
 
