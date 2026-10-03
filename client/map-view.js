@@ -11,6 +11,7 @@
 // The floating 3D labels fade out while the map is up (client/markers.js fadeLabels).
 import * as THREE from 'three';
 import { drawSymbol } from './symbols.js';
+import { t as tr } from './i18n.js';
 import { CELL, CFG, UNITS, SUPPORT } from '/shared/sim.js';
 
 const PAPER = '#e8dec3', INK = '#3b3226', CONTOUR = '#9a6b3c', WATER = '#9fbcc4', WOOD = '#b5c194', GRID = 'rgba(60, 90, 130, 0.22)';
@@ -221,7 +222,7 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
     }
     // the map's name above its far edge, and a compass in the corner
     const top = [screen(MW / 2, 0), screen(MW / 2, MH), screen(0, MH / 2), screen(MW, MH / 2)].filter(Boolean).sort((a, b) => a.y - b.y)[0];
-    if (title && top) { ctx.font = `bold ${Math.round(20 * dpr)}px "Courier New", monospace`; ctx.fillStyle = '#efe6cc'; ctx.fillText(title.toUpperCase(), top.x, top.y - 22 * dpr); }
+    if (title && top) { ctx.font = `bold ${Math.round(20 * dpr)}px "Courier New", monospace`; ctx.fillStyle = '#efe6cc'; ctx.fillText(tr(title).toUpperCase(), top.x, top.y - 22 * dpr); }
     const ang = Math.atan2(north.y - mid.y, north.x - mid.x) + Math.PI / 2, cx = 70 * dpr, cy = sh - 230 * dpr, R = 26 * dpr;
     ctx.save(); ctx.translate(cx, cy);
     ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = 'rgba(232, 222, 195, 0.9)'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2 * dpr; ctx.stroke();

@@ -1,12 +1,13 @@
 // Match state uses public scores and the receiving player's snapshot only.
 import { CFG, TICK, winVp } from '/shared/sim.js';
 import { audio } from './audio.js';
+import { t as tr } from './i18n.js';
 
 const RATE_WINDOW = 8, RATE_MIN = 2, NOTICE_LIFE = 6;
 const COLORS = ['Blue', 'Red', 'Chalk', 'Orange', 'Violet', 'Cyan'];
 const now = () => performance.now() / 1000;
 const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-const write = (el, value) => { if (el && el.textContent !== value) el.textContent = value; };
+const write = (el, value) => { value = tr(value); if (el && el.textContent !== value) el.textContent = value; };
 
 let hooks = null, strip = null, rateEl = null, bonusEl = null, noticeEl = null, outEl = null;
 let samples = [], leader = null, suddenDeath = false, lastKind = null, lastTick = null;

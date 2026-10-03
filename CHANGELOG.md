@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- The game can be played in Spanish. A language picker (English / Español) sits at the top of the room screen and
+  the match browser; the choice is saved per browser and a Spanish browser starts in Spanish. Everything written on
+  screen is translated: lobby, mode and map descriptions, HUD, tooltips, alerts, the F1 controls sheet, the stats
+  overlay, the match report, the tutorial (Sgt. Hollis), the map editor and floating world labels. Model names
+  (M4 Sherman, Panzer IV) stay as they are. Unit voices and sound stay English.
+- Left for later: the map editor's file-validation errors from the server (only seen when saving a broken map) are
+  still English. A text the dictionary misses shows in English; `/play?i18n=log` lists them in `window.i18nMisses`.
+
 ### 2026-10-03: Defeated players spectate (`14cbe41`)
 
 - Fixed defeated teams continuing to recruit and fight in Annihilation. Losing the team's last bunker now stops

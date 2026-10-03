@@ -8315,6 +8315,20 @@ console.log('all infantry model checks passed');
 }
 console.log('all destruction paint checks passed');
 
+// Spanish (client/i18n.js): exact texts, patterns whose holes are translated too, and the texts the HUD glues together
+{
+  const { spanish } = await import('./client/i18n.js');
+  assert.equal(spanish('Pause match'), 'Pausar partida');
+  assert.equal(spanish('  Leave game '), '  Abandonar juego ', 'whitespace around a text stays');
+  assert.equal(spanish('Enemy Rifle Squad incoming'), 'Llega enemigo: Pelotón de fusileros', 'a hole is translated in turn');
+  assert.equal(spanish('Training Rifle Squad 40% (2/5)'), 'Entrenando Pelotón de fusileros 40% (2/5)', 'a hole before % is the number');
+  assert.equal(spanish('M4 Sherman (Medium Tank): Mainline tank. 380 MP'), 'M4 Sherman (Tanque medio): Tanque principal. 380 MO');
+  assert.equal(spanish('Artillery Barrage (C): 10 shells on an area after a 5s warning (UK: 15, the 25-pounder doctrine). Aim: click the center, move to turn, click to call it in'),
+    'Barrera de artillería (C): 10 proyectiles sobre una zona tras un aviso de 5 s (Reino Unido: 15, la doctrina del 25 libras). Apuntar: clic en el centro, mueve para girar, clic para pedirlo');
+  assert.equal(spanish('Panzer IV'), 'Panzer IV', 'model names stay');
+  console.log('spanish checks passed');
+}
+
 await stopServerHarness(); // the last server check is done
 // The public lobby checks own a fresh server with a deliberately small room cap.
 {

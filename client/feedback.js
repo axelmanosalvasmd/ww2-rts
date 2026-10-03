@@ -1,10 +1,12 @@
+import { t as tr } from './i18n.js';
+
 export function createFeedback(hint, errorSound) {
   let timer, saved = '', message = '';
   const clear = () => { clearTimeout(timer); timer = null; };
   return {
     show(reason) {
       if (!timer) saved = hint.textContent;
-      clear(); message = reason; hint.textContent = reason; errorSound();
+      clear(); message = tr(reason); hint.textContent = message; errorSound();
       timer = setTimeout(() => { if (hint.textContent === message) hint.textContent = saved; timer = null; }, 2000);
     },
     reset() { clear(); saved = ''; },

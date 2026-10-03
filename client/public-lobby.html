@@ -9,11 +9,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/client/public-lobby.css">
+<script type="module" src="/client/i18n.js"></script>
 <script type="module" src="/client/public-lobby.js"></script>
 </head>
 <body>
 <main class="card">
-<header><div><p class="eyebrow">MULTIPLAYER HEADQUARTERS</p><h1>Three Crossroads</h1><p class="muted">WW2 tactics. Take ground. Hold the line.</p></div><span class="tag">PUBLIC ALPHA</span></header>
+<header><div><p class="eyebrow">MULTIPLAYER HEADQUARTERS</p><h1>Three Crossroads</h1><p class="muted">WW2 tactics. Take ground. Hold the line.</p></div><span style="display:flex;gap:8px;align-items:center"><select id="langSel" aria-label="Language" title="Language" style="width:auto"></select><span class="tag">PUBLIC ALPHA</span></span></header>
 <section class="identity" aria-label="Player identity">
 <label for="nickname">Your name</label><input id="nickname" maxlength="16" autocomplete="nickname" placeholder="Soldier">
 <button id="quickPlay" class="primary">Quick Play</button><button id="tutorial" title="New here? Learn the basics in about ten minutes">Tutorial</button>
