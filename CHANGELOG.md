@@ -32,6 +32,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ### Other recent unreleased changes
 
+- Smoother zoomed-out map in big fights: the paper war map no longer repaints itself on every shell crater, only
+  at most every 3 seconds while it is up.
 - Annihilation: a player whose bunker is destroyed is now out of the match, even while a teammate still has one.
   They can no longer call in units or give orders, and their army passes to the nearest teammate. Before, they could
   keep spawning units until their whole team lost.

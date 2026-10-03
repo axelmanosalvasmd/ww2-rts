@@ -1049,6 +1049,8 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   send queue over 32 KB, an update gap over 300 ms, jitter over 40 ms, any loss), SHARED (2+ players stalling in the
   same window: the host's upload or relay), BROWSER (under 40 fps or a frame over 100 ms; over 10 ms of script per
   frame means one core is the limit).
+- Zoomed-out paper map (`client/map-view.js`) cost: while it is up, a terrain change repaints the paper (a canvas up
+  to 2048 px, then a texture upload) at most every 3 s (`REPAINT`), not on every crater.
 
 ## Roadmap
 1. ~~Tracer bullet~~ 2. ~~Combat~~ 3. ~~LOS + fog~~ 4. ~~Points, VP, manpower, call-ins~~ (MVP)

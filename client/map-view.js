@@ -18,6 +18,9 @@ const PENCIL = { move: '#2f3d6b', attack: '#a3241c', retreat: '#6b5a2f', other: 
 // where the fade runs, as a share of the widest zoom
 const FROM = 0.7, TO = 0.9;
 const DRAW_INTERVAL = 1 / 30, MAX_DPR = 1.5;
+// a full repaint of the paper (and its texture upload) costs tens of ms: while the map is up, terrain changes (every
+// crater in a fight) repaint it at most this often, in seconds
+const REPAINT = 3;
 
 // grid: terrain rows of cell chars, w and h in cells, geometry: the relief's (its uv spans the map), hAt(x, z),
 // fog: client/fog.js state or null, units: the live unit map, colorOf(slot) -> css color, title: the map's name,
@@ -63,7 +66,7 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
   view.after(overlay);
   const ctx = overlay.getContext('2d');
 
-  let fade = 0, dirty = true, drawAge = DRAW_INTERVAL, renderObject = null;
+  let fade = 0, dirty = true, sincePaint = Infinity, drawAge = DRAW_INTERVAL, renderObject = null;
   const drawnView = new THREE.Matrix4(), drawnProjection = new THREE.Matrix4();
   const at = (x, y) => grid[y]?.[x];
 
@@ -248,10 +251,11 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
       renderObject = fade === 1 && coversView() ? object : null;
       const on = fade > 0.01;
       object.visible = on; overlay.style.opacity = on ? fade.toFixed(3) : '0';
+      sincePaint += dt;
       paperMat.opacity = deskMat.opacity = fade; washMat.uniforms.k.value = fade * 0.55;
       if (!on) { if (overlay.width) overlay.width = 0; drawAge = DRAW_INTERVAL; return; }
-      const changed = dirty;
-      if (dirty) { dirty = false; paint(); }
+      const changed = dirty && sincePaint >= REPAINT;
+      if (changed) { dirty = false; sincePaint = 0; paint(); }
       drawAge += dt;
       const ratio = Math.min(MAX_DPR, devicePixelRatio || 1);
       const resized = overlay.width !== Math.round(innerWidth * ratio) || overlay.height !== Math.round(innerHeight * ratio);
