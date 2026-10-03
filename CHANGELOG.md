@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Performance regressions (`028ac23`)
+
 - Explosions keep their ragged crater and rubble outlines, but painting reuses nearby scar data and spreads live
   updates across frames. Newer updates replace pending work with the latest ground, so repainting cannot put old
   damage back. The editor still paints immediately.
@@ -21,6 +23,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   rendering, and check near and far corpse detail.
 - Left for later: initial ground painting and texture readiness still paint synchronously. Match FPS and GPU timing
   need a separate live sample; this work did not alter or profile the running hosted match.
+
+### Other recent unreleased changes
 
 - A stats overlay for checking how the game runs. Open it from the menu (Stats overlay) and tick the numbers you want:
   frame rate, frame time, worst frame, script time, draw calls, triangles, render scale, memory; ping, jitter, loss,
