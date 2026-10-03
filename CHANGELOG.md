@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Strategic geography (source commit `b351ea1`)
+
 - World Conquest seeds now choose 1-3 main rivers and 0-3 small tributaries. Streams are fordable along their length, join larger rivers, and widen the main channel downstream. Each main river has its own bridges and permanent fords; road approaches preserve shallow streams instead of paving them over.
 
 - World Conquest now generates broad hills, cliff-forming ridges with saddles, a winding river and lake,
@@ -19,6 +21,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   travel-time-based economic spawn balancing and full-match human pacing remain follow-up work. Massive
   six-seat grown-army stress exceeded the 50 ms tick budget on the current host; see
   `docs/strategic-world-generator-verification.md` for measured results and limits.
+
+### Earlier unreleased changes
 
 - Fixed: clicking Fill in froze the game. Its placement preview read the map's original terrain, which the
   browser's copy of the map did not have, so it threw an error every frame and stopped the game loop. The preview now
