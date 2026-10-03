@@ -5,7 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-### 2026-10-03: World snapshot checks
+### 2026-10-03: World snapshot checks (`38b299d`)
 
 - Fixed World acceptance checks to wait for ordered WebSocket delivery before reading the result. A delayed
   receiver regression keeps the original 700-tick construction deadline and all gameplay assertions.
