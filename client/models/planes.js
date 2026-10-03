@@ -131,7 +131,8 @@ const matOf = (c) => (c.mat ? matId(c.mat) : UNSET);
 // twist turns the rings by that many radians per unit of x (a spiral on a spinner). paint(p, n, {tag, t, x}) gives
 // each vertex its colour.
 function hull(keys, o) {
-  const { seg = 16, sub = 1, cuts = [], angles = [], tag = 'fus', crease: ang = 40, ridges = 0, folds = 0, twist = 0, z: z0 = 0, arc = null, caps = [true, true], capColor = [null, null], range = null, mirror = false, paint } = o;
+  const { seg = 16, cuts = [], angles = [], tag = 'fus', crease: ang = 40, ridges = 0, folds = 0, twist = 0, z: z0 = 0, arc = null, caps = [true, true], capColor = [null, null], range = null, mirror = false, paint } = o;
+  const sub = o.sub ?? (tag === 'fus' || tag === 'canopy' || tag === 'nac' ? 3 : 2);
   const ks = [...keys].sort((a, b) => a[0] - b[0]), X = ks.map((k) => k[0]);
   const W = pchip(X, ks.map((k) => k[1])), H = pchip(X, ks.map((k) => k[2])), Y = pchip(X, ks.map((k) => k[3] ?? 0)), Pw = lin(X, ks.map((k) => k[4] ?? 2));
   const at = (x) => ({ w: Math.max(0, W(x)), h: Math.max(0, H(x)), y: Y(x), p: Pw(x) });
@@ -194,7 +195,7 @@ function hull(keys, o) {
 // flap and aileron at that span (the shader draws both, see CAMO_MAIN). The leading edge can be painted a little
 // lighter (edge, worn paint). paint(p, n, {tag, upper, z, s, xs}) colours each vertex.
 function wing(keys, o) {
-  const { nk = 6, n = 6, round = 0.3, cuts = [], tag = 'wing', m = null, camber = 0.025, lower = 0.8, ridges = 0, edge = 1.03, crease: ang = 35, smooth = false, mirror = true, pivot = 0.55, hinge = null, paint } = o;
+  const { nk = 9, n = 8, round = 0.3, cuts = [], tag = 'wing', m = null, camber = 0.025, lower = 0.8, ridges = 0, edge = 1.03, crease: ang = 35, smooth = false, mirror = true, pivot = 0.55, hinge = null, paint } = o;
   const [r0, r1] = Array.isArray(round) ? round : [0, Math.max(0.05, round)];
   const Z = keys.map((k) => k[0]), F = smooth ? pchip : lin;
   const LE = F(Z, keys.map((k) => k[1])), TE = F(Z, keys.map((k) => k[2])), Yc = lin(Z, keys.map((k) => k[3] ?? 0)), T = lin(Z, keys.map((k) => k[4] ?? 0.12));
@@ -210,7 +211,7 @@ function wing(keys, o) {
   let zs = [];
   for (let k = 0; k <= n; k++) zs.push(b0 + ((b1 - b0) * k) / n);
   for (const z of Z) if (z > b0 && z < b1) zs.push(z);
-  for (let k = 1; k <= 4; k++) { if (r1 > 0) zs.push(b1 + r1 * Math.sin((PI / 2) * (k / 4))); if (r0 > 0) zs.push(b0 - r0 * Math.sin((PI / 2) * (k / 4))); }
+  for (let k = 1; k <= 7; k++) { if (r1 > 0) zs.push(b1 + r1 * Math.sin((PI / 2) * (k / 7))); if (r0 > 0) zs.push(b0 - r0 * Math.sin((PI / 2) * (k / 7))); }
   zs.sort((a, b) => a - b);
   zs = zs.filter((z, i) => i === 0 || z - zs[i - 1] > 0.02);
   let st = zs.filter((z) => !cuts.some((c) => Math.abs(z - c) < 0.03)).map((z) => ({ z, q: 0 }));
@@ -398,7 +399,7 @@ function livery(top, under = null, line = -0.3, wash = 0.06) {
   };
 }
 // canopy glass: dark, catching the grey of the sky on its sides and more of it on top, plain (no paint texture)
-const glass = (n) => { const c = C(GLASS).lerp(C(SKY), 0.2 + 0.42 * Math.max(0, n.y) ** 2); c.mat = 'plain'; return c; };
+const glass = (n) => { const c = C(0x18333d).lerp(C(0x607a88), 0.12 + 0.25 * Math.max(0, n.y) ** 2); c.mat = 'plain'; return c; };
 // exhaust soot: how much darker a fuselage point is behind exhaust stacks ending at x1 along a row at height y
 // (spread: how far it reaches aft; drop: how much the stain sags as it trails back)
 const sootAt = (p, { x1, y, spread = 1.4, h = 0.16, drop = 0.06 }) => {
@@ -489,13 +490,15 @@ const CAMO_MAIN = /* glsl */ `
 // a fill light in the paint's own colour, a little stronger on the side away from the sun, so shaded sides keep
 // some of their hue instead of all of the sky light's blue
 const FILL = /* glsl */ `
+	#ifndef STANDARD
 	#if NUM_DIR_LIGHTS > 0
 		totalEmissiveRadiance += diffuseColor.rgb * ( 0.035 + 0.08 * ( 1.0 - max( dot( normal, directionalLights[ 0 ].direction ), 0.0 ) ) );
 	#else
 		totalEmissiveRadiance += diffuseColor.rgb * 0.06;
+	#endif
 	#endif`;
 
-// Make a vertex-coloured Lambert or Phong material draw the planes' paint: the camouflage, panel and hinge lines
+// Make a vertex-coloured material draw the planes' paint: the camouflage, panel and hinge lines
 // from the camo and hinge attributes and the fill light. Geometry without them (bombs, the airfield) draws as plain
 // vertex colours.
 export function paintMaterial(mat) {
@@ -523,6 +526,26 @@ function kit(own) {
     add(geo, m = null, color = 0xffffff, mat = null) { parts.push({ geo, color, m, mat }); },
     hull(keys, o = {}) { const h = hull(keys, { paint: K.paint, ...o }); K.add(h.geo); if (o.shadow !== false) polys.push(...h.outlines); return h; },
     wing(keys, o = {}) { const w = wing(keys, { paint: K.paint, ...o }); K.add(w.geo); if (o.shadow !== false) polys.push(...w.outlines); return w; },
+    // Curved wing-root fairings join the wing to the fuselage with a shallow concave fillet.
+    fairing(body, w) {
+      const pos = [], col = [], mat = [], cam = [], idx = [], chord = w.plan(0), NX = 14, NZ = 5;
+      for (const s of [-1, 1]) {
+        const offset = pos.length / 3;
+        for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) {
+          const v = i / NX, u = j / NZ, x = chord.te + (chord.le - chord.te) * v;
+          const rise = 0.19 * Math.sin(PI * v), y0 = w.surf(x, 0) + rise;
+          const z0 = body.side(x, y0), z = z0 + 0.34 * u;
+          const y = w.surf(x, z) + rise * (1 - u) ** 2;
+          const p = new THREE.Vector3(x, y, s * z), c = K.paint(p, new THREE.Vector3(0, 1, 0), { tag: 'wing', upper: true });
+          pos.push(p.x, p.y, p.z); col.push(c.r, c.g, c.b); cam.push(...camoOf(c)); mat.push(matOf(c));
+        }
+        for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) {
+          const a = offset + i * (NZ + 1) + j, b = a + NZ + 1, c = b + 1, d = a + 1;
+          if (s > 0) idx.push(a, d, c, a, c, b); else idx.push(a, b, c, a, c, d);
+        }
+      }
+      K.add(sheet(pos, col, idx, 60, { mat, cam }));
+    },
     // a fin standing on (y, z): keys as for a wing with z the height above y
     fin(keys, o = {}) {
       const m = new THREE.Matrix4().makeTranslation(0, o.y ?? 0, o.z ?? 0).multiply(new THREE.Matrix4().makeRotationX(-PI / 2));
@@ -533,7 +556,7 @@ function kit(own) {
     // a canopy on a body: rel [x, w, height over the body's top]; frames: x of the cross frames; bars: ring angles of
     // the long frames (a number, or {a, x0, x1} for part of the length). The frames take the body paint unless frame.
     canopy(body, rel, o = {}) {
-      const { p = 2.4, sink = 0.2, frames = [], bars = [], fw = 0.045, bw = 0.07, seg = 12, frame = null, arc = [-0.4, PI + 0.4] } = o;
+      const { p = 2.4, sink = 0.2, frames = [], bars = [], fw = 0.055, bw = 0.085, seg = 18, frame = null, arc = [-0.4, PI + 0.4] } = o;
       const keys = rel.map(([x, w, ha]) => { const s = body.at(x); return [x, w, 2 * (ha + sink), s.y + s.h / 2 - sink, p]; });
       const B = bars.map((b) => (typeof b === 'number' ? { a: b, x0: -1e9, x1: 1e9 } : b));
       const paint = (q, n, i) => {
@@ -677,6 +700,7 @@ function p51(K) {
   const fus = K.hull([[-3.95, 0.04, 0.12, 0.44], [-3.6, 0.16, 0.48, 0.4], [-3.0, 0.3, 0.74, 0.33], [-2.0, 0.48, 0.98, 0.23], [-1.0, 0.68, 1.12, 0.16], [-0.1, 0.84, 1.22, 0.12], [0.7, 0.9, 1.24, 0.1], [1.5, 0.9, 1.2, 0.08], [2.4, 0.84, 1.06, 0.06], [3.1, 0.74, 0.84, 0.04], [3.5, 0.6, 0.62, 0.04]], { seg: 18, cuts: [-2.75, -2.4, 1.5, 3.42], angles: [0.961, PI - 0.961] });
   K.canopy(fus, [[1.45, 0.06, 0.0], [1.33, 0.44, 0.22], [1.1, 0.56, 0.4], [0.7, 0.6, 0.5], [0.25, 0.56, 0.48], [-0.15, 0.42, 0.32], [-0.5, 0.18, 0.1], [-0.68, 0.04, 0.0]], { p: 2, frames: [1.08], bars: [0.08, PI - 0.08, { a: 0.95, x0: 1.08, x1: 2 }, { a: PI - 0.95, x0: 1.08, x1: 2 }], frame: METAL, seg: 14 });
   const w = K.wing([[0, 1.15, -1.15, -0.3, 0.15], [4.6, 0.55, -0.5, 0.1, 0.11]], { n: 7, round: 0.18, hinge: [0.76, 2.55] });
+  K.fairing(fus, w);
   // Six short muzzle ports sit flush with the leading edge.
   for (const s of [1, -1]) for (const z of [1.65, 1.84, 2.03]) {
     const p = w.plan(z);
@@ -711,6 +735,7 @@ function p47(K) {
   K.hull([[-3.6, 0.1, 0.5, 0.56], [-2.4, 0.28, 0.62, 0.76], [-1.0, 0.4, 0.66, 0.95], [-0.1, 0.48, 0.62, 1.1], [0.3, 0.52, 0.56, 1.16]], { seg: 10, shadow: false, caps: [false, true], cuts: [-3.0, -2.65] });
   K.canopy(fus, [[2.25, 0.34, 0.02], [2.02, 0.76, 0.38], [1.6, 0.88, 0.56], [1.0, 0.88, 0.6], [0.5, 0.78, 0.56], [0.2, 0.56, 0.5]], { p: 2.6, frames: [1.85, 1.3, 0.75], bars: [PI / 2], seg: 12 });
   const w = K.wing([[0, 1.25, -1.35, -0.5, 0.15], [5.6, 0.85, -0.4, -0.1, 0.1]], { n: 6, round: 1.7, hinge: [0.76, 3.2] });
+  K.fairing(fus, w);
   // The eight gun openings follow the swept leading edge without adding separate meshes.
   for (const s of [1, -1]) for (const z of [2.65, 2.82, 2.99, 3.16]) {
     const p = w.plan(z);
@@ -760,6 +785,7 @@ function b25(K) {
   K.add(lathe([[0.53, -0.1], [0.53, 0.07]], 14), new THREE.Matrix4().makeTranslation(2.5, ty, 0), OD);
   for (const s of [1, -1]) K.rod([2.6, ty + 0.25, s * 0.12], [3.5, ty + 0.27, s * 0.12], 0.035, DARK);
   const w = K.wing([[0, 2.85, -0.85, -0.15, 0.17], [2.95, 2.55, -0.75, 0.38, 0.16], [8.6, 1.3, 0.0, 0.38, 0.1]], { n: 7, round: 0.5, hinge: [0.76, 5.5] });
+  K.fairing(fus, w);
   K.hull([[-3.5, 0.04, 0.06, 0.36], [-2.8, 0.42, 0.52, 0.32], [-1.5, 0.86, 1.08, 0.3], [0.3, 1.12, 1.36, 0.34], [2.1, 1.24, 1.4, 0.37], [3.5, 1.26, 1.3, 0.38]], { seg: 16, z: 2.95, mirror: true, tag: 'nac', angles: under });
   K.radial({ x: 3.45, y: 0.38, z: 2.95, r: 0.65, len: 0.72, lip: K.own, mirror: true });
   K.wing([[0, -5.05, -6.3, 0.62, 0.1], [2.85, -5.25, -6.25, 0.72, 0.1]], { tag: 'tail', nk: 4, n: 3, round: 0.12, hinge: [0.6] });
@@ -805,6 +831,7 @@ function dc3(K, o) {
   K.windows(fus, [3.6, 2.8, 2.0, 1.2, 0.4, -0.4, -1.2], 0.42, 0.28, 0.28);
   const wcuts = o.stripes ? [3.4, 3.82, 4.24, 4.66, 5.08, 5.5] : [];
   const w = K.wing([[0, 2.15, -1.05, -0.62, 0.17], [2.5, 2.15, -1.05, -0.62, 0.17], [9.8, 0.4, -0.85, 0.12, 0.1]], { n: 9, round: 0.6, cuts: wcuts, hinge: [0.74, 5.9] });
+  K.fairing(fus, w);
   K.hull([[-1.0, 0.04, 0.04, -0.58], [-0.6, 0.34, 0.4, -0.56], [0.3, 0.8, 0.96, -0.5], [1.4, 1.1, 1.3, -0.46], [2.7, 1.26, 1.38, -0.42], [3.6, 1.36, 1.38, -0.4]], { seg: 16, z: 2.5, mirror: true, tag: 'nac', angles: under });
   K.radial({ x: 3.55, y: -0.4, z: 2.5, r: 0.69, len: 0.72, mirror: true, lip: K.own });
   K.wing([[0, -4.8, -6.35, 0.62, 0.1], [3.1, -5.35, -6.2, 0.62, 0.09]], { tag: 'tail', nk: 4, n: 4, round: 0.9, hinge: [0.6] });
@@ -861,6 +888,7 @@ function bf109(K) {
   const fus = K.hull([[-3.62, 0.04, 0.1, 0.36, 2], [-3.3, 0.18, 0.42, 0.33, 2.2], [-2.6, 0.32, 0.66, 0.25, 2.4], [-1.6, 0.5, 0.9, 0.15, 2.4], [-0.6, 0.64, 1.04, 0.08, 2.4], [0.4, 0.73, 1.1, 0.04, 2.4], [1.3, 0.75, 1.08, 0.0, 2.4], [2.2, 0.74, 1.0, -0.04, 2.4], [2.8, 0.7, 0.86, -0.02, 2.2], [3.2, 0.64, 0.72, 0.0, 2], [3.27, 0.62, 0.68, 0.0, 2]], { seg: 18, sub: 2, cuts: [-2.35, -2.0, 2.0, 2.85], angles: [0.357, PI - 0.357, PI + 0.467, TAU - 0.467] });
   K.canopy(fus, [[1.45, 0.3, 0.02], [1.32, 0.42, 0.24], [1.08, 0.46, 0.31], [0.55, 0.46, 0.32], [0.2, 0.42, 0.27], [0.0, 0.34, 0.16], [-0.15, 0.08, 0.02]], { p: 5, frames: [1.3, 1.06, 0.62, 0.22, 0.0], bars: [PI / 4, (3 * PI) / 4], fw: 0.05, bw: 0.08, seg: 12 });
   const w = K.wing([[0, 1.3, -0.55, -0.34, 0.15], [4.1, 0.75, -0.2, 0.12, 0.1]], { n: 7, round: 0.75, hinge: [0.74, 2.2] });
+  K.fairing(fus, w);
   // the radiator baths under the wings: shallow and slab-sided, their flaps flush with the wing's trailing edge
   for (const s of [1, -1]) {
     const yc = w.surf(0.1, 1.45, -1) - 0.05;
@@ -891,6 +919,7 @@ function ju87(K) {
   K.rod([-0.8, top + 0.22, 0], [-1.6, top + 0.38, 0], 0.035, DARK);
   K.hull([[2.6, 0.2, 0.16, -0.62], [3.0, 0.7, 0.58, -0.64], [3.7, 0.72, 0.6, -0.52], [4.05, 0.64, 0.5, -0.44]], { seg: 12, tag: 'pod', capColor: [null, DARK], shadow: false });
   const w = K.wing([[0, 1.55, -0.65, -0.38, 0.16], [1.95, 1.5, -0.6, -0.92, 0.15], [5.7, 0.95, -0.25, 0.06, 0.1]], { n: 5, round: 0.45, hinge: [0.78] });
+  K.fairing(fus, w);
   // the main gear at the bend: a streamlined leg fairing down into a big teardrop spat over the wheel, the bottom of
   // the tyre showing below it, and the siren on the front of the leg
   K.fin([[0, 0.92, 0.18, 0, 0.24], [0.62, 0.8, 0.3, 0, 0.24]], { y: -1.5, z: 1.95, mirror: true, nk: 4, n: 2, round: 0.05, tag: 'leg' });
@@ -940,6 +969,7 @@ function he111(K) {
   K.rod([6.6, 0.02, 0], [7.05, 0.0, 0], 0.035, DARK);
   K.windows(fus, [1.7, 1.0], 0.3, 0.22, 0.2);
   const w = K.wing([[0, 2.7, -1.35, -0.25, 0.17], [3.0, 2.6, -1.3, 0.0, 0.16], [5.5, 2.3, -1.05, 0.28, 0.14], [7.5, 1.95, -0.7, 0.45, 0.12], [9.0, 1.6, -0.2, 0.55, 0.1]], { n: 8, round: 1.6, smooth: true, hinge: [0.76, 5.3] });
+  K.fairing(fus, w);
   K.hull([[-1.8, 0.04, 0.06, -0.18], [-1.1, 0.42, 0.5, -0.2], [0.4, 0.82, 0.9, -0.22], [2.4, 1.0, 1.1, -0.2], [4.0, 1.04, 1.1, -0.18], [4.85, 0.98, 1.02, -0.16], [5.1, 0.72, 0.74, -0.16]], { seg: 16, z: 3.0, mirror: true, tag: 'nac', angles: under, capColor: [null, DARK] });
   for (const z of [3.0, -3.0]) {
     K.spinner(5.05, 0.62, 0.35, { y: -0.16, z, color: RLM70, band: K.own, front: WHITE, stripe: [0, 0.6], twist: 3.5 });
@@ -963,6 +993,7 @@ function ju52(K) {
   K.windows(fus, [3.4, 2.8, 2.2, 1.6, 1.0, 0.4, -0.2, -0.8], 0.45, 0.3, 0.28);
   K.radial({ x: 5.55, y: -0.06, r: 0.5, len: 0.6, lip: K.own });
   const w = K.wing([[0, 2.1, -1.45, -0.72, 0.17], [3.3, 1.64, -1.11, -0.64, 0.15], [9.7, 0.75, -0.45, 0.2, 0.1]], { n: 9, nk: 6, round: 0.3 });
+  K.fairing(fus, w);
   // the Junkers double wing: a separate flap and aileron strip behind the trailing edge, the break between them
   const te = (z) => w.plan(z).te, wy = (z) => w.plan(z).y;
   K.wing([[0.9, te(0.9) - 0.1, te(0.9) - 0.6, wy(0.9) - 0.06, 0.08], [9.2, te(9.2) - 0.08, te(9.2) - 0.45, wy(9.2) - 0.04, 0.08]], { tag: 'wing', nk: 3, n: 4, round: 0.1, shadow: false, hinge: [0.001, 5.6] });
@@ -996,6 +1027,7 @@ function yak9(K) {
   const fus = K.hull([[-3.72, 0.04, 0.1, 0.38], [-3.35, 0.2, 0.44, 0.34], [-2.6, 0.38, 0.7, 0.26], [-1.6, 0.58, 0.95, 0.16], [-0.5, 0.78, 1.1, 0.1], [0.6, 0.88, 1.16, 0.06], [1.6, 0.86, 1.12, 0.04], [2.4, 0.78, 0.98, -0.02], [3.0, 0.68, 0.8, -0.06], [3.3, 0.62, 0.68, -0.08]], { seg: 18, sub: 2, cuts: [-2.6, -2.25], angles: [PI + 0.201, TAU - 0.201] });
   K.canopy(fus, [[1.3, 0.2, 0.02], [1.15, 0.44, 0.22], [0.85, 0.52, 0.31], [0.4, 0.52, 0.32], [-0.05, 0.44, 0.26], [-0.45, 0.24, 0.1], [-0.7, 0.04, 0.0]], { p: 2.2, frames: [1.12, 0.7, 0.3, -0.2], seg: 12 });
   const w = K.wing([[0, 1.3, -0.75, -0.32, 0.15], [4.3, 0.6, -0.3, 0.14, 0.1]], { n: 7, round: 0.65, hinge: [0.75, 2.4] });
+  K.fairing(fus, w);
   K.hull([[-1.05, 0.08, 0.04, -0.46], [-0.8, 0.34, 0.2, -0.5], [-0.15, 0.5, 0.38, -0.58], [0.55, 0.46, 0.32, -0.56], [0.75, 0.38, 0.26, -0.52]], { seg: 12, tag: 'pod', capColor: [null, DARK], shadow: false });
   K.wing([[0, -2.8, -3.6, 0.28, 0.1], [1.65, -3.05, -3.5, 0.28, 0.09]], { tag: 'tail', nk: 4, n: 3, round: 0.55, hinge: [0.62] });
   const fin = K.fin([[0, -2.6, -3.72, 0, 0.1], [0.3, -2.95, -3.74, 0, 0.1], [1.0, -3.3, -3.7, 0, 0.09]], { y: 0.48, nk: 4, n: 4, round: 0.55, smooth: true, hinge: [0.6] });
@@ -1023,6 +1055,7 @@ function il2(K) {
   const by = fus.bottom(3.0);
   K.hull([[2.0, 0.1, 0.06, by + 0.06], [2.5, 0.5, 0.26, by - 0.02, 3], [3.25, 0.54, 0.28, by + 0.0, 3], [3.5, 0.52, 0.26, by + 0.04, 3]], { seg: 10, tag: 'pod', capColor: [null, DARK], shadow: false });
   const w = K.wing([[0, 1.6, -0.7, -0.36, 0.16], [1.75, 1.6, -0.7, -0.36, 0.16], [5.8, 0.4, -0.55, 0.2, 0.1]], { n: 7, round: 0.6, hinge: [0.74, 3.6] });
+  K.fairing(fus, w);
   K.hull([[-0.95, 0.03, 0.03, -0.48], [-0.7, 0.16, 0.16, -0.52], [0.0, 0.4, 0.44, -0.62], [0.9, 0.44, 0.5, -0.66], [1.7, 0.36, 0.4, -0.64], [1.95, 0.04, 0.04, -0.62]], { seg: 12, z: 1.75, mirror: true, tag: 'pod' });
   // RS-82 rockets on rails under the outer wings: slim, grey, tucked behind the leading edge
   const body = tube([[0, 0, 0], [0.62, 0, 0]], 0.055, { radial: 6, caps: false }), nose = lathe([[0.055, 0], [0.04, 0.1], [0, 0.2]], 6, { axis: 'x' });
@@ -1061,6 +1094,7 @@ function pe2(K) {
   K.hull([[-2.1, 0.5, 0.34, sy(-2.1, 0.34)], [-1.9, 0.56, 0.36, sy(-1.9, 0.36)], [-1.0, 0.52, 0.28, sy(-1.0, 0.28)], [-0.7, 0.06, 0.04, sy(-0.7, 0.04)]], { seg: 10, tag: 'pod', capColor: [GLASS, null], shadow: false });
   K.rod([-2.05, sy(-2.1, 0.34), 0], [-2.7, sy(-2.1, 0.34) - 0.06, 0], 0.03, DARK);
   const w = K.wing([[0, 2.15, -0.9, -0.28, 0.16], [2.4, 2.0, -0.85, -0.12, 0.15], [7.2, 0.95, -0.15, 0.32, 0.1]], { n: 8, round: 0.8, hinge: [0.76, 4.6] });
+  K.fairing(fus, w);
   K.hull([[-1.8, 0.04, 0.06, -0.1], [-0.9, 0.52, 0.62, -0.16], [0.6, 0.8, 0.94, -0.2], [2.4, 0.88, 1.0, -0.18], [3.7, 0.8, 0.84, -0.14], [4.1, 0.62, 0.62, -0.12]], { seg: 16, z: 2.4, mirror: true, tag: 'nac', angles: under });
   for (const z of [2.4, -2.4]) {
     K.spinner(4.07, 0.62, 0.29, { y: -0.12, z, color: VVS_GREEN, band: K.own, bandWidth: 0.24 });
@@ -1109,6 +1143,7 @@ function spitfire(K) {
   // the elliptical wing: the quarter-chord line straight across, the chord falling off as an ellipse to the tip
   const ell = (z) => 2.03 * Math.sqrt(Math.max(0, 1 - (z / 4.5) ** 2)), wk = (z, y, t) => [z, 1.2 + 0.25 * Math.max(ell(z), 0.8), 1.2 - 0.75 * Math.max(ell(z), 0.8), y, t];
   const w = K.wing([wk(0, -0.32, 0.13), wk(2.6, -0.05, 0.115), wk(3.95, 0.1, 0.1), wk(4.5, 0.15, 0.09)], { nk: 5, n: 3, round: 0.75, pivot: 0.72, smooth: true, cuts: stripeCuts(...ws), hinge: [0.78, 2.4] });
+  K.fairing(fus, w);
   // the radiator baths: slab-sided, deeper than the Bf 109's, their open fronts and flaps dark
   for (const s of [1, -1]) {
     const yc = w.surf(0.6, 1.25, -1) - 0.1;
@@ -1146,6 +1181,7 @@ function typhoon(K) {
   const fus = K.hull([[-3.95, 0.04, 0.14, 0.42, 2], [-3.5, 0.22, 0.52, 0.38, 2.1], [-2.6, 0.44, 0.84, 0.28, 2.2], [-1.5, 0.66, 1.08, 0.17, 2.3], [-0.4, 0.82, 1.24, 0.1, 2.4], [0.6, 0.9, 1.3, 0.06, 2.5], [1.6, 0.92, 1.28, 0.05, 2.6], [2.5, 0.9, 1.18, 0.06, 2.6], [3.2, 0.82, 1.0, 0.08, 2.3], [3.6, 0.72, 0.76, 0.1, 2]], { seg: 14, cuts: [-3.32, -3.05, ...stripeCuts(...fs)], angles: [PI + 0.305, TAU - 0.305] });
   K.canopy(fus, [[1.05, 0.22, 0.0], [0.92, 0.46, 0.22], [0.7, 0.56, 0.38], [0.3, 0.6, 0.48], [-0.15, 0.56, 0.45], [-0.55, 0.42, 0.28], [-0.9, 0.14, 0.07], [-1.05, 0.04, 0.0]], { p: 2, frames: [0.86], bars: [{ a: 0.95, x0: 0.86, x1: 2 }, { a: PI - 0.95, x0: 0.86, x1: 2 }, { a: PI / 2, x0: 0.86, x1: 2 }], seg: 10 });
   const w = K.wing([[0, 1.42, -0.75, -0.42, 0.19], [1.6, 1.4, -0.72, -0.42, 0.18], [5.05, 0.78, -0.42, -0.08, 0.12]], { nk: 4, n: 4, round: 0.7, cuts: stripeCuts(...ws), hinge: [0.76, 3.1] });
+  K.fairing(fus, w);
   // the chin radiator: a deep scoop under the engine, its mouth dark with a splitter down the middle
   K.hull([[1.5, 0.1, 0.06, -0.46], [2.05, 0.62, 0.5, -0.64, 2.4], [2.9, 0.72, 0.68, -0.7, 2.6], [3.45, 0.74, 0.7, -0.64, 2.6]], { seg: 14, tag: 'pod', capColor: [null, DARK] });
   K.box(3.44, -0.64, 0, 0.03, 0.62, 0.04, DARK, 0, 0, 0, 'gunmetal');
@@ -1186,6 +1222,7 @@ function mosquito(K) {
   const fus = K.hull([[-5.15, 0.04, 0.1, 0.45], [-4.6, 0.24, 0.4, 0.42], [-3.4, 0.5, 0.66, 0.34], [-1.8, 0.78, 0.98, 0.22], [0.0, 0.98, 1.2, 0.1], [1.6, 1.08, 1.3, 0.04], [2.8, 1.1, 1.28, 0.0], [3.8, 1.02, 1.12, -0.06], [4.5, 0.8, 0.84, -0.12], [4.95, 0.5, 0.5, -0.16], [5.12, 0.04, 0.04, -0.18]], { seg: 20, cuts: [-3.4, -3.05], angles: [PI + 0.305, TAU - 0.305] });
   K.canopy(fus, [[4.05, 0.4, 0.02], [3.85, 0.8, 0.24], [3.55, 0.94, 0.36], [3.1, 0.96, 0.38], [2.7, 0.86, 0.32], [2.45, 0.6, 0.16], [2.3, 0.2, 0.02]], { p: 2.6, frames: [3.85, 3.58, 3.15, 2.7], bars: [PI / 2, 0.75, PI - 0.75], seg: 12, fw: 0.04, bw: 0.06 });
   const w = K.wing([[0, 2.05, -1.0, -0.05, 0.15], [6.85, 0.95, -0.15, 0.35, 0.1]], { n: 8, round: 0.55, hinge: [0.76, 4.4] });
+  K.fairing(fus, w);
   const nz = 2.1, nac = K.hull([[-1.95, 0.04, 0.06, -0.08], [-1.3, 0.4, 0.5, -0.1], [0.0, 0.8, 1.0, -0.14], [1.6, 0.92, 1.12, -0.14], [3.0, 0.88, 1.02, -0.1], [3.75, 0.7, 0.74, -0.05], [3.95, 0.62, 0.62, -0.05]], { seg: 16, z: nz, mirror: true, tag: 'nac', angles: [PI + 0.305, TAU - 0.305] });
   for (const s of [1, -1]) {
     // six exhaust stubs on each side of each nacelle

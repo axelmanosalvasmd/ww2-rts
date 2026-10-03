@@ -7923,9 +7923,12 @@ await import('./test-model-motion.mjs');
   const THREE = await import('three');
   const { buildModel, VEHICLE_PAINT } = await import('./client/unit-models.js');
   const { navalModel } = await import('./client/models/naval.js');
+  const { checkFinishedNaval } = await import('./tools/blender/check-finished-naval.mjs');
+  const finished = await checkFinishedNaval();
+  assert.equal(finished.models.length, 12, 'Blender payload covers all three ships and four factions');
   const look = { vehicle: 0x59623d, color: 0x3b73d6 };
   for (const fac of [0, 1, 2, 3]) for (const [type, draws, budget, length, beam] of [
-    ['lcvp', 1, 1000, 10.4, 3.1], ['gunboat', 2, 2200, 22.5, 5.5], ['destroyer', 5, 4000, 104, 11.6],
+    ['lcvp', 1, 15000, 10.4, 3.1], ['gunboat', 2, 30000, 22.5, 5.5], ['destroyer', 5, 50000, 104, 11.6],
   ]) {
     const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
     buildModel(v, root, look, fac, UNITS[type]);
@@ -7973,8 +7976,8 @@ console.log('all naval model checks passed');
   const THREE = await import('three');
   const { buildModel, PAINT, VEHICLE_PAINT } = await import('./client/unit-models.js');
   const looks = [{ vehicle: 0x59623d, color: 0x3b73d6 }, { vehicle: 0x50565a, color: 0xcc3a2e }, { vehicle: 0x4e5a38, color: 0xece6d6 }, { vehicle: 0x565640, color: 0xe2832b }];
-  const cases = [['tank', 0, 3000], ['tank', 1, 3000], ['tank', 2, 3000], ['tiger', 1, 5000], ['churchill', 3, 5000],
-    ['medium', 0, 4000], ['medium', 1, 4000], ['medium', 2, 4000], ['medium', 3, 4000], ['rocket', 0, 4000], ['flaktrack', 1, 4000], ['flaktrack', 2, 3000]];
+  const cases = [['tank', 0, 8000], ['tank', 1, 8000], ['tank', 2, 8000], ['tiger', 1, 20000], ['churchill', 3, 20000],
+    ['medium', 0, 18000], ['medium', 1, 18000], ['medium', 2, 18000], ['medium', 3, 18000], ['rocket', 0, 18000], ['flaktrack', 1, 14000], ['flaktrack', 2, 8000]];
   for (const [type, fac, budget] of cases) {
     const root = new THREE.Group(), v = { type, root, models: [] }, label = `${type} faction ${fac}`;
     buildModel(v, root, looks[fac], fac, UNITS[type]);
@@ -7999,12 +8002,13 @@ console.log('all naval model checks passed');
     }
     assert.ok(tipDistance < 0.1, `${label}: muzzle point stays on the gun`);
   }
-  const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
-  VEHICLE_PAINT.onBeforeCompile(shader);
-  assert.ok(shader.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb') && shader.fragmentShader.includes('modelTriplanar'), 'vehicle fill keeps the model texture shader');
-  const ordinary = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
-  PAINT.onBeforeCompile(ordinary);
-  assert.ok(!ordinary.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb'), 'soldiers and guns retain their own lighting');
+  for (const material of [VEHICLE_PAINT, PAINT]) {
+    assert.ok(material.isMeshStandardMaterial, 'models use physically based surface lighting');
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    material.onBeforeCompile(shader);
+    assert.ok(shader.fragmentShader.includes('modelTriplanar'), 'surface lighting keeps the model texture shader');
+    assert.ok(!shader.fragmentShader.includes('totalEmissiveRadiance += diffuseColor.rgb'), 'paint does not glow to imitate ambient light');
+  }
 }
 console.log('all armor model checks passed');
 
@@ -8031,7 +8035,7 @@ console.log('all armor model checks passed');
     const size = box.getSize(new THREE.Vector3()), tris = (m.hull.index.count + m.turret.index.count) / 3;
     assert.ok(box.min.y > -0.05 && box.min.y < 0.05, `${label}: stands on the ground (${box.min.y})`);
     assert.ok(size.x >= 3.4 && size.x <= 5.8 && size.z >= 1.6 && size.z <= 2.8, `${label}: footprint ${size.x.toFixed(1)} x ${size.z.toFixed(1)} stays near the old boxes`);
-    assert.ok(tris >= 1500 && tris <= 3000, `${label}: ${tris} triangles within the 3000 budget`);
+    assert.ok(tris >= 1500 && tris <= 12000, `${label}: ${tris} triangles within the 12000 budget`);
     for (const g of [m.hull, m.turret]) assert.ok(g.attributes.position.array.every(Number.isFinite) && g.attributes.normal.array.every(Number.isFinite), `${label}: finite positions and normals`);
     assert.ok(v.fxTip.length === 3 && v.fxTip.every(Number.isFinite), `${label}: a muzzle point`);
     const own = new THREE.Box3().setFromBufferAttribute(m.turret.attributes.position).expandByScalar(0.35);
@@ -8065,7 +8069,7 @@ console.log('all wheeled model checks passed');
     assert.equal(meshes.length, 1, `${label}: the gun is one draw call`);
     assert.ok(meshes[0].castShadow, `${label}: the gun casts a shadow`);
     const geo = meshes[0].geometry, I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, tris = I.count / 3;
-    assert.ok(tris >= 400 && tris <= 2000, `${label}: ${tris} triangles (budget 2000)`);
+    assert.ok(tris >= 400 && tris <= 4000, `${label}: ${tris} triangles (budget 4000)`);
     assert.ok(geo.attributes.color, `${label}: painted in vertex colors`);
     const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
     let inward = 0;
@@ -8111,7 +8115,7 @@ console.log('all gun model checks passed');
   const THREE = await import('three');
   const { plane, ROLES, PLANE_NAMES } = await import('./client/models/planes.js');
   const { MATS, PLAIN, UNSET } = await import('./client/models/geom.js');
-  const BUDGET = { fighter: 3500, attacker: 3500, bomber: 6000, transport: 6000 }, OWN = 0xff00ff;
+  const BUDGET = { fighter: 6000, attacker: 6500, bomber: 10000, transport: 10000 }, OWN = 0xff00ff;
   for (const fac of [0, 1, 2, 3]) for (const role of ROLES) {
     const p = plane(fac, role, OWN), geo = p.geo, label = PLANE_NAMES[fac][role];
     const I = geo.index, P = geo.attributes.position, N = geo.attributes.normal, col = geo.attributes.color, mat = geo.attributes.matId;
@@ -8153,7 +8157,7 @@ console.log('all aircraft model checks passed');
       if (seen.has(kit)) continue;
       seen.add(kit);
       const s = soldier(type, fac, i, { color: 0xff00ff });
-      for (const [lod, budget] of [['near', 900], ['far', 150]]) {
+      for (const [lod, budget] of [['near', 3000], ['far', 150]]) {
         assert.equal(s[lod].children.length, 1, `${type}/${fac}/${kit}: one ${lod} body`);
         const g = s[lod].children[0].userData.geo, p = g.attributes.position;
         assert.ok(g.index.count / 3 <= budget, `${type}/${fac}/${kit}: ${lod} fits ${budget} triangles`);

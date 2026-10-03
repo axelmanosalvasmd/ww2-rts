@@ -17,13 +17,17 @@ bpy.context.window.scene = scene
 scene['qa_source'] = str(source)
 scene['qa_shader_limit'] = data['shaderLimit']
 axis = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))
-material = bpy.data.materials.new('WW2_QA_vertex_colors_' + stamp)
-material.use_nodes = True
-bsdf = material.node_tree.nodes.get('Principled BSDF')
-color = material.node_tree.nodes.new('ShaderNodeVertexColor')
-color.layer_name = 'GameColor'
-material.node_tree.links.new(color.outputs['Color'], bsdf.inputs['Base Color'])
-bsdf.inputs['Roughness'].default_value = 0.78
+materials = []
+for surface in data.get('surfaces', []) + [{'name': 'plain', 'roughness': 0.8, 'metalness': 0}]:
+    material = bpy.data.materials.new('WW2_QA_' + surface['name'] + '_' + stamp)
+    material.use_nodes = True
+    bsdf = material.node_tree.nodes.get('Principled BSDF')
+    color = material.node_tree.nodes.new('ShaderNodeVertexColor')
+    color.layer_name = 'GameColor'
+    material.node_tree.links.new(color.outputs['Color'], bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = surface['roughness']
+    bsdf.inputs['Metallic'].default_value = surface['metalness']
+    materials.append(material)
 stats = []
 for row, model in enumerate(data['models']):
     group = bpy.data.objects.new(f"{model['type']}_f{model['faction']}_review", None)
@@ -69,7 +73,12 @@ for row, model in enumerate(data['models']):
         obj = bpy.data.objects.new(spec['name'], mesh)
         scene.collection.objects.link(obj)
         obj.parent = group
-        obj.data.materials.append(material)
+        for material in materials:
+            obj.data.materials.append(material)
+        material_ids = attrs.get('matId', {}).get('array')
+        for face in mesh.polygons:
+            tag = math.floor(material_ids[face.vertices[0]] + 0.25) if material_ids else -1
+            face.material_index = tag if 0 <= tag < len(materials) - 1 else len(materials) - 1
         obj['qa_source_mesh'] = spec['name']
         obj['qa_morph_target_counts'] = json.dumps({k: len(v) for k, v in spec['morphTargets'].items()})
         degenerate = sum((vertices[b] - vertices[a]).cross(vertices[c] - vertices[a]).length_squared < 1e-16 for a, b, c in faces)

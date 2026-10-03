@@ -99,27 +99,31 @@ function wheelFace(rings, seg, gaps = -1) {
 
 // Wheels: a rubber tire with rounded shoulders, a steel disc set into it (a dark outer ring, then the paint and a
 // raised hub), and a dark cover closing the back. Axle along z, outer face at +z; side -1 mirrors it.
-const tireGeo = (R, w, seg) => once(`tire|${R}|${w}|${seg}`, () => { const h = w / 2; return turn([[R * 0.64, -h * 0.9], [R, -h * 0.62], [R, h * 0.62], [R * 0.64, h * 0.92]], seg, 'z', 80); });
+const tireGeo = (R, w, seg) => once(`tire|${R}|${w}|${seg}`, () => { const h = w / 2; return turn([[R * 0.64, -h * 0.94], [R * 0.82, -h * 0.98], [R * 0.95, -h * 0.72], [R, -h * 0.28], [R, h * 0.28], [R * 0.95, h * 0.72], [R * 0.82, h * 0.98], [R * 0.64, h * 0.94]], seg, 'z', 80); });
 const rimGeo = (R, w, seg) => once(`rim|${R}|${w}|${seg}`, () => { const h = w / 2; return turn([[R * 0.645, h * 0.8], [R * 0.5, h * 0.78]], seg); });
 const hubGeo = (R, w, seg) => once(`hub|${R}|${w}|${seg}`, () => { const h = w / 2; return turn([[R * 0.5, h * 0.78], [R * 0.24, h * 0.84], [R * 0.15, h * 0.98], [0, h * 1.0]], seg); });
 const backGeo = (R, w, seg) => once(`back|${R}|${w}|${seg}`, () => new THREE.CircleGeometry(R * 0.66, seg).rotateY(Math.PI).translate(0, 0, -w * 0.44));
-function wheel(p, P, R, w, x, y, z, side = 1, { seg = 20, hub = P.mid, ry = 0 } = {}) {
-  const m = G.xf(x, y, z, 0, ry, 0, 1, 1, side), detailed = seg >= 18, hs = detailed ? 8 : 6;
-  // Spend wheel vertices on the pressed disc and fasteners rather than invisible tire subdivisions.
-  seg = Math.min(seg, 16);
+function wheel(p, P, R, w, x, y, z, side = 1, { seg = 32, hub = P.mid, ry = 0 } = {}) {
+  seg = Math.max(32, seg);
+  const m = G.xf(x, y, z, 0, ry, 0, 1, 1, side), hs = 24;
   p.mat(tireGeo(R, w, seg), P.rubber, m);
   p.mat(rimGeo(R, w, hs), P.deep, m);
-  p.mat(hubGeo(R, w, hs), hub, m);
-  p.mat(backGeo(R, w, hs), P.deep, m);
+  const circle = (r, n, cx = 0, cy = 0) => Array.from({ length: n }, (_, k) => { const a = k * TAU / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  const holes = Array.from({ length: 5 }, (_, k) => { const a = (k + 0.5) * TAU / 5; return circle(R * 0.075, 8, R * 0.4 * Math.cos(a), R * 0.4 * Math.sin(a)); });
+  const disc = once(`pressed-wheel|${R}|${w}`, () => G.extrudeProfile(circle(R * 0.61, 32), w * 0.08, 0, { holes }));
+  p.mat(disc, hub, m.clone().multiply(G.xf(0, 0, w * 0.32)));
+  p.mat(turn([[R * 0.27, w * 0.34], [R * 0.24, w * 0.38], [R * 0.16, w * 0.49], [0, w * 0.5]], 24), hub, m);
+  p.mat(backGeo(R, w, 24), P.deep, m);
   for (let k = 0; k < 5; k++) {
     const a = k * TAU / 5;
     p.mat(wheelDisc(R * 0.034, 6), P.steel, m.clone().multiply(G.xf(R * 0.3 * Math.cos(a), R * 0.3 * Math.sin(a), w * 0.435)));
   }
-  if (detailed) for (let k = 0; k < 4; k++) {
-    const a = (k + 0.5) * TAU / 4;
-    p.mat(wheelDisc(R * 0.065, 6), P.hole, m.clone().multiply(G.xf(R * 0.415 * Math.cos(a), R * 0.415 * Math.sin(a), w * 0.41)));
+  // Tire lugs follow the rounded tread rather than using a flat dark cylinder.
+  const lug = once(`tire-lug|${R}|${w}`, () => new THREE.BoxGeometry(TAU * R / 32 * 0.56, R * 0.03, w * 0.8));
+  for (let k = 0; k < 32; k++) {
+    const a = k * TAU / 32;
+    p.mat(lug, P.rubber, m.clone().multiply(G.xf(R * Math.cos(a), R * Math.sin(a), 0, 0, 0, a + Math.PI / 2)));
   }
-  if (detailed) p.mat(wheelDisc(R * 0.145, 8), P.dark, m.clone().multiply(G.xf(0, 0, w * 0.505)));
 }
 
 // Flat hexagonal fasteners and disc openings share the wheel's outward face, including spare wheels.

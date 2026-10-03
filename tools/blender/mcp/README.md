@@ -126,6 +126,10 @@ bash tools/blender/mcp/call.sh lab --tool execute_blender_code \
 `--args-file` is a JSON object containing the tool arguments. Screenshot responses
 save images beside `--output` without printing their base64 data.
 
+For Blender authoring that returns finished geometry to the runtime, read
+[finishing.md](../finishing.md). That pass exports raw naval parts, applies real Blender
+modifiers, and writes a versioned geometry payload with player-color masks.
+
 ## Provenance
 
 - Blender Lab source: `projects.blender.org/lab/blender_mcp`, revision

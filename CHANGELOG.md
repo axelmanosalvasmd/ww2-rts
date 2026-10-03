@@ -5,6 +5,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Rebuilt tank castings, wheels and tracks, infantry faces and weapons, aircraft fuselages and canopies, and base
+  buildings with smoother shapes and more mechanical detail. Ships now have curved hulls, cambered decks, open
+  bridges, torpedo tubes and shaped gunhouses, with Blender finishing for panel edges and normals.
+- Painted metal, bare metal, rubber, cloth, timber, asphalt and concrete now respond differently to light.
+  Fine fabric grain replaces coarse mottling, ship hulls avoid land mud, and a filtered sky reflection improves
+  metal on High graphics. Low keeps material response while omitting texture detail and reflections.
+- Fixed the model viewer sometimes reporting textures off while texture loading was still in progress.
+- Known issue left for separate work: World Conquest can receive an early snapshot before the client world is
+  ready. The same startup error was reproduced on unchanged master; it is unrelated to these visual changes.
+
 ### 2026-10-03: Model detail, lighting and movement (`fce8526`)
 
 - Vehicles settle as they accelerate and turn, boats gently ride the water, and soldiers ease between stride

@@ -22,7 +22,8 @@ import { lightHeavy } from './models/armor-lightheavy.js';
 import { churchill } from './models/churchill.js';
 import { cromwell } from './models/cromwell.js';
 import { isWheeled, wheeledModel } from './models/wheeled.js';
-import { navalModel } from './models/naval.js';
+import { bakedNavalModel } from './models/blender-baked.js';
+import navalFinished from './models/naval-finished-data.js';
 import { gunModel, GUN_SLOTS, sandbagRing } from './models/guns.js'; // the crew-served weapons (machine guns, mortars, AT guns, flak) and the flak position's sandbags
 
 // unit-sized shapes, scaled per part. Soldiers, including the fallen ones, come from client/models/infantry.js.
@@ -41,24 +42,13 @@ const ROOF = (() => {
 const DARK = 0x2a2a24;
 // one material for every plain-colored part; the color sits in the geometry, the texture detail comes from what each
 // vertex is made of (painted armor where a mesh built outside mergeParts does not say)
-export const PAINT = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { mat: 'armor-paint', grime: true });
-// Neutral tone mapping removes most of the low, neutral sky fill. Keep shaded vehicle paint readable with a
-// diffuse-colored bounce fill, strongest away from the sun. It follows the textured paint, including dark tires.
-const vehiclePaint = new THREE.MeshLambertMaterial({ vertexColors: true });
-vehiclePaint.onBeforeCompile = (shader) => {
-  shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  #if NUM_DIR_LIGHTS > 0
-    totalEmissiveRadiance += diffuseColor.rgb * (0.08 + 0.45 * (1.0 - max(dot(normal, directionalLights[0].direction), 0.0)));
-  #else
-    totalEmissiveRadiance += diffuseColor.rgb * 0.3;
-  #endif`);
-};
-vehiclePaint.customProgramCacheKey = () => 'vehicle-bounce-fill';
-export const VEHICLE_PAINT = modelMaterial(vehiclePaint, { mat: 'armor-paint', grime: true });
+export const PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }), { mat: 'armor-paint', grime: true });
+// Painted steel, exposed tracks, tires and canvas share one draw while keeping separate surface responses.
+export const VEHICLE_PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0 }), { mat: 'armor-paint', grime: true });
 const colors = new Map();
 const colorOf = (hex) => colors.get(hex) || colors.set(hex, new THREE.Color(hex)).get(hex);
 const cloths = new Map();
-const cloth = (color) => cloths.get(color) || cloths.set(color, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide })).get(color);
+const cloth = (color) => cloths.get(color) || cloths.set(color, new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, side: THREE.DoubleSide })).get(color);
 // textured structure materials (sandbag, wood, darkwood): main.js passes client/surfaces.js surface(); without it
 // (the tests run in Node, where textures cannot load) each part keeps its plain color
 let skin = (_key, color) => color;
@@ -84,6 +74,7 @@ function part(geo, paint, sx = 1, sy = 1, sz = 1, x = 0, y = 0, z = 0, mat) {
 // the most anywhere. Planes have none (client/aircraft.js).
 export const LOOKS = {
   vehicle: { mat: 'armor-paint', mud: 0.75, dust: 0.18, most: 0.9 },
+  naval: { mat: 'armor-paint', mud: 0, dust: 0.03, most: 0.1 },
   gun: { mat: 'armor-paint', mud: 0.22, dust: 0.12, most: 0.7 },
   soldier: { mat: 'wool', mud: 0.3, dust: 0.2, most: 0.6 },
   structure: { mat: 'armor-paint', mud: 0.6, dust: 0.1, most: 0.8 },
@@ -94,7 +85,7 @@ const darkSteel = (c) => c && Math.max(c.r, c.g, c.b) < 0.032 && Math.max(c.r, c
 const smooth01 = (t) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k); };
 // grime at a height y above the model's feet (normal ny): mud low down, dust above it (a bit more on top faces)
 function grimeAt(L, y, ny) {
-  const mud = 1 - smooth01((y - L.mud * 0.1) / (L.mud * 0.9)), dust = L.dust ? L.dust + 0.12 * Math.max(0, ny) : 0;
+  const mud = L.mud > 0 ? 1 - smooth01((y - L.mud * 0.1) / (L.mud * 0.9)) : 0, dust = L.dust ? L.dust + 0.12 * Math.max(0, ny) : 0;
   return Math.min(L.most, Math.max(mud, dust), 0.98);
 }
 
@@ -173,7 +164,7 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
     group.traverse((o) => {
       const d = o.userData;
       if (!d.geo) return;
-      const material = d.paint.isMaterial ? d.paint : look === 'vehicle' ? VEHICLE_PAINT : PAINT;
+      const material = d.paint.isMaterial ? d.paint : look === 'vehicle' || look === 'naval' ? VEHICLE_PAINT : PAINT;
       if (!buckets.has(material)) buckets.set(material, []);
       buckets.get(material).push({ geo: d.geo, matrix: relative(o, group), color: material === PAINT || material === VEHICLE_PAINT ? colorOf(d.paint) : null, mat: d.mat });
     });
@@ -332,14 +323,14 @@ export function buildModel(v, root, f, fac, def) {
       part(GEO.box, DARK, 0.3, 5.5, 0.3, 2.2, 2.75, 2.4), part(GEO.box, DARK, 3, 0.25, 0.25, 1.1, 5.4, 2.4), part(GEO.cyl, DARK, 0.03, 2, 0.03, 0, 4.4, 2.4));
     root.add(bake(v.body, key, true, 'structure')); v.models.push(root);
   } else if (type === 'lcvp' || type === 'gunboat' || type === 'destroyer') {
-    const model = navalModel(type, own, f), hull = new THREE.Group();
+    const model = bakedNavalModel(navalFinished, type, own, f), hull = new THREE.Group();
     hull.add(part(model.hull, 0xffffff));
-    root.add(bake(hull, key + '|hull', true));
+    root.add(bake(hull, key + '|hull', true, 'naval'));
     if (model.turret) {
       const mounts = model.mounts.map((at) => {
         const mount = new THREE.Group(); mount.position.set(...at);
         mount.add(part(model.turret, 0xffffff));
-        return bake(mount, key + '|mount', true);
+        return bake(mount, key + '|mount', true, 'naval');
       });
       root.add(...mounts); v.turret = mounts[0]; v.fxTip = model.tip;
       if (type === 'destroyer') v.mounts = mounts;
@@ -523,7 +514,7 @@ function fallenGeometry(src, scale) {
 function corpseMaterial() {
   // same textured paint as a living soldier, plus a per-body fade. Registered with the texture loader so a corpse
   // picks up wool and steel when the textures arrive, not only the paint it had at startup.
-  const material = modelMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, depthWrite: true }), { mat: 'wool', grime: true });
+  const material = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, transparent: true, depthWrite: true }), { mat: 'wool', grime: true });
   const prev = material.onBeforeCompile;
   const prevKey = material.customProgramCacheKey?.bind(material);
   material.onBeforeCompile = (shader, renderer) => {

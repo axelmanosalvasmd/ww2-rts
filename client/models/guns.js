@@ -191,8 +191,13 @@ function palette(look) {
 // cap and bolt heads, or on spokes. The detailed face is +z (turn the wheel on the other side of a gun around); the
 // back is a plain disc.
 function wheelGeo(R, w, P, { spokes = 0, seg = 14, lugs = 12, bolts = 5, back = true } = {}) {
+  seg = Math.max(24, seg);
   const k = kit(), ri = R * 0.8, hub = R * 0.2, fw = w * 0.5;
-  k.turn(P.tire, [[ri, -w / 2], [R, -w * 0.4], [R, w * 0.4], [ri, w / 2]], seg, 0, 0, 0, 'z');
+  // Rounded shoulders and recessed beads make a tire rather than a straight rubber sleeve.
+  k.turn(P.tire, [[ri, -fw * 0.86], [R * 0.92, -fw], [R * 0.984, -fw * 0.65], [R, -fw * 0.23],
+    [R, fw * 0.23], [R * 0.984, fw * 0.65], [R * 0.92, fw], [ri, fw * 0.86]], seg, 0, 0, 0, 'z');
+  for (const side of [-1, 1]) k.turn(P.dark, [[ri * 0.98, side * fw * 0.84], [ri * 1.045, side * fw * 0.91],
+    [ri * 1.08, side * fw * 0.81]], seg, 0, 0, 0, 'z');
   // tread: darker blocks across the rubber
   const rt = R * Math.cos(Math.PI / seg) + 0.002;
   for (let i = 0; i < lugs; i++) {

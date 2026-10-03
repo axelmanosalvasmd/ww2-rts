@@ -23,7 +23,9 @@ exactly those three calls without editing the scene. Claude's fresh verification
 the project `.mcp.json`, strict MCP config and an allowlist of the three read-only tools.
 A normal new Claude session can still ask to trust the project and approve its MCPs.
 
-## Actual naval model review
+## Initial connection review (superseded models)
+
+This first pass established the import and review workflow. The realism revision below replaces these models.
 
 `bash tools/blender/review.sh --types lcvp,gunboat,destroyer --factions 0` exported the
 current game `buildModel` output and completed the following MCP operations:
@@ -59,3 +61,42 @@ Local evidence is ignored under `.cache/blender-mcp/`: `review-last.json` points
 latest saved `.blend`, render, viewport and detailed MCP report. `codex-fresh-authorized.jsonl`
 and `claude-fresh.json` hold fresh-client evidence. The source review images and game
 assets remain separate from these temporary QA files. All checks were silent.
+
+## Realism revision and shipped Blender geometry
+
+The final revision uses Blender Lab to apply bevel and weighted-normal modifiers to raw
+naval parts. The export normalizes corner normals, keeps them in each triangle's outward
+hemisphere, and rejects degenerate triangles before writing the runtime payload. Separate
+owner and vehicle tint masks preserve paint changes. See `finishing.md` for rebuilding.
+
+The compressed runtime module is 3,776,929 bytes. Its shared array JSON is 11,836,039 bytes
+before gzip and 2,829,632 bytes after gzip, with base64 transport in the ES module.
+The exact payload passes the runtime adapter check for all twelve type/faction combinations.
+It retains 1 / 2 / 5 meshes, original bounds, muzzle tips and gun mounts.
+
+| Final model | Triangles per complete instance | Degenerate triangles |
+| --- | ---: | ---: |
+| LCVP, all factions | 7,422 | 0 |
+| Gunboat, all factions | 15,680 | 0 |
+| Destroyer, USA | 38,277 | 0 |
+| Destroyer, Germany | 38,252 | 0 |
+| Destroyer, USSR | 38,264 | 0 |
+| Destroyer, UK | 38,329 | 0 |
+
+The final three-integration review ran on the actual game builder output:
+`review-mcp-20261003-163316.json`, scene `WW2_RTS_QA_20261003-163311`.
+Blender Lab imported the finished meshes, Blend AI rendered them, and MCP for Blender
+captured the same scene. The saved render and viewport were opened and inspected.
+Curved hulls, open interiors, shaped bridges, torpedo tubes and all moving gun mounts
+were present. The Blender materials now retain the model surface roughness and metalness,
+but the game viewer remains the check for texture mapping and animation.
+
+The in-app browser rendered all three ships on High without GPU errors. It also verified
+bare-metal aircraft on Low, then restored High. Instanced infantry, morphed geometry and
+fading bodies compiled and rendered through High, Low and High again, with no shader logs
+or GL errors. Infantry and boat movement recordings contain H.264 video and no audio.
+A small three-unit World Conquest scene measured 60.1 FPS over 300 sampled frames; this is
+not a large-army performance claim. Volume remained zero throughout testing.
+
+The local image-to-3D PT boat experiment is documented with the reference art. Its reduced
+meshes were rejected after visual inspection and are not used in the runtime.

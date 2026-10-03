@@ -6,3 +6,4 @@ logs/
 # Project Blender runtime and local MCP approvals
 .cache/
 .claude/settings.local.json
+tools/blender/**/__pycache__/

@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { UNITS } from '../../shared/sim.js';
 import { buildModel, setBuildings } from '../../client/unit-models.js';
 import { plane, ROLES } from '../../client/models/planes.js';
+import { MATS } from '../../client/models/geom.js';
+import { LAYERS } from '../../client/model-textures.js';
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const args = process.argv.slice(2);
@@ -50,6 +52,7 @@ for (const fac of factions) for (const type of types) {
   models.push({ type, faction: fac, factionName: looks[fac].name, bounds: { min: bounds.min.toArray(), max: bounds.max.toArray() }, meshes });
 }
 const data = { schema: 'ww2-rts-blender-review-v1', axes: 'Three.js x,y,z maps to Blender x,-z,y', colors: 'linear RGB',
+  surfaces: MATS.map((name) => ({ name, roughness: LAYERS[name].roughness ?? 0.8, metalness: LAYERS[name].metalness ?? 0 })),
   shaderLimit: 'Game triplanar textures, aircraft camouflage shader and animations are not reproduced in Blender. Mesh attributes and morph targets are retained.', models };
 await mkdir(dirname(destination), { recursive: true });
 await writeFile(destination, `${JSON.stringify(data)}\n`);

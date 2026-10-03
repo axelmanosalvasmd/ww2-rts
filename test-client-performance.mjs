@@ -104,7 +104,14 @@ const rendered = [];
 const renderer = { shadowMap: {}, info: { autoReset: true, render: { calls: 0, triangles: 0 },
   reset() { this.render.calls = this.render.triangles = 0; } },
   render(root) { rendered.push(root); root.traverse(node => { if (node.isMesh) { this.info.render.calls++; this.info.render.triangles += 2; } }); } };
-const { sun } = setupLight(renderer, scene, camera);
+// This renderer measures scene routing without a GPU. Supply the GPU-created resource at its boundary.
+const environment = new THREE.Texture();
+const { sun } = setupLight(renderer, scene, camera, () => environment);
+assert.equal(scene.environment, environment, 'High attaches the reflection environment');
+gfx.set('low');
+assert.equal(scene.environment, null, 'Low avoids reflection sampling');
+gfx.set('high');
+assert.equal(scene.environment, environment, 'High restores the same environment after a quality change');
 const goreButton = buttons.find(b => b.id === 'goreBtn');
 let shadowResizes = 0;
 const setShadowSize = sun.shadow.mapSize.set.bind(sun.shadow.mapSize);

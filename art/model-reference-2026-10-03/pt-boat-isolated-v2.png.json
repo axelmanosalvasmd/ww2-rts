@@ -1,0 +1,31 @@
+{
+  "image_path": "/Users/judiazm/Projects/ww2-rts/art/model-reference-2026-10-03/pt-boat-isolated-v2.png",
+  "prompt": "One isolated realistic full-scale World War II 80 foot Elco PT boat as a photorealistic hard-surface 3D asset reference. Exactly one boat in a single elevated three-quarter view from forward port side, allowing the complete hull side, bow, stern, foredeck, bridge, cockpit and armament to be understood. Long slender elegant planing hull with a sharp bow, curved flared hull sides, well defined sloping chines, high forward sheer, slightly lower stern. Low angled bridge with windshield window panes, open cockpit recess behind it, two round open gun tubs and thin machinegun posts, four long torpedo tubes placed symmetrically along deck sides, compact stern deck gun, narrow mast, fine railings and believable vents. Neutral navy gray fresh lightly weathered paint with restrained fine material wear and clearly distinguishable surfaces. Plausible thin structural thickness, realistic edge bevels and curved construction. Entire vessel including all barrels, mast, bow and stern fully inside frame with clear margin. Plain isolated subject. No water, no ocean, no display base, no labels, no text, no extra boats, no detached parts, no ground plane. Keep material detail sharp and shape clean enough for image-to-3D reconstruction.",
+  "revised_prompt": "One isolated realistic full-scale World War II 80 foot Elco PT boat as a photorealistic hard-surface 3D asset reference. Exactly one boat in a single elevated three-quarter view from forward port side, allowing the complete hull side, bow, stern, foredeck, bridge, cockpit and armament to be understood. Long slender elegant planing hull with a sharp bow, curved flared hull sides, well defined sloping chines, high forward sheer, slightly lower stern. Low angled bridge with windshield window panes, open cockpit recess behind it, two round open gun tubs and thin machinegun posts, four long torpedo tubes placed symmetrically along deck sides, compact stern deck gun, narrow mast, fine railings and believable vents. Neutral navy gray fresh lightly weathered paint with restrained fine material wear and clearly distinguishable surfaces. Plausible thin structural thickness, realistic edge bevels and curved construction. Entire vessel including all barrels, mast, bow and stern fully inside frame with clear margin. Plain isolated subject. No water, no ocean, no display base, no labels, no text, no extra boats, no detached parts, no ground plane. Keep material detail sharp and shape clean enough for image-to-3D reconstruction. Output the isolated subject on a genuinely transparent background with actual alpha.",
+  "quality": "low",
+  "format": "png",
+  "is_transparent": true,
+  "input_image": null,
+  "response_id": "resp_09135476b2d1f962016ac16159191c87d18be893e723376c0f",
+  "ts": "2026-10-03T20:11:43Z",
+  "image_model": "gpt-image-2-codex",
+  "resolved_background": "transparent",
+  "transparency_mode": "native",
+  "requested_image_model": null,
+  "resolved_quality": "medium",
+  "actual_dimensions": {
+    "width": 1774,
+    "height": 887
+  },
+  "requested_dimensions": "2048x2048",
+  "alpha_inspection": {
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "transparent_pixels": 900288,
+    "partial_alpha_pixels": 672561,
+    "opaque_pixels": 689
+  }
+}

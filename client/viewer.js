@@ -82,10 +82,19 @@ function showWarnings() {
 // textures (wood, sandbags, building walls) load through three's default manager; count what is still in flight
 const manager = THREE.DefaultLoadingManager;
 let pending = 0;
-for (const [k, d] of [['itemStart', 1], ['itemEnd', -1], ['itemError', -1]]) {
-  const fn = manager[k];
-  manager[k] = (url) => { pending += d; fn(url); if (d < 0) dirty = true; };
-}
+const trackedLoads = new Map();
+const beginLoad = manager.itemStart, endLoad = manager.itemEnd;
+manager.itemStart = (url) => {
+  trackedLoads.set(url, (trackedLoads.get(url) ?? 0) + 1);
+  pending++; beginLoad(url);
+};
+manager.itemEnd = (url) => {
+  // Imported modules can start textures before these hooks exist. Their completion must not cancel a tracked load.
+  const count = trackedLoads.get(url) ?? 0;
+  if (count) { trackedLoads.set(url, count - 1); pending--; }
+  endLoad(url);
+  dirty = true; measured = false;
+};
 
 // ---------- renderer, scene and light, set up like main.js ----------
 setSurfaces(surface); setBuildings(buildingModel);

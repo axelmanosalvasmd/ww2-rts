@@ -49,6 +49,14 @@ The generic `tools/blender/mcp/call.sh` helper creates a real MCP client session
 arguments and `--output` to retain results or screenshot images under `.cache/`.
 Read the response's nested status as well as the MCP `isError` flag.
 
+## Blender authoring
+
+For real game geometry finishing, read `tools/blender/finishing.md`. Export raw naval
+parts with tint masks, apply crease-limited bevels and weighted normals through Blender
+Lab, and validate the generated payload through the actual runtime adapter. Do not bake
+already-mounted `buildModel` geometry or interpolate shader material IDs. Compare the
+finished silhouette with its reference and inspect the actual game render.
+
 ## Reference workflows
 
 When the user asks for generated reference images or tileable textures, use their
