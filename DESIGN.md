@@ -223,6 +223,11 @@ every look. The horde wave is unchanged: it still attack-moves the bunker and st
 - Howitzer shells do a tenth of their demolition value to a bunker here (`CFG.assault.howitzerMul` 0.1): 15 per
   shell, 200 shells to drop one alone (about 40 min for one gun, 13 for three). A menace if ignored, never the
   way to crack a bunker.
+- Base anti-air (2026-10-02): `fortify()` (Assault defenders, every Annihilation player, the Horde base) also places
+  `CFG.assault.baseFlak` (4) finished Flak Emplacements about 6 cells from the spawn, two toward the front and two on
+  the rear flanks. Outside Classic the fort builder squads (`CFG.fortBuilders`) may build one more with the 'build'
+  command (`FIELD_BUILDS`; Classic keeps Engineers and `BUILDABLE`). Emplacements are buildings: Assault's win, its
+  "structures left" total and the timeline count bunkers only.
 - Out players (and their teams) earn no manpower and do not count on capture points. Humans keep their seat and team
   vision for spectating and reconnects; their command panels, selection and targeting are disabled in Annihilation
   and Classic, and the AI stops planning.
@@ -743,7 +748,8 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
 - Lobby: the room form on one gunmetal panel in the HUD's style; Start is the one brass button. The match report,
   tooltips, banners, alerts and the end-of-match notice (a quiet panel, no stamp) share the panel and type. The map
   editor takes the same panel, type and colors.
-- Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area), point captured /
+- Alerts (see CONTEXT.md): under attack (units, a point, the HQ or a bunker; once per 20 s per area; a hit within 40 m
+  of your spawn or on your own HQ or bunker is "Our base is under attack!", a filled red pulsing line for 10 s), point captured /
   lost, unit lost, enemy Air Support incoming, unit ready and building finished (Classic). One line each in a short list
   above the minimap (newest on top, gone after ~6 s), a minimap ping and a short sound. Space jumps to the newest alert
   while one is showing, otherwise it focuses the selection as before. No kill feed, no damage numbers.

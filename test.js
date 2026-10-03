@@ -3708,6 +3708,28 @@ for (const f of readdirSync('maps')) {
   run(shelled, 3);
   const dent = hp - hb.hp;
   assert.ok(dent > 0 && dent <= 10 * UNITS.howitzer.w.terrain * CFG.assault.howitzerMul + 1e-6, `10 howitzer shells barely dent the bunker (${Math.round(dent)} of ${hp})`);
+  // every base starts with finished flak emplacements, and builder squads can put up more outside Classic
+  for (const pl of shelled.players) {
+    const own = [...shelled.units.values()].filter(u => u.owner === pl.slot && u.type === 'flakpos');
+    assert.equal(own.length, CFG.assault.baseFlak, `${pl.name} starts with ${CFG.assault.baseFlak} flak emplacements`);
+    assert.ok(own.every(u => u.built === 1 && Math.hypot(u.x - pl.spawn.x, u.z - pl.spawn.z) < 10 * CELL), 'finished, inside the base');
+  }
+  const fg = createGame(map, ['a', 'b'], false, [0, 1], [0, 1], { mode: 'annihilation' });
+  const squad = [...fg.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+  const before = [...fg.units.values()].filter(u => u.type === 'flakpos').length;
+  fg.players[0].mp = 1000;
+  let spot = null;
+  for (let dx = -20; dx <= 20 && !spot; dx += 4) for (let dz = -20; dz <= 20 && !spot; dz += 4) {
+    const at = { x: squad.x + dx, z: squad.z + dz };
+    if (sim.placementCheck(fg, { kind: 'flakpos', ...at }, () => true).ok) spot = at;
+  }
+  assert.ok(spot, 'a free spot near the squad');
+  assert.equal(command(fg, 0, { t: 'build', ids: [squad.id], kind: 'barracks', ...spot }), 'blocked', 'outside Classic squads build no other building');
+  assert.equal(command(fg, 0, { t: 'build', ids: [squad.id], kind: 'flakpos', ...spot }), undefined, 'a rifle squad builds flak outside Classic');
+  run(fg, 60);
+  const site = [...fg.units.values()].find(u => u.type === 'flakpos' && u.owner === 0 && Math.hypot(u.x - spot.x, u.z - spot.z) < 3);
+  assert.ok(site && site.built === 1, 'the squad finishes it');
+  assert.equal([...fg.units.values()].filter(u => u.type === 'flakpos').length, before + 1);
 }
 
 // A defeated Annihilation team cannot act while two other teams keep fighting.
@@ -4564,14 +4586,15 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.equal(g.timeline.length, samples, 'and the timeline stops');
   assert.equal(g.winner, 0, 'the winner never changes');
 
-  // Assault: the last structure falling, or the clock
+  // Assault: the bunker falling (its flak emplacements don't count), or the clock
   const as = () => createGame(map, ['att', 'def'], false, [0, 1], [0, 1], { mode: 'assault', defenderTeam: 1 });
-  const a = as(), structs = [...a.units.values()].filter(u => UNITS[u.type].structure), last = structs.at(-1);
-  structs.slice(0, -1).forEach(s => (s.hp = 0)); run(a, 0.1);
-  assert.equal(a.winner, null, 'a structure still stands');
+  const a = as(), last = [...a.units.values()].find(u => u.type === 'bunker'), flak = [...a.units.values()].filter(u => u.type === 'flakpos');
+  assert.ok(flak.length >= 2, 'the defender starts with flak emplacements');
+  flak.forEach(s => (s.hp = 0)); run(a, 0.1);
+  assert.equal(a.winner, null, 'the bunker still stands');
   last.hp = 0; run(a, 0.1);
   assert.equal(a.winner, 0); assert.equal(a.endReason, 'structures');
-  assert.ok(near(a.endAt, last), 'it ends where the last structure fell');
+  assert.ok(near(a.endAt, last), 'it ends where the bunker fell');
   const t = as(); t.mode.timeLeft = 0.01; run(t, 0.1);
   assert.equal(t.winner, 1); assert.equal(t.endReason, 'timer');
   assert.deepEqual(t.endAt, { x: t.w * CELL / 2, z: t.h * CELL / 2 }, 'a timer win ends over the middle of the map');
@@ -6011,7 +6034,7 @@ for (const lookupFinished of [false, true]) {
   assert.deepEqual(point.onPoint, [], 'an empty point keeps no stale infantry ids');
 
   const assault = createGame(map, ['a', 'b', 'c', 'd'], false, [0, 1, 1, 0], [0, 1, 2, 0], { mode: 'assault', defenderTeam: 1 });
-  const structures = [...assault.units.values()].filter(u => UNITS[u.type].structure);
+  const structures = [...assault.units.values()].filter(u => u.type === 'bunker');
   assert.equal(assault.mode.total, structures.length, 'Assault records the starting structure count');
   assert.equal(assault.mode.total, 2, 'each defender contributes one starting structure');
   assert.equal(snapshotFor(assault, 0, []).mode.total, 2, 'the Assault snapshot includes its starting total');

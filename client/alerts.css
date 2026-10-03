@@ -20,6 +20,9 @@
 /* light signal red for trouble, brass for a point won, the plain text color for the rest */
 #alerts .alert.k-attack, #alerts .alert.k-unitLost, #alerts .alert.k-pointLost, #alerts .alert.k-air { color: #ee8a7b; }
 #alerts .alert.k-pointWon { color: #d6b25e; }
+/* your base under attack: the one alert that has to be noticed, so it fills red and pulses */
+#alerts .alert.k-base { color: #fff; font-weight: 700; background: rgba(140, 36, 28, 0.94); border-color: #d4574a; animation: alert-in 0.18s ease-out, alert-base 0.9s ease-in-out 0.18s 4 alternate; }
+@keyframes alert-base { to { background: rgba(200, 60, 46, 0.96); } }
 #alerts .alert:hover, #alerts .alert.vhover { background: rgba(46, 51, 55, 0.94); border-color: rgba(214, 178, 94, 0.8); }
 @keyframes alert-in { from { opacity: 0; transform: translateX(8px); } }
 @media (prefers-reduced-motion: reduce) { #alerts .alert { animation: none; } }

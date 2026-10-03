@@ -13,6 +13,17 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Left for later: the map editor's file-validation errors from the server (only seen when saving a broken map) are
   still English. A text the dictionary misses shows in English; `/play?i18n=log` lists them in `window.i18nMisses`.
 
+- Annihilation, Assault and Horde bases now start with four Flak Emplacements inside their trench line, so a base
+  can defend itself against planes and air strikes (each one has a 45% chance to shoot down a strike passing within
+  55 m, so four together stop about 9 strikes in 10).
+- Flak Emplacements can be built outside Classic. Select Rifles or Conscripts, open Build, pick Flak Emplacement and
+  click where it goes: 100 MP, 20 s with one squad, faster with more. Assault still ends when the bunker falls; the
+  flak does not have to be destroyed, and the "structures left" count only counts bunkers.
+- A new alert when your base is under attack. Anything of yours hit within 40 m of your spawn, or your own HQ or
+  bunker, raises "Our base is under attack!" in a filled red line that pulses and stays 10 s, with the attack sound.
+  Like the other alerts it waits if you are already looking at the fight.
+- Fixed: construction outside Classic could crash on a missing mode (now guarded). Not tuned in AI matches yet: AIs
+  do not build flak themselves.
 ### 2026-10-03: Defeated players spectate (`14cbe41`)
 
 - Fixed defeated teams continuing to recruit and fight in Annihilation. Losing the team's last bunker now stops
