@@ -272,9 +272,19 @@ try {
     assert.equal(crossing.winner, null, 'elapsed Classic time cannot decide World Conquest');
     assert.ok(crossing.queues.find(q => q[0] === hq.id).includes('rifle'), 'crossing the deadline preserves the paid queue');
     assert.ok(site && site[14] < 1, 'construction continues as a paid site across the deadline');
-    await tick(700);
+    // Delay this receiver beyond the former fixed sleep while keeping the same construction deadline.
+    const completionTick = g.tick + 700;
+    host.ws.pause();
+    let resumeDelivery;
+    setImmediate(() => { resumeDelivery = setTimeout(() => host.ws.resume(), 40); });
+    try { await tick(700); }
+    finally { clearTimeout(resumeDelivery); host.ws.resume(); }
+    assert.equal(g.tick, completionTick, 'waiting for snapshot delivery adds no simulation ticks');
     assert.equal(host.latest('s').units.find(u => u[0] === hq.id)[7], UNITS.hq.hpPer, 'Production Buildings do not decay at the Classic deadline');
-    assert.equal(host.latest('s').units.find(u => u[0] === site[0])[14], 1, 'normal construction finishes after the old deadline');
+    assert.equal(host.latest('s').units.find(u => u[0] === site[0])[14], 1,
+      `normal construction finishes after the old deadline: ${JSON.stringify({ seed: g.world.seed, tick: g.tick,
+        deliveredTick: host.latest('s').tick, built: g.units.get(site[0])?.built,
+        builder: { x: engineer.x, z: engineer.z, hp: engineer.hp, build: engineer.build, path: engineer.path } })}`);
     assert.equal(host.latest('s').units.filter(u => u[2] === 0 && u[1] === 'rifle').length, 2, 'paid training finishes after the old deadline');
     await host.send({ t: 'buy', unit: 'rifle', from: hq.id });
     await tick();

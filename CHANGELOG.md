@@ -5,6 +5,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: World snapshot checks
+
+- Fixed World acceptance checks to wait for ordered WebSocket delivery before reading the result. A delayed
+  receiver regression keeps the original 700-tick construction deadline and all gameplay assertions.
+
 ### 2026-10-03: Final engine checks (`fff1245`)
 
 - Fixed authored reinforcement entries on mined ground using the underlying surface and object, so a mine marker
