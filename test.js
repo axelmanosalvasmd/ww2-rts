@@ -3718,8 +3718,8 @@ for (const f of readdirSync('maps')) {
   const army = [...g.units.values()].filter(u => u.owner < 2 && !UNITS[u.type].structure);
   g.players[0].mp = 1000; g.players[1].mp = 1000;
   bunker(0).hp = 0; step(g);
-  assert.deepEqual(g.players.map(p => !!p.out), [false, false, false, false], 'one remaining allied bunker keeps both players active');
-  assert.equal(command(g, 0, { t: 'buy', unit: 'rifle' }), undefined, 'a surviving teammate allows recruitment');
+  assert.deepEqual(g.players.map(p => !!p.out), [true, false, false, false], 'a player whose bunker falls is out; the teammate plays on');
+  assert.equal(command(g, 1, { t: 'buy', unit: 'rifle' }), undefined, 'the surviving teammate can still recruit');
   const point = g.points[0], squad = army[0];
   Object.assign(squad, { x: point.x, z: point.z, path: [] });
   Object.assign(point, { owner: -1, capper: 0, progress: 0.999 });
@@ -4966,14 +4966,14 @@ for (const lookupFinished of [false, true]) {
     await h.tick(6);
     assert.equal(room.state, 'play', 'the match holds before the lobby');
     assert.equal(g.nextId, ids, 'no buying during the hold');
-    assert.equal(g.units.has(benUnit.id), false, 'the defeated army stays removed during the hold');
+    assert.ok(!benUnit.path.length || Math.hypot(benUnit.path.at(-1).x - 5, benUnit.path.at(-1).z - 5) > 1, 'the losing army stays for the reveal but takes no orders');
     assert.equal(snapshotFor(g, 0, []).units.length, g.units.size, 'full vision during the hold');
     await backInLobby(room, ann);
     assert.equal(thinks, thought, 'the AI stops thinking during the hold');
     assert.equal(g.tick - winTick, 60, 'the hold runs the sim at half speed: 60 steps in 6 s');
     const held = h.snapshots(ann).slice(nSnaps);
     assert.ok(held.length >= 55 && held.every(s => s.winner === 0 && s.end.reason === 'bunkers'), 'snapshots carry the end through the hold');
-    assert.ok(held.every(s => !s.units.some(u => u[0] === hidden.id)), 'defeated enemy units do not reappear during the ending');
+    assert.ok(held.some(s => s.units.some(u => u[0] === hidden.id)), 'the fog lifts for everyone: the losing army stays for the reveal');
     assert.ok(h.snapshots(ben).slice(nBenSnaps).some(s => s.units.some(u => u[0] === hiddenSurvivor.id)), 'the losing player sees surviving enemy units when fog lifts');
     const ra = lobbies(ann).at(-1).result, rb = lobbies(ben).at(-1).result;
     assert.equal(ra.reason, 'bunkers'); assert.deepEqual(ra.at, g.endAt); assert.equal(ra.story.length, 3); assert.ok(ra.timeline.length >= 2);

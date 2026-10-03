@@ -32,6 +32,10 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ### Other recent unreleased changes
 
+- Annihilation, merging #36 with the per-player rule: a player is out the moment their bunker falls (their army
+  goes to a teammate), now settled at the start of the tick, so their infantry can no longer finish a capture on that
+  tick. Out players earn nothing and do not count on points (from #36). When the match is decided the losing army is
+  only marked out and stays on the field for the end reveal, rather than being deleted as #36 did.
 - Recruiting by letter now works like StarCraft's build menus. Press Tab, then a letter for the group (Q Infantry,
   W Support weapons, E Vehicles, R Aircraft, T Naval), then a letter for the unit: Tab Q Q buys a Rifle Squad. The
   group stays open so you can keep buying; Esc steps back to the groups, then closes. Before, all the cards were

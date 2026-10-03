@@ -3375,6 +3375,14 @@ export function step(g) {
     died(g, u, UNITS[u.type], k >= 0 && !allied(g, k, u.owner) ? k : -1);
   }
 
+  // Annihilation: a player is out when their bunker falls, before capture and income count this tick. The match
+  // is decided when one team has bunkers left: the losers are only marked out, their army stays for the end reveal.
+  if (g.mode?.kind === 'annihilation' && g.winner === null) {
+    const standing = u => u.type === 'bunker' && u.hp > 0, left = new Set([...g.units.values()].filter(standing).map(u => g.players[u.owner].team));
+    if (g.mode.teams > 1 && left.size <= 1) for (const pl of g.players) { if (!left.has(pl.team)) pl.out = true; }
+    else eliminate(g, standing);
+  }
+
   // capture points: infantry only, uncontested by another team. A point belongs to the player who took it;
   // teammates standing on it keep it theirs.
   for (const p of g.points) {
@@ -3436,7 +3444,6 @@ export function step(g) {
     // a player is out when their bunker falls (no more production); a team when its last one does
     const left = new Set([...g.units.values()].filter(u => u.type === 'bunker' && u.hp > 0).map(u => g.players[u.owner].team));
     if (g.winner === null && g.mode.teams > 1 && left.size <= 1) finish(g, left.size ? [...left][0] : -1, 'bunkers', g.fallen?.bunker);
-    if (g.winner === null) eliminate(g, u => u.type === 'bunker' && u.hp > 0); // the losing army stays for the end reveal
     return;
   }
   if (g.mode) {
