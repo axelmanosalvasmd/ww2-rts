@@ -34,7 +34,7 @@ let quiet = [];        // areas that just had an "under attack": { x, z, until }
 let lastSound = {};
 
 // hooks from main.js:
-//   me() my slot; friend(slot) true for me and teammates; unitName(type, owner); playerName(slot)
+//   me() my slot; team() my team; friend(slot) true for me and teammates; unitName(type, owner); playerName(slot)
 //   pointPos(i) world {x, z} of point i; home() my spawn {x, z}; onScreen(x, z); jump(x, z) moves the camera
 function init(h) {
   hooks = h;
@@ -152,6 +152,26 @@ function snapshot(s, prev) {
     else if (has && prog < was[2]) underAttack(at, 'Point under attack');
     else if (has && s.points[i][4] && !was[4]) push('pointLost', 'Point cut off: it pays nothing until the road to it is open', at.x, at.z);
   });
+
+  // Region ownership is a team id. Compare only regions present in both received snapshots.
+  if (s.world) {
+    const oldRegions = new Map((prev.world?.regions ?? []).map(r => [r.id, r]));
+    const home = s.world.home ?? s.home, oldHome = prev.world?.home ?? prev.home;
+    const homeTeam = (regions, at) => at && regions.find(r => r.team >= 0 && r.bounds &&
+      at[0] >= r.bounds[0] && at[1] >= r.bounds[1] && at[0] < r.bounds[2] && at[1] < r.bounds[3])?.team;
+    const team = hooks.team?.() ?? homeTeam(s.world.regions ?? [], home) ?? homeTeam(prev.world?.regions ?? [], oldHome);
+    for (const r of s.world.regions ?? []) {
+      const was = oldRegions.get(r.id);
+      if (!was || !Number.isFinite(r.x) || !Number.isFinite(r.z)) continue;
+      const had = team !== undefined && was.team === team, has = team !== undefined && r.team === team;
+      if (had && !has) push('pointLost', `Region lost: ${r.name}`, r.x, r.z);
+      else if (!had && has) push('pointWon', `Region claimed: ${r.name}`, r.x, r.z);
+      else if (r.contested && !was.contested && (has || friend(r.capper)))
+        push('attack', `Claim contested: ${r.name}`, r.x, r.z);
+      else if (has && (r.progress < was.progress || (r.capper >= 0 && !friend(r.capper))))
+        underAttack(r, `Region under attack: ${r.name}`);
+    }
+  }
 
   // unit lost: one of yours left the snapshot (your units are always in it while they exist)
   const gone = [];

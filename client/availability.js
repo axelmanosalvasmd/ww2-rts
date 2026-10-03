@@ -10,6 +10,7 @@ export const DENY_SENTENCES = Object.freeze({
   queueFull: 'The training queue is full', ordersFull: 'This unit already has 8 queued orders',
   retreating: 'That squad is retreating', noBuilders: 'Select a builder squad',
   noCover: 'No cover within reach',
+  territory: 'Build inside territory your team owns',
   coast: 'A Shipyard needs open water beside it', shore: 'Too far from the shore to land',
 });
 // The server answers queueFull for both a full training queue (buy) and a full order queue (every other command).
@@ -33,9 +34,9 @@ export function availability(s, cfg = CFG, action = {}) {
   if (action.watching || s.out?.[action.slot]) return no('You are spectating');
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
   const selected = own.filter((v) => (action.ids ?? []).includes(v.id));
-  const classic = s.mode?.kind === 'classic', sudden = classic && s.mode.suddenDeath;
+  const classic = ['classic', 'world'].includes(s.mode?.kind), sudden = classic && s.mode.suddenDeath;
   const population = (unit, need = unit ? popUse(unit) : 1) => {
-    const pop = popTotal(own, queued), cap = popCap(s);
+    const pop = popTotal(own, queued), cap = s.world?.cap ?? popCap(s);
     return pop + need > cap ? no(`Army at its limit (${pop}/${cap})`) : yes();
   };
   if (action.t === 'buy') {
@@ -112,20 +113,20 @@ export const popTotal = (own, queued) => own.reduce((n, v) => n + (UNITS[v.type]
 
 export function buyCount(s, cfg, action, want) {
   if (!availability(s, cfg, action).ok) return 0;
-  const def = UNITS[action.unit], price = priceOf(s, action.unit), classic = s.mode?.kind === 'classic';
+  const def = UNITS[action.unit], price = priceOf(s, action.unit), classic = ['classic', 'world'].includes(s.mode?.kind);
   const own = snapshotUnits(s).filter((v) => v.owner === action.slot), queued = own.flatMap((v) => v.queue);
   const pop = popTotal(own, queued);
   const have = own.filter((v) => v.type === action.unit).length + queued.filter((t) => t === action.unit).length;
   const room = own.filter((v) => v.built >= 1 && UNITS[v.type].makes?.includes(action.unit) && (action.from === undefined || v.id === action.from))
     .reduce((n, v) => n + Math.max(0, 5 - v.queue.length), 0);
   return Math.max(0, Math.min(want, price.mp ? Math.floor(s.mp / price.mp) : want, price.fuel ? Math.floor((s.fuel ?? 0) / price.fuel) : want,
-    Math.floor((popCap(s) - pop) / popUse(action.unit)), (def.max ?? Infinity) - have, classic ? room : want));
+    Math.floor(((s.world?.cap ?? popCap(s)) - pop) / popUse(action.unit)), (def.max ?? Infinity) - have, classic ? room : want));
 }
 
 // Adapter for the shared server placement and sight rules, using unsmoothed snapshot positions.
 export function placementState(s, map, grid, teams) {
   const chars = grid.flat(), w = map.w, h = map.h, us = snapshotUnits(s);
-  const g = { w, h, chars, naval: map.naval === true, flags: chars.map((ch) => TERRAIN[ch] ?? 0),
+  const g = { w, h, chars, mode: s.mode, world: s.world ? { regions: s.world.regions } : undefined, naval: map.naval === true, flags: chars.map((ch) => TERRAIN[ch] ?? 0),
     height: Array.from({ length: w * h }, (_, c) => levelOf(map.heights?.[Math.floor(c / w)]?.[c % w] ?? '0')),
     smokes: (s.smokes ?? []).map(([x, z, r]) => ({ x, z, r })),
     units: new Map(us.map((v) => [v.id, v])), players: teams.map((team) => ({ team })),

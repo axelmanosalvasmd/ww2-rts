@@ -68,7 +68,23 @@ try {
   console.log('directory capacity, active matches and immutable creation metadata passed');
   const page = await (await fetch(base + '/')).text();
   assert.ok(page.includes('Browse matches'), 'root serves the public lobby');
-  assert.ok((await (await fetch(base + '/play')).text()).includes('id="overlay"'), 'game is served at /play');
+  const gamePage = await (await fetch(base + '/play')).text();
+  assert.ok(gamePage.includes('id="overlay"'), 'game is served at /play');
+  // A missing ES module prevents the entire lobby and battlefield from initializing.
+  const modules = [...gamePage.matchAll(/<script type="module" src="([^"]+)"/g)].map(m => new URL(m[1], base).href);
+  const checked = new Set();
+  while (modules.length) {
+    const url = modules.pop(); if (checked.has(url)) continue;
+    checked.add(url);
+    const asset = await fetch(url);
+    assert.equal(asset.status, 200, `browser module is served: ${url}`);
+    assert.ok(asset.headers.get('content-type')?.includes('javascript'), `browser module has JavaScript content: ${url}`);
+    const source = await asset.text();
+    for (const match of source.matchAll(/(?:import|export)\s+(?:[^'";]+?\s+from\s*)?['"]([^'"]+)['"]/g)) {
+      if (match[1].startsWith('.') || match[1].startsWith('/')) modules.push(new URL(match[1], url).href);
+    }
+  }
+  console.log('browser entry modules and their local dependencies are served');
   assert.ok((await (await fetch(base + '/?edit')).text()).includes('id="overlay"'), 'editor URL still works');
   await connect('another', { listing: { public: true, title: { toString: 'not callable' } } });
   assert.equal(rooms.get('another').title, 'Open skirmish', 'malformed titles cannot crash room creation');

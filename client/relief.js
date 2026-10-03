@@ -581,7 +581,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
   for (let c = 0; c < n; c++) buildCell(c);
   rebuildGeometry(); stats.buildMs = performance.now() - t0;
   const unsubscribe = options.gfx?.onChange(() => {
-    low = options.gfx.low; material.userData.setLow?.(low); rebuildGeometry();
+    low = options.gfx.low || !!map.world; material.userData.setLow?.(low); rebuildGeometry();
   });
   return { mesh, get geometry() { return mesh.geometry; }, hAt, waterAt, update, stats,
     dispose() { unsubscribe?.(); mesh.geometry.dispose(); if (!options.material) material.dispose(); } };

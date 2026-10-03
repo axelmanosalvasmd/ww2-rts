@@ -4,6 +4,18 @@ WW2 tactics RTS in the browser for a few friends. This file is the glossary; des
 
 ## Modes
 
+**World Conquest**:
+A match on a generated continent. Teams scout unknown ground, destroy regional defenses, claim land with
+infantry, and build their own forces. The last team region lost causes defeat; owning every region wins.
+
+**Region**:
+A bounded area in World Conquest with a military base, infantry capture point, ownership and economic bonuses.
+Regions are separate from the capture Points used by other modes. Teammates share regional ownership.
+
+**Home Region**:
+The one region contributed by each player at the start of World Conquest. Losing it does not eliminate the
+player while the team still has land.
+
 **Conquest**:
 A VP race: holding points earns VP, and the first side to the goal wins.
 
@@ -43,7 +55,7 @@ _Avoid_: reward, loot
 The main currency. It buys units.
 
 **Resource Node**:
-A map location in Classic where a Supply Depot can be built. Only one depot fits on each node.
+A map location in Classic or World Conquest where a Supply Depot can be built. Only one depot fits on each node.
 _Avoid_: mine, deposit, field
 
 **Supply Depot**:
@@ -51,10 +63,10 @@ A building on a Resource Node that produces MP for as long as it stands.
 _Avoid_: extractor, refinery
 
 **Production Building**:
-A Classic building that produces units: HQ, Barracks or Motor Pool. Annihilation counts only these.
+A building that trains units in Classic or World Conquest: HQ, Barracks, Motor Pool or Airfield.
 
 **HQ**:
-Each player's home: the spawn and reinforce zone. In Classic it is also a Production Building (Engineers, rifle squads) that every player starts with.
+Each player's home: the spawn and reinforce zone. In Classic and World Conquest it is also a Production Building (Engineers, rifle squads) that every player starts with.
 _Avoid_: base, spawn (when you mean the building)
 
 **Barracks**:
@@ -73,15 +85,15 @@ The last-seen image of an enemy building under fog. It updates only when the bui
 _Avoid_: memory, snapshot
 
 **Engineer**:
-A Classic-only infantry squad that builds (and later repairs) buildings.
+An infantry squad in Classic and World Conquest that builds (and later repairs) buildings.
 _Avoid_: worker, pioneer, peasant
 
 **Munitions**:
-Classic's second currency, earned only by holding points. It pays for off-map support and unit abilities, and only exists in Classic.
+A currency in Classic and World Conquest. Points or owned regions earn it; it pays for off-map support and unit abilities.
 _Avoid_: ammo, command points
 
 **Fuel**:
-Classic's third currency. It pays for vehicles (light tank, rocket truck, Tiger), which then cost less MP. It only exists in Classic.
+A currency in Classic and World Conquest. It pays for vehicles (light tank, rocket truck, Tiger), which then cost less MP.
 _Avoid_: gas, oil
 
 **Camouflage**:
@@ -116,10 +128,10 @@ One trip of a commanded plane: out to its mission, circling it while fuel lasts,
 _Avoid_: flight (for this), run
 
 **Airfield**:
-The Classic building that trains planes and is their base. Elsewhere planes use an off-map airbase behind the HQ.
+The building in Classic and World Conquest that trains planes and is their base. Elsewhere planes use an off-map airbase behind the HQ.
 
 **Air Support**:
-An off-map strike or drop you call on a spot, announced to everyone before it arrives: recon flight, strafing run, bombing run, dive bomber, paratroopers, fighter cover (artillery and smoke barrages are support too, but not aircraft). Paid in MP, or Munitions in Classic.
+An off-map strike or drop you call on a spot, announced to everyone before it arrives: recon flight, strafing run, bombing run, dive bomber, paratroopers, fighter cover (artillery and smoke barrages are support too, but not aircraft). Paid in MP, or Munitions in Classic and World Conquest.
 _Avoid_: call-in, airstrike (for the whole family)
 
 **Fighter Cover**:
@@ -129,7 +141,7 @@ Air Support that intercepts the next enemy air strike over an area for a while. 
 Air Support that drops a rifle squad anywhere your side can see. It counts toward the pop cap.
 
 **Flak**:
-Anti-aircraft fire, from a flak gun or a Classic flak emplacement. Each flak in range gives a chance to shoot down a passing support plane, which cancels whatever it hasn't delivered yet.
+Anti-aircraft fire, from a flak gun or a flak emplacement in Classic or World Conquest. Each flak in range gives a chance to shoot down a passing support plane, which cancels whatever it hasn't delivered yet.
 _Avoid_: AA (in player-facing text)
 
 **Shoot-down**:
@@ -147,14 +159,13 @@ A spell of rain that comes and goes during a match in Clear, Ground fog and Mud 
 ## Interface
 
 **Command Card**:
-The panel at the bottom center of the screen that lists what you can make. Outside Classic it holds every unit you can buy; in Classic it shows what the selected building trains or what the selected Engineers can build.
+The panel at the bottom center of the screen that lists what you can make. Outside Classic and World Conquest it holds every unit you can buy; in those modes it shows what the selected building trains or what the selected Engineers can build.
 _Avoid_: buy bar, build menu, production panel
 
 **Autocast**:
-A per-unit switch, set by right-clicking an ability button, that lets the unit use its ability by itself when it judges the moment worth it. It starts on where abilities are free and off in Classic, where they cost Munitions.
+A per-unit switch, set by right-clicking an ability button, that lets the unit use its ability by itself when it judges the moment worth it. It starts on where abilities are free and off in Classic and World Conquest, where they cost Munitions.
 _Avoid_: auto-ability, auto mode
 
 **Alert**:
-A short notice to one side that something needs its attention: it is under attack, it captured or lost a Point, it lost a unit, enemy Air Support is coming, or (in Classic) a unit or building is ready. Unlike an Air Support announcement, which everyone sees on the map, an Alert goes only to the side it concerns.
+A short notice to one side that something needs its attention: it is under attack, it captured or lost a Point, it lost a unit, enemy Air Support is coming, or (in Classic or World Conquest) a unit or building is ready. Unlike an Air Support announcement, which everyone sees on the map, an Alert goes only to the side it concerns.
 _Avoid_: notification, toast, event
-

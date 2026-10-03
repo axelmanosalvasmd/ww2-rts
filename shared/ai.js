@@ -197,6 +197,7 @@ function plan(observation, slot, opts, mem, send) {
   // Mirror accepted orders locally so later decisions in this turn see their own spending and throws.
   const view = { ...observation, players: observation.players.map(p => ({ ...p, sup: p.sup && { ...p.sup } })),
     units: new Map([...observation.units].map(([id, u]) => [id, structuredClone(u)])) };
+  if (observation.players[-1]) view.players[-1] = { ...observation.players[-1] };
   const submit = (cmd) => {
     const result = send(cmd);
     if (result !== undefined) return result;
@@ -225,12 +226,12 @@ function plan(observation, slot, opts, mem, send) {
   if (me.out) return;
   const all = grid.ownedBy(slot).filter(u => !UNITS[u.type].structure);
   const horde = view.mode?.kind === 'horde' && slot === view.mode.slot; // the horde itself: no shopping, no retreat, straight at the bunker
-  const assault = view.mode?.kind === 'assault' || view.mode?.kind === 'annihilation' || view.mode?.kind === 'horde', defending = assault && me.team === view.mode.defenderTeam, classic = view.mode?.kind === 'classic';
+  const assault = view.mode?.kind === 'assault' || view.mode?.kind === 'annihilation' || view.mode?.kind === 'horde', defending = assault && me.team === view.mode.defenderTeam, world = view.mode?.kind === 'world', classic = view.mode?.kind === 'classic' || world;
   // what the army marches on: assault bunkers, or in Classic the enemy's Production Buildings
   // (Classic: only buildings its team has seen, remembered under fog; with none known, head for the enemy spawns)
   const known = classic ? knownBuildings(view, slot).filter(b => UNITS[b.type].produces && view.players[b.owner].team !== me.team) : [];
   const bunkers = (assault ? [...view.units.values()].filter(u => UNITS[u.type].structure && !UNITS[u.type].building && me.visible.has(u.id) && view.players[u.owner].team !== me.team)
-    : !classic ? [] : known.length ? known : view.players.filter(q => q.team !== me.team && !q.out).map(q => q.spawn))
+    : !classic ? [] : known.length ? known : world ? [] : view.players.filter(q => q.team !== me.team && !q.out).map(q => q.spawn))
     .sort((a, b) => d(a, me.spawn) - d(b, me.spawn)); // nearest first, so nobody gangs up on whoever was created first
   const count = (t) => all.filter(u => u.type === t).length;
   // weather (shared/weather.js): in poor sight it has seen less of the enemy than is there and its tanks arrive late,
@@ -341,6 +342,7 @@ function plan(observation, slot, opts, mem, send) {
   // Classic: keep an Engineer while there are nodes to build on
   // Classic: no building for it, or no Fuel for a vehicle: infantry instead
   if (!trains(buy) || !canBuild(buy, me.faction) || priceOf(view, buy).fuel > (me.fuel ?? 0)) buy = trains('conscript') && canBuild('conscript', me.faction) ? 'conscript' : 'rifle';
+  if (world && (!count('engineer') || !ownB.some(b => b.type === 'hq'))) submit({ t: 'recover' });
   if (classic && count('engineer') < (view.nodes.some((_, i) => !view.claimedNodes.has(i)) ? 2 : 1)) buy = 'engineer';
   // Classic: save up for the next building, unless the army is nearly gone
   // big armies: buy several at a time (one per decision can't keep a 60-unit army topped up)
@@ -461,7 +463,7 @@ function plan(observation, slot, opts, mem, send) {
     } else {
       // rule 5, scout when blind: no enemy base known yet, so fly recon over the likeliest spawn
       // (a lone scouting squad just died on the way; the army already heads for the spawns when it attacks)
-      const spawns = view.players.filter(q => q.team !== me.team && !q.out).map(q => q.spawn).sort((a, b) => d(a, me.spawn) - d(b, me.spawn));
+      const spawns = view.players.filter(q => q.team !== me.team && !q.out && q.spawn).map(q => q.spawn).sort((a, b) => d(a, me.spawn) - d(b, me.spawn));
       if (rule(5) && !known.length && spawns.length && can('recon')) call('recon', spawns[0]);
       // rule 4, raid a depot nobody has been seen guarding for 30s
       const raiders = mem.raid ? mem.raid.ids.map(id => view.units.get(id)).filter(u => u && u.owner === slot) : [];
@@ -571,6 +573,26 @@ function plan(observation, slot, opts, mem, send) {
     if (u.path.length || u.attackId || u.nade || u.dig || u.enter >= 0 || u.fireAt >= 0) continue;
     if (u.targetId) continue; // in a fight: hold
     if (horde) { if (bunkers[0]) assault_.push([u.id, bunkers[0].x, bunkers[0].z]); continue; }
+    if (world) {
+      // Regions and frontiers come only from the delivered observation. No hidden homes are targets.
+      const regions = (view.world?.regions ?? []).filter(r => r.team !== me.team);
+      const target = regions.filter(r => !r.locked || mine.length >= L.wave).sort((a, b) => d(u, a) - d(u, b))[0];
+      if (target && (target.locked || def.infantry)) {
+        const base = target.locked && known.filter(e => insideRegion(target, e)).sort((a, b) => d(u, a) - d(u, b))[0];
+        if (base && takeHand()) {
+          if (me.visible.has(base.id)) submit({ t: 'attack', ids: [u.id], target: base.id });
+          else assault_.push([u.id, base.x, base.z]);
+          arm(u);
+        }
+        else if (d(u, target) > CFG.pointRadius - 2 && takeHand()) {
+          assault_.push([u.id, target.x, target.z]); arm(u);
+        }
+      } else {
+        const frontier = worldFrontier(view, u);
+        if (frontier && takeHand()) { assault_.push([u.id, frontier.x, frontier.z]); arm(u); }
+      }
+      continue;
+    }
     const here = pointOf(u);
     // infantry stays to capture, and one squad stays behind to hold each captured point (and digs in)
     if (here >= 0 && def.infantry) {
@@ -731,9 +753,9 @@ function buildEconomy(view, slot, engineers, needArmor, mem, submit) {
   const me = view.players[slot], own = gridFor(view).ownedBy(slot).filter(b => UNITS[b.type].building);
   const has = (t, done) => own.some(b => b.type === t && (!done || b.built >= 1));
   const hq = own.find(b => b.type === 'hq') ?? me.spawn, cx = view.w * CELL / 2, cz = view.h * CELL / 2;
-  const depots = own.filter(b => b.type === 'depot').length, free = view.nodes.filter((_, i) => !view.claimedNodes.has(i));
+  const depots = own.filter(b => b.type === 'depot').length, free = view.nodes.filter((n, i) => !view.claimedNodes.has(i) && ownedGround(view, me.team, n));
   const planesNear = gridFor(view).radius(hq, 60).some(e => me.visible.has(e.id) && e.air && !allied(view, e.owner, slot) && d(e, hq) < 60);
-  const next = depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
+  const next = view.mode?.kind === 'world' && !has('hq') ? 'hq' : depots < 2 && free.length && !(needArmor && has('barracks', true) && !has('motorpool')) ? 'depot' : !has('barracks') ? 'barracks' : has('barracks', true) && !has('motorpool') ? 'motorpool'
     : planesNear && own.filter(b => b.type === 'flakpos').length < 2 ? 'flakpos' : free.length ? 'depot' : has('motorpool', true) && !has('airfield') && depots >= 3 ? 'airfield' : null;
   const ids = new Set(engineers.map(u => u.id));
   for (const id of mem.node.keys()) if (!ids.has(id)) mem.node.delete(id);
@@ -750,9 +772,38 @@ function buildEconomy(view, slot, engineers, needArmor, mem, submit) {
       else if (!u.path.length) submit({ t: 'move', orders: [[u.id, pick.n.x, pick.n.z]] });
     } else if (next) {
       // behind the HQ's front: a little toward the map center, off to one side
-      const a = Math.atan2(cz - hq.z, cx - hq.x) + ({ barracks: 0.9, motorpool: -0.9, airfield: Math.PI, flakpos: (Math.random() - 0.5) * 2 }[next] ?? 0), spot = siteNear(view, hq.x + Math.cos(a) * 16, hq.z + Math.sin(a) * 16, UNITS[next].size);
-      if (spot && me.mp >= UNITS[next].cost) submit({ t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
+      const a = Math.atan2(cz - hq.z, cx - hq.x) + ({ barracks: 0.9, motorpool: -0.9, airfield: Math.PI, flakpos: (Math.random() - 0.5) * 2 }[next] ?? 0), spot = siteNear(view.mode?.kind === 'world' ? { ...view, players: view.players.filter(p => p.spawn) } : view, hq.x + Math.cos(a) * 16, hq.z + Math.sin(a) * 16, UNITS[next].size);
+      if (spot && ownedGround(view, me.team, spot) && me.mp >= UNITS[next].cost) submit({ t: 'build', ids: [u.id], kind: next, x: spot.x, z: spot.z });
     }
   }
   return next && next !== 'depot' ? UNITS[next].cost : 0;
+}
+
+function ownedGround(view, team, at) {
+  if (view.mode?.kind !== 'world') return true;
+  return view.world?.regions.some(r => r.team === team && insideRegion(r, at));
+}
+
+function insideRegion(region, at) {
+  return region.bounds && at.x >= region.bounds[0] && at.z >= region.bounds[1] && at.x < region.bounds[2] && at.z < region.bounds[3];
+}
+
+function worldFrontier(view, from) {
+  // Build candidates once per planning turn, then each squad chooses from this small frontier list.
+  if (!view.frontiers) {
+    view.frontiers = [];
+    for (let z = 1; z < view.h - 1; z += 2) for (let x = 1; x < view.w - 1; x += 2) {
+      const c = z * view.w + x;
+      if (view.chars[c] === '?' || view.flags[c] & MOVE) continue;
+      if ([c - 1, c + 1, c - view.w, c + view.w].some(n => view.chars[n] === '?'))
+        view.frontiers.push({ x: (x + 0.5) * CELL, z: (z + 0.5) * CELL });
+    }
+  }
+  let best = null, distance = Infinity;
+  for (const at of view.frontiers) {
+    const dd = d(from, at);
+    if (dd < 3 || dd >= distance) continue;
+    best = at; distance = dd;
+  }
+  return best;
 }

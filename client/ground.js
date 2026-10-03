@@ -128,7 +128,7 @@ const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 export function fieldCells(map) { return fieldsOf(map).map(v => (v === FIELD ? 1 : v === FIELD_V ? 2 : 0)); }
 function fieldsOf(map) {
   const { w, h, rows } = map, f = new Uint8Array(w * h), BW = 10, BH = 8;
-  const keep = [...(map.spawns || []).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
+  const keep = [...(map.spawns || []).filter(Boolean).map(p => ({ ...p, r: 9 })), ...(map.points || []).map(p => ({ ...p, r: 5 }))]; // clear of HQ rings and points
   for (let by = 0; by * BH < h; by++) for (let bx = 0; bx * BW < w; bx++) {
     if (rnd(bx, by, 7) > 0.24) continue;
     const x0 = bx * BW + 1, y0 = by * BH + 1, x1 = Math.min(w - 1, bx * BW + BW - 1), y1 = Math.min(h - 1, by * BH + BH - 1);
@@ -692,7 +692,7 @@ function paint(S, grid) {
 // and painted within budgetMs (8 by default), at most tilesPerFrame (4) per requested frame.
 export function createGround(map, renderer, { frames = null, budgetMs = 8, tilesPerFrame = 4 } = {}) {
   if (!NA) buildNoise();
-  const P = Math.max(8, Math.min(24, Math.floor((gfx.low ? 1280 : 2048) / Math.max(map.w, map.h))));
+  const P = Math.max(map.world ? 2 : 8, Math.min(24, Math.floor((gfx.low ? 1280 : 2048) / Math.max(map.w, map.h))));
   if (!cur || cur.w !== map.w || cur.h !== map.h || cur.P !== P) {
     if (cur) { cancelPaint(cur); cur.tex.dispose(); cur.material.dispose(); }
     const canvas = document.createElement('canvas');

@@ -94,13 +94,14 @@ function updateTerrain(memory, changes, length) {
 
 export function viewFor(g, slot, memory = {}, cache) {
   const seat = g.players[slot];
-  if (!g.initialTerrain) throw new Error('AI view requires the starting terrain');
+  const world = g.mode?.kind === 'world';
+  if (!world && !g.initialTerrain) throw new Error('AI view requires the starting terrain');
   const first = !memory.terrain;
   if (first) {
     memory.terrain = Object.freeze({
-      chars: Object.freeze([...g.initialTerrain.chars]),
-      flags: Object.freeze(g.initialTerrain.chars.map(ch => TERRAIN[ch] ?? 0)),
-      height: g.initialTerrain.height ? Object.freeze([...g.initialTerrain.height]) : null,
+      chars: Object.freeze(world ? Array(g.w * g.h).fill('?') : [...g.initialTerrain.chars]),
+      flags: Object.freeze(world ? Array(g.w * g.h).fill(0) : g.initialTerrain.chars.map(ch => TERRAIN[ch] ?? 0)),
+      height: world ? Object.freeze(Array(g.w * g.h).fill(0)) : g.initialTerrain.height ? Object.freeze([...g.initialTerrain.height]) : null,
     });
     // A human handover keeps the cells that seat already discovered.
     memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height;
@@ -108,18 +109,23 @@ export function viewFor(g, slot, memory = {}, cache) {
   }
   // snapshotFor consumes terrain updates. Keep those writes in AI memory, away from the live player.
   const players = [...g.players];
-  players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()) };
+  if (g.players[-1]) players[-1] = g.players[-1];
+  players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()),
+    ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map() }) };
   const projection = { ...g, players, skipFog: true }; // no fog masks: the AI plans from units and terrain, not from what a client draws
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, [], [], cache);
   updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h);
+  if (world) { memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height; }
   const view = {
     w: g.w, h: g.h, tick: snap.tick, winner: snap.winner, end: copy(snap.end), winVp: g.winVp,
     chars: memory.terrain.chars, flags: memory.terrain.flags, height: memory.terrain.height,
     mapChars: memory.mapChars, mapHeight: memory.mapHeight, // the map as the file every client downloads shows it
     units: new Map(snap.units.map(row => { const u = decodeUnit(row); return [u.id, u]; })),
-    players: g.players.map((p, i) => ({ slot: i, name: p.name, team: p.team, faction: p.faction, spawn: { ...p.spawn }, out: snap.out[i], vp: snap.vp[i] })),
-    points: g.points.map((p, i) => ({ x: p.x, z: p.z, vp: p.vp, mp: p.mp,
+    players: g.players.map((p, i) => ({ slot: i, name: p.name, team: p.team, faction: p.faction, spawn: !world || p.team === seat.team ? { ...p.spawn } : null, out: snap.out[i], vp: snap.vp[i] })),
+    world: copy(snap.world),
+    points: world ? (snap.world?.regions ?? []).map(r => ({ id: r.id, x: r.x, z: r.z, vp: 1, mp: 1,
+      owner: r.team < 0 ? -1 : g.players.findIndex(p => p.team === r.team), capper: r.capper, progress: r.progress, contested: !!r.contested, locked: r.locked, cut: false })) : g.points.map((p, i) => ({ x: p.x, z: p.z, vp: p.vp, mp: p.mp,
       owner: snap.points[i][0], capper: snap.points[i][1], progress: snap.points[i][2], contested: !!snap.points[i][3], cut: !!snap.points[i][4], locked: !!snap.points[i][5] })),
     nodes: (snap.nodes ?? []).map(([x, z, rate, fuel]) => ({ x, z, rate, fuel: !!fuel })),
     // my side's own mines, and apart from them the enemy mines its builder squads have found
@@ -133,7 +139,9 @@ export function viewFor(g, slot, memory = {}, cache) {
     covers: snap.covers.map(([x, z, r, t]) => ({ x, z, r, t })),
     ghosts: (snap.ghosts ?? []).map(([id, type, owner, x, z, built]) => ({ id, type, owner, x, z, built })),
   };
+  if (world) view.players[-1] = { slot: -1, name: 'Local defenders', team: -1, faction: 0, spawn: null, out: false };
   const me = view.players[slot];
+  if (world && snap.home) me.spawn = { x: snap.home[0], z: snap.home[1] };
   Object.assign(me, { mp: snap.mp, mun: snap.mun, fuel: snap.fuel, inc: snap.inc, fuelInc: snap.fuelInc,
     upkeep: snap.upkeep, sup: { ...snap.sup }, rally: snap.rally ? { x: snap.rally[0], z: snap.rally[1] } : null,
     visible: new Set([...view.units.values()].filter(u => view.players[u.owner].team !== me.team).map(u => u.id)) });

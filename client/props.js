@@ -26,6 +26,7 @@ export function pathSegments(map) {
   const points = map.points ?? [], segments = [], links = new Set();
   const add = (a, b) => segments.push({ ax: (a.x + 0.5) * CELL, az: (a.y + 0.5) * CELL, bx: (b.x + 0.5) * CELL, bz: (b.y + 0.5) * CELL });
   for (const sp of map.spawns ?? []) {
+    if (!sp) continue;
     const nearest = points.map((p, i) => ({ i, d: (sp.x - p.x) ** 2 + (sp.y - p.y) ** 2 }))
       .sort((a, b) => a.d - b.d || a.i - b.i).slice(0, 2);
     for (const { i } of nearest) add(sp, points[i]);
@@ -73,7 +74,7 @@ export function kindFor(c, heights) {
 export function candidates(map) {
   const { w, h, rows } = map, paths = pathSegments(map), list = [], occupied = new Set();
   const zones = [
-    ...(map.spawns ?? []).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, r: CFG.reinforceRadius + 4 })),
+    ...(map.spawns ?? []).filter(Boolean).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, r: CFG.reinforceRadius + 4 })),
     ...(map.points ?? []).map(p => ({ x: (p.x + 0.5) * CELL, z: (p.y + 0.5) * CELL, r: CFG.pointRadius + 4 })),
   ];
   const clear = (x, y) => {
@@ -84,6 +85,7 @@ export function candidates(map) {
   const corridor = (x, z, margin = 0) => paths.some(p => distanceToSegment(x, z, p) < 3 + margin);
   const add = (kind, cx, cy, angle, anchor, scale = 1) => {
     const key = cy * w + cx;
+    if (map.world && !map.discovered?.[key]) return false;
     if (occupied.has(key) || !clear(cx, cy)) return false;
     const seed = hash(cx, cy, 71), jitter = kind === 'fence' || kind === 'poplar' ? 0 : 0.36;
     const x = (cx + 0.5) * CELL + (fraction(cx, cy, 81) - 0.5) * jitter;

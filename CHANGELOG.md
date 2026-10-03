@@ -27,6 +27,33 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   Like the other alerts it waits if you are already looking at the fight.
 - Fixed: construction outside Classic could crash on a missing mode (now guarded). Not tuned in AI matches yet: AIs
   do not build flak themselves.
+
+### 2026-10-03: World Conquest (`b82c9c6`)
+
+- Added World Conquest: scout a generated continent of 64 or 128 regions, destroy local defenses, claim land
+  with infantry, and build your own military in conquered territory. Each player starts with one home region
+  and the normal small construction force. Huge spans 1,024 by 1,024 metres; Massive spans 2,048 by 1,024 metres.
+  Teams share land and its benefits; victory requires the whole map.
+- World Conquest keeps unexplored terrain and enemy homes hidden, including after reconnecting. It uses
+  last-region defeat instead of HQ loss or Classic's Sudden Death. Match-length and large-army balance still
+  need multiplayer playtesting.
+- Hidden capture contests now stay remembered until scouted again. AI troops approach remembered enemy
+  production buildings that block claiming and attack them after rediscovery.
+- Long World Conquest moves plan in shorter steps while preserving the destination, queued orders and retreat.
+  Region capture and remembered route data reuse nearby work to keep large armies responsive.
+- Fixed infantry and tanks stopping at a river bank instead of finding a ford. With six players and 64 mobile
+  units each, local server ticks measured 27.32 ms p95 on Huge and 31.37 ms on Massive. Other desktop work was
+  running; these bounded samples do not establish full-match pacing or browser frame rates.
+- Kept the lobby and battlefield language module available while integrating Spanish support. Browser entry
+  modules now have a served-dependency check.
+- Preserved Engineer construction in World Conquest while integrating buildable flak in other modes. New
+  World Conquest text currently falls back to English in the Spanish interface. Translation remains for later.
+- World acceptance checks now run before the long AI proofs. The relocated-retreat fixture starts outside the
+  home arrival radius so it can observe an active retreat before arrival.
+- Fixed the tutorial progression fixture losing its house defenders when the next step began. Simulated combat
+  now removes those defenders and clears pending artillery before crossing. The check runs first with route,
+  bridge and capture diagnostics. Tutorial gameplay is unchanged.
+
 ### 2026-10-03: Defeated players spectate (`14cbe41`)
 
 - Fixed defeated teams continuing to recruit and fight in Annihilation. Losing the team's last bunker now stops

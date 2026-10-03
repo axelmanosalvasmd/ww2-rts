@@ -2,8 +2,45 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## World Conquest (2026-10-03)
+
+World Conquest is a separate multiplayer mode with a generated, connected continent. Huge has 64 regions;
+Massive has 128. Huge spans 1,024 by 1,024 metres and Massive spans 2,048 by 1,024 metres. Each region is
+128 metres across. Each player starts with one home region, an HQ, an Engineer Squad and a Rifle Squad.
+The remaining regions have local hostile defenders. No region grants free troops or a captured production queue.
+
+Destroy a region's defending military base and defending Production Buildings, then occupy its capture point
+with infantry. Any reachable region can be claimed. Teams own land together, share its income and population
+benefits, and retain separate units, resources and queues. Construction uses the normal costs and prerequisites
+and must fit on owned ground. A paid recovery action preserves a route back to production while land survives.
+
+Terrain, regions, resources and enemy homes are unknown until scouted. Explored ground is remembered; current
+enemy activity needs current shared vision. Starts, reconnects, AI observations and spectators receive filtered
+world information. The server keeps the generation seed and full map private during the match.
+
+Losing an HQ does not cause defeat. Losing the last team region does. Winning requires all regions, including
+those still held by local defenders. Classic's production-loss defeat and Sudden Death do not apply. The intended
+Huge match length is 45 to 60 minutes, a balance target that needs playtesting rather than a victory timer.
+The full acceptance criteria are in [the World Conquest spec](docs/world-conquest-spec.md) and issue #37.
+
+World tuning starts at 0.65 MP/s per region, with another 0.6 MP/s for cities, 0.3 Fuel/s for industrial
+regions and 0.5 Munitions/s for resource regions. Team income is split among active teammates and uses the
+selected army income multiplier. Captured land adds 2 population capacity per region, shared across active
+teammates, with a maximum of 160 per player. Recovering an HQ costs 200 MP; an Engineer uses its normal cost.
+
+Distant movement plans 64 metre legs beyond 96 metres, using only remembered terrain. The original destination
+remains active across legs, queued moves wait for full arrival and retreat continues to friendly ground.
+Bank recovery returns to the unit's open cell before continuing, so ordinary ground units can find a ford.
+Region capture uses ordered nearby-unit queries and indexes production blockers once per tick.
+
+A six-seat stress fixture with 64 mobile units per seat and intact guards measured Huge server tick p95/max
+27.32/32.05 ms and Massive 31.37/32.90 ms on the M3 Max. Long-move barrier maximums were 23.54/55.77 ms.
+Other desktop work was running. Prepared Huge AI expansion gained one region in 30 simulated seconds,
+with the first gain at 17.3 seconds. Natural-start pacing and faction balance remain unmeasured. See
+[the performance report](docs/world-conquest-performance.md) for the workload and limits.
+
 ## Game
-- Tactics skirmish, no base building outside Classic mode. PvP: 1v1 or 3-player FFA, joined by room link (`/#code`). The host can add AI opponents.
+- Tactics skirmish, with base building in Classic and World Conquest. PvP: teams or free-for-all, joined by room link (`/#code`). The host can add AI opponents.
 - Win: first to 1200 VP. The center gives 2 VP/s and no manpower; villages give 1 VP/s + 1.5 MP/s.
 - Economy is mostly flat (4 MP/s base). Trailing players get up to +6 MP/s catch-up (1 per 60 VP behind the leader;
   was +4 per 80 until the new units made games one-sided).
@@ -1041,6 +1078,8 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   editor isolation, moderation, deployment and persistent accounts are separate work. No gameplay balance changes.
 
 ### Language: English and Spanish (2026-10-02)
+
+World Conquest currently uses the English fallback for its new interface text. Its Spanish dictionary entries remain for later.
 
 The game code keeps writing English. `client/i18n.js` translates what reaches the page: in Spanish a
 MutationObserver rewrites text nodes and the `title`, `aria-label` and `placeholder` attributes, and the few canvas

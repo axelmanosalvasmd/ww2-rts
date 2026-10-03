@@ -97,7 +97,7 @@ function wide() {
     }
     return r;
   };
-  let lo = 20, hi = 800;
+  let lo = 20, hi = Math.max(800, Math.hypot(w, h) * 3);
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2, r = box(mid);
     if (r.ok && r.x1 - r.x0 <= roomX && r.y1 - r.y0 <= roomY) hi = mid; else lo = mid;

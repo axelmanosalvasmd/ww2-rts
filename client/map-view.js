@@ -45,7 +45,7 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
   const washMat = new THREE.ShaderMaterial({
     uniforms: { map: { value: fog?.texture ?? null }, k: { value: 0 } }, transparent: true, depthTest: false, depthWrite: false,
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'uniform sampler2D map; uniform float k; varying vec2 vUv; void main() { gl_FragColor = vec4(0.55, 0.4, 0.22, texture2D(map, vUv).a * k); }',
+    fragmentShader: `uniform sampler2D map; uniform float k; varying vec2 vUv; void main() { float a = texture2D(map, vUv).a; gl_FragColor = vec4(${fog?.opaque ? 'vec3(0.04)' : 'vec3(0.55, 0.4, 0.22)'}, a * k); }`,
   });
   const washMesh = new THREE.Mesh(geometry, washMat);
   washMesh.renderOrder = 1001; washMesh.visible = !!fog;
@@ -169,13 +169,23 @@ export function createMapView({ grid, w, h, geometry, hAt, fog, units, colorOf, 
     if (overlay.width !== cw || overlay.height !== ch) { overlay.width = cw; overlay.height = ch; }
     sw = cw; sh = ch;
     ctx.clearRect(0, 0, sw, sh);
-    const { me, selected, points = [], strikes = [] } = state();
+    const { me, selected, points = [], strikes = [], regions = [], teamColor } = state();
     // a meter on the map in screen pixels, at its middle
     const mid = screen(MW / 2, MH / 2), east = screen(MW / 2 + 10, MH / 2), north = screen(MW / 2, MH / 2 - 10);
     if (!mid || !east || !north) return;
     const m = Math.hypot(east.x - mid.x, east.y - mid.y) / 10;
     ctx.font = `bold ${Math.round(12 * dpr)}px "Courier New", monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
+    for (const r of regions) {
+      ctx.strokeStyle = teamColor?.(r.team) ?? INK; ctx.lineWidth = 1.5 * dpr;
+      if (r.bounds) {
+        const [x0, z0, x1, z1] = r.bounds, corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => screen(x, z));
+        if (corners.every(Boolean)) { ctx.beginPath(); corners.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath(); ctx.stroke(); }
+      }
+      const p = screen(r.x, r.z); if (!p) continue;
+      ctx.fillStyle = ctx.strokeStyle; ctx.font = `bold ${Math.round(12 * dpr)}px monospace`;
+      ctx.fillText(`${r.name}${r.locked ? ' [base]' : ''}`, p.x, p.y);
+    }
     // capture points: an inked ring, filled in the holder's color, lettered
     points.forEach((p, i) => {
       const s = screen(p.x, p.z); if (!s) return;
