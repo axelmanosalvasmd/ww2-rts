@@ -65,6 +65,15 @@
   #editor label { display: grid; gap: 3px; }
   .ed-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
   .ed-tools button.on { border-color: var(--line-hot); background: rgba(214, 178, 94, 0.16); color: var(--brass); }
+  #edScenario details { border: 1px solid var(--line-soft); padding: 6px; }
+  #edScenario summary { cursor: pointer; font-weight: 600; }
+  #edScenario .scenario-body, #edScenario .scenario-fields { display: grid; gap: 7px; margin-top: 8px; }
+  #edScenario .scenario-body p { margin: 0; }
+  #edScenario .scenario-body > .row > label { flex: 1; }
+  #edScenario .scenario-card { display: grid; gap: 6px; padding: 7px; border: 1px solid var(--line-soft); }
+  #edScenario .scenario-card .row { justify-content: space-between; }
+  #edScenario textarea { width: 100%; resize: vertical; font: 12px/1.4 monospace; color: var(--text); background: var(--cell-lo); border: 1px solid var(--line-soft); padding: 6px; }
+  #edScenario .scenario-advanced { margin-top: 5px; }
 
   /* ---------- lobby: the room form on one gunmetal panel ---------- */
   #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: #16191b; z-index: 10; padding: 16px; }
@@ -428,6 +437,9 @@
         <dt><kbd>Space</kbd> / <kbd>Shift+Space</kbd></dt><dd>Jump to newest alert or selection / follow selection</dd>
         <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>Recall a control group; tap twice to center</dd>
         <dt><kbd>Ctrl+1</kbd>–<kbd>Ctrl+9</kbd></dt><dd>Set a control group; Shift adds to it</dd>
+        <dt><kbd>Alt+1</kbd>–<kbd>Alt+9</kbd></dt><dd>Move selected units to a control group and remove them from other groups</dd>
+        <dt><kbd>Alt+H</kbd></dt><dd>Open or close Alert history</dd>
+        <dt><kbd>Alt+Left</kbd> / <kbd>Alt+Right</kbd></dt><dd>Visit the previous or next Alert at its recorded location</dd>
         <dt><kbd>H</kbd> / <kbd>Shift+H</kbd></dt><dd>Go home in Classic / set army rally point</dd>
         <dt><kbd>Esc</kbd></dt><dd>Clear selection, cancel aiming, or release captured mouse</dd>
       </dl></section>

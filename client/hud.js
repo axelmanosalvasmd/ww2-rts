@@ -173,8 +173,12 @@ export function createHud(ctx) {
         // a wave on the map: how many are left (reserve included). Between waves: the break's countdown
         const on = !!s.mode.active;
         setText(mode, on ? `Wave ${s.mode.wave}` : `Wave ${s.mode.wave + 1} in`); setText(clk, on ? `${s.mode.left} left` : clock(s.mode.timeLeft));
+        let threat = score.lead.querySelector('[data-wave-threat]');
+        if (!threat) { threat = document.createElement('span'); threat.dataset.waveThreat = ''; threat.className = 'wave-threat'; score.lead.append(threat); }
+        const profile = { mixed: 'Mixed forces', infantry: 'Infantry assault', armor: 'Armored assault', siege: 'Siege weapons' }[s.mode.nextProfile];
+        setText(threat, !on && profile ? `Next Wave: ${profile}` : ''); show(threat, !on && !!profile);
         score.lead.title = 'Hold the bunker. The next wave comes 45 seconds after this one is dead';
-        show(score.lead.lastChild, !on && ctx.host);
+        show(score.lead.querySelector('button'), !on && ctx.host);
       } else if (kind === 'assault') {
         setText(mode, mine === s.mode.defenderTeam ? 'Assault: hold out' : 'Assault: take the bunker'); setText(clk, clock(s.mode.timeLeft));
         score.lead.title = mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker before the clock runs out';
@@ -336,7 +340,8 @@ export function createHud(ctx) {
         menuBtn('form', 'Formation: shape, spacing, marching together and snapping to trenches. Right-drag sets the facing and the width; double right-click turns to face a spot') +
         (dig ? menuBtn('build', 'Build: sandbags, wire, traps, nests, mines, bridges and more') + menuBtn('trench', 'Trench patterns: lines, zigzags, rings and strongpoints the builder squads dig together') : '') +
         types.map((t) => { const ab = UNITS[t].ab; return orderBtn(`data-a="${t}"`, ab.id === 'smoke' ? 'smokeab' : ab.id, '', `${ab.name}: ${name(t)}${AIMED.has(ab.id) ? ', click where' : ''}. ${ab.cd}s cooldown. Right-click: autocast on/off`, t); }).join('') +
-        '</div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
+        '</div><div class="control-transfer"><label>Control group <select data-group-destination aria-label="Destination control group">' + Array.from({ length: 9 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('') + '</select></label><button data-group-transfer title="Alt+1 to Alt+9 moves selected units and removes them from other groups">Move to group</button></div>' + (menu ? `<div class="hd sub">${MENUS[menu][2]}</div><div class="grid">${menuHTML(menu)}</div>` : '');
+      el.querySelector('[data-group-transfer]')?.addEventListener('click', () => ctx.transferGroup(el.querySelector('[data-group-destination]').value));
       el.querySelectorAll('button[data-a]').forEach((b) => {
         const a = b.dataset.a;
         b.onclick = (e) => {
@@ -490,7 +495,7 @@ export function createHud(ctx) {
       const info = (t, status, hint) => `<div class="cinfo"><div class="ci-t">${symbolSVG(t)}<b>${esc(UNITS[t].name)}</b></div><div class="ci-s">${status}</div><div class="ci-h">${hint}</div></div>`;
       if (bld && bld.built < 1) card.innerHTML = info(bld.type, 'Under construction <span data-built></span>', 'Right-click it with Engineers to help') +
         '<button class="cancel" data-cancel title="Cancel the building and get 75% of its cost back">Cancel<span>75% back</span></button>';
-      else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span>', 'Right-click the ground: rally point') +
+      else if (bld) card.innerHTML = info(bld.type, '<span data-queue></span><div data-production-jobs class="production-jobs"></div>', 'Right-click the ground: rally point') +
         groupsHTML((UNITS[bld.type].makes ?? []).filter((t) => canBuild(t, ctx.facOf(ctx.me))), (t) => {
           const pr = priceOf(s, t), fuel = pr.fuel ? `${pr.fuel} Fuel, ` : '';
           return unitCard(t, `data-train="${t}"`, `${pr.mp} MP`, `${fuel}${UNITS[t].train}s`, unitTip(t, ctx.me, `. ${pr.mp} MP${pr.fuel ? ` + ${pr.fuel} Fuel` : ''}, trains in ${UNITS[t].train}s`));
@@ -514,6 +519,30 @@ export function createHud(ctx) {
     if (bld && bld.built >= 1) {
       const q = bld.queue ?? [], nm = (t) => name(t);
       setText(card.querySelector('[data-queue]'), q.length ? `Training ${nm(q[0])} ${Math.round((bld.prog ?? 0) * 100)}%` + (q.length > 1 ? `, then ${q.slice(1).map(nm).join(', ')}` : '') : 'Idle');
+      const jobs = bld.productionJobs ?? [], list = card.querySelector('[data-production-jobs]');
+      if (list) {
+        const key = jobs.map(job => `${job.id}:${job.status}`).join(',');
+        if (list.dataset.jobs !== key) {
+          list.dataset.jobs = key;
+          list.replaceChildren(...jobs.map(job => {
+            const row = document.createElement('div'), text = document.createElement('span');
+            row.className = 'production-job';
+            text.textContent = tr(`${job.status === 'active' ? 'Training' : 'Waiting'}: ${name(job.type)}`);
+            row.append(text);
+            if (job.status === 'waiting') {
+              const button = document.createElement('button');
+              button.type = 'button'; button.dataset.job = job.id;
+              button.textContent = tr(`Cancel: refund ${job.mp} MP, ${job.fuel} Fuel`);
+              button.title = tr(`Cancel ${name(job.type)}: refund ${job.mp} MP, ${job.fuel} Fuel`);
+              button.setAttribute('aria-label', button.title);
+              button.onclick = () => attempt({ t: 'cancelProduction', id: bld.id, job: job.id }, () => { button.disabled = true; ctx.send({ t: 'cancelProduction', id: bld.id, job: job.id }); });
+              row.append(button);
+            }
+            return row;
+          }));
+        }
+        for (const button of list.querySelectorAll('[data-job]')) setAvailability(button, check({ t: 'cancelProduction', id: bld.id, job: +button.dataset.job }));
+      }
       for (const b of card.querySelectorAll('[data-train]')) {
         const pr = priceOf(s, b.dataset.train), broke = s.mp < pr.mp || (s.fuel ?? 0) < pr.fuel;
         setAvailability(b, check({ t: 'buy', unit: b.dataset.train, from: bld.id }));

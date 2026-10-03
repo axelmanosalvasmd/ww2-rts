@@ -6,6 +6,8 @@
 import { UNITS, SUPPORT } from '/shared/sim.js';
 import { audio } from './audio.js';
 import { insideKnownRegion } from '/shared/world-territories.js';
+import { t as tr } from './i18n.js';
+import { createAlertHistory } from './alert-history.js';
 
 const LIFE = 6;             // seconds a line stays up
 const FADE = 0.6;           // last part of that it spends fading out
@@ -29,7 +31,9 @@ const LIVES = { event: 15, base: 10 }; // a map's scripted message stays up long
 const now = () => performance.now() / 1000;
 const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) <= r;
 
-let hooks = null, box = null;
+let hooks = null, box = null, historyBox = null, historyList = null;
+const history = createAlertHistory(100);
+let matchTime = 0;
 let lines = [];        // newest first: { kind, text, x, z, born, el, n }
 let quiet = [];        // areas that just had an "under attack": { x, z, until }
 let lastSound = {};
@@ -45,6 +49,14 @@ function init(h) {
     const mm = document.getElementById('minimap');
     (mm?.parentNode ?? document.body).insertBefore(box, mm ?? null);
   }
+  historyBox = document.createElement('details'); historyBox.className = 'alert-history';
+  const summary = document.createElement('summary'); summary.textContent = tr('Alert history'); summary.title = tr('Open or close Alert history (Alt+H)');
+  const nav = document.createElement('div'); nav.className = 'alert-history-nav';
+  for (const [text, direction] of [['Previous Alert', 1], ['Next Alert', -1]]) {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = tr(text); button.onclick = () => navigate(direction); nav.append(button);
+  }
+  historyList = document.createElement('div'); historyList.className = 'alert-history-list'; historyList.setAttribute('aria-label', tr('Alert history'));
+  historyBox.append(summary, nav, historyList); box.append(historyBox); renderHistory();
   box.addEventListener('mousedown', (e) => {
     const el = e.target.closest?.('.alert'), a = el && lines.find(l => l.el === el);
     if (!a) return;
@@ -56,8 +68,39 @@ function init(h) {
 
 function reset() {
   lines.forEach(a => a.el?.remove());
-  lines = []; quiet = []; lastSound = {};
+  lines = []; quiet = []; lastSound = {}; history.reset(); matchTime = 0; renderHistory();
   hooks?.resetPings?.();
+}
+
+function startMatch(id) {
+  if (!history.start(id)) return;
+  lines.forEach(a => a.el?.remove()); lines = []; quiet = []; lastSound = {}; matchTime = 0;
+  if (historyBox) historyBox.open = false;
+  renderHistory();
+}
+const matchClock = time => `${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`;
+function renderHistory() {
+  if (!historyList) return;
+  const entries = history.entries, focused = document.activeElement?.dataset?.alertId;
+  if (!entries.length) { historyList.textContent = tr('No Alerts yet'); return; }
+  historyList.replaceChildren(...entries.map(a => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'alert-history-entry k-' + a.kind;
+    button.dataset.alertId = a.id;
+    button.textContent = `${matchClock(a.time)} · ${a.text}`;
+    button.setAttribute('aria-label', tr(`Alert at ${matchClock(a.time)}: ${a.text}`));
+    button.setAttribute('aria-current', String(history.selected === a.id));
+    button.title = a.x == null ? tr('No recorded location') : tr(`Recorded location: ${a.x.toFixed(1)}, ${a.z.toFixed(1)}`);
+    button.onclick = () => { const entry = history.select(a.id); visit(entry); renderHistory(); };
+    return button;
+  }));
+  if (focused) historyList.querySelector(`[data-alert-id="${focused}"]`)?.focus();
+}
+function visit(entry) { if (entry && Number.isFinite(entry.x) && Number.isFinite(entry.z)) hooks?.jump(entry.x, entry.z); }
+function toggleHistory() { if (historyBox) { historyBox.open = !historyBox.open; place(); } }
+function navigate(direction) {
+  const entry = history.navigate(direction); visit(entry);
+  if (historyBox) historyBox.open = true;
+  renderHistory(); place(); return entry;
 }
 
 // sit just above the minimap, wherever the HUD puts it
@@ -78,8 +121,11 @@ function sound(kind) {
 function push(kind, text, x, z, n = 1) {
   const el = document.createElement('div');
   el.className = 'alert k-' + kind;
-  el.textContent = text;
-  el.title = 'Space or click: look there';
+  text = tr(text); el.textContent = text;
+  el.title = tr('Space or click: look there');
+  el.tabIndex = 0; el.setAttribute('role', 'button');
+  el.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); e.stopPropagation(); if (x != null) hooks?.jump(x, z); } };
+  history.add({ kind, text, x, z, time: Math.max(matchTime, hooks?.matchTime?.() ?? 0) }); renderHistory();
   const a = { kind, text, x, z, born: now(), el, n };
   lines.unshift(a);
   box?.prepend(el);
@@ -112,11 +158,13 @@ function underAttack(at, text, kind = 'attack') {
 // Compare this snapshot with the one before it and raise whatever alerts follow.
 function snapshot(s, prev) {
   if (!hooks) return;
-  if (!prev) { reset(); return; } // first snapshot of a match (or after a reconnect): nothing to compare yet
+  if (!history.acceptTick(s.tick)) return; // duplicate or old retained snapshots never redeliver Alerts
+  matchTime = s.tick / 20;
+  if (!prev) return; // reconnect keeps delivered history and begins a fresh comparison
   const me = hooks.me(), friend = (slot) => slot >= 0 && hooks.friend(slot);
   if (s.winner != null || s.out?.[me]) return;
   // the map's scripted events (triggers) speak to everyone
-  for (const sh of s.shots ?? []) if (sh.k === 'say') push('event', sh.text, sh.x, sh.z);
+  for (const sh of s.shots ?? []) if (sh.k === 'say') push('event', sh.localized?.[document.documentElement?.lang ?? 'en'] ?? sh.text, sh.x, sh.z);
   const before = new Map(prev.units.map(u => [u[0], u]));
   const after = new Map(s.units.map(u => [u[0], u]));
   const shotsAt = new Map();
@@ -257,4 +305,4 @@ const newest = () => { const a = lines.find(l => l.x != null); return a ? { x: a
 const pinging = () => lines.length > 0;
 
 // `lines` (the texts showing, newest first) is for poking at it from devtools via window.__game.alerts
-export const alerts = { init, reset, snapshot, frame, drawPings, newest, pinging, push: (kind, x, z, text) => push(kind, text, x, z), get lines() { return lines.map(a => a.text); } };
+export const alerts = { init, reset, startMatch, toggleHistory, navigate, get history() { return history.entries; }, snapshot, frame, drawPings, newest, pinging, push: (kind, x, z, text) => push(kind, text, x, z), get lines() { return lines.map(a => a.text); } };

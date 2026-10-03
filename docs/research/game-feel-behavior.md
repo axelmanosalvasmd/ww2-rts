@@ -1,0 +1,39 @@
+# Three additional behavior candidates
+
+Research only, checked against this checkout on 2026-10-03. These extend existing behavior. They do not replace the seven accepted engine improvements or adopt new design decisions. Source comparisons describe OpenRA's implementation, not the original commercial engines it recreates. Scope estimates cover implementation and meaningful simulation scenes, before balance testing.
+
+## 1. Keep an assault together after the first contact
+
+**Current behavior.** The AI already waits for a group and checks its strength, then screens an assault with smoke and attack-moves each member to a cover spot (`shared/ai.js:674-688`). Hard also coordinates focus fire (`shared/ai.js:690-723`). The sim already spreads group destinations (`shared/sim.js:2544-2592`), supports a slowest-unit march through `together: true` (`shared/sim.js:2068-2072`), and clears that pace after an attack, retreat or arrival (`shared/sim.js:3414`). `DESIGN.md:1612` records this march behavior. The extension is an operation that remains coherent after terrain delays or combat interrupt the initial march.
+
+**Extension and player effect.** Give an AI assault persistent member IDs and a reachable staging spot. Rejoin separated units behind cover before the next advance, with a short timeout so an unreachable support weapon cannot freeze the army. Keep MGs and AT guns on the supporting line and send rifle squads forward only when their support is in position. A later slice could add a suppression-and-flank phase. Players would face identifiable combined-arms attacks rather than defeating units as they arrive separately.
+
+**Primary implementation.** OpenRA commit `7d57605bca2cbe963068d42505e00072afe19868` elects a persistent leader with compatible terrain access and central placement in [GroundStates.cs:23-54](https://github.com/OpenRA/OpenRA/blob/7d57605bca2cbe963068d42505e00072afe19868/OpenRA.Mods.Common/Traits/BotModules/Squads/States/GroundStates.cs#L23-L54). Its attack-move state detects dispersed members, stops the leader and orders stragglers to regroup at the leader in [GroundStates.cs:167-188](https://github.com/OpenRA/OpenRA/blob/7d57605bca2cbe963068d42505e00072afe19868/OpenRA.Mods.Common/Traits/BotModules/Squads/States/GroundStates.cs#L167-L188). This supports persistent regrouping. The role assignments and flanking phase above are proposed extensions, not claims about this source.
+
+**Acceptance scene.** Two rifle squads, an MG and an AT gun approach an enemy point by routes of different lengths. After the rifles make brief contact, they stop behind reachable cover until support arrives or the regroup timeout expires. A stuck member is dropped from the operation. A player order immediately overrides membership. Repeat with identical delivered AI views and different hidden enemy positions: the orders must match.
+
+**Scope: medium.** Persistent group lifecycle, staging, regroup timeout and role placement. Suppression-and-flank phases would make the full version large.
+
+## 2. Investigate the last contact without following hidden enemies
+
+**Current behavior.** Enemy memory exists: `shared/ai-view.js:63-66` records last observed position, time and value for 60 seconds. `shared/ai-mind.js:98-105` invalidates a lost contact when the remembered ground is visible and empty. Hard considers recent sightings when judging a point (`shared/ai.js:677-679`). An explicit attack drops its target ID when visibility is lost (`shared/sim.js:3397-3402`). The extension is a bounded investigation using remembered coordinates, rather than merely storing sightings or giving the AI more knowledge.
+
+**Extension and player effect.** When an explicit attack loses contact, retain the last observed coordinates as a movement goal for a short search, then stop or resume the queued order when that ground is checked. Hold Position must prevent the search. Use the same rule for human and AI orders. An enemy slipping behind a hedge would leave pursuers searching the place where it disappeared; it would still escape by moving elsewhere under fog.
+
+**Primary implementation.** OpenRA's [Attack.cs:109-141](https://github.com/OpenRA/OpenRA/blob/7d57605bca2cbe963068d42505e00072afe19868/OpenRA.Mods.Common/Activities/Attack.cs#L109-L141), at commit `7d57605bca2cbe963068d42505e00072afe19868`, stores a visible target's position and range, switches to that fallback when the actor is hidden or invalid, approaches the assumed position, and gives up once in range. An uncertainty region or expanding search pattern would be additional design, not present in this cited code.
+
+**Acceptance scene.** A rifle squad attacks a tank that disappears behind a hedge. The squad investigates only its final visible position. Move the tank along two different hidden routes: the rifle squad must take the same actions until it sees new evidence. When the spot is empty, the search ends and its queued capture order resumes. Hold Position and a fresh move order both cancel the investigation.
+
+**Scope: medium.** Last-contact order state, cancellation, queue continuation and fog-fair regression scenes. A single-point search needs no new navigation architecture.
+
+## 3. Withdraw from a losing engagement before health becomes critical
+
+**Current behavior.** The AI already retreats on low health, a last surviving soldier, or severe suppression combined with damage (`shared/ai.js:448`, `shared/ai.js:563-565`). The sim's auto-retreat checks a health threshold (`shared/sim.js:3313-3314`). Idle infantry already seek better cover, and an idle damaged vehicle unable to answer fire pulls back (`shared/sim.js:2606-2631`). Point assaults also reject poor force margins before departure (`shared/ai.js:680-683`). The extension is reevaluating a fight's viability after reinforcement or flanking changes the local balance.
+
+**Extension and player effect.** At the AI commander level, compare available nearby support with watched enemy weapons, suppression, escape speed and recent damage. Break off an untenable assault even while its squads are relatively healthy, then keep a brief regroup state to avoid immediately charging back. Preserve player orders and existing stances; do not silently turn human squads into another commander. Players could force withdrawals with an AT ambush or a reinforced MG line, instead of needing to damage every unit below its retreat threshold.
+
+**Primary implementation.** OpenRA's [AttackOrFleeFuzzy.cs:167-182](https://github.com/OpenRA/OpenRA/blob/7d57605bca2cbe963068d42505e00072afe19868/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.cs#L167-L182), at commit `7d57605bca2cbe963068d42505e00072afe19868`, evaluates own health, enemy health, relative attack power and relative speed. Its [GroundStates.cs:244-265](https://github.com/OpenRA/OpenRA/blob/7d57605bca2cbe963068d42505e00072afe19868/OpenRA.Mods.Common/Traits/BotModules/Squads/States/GroundStates.cs#L244-L265) checks whether to flee during combat and moves the group to an own building. The proposed Three Crossroads implementation must use only `ai-view.js` observations. The cited OpenRA functions alone do not establish equivalent fog restrictions.
+
+**Acceptance scene.** A healthy rifle assault starts against one defender. Two visible MGs reinforce it. The AI breaks contact while above its normal health retreat threshold, reaches a safe regroup spot, and does not oscillate back immediately. Hidden reinforcements produce no response until observed. An otherwise identical fight where friendly support arrives should continue. Measure both preserved squads and abandoned objectives, so retreating constantly cannot count as success.
+
+**Scope: medium.** Reuse current retreat and operation commands. Add an engagement evaluator and a cooldown before committing again. Start with clear weapon-role mismatches rather than reproducing a fuzzy-logic engine.

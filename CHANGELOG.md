@@ -5,6 +5,39 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-03: Engine and game feel (`7e3dc83`)
+
+- Units anticipate traffic, yield through crowded crossings and keep their destination while rerouting around new
+  obstacles. Ground vehicles accelerate, brake, reverse and turn within their own limits; their visible chassis follows
+  slopes. Large-map routes use remembered terrain and hull clearance.
+- Bullets, shells, grenades and rockets travel through the world. Damage and suppression arrive at contact, moving
+  targets can leave the lane, and thin obstacles intercept a shot. Shallow hits on hard materials can ricochet once.
+- Roads, objects and mines have independent layers and materials. Clearing a mine or wreck preserves the surface
+  beneath it, including road damage. Hidden mines and destruction stay hidden from human, AI and spectator recipients.
+- Buildings and bridges fail by local sections and anchored support. A breach preserves a surviving building's owner
+  and queue. Falling sections and wrecks use gravity, mass, contacts and damping, then become persistent obstacles.
+  Active debris is capped at 96 bodies, 8 contacts each and 2.5 seconds before settling. Fire wears sections before collapse.
+- Large idle Horde groups receive orders four at a time every 100 ms, clearing a 238-unit staged launch in at most
+  6 seconds at normal 10 Hz delivery, or 12 seconds at adaptive 5 Hz delivery. In the baseline and rebased Wave 10 Massive bridge
+  fixture, maximum tick time changed from 728.910 to 32.601 ms, while p95 increased from 5.558 to 27.244 ms.
+  The earlier integrated engine reached 1,047.132 ms before staggering. Direct player orders remain immediate.
+- Enemy AI keeps combined-arms assaults together, regroups after contact and can withdraw from a losing fight.
+  Horde Waves announce their mixed, infantry, armor or siege category before arriving; defining purchases target
+  65%, 50% and 45% of the normal Wave budget respectively. This changes fights; faction balance still needs broader playtesting.
+- Cancel an individual waiting recruit with its exact MP/Fuel refund shown in the command card. The active recruit
+  keeps its progress. Battle Alert history retains the latest 100 notices and jumps back to their locations.
+  Alt+number transfers selected units out of their previous control groups.
+- Surviving vehicles show damage smoke that fades after repair. Nearby water, woodland and weather contribute to
+  ambience. Off-screen units skip detailed animation and restore their current pose on camera return.
+- The map editor supports separate surface/object/mine materials, structural sections and authored scenario
+  conditions, reinforcements, objectives and announcements in English and Spanish. Invalid starts keep the prior room
+  state; public map previews conceal mines and future scenario source, while authenticated editing preserves them.
+- Added the source-backed implementation spec, research, multiplayer acceptance scenes and performance reports.
+  Generated a transparent rubble atlas through the configured Codex image proxy. Effect prioritization remains outside this change.
+- Large World fixtures still exceeded the 40 ms tick budget at their maximum: 47.787 ms on Huge and 124.532 ms on
+  Massive. Native GPU performance and broader faction balance remain unverified.
+- CI allows 30 minutes for the expanded regression suite, including the full AI fog proof and World tests.
+
 ### 2026-10-03: Strategic geography (source commit `b351ea1`)
 
 - World Conquest seeds now choose 1-3 main rivers and 0-3 small tributaries. Streams are fordable along their length, join larger rivers, and widen the main channel downstream. Each main river has its own bridges and permanent fords; road approaches preserve shallow streams instead of paving them over.

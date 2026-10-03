@@ -3,7 +3,7 @@
 // and keeps that operation while the reason for it still holds.
 import { UNITS, CELL, CFG, COVER, MOVE, TRENCH, FORTS, command, spoiled, SUPPORT, abCost, canBuild, allied, supCost, siteNear, priceOf, alive, los } from './sim.js';
 import { viewFor } from './ai-view.js';
-import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, ARMOR, ANTI_ARMOR } from './ai-mind.js';
+import { beginMind, knownSince, pointReady, lesson, pointExtra, dropEmptyGround, liveSightings, operationHolds, planAssault, clearAssault, ARMOR, ANTI_ARMOR } from './ai-mind.js';
 import { gridFor, rebuildGrid } from './grid.js';
 import { aiCaution } from './weather.js';
 import { insideKnownRegion } from './world-territories.js';
@@ -148,11 +148,54 @@ function spotNear(view, p) {
 // Kept out of the game state; only fed by what the AI's team can see.
 const MEMORY = new WeakMap();
 const memoryOf = (g, slot) => { if (!MEMORY.has(g)) MEMORY.set(g, []); const m = MEMORY.get(g); return (m[slot] ??= {}); };
+// Called when a human resumes this seat, before the next AI takeover can claim its units.
+export function resetAI(g, slot) { const memories = MEMORY.get(g); if (memories) delete memories[slot]; }
 const knownBuildings = (view) => view.ghosts;
 const inCover = (_view, u) => u.cover === 1 || u.cover === 2;
 
 // Refresh on the same beat as human snapshots. A think between beats uses the previous view.
-export function observe(g, slot, cache) { return viewFor(g, slot, memoryOf(g, slot), cache); }
+export function observe(g, slot, cache) {
+  const mem = memoryOf(g, slot), view = viewFor(g, slot, mem, cache);
+  flushHordeMovement(view, slot, mem, cmd => command(g, slot, cmd));
+  return view;
+}
+
+// Spread a large idle Horde over observation beats. Player commands keep their immediate path search.
+export const HORDE_ORDER_BATCH = 4;
+function hordeQueue(view, slot, mem) {
+  const mode = view.mode;
+  if (mode?.kind !== 'horde' || mode.slot !== slot || !mode.active || view.winner !== null) {
+    mem.hordeOrders = null; return null;
+  }
+  if (mem.hordeOrders?.wave !== mode.wave) mem.hordeOrders = { wave: mode.wave, pending: new Map(), tick: -1, issued: 0 };
+  return mem.hordeOrders;
+}
+const ownPlan = u => JSON.stringify([u.orderPlan, u.worldGoal, u.routeEnd, u.moveOutcome, u.moveOutcomeTick, u.path, u.amove, u.attackId, u.targetId, u.retreating, u.orders, u.dig, u.entrench, u.build, u.enter, u.fireAt, u.nade, u.holdPos]);
+export function flushHordeMovement(view, slot, mem, send) {
+  const queue = hordeQueue(view, slot, mem); if (!queue) return;
+  if (queue.tick !== view.tick) { queue.tick = view.tick; queue.issued = 0; }
+  for (const [id, job] of queue.pending) {
+    const u = view.units.get(id);
+    if (!u || u.owner !== slot || u.hp <= 0 || u.air || u.retreating || ownPlan(u) !== job.before) { queue.pending.delete(id); continue; }
+    if (queue.issued >= HORDE_ORDER_BATCH) break;
+    queue.pending.delete(id); queue.issued++;
+    send({ ...job.command, orders: [job.order] });
+  }
+}
+function submitHordeMovement(view, slot, mem, cmd, send) {
+  const queue = hordeQueue(view, slot, mem);
+  if (!queue || !['move', 'amove'].includes(cmd.t) || cmd.queue === true) return send(cmd);
+  const direct = [];
+  for (const order of cmd.orders ?? []) {
+    const u = view.units.get(order[0]);
+    if (!u || u.owner !== slot || u.air || UNITS[u.type].structure) { direct.push(order); continue; }
+    if (!queue.pending.has(u.id) && queue.pending.size >= CFG.horde.fieldMax) continue;
+    queue.pending.set(u.id, { order: [...order], command: { ...cmd, orders: undefined }, before: ownPlan(u) });
+  }
+  if (direct.length) send({ ...cmd, orders: direct });
+  flushHordeMovement(view, slot, mem, send);
+}
+
 const worth = (u) => UNITS[u.type].cost * u.hp / (UNITS[u.type].models * UNITS[u.type].hpPer);
 
 const centroid = (us) => ({ x: us.reduce((a, u) => a + u.x, 0) / us.length, z: us.reduce((a, u) => a + u.z, 0) / us.length });
@@ -188,6 +231,11 @@ export function think(g, slot, opts = {}) {
   const mem = opts.memory ?? memoryOf(g, slot);
   mem.seen ??= new Map(); mem.node ??= new Map();
   const view = opts.view ?? viewFor(g, slot, mem);
+  // Wave lifecycle is public. A between-snapshot look cannot dispatch an expired Wave's queue.
+  if (view.mode?.kind === 'horde' && view.mode.slot === slot
+    && (g.mode?.kind !== 'horde' || !g.mode.active || g.mode.wave !== view.mode.wave || g.winner !== null)) {
+    mem.hordeOrders = null; return;
+  }
   return plan(view, slot, opts, mem, opts.submit ?? (cmd => command(g, slot, cmd)));
 }
 
@@ -200,7 +248,7 @@ function plan(observation, slot, opts, mem, send) {
     units: new Map([...observation.units].map(([id, u]) => [id, structuredClone(u)])) };
   if (observation.players[-1]) view.players[-1] = { ...observation.players[-1] };
   const submit = (cmd) => {
-    const result = send(cmd);
+    const result = submitHordeMovement(view, slot, mem, cmd, send);
     if (result !== undefined) return result;
     const me = view.players[slot];
     if (cmd.t === 'buy') { const price = priceOf(view, cmd.unit); me.mp -= price.mp; if (price.fuel) me.fuel -= price.fuel; }
@@ -255,6 +303,7 @@ function plan(observation, slot, opts, mem, send) {
   // sends them into a fight, or once that fight has been watched, not the whole army at the first look.
   const mindful = !horde;
   const mind = beginMind(view, slot, mem, mindful ? 1 : 0);
+  if (opts.handoff) clearAssault(mind);
   if (horde) {
     const steady = all.filter(u => !u.air && !u.autoRetreat);
     if (steady.length) submit({ t: 'stance', ids: steady.map(u => u.id), key: 'autoRetreat', on: true });
@@ -732,6 +781,15 @@ function plan(observation, slot, opts, mem, send) {
     const soft = (id) => { const u = view.units.get(id); return !!u && !ANTI_ARMOR.has(u.type); };
     for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (soft(list[i][0]) && hot(list[i][1], list[i][2])) list.splice(i, 1);
   }
+  // Persistent members own their ground orders for this look, while abilities keep their ordinary checks.
+  const operationSituation = sit?.kind === 'push' && !sit.at && target && mine.length >= Math.round(L.baseArmy * caution) && strongEnough
+    ? { ...sit, at: { x: target.x, z: target.z } } : sit;
+  const operation = mindful ? planAssault(view, slot, mind, operationSituation, L, now, { busy, recovering: new Set(retreat), supportAt: mem.called, handoff: opts.handoff, sightings: liveSightings(mem, view, slot, now) }) : { claims: new Set(), commands: [] };
+  const controlled = new Set([...operation.claims, ...[...(mind.assaultReleased ?? [])].filter(([,until]) => now < until).map(([id]) => id)]);
+  if (controlled.size) {
+    for (const list of [orders, assault_]) for (let i = list.length - 1; i >= 0; i--) if (controlled.has(list[i][0])) list.splice(i, 1);
+    for (let i = retreat.length - 1; i >= 0; i--) if (controlled.has(retreat[i])) retreat.splice(i, 1);
+  }
   if (mindful && sit) {
     const action = sit.kind === 'defense' ? 'hold' : sit.kind === 'wait' ? (sit.safe != null ? 'take-other' : 'prepare') : 'take';
     mind.operation = {
@@ -744,6 +802,7 @@ function plan(observation, slot, opts, mem, send) {
   if (retreat.length) submit({ t: 'retreat', ids: retreat });
   if (orders.length) submit({ t: 'move', orders });
   if (assault_.length) submit({ t: 'amove', orders: assault_ });
+  for (const cmd of operation.commands) submit(cmd);
 }
 
 // a Fuel node (tanks) is worth about as much to the AI as a 2.5 MP/s node

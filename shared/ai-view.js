@@ -26,6 +26,8 @@ function decodeOwn(view, snap) {
     if (!u) continue;
     for (let i = 0; i < waypoints.length; i += 2) u.path.push({ x: waypoints[i], z: waypoints[i + 1] });
     const at = { x, z };
+    u.orderPlan = { kind, x, z };
+    if (kind === 1) u.worldGoal = at;
     if (kind === 2) u.amove = at;
     else if (kind === 4) u.attackId = u.targetId || 1;
     else if (kind === 5) u.fireAt = cellAt(view, x, z);
@@ -39,6 +41,9 @@ function decodeOwn(view, snap) {
     const u = view.units.get(id);
     if (!u) continue;
     u.queue = [...queue]; u.prog = progress; u.rally = x < 0 ? null : { x, z };
+  }
+  for (const [id, jobs] of snap.productionJobs ?? []) {
+    const u = view.units.get(id); if (u) u.productionJobs = jobs.map(job => ({ ...job }));
   }
   for (const [id, state, fuel, ammo, timer] of snap.air) {
     const u = view.units.get(id);
@@ -69,15 +74,16 @@ function remember(view, slot, memory) {
 function updateTerrain(memory, changes, length) {
   const old = memory.terrain;
   let chars = old.chars, flags = old.flags, height = old.height;
-  // Terrain delivers a seat only the mines its own side laid, so every N it learns of after the start is its own.
-  // (A mine painted in the map belongs to nobody and is not counted.)
+  // The delivered ownership bit distinguishes friendly mines from discovered enemy or authored mines.
   const mines = memory.mines ??= new Set();
-  for (const [c, ch, level] of changes) {
-    if (ch === 'N' && memory.mapChars[c] !== 'N') mines.add(c); else mines.delete(c);
-    if (chars[c] !== ch) {
+  for (const [c, ch, level, state, data] of changes) {
+    if (ch === 'N' && data?.mineOwned) mines.add(c); else mines.delete(c);
+    const surface = data?.object && data.object !== '.' ? data.object : data?.ground ?? '.';
+    const nextFlags = TERRAIN[ch === 'N' ? surface : ch] ?? 0;
+    if (chars[c] !== ch || flags[c] !== nextFlags) {
       if (chars === old.chars) chars = [...chars];
       if (flags === old.flags) flags = [...flags];
-      chars[c] = ch; flags[c] = TERRAIN[ch] ?? 0;
+      chars[c] = ch; flags[c] = nextFlags;
     }
     if (level !== undefined && (!height || height[c] !== level)) {
       if (height === old.height) height = height ? [...height] : Array(length).fill(0);
@@ -85,7 +91,7 @@ function updateTerrain(memory, changes, length) {
     }
   }
   // Old delivered views keep their terrain version when a later snapshot reveals an edit.
-  if (chars !== old.chars || height !== old.height) memory.terrain = Object.freeze({
+  if (chars !== old.chars || flags !== old.flags || height !== old.height) memory.terrain = Object.freeze({
     chars: chars === old.chars ? chars : Object.freeze(chars),
     flags: flags === old.flags ? flags : Object.freeze(flags),
     height: height === old.height ? height : Object.freeze(height),
@@ -98,9 +104,14 @@ export function viewFor(g, slot, memory = {}, cache) {
   if (!world && !g.initialTerrain) throw new Error('AI view requires the starting terrain');
   const first = !memory.terrain;
   if (first) {
+    const starting = c => {
+      if (!g.initialTerrain.mineLayer?.[c]) return g.initialTerrain.chars[c];
+      const object = g.initialTerrain.objects?.[c];
+      return object && object !== '.' ? object : g.initialTerrain.ground?.[c] ?? '.';
+    };
     memory.terrain = Object.freeze({
-      chars: Object.freeze(world ? Array(g.w * g.h).fill('?') : [...g.initialTerrain.chars]),
-      flags: Object.freeze(world ? Array(g.w * g.h).fill(0) : g.initialTerrain.chars.map(ch => TERRAIN[ch] ?? 0)),
+      chars: Object.freeze(world ? Array(g.w * g.h).fill('?') : g.initialTerrain.chars.map((_, c) => starting(c))),
+      flags: Object.freeze(world ? Array(g.w * g.h).fill(0) : g.initialTerrain.chars.map((_, c) => TERRAIN[starting(c)] ?? 0)),
       height: world ? Object.freeze(Array(g.w * g.h).fill(0)) : g.initialTerrain.height ? Object.freeze([...g.initialTerrain.height]) : null,
     });
     // A human handover keeps the cells that seat already discovered.
@@ -112,7 +123,7 @@ export function viewFor(g, slot, memory = {}, cache) {
   if (g.players[-1]) players[-1] = g.players[-1];
   players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()),
     ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map() }) };
-  const projection = { ...g, players, skipFog: true }; // no fog masks: the AI plans from units and terrain, not from what a client draws
+  const projection = { ...g, players, omitFogMask: true }; // omit browser masks without revealing terrain or effects
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, [], [], cache);
   updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h);
@@ -146,6 +157,9 @@ export function viewFor(g, slot, memory = {}, cache) {
     upkeep: snap.upkeep, sup: { ...snap.sup }, rally: snap.rally ? { x: snap.rally[0], z: snap.rally[1] } : null,
     visible: new Set([...view.units.values()].filter(u => view.players[u.owner].team !== me.team).map(u => u.id)) });
   decodeOwn(view, snap);
+  for (const [id, outcome, tick] of snap.movement ?? []) {
+    const u = view.units.get(id); if (u?.owner === slot) Object.assign(u, { moveOutcome: outcome, moveOutcomeTick: tick });
+  }
   remember(view, slot, memory);
   const known = new Map(view.ghosts.map(b => [b.id, b]));
   memory.buildingSeen ??= new Map();

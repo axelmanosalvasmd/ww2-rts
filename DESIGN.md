@@ -1204,6 +1204,87 @@ the page. Adding text to the game means adding its Spanish to `client/es.js`.
 
 Tuning knobs: `CFG` and `UNITS` at the top of `shared/sim.js`.
 
+### Engine and game feel (2026-10-03)
+
+[Issue #39](https://github.com/axelmanosalvasmd/ww2-rts/issues/39) implements the seven engine directions, nine
+gameplay/presentation additions and realistic physics/world destruction in the
+[implementation contract](docs/engine-game-feel-spec.md). [Verification](docs/engine-game-feel-verification.md)
+records the multiplayer scenes, fixtures, measured hardware and limits. Research documents retain the sources and
+original proposals; they are not evidence of measured gains.
+
+Traffic steering uses nearby visible units, stable priority, waiting age and validated temporary detours. It preserves
+manual destinations, queues, garrisons and protected work. Ground vehicles use rectangular swept footprints,
+acceleration/braking and hull turn limits while retaining the existing flat-ground top speeds. For example, a light
+tank accelerates at 4.8 m/s², brakes at 7.5 m/s² and turns at 1.5 rad/s; a Tiger uses 2.3, 5 and 0.95. Reverse speed
+is 40% to 50% of forward top speed by profile. Hierarchical navigation and local smoothing use the recipient's
+remembered terrain, costs and hull clearance. Live hidden terrain cannot choose a route or retry.
+
+Authoritative projectile flights sweep terrain and moving bodies between 20-Hz ticks. Contact applies damage and
+suppression once, even after the shooter dies. Small arms travel at 230 m/s, sniper rounds at 420 and direct shells
+at 150. Direct shells use gravity 9.81 m/s²; grenade/artillery profiles retain the existing 25 m/s² gameplay arcs.
+Explosive contacts terminate. A shallow nonexplosive hit below 0.28 incidence on material hardness at least 0.7 can
+ricochet within a two-contact budget with reduced energy. Full armor penetration and living-unit blast displacement
+remain outside this implementation.
+
+Version 2 maps store ground, objects and mine overlays separately, with independent material overrides. Legacy maps
+migrate without inventing buried roads. Clearing a mine reveals the original object and ground, including wear.
+Sections connect only to neighboring supports in the same structure and need a path to an anchor. Losing an anchor
+fails its unsupported dependents; independent anchored sections survive. A constructed building keeps its existing
+health budget, queue and identity during a local breach. Repair may restore supported cells in a surviving footprint;
+free repair cannot revive a destroyed building. Fire damages sections progressively, and material hardness controls
+ground deformation.
+
+Falling sections and wrecks have mass, impulse, gravity, damped motion and bounded swept contacts. There are at most
+96 active bodies, 8 contacts per body and 2.5 seconds of motion. Section travel stops within 4 metres and wreck travel
+within 2; overflow solves and settles immediately. Settled rubble/wrecks become normal pathing and cover objects.
+Debris does not displace or damage living units. Snapshots hydrate the current pose and durable footprint without
+replaying old collapse contacts. The transparent rubble atlas uses one draw call for up to 2,048 remembered patches.
+
+AI assaults preserve membership and role positions through assembly, advance, regroup and withdrawal. Initial timing
+is 12 seconds to assemble, 8 to regroup, 10 for a blocked operation, a 100-second lifetime and an 18-second withdrawal
+cooldown. Pressure thresholds are 1.25 to withdraw and 0.75 to resume; MG and armor matchups also matter. AI keeps
+the human observation and command boundary, and handing control back clears its operation claims. Horde uses the
+normal budget and unlocks, with mixed/infantry/armor/siege profiles announced during the break. Defining purchase
+shares target 65% infantry, 50% armor and 45% siege; a category repeats at most twice. These are initial behavior
+settings, not a faction-balance conclusion.
+
+The first full-engine comparison used four paired seeds on Default Conquest with three Normal AI seats,
+Standard armies and the normal 20 Hz step/10 Hz observation schedule. Both variants finished all four matches
+and recorded USA/Germany/USSR wins of 2/1/1. Median match duration changed from 548.425 to 595.050 seconds;
+three final matches lasted longer and one ended sooner. Authoritative combat kills totaled 80 before and 56 after.
+This eight-match behavior pilot compares the full engine changes and does not establish faction balance or isolate
+AI strength. Exact per-seed results, movement outcomes and frozen source hashes are in the
+[verification record](docs/engine-game-feel-verification.md#integrated-engine-pilot).
+
+Large idle Horde launches keep a private Wave-scoped FIFO and submit four ordinary ground move orders per
+100 ms observation beat (the normal 10 Hz delivery). A 238-unit staged batch launches in 59 following beats (5.9 seconds), with at most
+6 seconds including the first observation wait. Adaptive 5 Hz delivery doubles that bound to 12 seconds. Dead units, changed owner/orders, a break, a new Wave and a
+controller reset discard stale work. Fielded units still count toward ordinary Wave completion; direct player
+commands retain immediate path searches. This spreads initial searches without reducing total search work.
+The baseline and rebased four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
+32.601 ms on the final engine, including a 29.161 ms maximum AI phase, over 160 ticks on the local i5-12400.
+The earlier integrated engine reached 1,047.132 ms before staggering. Both fixtures reached the existing
+240 field and Reserve caps. The baseline predates the strategic geography merge and was not rerun. Final p95
+increased from 5.558 to 27.244 ms, with more path work spread across ticks;
+this is a bounded fixture measurement, not a total CPU reduction or universal latency guarantee.
+Current-only Huge/Massive World fixtures measured 30.607/49.943 ms p95, with 47.787/124.532 ms maximums above the
+40 ms tick budget. Their random seeds, staged resources, unpaced ticks and disabled compression limit comparison.
+Exact conditions and source hashes are in the [verification record](docs/engine-game-feel-verification.md#measured-workloads).
+
+Waiting production jobs have stable owner-only IDs and retain the charge paid at purchase. Canceling a waiter refunds
+that exact MP/Fuel charge once and releases its reserved population without resetting active training. Alert history
+keeps 100 local notices, including their delivered text and positions. Alt+number explicitly transfers selection
+out of other control groups. Vehicle damage smoke enters at 65% health and severe smoke at 32%, clearing through
+71%/38% hysteresis after repair. Location/weather ambience uses only known delivered terrain and the master volume.
+Detailed animation is gated before expensive unit work; camera return uses the current pose with no emission debt.
+
+Scenario authoring uses stable IDs, localized text, bounded conditions/actions, player/team/match scopes and finite
+repeat policies. Trigger dependencies cannot cycle. Reinforcements use normal arrival/population/terrain rules and
+finite expiry. Reconnect preserves execution identity without issuing rewards again. Scenario and mine source is
+available only to authenticated editing; public previews and match starts conceal future script contents. Failed
+validation leaves the previous match/lobby intact. The separate effect-priority/load-control proposal remains outside
+the approved scope.
+
 ## Naval warfare (decided 2026-10-01, slice 1 built)
 Goal: a big-map mode where players slowly take resource nodes, fortify their coast, then cross the sea to invade.
 - Decided with the user: games last 60 minutes at most; both FFA and teams; ships at true size on bigger maps (a
