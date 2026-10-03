@@ -2,8 +2,29 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## World Conquest (2026-10-03)
+
+World Conquest is a separate multiplayer mode with a generated, connected continent. Huge has 64 regions;
+Massive has 128. Huge spans 1,024 by 1,024 metres and Massive spans 2,048 by 1,024 metres. Each region is
+128 metres across. Each player starts with one home region, an HQ, an Engineer Squad and a Rifle Squad.
+The remaining regions have local hostile defenders. No region grants free troops or a captured production queue.
+
+Destroy a region's defending military base and defending Production Buildings, then occupy its capture point
+with infantry. Any reachable region can be claimed. Teams own land together, share its income and population
+benefits, and retain separate units, resources and queues. Construction uses the normal costs and prerequisites
+and must fit on owned ground. A paid recovery action preserves a route back to production while land survives.
+
+Terrain, regions, resources and enemy homes are unknown until scouted. Explored ground is remembered; current
+enemy activity needs current shared vision. Starts, reconnects, AI observations and spectators receive filtered
+world information. The server keeps the generation seed and full map private during the match.
+
+Losing an HQ does not cause defeat. Losing the last team region does. Winning requires all regions, including
+those still held by local defenders. Classic's production-loss defeat and Sudden Death do not apply. The intended
+Huge match length is 45 to 60 minutes, a balance target that needs playtesting rather than a victory timer.
+The full acceptance criteria are in [the World Conquest spec](docs/world-conquest-spec.md) and issue #37.
+
 ## Game
-- Tactics skirmish, no base building outside Classic mode. PvP: 1v1 or 3-player FFA, joined by room link (`/#code`). The host can add AI opponents.
+- Tactics skirmish, with base building in Classic and World Conquest. PvP: teams or free-for-all, joined by room link (`/#code`). The host can add AI opponents.
 - Win: first to 1200 VP. The center gives 2 VP/s and no manpower; villages give 1 VP/s + 1.5 MP/s.
 - Economy is mostly flat (4 MP/s base). Trailing players get up to +6 MP/s catch-up (1 per 60 VP behind the leader;
   was +4 per 80 until the new units made games one-sided).

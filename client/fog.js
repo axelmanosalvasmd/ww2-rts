@@ -12,18 +12,19 @@ const SHADE = 10; // the overlay's colour (near black); surfaces.js mixes toward
 let versions = 0; // the minimap repaints when this moves; it never repeats across matches
 
 // w, h: the map in cells. key: the start message's fog ({ v: seen, e: explored }). off: no fog at all (map editor).
-export function createFog(w, h, key, off = false) {
+export function createFog(w, h, key, off = false, opaque = false) {
+  const dark = opaque ? 255 : DARK;
   const n = w * h, data = new Uint8Array(n * 4);
   const seen = new Uint8Array(n), explored = new Uint8Array(n), lit = new Uint8Array(n), litList = [];
   const want = new Uint8Array(n), alpha = new Float32Array(n), busy = new Uint8Array(n), active = [];
   const rowMin = new Int32Array(h).fill(w), rowMax = new Int32Array(h).fill(-1);
   // without a mask (an older server) nothing is hidden on the ground
-  let lifted = off || !key, uploaded = false;
+  let lifted = off || (!key && !opaque), uploaded = false;
   if (key) {
     unpackRuns(key.v, (start, count) => seen.fill(1, start, start + count));
     unpackRuns(key.e, (start, count) => explored.fill(1, start, start + count));
   }
-  const look = c => (lifted || seen[c] || lit[c] ? CLEAR : explored[c] ? DIM : DARK);
+  const look = c => (lifted || seen[c] || lit[c] ? CLEAR : explored[c] ? DIM : dark);
   // texture row 0 is the far (z = max) edge, like the ground overlay's plane
   for (let c = 0; c < n; c++) {
     const i = ((h - 1 - Math.floor(c / w)) * w + c % w) * 4;
@@ -31,11 +32,11 @@ export function createFog(w, h, key, off = false) {
     data[i + 3] = alpha[c] = want[c] = look(c);
   }
   const texture = new THREE.DataTexture(data, w, h);
-  texture.magFilter = texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = texture.minFilter = opaque ? THREE.NearestFilter : THREE.LinearFilter;
   texture.needsUpdate = true;
   // the first upload sends the whole texture; row ranges only after it
   texture.onUpdate = () => { uploaded = true; };
-  const state = { texture, w, h, version: ++versions, seen, explored };
+  const state = { texture, w, h, version: ++versions, seen, explored, opaque };
   const touch = c => {
     const t = look(c);
     if (t === want[c]) return;
@@ -98,7 +99,7 @@ export function createFog(w, h, key, off = false) {
   // the minimap's fog (an ImageData of w x h, rows in map order), from each cell's look
   state.minimap = (img) => {
     const d = img.data;
-    for (let c = 0; c < n; c++) { d[c * 4] = d[c * 4 + 1] = d[c * 4 + 2] = SHADE; d[c * 4 + 3] = want[c] === CLEAR ? 0 : want[c] === DIM ? 110 : 175; }
+    for (let c = 0; c < n; c++) { d[c * 4] = d[c * 4 + 1] = d[c * 4 + 2] = SHADE; d[c * 4 + 3] = want[c] === CLEAR ? 0 : want[c] === DIM ? 110 : opaque ? 255 : 175; }
   };
   state.dispose = () => texture.dispose();
   return state;

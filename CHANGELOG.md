@@ -5,6 +5,14 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Added World Conquest: scout a generated continent of 64 or 128 regions, destroy local defenses, claim land
+  with infantry, and build your own military in conquered territory. Each player starts with one home region
+  and the normal small construction force. Huge spans 1,024 by 1,024 metres; Massive spans 2,048 by 1,024 metres.
+  Teams share land and its benefits; victory requires the whole map.
+- World Conquest keeps unexplored terrain and enemy homes hidden, including after reconnecting. It uses
+  last-region defeat instead of HQ loss or Classic's Sudden Death. Match-length and large-army balance still
+  need multiplayer playtesting.
+
 ### 2026-10-03: Defeated players spectate (`14cbe41`)
 
 - Fixed defeated teams continuing to recruit and fight in Annihilation. Losing the team's last bunker now stops

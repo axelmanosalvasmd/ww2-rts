@@ -6,7 +6,8 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { join, normalize, extname } from 'node:path';
 import { WebSocketServer } from 'ws';
-import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
+import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terrainFor, fogFor, validateMap, spawnsFor, worldMapFor, TICK, MAX_PLAYERS, FACTION_COUNT } from './shared/sim.js';
+import { generateWorldMap } from './shared/world-conquest.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
 import { think, observe, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { mapPing } from './server/map-pings.js';
@@ -91,7 +92,7 @@ export const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/api/rooms' && req.method === 'GET') {
     const list = [...rooms.values()].filter(r => r.listed && r.players.some(p => !p.ai && connected(p))).map(r => ({
-      code: r.code, title: r.title, mode: r.mode, map: r.mapName, state: r.state,
+      code: r.code, title: r.title, mode: r.mode, map: r.mode === 'world' ? 'world' : r.mapName, state: r.state, ...(r.mode === 'world' && { worldSize: r.worldSize ?? 'huge' }),
       humans: r.players.filter(p => !p.ai && connected(p)).length, ai: r.players.filter(p => p.ai).length,
       occupied: r.players.length, capacity: seats(r), joinable: r.state === 'lobby' && r.players.length < seats(r),
     }));
@@ -141,6 +142,14 @@ const everyone = (room) => [...room.players, ...room.spectators];
 const isHost = (room, p) => { const h = hostOf(room); return h >= 0 ? room.players[h] === p : room.spectators.find(connected) === p; };
 // The spectators share one terrain memory on the game (logCell feeds g.watchPending), so a snapshot replays only new
 // cells; a spectator's start gets a fresh memory (the defaults) and so the whole terrain.
+function worldWatchGame(g, watcher) {
+  const source = g.players[0], players = [...g.players];
+  if (g.players[-1]) players[-1] = g.players[-1];
+  const memory = watcher.worldView ??= { terrainMemory: new Map(source.terrainMemory ?? []), terrainPending: new Set(g.cellLog.keys()), worldTerrainSent: new Map(), fog: { version: 0, base: new Uint8Array(g.w * g.h) } };
+  for (const index of g.cellLog.keys()) memory.terrainPending.add(index);
+  players[0] = { ...source, ...memory };
+  return { ...g, players, reveal: false };
+}
 function watchGame(g, terrainMemory = new Map(), terrainPending = new Set(g.cellLog.keys())) {
   const players = [...g.players];
   players[0] = { ...players[0], terrainMemory, terrainPending, visible: EVERYTHING };
@@ -151,6 +160,16 @@ function watchGame(g, terrainMemory = new Map(), terrainPending = new Set(g.cell
 // share one stream (room.watchNet), sent in full again when one joins.
 const LISTS = ['wrecks', 'nodes'];
 function trimmed(room, net, msg, cache) {
+  if (room.mode === 'world') {
+    Object.assign(msg, unitDelta(net.sent, msg.units, net.full));
+    for (const k of LISTS) {
+      const json = JSON.stringify(msg[k] ?? null);
+      if (!net.full && net[k] === json) delete msg[k];
+      else net[k] = json;
+    }
+    net.full = false;
+    return msg;
+  }
   if (room.listCache !== cache) {
     room.listCache = cache;
     for (const k of LISTS) { const json = JSON.stringify(cache[k] ?? null), l = (room.lists ??= {})[k] ??= { v: 0 }; if (l.json !== json) Object.assign(l, { json, v: l.v + 1 }); }
@@ -165,6 +184,13 @@ const sendSeat = (room, i, shots, cells, cache, extra) => { const p = room.playe
 function sendWatchers(room, shots, cells, cache, extra) {
   const watching = room.spectators.filter(connected), g = room.game;
   if (!watching.length) return;
+  if (g.mode?.kind === 'world') {
+    for (const s of watching) {
+      const view = worldWatchGame(g, s);
+      send(s.ws, trimmed(room, s.net ??= { sent: new Map() }, { ...snapshotFor(view, 0, shots, cells, cache), ...extra }, cache));
+    }
+    return;
+  }
   const view = watchGame(g, g.watchTerrain ??= new Map(), g.watchPending ??= new Set(g.cellLog.keys()));
   const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, { ...snapshotFor(view, 0, shots, cells, cache), ...extra }, cache));
   for (const s of watching) s.ws.send(json);
@@ -175,7 +201,7 @@ const assaultReady = (room) => room.mode !== 'assault' || (room.players.some(p =
 const newPlayer = (room, p) => ({ ...p, team: Array.from({ length: MAX_PLAYERS }, (_, i) => i).find(t => !room.players.some(q => q.team === t)), faction: room.players.length % 3 });
 // how many players the room's map seats in the room's mode (Assault-only spawns count only in Assault)
 // (Horde and Tutorial: everyone shares one HQ, and the enemy takes the last seat)
-const seats = (room) => (room.mode === 'horde' || room.mode === 'tutorial' ? MAX_PLAYERS - 1 : spawnsFor({ spawns: room.mapSpawns }, room.mode).length);
+const seats = (room) => (room.mode === 'world' ? MAX_PLAYERS : room.mode === 'horde' || room.mode === 'tutorial' ? MAX_PLAYERS - 1 : spawnsFor({ spawns: room.mapSpawns }, room.mode).length);
 
 async function lobby(room) {
   const maps = await listMaps(), horde = room.mode === 'horde' ? await hordeMaps() : undefined;
@@ -183,8 +209,8 @@ async function lobby(room) {
     spectator: i < 0, amHost: isHost(room, p), spectators: room.spectators.map(s => s.name),
     listed: !!room.listed,
     hordeMaps: horde, hordeBest: room.mode === 'horde' ? recordOf(room) : null,
-    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
-    mode: room.mode, defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
+    t: 'lobby', code: room.code, state: room.state, you: i, host: hostOf(room), maps, mapName: room.mode === 'world' ? 'world' : room.mapName, spawns: seats(room), publicUrl: PUBLIC_URL,
+    mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army ?? 'standard', weather: room.weather ?? 'map',
     // a finished match's result carries this player's own outcome (you); a match the host ended has none
     result: room.result ? { ...room.result, you: room.result.story && i >= 0 ? p.lastMatch ?? null : null } : null,
     players: room.players.map(q => ({ name: q.name, connected: connected(q) || !!q.ai, ai: !!q.ai, team: q.team, faction: q.faction, level: q.ai ? q.level ?? 'normal' : null })),
@@ -196,7 +222,7 @@ async function startMatch(room) {
   const starting = room.starting = {};
   const previous = { state: room.state, game: room.game };
   room.state = 'play'; room.game = null; // claim it before the await so a double-click can't start twice
-  const map = await loadMap(room.mapName);
+  const map = room.mode === 'world' ? generateWorldMap({ size: room.worldSize ?? 'huge', seed: randomBytes(4).readUInt32LE(), players: room.players.length, teams: room.players.map(p => p.team) }) : await loadMap(room.mapName);
   if (room.starting !== starting || room.state !== 'play') return;
   if (room.mode === 'horde' && !map.defend?.length) {
     Object.assign(room, previous);
@@ -208,7 +234,7 @@ async function startMatch(room) {
   room.result = null;
   room.snapEvery = 2; room.tickMeter = createTickMeter({ now: Date.now() });
   room.map = map;
-  const game = room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, defenderTeam: room.defenderTeam, army: room.army,
+  const game = room.game = createGame(room.map, room.players.map(p => p.name), true, room.players.map(p => p.team), room.players.map(p => p.faction), { mode: room.mode, worldSize: room.worldSize ?? 'huge', defenderTeam: room.defenderTeam, army: room.army,
     weather: room.weather ?? 'map', mapKey: room.mapName, weatherSeed: Math.floor(Math.random() * 2 ** 31) });
   const startView = snapshotCache(room.game), startSeats = [...room.players.keys()].filter(i => room.players[i].ai);
   if (room.game.mode?.kind === 'horde') startSeats.push(room.game.mode.slot); // the horde plays by the same view rules
@@ -223,9 +249,17 @@ async function startMatch(room) {
 
 // watcher: a spectator, who gets seat i's start without a fog mask (the client then hides nothing)
 function sendStart(room, i, watcher) {
-  if (watcher) { if (room.watchNet) room.watchNet.full = true; } else room.players[i].net = { sent: new Map() }; // the next snapshot carries everything
-  const g = watcher ? watchGame(room.game) : room.game, ws = (watcher ?? room.players[i]).ws;
-  send(ws, { t: 'start', matchId: room.matchId, map: room.map, you: i, spawn: room.game.players[i].spawn, spawns: room.game.players.map(p => p.spawn), cells: terrainFor(g, i, true), fog: watcher ? undefined : fogFor(g, i, true), names: room.game.players.map((p, k) => room.players[k]?.name ?? p.name), teams: room.game.players.map(p => p.team), factions: room.game.players.map(p => p.faction), weather: weatherRow(room.game) });
+  const world = room.game.mode?.kind === 'world';
+  if (watcher && world) { watcher.net = { sent: new Map(), full: true }; watcher.worldView = null; }
+  else if (watcher) { if (room.watchNet) room.watchNet.full = true; }
+  else room.players[i].net = { sent: new Map() };
+  const g = watcher ? (world ? worldWatchGame(room.game, watcher) : watchGame(room.game)) : room.game;
+  const ws = (watcher ?? room.players[i]).ws, players = world ? room.game.players.slice(0, room.players.length) : room.game.players;
+  const team = room.game.players[i].team;
+  send(ws, { t: 'start', matchId: room.matchId, map: world ? worldMapFor(g, i) : room.map, you: i,
+    spawn: room.game.players[i].spawn, spawns: players.map(p => !world || p.team === team ? p.spawn : null),
+    cells: terrainFor(g, i, true), fog: watcher && !world ? undefined : fogFor(g, i, true),
+    names: players.map((p, k) => room.players[k]?.name ?? p.name), teams: players.map(p => p.team), factions: players.map(p => p.faction), weather: weatherRow(room.game) });
   if (room.pause) send(ws, pauseMessage(room));
 }
 
@@ -396,7 +430,7 @@ wss.on('connection', (ws, req) => {
       // you pick your own faction; the host sets teams, and the AIs' factions
       const p = room.players[msg.slot];
       if (p && (host ? msg.t === 'team' || p.ai || p === me : msg.t === 'faction' && p === me)) { p[msg.t] = msg.v; lobby(room); }
-    } else if (msg.t === 'mode' && host && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde', 'tutorial'].includes(msg.v)) {
+    } else if (msg.t === 'mode' && host && room.state !== 'play' && ['conquest', 'assault', 'annihilation', 'classic', 'horde', 'tutorial', 'world'].includes(msg.v)) {
       if (msg.v === 'tutorial') Object.assign(room, { mapName: 'tutorial', mapSpawns: TUTORIAL_SPAWNS });
       if (msg.v === 'horde') {
         // Horde: a map with defender spawns (the first one, if the current map has none), and never Endless
@@ -406,6 +440,8 @@ wss.on('connection', (ws, req) => {
         if (room.army === 'endless') room.army = 'standard';
       }
       room.mode = msg.v; lobby(room);
+    } else if (msg.t === 'worldSize' && host && room.state !== 'play' && ['huge', 'massive'].includes(msg.v ?? msg.size)) {
+      room.worldSize = msg.v ?? msg.size; lobby(room);
     } else if (msg.t === 'army' && host && room.state !== 'play' && ['standard', 'large', 'massive', 'endless'].includes(msg.v) && !(room.mode === 'horde' && msg.v === 'endless')) {
       room.army = msg.v; lobby(room);
     } else if (msg.t === 'weather' && host && room.state !== 'play' && WEATHER_CHOICES.includes(msg.v)) {
@@ -416,7 +452,7 @@ wss.on('connection', (ws, req) => {
       await startMatch(room);
     } else if (msg.t === 'resync' && room.state === 'play') {
       // the client's unit rows drifted from what we sent (it checks held): the next snapshot replaces them all
-      const net = seated ? me.net : room.watchNet;
+      const net = seated || room.mode === 'world' ? me.net : room.watchNet;
       if (net) net.full = true;
     } else if (msg.t === 'restart' && host && room.state === 'play' && room.game) {
       await startMatch(room); // same map, mode and teams, from scratch

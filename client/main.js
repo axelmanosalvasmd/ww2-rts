@@ -46,6 +46,7 @@ import { createConnection } from './connection.js';
 import { roomAddress, roomToken, matchStorage } from './room-session.js';
 import { createCoverPreview } from './cover-preview.js';
 import { createMapView } from './map-view.js';
+import { createWorldRegions } from './world-regions.js';
 import { createAutocast } from './autocast.js';
 import { t as tr } from './i18n.js';
 
@@ -58,15 +59,17 @@ const FACTIONS = [
 const COLORS = [0x3b73d6, 0xcc3a2e, 0xece6d6, 0xe2832b, 0x9b5cd4, 0x35b6c0]; // grease-pencil palette: blue, red, chalk, orange, violet, cyan
 const AI_LEVELS = ['easy', 'normal', 'hard'];
 let teams = [], factions = [];
-const facOf = (slot) => factions[slot] ?? slot % 3;
+const facOf = (slot) => factions[slot] ?? (slot < 0 ? 0 : slot % 3);
 const look = (slot) => ({ ...FACTIONS[facOf(slot)], color: COLORS[slot] ?? 0xdddddd });
 const foe = (slot) => (teams[slot] ?? slot) !== (teams[me] ?? me);
 // planes fly this high over the ground (one altitude for all)
 const AIR_ALT = 20;
 const isAir = (type) => !!UNITS[type]?.air;
-const classicMode = () => lobbyState?.mode === 'classic';
+const worldMode = () => !!lastStart?.map?.world || lobbyState?.mode === 'world';
+const classicMode = () => ['classic', 'world'].includes(lobbyState?.mode) || !!lastStart?.map?.world;
 const isVeh = (type) => !UNITS[type].infantry;
 const barY = (type) => (isAir(type) ? AIR_ALT + 2.5 : type === 'bunker' || type === 'hq' || type === 'barracks' || type === 'motorpool' || type === 'shipyard' ? 7.5 : type === 'destroyer' ? 24 : type === 'gunboat' ? 5 : type === 'depot' ? 4.5 : type === 'tiger' || type === 'churchill' || type === 'medium' ? 4.2 : isVeh(type) ? 3.4 : 2.4);
+const regionTeamColor = (team) => css(team < 0 ? 0xaaaaaa : COLORS[teams.indexOf(team)] ?? 0xaaaaaa);
 const css = (c) => '#' + c.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const $ = (id) => document.getElementById(id);
@@ -236,6 +239,7 @@ $('fullscreen').onclick = async () => {
   } catch {}
 };
 $('mapSel').onchange = () => sendCmd({ t: 'map', name: $('mapSel').value });
+$('worldSizeSel').onchange = () => sendCmd({ t: 'worldSize', size: $('worldSizeSel').value });
 $('modeSel').onchange = () => sendCmd({ t: 'mode', v: $('modeSel').value });
 // army size labels come from CFG.armies, so they cannot drift from the real numbers
 $('armySel').innerHTML = Object.entries(CFG.armies).map(([key, v]) => `<option value="${esc(key)}">${esc(key[0].toUpperCase() + key.slice(1))}${v.pop === 1 && v.income === 1 ? '' : `: ${v.pop}x units, ${v.income}x income`}</option>`).join('');
@@ -270,6 +274,7 @@ const MODE_INFO = {
   annihilation: 'Every side starts with a fortified command bunker. Destroy every enemy bunker: last side standing wins. No clock.',
   classic: 'Build a base with engineers and train an army. Destroy every enemy HQ, Barracks, Motor Pool and Airfield.',
   tutorial: 'Learn to play: Sergeant Hollis walks you from a glider landing to a bridge, one order at a time. Friends can join as co-op.',
+  world: 'Scout a hidden continent, destroy regional military bases, then claim regions with infantry. Build your own bases on owned territory. Your side wins by owning every region. No clock.',
   horde: 'Co-op: everyone shares one HQ and defends one command bunker against waves that keep growing. The next wave comes when the last one is dead. How far can you get?',
 };
 const prettyMap = (n) => n.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\bXl\b/, 'XL');
@@ -278,12 +283,25 @@ const mapCache = new Map();
 // behind the lobby form: the selected map's battlefield, drifting slowly (client/lobby-view.js)
 const lobbyView = createLobbyView($('overlay'));
 async function previewMap(name, mode) {
+  if (mode === 'world') {
+    lobbyView.hide();
+    const cv = $('mapCanvas'), c = cv.getContext('2d');
+    c.fillStyle = '#101412'; c.fillRect(0, 0, cv.width, cv.height);
+    c.fillStyle = '#d6b25e'; c.textAlign = 'center'; c.font = '18px sans-serif';
+    c.fillText('Uncharted continent', cv.width / 2, cv.height / 2);
+    c.font = '13px sans-serif'; c.fillText('Explore to reveal terrain', cv.width / 2, cv.height / 2 + 26);
+    c.textAlign = 'start';
+    const total = lobbyState?.worldSize === 'massive' ? 128 : 64;
+    const metres = total === 128 ? '2,048 × 1,024' : '1,024 × 1,024';
+    $('mapInfo').textContent = `${metres} metres. ${total} regions. Fresh geography at match start. Shared discoveries within your team.`;
+    return;
+  }
   let m = mapCache.get(name);
   if (!m) {
     try { m = await (await fetch(`/maps/${encodeURIComponent(name)}`)).json(); } catch { return; }
     mapCache.set(name, m);
   }
-  if (lobbyState?.mapName !== name) return; // the host picked another map meanwhile
+  if (lobbyState?.mapName !== name || lobbyState?.mode === 'world') return; // the host picked another map meanwhile
   wx.mapDefault(m, name);
   lobbyView.show(name, m);
   const cv = $('mapCanvas'), c = cv.getContext('2d'), s = cv.width / Math.max(m.w, m.h), ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
@@ -321,7 +339,7 @@ function renderLobby(m) {
   $('link').value = roomLink(local && m.publicUrl ? m.publicUrl : location.origin);
   $('overlay').classList.toggle('hidden', m.state === 'play');
   const n = m.players.length, host = !!m.amHost, lobby = m.state === 'lobby';
-  const seatLimit = m.listed ? Math.min(COLORS.length, m.spawns ?? 3) : COLORS.length;
+  const seatLimit = m.mode === 'world' ? COLORS.length : m.listed ? Math.min(COLORS.length, m.spawns ?? 3) : COLORS.length;
   // host sets teams (and the AIs' factions), everyone picks their own faction
   const pick = (kind, i, v, opts, can) => `<select data-kind="${kind}" data-slot="${i}" ${can && lobby ? '' : 'disabled'}>${opts.map((o, k) => `<option value="${k}" ${k === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   const level = (p, i) => p.ai ? ' ' + pick('level', i, AI_LEVELS.indexOf(p.level ?? 'normal'), ['Easy', 'Normal', 'Hard'], host).replace('<select', '<select title="AI difficulty" aria-label="AI difficulty"') : '';
@@ -332,6 +350,7 @@ function renderLobby(m) {
       <span style="margin-left:auto">${pick('team', i, p.team, COLORS.map((_, k) => 'Team ' + (k + 1)), host && m.mode !== 'horde')} ${pick('faction', i, p.faction, FACTIONS.map(f => f.name), i === m.you || (host && p.ai))}${level(p, i)}</span>${kick}</div>`;
   }).join('') + (n < seatLimit ? '<div class="slot muted">open slot</div>' : '') + (m.spectators?.length ? `<div class="slot muted">Watching: ${m.spectators.map(esc).join(', ')}</div>` : '');
   $('watchBtn').textContent = watching ? 'Take a seat' : 'Watch as a spectator';
+  $('watchBtn').title = m.mode === 'world' ? "Spectators share one team's explored world and command nothing" : 'Spectators see the whole map and command nothing. With only AI players seated, a spectator hosts';
   $('watchBtn').classList.toggle('hidden', !lobby || (watching && n >= seatLimit));
   $('roster').querySelectorAll('.kick').forEach(b => (b.onclick = () => sendCmd({ t: 'kick', slot: +b.dataset.slot })));
   $('roster').querySelectorAll('select').forEach(el => (el.onchange = () => sendCmd({ t: el.dataset.kind, slot: +el.dataset.slot, v: el.dataset.kind === 'level' ? AI_LEVELS[+el.value] : +el.value })));
@@ -339,7 +358,10 @@ function renderLobby(m) {
   const horde = m.mode === 'horde'; // Horde: only maps with defender spawns, never Endless
   $('mapSel').innerHTML = (m.maps || []).map(n => `<option value="${esc(n)}" ${n === m.mapName ? 'selected' : ''} ${horde && !m.hordeMaps?.includes(n) ? 'disabled' : ''}>${esc(prettyMap(n))}</option>`).join('');
   previewMap(m.mapName, m.mode || 'conquest');
-  $('mapSel').disabled = !host || !lobby;
+  $('mapSel').disabled = !host || !lobby || m.mode === 'world';
+  $('mapSel').closest('.row').classList.toggle('hidden', m.mode === 'world');
+  $('worldSizeRow').classList.toggle('hidden', m.mode !== 'world');
+  $('worldSizeSel').value = m.worldSize || 'huge'; $('worldSizeSel').disabled = !host || !lobby;
   // Assault: the host picks which team defends; everyone else attacks
   const assault = m.mode === 'assault', teamIds = [...new Set(m.players.map(p => p.team))].sort((a, b) => a - b);
   $('modeSel').value = m.mode || 'conquest'; $('modeSel').disabled = !host || !lobby;
@@ -356,8 +378,8 @@ function renderLobby(m) {
   // "3v3", "2v2v2", "1v1", or FFA when nobody shares a team
   const sizes = [...new Set(m.players.map(p => p.team))].map(t => m.players.filter(p => p.team === t).length);
   const mode = n === 1 ? 'solo test' : sizes.length === 1 ? 'co-op' : sizes.every(k => k === 1) && n > 2 ? `${n}-way FFA` : sizes.join('v');
-  $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${horde ? `horde, ${n} defender${n === 1 ? '' : 's'}` : assault ? 'assault' : m.mode === 'classic' || m.mode === 'annihilation' ? m.mode + ' ' + mode : mode}`;
-  const tooMany = n > (m.spawns ?? 3);
+  $('start').textContent = `${m.result ? 'Play again' : 'Start'}: ${horde ? `horde, ${n} defender${n === 1 ? '' : 's'}` : assault ? 'assault' : m.mode === 'world' ? 'World Conquest ' + mode : m.mode === 'classic' || m.mode === 'annihilation' ? m.mode + ' ' + mode : mode}`;
+  const tooMany = n > (m.mode === 'world' ? COLORS.length : m.spawns ?? 3);
   $('start').disabled = tooMany || !assaultOk || !n;
   $('lobbyMsg').textContent = tooMany ? (horde ? `Horde seats ${m.spawns} defenders: remove a player.` : `This map has ${m.spawns} spawns: pick a bigger map or remove players.`) : !assaultOk ? 'Assault needs players on the defending team and on another team.' : host ? (n === 1 ? `Send the invite link, or add an AI ${horde ? 'teammate' : 'opponent'}.` : '') : 'Waiting for the host to start...';
   // the last match's result, until the next one starts (the room is back in the lobby: change map or mode freely)
@@ -406,7 +428,7 @@ let world, MW = 0, MH = 0, fogOfWar = null, points = [], groundMesh = null, fogM
 const SHARED_GEOS = new Set(Object.values(GEO));
 
 // Ground height and the terrain surface come from client/relief.js: cliffs, eased slopes, river beds and banks.
-let relief = null, mapView = null;
+let relief = null, mapView = null, worldRegions = null;
 function hAt(x, z) { return relief?.hAt(x, z) ?? 0; }
 const units = new Map(), selected = new Set(), groups = {}, fx = [];
 
@@ -418,6 +440,7 @@ function startGame(m, restored = null) {
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
+  worldRegions?.dispose(); worldRegions = null;
   terrain?.ground.dispose();
   relief?.dispose(); apron?.dispose(); fogMesh?.material.dispose(); fogMesh = null;
   if (world) { scene.remove(world); disposeTree(world, SHARED_GEOS); fogOfWar?.dispose(); } // Play again reuses the page
@@ -432,6 +455,7 @@ function startGame(m, restored = null) {
   document.body.classList.toggle('observing', watching);
   objectives.reset(); endgame.reset();
   MW = map.w * CELL; MH = map.h * CELL;
+  camera.far = Math.max(2200, Math.hypot(MW, MH) * 4); camera.updateProjectionMatrix();
 
   // ground: painted canvas (client/ground.js), reused across rebuilds of a same-sized map
   const gp = createGround(map, renderer, EDIT ? {} : {
@@ -442,10 +466,12 @@ function startGame(m, restored = null) {
   world.add(terrain.group);
   // what the server says about a cell besides its type: wear, burnt, damage stage (see startState in shared/sim.js)
   terrain.state = Uint8Array.from(map.rows.join(''), startState);
-  for (const [cell, ch, lv, st] of m.cells || []) { terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
+  if (map.world) map.discovered = new Uint8Array(map.w * map.h);
+  for (const [cell, ch, lv, st] of m.cells || []) { if (map.discovered) map.discovered[cell] = 1; terrain.grid[Math.floor(cell / map.w)][cell % map.w] = ch; terrain.state[cell] = st ?? 0; if (lv !== undefined) setLevel(map, cell, lv); }
+  if (map.world) map.rows = terrain.grid.map(r => r.join(''));
   gp.paint(terrain.grid, terrain.state);
   // the fog overlay shares the relief's live geometry, which a crater replaces
-  relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low,
+  relief = createRelief(map, terrain.grid, { texture: gp.tex, isRoad: gp.isRoad, gfx, low: gfx.low || !!map.world,
     onGeometry: geometry => { if (fogMesh) fogMesh.geometry = geometry; mapView?.setGeometry(geometry); } });
   const ground = relief.mesh;
   world.add(ground); groundMesh = ground;
@@ -475,7 +501,7 @@ function startGame(m, restored = null) {
   });
 
   // fog of war overlay: the server's mask of what my team sees (client/fog.js)
-  fogOfWar = createFog(map.w, map.h, m.fog, EDIT);
+  fogOfWar = createFog(map.w, map.h, m.fog, EDIT, !!map.world);
   setFogMap(EDIT ? null : fogOfWar.texture, MW, MH); // walls, roofs and props darken in the fog too
   const fog = fogMesh = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({ map: fogOfWar.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 }));
   fog.renderOrder = 1; fog.visible = !EDIT;
@@ -483,12 +509,14 @@ function startGame(m, restored = null) {
   // zoomed out, the paper war map (client/map-view.js, a prototype)
   mapView?.dispose(); mapView = EDIT ? null : createMapView({ grid: terrain.grid, w: map.w, h: map.h, geometry: ground.geometry, hAt, fog: fogOfWar, units, colorOf: (slot) => css(look(slot).color), title: map.name || lobbyState?.mapName || '',
     camera, view: renderer.domElement, state: () => ({ me, selected, strikes: lastSnap?.strikes ?? [],
+      regions: lastSnap?.world?.regions ?? [], teamColor: regionTeamColor,
       points: points.map((p, i) => ({ x: p.g.position.x, z: p.g.position.z, owner: lastSnap?.points[i]?.[0] ?? -1 })) }) });
   if (mapView) world.add(mapView.object);
   atmos.start({ map, key: lobbyState?.mapName, ground, hAt, weather: m.weather, apron }); // mood, clouds, mist, weather, birds
   wx.start(m.weather, atmos);
 
-  m.spawns.forEach((sp, i) => world.add(buildHQ(sp, i)));
+  m.spawns.forEach((sp, i) => { if (sp) world.add(buildHQ(sp, i)); });
+  if (map.world) worldRegions = createWorldRegions({ parent: world, hAt, colorOf: regionTeamColor, slotColor: slot => look(slot).color, team: () => teams[me] ?? me });
   aimMesh = null; nodeMarks = null; coverGroup = null; ghosts.clear();
   coverPreview.start();
 
@@ -514,12 +542,13 @@ function startGame(m, restored = null) {
 let terrain = null;
 let props = null;
 // big battles change cells every snapshot: the 3D pieces and the minimap's terrain are redone at most every 0.25 s
-const terrainDue = { pieces: false, minimap: false, wait: 0 };
+const terrainDue = { pieces: false, minimap: false, props: false, wait: 0 };
 function terrainFrame(dt) {
-  if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap)) return;
+  if ((terrainDue.wait -= dt) > 0 || !(terrainDue.pieces || terrainDue.minimap || terrainDue.props)) return;
   if (terrainDue.pieces && terrain) buildStructures();
+  if (terrainDue.props && lastStart?.map.world) { props?.dispose(); props = createProps({ map: lastStart.map, grid: terrain.grid, hAt, parent: world }); }
   if (terrainDue.minimap) { mmImage = null; mapView?.refresh(); }
-  terrainDue.pieces = terrainDue.minimap = false; terrainDue.wait = 0.25;
+  terrainDue.pieces = terrainDue.minimap = terrainDue.props = false; terrainDue.wait = 0.25;
 }
 // all 3D terrain pieces (client/structures.js), rebuilt from the grid whenever a cell changes
 function buildStructures() { buildPieces(terrain.group, terrain.grid, lastStart.map.rows, hAt, terrain.state, lastStart.map.buildings); }
@@ -544,13 +573,20 @@ function applyCells(cells) {
     if (moved) shaped.push(entry);
     pieces ||= moved || (terrain.state[cell] ^ st) >> 3 > 0;
     terrain.grid[y][x] = ch; terrain.state[cell] = st;
+    if (lastStart.map.world) {
+      if (!lastStart.map.discovered[cell]) terrainDue.props = true;
+      lastStart.map.discovered[cell] = 1;
+      const row = lastStart.map.rows[y]; lastStart.map.rows[y] = row.slice(0, x) + ch + row.slice(x + 1);
+    }
     if (lv !== undefined) setLevel(lastStart.map, cell, lv);
   }
   terrain.ground.paint(terrain.grid, terrain.state); // repaints only the tiles around changed cells
   if (shaped.length) {
     const xs = shaped.map(([cell]) => cell % terrain.w), ys = shaped.map(([cell]) => Math.floor(cell / terrain.w));
     const box = [Math.min(...xs) * CELL, Math.min(...ys) * CELL, (Math.max(...xs) + 1) * CELL, (Math.max(...ys) + 1) * CELL];
-    relief.update(shaped); props?.refresh(box); water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
+    relief.update(shaped); props?.refresh(box);
+    if (!water && shaped.some(([, ch]) => 'WF='.includes(ch))) { water = createWater(terrain.grid, lastStart.map, hAt); if (water) world.add(water.mesh); }
+    else water?.changed(shaped); terrainDue.minimap = true; // the fog overlay follows the relief through onGeometry
     refreshTerrain(...box);
   }
   if (pieces) terrainDue.pieces = true; // rebuilt at most 4 times a second (frame loop)
@@ -813,7 +849,16 @@ function applySnapshot(s) {
   coverGroup ??= coverRings(); // fighter cover rings, pooled (client/markers.js)
   if (coverGroup.group.parent !== world) world.add(coverGroup.group);
   coverGroup.set(s.covers ?? [], hAt);
-  if (s.nodes && !nodeMarks) { props?.setNodes(s.nodes); nodeMarks = s.nodes.map(([x, z, rate, fuel]) => { const m = nodeMark(x, z, rate, fuel); world.add(m); return m; }); }
+  if (s.nodes) {
+    props?.setNodes(s.nodes); nodeMarks ??= [];
+    const known = new Set(nodeMarks.map(m => m.nodeKey));
+    for (const [x, z, rate, fuel] of s.nodes) {
+      const key = `${x}:${z}`;
+      if (known.has(key)) continue;
+      const m = nodeMark(x, z, rate, fuel); m.nodeKey = key;
+      world.add(m); nodeMarks.push(m);
+    }
+  }
 
   syncStrikes(s.strikes);
   applyCells(s.cells);
@@ -824,7 +869,10 @@ function applySnapshot(s) {
   if (s.out?.[me] && !lastSnap?.out?.[me]) {
     selected.clear(); selection.reset(); cancelInput(); cancelAim(); hud.setRecruit(false);
   }
-  lastSnap = s; drawWorks(s.works);
+  lastSnap = s;
+  if (s.home ?? s.world?.home) { const p = s.home ?? s.world.home; home = { x: p[0], z: p[1] }; }
+  worldRegions?.snapshot(s.world?.regions ?? []);
+  drawWorks(s.works);
   document.body.classList.toggle('observing', observing());
   updateHud(s);
   wx.snapshot(s);
@@ -1007,7 +1055,7 @@ function startBuild(k) { if (explainUnavailable(available({ t: 'build', kind: k 
 // Shared footprint, terrain, level and sight checks. The server decides again on arrival.
 function footAt(k, at, dir) {
   const view = placementView();
-  return view ? { x: at.x, z: at.z, ...placementCheck(view.game, { kind: k, x: at.x, z: at.z, dir }, (spot) => view.sees(me, spot)) } : { x: at.x, z: at.z, ok: false, reason: 'notVisible' };
+  return view ? { x: at.x, z: at.z, ...placementCheck(view.game, { kind: k, x: at.x, z: at.z, dir, team: teams[me] ?? me }, (spot) => view.sees(me, spot)) } : { x: at.x, z: at.z, ok: false, reason: 'notVisible' };
 }
 let nodeMarks = null, coverGroup = null;
 // Ghosts: enemy buildings you've seen, drawn faded where they were last seen until you look again
@@ -1244,14 +1292,15 @@ const actions = {
   follow: followSelected, rally: startRally,
   formation: cycleFormation, tighten: () => reform(-0.25), spread: () => reform(0.25),
   home: () => {
-    if (!home) return;
+    const target = worldMode() ? [...units.values()].find(v => v.owner === me && v.type === 'hq') ?? home : home;
+    if (!target) return;
     rig.cancelFollow();
-    rig.frame(home.x, home.z);
+    rig.frame(target.x, target.z);
     const hq = classicMode() && [...units.values()].find(v => v.owner === me && v.type === 'hq');
     if (hq) { selected.clear(); selected.add(hq.id); }
   },
   clear: () => selected.clear(), cancelAim,
-  recruitMode: () => { if (!observing()) classicMode() ? feedback.show('In Classic, select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()); },
+  recruitMode: () => { if (!observing()) classicMode() ? feedback.show('Select a Production Building and press the letters on its cards') : hud.setRecruit(!hud.recruiting()); },
   recruitOff: () => hud.recruitBack(),
   army: () => selection.army(), idle: () => selection.findIdle(), idleAll: () => selection.findIdle(true),
   idleEngineer: () => selection.findIdle(false, true),
@@ -1507,16 +1556,23 @@ function drawMinimap() {
       fogOfWar.minimap(mmFogImg);
       fc.putImageData(mmFogImg, 0, 0); mmFogOf = fogOfWar.version;
     }
-    c.imageSmoothingEnabled = true; c.drawImage(mmFog, 0, 0, MW, MH);
+    c.imageSmoothingEnabled = !lastStart?.map.world; c.drawImage(mmFog, 0, 0, MW, MH);
   }
   const col = (slot) => css(look(slot).color);
+  for (const r of lastSnap.world?.regions ?? []) {
+    c.strokeStyle = regionTeamColor(r.team); c.lineWidth = 1 / S;
+    if (r.bounds) { const [x0, z0, x1, z1] = r.bounds; c.strokeRect(x0, z0, x1 - x0, z1 - z0); }
+    c.beginPath(); c.arc(r.x, r.z, CFG.pointRadius, 0, Math.PI * 2);
+    c.fillStyle = regionTeamColor(r.team); c.fill();
+    if (r.locked) { c.strokeStyle = '#d6b25e'; c.stroke(); }
+  }
   lastSnap.points.forEach(([owner], i) => { const p = points[i]?.g.position; if (!p) return; c.beginPath(); c.arc(p.x, p.z, CFG.pointRadius, 0, Math.PI * 2); c.fillStyle = owner >= 0 ? col(owner) + '99' : '#dddddd66'; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1 / S; c.stroke();
     // cut off from its HQ: a red cross through it
     if (lastSnap.points[i][4]) { const r = CFG.pointRadius * 0.7; c.beginPath(); c.moveTo(p.x - r, p.z - r); c.lineTo(p.x + r, p.z + r); c.moveTo(p.x + r, p.z - r); c.lineTo(p.x - r, p.z + r); c.strokeStyle = '#d0362c'; c.lineWidth = 3 / S; c.stroke(); }
     // locked for your side: dashed to the point it needs
     const to = points[i].link;
     if (lastSnap.points[i][5] && to) { c.beginPath(); c.setLineDash([6 / S, 4 / S]); c.moveTo(p.x, p.z); c.lineTo(to.x, to.z); c.strokeStyle = '#d6b25e'; c.lineWidth = 2 / S; c.stroke(); c.setLineDash([]); } });
-  (lastStart?.spawns || []).forEach((sp, i) => { c.fillStyle = col(i); c.fillRect(sp.x - 5, sp.z - 5, 10, 10); c.strokeStyle = '#000'; c.strokeRect(sp.x - 5, sp.z - 5, 10, 10); });
+  (lastStart?.spawns || []).forEach((sp, i) => { if (!sp) return; c.fillStyle = col(i); c.fillRect(sp.x - 5, sp.z - 5, 10, 10); c.strokeStyle = '#000'; c.strokeRect(sp.x - 5, sp.z - 5, 10, 10); });
   for (const [kind, x, z, dir, , owner] of lastSnap.strikes || []) {
     const sp = SUPPORT[kind]; if (!sp) continue;
     c.save(); c.translate(x, z); c.rotate(dir); c.strokeStyle = !foe(owner) ? col(owner) : '#ff3020'; c.lineWidth = 2 / S; c.strokeRect(-sp.len / 2, -sp.width / 2, sp.len, sp.width); c.restore();
@@ -1603,9 +1659,10 @@ renderer.setAnimationLoop(() => {
     const e = fx[i]; e.life -= sdt;
     if (e.life <= 0) { world.remove(e.obj); e.dispose?.(); fx.splice(i, 1); } else e.update(e.max ? e.life / e.max : 1);
   }
+  worldRegions?.frame(sdt);
   objectives.frame(sdt); effects.update(sdt); atmos.update(sdt);
   aviation.update(sdt);
-  fogOfWar?.frame(dt, epilogue.active()); // the match is decided: the fog lifts
+  fogOfWar?.frame(dt, !lastStart?.map.world && epilogue.active()); // the match is decided: the fog lifts
   alerts.frame();
   pings.frame();
   endgame.frame();
@@ -1648,7 +1705,7 @@ if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m =
 // debug handle for poking at the game from devtools
 window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
-alerts.init({ me: () => me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
+alerts.init({ me: () => me, team: () => teams[me] ?? me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },
   onScreen: (x, z) => { const p = screenOf({ x, z }); return p.front && p.x >= 0 && p.x <= innerWidth && p.y >= 0 && p.y <= innerHeight; } });
 

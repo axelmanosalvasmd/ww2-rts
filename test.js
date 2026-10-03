@@ -8327,3 +8327,11 @@ await stopServerHarness(); // the last server check is done
   const { execFileSync } = await import('node:child_process');
   execFileSync(process.execPath, ['test-performance.mjs'], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 240000 });
 }
+
+// The large-world checks use real clients and a fresh authoritative server.
+{
+  const { execFileSync } = await import('node:child_process');
+  for (const file of ['test-world-conquest.js', 'test-world-teams.js']) {
+    execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
+  }
+}

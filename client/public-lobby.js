@@ -1,6 +1,6 @@
 // The directory does not open a game socket or load Three.js until a player joins.
 const $ = id => document.getElementById(id);
-const modes = { conquest: 'Conquest', assault: 'Assault', annihilation: 'Annihilation', classic: 'Classic', horde: 'Horde' };
+const modes = { conquest: 'Conquest', assault: 'Assault', annihilation: 'Annihilation', classic: 'Classic', world: 'World Conquest', horde: 'Horde' };
 // Old /#code links, including alternate seats, retain their exact meaning.
 if (location.hash) location.replace('/play' + location.search + location.hash);
 else {

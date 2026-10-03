@@ -372,7 +372,7 @@ export function buildModel(v, root, f, fac, def) {
     root.add(hull, ...v.mounts);
     bake(hull, key + '|hull', true);
     v.models.push(root);
-  } else if (type === 'bunker') {
+  } else if (type === 'bunker' || type === 'worldbase') {
     const shell = new THREE.Group();
     shell.add(part(GEO.box, 0x8a8a82, 5.2, 2.4, 5.2, 0, 1.2, 0), part(GEO.box, 0x74746c, 6, 0.5, 6, 0, 2.6, 0), part(GEO.box, 0x1e1e1a, 0.3, 0.4, 3, 2.62, 1.6, 0));
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (i % 4 === 0) continue; shell.add(part(GEO.box, skin('sandbag', 0x9c8a60), 1.6, 0.7, 0.8, Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6).rotateY(-a + Math.PI / 2)); }

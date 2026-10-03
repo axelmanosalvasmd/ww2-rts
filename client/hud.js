@@ -180,6 +180,9 @@ export function createHud(ctx) {
         score.lead.title = mine === s.mode.defenderTeam ? 'Hold out until the clock runs out' : 'Destroy the command bunker before the clock runs out';
       } else if (kind === 'tutorial') {
         setText(mode, 'Tutorial'); setText(clk, `${s.mode.step + 1} / ${s.mode.steps}`); score.lead.title = s.mode.goal ?? '';
+      } else if (kind === 'world') {
+        setText(mode, 'World Conquest'); setText(clk, `${s.world?.owned ?? 0}/${s.world?.total ?? 0} regions`);
+        score.lead.title = 'Your team must own every region. Destroy military bases, then claim with infantry';
       } else if (kind === 'classic') {
         setText(mode, s.mode.suddenDeath ? 'Sudden death' : 'Sudden death in'); setText(clk, s.mode.suddenDeath ? '' : clock(s.mode.timeLeft));
         mode.classList.toggle('danger', !!s.mode.suddenDeath);
@@ -198,7 +201,7 @@ export function createHud(ctx) {
         const why = tr(cls && kind === 'conquest' ? 'Offline: the clock is paused until they return' : '');
         if (tm.net[k].title !== why) tm.net[k].title = why;
         const out = s.out?.[i];
-        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'assault' || i === s.mode?.slot ? '' : out ? 'Out' : `${held(i)} held`);
+        setText(tm.held[k], kind === 'conquest' ? (pts ? `${s.vp?.[i] ?? 0} pts, ${held(i)} held` : `${held(i)} held`) : kind === 'world' ? (out ? 'Out' : '') : kind === 'assault' || i === s.mode?.slot ? '' : out ? 'Out' : `${held(i)} held`);
         tm.held[k].classList.toggle('danger', !!out);
       });
       let frac = null, u0 = '', num = '', u = '', role = '', danger = false;
@@ -216,6 +219,11 @@ export function createHud(ctx) {
       } else if (kind === 'annihilation') {
         const own = units.filter((v) => v.type === 'bunker' && v.hp > 0 && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = (s.mode.bunkers?.[tm.t] ?? tm.mem.length) * UNITS.bunker.hpPer;
         if (own.length) { frac = hp / max; u0 = own.length > 1 ? `${own.length} bunkers` : 'Bunker'; num = `${Math.ceil(hp)} / ${max}`; } else { u0 = 'Out'; danger = true; }
+      } else if (kind === 'world') {
+        const count = tm.t === mine ? s.world?.owned ?? 0 : (s.world?.regions ?? []).filter(r => r.team === tm.t).length;
+        const total = s.world?.total ?? 0;
+        frac = total ? count / total : 0; num = `${count} / ${total}`; u = 'regions';
+        u0 = tm.t === mine ? 'Owned' : 'Discovered';
       } else if (kind === 'classic') {
         const own = units.filter((v) => v.type === 'hq' && teams[v.owner] === tm.t), hp = own.reduce((a, v) => a + v.hp, 0), max = own.length * UNITS.hq.hpPer;
         if (!own.length && tm.mem.some((i) => !s.out?.[i])) u0 = 'HQ out of sight';
@@ -469,7 +477,10 @@ export function createHud(ctx) {
   function drawClassicCard(s, pop, cap, sel) {
     const card = $('buy');
     const bld = sel.length === 1 && UNITS[sel[0].type].building && sel[0].owner === ctx.me ? sel[0] : null, eng = !bld && sel.some((v) => v.owner === ctx.me && v.type === 'engineer');
-    const key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : '';
+    const recovery = s.world?.recovery?.available && !bld && !eng;
+    const missingHQ = ![...ctx.units.values()].some(v => v.owner === ctx.me && v.type === 'hq');
+    const recoveryCost = missingHQ ? s.world?.recovery?.hq : s.world?.recovery?.engineer;
+    const key = bld ? `b${bld.id}:${bld.built >= 1}` : eng ? 'e' : recovery ? `recover:${missingHQ}:${recoveryCost}` : '';
     if (key !== cardKey) {
       cardKey = key;
       card.classList.toggle('hidden', !key);
@@ -485,7 +496,9 @@ export function createHud(ctx) {
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
         `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${portrait(k, ctx.me)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
+      else if (recovery) card.innerHTML = `<button class="uc wide" data-recover><span class="nm">Restore ${missingHQ ? 'HQ' : 'Engineer'}</span><span class="cost">${recoveryCost} MP</span><span class="sub">Deploys in friendly territory</span></button>`;
       else card.innerHTML = '';
+      card.querySelector('[data-recover]')?.addEventListener('click', () => ctx.send({ t: 'recover' }));
       const id = bld?.id;
       card.querySelectorAll('[data-train]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.train, from: id }, many); b.onclick = () => b._buy(false); });
       // a selected production building answers to the card letters without recruit mode
@@ -493,6 +506,7 @@ export function createHud(ctx) {
       card.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { ctx.send({ t: 'cancel', id }); ctx.selected.clear(); ctx.blip(300); }));
       card.querySelectorAll('[data-build]').forEach((b) => (b.onclick = () => ctx.build(b.dataset.build)));
     }
+    if (recovery) { const button = card.querySelector('[data-recover]'); if (button) button.disabled = s.mp < recoveryCost; }
     if (bld && bld.built < 1) setText(card.querySelector('[data-built]'), `${Math.round(bld.built * 100)}%`);
     if (bld && bld.built >= 1) {
       const q = bld.queue ?? [], nm = (t) => name(t);
@@ -540,10 +554,10 @@ export function createHud(ctx) {
     snapshot = s;
     const me = ctx.me, all = [...ctx.units.values()];
     const pop = all.reduce((a, v) => a + (v.owner !== me ? 0 : UNITS[v.type].structure ? (v.queue ?? []).reduce((n, t) => n + popUse(t), 0) : popUse(v.type)), 0);
-    const cap = popCap(s), sel = selUnits();
+    const cap = s.world?.cap ?? popCap(s), sel = selUnits();
     drawScores(s);
     drawEcon(s, pop, cap);
-    if (s.mode?.kind === 'classic') drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
+    if (['classic', 'world'].includes(s.mode?.kind)) drawClassicCard(s, pop, cap, sel); else drawRecruit(s, pop, cap);
     drawSelection(sel);
     drawOrders(s, sel);
     drawAir(s);

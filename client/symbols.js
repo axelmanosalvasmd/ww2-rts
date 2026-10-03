@@ -464,7 +464,7 @@ for (const key of SUPPORT_KEYS) GLYPHS[key] = SYMBOLS[key].d;
 // breaking the HUD.
 const UNKNOWN = { name: '', branch: 'unknown', meaning: 'Unknown type: a question mark in a square', d: GLYPHS.unknown };
 export const hasSymbol = (type) => type in SYMBOLS;
-export const symbolInfo = (type) => SYMBOLS[type] ?? UNKNOWN;
+export const symbolInfo = (type) => SYMBOLS[type === 'worldbase' ? 'bunker' : type] ?? UNKNOWN;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
