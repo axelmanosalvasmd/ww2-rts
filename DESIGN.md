@@ -1254,17 +1254,21 @@ and recorded USA/Germany/USSR wins of 2/1/1. Median match duration changed from 
 three final matches lasted longer and one ended sooner. Authoritative combat kills totaled 80 before and 56 after.
 This eight-match behavior pilot compares the full engine changes and does not establish faction balance or isolate
 AI strength. Exact per-seed results, movement outcomes and frozen source hashes are in the
-[verification record](docs/engine-game-feel-verification.md#reproduced-ai-pilot).
+[verification record](docs/engine-game-feel-verification.md#integrated-engine-pilot).
 
 Large idle Horde launches keep a private Wave-scoped FIFO and submit four ordinary ground move orders per
 100 ms observation beat (the normal 10 Hz delivery). A 238-unit staged batch launches in 59 following beats (5.9 seconds), with at most
 6 seconds including the first observation wait. Adaptive 5 Hz delivery doubles that bound to 12 seconds. Dead units, changed owner/orders, a break, a new Wave and a
 controller reset discard stale work. Fielded units still count toward ordinary Wave completion; direct player
 commands retain immediate path searches. This spreads initial searches without reducing total search work.
-The four-defender Wave 10 Massive bridge fixture measured a 1,047.132 ms maximum tick before staggering and
-35.195 ms after, including a 30.344 ms maximum AI phase, over 160 ticks on the local i5-12400. Its field and Reserve
-both reached the existing 240 cap. An overlapping SwiftShader browser run measured a 46.574 ms maximum tick;
-the isolated result is a bounded fixture measurement, not a universal latency guarantee.
+The final paired four-defender Wave 10 Massive bridge fixture measured a 728.910 ms baseline maximum tick and
+35.813 ms on the final engine, including a 30.845 ms maximum AI phase, over 160 ticks on the local i5-12400.
+The earlier integrated engine reached 1,047.132 ms before staggering. Both final paired fixtures reached the existing
+240 field and Reserve caps. Final p95 increased from 5.558 to 28.005 ms, with more path work spread across ticks;
+this is a bounded fixture measurement, not a total CPU reduction or universal latency guarantee.
+Current-only Huge/Massive World fixtures measured 22.642/35.896 ms p95, with 42.063/58.508 ms maximums above the
+40 ms tick budget. Their random seeds, staged resources, unpaced ticks and disabled compression limit comparison.
+Exact conditions and source hashes are in the [verification record](docs/engine-game-feel-verification.md#measured-workloads).
 
 Waiting production jobs have stable owner-only IDs and retain the charge paid at purchase. Canceling a waiter refunds
 that exact MP/Fuel charge once and releases its reserved population without resetting active training. Alert history
