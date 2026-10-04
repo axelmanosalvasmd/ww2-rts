@@ -194,4 +194,4 @@ for (const child of roughTank.visualBody.children) if (child !== roughTank.turre
 });
 rough.dispose();
 console.log('vehicle terrain pose checks passed: native footprints, composed slope normals and support, all nine vehicles, yaw/reverse, suspension ordering, crests, resets and hidden sampling');
-console.log(`PASS workshop relief: ${reliefSamples} composed poses across five scenes and faction models`);
+console.log(`PASS workshop relief: ${reliefSamples} composed poses across ${TERRAIN_SCENARIOS.length} scenes and faction models`);

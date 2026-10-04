@@ -15,6 +15,7 @@ import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
 await import('./test-tutorial.js');
 await import('./test-infantry-authored.mjs');
+await import('./test-terrain-relief.mjs');
 // The authoritative solver installs durable rubble after its bounded physical fall.
 const settleDebris = g => { for (let i = 0; i <= Math.ceil(DEBRIS_LIMITS.lifetime / sim.TICK) + 1; i++) step(g); };
 const settledRubble = (g, cells, message) => {
@@ -5329,7 +5330,24 @@ for (const lookupFinished of [false, true]) {
   const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
     .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
     .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-  const { rig } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const { rig, groundAt: pickGround } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  // A narrow crest and trench need the relief's quarter-cell surface, not whole-cell corner planes.
+  const pickMap = { w: 8, h: 6, rows: ['........', '........', '...TT...', '........', '........', '........'], heights: Array(6).fill('00111004') };
+  const pickRelief = createRelief(pickMap), pickCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+  for (const [x, z] of [[5.31, 3.17], [7.21, 5.13], [6.42, 5.63], [13.83, 7.29], [0.12, 0.17]]) {
+    const target = new THREE.Vector3(x, pickRelief.hAt(x, z), z);
+    pickCamera.position.copy(target).add(new THREE.Vector3(-1.2, 8, 3)); pickCamera.lookAt(target); pickCamera.updateMatrixWorld();
+    const screen = target.clone().project(pickCamera);
+    const picked = pickGround(pickCamera, pickRelief.hAt, (screen.x + 1) * 400, (1 - screen.y) * 400, 800, 800, 16, 12, pickRelief.mesh);
+    assert.ok(picked && picked.distanceTo(target) < 1e-5, 'game picking follows the actual relief on ramps, trenches and map edges');
+  }
+  // Aim through a vertical cliff face, below its top and above its foot.
+  const face = new THREE.Vector3(14, 4, 7);
+  pickCamera.position.set(12, 5, 7); pickCamera.lookAt(face); pickCamera.updateMatrixWorld();
+  const faceScreen = face.clone().project(pickCamera);
+  const cliffPick = pickGround(pickCamera, pickRelief.hAt, (faceScreen.x + 1) * 400, (1 - faceScreen.y) * 400, 800, 800, 16, 12, pickRelief.mesh);
+  assert.ok(cliffPick && cliffPick.distanceTo(face) < 1e-5, 'game picking retains vertical cliff faces');
+  pickRelief.dispose();
   const saved = { innerWidth: globalThis.innerWidth, innerHeight: globalThis.innerHeight, addEventListener: globalThis.addEventListener };
   Object.assign(globalThis, { innerWidth: 1920, innerHeight: 1080, addEventListener: () => {} });
   try {

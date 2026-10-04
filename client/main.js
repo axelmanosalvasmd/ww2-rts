@@ -1426,7 +1426,7 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
-const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160);
+const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160, relief?.mesh);
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;
