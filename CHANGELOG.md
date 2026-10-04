@@ -5,6 +5,12 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Tank road wheels, idlers, sprockets, return rollers and visible track belts now move with actual vehicle travel,
+  reverse when backing up and move at different speeds on each side while steering. They stop with the tank
+  and follow the hull on hills. Covers native light, medium, heavy and tank destroyer models for all four factions,
+  plus tracked mobile flak and Calliope variants. Spare wheels stay fixed; wheeled and halftrack models are outside
+  this change. The terrain workshop now offers forward, reverse, stopped and close side inspection.
+
 ### 2026-10-04: Natural terrain slopes (`7d67670`)
 
 - Hills blend adjoining ramps instead of flattening into a shelf at each height level. Removed repeated dark

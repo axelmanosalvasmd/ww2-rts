@@ -8035,6 +8035,7 @@ console.log('all availability checks passed');
 console.log('all model toolkit checks passed');
 
 await import('./test-model-motion.mjs');
+await import('./test-wheel-motion.mjs');
 
 // Ships retain their animation contracts while their shaped hulls stay within a small mesh budget.
 {
