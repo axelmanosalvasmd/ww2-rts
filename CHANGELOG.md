@@ -5,7 +5,7 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
-### 2026-10-04: Vehicle slopes and terrain workshop
+### 2026-10-04: Vehicle slopes and terrain workshop (`479b1f6`)
 
 - Tanks and other ground vehicles pitch uphill and downhill and lean across slopes instead of staying almost
   level. Their native track or tire footprint supports the hull on ramps, crests and trench crossings, while
