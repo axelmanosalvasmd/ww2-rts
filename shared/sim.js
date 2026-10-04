@@ -12,7 +12,7 @@ import { worldLayers, validateWorldLayers, composeWorldCell, defaultMaterial, MA
 import { supportedSections, validateStructures, STRUCTURE_LIMITS } from './structures.js';
 import { DEBRIS_LIMITS, SECTION_MASS, wreckMass, debrisBody, stepDebris, settleDebris, debrisRow } from './debris-motion.js';
 import { navigationLeg } from './navigation.js';
-import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView } from './vehicle-motion.js';
+import { isGroundVehicle, movementProfile, bodyRadius, vehiclePositionClear, sweptVehicleClear, vehicleStep, vehicleNavigationView, vehicleDestinationClear, segmentCliffClear } from './vehicle-motion.js';
 import { trafficStep, rememberTrafficPosition, trafficWins } from './local-traffic.js';
 
 import { projectileProfile, PROJECTILE_PROFILES, CONTACT_MATERIALS, launchSolution, flightAt, velocityAt, crossedCells, sweepBox, sweepBody, sweepHull, segmentDistance, contactResponse } from './projectiles.js';
@@ -1975,15 +1975,7 @@ function hillsClear(g, ax, az, bx, bz) {
 }
 // no step of more than one level along a straight segment
 function noCliffs(g, a, b) {
-  if (!g.height) return true;
-  const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / (CELL / 2));
-  let prev = levelAt(g, a.x, a.z);
-  for (let i = 1; i <= n; i++) {
-    const h = levelAt(g, a.x + (b.x - a.x) * i / n, a.z + (b.z - a.z) * i / n);
-    if (Math.abs(h - prev) > 1) return false;
-    prev = h;
-  }
-  return true;
+  return segmentCliffClear(g, a, b, CELL);
 }
 
 const smoked = (g, a, b) => g.smokes.length > 0 && Math.hypot(b.x - a.x, b.z - a.z) >= CFG.smokeSight && g.smokes.some(s => segHits(a, b, s, s.r));
@@ -2154,7 +2146,9 @@ export function findPath(g, from, to) {
   const def = UNITS[from.type], naval = !!def?.naval, veh = def && !def.infantry && !naval, block = blockOf(def), pull = naval ? block : veh ? block | MUD | WOOD : MOVE | WIRE;
   const W = g.w, N = W * g.h, fullGoal = nearestFree(g, to.x, to.z, block), start = Math.max(0, cellOf(g, from.x, from.z));
   const leg = navigationLeg(g, start, fullGoal, block), goal = leg.goal;
-  if (from.id) from.routeEnd = fullGoal === cellOf(g, to.x, to.z) ? { x: to.x, z: to.z } : cellCenter(g, fullGoal);
+  const exactEnd = fullGoal === cellOf(g, to.x, to.z) && (!isGroundVehicle(def) || vehicleDestinationClear(g, to, def, block));
+  const routeEnd = exactEnd ? { x: to.x, z: to.z } : cellCenter(g, fullGoal);
+  if (from.id) from.routeEnd = routeEnd;
   // enemy mines this unit's side has found: routes go around them
   const team = g.players?.[from.owner]?.team, found = team !== undefined && g.mineSeen?.size > 0;
   const mined = (c) => found && ((g.mineSeen.get(c) ?? 0) >> team & 1) === 1;
@@ -2223,10 +2217,10 @@ export function findPath(g, from, to) {
     }
   }
   if (goal !== start && (seen[goal] !== gen || came[goal] < 0)) { stats.failed++; return []; }
-  if (goal === start && cellOf(g, to.x, to.z) === start && dist(from, to) > 0.05 && walkable(g, from, to, block)) return [{ x: to.x, z: to.z }];
+  if (goal === start && dist(from, routeEnd) > 0.05 && walkable(g, from, routeEnd, block)) return [routeEnd];
   const pts = [];
   for (let c = goal; c !== start && c >= 0; c = came[c]) pts.unshift({ x: (c % W + 0.5) * CELL, z: (Math.floor(c / W) + 0.5) * CELL });
-  if (!leg.limited && goal === cellOf(g, to.x, to.z) && pts.length) pts[pts.length - 1] = { x: to.x, z: to.z };
+  if (!leg.limited && goal === fullGoal && pts.length) pts[pts.length - 1] = routeEnd;
   // string-pull: jump to the furthest waypoint reachable in a straight line
   const out = [];
   let at = from;
@@ -4094,7 +4088,7 @@ export function step(g) {
     // Global waypoints, voluntary traffic steering and swept contact are separate steps.
     const before = { x: u.x, z: u.z, rot: u.rot }, groundVehicle = isGroundVehicle(def);
     u.motionBefore = before;
-    const back = !!u.reverse && u.path.at(-1) === u.reverse;
+    const back = !!u.reverse && !!u.path.at(-1) && dist(u.path.at(-1), u.reverse) < 1e-6;
     if (!back) u.reverse = null;
     let grade = 0;
     if (g.height && u.path.length) { const wp = u.path[0], d = dist(u, wp) || 1; grade = heightAt(g, u.x + (wp.x - u.x) / d, u.z + (wp.z - u.z) / d) - heightAt(g, u.x, u.z); }
@@ -4122,6 +4116,8 @@ export function step(g) {
         for (const direction of [-1, 1]) {
           const goal = { x: before.x + Math.cos(before.rot) * 2 * direction, z: before.z + Math.sin(before.rot) * 2 * direction, rot: before.rot };
           if (!sweptVehicleClear(g, before, goal, def, blockOf(def))) continue;
+          const bearing = Math.atan2(route[0].z - goal.z, route[0].x - goal.x) + (reverse ? Math.PI : 0);
+          if (!sweptVehicleClear(g, goal, { ...goal, rot: bearing }, def, blockOf(def))) continue;
           u.motionClearance = { goal, reverse: direction < 0, path: u.path, until: g.tick + 80 };
           next = vehicleStep(u, def, [goal], Math.min(speed, 1.2), dt, direction < 0); break;
         }
@@ -4134,7 +4130,7 @@ export function step(g) {
           const min = bodyRadius(def) + bodyRadius(UNITS[v.type]);
           const dx = next.x - before.x, dz = next.z - before.z, t = Math.max(0, Math.min(1, ((v.x - before.x) * dx + (v.z - before.z) * dz) / (dx * dx + dz * dz || 1)));
           const closest = Math.hypot(before.x + dx * t - v.x, before.z + dz * t - v.z);
-          return closest >= min - 0.01 || dist(before, v) < min && dist(next, v) > dist(before, v);
+          return closest >= min - 1e-6 || dist(before, v) < min && dist(next, v) > dist(before, v);
         });
       }
       if (clearMotion) { u.x = next.x; u.z = next.z; u.rot = next.rot; u.moveSpeed = next.moveSpeed; }
@@ -4187,7 +4183,8 @@ export function step(g) {
     // Congestion keeps its order and waiting queue. Only path disconnection can end it as unreachable.
     if (u.retreating && !u.path.length && !u.worldGoal) u.retreating = false;
     const turningInPlace = groundVehicle && Math.abs(Math.atan2(Math.sin(u.rot - before.rot), Math.cos(u.rot - before.rot))) > 1e-4;
-    if (u.path.length && moved < speed * dt * 0.3 && !turningInPlace) { u.stuck += dt; }
+    const progressSpeed = u.motionClearance ? Math.min(speed, 1.2) * (u.motionClearance.reverse ? movementProfile(u.type, def).reverseSpeed : 1) : speed;
+    if (u.path.length && moved < progressSpeed * dt * 0.3 && !turningInPlace) { u.stuck += dt; }
     else u.stuck = 0;
     keepFacing(u);
 
