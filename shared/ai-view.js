@@ -98,6 +98,30 @@ function updateTerrain(memory, changes, length) {
   });
 }
 
+// Raw source rows and pending delivery indexes stay outside planner-visible memory.
+const TERRAIN_DELIVERIES = new WeakMap();
+function terrainPending(g, slot, memory) {
+  const team = g.players[slot].team;
+  let state = TERRAIN_DELIVERIES.get(memory);
+  if (!state || state.game !== g || state.log !== g.cellLog || state.team !== team || state.rows.length > g.cellLog.length) {
+    state = { game: g, log: g.cellLog, team, rows: [], pending: new Set() };
+    TERRAIN_DELIVERIES.set(memory, state);
+  }
+  for (let index = 0; index < g.cellLog.length; index++) {
+    const row = g.cellLog[index], cell = row[0], previous = state.rows[index];
+    const wear = g.objects?.[cell] === 'T' ? g.surfaceWear?.[cell] ?? 0 : g.wear?.[cell] ?? 0;
+    const owner = g.mines.get(cell) ?? -1;
+    const mine = g.chars[cell] === 'N' ? ((g.mineSeen.get(cell) ?? 0) >> team & 1) | (owner >= 0 && g.players[owner].team === team ? 2 : 0) : 0;
+    if (!previous || previous.row !== row || previous.wear !== wear || previous.mine !== mine) {
+      state.pending.add(index);
+      state.rows[index] = { row, wear, mine };
+    }
+  }
+  // A fresh Set previously reset this key on each delivery; retain that timing.
+  delete state.pending.key;
+  return state.pending;
+}
+
 export function viewFor(g, slot, memory = {}, cache) {
   const seat = g.players[slot];
   const world = g.mode?.kind === 'world';
@@ -121,14 +145,21 @@ export function viewFor(g, slot, memory = {}, cache) {
   // snapshotFor consumes terrain updates. Keep those writes in AI memory, away from the live player.
   const players = [...g.players];
   if (g.players[-1]) players[-1] = g.players[-1];
-  players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()),
+  players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: world ? new Set(g.cellLog.keys()) : terrainPending(g, slot, memory),
     ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map() }) };
   // Flight and shot filtering can lazily update nested fog caches even with the browser mask omitted.
   // Keep those caches in the seat projection, just like its terrain delivery state.
+  const privateFog = memory.fog ??= new Map();
+  const canonicalFog = g.fog?.get(seat.team);
+  const borrowCanonical = !!canonicalFog && canonicalFog.key === (g.visionTick ?? -1);
+  // A matching key makes teamFog return before any writes. This map is ephemeral.
+  const fog = borrowCanonical ? new Map(privateFog).set(seat.team, canonicalFog) : privateFog;
   const projection = { ...g, players, omitFogMask: true,
-    fog: memory.fog ??= new Map(), fogSources: memory.fogSources ??= new Map(), fogTerrain: memory.fogTerrain };
+    fog, fogSources: memory.fogSources ??= new Map(), fogTerrain: memory.fogTerrain };
   const seed = first ? terrainFor(projection, slot, true) : [];
   const snap = snapshotFor(projection, slot, g.shots, [], cache);
+  if (borrowCanonical) for (const [team, entry] of fog)
+    if (team !== seat.team) privateFog.set(team, entry);
   memory.fogTerrain = projection.fogTerrain;
   updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h);
   if (world) { memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height; }

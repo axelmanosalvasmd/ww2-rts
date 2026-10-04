@@ -104,13 +104,15 @@ export function createHud(ctx) {
     const n = name(t, slot), base = UNITS[t].name, r = unitRole(t, base), role = r !== base ? r : '';
     return `${n}${n !== base ? ` (${base})` : ''}${role ? `: ${role}` : ''}${extra}`;
   };
-  // a Command Card card: name, portrait of the unit (client/portraits.js), cost (and a second line in Classic)
+  // a Command Card card: name, the unit's silhouette (client/symbols.js), cost (and a second line in Classic).
+  // A flat symbol tells the types apart at a glance; the small 3D renders all looked alike.
+  const cardSymbol = (t) => `<span class="pt">${symbolSVG(t)}</span>`;
   // (its card letter, if any, is added once the card is laid out: lettered())
   const unitCard = (t, attr, cost, sub, tip) => `<button class="uc" ${attr} title="${esc(tip)}" aria-label="${esc(name(t))}">` +
-    `<span class="nm">${soft(name(t))}</span>${portrait(t, ctx.me)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
+    `<span class="nm">${soft(name(t))}</span>${cardSymbol(t)}<span class="cost">${cost}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</button>`;
   const groupsHTML = (types, card) => GROUPS.map((_, g) => {
     const ts = types.filter((t) => groupOf(t) === g).sort((a, b) => rank(a) - rank(b));
-    return ts.length ? `<div class="grp"><div class="hd">${icon(GROUP_ICONS[g])}${GROUPS[g]}</div><div class="cards">${ts.map(card).join('')}</div></div>` : '';
+    return ts.length ? `<div class="grp"><button class="hd" aria-expanded="false">${icon(GROUP_ICONS[g])}${GROUPS[g]}</button><div class="cards">${ts.map(card).join('')}</div></div>` : '';
   }).join('');
   // an order or support button: icon, hotkey badge, cost or cooldown underneath
   const orderBtn = (data, ico, key, tip, sym) => `<button class="ob" ${data} title="${esc(tip)}" aria-label="${esc(tip.split(/[:(]/)[0].trim())}">` +
@@ -412,7 +414,7 @@ export function createHud(ctx) {
     const card = $('buy');
     card.querySelectorAll('.key').forEach((k) => k.remove());
     slots().forEach((b, i) => { if (CARD_KEYS[i]) (b.querySelector(':scope > .hd') ?? b).insertAdjacentHTML('beforeend', `<kbd class="key">${CARD_KEYS[i]}</kbd>`); });
-    card.querySelectorAll('.grp').forEach((g, i) => g.classList.toggle('open', i === grp));
+    card.querySelectorAll('.grp').forEach((g, i) => { g.classList.toggle('open', i === grp); g.querySelector('.hd')?.setAttribute('aria-expanded', String(i === grp)); });
     card.classList.toggle('picked', grp >= 0);
   }
   function pressCard(n, many) {
@@ -458,8 +460,11 @@ export function createHud(ctx) {
     card.classList.remove('hidden');
     const types = UNIT_TYPES.filter((t) => canBuild(t, ctx.facOf(ctx.me)) && !UNITS[t].classic && (!UNITS[t].naval || ctx.naval()));
     card.innerHTML = groupsHTML(types, (t) => unitCard(t, `data-unit="${t}"`, `${UNITS[t].cost}<span class="cu"> MP</span>`, '', unitTip(t, ctx.me, `. ${UNITS[t].cost} MP`)));
-    // the stylesheet shares the room between the cards (14 since aviation); narrow cards drop the name and keep it in the tooltip
-    card.classList.add('fit'); card.style.setProperty('--nc', types.length); card.style.setProperty('--ng', card.querySelectorAll('.grp').length);
+    // Each group is a tab: a click shows its cards and hides the rest, so only one type's cards fill the screen.
+    // The stylesheet shares the room between the widest group's cards; narrow cards drop the name for the tooltip.
+    const sizes = GROUPS.map((_, g) => types.filter((t) => groupOf(t) === g).length).filter(Boolean);
+    card.classList.add('fit'); card.style.setProperty('--nc', Math.max(...sizes, 1)); card.style.setProperty('--ng', sizes.length);
+    card.querySelectorAll('.grp').forEach((g, i) => { g.querySelector('.hd').onclick = (e) => { grp = grp === i ? -1 : i; lettered(); quietBadges(); e.currentTarget.blur(); }; });
     card.querySelectorAll('[data-unit]').forEach((b) => { b._buy = (many) => buy({ t: 'buy', unit: b.dataset.unit }, many); b.onclick = () => b._buy(false); });
     lettered();
     const tab = document.createElement('button');
@@ -502,7 +507,7 @@ export function createHud(ctx) {
         });
       else if (eng) card.innerHTML = '<div class="grp"><div class="hd">Build</div><div class="cards">' + BUILDABLE.map((k) =>
         `<button class="uc wide" data-build="${k}" title="${esc(`${UNITS[k].name}${BUILD_KEYS[k] ? ` (${BUILD_KEYS[k]})` : ''}: ${BUILD_ROLE[k] ?? ''}. ${UNITS[k].cost} MP, ${UNITS[k].buildTime}s`)}">` +
-        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${portrait(k, ctx.me)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
+        `<span class="nm">${esc(UNITS[k].name)} <kbd>${BUILD_KEYS[k] ?? ''}</kbd></span>${cardSymbol(k)}<span class="cost">${UNITS[k].cost} MP, ${UNITS[k].buildTime}s</span>` +
         `<span class="sub" data-note></span></button>`).join('') + '</div></div>';
       else if (recovery) card.innerHTML = `<button class="uc wide" data-recover><span class="nm">Restore ${missingHQ ? 'HQ' : 'Engineer'}</span><span class="cost">${recoveryCost} MP</span><span class="sub">Deploys in friendly territory</span></button>`;
       else card.innerHTML = '';

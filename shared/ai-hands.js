@@ -54,17 +54,43 @@ export function createHands({ slot, seed = 1, level = 'normal', camera, log, sta
 const armsTargeting = action => !action.fire && (action.kind === 'place-anchor'
   || action.kind === 'attack-key' && action.input?.code === 'KeyG'
   || ['ability-key', 'ability-click', 'support-key', 'support-click', 'build-key', 'build-click', 'area-key'].includes(action.kind));
+const selectsUnits = action => ['select-click', 'select-add-click', 'select-box', 'select-air-panel', 'group-recall'].includes(action.kind);
+const namedActorSelected = (hands, job) => job.context.concernKind !== 'idle'
+  || job.ids.includes(job.context.concernUnitId) && hands.selected.includes(job.context.concernUnitId);
+
+function frozenContext(context) {
+  const copy = structuredClone(context);
+  const freeze = value => {
+    if (value && typeof value === 'object') {
+      for (const child of Object.values(value)) freeze(child);
+      Object.freeze(value);
+    }
+    return value;
+  };
+  if (Array.isArray(copy.responseEvents)) freeze(copy.responseEvents);
+  return copy;
+}
+
+function minimumResponseTick(context) {
+  let floor = context.event && Number.isFinite(context.eventTick) ? context.eventTick + 4 : 0;
+  for (const event of context.responseEvents ?? []) if (Number.isFinite(event?.tick)) floor = Math.max(floor, event.tick + 4);
+  return floor;
+}
 
 function emit(hands, action, command) {
   const entry = { tick: hands.tick, kind: action.kind, camera: { x: hands.camera.x, z: hands.camera.z, yaw: hands.camera.yaw ?? HUMAN_CAMERA.yaw,
       distance: hands.camera.distance ?? HUMAN_CAMERA.distance },
     selected: hands.selected.length, concern: action.context.concern ?? hands.concern };
   if (hands.selected.length) entry.ids = [...hands.selected];
+  if (hands.active?.job.inspect && action.ids) {
+    entry.inspection = true;
+    entry.inspectionAcquired = sameIds(hands.selected, hands.active.job.ids);
+  }
   if (isPoint(action.at)) entry.target = { x: action.at.x, z: action.at.z };
-  if (action.context.event !== undefined) entry.event = action.context.event;
+  if (action.context.event !== undefined) entry.event = structuredClone(action.context.event);
   if (action.context.cycle !== undefined) entry.cycle = action.context.cycle;
   if (action.context.concernKind !== undefined) entry.concernKind = action.context.concernKind;
-  for (const key of ['concernTarget', 'concernUnitId', 'responseActorIds', 'responseTarget']) {
+  for (const key of ['concernTarget', 'concernUnitId', 'responseActorIds', 'responseTarget', 'responseEvents']) {
     if (action.context[key] !== undefined) entry[key] = structuredClone(action.context[key]);
   }
   if (action.camera) entry.method = action.mode;
@@ -126,23 +152,34 @@ function skewedDelay(hands, range) {
   return lo + span * 0.3 * Math.exp(0.7 * normal);
 }
 
-function reactionDelay(hands, context, tick, motorTicks) {
+const causalLinks = context => (context.responseEvents ?? []).filter(event => Number.isFinite(event?.tick)
+  && (event.source === 'screen' || event.source === 'alert'));
+
+function reactionDelay(hands, context, tick, motorTicks, includeLinks = true) {
   const visit = JSON.stringify([context.concern ?? null, context.cycle ?? null]);
   const event = context.event == null ? null : JSON.stringify([context.event?.id ?? context.event, context.eventTick ?? null]);
+  const links = includeLinks ? causalLinks(context) : [];
+  const linkedEvents = links.map(link => JSON.stringify([link.id ?? link, link.tick]));
   const newVisit = hands.lastVisit !== visit;
   if (newVisit) hands.visitEvents.clear();
-  const fresh = newVisit || (event !== null && !hands.visitEvents.has(event));
+  const fresh = newVisit || (event !== null && !hands.visitEvents.has(event))
+    || linkedEvents.some(link => !hands.visitEvents.has(link));
   hands.lastVisit = visit;
   if (event !== null) hands.visitEvents.add(event);
+  for (const link of linkedEvents) hands.visitEvents.add(link);
   if (!fresh) {
     const floor = context.event && Number.isFinite(context.eventTick) ? context.eventTick + 4 - tick - motorTicks : 0;
     return Math.max(0, floor, ticks(skewedDelay(hands, hands.skill.key)));
   }
   const causal = context.event && Number.isFinite(context.eventTick)
     && (context.event.onScreen || context.event.source === 'alert');
-  const start = causal ? context.eventTick : Number.isFinite(context.reactionStartTick) ? context.reactionStartTick
+  let start = causal ? context.eventTick : Number.isFinite(context.reactionStartTick) ? context.reactionStartTick
     : tick - (Number.isFinite(context.paidTicks) ? Math.max(0, context.paidTicks) : 0);
-  const range = context.event?.source === 'alert' && !context.event.onScreen ? hands.skill.offscreen : hands.skill.reaction;
+  let stimulus = context.event;
+  // A newly linked stimulus can arrive after the original choice started. Its response budget
+  // starts at creation without replacing the primary event retained in the input log.
+  for (const link of links) if (link.tick > start) { start = link.tick; stimulus = link; }
+  const range = stimulus?.source === 'alert' && !stimulus.onScreen ? hands.skill.offscreen : hands.skill.reaction;
   // The target is the complete first-input interval. Choice time already paid and the full motor duration
   // consume this budget. Slow choices, long gestures and backlog remain slow, rather than shortening the motor.
   const deadline = start + Math.max(4, ticks(skewedDelay(hands, range)));
@@ -306,7 +343,25 @@ function enqueueOne(hands, cmd, view, context, at) {
   if (cmd.t !== 'buy' && (hands.active?.job?.key === key || hands.queue.some(job => job.key === key))) return false;
   // Snapshot only what the seat knew while it made this decision. A later wasted click is still a real input.
   hands.queue.push({ command: structuredClone(cmd), ids: [...ids], units: units.map(u => ({ ...u })),
-    at: isPoint(at) ? { ...at } : null, minimap, panel, group, key, context: { ...context }, queuedTick: hands.tick });
+    at: isPoint(at) ? { ...at } : null, minimap, panel, group, key, context: frozenContext(context), queuedTick: hands.tick });
+  return true;
+}
+
+// Inspecting selects a real own squad so the next delivered selection HUD can inform a decision.
+// It neither creates an order nor binds a group just to acquire information.
+export function queueInspection(hands, ids, view, context = {}) {
+  if (!view || view.players[hands.slot]?.out || view.winner != null || hands.queue.length >= 24
+    || !Array.isArray(ids) || ids.length !== 1 || sameIds(hands.selected, ids)) return false;
+  pruneGroups(hands, view);
+  const units = knownOwn(view, hands.slot, ids), group = groupFor(hands, ids);
+  if (units.length !== 1 || units.some(u => UNITS[u.type]?.structure || UNITS[u.type]?.air
+    || !UNITS[u.type]?.ab || UNITS[u.type].ab.id === 'none')) return false;
+  if (group === null && !units.every(u => onScreen(u, hands.camera, view))) return false;
+  const key = JSON.stringify(['inspection', ids]);
+  if (hands.active?.job?.key === key || hands.queue.some(job => job.key === key)) return false;
+  hands.queue.push({ inspect: true, ids: [...ids], units: units.map(u => ({ ...u })), at: null,
+    panel: false, group, key, context: frozenContext(context), queuedTick: hands.tick });
+  hands.ready = false;
   return true;
 }
 
@@ -380,7 +435,7 @@ export function queueCamera(hands, at, context = {}, mode = 'minimap') {
     }
     if (group === null) return false;
   }
-  hands.queue.push({ camera: true, at: { x: at.x, z: at.z }, mode, group, ids, context: { ...context }, queuedTick: hands.tick });
+  hands.queue.push({ camera: true, at: { x: at.x, z: at.z }, mode, group, ids, context: frozenContext(context), queuedTick: hands.tick });
   hands.ready = false;
   return true;
 }
@@ -478,7 +533,9 @@ function actionsFor(hands, job, view) {
       }
     }
   }
-  if (job.context.operation && ['move', 'amove'].includes(job.command.t) && job.ids.length >= 2 && job.ids.length <= 8
+  if (job.inspect) return actions;
+  if (!namedActorSelected(hands, job) && !actions.some(selectsUnits)) return [];
+  if (job.context.operation && ['move', 'amove'].includes(job.command.t) && job.ids.length >= 1 && job.ids.length <= 8
     && groupFor(hands, job.ids) === null && job.units.every(u => !UNITS[u.type]?.structure && !UNITS[u.type]?.air)) {
     const number = groupNumber(hands);
     key('group-set', `group:set:${number}`, { ids: job.ids, group: number });
@@ -629,7 +686,7 @@ export function interruptHands(hands, tick, view = hands.lastView) {
   if (active && !active.reacting && (active.modifierHeld || action?.input?.code === 'ControlLeft')) {
     hands.interruptAfterInput = false; active.interruptAfterCommand = true; return false;
   }
-  const approach = action?.screenClick && tick < active.due
+  const approach = action?.screenClick
     && (!action.box || tick < active.start + action.duration * action.motor.approachFraction);
   if (active && !active.reacting && !approach) {
     hands.interruptAfterInput = true;
@@ -713,8 +770,10 @@ export function advanceHands(hands, tick, view, submit) {
     const active = hands.active = { job, actions, index: 0 };
     const opening = !hands.openingDone && actions.some(action => action.fire);
     const duration = opening ? prepareOpening(hands, active) : (prepareAction(hands, active), actions[0].duration);
-    const reaction = opening && !job.context.event ? Math.max(0, hands.openingDeadline - tick - duration)
-      : Math.max(opening ? hands.openingDeadline - tick - duration : 0, reactionDelay(hands, job.context, tick, actions[0].duration));
+    const reaction = Math.max(actions[0].camera ? 0 : minimumResponseTick(job.context) - tick - actions[0].duration,
+      opening && !job.context.event && !causalLinks(job.context).length ? Math.max(0, hands.openingDeadline - tick - duration)
+        : Math.max(opening ? hands.openingDeadline - tick - duration : 0,
+          reactionDelay(hands, job.context, tick, actions[0].duration, !actions[0].camera)));
     if (reaction > 0) Object.assign(active, { due: tick + reaction, reacting: true });
     else scheduleAction(hands, active, tick);
     return null;
@@ -731,6 +790,7 @@ export function advanceHands(hands, tick, view, submit) {
     updatePointer(hands, tick, view);
   }
   if (tick < active.due || !affordableInput(hands, tick)) return null;
+  if (!action.camera && tick < minimumResponseTick(action.context)) return null;
   if (action.outsideMinimap || action.outsideScreen) {
     if (active.armed) hands.cancelTargeting = true;
     emit(hands, action); hands.active = null; hands.ready = !hands.queue.length; return null;
@@ -810,6 +870,12 @@ export function advanceHands(hands, tick, view, submit) {
   if (armsTargeting(action)) active.armed = true;
   if (action.input?.code === 'ControlLeft') active.modifierHeld = true;
   if (interrupted) return cmd;
+  // Read the actual selection before starting an order for the attended idle squad.
+  // A split or missed selection can leave only its companion selected. Keep that HUD and retry later.
+  if (!active.job.inspect && !namedActorSelected(hands, active.job)
+    && !active.actions.slice(active.index + 1).some(selectsUnits)) {
+    hands.active = null; hands.ready = !hands.queue.length; return null;
+  }
   active.index++;
   if (active.index >= active.actions.length) hands.active = null;
   else scheduleAction(hands, active, tick);

@@ -4,6 +4,8 @@ import { createRelief } from '../client/relief.js';
 import { createGround } from '../client/ground.js';
 import { buildModel, animate, vehicleBody, setSurfaces } from '../client/unit-models.js';
 import { vehicleTerrainPose } from '../client/engine-presentation.js';
+import { wheelAngle, releaseWheels } from '../client/wheel-motion.js';
+import { trackVertex, trackLength } from '../client/track-motion.js';
 import { loadModelTextures, modelTexturesOn } from '../client/model-textures.js';
 import { surface } from '../client/surfaces.js';
 import { ownerRing } from '../client/markers.js';
@@ -40,7 +42,7 @@ const textureReady = new Promise(resolve => {
   loadModelTextures();
 });
 let fixture, ground, relief, unit, distance = 0, elapsed = 0, running = false;
-let options = { scenario: 'ramp', type: 'medium', faction: 0, aligned: true, view: 'side' };
+let options = { scenario: 'ramp', type: 'medium', faction: 0, aligned: true, view: 'side', drive: 'forward' };
 window.__terrainWorkshopReady = false;
 const speed = 3;
 
@@ -75,7 +77,7 @@ function measureContact(v) {
     if (node === v.base || node === v.sel || node === v.turret || v.mounts?.includes(node)) return;
     const positions = node.isMesh && node.geometry?.attributes.position;
     if (positions) for (let i = 0; i < positions.count; i++) {
-      point.fromBufferAttribute(positions, i).applyMatrix4(node.matrixWorld);
+      point.copy(trackVertex(node.geometry, i, 0, 0)).applyMatrix4(node.matrixWorld);
       points.push(point.clone()); minY = Math.min(minY, point.y);
     }
     for (const child of node.children) visit(child);
@@ -108,13 +110,21 @@ function state() {
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rotation);
   const support = contacts(), gaps = support.map(p => p.gap);
   return {
-    ...options, alignment: options.aligned, ready: window.__terrainWorkshopReady, running, distance, length: fixture.length, elapsed, speed,
+    ...options, alignment: options.aligned, ready: window.__terrainWorkshopReady, running, distance, length: fixture.length, elapsed,
+    speed: options.drive === 'reverse' ? -speed : options.drive === 'stopped' ? 0 : speed,
     x: unit.x, z: unit.z, height: unit.root.position.y, chassisLift: unit.visualChassis.position.y,
     pitch: Math.asin(clamp(forward.y, -1, 1)), roll: unit.visualChassis.rotation.x,
     forward: forward.toArray(), up: up.toArray(), contacts: support, contactAvailable: !!unit.groundContact,
     contactSource: unit.groundContact ? 'native vehicle footprint' : 'independent native lower-hull bounds',
     minGap: gaps.length ? Math.min(...gaps) : null, maxGap: gaps.length ? Math.max(...gaps) : null,
     textures: modelTexturesOn(), textureErrors: [...textureErrors],
+    wheels: unit.wheelMotion.pivots.map(pivot => ({ center: pivot.slice(0, 3), radius: pivot[3], angle: wheelAngle(pivot, unit.wheelMotion.travel, unit.wheelMotion.turn) })),
+    tracks: unit.workshopTracks.map(({ mesh, index }) => {
+      const side = mesh.geometry.attributes.trackData.getZ(index);
+      const travel = unit.wheelMotion.travel + unit.wheelMotion.turn * side;
+      const point = trackVertex(mesh.geometry, index, unit.wheelMotion.travel, unit.wheelMotion.turn);
+      return { side, travel, length: trackLength(mesh.geometry, index), point: point.toArray(), world: point.clone().applyMatrix4(mesh.matrixWorld).toArray() };
+    }),
     terrain: { vertices: relief.stats.vertices, triangles: relief.stats.triangles },
     fixture: 'Scripted presentation path. No simulation navigation or gravity.',
   };
@@ -124,7 +134,7 @@ function draw() {
   if (!unit) return;
   const height = unit.root.position.y + unit.visualChassis.position.y;
   const target = new THREE.Vector3(unit.x, height + 1.2, unit.z);
-  const offset = options.view === 'oblique' ? [11, 8, 13] : options.view === 'front' ? [15, 5, 1] : [0, 4.5, 14];
+  const offset = options.view === 'close' ? [0, 2.2, 10.5] : options.view === 'oblique' ? [11, 8, 13] : options.view === 'front' ? [15, 5, 1] : [0, 4.5, 14];
   camera.position.copy(target).add(new THREE.Vector3(...offset)); camera.lookAt(target);
   sun.target.position.copy(target); sun.target.updateMatrixWorld();
   sun.position.copy(target).add(new THREE.Vector3(32, 50, 20));
@@ -145,29 +155,41 @@ function draw() {
 function reset(next = {}) {
   if ('alignment' in next) next = { ...next, aligned: next.alignment };
   const candidate = { ...options, ...next };
+  if (!['forward', 'reverse', 'stopped'].includes(candidate.drive)) throw new Error(`Unknown motion: ${candidate.drive}`);
   if (!TERRAIN_TYPES.includes(candidate.type)) throw new Error(`Unknown vehicle: ${candidate.type}`);
   if (!Number.isInteger(Number(candidate.faction)) || candidate.faction < 0 || candidate.faction > 3) throw new Error('Faction must be 0 through 3');
   const nextFixture = terrainFixture(candidate.scenario);
   options = { ...candidate, faction: Number(candidate.faction), aligned: !!candidate.aligned };
   running = false; distance = 0; elapsed = 0;
-  if (unit) scene.remove(unit.root);
+  if (unit) { releaseWheels(unit); scene.remove(unit.root); }
   if (relief) { scene.remove(relief.mesh); relief.dispose(); }
   ground?.dispose();
   fixture = nextFixture;
   ground = createGround(fixture.map, renderer);
   const grid = fixture.map.rows.map(row => [...row]);
   ground.paint(grid, Uint8Array.from(fixture.map.rows.join(''), startState));
-  relief = createRelief(fixture.map, grid, { texture: ground.tex, isRoad: ground.isRoad });
+  relief = createRelief(fixture.map, grid, { texture: ground.tex, isRoad: ground.isRoad, low: !!fixture.map.world });
   scene.add(relief.mesh);
   const root = new THREE.Group(), base = ownerRing(UNITS[options.type].radius + 0.4, FACTIONS[options.faction].color), sel = new THREE.Group();
   root.add(base, sel);
   unit = { id: 17, type: options.type, owner: options.faction, root, base, sel, models: [], alive: 1, rot: 0, aim: 0, flags: 0, supp: 0, cover: 0 };
   buildModel(unit, root, FACTIONS[options.faction], options.faction, UNITS[options.type]);
+  unit.workshopTracks = [];
+  root.traverse(mesh => {
+    const attr = mesh.geometry?.attributes.trackData, positions = mesh.geometry?.attributes.position, sides = new Map();
+    if (!attr) return;
+    for (let i = 0; i < attr.count; i++) if (attr.getY(i) >= 0) {
+      const side = attr.getZ(i), previous = sides.get(side);
+      if (previous === undefined || positions.getY(i) - Math.abs(positions.getX(i)) > positions.getY(previous) - Math.abs(positions.getX(previous))) sides.set(side, i);
+    }
+    for (const index of sides.values()) unit.workshopTracks.push({ mesh, index });
+  });
   unit.workshopContact = measureContact(unit);
   scene.add(root);
   pose(0, true);
   $('scenario').value = options.scenario; $('type').value = options.type; $('faction').value = options.faction;
   $('view').value = options.view; $('aligned').checked = options.aligned;
+  $('drive').value = options.drive;
   $('scrub').max = fixture.length; $('description').textContent = fixture.description;
   draw();
   return state();
@@ -182,20 +204,30 @@ function advance(seconds = 1 / 60) {
   const duration = Number(seconds);
   if (!Number.isFinite(duration) || duration < 0 || duration > 120) throw new Error('Advance must be between 0 and 120 seconds');
   const count = Math.ceil(duration * 60), dt = count ? duration / count : 0;
+  const direction = options.drive === 'reverse' ? -1 : options.drive === 'stopped' ? 0 : 1;
   for (let i = 0; i < count; i++) {
-    distance = Math.min(fixture.length, distance + speed * dt); elapsed += dt;
+    distance = clamp(distance + direction * speed * dt, 0, fixture.length); elapsed += dt;
     pose(dt);
   }
-  if (distance >= fixture.length) running = false;
+  if ((direction > 0 && distance >= fixture.length) || (direction < 0 && distance <= 0)) running = false;
   draw(); return state();
 }
 
-window.__terrainWorkshop = { reset, seek, advance, state, get ready() { return window.__terrainWorkshopReady; } };
+function drive(value) {
+  if (!['forward', 'reverse', 'stopped'].includes(value)) throw new Error(`Unknown motion: ${value}`);
+  options.drive = value; $('drive').value = value; draw(); return state();
+}
+window.__terrainWorkshop = { reset, seek, advance, drive, state, get ready() { return window.__terrainWorkshopReady; } };
 for (const id of ['scenario', 'type', 'faction']) $(id).addEventListener('change', () => reset({ [id]: id === 'faction' ? Number($(id).value) : $(id).value }));
 $('view').addEventListener('change', () => { options.view = $('view').value; draw(); });
+$('drive').addEventListener('change', () => drive($('drive').value));
 $('aligned').addEventListener('change', () => { options.aligned = $('aligned').checked; seek(distance); });
 $('scrub').addEventListener('input', () => seek($('scrub').value));
-$('play').addEventListener('click', () => { if (distance >= fixture.length) seek(0); running = !running; draw(); });
+$('play').addEventListener('click', () => {
+  if (options.drive === 'forward' && distance >= fixture.length) seek(0);
+  if (options.drive === 'reverse' && distance <= 0) seek(fixture.length);
+  running = !running; draw();
+});
 $('reset').addEventListener('click', () => reset());
 $('step').addEventListener('click', () => { running = false; advance(1 / 60); });
 const resize = () => {

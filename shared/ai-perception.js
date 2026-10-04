@@ -1,5 +1,5 @@
 // Detail belongs to one camera. Delivered rows outside it supply only minimap dots.
-import { CELL, CFG, UNITS } from './sim.js';
+import { CELL, CFG, UNITS, abCost } from './sim.js';
 import { deriveAlertEvents } from './alert-events.js';
 
 // Match start uses distance 60 and a heading toward the map centre. Normal pan speed is dist*1.1.
@@ -46,6 +46,39 @@ function copyData(value, seen) {
 // the original root so aliases spanning unknown types are preserved and unsupported values still reject.
 export function detachedCopy(value) {
   try { return copyData(value, new Map()); }
+  catch { return structuredClone(value); }
+}
+function copyFreshData(value, seen) {
+  if (value === null) return value;
+  const type = typeof value;
+  if (type === 'function' || type === 'symbol') throw unsupportedCopy;
+  if (type !== 'object') return value;
+  if (seen.has(value)) return seen.get(value);
+  const prototype = Object.getPrototypeOf(value); let result;
+  if (prototype === Map.prototype) {
+    result = new Map(); seen.set(value, result);
+    for (const [key, item] of Map.prototype.entries.call(value)) result.set(copyFreshData(key, seen), copyFreshData(item, seen));
+    return result;
+  }
+  if (prototype === Set.prototype) {
+    result = new Set(); seen.set(value, result);
+    for (const item of Set.prototype.values.call(value)) result.add(copyFreshData(item, seen));
+    return result;
+  }
+  if (Array.isArray(value) && prototype === Array.prototype) result = new Array(value.length);
+  else if (prototype === Object.prototype || prototype === null) result = {};
+  else throw unsupportedCopy;
+  seen.set(value, result);
+  for (const key of Object.keys(value)) {
+    const item = copyFreshData(value[key], seen);
+    if (key === '__proto__') Object.defineProperty(result, key, { value: item, writable: true, enumerable: true, configurable: true });
+    else result[key] = item;
+  }
+  return result;
+}
+// Only an immediate second copy of this function's newly detached, unexposed graph uses this helper.
+function copyFresh(value) {
+  try { return copyFreshData(value, new Map()); }
   catch { return structuredClone(value); }
 }
 const clone = detachedCopy;
@@ -180,13 +213,32 @@ function screenResponse(event, screen, previous, slot, observation, inventory, d
   return { responseRequired: units.length > 0, responseReason: reason, responsePolicy: SCREEN_RESPONSE_POLICY, responseUnits: units };
 }
 
-export function perceive(observation, slot, state = {}, eventTick = observation.tick) {
+// Detector history never enters the memory supplied to the planner. Each state has its own baseline.
+const detectorMemory = new WeakMap();
+function copyAlertSnapshot(snapshot) {
+  if (!snapshot) return undefined;
+  // These are the previous-snapshot fields read by the shared alert detector.
+  return detachedCopy({ tick: snapshot.tick, units: snapshot.units, points: snapshot.points,
+    queues: snapshot.queues, strikes: snapshot.strikes, world: snapshot.world, home: snapshot.home });
+}
+function detectorFor(state) {
+  let detector = detectorMemory.get(state);
+  if (!detector) {
+    detector = { previousScreen: state.previousScreen ? detachedCopy(state.previousScreen) : undefined,
+      previousSnapshot: copyAlertSnapshot(state.previousSnapshot) };
+    detectorMemory.set(state, detector);
+  }
+  delete state.previousScreen; delete state.previousSnapshot;
+  return detector;
+}
+function perceiveScene(observation, slot, state = {}, eventTick = observation.tick) {
+  const detector = detectorFor(state);
   const me = observation.players[slot], now = observation.tick / 20;
   state.camera ??= startCamera(observation, slot);
   state.camera.yaw ??= startCamera(observation, slot).yaw; state.camera.distance ??= HUMAN_CAMERA.distance;
   state.screenMemory ??= new Map(); state.inventory ??= new Map(); state.screenStill ??= new Map();
   const screen = new Map(), screenIds = new Set(), dots = [], newEvents = [], screenStimuli = [];
-  const previousScreen = state.previousScreen ?? new Map();
+  const previousScreen = detector.previousScreen ?? new Map();
   const screenSeenAt = state.screenSeenAt ??= new Map();
   state.damageEpisodes ??= new Map();
   const emit = event => { const saved = recordPerceptionEvent(state, event); if (saved) newEvents.push(saved); };
@@ -223,7 +275,7 @@ export function perceive(observation, slot, state = {}, eventTick = observation.
     state.screenStill.set(u.id, { x: u.x, z: u.z, since: firstStillAt });
     screenSeenAt.set(u.id, eventTick);
     const seen = { ...clone(u), firstStillAt, lastSeen: now, lastScreenTick: eventTick, screenSeen: true, confidence: 1 };
-    screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, clone(seen));
+    screen.set(u.id, seen); screenIds.add(u.id); state.screenMemory.set(u.id, copyFresh(seen));
   }
   for (const id of state.screenStill.keys()) if (!screenIds.has(id)) state.screenStill.delete(id);
   // Keep debounce clocks through empty-ground memory invalidation, without retaining hidden unit details.
@@ -231,7 +283,7 @@ export function perceive(observation, slot, state = {}, eventTick = observation.
   dots.sort((a, b) => a.owner - b.owner || a.x - b.x || a.z - b.z || Number(a.vehicle) - Number(b.vehicle));
   const dotById = new Map(dots.filter(dot => dot.id !== undefined).map(dot => [dot.id, dot]));
   for (const event of screenStimuli) emit({ ...event, ...screenResponse(event, screen, previousScreen, slot, observation, state.inventory, dots) });
-  state.previousScreen = new Map([...screen.values()].map(u => [u.id, { hp: u.hp, supp: u.supp, owner: u.owner, team: observation.players[u.owner]?.team, observationTick: observation.tick }]));
+  detector.previousScreen = new Map([...screen.values()].map(u => [u.id, { hp: u.hp, supp: u.supp, owner: u.owner, team: observation.players[u.owner]?.team, observationTick: observation.tick }]));
   for (const [id, episode] of state.damageEpisodes) if (eventTick - episode.lastDamage > 1200) state.damageEpisodes.delete(id);
   // Own inventory is always listed in delivered snapshots. Removal is known, not a fabricated fog loss.
   for (const id of state.inventory.keys()) if (!dotById.has(id)) state.inventory.delete(id);
@@ -266,12 +318,12 @@ export function perceive(observation, slot, state = {}, eventTick = observation.
       ...(status === 2 && { fuel }), ...(status === 4 && { timer }) }];
   });
   state.alertState ??= {};
-  const newAlerts = snapshot ? deriveAlertEvents(snapshot, state.previousSnapshot, {
+  const newAlerts = snapshot ? deriveAlertEvents(snapshot, detector.previousSnapshot, {
     me: () => slot, team: () => me.team, friend: owner => observation.players[owner]?.team === me.team,
     unitName: type => UNITS[type]?.name ?? type, playerName: owner => observation.players[owner]?.name ?? 'An ally',
     home: () => me.spawn, pointPos: i => observation.points[i], onScreen: (x, z) => onScreen({ x, z }, state.camera, observation),
   }, state.alertState) : [];
-  if (snapshot && snapshot.tick > (state.previousSnapshot?.tick ?? -1)) state.previousSnapshot = snapshot;
+  if (snapshot && snapshot.tick > (detector.previousSnapshot?.tick ?? -1)) detector.previousSnapshot = copyAlertSnapshot(snapshot);
   for (const alert of newAlerts) emit({ ...alert, source: 'alert' });
   state.events ??= []; state.eventsHistory = state.events;
   state.alerts = [...(state.alerts ?? []), ...newAlerts].filter(a => observation.tick - a.tick <= 300).slice(-20);
@@ -284,5 +336,77 @@ export function perceive(observation, slot, state = {}, eventTick = observation.
     claimedNodes: new Set(observation.nodes.flatMap((node, i) => claims.some(u => Math.hypot(u.x - node.x, u.z - node.z) < 8) ? [i] : [])) };
   // The detailed delivered snapshot is private to the detector and never reaches planning.
   delete view.snapshot;
+  return view;
+}
+
+// Only the actual living own selection supplies the selected-type HUD, even off camera.
+export function selectedHUDFor(observation, slot, hands) {
+  const rows = [], byType = new Map(), ids = [];
+  for (const id of [...new Set(hands?.selected ?? [])]) {
+    const unit = observation.units.get(id);
+    if (!unit || unit.owner !== slot || unit.hp <= 0 || unit.flags & 262144) continue;
+    ids.push(id);
+    const list = byType.get(unit.type) ?? []; list.push(unit); byType.set(unit.type, list);
+  }
+  for (const [type, all] of byType) {
+    const def = UNITS[type], active = all.filter(unit => !(unit.flags & 1)), shown = active.length ? active : all;
+    const anyReady = shown.some(unit => !unit.cd), cooldownSeconds = Math.max(0, Math.ceil(Math.min(...shown.map(unit => unit.cd || 0))));
+    const cost = def.ab ? abCost(observation, def.ab) : 0;
+    const ability = def.ab && def.ab.id !== 'none' ? { id: def.ab.id, anyReady, cooldownSeconds, allAuto: all.every(unit => unit.flags & 16384),
+      usable: active.length > 0 && anyReady && (!cost || observation.players[slot].mun >= cost),
+      reason: !active.length ? 'retreating' : !anyReady ? 'cooldown' : cost && !(observation.players[slot].mun >= cost) ? 'munitions' : null } : null;
+    rows.push({ type, ids: all.map(unit => unit.id), count: all.length,
+      hp: Math.ceil(all.reduce((sum, unit) => sum + unit.hp, 0)), maxHp: all.length * def.hpPer * (def.models ?? 1),
+      allRetreating: !active.length, ability });
+  }
+  return { slot, ids, types: rows, observedTick: observation.tick };
+}
+export function readinessFor(view, id) {
+  const unit = view.units.get(id), row = view.selectedHUD?.types.find(row => row.ids.includes(id));
+  if (!unit || unit.owner !== view.selectedHUD?.slot || (!UNITS[unit.type].ab || UNITS[unit.type].ab.id === 'none')) return { known: false, state: 'unavailable' };
+  if (!row) return { known: false, state: unit.lastHUD ? 'stale-hud' : 'unknown', lastHUD: unit.lastHUD ? detachedCopy(unit.lastHUD) : null };
+  if (row.count > 1) return { known: false, state: 'group-hud', aggregate: detachedCopy(row.ability), ids: [...row.ids] };
+  return { known: true, state: 'selected-hud', ...detachedCopy(row.ability), observedTick: view.selectedHUD.observedTick };
+}
+export function requiresInspection(view, id) {
+  const unit = view.units.get(id);
+  return !!unit && unit.owner === view.selectedHUD?.slot && !!UNITS[unit.type].ab && UNITS[unit.type].ab.id !== 'none' && !readinessFor(view, id).known;
+}
+export const needsInspection = requiresInspection;
+export function perceive(observation, slot, state = {}, eventTick = observation.tick) {
+  // The scene detector remains unchanged. Mask dynamic planner fields before either memory or view escapes.
+  const view = perceiveScene(observation, slot, state, eventTick), hud = selectedHUDFor(observation, slot, state.hands);
+  view.selectedHUD = hud;
+  state.hudMemory ??= new Map();
+  const byId = new Map(hud.types.flatMap(row => row.ids.map(id => [id, row])));
+  for (const row of hud.types) for (const id of row.ids) state.hudMemory.set(id, {
+    type: row.type, ids: [...row.ids], hp: row.hp, maxHp: row.maxHp,
+    ability: detachedCopy(row.ability), observedTick: observation.tick,
+  });
+  for (const id of state.hudMemory.keys()) if (!state.inventory.has(id)) state.hudMemory.delete(id);
+  const mask = unit => {
+    const def = UNITS[unit.type], full = (def.models ?? 1) * def.hpPer;
+    if (view.screenIds.has(unit.id)) {
+      unit.hp = Math.max(unit.hp > 0 ? full / 20 : 0, Math.min(full, Math.round(unit.hp / full * 20) * full / 20));
+      unit.hpSource = 'world-bar'; unit.hpObservedTick = observation.tick; unit.exactHPKnown = false;
+    } else {
+      unit.exactHPKnown = false; unit.hpSource = unit.inventoryOnly ? 'inventory-estimate' : unit.hpSource === 'selected-hud' || unit.hpSource === 'stale-selected-hud' ? 'stale-selected-hud' : 'screen-memory';
+    }
+    const own = unit.owner === slot, row = own && byId.get(unit.id), single = row && row.count === 1;
+    if (single) { unit.hp = row.hp; unit.hpSource = 'selected-hud'; unit.hpObservedTick = observation.tick; unit.exactHPKnown = true; }
+    unit.cd = single && row.ability ? row.ability.cooldownSeconds : Infinity;
+    unit.cdKnown = !!single && !!row.ability;
+    unit.cdState = single ? 'selected-hud' : row ? 'group-hud' : own && state.hudMemory.has(unit.id) ? 'stale-hud' : 'unknown';
+    unit.cdObservedTick = row ? observation.tick : own ? state.hudMemory.get(unit.id)?.observedTick ?? null : null;
+    if (own && state.hudMemory.has(unit.id)) unit.lastHUD = detachedCopy(state.hudMemory.get(unit.id));
+    else delete unit.lastHUD;
+  };
+  for (const unit of view.units.values()) mask(unit);
+  for (const unit of state.screenMemory.values()) mask(unit);
+  // Remembered enemy values must use the same coarse health estimate, never the private scene detector's exact HP.
+  for (const sighting of view.sightings) {
+    const remembered = state.screenMemory.get(sighting.id);
+    if (remembered) sighting.val = UNITS[remembered.type].cost * remembered.hp / ((UNITS[remembered.type].models ?? 1) * UNITS[remembered.type].hpPer);
+  }
   return view;
 }

@@ -2,6 +2,49 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## Thermopylae navigation and cliffs (2026-10-05)
+
+- The Hot Gates mountain-road gate is on level 2 beside an isolated level-4 plateau. Horde's 5 m spawn scatter
+  could land at (101,135), on that plateau, with no path to the bunker. Spawn placement now uses the unit's
+  movement mask and the gate's connected region. Ordinary land recruitment uses its home region too. Naval
+  recruitment keeps its search for nearby water. Crowds respect each unit's movement mask, so vehicles stay off
+  rubble, wrecks and tank traps while infantry can still cross them.
+- The road elevations and route stay as drawn. The stricter vehicle footprint system from origin exposed
+  20 rubble cells closing the mountain roadway; these move onto adjacent cliff shoulders. Regression checks cover eight scatter directions at every gate,
+  obstacle crowd pushes and four-vehicle Light Tank and Churchill convoys through both gullies in both directions.
+  Mixed tank and Churchill traffic can still jam when a faster tank tries to pass on the narrow road.
+- Cliffs share deterministic ragged rim offsets between the plateau and wall. Convex corners cut inward and
+  concave corners fill outward to soften the grid staircase. Bilinear offsets carry these bevels through each
+  touching cell without folding its triangles. Broad rock faces continue across cell boundaries and bends;
+  larger embedded outcrops and scattered fallen stones join the existing terrain mesh and draw call.
+  High detail uses four vertical bands, Low uses two;
+  maps above 65,536 cells use one band without foot rocks to retain the terrain triangle ceiling. Stone paint
+  uses darker, irregular weathering instead of horizontal stripes and pale caps. Face winding points toward
+  the low ground in all four orientations. Regression checks cover sealed convex and concave bends. Terrain
+  updates rebuild the stones along with the wall. Simulation heights and obstacle rules do not depend on the rocks.
+  Render contact and ground picking query the actual reshaped triangles through a cell index; ordinary terrain
+  keeps its existing contact query, and maps above 65,536 cells keep the existing inexpensive cliff query.
+  Plateau centres retain their original positions and heights, including near shell scars. Decorative crest
+  boulders can rise above the backing; they do not affect ground contact or picking.
+  The Hot Gates surface scan retains one pre-existing folded ground triangle (two before this revision).
+- Cliff rock models (2026-10-05): the wall sheet stays as the sealed backing and contact surface. In front of it,
+  six fractured rock models (an icosahedron, detail 1 on High and 0 on Low, displaced by noise and cut by a
+  flat outward face, a ledge and seven cleavage planes) are stacked per half cell edge, one per 3 m stratum,
+  each leaning 0.95 m further back per full rise. About 28% of halves get one tall buttress instead. Crest
+  boulders sit on the lip; scree sits at the foot. Lattice corners with one low cell (notch) get a rock pile
+  that rises 0.25 m over the lip; corners with one high cell (tooth) get a column kept within a metre of the
+  corner. Both need true cliff edges, not a diagonal level gap. Models carry rock paint 0.98: they shade like
+  stone but stay out of ground contact and picking, with no lip band, and upward faces take a grassy ledge
+  tint. A regression check keeps every model vertex near a mountain-road cell centre below 0.3 m. Deeper
+  convex bevels were tried and rejected because they break the shared mixed-height junction.
+  Ground triangles keep the existing ceiling. Decorative triangles have a separate per-cliff-edge budget,
+  scaled by the number of strata. Map regressions compare ragged cliff contact to independent mesh rays;
+  unchanged terrain still checks centred ramps, monotonic slopes and closed grid edges.
+- Authored naval sources use LF-normalized fingerprints in both export and validation, so a Windows checkout
+  keeps the same asset identity as a Unix checkout while actual source edits still invalidate the payload.
+- This fixes placement and crowd handling, without changing unit stats or wave budgets. No balance tuning was
+  performed. A running match's already stranded units need a restart; no recovery teleport is added.
+
 ## World Conquest (2026-10-03)
 
 World Conquest is a separate multiplayer mode with a generated, connected continent. Huge has 64 regions;
@@ -815,6 +858,12 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   and look (faction and player color), so they follow the models as those improve. A small renderer of its own
   starts 1.2 s after the match starts and renders one portrait per frame; colors are pulled 20% toward grey so the
   renders sit quietly on the panels. Until a portrait is ready its slot shows the silhouette icon.
+  Since 2026-10-05 only the selection list uses portraits. Recruit, train and build cards show the flat silhouette
+  symbol at full strength: at card size the 3D renders all looked alike and players could not tell units apart.
+- Recruit row tabs (2026-10-05): outside Classic the Command Card groups are a row of tabs, and only the open group's
+  cards show, on a row under the tabs. Nothing is open by default, so the panel is just the tabs until you pick one.
+  A click and a recruit-mode letter set the same open group, and Esc or a second click on the tab closes it.
+  Classic building cards keep every group open.
 - Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
   row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
   Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in
@@ -1032,8 +1081,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   row runs of up to 32 cells. It imports `../shared/sim.js` by relative path, so test.js runs it in Node.
 - Cliff and slope rules: cell centres keep their exact sim height (`level x CFG.levelHeight`). A step of two or more
   levels between connected cells is a cliff: the sides get separate vertices and a vertical rock strip between them,
-  painted as warm strata with a pale lip and a soil foot. A one-level step is an eased ramp (smoothstep) between the two
-  cell centres, steepest at the boundary, painted with dry earth on the steep part. Cliffs are a heightfield, so there are no overhangs. Roads
+  painted as warm strata with a pale lip and a soil foot. Ordinary ramps use cubic interpolation with shared,
+  limited gradients. Consecutive rising cells keep their slope through cell centres instead of making a shelf
+  at every level. Flat tops, centre heights and cliff connectivity remain intact. Normals come from the same
+  interpolation, and the existing quarter-cell triangles remain the surface sampled by grounding and picking.
+  Ordinary hills use continuous slope paint; contour ink and lip/foot bands stay near actual cliffs.
+  Crater rims retain their existing visual edge displacement, which can differ from contact sampling.
+  Cliffs are a heightfield, so there are no overhangs. Roads
   sink 0.1 m with a shallow centre fan, and building cells are never sunk. Water cells are carved below the frozen
   water line of their body (`client/water-levels.js`): fords 0.15 m so they stay wadeable, channels 0.42 m at the
   bank row and 0.38 m deeper per row inward, with sloping banks. Bridge cells keep their deck height.
@@ -1249,11 +1303,32 @@ turrets and muzzle mounts follow both.
 The simulation position, speed, routing, damage and selection markers retain their existing rules.
 Hidden or off-screen vehicles skip terrain sampling and evaluate the current pose when they return.
 
+Native tank wheel and belt animation (2026-10-04): authored road wheels, idlers, sprockets and return rollers carry axle
+centers and radii through the existing hull bake. Signed root travel includes ground height changes; heading
+changes give each side its own travel distance. Paired discs share their track's steering distance. Rotation
+occurs around each local z axle before terrain and suspension transforms, so reversing, pivot turns, stopping
+and hills keep coherent wheel motion. Hidden returns,
+teleports and paused seeks reset the displacement baseline without inventing travel. Each hull retains one draw
+and shares its static geometry and textured material, with two private motion values used by color and shadow
+passes. Visible links and cleats circulate around each native track loop using a shared sampled path table.
+Previously omitted bottom details complete the belt for circulation. The original vertices still define the terrain
+support footprint, and moving details stay above the native floor. Removing the hull frees only its private buffer
+and binding.
+Coverage includes Stuart, Panzer II, T-70, Sherman, Panzer IV, T-34, Tiger, Churchill, Cromwell, M10, StuG, SU-85,
+Calliope, Wirbelwind and ZSU-37, including existing faction model fallbacks. Suspension fittings and
+spare wheels remain fixed. Wheeled and halftrack families are outside this tank animation change.
+
 The [terrain workshop](docs/terrain-workshop.md) renders the game's models and relief through the same animation
-pipeline on five authored scenes: climb and descent, cross slope, crest, trench and flat ground. It offers
-scrubbing, single-frame playback, faction and vehicle choices, three camera views and a level-hull comparison.
+pipeline on seven authored scenes: climb and descent, cross slope, rounded hill, ramp beside a cliff, crest,
+trench and flat ground, plus a full generated World Conquest map with seed 20261003. It offers
+scrubbing, single-frame playback, forward/reverse/stopped motion, faction and vehicle choices, four camera views
+including close side inspection, and a level-hull comparison. Wheel telemetry reports native axle centers,
+radii and current rotation; belt telemetry reports signed travel and a circulating vertex.
 Its scripted paths test presentation, while the movement lab remains the authority for navigation and commands.
 Support samples approximate a rigid contact footprint; they do not add airborne vehicle physics or rollover.
+The original straight ramp and cross-slope fixtures remain unchanged for before/after comparisons. Broad
+authored plateaus and generated level regions retain their height contract. This change blends their ramps
+without changing high-ground bonuses, cliff collision, navigation or vehicle terrain alignment.
 
 Authoritative projectile flights sweep terrain and moving bodies between 20-Hz ticks. Contact applies damage and
 suppression once, even after the shooter dies. Small arms travel at 230 m/s, sniper rounds at 420 and direct shells
@@ -2088,7 +2163,13 @@ The initial skill parameters are authored defaults, not measured distributions o
 
 New screen contacts and damage episodes are stamped when the delivered camera view first exposes them. A contact returning within ten seconds retains its episode. Minimap contacts are exploratory events, separate from reaction gates. The humanity report retains the complete stimulus population, conditional answered medians, answer fractions and unanswered durations censored at recording end. It distinguishes first non-camera screen response, first off-screen alert response, attempted commands and accepted commands. A busy commander can abandon mouse travel before pressing its button, retaining the pointer's actual position and selection. Held drags, pan keys and Ctrl-click gestures finish before cancellation. Cancelling an armed targeting mode pays for Esc. No command is attributed to a stimulus it did not answer.
 
-Ordinary unfinished moves have a 12-second commitment window at every skill. Arrival permits a new objective, while a return to a recently abandoned objective waits 30 seconds. A local base emergency can redirect its own defenders; unrelated screen damage cannot reverse another squad. A planning cycle reserves each squad for at most one movement and combines nearby line orders into one selection, keeping rear support separate. Idle visits address the named unit; expansion visits address their chosen point. Accepted aimed abilities that still show no cooldown get a 15-second first retry delay, then a 60-second delay for repeated unresolved attempts. Accepted formation destinations acknowledge an assault; merely proposed or rejected commands do not. Accepted repair clicks reserve their crews through the next snapshot and until observed completion. Control groups bind actual 2-8-troop operations, prune dead members and reuse the nine number keys by least recent use.
+Ordinary unfinished moves have a 12-second commitment window at every skill. Arrival permits a new objective, while a return to a recently abandoned objective waits 30 seconds. A local base emergency can redirect its own defenders; unrelated screen damage cannot reverse another squad. A planning cycle reserves each squad for at most one movement and combines nearby line orders into one selection, keeping rear support separate. Idle visits address the named unit and can include observed ready companions within 24 metres; expansion visits address their chosen point. The actual selection must still include that named squad before its order begins. Accepted aimed abilities that still show no cooldown get a 15-second first retry delay, then a 60-second delay for repeated unresolved attempts. Accepted formation destinations acknowledge an assault; merely proposed or rejected commands do not. Accepted repair clicks reserve their crews through the next snapshot and until observed completion. Control groups bind actual 1-8-troop operations, prune dead members and reuse the nine number keys by least recent use. A single squad can be a persistent operation, with the same paid binding and recall as a larger group.
+
+The selected-type HUD is a separate reading from the camera scene. World health bars provide a 5% estimate. A real selected singleton supplies the HUD's rounded health and cooldown; several selected squads of the same type supply aggregate health and ability readiness, without revealing which member is ready. Unselected and enemy cooldowns remain unknown. Own selected HUD readings can refresh off camera, as the human interface does. Stale readings retain their timestamp and never count down an unseen cooldown. A meaningful proposed ability can request one paid selection before replanning. Reading that HUD takes another authored 0.5/0.3/0.2 seconds for Easy/Normal/Hard. Failed inspections wait eight seconds before a retry; a remembered positive cooldown also defers inspection until that reading could have expired. Urgent retreats proceed first. Raw alert and damage detector histories, and the fog projection's detailed sightings, live in private WeakMaps outside planner memory.
+
+A concern's dwell begins after its physical camera trip completes, preserving the original event clock. Production records its intended purchase's real price, reserve and readiness. A blocked purchase yields attention until delivered affordability or readiness changes, a ready alert arrives, or a bounded 30-second revisit occurs. An empty attention cycle can observe its current camera without another base jump. Support becomes a concern only when an ordinary support call and existing reserves are affordable. These rules remove camera visits with no available task; they add no income, unit statistics or hidden queue progress.
+
+The prospective measurement amendment is in `docs/human-like-ai-measurement-protocol.md`. One physical input can deliberately answer several already perceived events, with complete immutable creation descriptors and independent actual-actor and target checks. New primary and secondary events pay the same full reaction budget. The enqueue horizon is 240 ticks; a timely job may complete later after real travel or an input-budget wait. Every required unanswered event stays in the censored population. New reports retain both primary-only and explicit-link results on identical logs, and count each input once for APM. The original response population and numeric gates remain unchanged.
 
 The Horde Wave is a director, rather than a player. Its movement, stances, support and ability script retain the fog-fair view, the Normal decision cadence and the existing bounded path-order drain. It deliberately does not use human hands. Co-op AI teammates are ordinary seat commanders and use the full human loop. Tutorial scripted enemies keep their authored scenario orders; any seat commander still uses the loop.
 

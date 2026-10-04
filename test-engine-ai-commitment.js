@@ -108,11 +108,13 @@ assert.ok(ready.attacks.every(cmd => cmd.orders.some(row => row[0] === ready.bud
   'the local buddy joins the same formation command instead of merely authorizing a lone advance');
 console.log('Base advances require an available local formation, with isolated and busy-buddy negative controls.');
 
-function firstVisit(concern) {
+function firstVisit(concern, companion = 'ready') {
   const game = createGame(open([{ x: 35, y: 40 }, { x: 55, y: 40 }]), ['AI', 'enemy'], false, [0, 1], [0, 1], { weather: false });
   for (const [id, unit] of game.units) if (unit.owner !== 0) game.units.delete(id);
   const own = [...game.units.values()];
   own.forEach((unit, i) => Object.assign(unit, { x: 48 + i * 8, z: 80, auto: false, autoRetreat: false }));
+  if (companion === 'busy') own.slice(1).forEach(unit => { unit.dig = { kind: 'trench', x: unit.x, z: unit.z }; });
+  if (companion === 'far') own.slice(1).forEach(unit => { unit.x = 76; });
   game.players[0].mp = 0;
   const memory = { human: { concern: { ...concern, ...(concern.kind === 'idle' && { unitId: own[0].id }),
     since: 0, until: 10000 }, startedTick: 0 } }, inputs = [];
@@ -120,21 +122,33 @@ function firstVisit(concern) {
   for (let tick = 0; tick < 400 && !issued; tick++) {
     game.tick = tick;
     if (!view || tick % 2 === 0) view = viewFor(game, 0, memory);
-    think(game, 0, { memory, view, level: 'normal', seed: 12, inputLog: input => inputs.push(structuredClone(input)), submit: cmd => {
+    think(game, 0, { memory, view, level: 'normal', seed: 10, inputLog: input => inputs.push(structuredClone(input)), submit: cmd => {
       const result = command(game, 0, cmd);
       if (result === undefined && cmd.orders) issued = structuredClone(cmd);
       return result;
     } });
   }
   assert.ok(issued && inputs.some(input => input.command?.orders), 'the attended visit executes a movement through physical inputs');
-  return { game, own, issued, inputs };
+  return { game, own, issued, inputs, screenIds: new Set(memory.human.view.screenIds) };
 }
 {
   const visit = firstVisit({ id: 'idle:first', kind: 'idle', x: 48, z: 80 });
-  assert.deepEqual(visit.issued.orders.map(row => row[0]), [visit.own[0].id],
-    'a visit to one idle squad acts on that squad even when two other ready squads are on camera');
-  assert.ok(visit.own[0].path.length > 0 && visit.own.slice(1).every(unit => !unit.path.length),
-    'only the actually attended idle squad receives an authoritative path');
+  assert.ok(visit.issued.orders.some(row => row[0] === visit.own[0].id),
+    'an idle formation includes the named squad receiving attention');
+  assert.ok(visit.issued.orders.length >= 2 && visit.inputs.some(input => input.command?.orders?.length >= 2),
+    'ready local companions join one physically issued formation command');
+  assert.ok(visit.issued.orders.every(row => visit.screenIds.has(row[0]) && visit.own.some(unit => unit.id === row[0]
+    && Math.hypot(unit.x - visit.own[0].x, unit.z - visit.own[0].z) <= 24)),
+    'every formation member was observed within 24 metres of the named actor');
+  for (const companion of ['busy', 'far']) {
+    const isolated = firstVisit({ id: 'idle:first', kind: 'idle', x: 48, z: 80 }, companion);
+    assert.ok(isolated.own.every(unit => isolated.screenIds.has(unit.id)),
+      `${companion} negative control keeps companions observed so their work or distance excludes them`);
+    assert.deepEqual(isolated.issued.orders.map(row => row[0]), [isolated.own[0].id],
+      `an idle visit excludes ${companion} companions from its actual orders`);
+    assert.ok(isolated.own.slice(1).every(unit => !unit.path.length),
+      `${companion} companions keep their existing work or position`);
+  }
 }
 {
   const visit = firstVisit({ id: 'point:1', kind: 'expansion', point: 1, x: 111, z: 81 });
@@ -156,15 +170,26 @@ function firstVisit(concern) {
   game.points[0].owner = 0; game.points[0].progress = 1;
   mutateWorldCell(game, cell, { ground: '+', height: -1 });
   const memory = {}, inputs = [];
-  let view, acceptedAt = null, staleTurn = false, finished = false;
+  let view, preDispatchView, acceptedAt = null, staleTurn = false, finished = false;
   for (let tick = 0; tick < 1000 && !finished; tick++) {
-    if (!view || game.tick % 2 === 0) view = viewFor(game, 0, memory);
-    if (acceptedAt !== null && game.tick > acceptedAt && view.tick <= acceptedAt) staleTurn = true;
+    const deliverStale = acceptedAt !== null && game.tick === acceptedAt + 1;
+    // One delivery after acceptance still contains the observation received before the physical command.
+    if (deliverStale) view = preDispatchView;
+    else if (!view || game.tick % 2 === 0) view = viewFor(game, 0, memory);
+    if (deliverStale) {
+      assert.equal(view.units.get(holder.id).dig, null, 'the delayed observation still reports an idle repair worker');
+      assert.equal(holder.dig?.kind, 'fill', 'the authoritative worker is already performing the accepted repair');
+      assert.ok(view.tick <= acceptedAt && game.tick > acceptedAt, 'the stale delivery precedes dispatch on a later commander tick');
+    }
     think(game, 0, { memory, view, level: 'normal', seed: 27, inputLog: input => inputs.push(structuredClone(input)), submit: cmd => {
       const result = command(game, 0, cmd);
-      if (result === undefined && cmd.t === 'dig' && cmd.kind === 'fill' && cmd.ids.includes(holder.id)) acceptedAt ??= game.tick;
+      if (acceptedAt === null && result === undefined && cmd.t === 'dig' && cmd.kind === 'fill' && cmd.ids.includes(holder.id)) {
+        acceptedAt = game.tick;
+        preDispatchView = view;
+      }
       return result;
     } });
+    if (deliverStale) staleTurn = true;
     if (acceptedAt !== null && game.height[cell] < 0) assert.equal(holder.dig?.kind, 'fill',
       'an actually accepted repair remains reserved while the latest delivered view can still show the worker idle');
     step(game);

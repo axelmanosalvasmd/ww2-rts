@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { UNITS } from './shared/sim.js';
 import { buildModel, animate, vehicleBody } from './client/unit-models.js';
 import { vehicleTerrainPose } from './client/engine-presentation.js';
+import { trackVertex } from './client/track-motion.js';
 import { createRelief } from './client/relief.js';
 import { TERRAIN_SCENARIOS, TERRAIN_TYPES, terrainFixture } from './tools/terrain-workshop-fixtures.js';
 
@@ -162,8 +163,8 @@ for (const type of ['medium', 'churchill', 'armoredcar']) {
     for (const child of v.visualBody.children) if (child !== v.turret) child.traverse(mesh => {
       if (!mesh.isMesh) return;
       const positions = mesh.geometry.attributes.position;
-      for (let i = 0; i < positions.count; i++) {
-        point.fromBufferAttribute(positions, i);
+      for (const phase of [0, 0.19, 1.2]) for (let i = 0; i < positions.count; i++) {
+        point.copy(trackVertex(mesh.geometry, i, phase, 0.08));
         if (point.y > v.groundContact.y + 0.15) continue;
         point.applyMatrix4(mesh.matrixWorld);
         assert.ok(point.y >= ridge.hAt(point.x, point.z) - 0.001, `${type}/${yaw}/${x}: native track or tire vertex clears a narrow crest`);
@@ -185,8 +186,8 @@ roughTank.root.updateMatrixWorld(true);
 for (const child of roughTank.visualBody.children) if (child !== roughTank.turret) child.traverse(mesh => {
   if (!mesh.isMesh) return;
   const positions = mesh.geometry.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    point.fromBufferAttribute(positions, i);
+  for (const phase of [0, 0.19, 1.2]) for (let i = 0; i < positions.count; i++) {
+    point.copy(trackVertex(mesh.geometry, i, phase, 0.08));
     if (point.y > roughTank.groundContact.y + 0.15) continue;
     point.applyMatrix4(mesh.matrixWorld);
     assert.ok(point.y >= rough.hAt(point.x, point.z) - 0.001, 'raised track vertices clear the compound terrain after projection');
@@ -194,4 +195,4 @@ for (const child of roughTank.visualBody.children) if (child !== roughTank.turre
 });
 rough.dispose();
 console.log('vehicle terrain pose checks passed: native footprints, composed slope normals and support, all nine vehicles, yaw/reverse, suspension ordering, crests, resets and hidden sampling');
-console.log(`PASS workshop relief: ${reliefSamples} composed poses across five scenes and faction models`);
+console.log(`PASS workshop relief: ${reliefSamples} composed poses across ${TERRAIN_SCENARIOS.length} scenes and faction models`);

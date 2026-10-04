@@ -185,6 +185,9 @@ Details the commander saw inside its camera earlier. Confidence fades and the me
 **Hands**:
 The input executor that selects troops, recalls groups, moves the camera, presses keys and clicks before sending ordinary game commands.
 
+**Selected HUD Reading**:
+The current health and ability information shown for the actual selection. A single selected squad supplies rounded numeric values; several squads of one type supply aggregate values. A paid inspection selects a squad before using this reading to decide.
+
 **Physical Input APM**:
 Inputs per minute, including selection and camera gestures. Command APM counts game commands separately; one input can affect a whole formation.
 

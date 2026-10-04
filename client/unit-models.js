@@ -18,6 +18,8 @@ import { soldier, AIM_SHIFT } from './models/infantry.js';
 import { infantryMaterial, loadInfantryTextures } from './infantry-material.js';
 import { moveSquad, gaitWeights } from './squad-motion.js';
 import { moveModel } from './model-motion.js';
+import { wheelMaterial, wheelMesh, moveWheels } from './wheel-motion.js';
+import { mergeTracks, applyTracks } from './models/track-data.js';
 import { isArmorMedium, buildArmorMedium } from './models/armor-medium.js';
 import { lightHeavy } from './models/armor-lightheavy.js';
 import { churchill } from './models/churchill.js';
@@ -46,7 +48,7 @@ const DARK = 0x2a2a24;
 export const PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }), { mat: 'armor-paint', grime: true });
 export const INFANTRY_PAINT = infantryMaterial(modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }), { mat: 'wool', grime: true }));
 // Painted steel, exposed tracks, tires and canvas share one draw while keeping separate surface responses.
-export const VEHICLE_PAINT = modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0 }), { mat: 'armor-paint', grime: true });
+export const VEHICLE_PAINT = wheelMaterial(modelMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0 }), { mat: 'armor-paint', grime: true }));
 const colors = new Map();
 const colorOf = (hex) => colors.get(hex) || colors.set(hex, new THREE.Color(hex)).get(hex);
 const cloths = new Map();
@@ -103,7 +105,8 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = withColor ? new Float32Array(nv * 3) : null, uvs = uv ? new Float32Array(nv * 2) : null;
   const mat = withColor ? new Float32Array(nv) : null, L = LOOKS[look] ?? LOOKS.vehicle;
   const atlas = parts.some(p => p.geo.attributes.modelUV) ? new Float32Array(nv * 3) : null;
-  const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3();
+  const wheels = parts.some(p => p.geo.attributes.wheelPivot) ? new Float32Array(nv * 4) : null;
+  const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni), nm = new THREE.Matrix3(), t = new THREE.Vector3(), wheelPoint = new THREE.Vector3();
   let vo = 0, io = 0;
   for (const p of parts) {
     const P = p.geo.attributes.position, N = p.geo.attributes.normal, U = p.geo.attributes.uv, I = p.geo.index;
@@ -111,6 +114,7 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
     const G = col ? p.geo.attributes.color : null, M = p.geo.attributes.matId, A = p.geo.attributes.modelUV;
     const fill = mat ? (p.mat != null ? matId(p.mat) : !G && darkSteel(p.color) ? GUNMETAL : matId(L.mat)) : 0;
     nm.getNormalMatrix(p.matrix);
+    const W = p.geo.attributes.wheelPivot, wheelScale = Math.hypot(...p.matrix.elements.slice(0, 3));
     for (let i = 0; i < P.count; i++) {
       t.fromBufferAttribute(P, i).applyMatrix4(p.matrix).toArray(pos, (vo + i) * 3);
       const y = t.y;
@@ -118,6 +122,10 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
       if (col) p.color.toArray(col, (vo + i) * 3);
       if (G) { const o = (vo + i) * 3; col[o] *= G.getX(i); col[o + 1] *= G.getY(i); col[o + 2] *= G.getZ(i); }
       if (atlas && A) { atlas[(vo + i) * 3] = A.getX(i); atlas[(vo + i) * 3 + 1] = A.getY(i); atlas[(vo + i) * 3 + 2] = A.getZ(i); }
+      if (wheels && W && W.getW(i) > 0) {
+        wheelPoint.set(W.getX(i), W.getY(i), W.getZ(i)).applyMatrix4(p.matrix).toArray(wheels, (vo + i) * 4);
+        wheels[(vo + i) * 4 + 3] = W.getW(i) * wheelScale;
+      }
       if (uvs) { uvs[(vo + i) * 2] = U.getX(i); uvs[(vo + i) * 2 + 1] = U.getY(i); }
       if (mat) {
         const own = M ? baseMat(M.getX(i)) : UNSET;
@@ -138,6 +146,8 @@ export function mergeParts(parts, withColor, look = 'vehicle', lift = 0) {
   if (mat) g.setAttribute('matId', new THREE.BufferAttribute(mat, 1));
   if (uvs) g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   if (atlas) g.setAttribute('modelUV', new THREE.BufferAttribute(atlas, 3));
+  if (wheels) g.setAttribute('wheelPivot', new THREE.BufferAttribute(wheels, 4));
+  applyTracks(g, mergeTracks(parts));
   g.setIndex(new THREE.BufferAttribute(idx, 1));
   g.computeBoundingSphere();
   return g;
@@ -177,7 +187,7 @@ function bakeMeshes(group, key, shadow, poses = null, look = 'vehicle') {
     if (poses) poseMorphs(list[0].geometry, poses.poses, poses.gait, poses.muzzle, poses.fallen);
     baked.set(key, list);
   }
-  return list.map(({ material, geometry }) => { const m = new THREE.Mesh(geometry, material); m.castShadow = shadow; m.userData.baked = material; return m; });
+  return list.map(({ material, geometry }) => { const m = wheelMesh(geometry, material); m.castShadow = shadow; m.userData.baked = material; return m; });
 }
 // bake in place: the group keeps its transform and gets the baked meshes as its only children
 function bake(group, key, shadow, look = 'vehicle') {
@@ -397,7 +407,7 @@ export function buildModel(v, root, f, fac, def) {
 // swap to the far-away model beyond the LOD distance. eye is the camera position.
 export function animate(v, dt, eye, groundAt, detailed = true) {
   const sq = v.squad;
-  if (!sq) { moveModel(v, dt); return; }
+  if (!sq) { moveModel(v, dt); moveWheels(v, dt); return; }
   const px = v.root.position.x, pz = v.root.position.z;
   const distance = sq.poseX === undefined ? 0 : Math.hypot(px - sq.poseX, pz - sq.poseZ);
   const travel = distance > 8 ? 0 : distance;
@@ -859,11 +869,17 @@ export function vehicleBody(v) {
   const visit = node => {
     if (node === v.turret || v.mounts?.includes(node)) return;
     if (node.isMesh && node.geometry?.attributes.position) {
-      const positions = node.geometry.attributes.position, transform = relative(node, body);
+      const positions = node.geometry.attributes.position, tracks = node.geometry.attributes.trackData, transform = relative(node, body);
       for (let i = 0; i < positions.count; i++) {
+        if (tracks && tracks.getY(i) >= 0) continue;
         point.fromBufferAttribute(positions, i).applyMatrix4(transform);
         bottom = Math.min(bottom, point.y);
         vertices.push(point.x, point.y, point.z);
+      }
+      const support = node.geometry.userData.trackSupport ?? [];
+      for (let i = 0; i < support.length; i += 3) {
+        point.fromArray(support, i).applyMatrix4(transform);
+        bottom = Math.min(bottom, point.y); vertices.push(point.x, point.y, point.z);
       }
     }
     for (const child of node.children) visit(child);

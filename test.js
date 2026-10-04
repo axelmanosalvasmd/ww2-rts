@@ -1,3 +1,5 @@
+import './test-horde-navigation.mjs';
+import './test-cliff-relief.mjs';
 // Headless sim checks: `node test.js`. Fails loudly if core rules break.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -25,6 +27,7 @@ import { normalizeFace, slotSize, facingSpots } from './shared/formation.js';
 import { createOrders } from './client/orders.js';
 await import('./test-tutorial.js');
 await import('./test-infantry-authored.mjs');
+await import('./test-terrain-relief.mjs');
 // The authoritative solver installs durable rubble after its bounded physical fall.
 const settleDebris = g => { for (let i = 0; i <= Math.ceil(DEBRIS_LIMITS.lifetime / sim.TICK) + 1; i++) step(g); };
 const settledRubble = (g, cells, message) => {
@@ -44,8 +47,8 @@ const settledRubble = (g, cells, message) => {
   const { execFileSync } = await import('node:child_process');
   for (const file of ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
-    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-engine-observed-walls.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-ai-callers.js', 'test-engine-ai-hands.js', 'test-engine-ai-perception.js', 'test-engine-ai-human.js', 'test-engine-ai-persona.js', 'test-engine-ai-humanity.js', 'test-engine-ai-commitment.js', 'test-engine-ai-coherence.js', 'test-engine-ai-overlay.js', 'test-human-input.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
-    'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
+    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-engine-observed-walls.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-ai-callers.js', 'test-engine-ai-hands.js', 'test-engine-ai-perception.js', 'test-engine-ai-human.js', 'test-engine-ai-response.js', 'test-engine-ai-effect-visibility.js', 'test-engine-ai-persona.js', 'test-engine-ai-humanity.js', 'test-engine-ai-humanity-multievent.js', 'test-engine-ai-commitment.js', 'test-engine-ai-coherence.js', 'test-engine-ai-overlay.js', 'test-human-input.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
+    'test-ai-terrain-delivery.js', 'test-engine-ai-workload.js', 'test-engine-ai-selected-hud.js', 'test-engine-ai-inspection.js', 'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
   }
@@ -3422,8 +3425,8 @@ const referenceSeparation = `
     const push = (min - d) / 2 * (sa || sb ? 1 : 0.5), px = dx / d * push, pz = dz / d * push;
     // a squad holding its cover is not pushed off it, and does not push back at a friend walking past
     const ha = !sa && shovedFromCover(g, a, a.x - px, a.z - pz), hb = !sb && shovedFromCover(g, b, b.x + px, b.z + pz);
-    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & MOVE) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
-    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & MOVE) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
+    if (!sa && !ha && !(hb && a.path.length) && !(flagsAt(g, a.x - px, a.z - pz) & blockOf(UNITS[a.type])) && Math.abs(levelAt(g, a.x - px, a.z - pz) - levelAt(g, a.x, a.z)) <= 1) { a.x -= px; a.z -= pz; }
+    if (!sb && !hb && !(ha && b.path.length) && !(flagsAt(g, b.x + px, b.z + pz) & blockOf(UNITS[b.type])) && Math.abs(levelAt(g, b.x + px, b.z + pz) - levelAt(g, b.x, b.z)) <= 1) { b.x += px; b.z += pz; }
   }
 `;
 
@@ -5406,7 +5409,37 @@ for (const lookupFinished of [false, true]) {
   const source = readFileSync(new URL('./client/camera.js', import.meta.url), 'utf8')
     .replace("from 'three'", `from '${import.meta.resolve('three')}'`)
     .replace("from '/shared/sim.js'", `from '${new URL('./shared/sim.js', import.meta.url)}'`);
-  const { rig } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  const { rig, groundAt: pickGround } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+  // A narrow crest and trench need the relief's quarter-cell surface, not whole-cell corner planes.
+  const pickMap = { w: 8, h: 6, rows: ['........', '........', '...TT...', '........', '........', '........'], heights: Array(6).fill('00111004') };
+  const pickRelief = createRelief(pickMap), pickCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+  for (const [x, z] of [[5.31, 3.17], [7.21, 5.13], [6.42, 5.63], [13.83, 7.29], [0.12, 0.17]]) {
+    const target = new THREE.Vector3(x, pickRelief.hAt(x, z), z);
+    pickCamera.position.copy(target).add(new THREE.Vector3(-1.2, 8, 3)); pickCamera.lookAt(target); pickCamera.updateMatrixWorld();
+    const screen = target.clone().project(pickCamera);
+    const picked = pickGround(pickCamera, pickRelief.hAt, (screen.x + 1) * 400, (1 - screen.y) * 400, 800, 800, 16, 12, pickRelief.mesh);
+    assert.ok(picked && picked.distanceTo(target) < 1e-5, 'game picking follows the actual relief on ramps, trenches and map edges');
+  }
+  // Aim through the ragged cliff face, below its top and above its foot.
+  const face = new THREE.Vector3(14, 4, 7);
+  pickCamera.position.set(12, 5, 7); pickCamera.lookAt(face); pickCamera.updateMatrixWorld();
+  const faceScreen = face.clone().project(pickCamera);
+  const cliffPick = pickGround(pickCamera, pickRelief.hAt, (faceScreen.x + 1) * 400, (1 - faceScreen.y) * 400, 800, 800, 16, 12, pickRelief.mesh);
+  // Decorative rock models leave the sealed cliff backing as the ground contact and picking surface.
+  const contactGeometry = pickRelief.geometry.clone(), contactIndex = [], paint = contactGeometry.attributes.reliefPaint;
+  for (let t = 0; t < contactGeometry.index.count; t += 3) {
+    const a = contactGeometry.index.array[t], stone = paint.getX(a);
+    if (stone === 0 || stone === 1) contactIndex.push(...contactGeometry.index.array.slice(t, t + 3));
+  }
+  contactGeometry.setIndex(contactIndex);
+  const rendered = new THREE.Mesh(contactGeometry, pickRelief.mesh.material), faceRay = new THREE.Raycaster();
+  rendered.updateMatrixWorld(true); faceRay.setFromCamera(new THREE.Vector2(faceScreen.x, faceScreen.y), pickCamera);
+  const faceHit = faceRay.intersectObject(rendered)[0];
+  assert.ok(faceHit && Math.abs(faceHit.point.x - face.x) < 1.25 && faceHit.point.y > 0 && faceHit.point.y < 10,
+    'the rendered cliff remains near the authored boundary, between its foot and crest');
+  assert.ok(cliffPick && cliffPick.distanceTo(faceHit.point) < 1e-5, 'game picking follows the rendered cliff face');
+  contactGeometry.dispose();
+  pickRelief.dispose();
   const saved = { innerWidth: globalThis.innerWidth, innerHeight: globalThis.innerHeight, addEventListener: globalThis.addEventListener };
   Object.assign(globalThis, { innerWidth: 1920, innerHeight: 1080, addEventListener: () => {} });
   try {
@@ -6753,8 +6786,9 @@ for (const lookupFinished of [false, true]) {
   assert.equal(interrupted.snapEvery, 3, 'recovery starts again after interrupted low-load period');
 }
 
-// Relief preserves the sim's plateaus and boundaries on every shipped map.
+// Relief preserves cell centres, ordinary slopes and sealed cliff contact on every shipped map.
 {
+  const THREE = await import('three');
   for (const file of readdirSync('maps').filter(f => f.endsWith('.json'))) {
     const map = JSON.parse(readFileSync('maps/' + file, 'utf8')), grid = map.rows.map(r => [...r]);
     const relief = createRelief(map, grid, { low: false }), geo = relief.geometry, p = geo.attributes.position.array, idx = geo.index.array;
@@ -6777,27 +6811,52 @@ for (const lookupFinished of [false, true]) {
       if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) <= 1e-9) { degenerate = true; break; }
     }
     assert.ok(!degenerate, `${file}: nondegenerate triangles`);
-    assert.ok(idx.length / 3 <= Math.max(150000, map.w * map.h), `${file}: terrain triangle ceiling`); // maps over 256 cells: one per cell
+    let rockTriangles = 0;
+    const rockPaint = geo.attributes.reliefPaint.array;
+    for (let t = 0; t < idx.length; t += 3) if (rockPaint[idx[t] * 4] > 0 && rockPaint[idx[t] * 4] < 1) rockTriangles++;
+    assert.ok(idx.length / 3 - rockTriangles <= Math.max(150000, map.w * map.h), `${file}: ground triangle ceiling`);
+    let minLevel = 0, maxLevel = 0;
+    for (const row of map.heights ?? []) for (const value of row) {
+      const level = levelOf(value); minLevel = Math.min(minLevel, level); maxLevel = Math.max(maxLevel, level);
+    }
+    const stack = Math.max(2, Math.round((maxLevel - minLevel) * CFG.levelHeight / 3));
+    assert.ok(rockTriangles <= relief.stats.cliffEdges * (240 * stack + 240), `${file}: rock models fit their cliff-edge budget`);
+    const contactGeometry = geo.clone(), contactIndex = [];
+    for (let t = 0; t < idx.length; t += 3) if (rockPaint[idx[t] * 4] === 0 || rockPaint[idx[t] * 4] === 1)
+      contactIndex.push(idx[t], idx[t + 1], idx[t + 2]);
+    contactGeometry.setIndex(contactIndex);
+    const contactMesh = new THREE.Mesh(contactGeometry, relief.mesh.material), ray = new THREE.Raycaster();
+    contactMesh.updateMatrixWorld(true);
+    let cliffQueries = 0;
     for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) for (const [dx, dy] of [[1, 0], [0, 1]]) {
       const nx = x + dx, ny = y + dy;
       if (nx >= map.w || ny >= map.h) continue;
       const a = lv(x, y), b = lv(nx, ny), diff = Math.abs(b - a), sample = t => relief.hAt((x + 0.5 + dx * t) * CELL, (y + 0.5 + dy * t) * CELL);
-      if (diff < 2 * CFG.levelHeight) for (let k = 1; k < 4; k++) {
+      const nearbyLevels = [];
+      for (let j = Math.max(0, y - 1); j <= Math.min(map.h - 1, ny + 1); j++)
+        for (let i = Math.max(0, x - 1); i <= Math.min(map.w - 1, nx + 1); i++) nearbyLevels.push(lv(i, j));
+      const nearCliff = Math.max(...nearbyLevels) - Math.min(...nearbyLevels) >= 2 * CFG.levelHeight;
+      if (!nearCliff && diff < 2 * CFG.levelHeight) for (let k = 1; k < 4; k++) {
         const ex = (x + (dx ? 1 : k / 4)) * CELL, ez = (y + (dy ? 1 : k / 4)) * CELL;
         assert.ok(Math.abs(relief.hAt(ex - dx * 1e-7, ez - dy * 1e-7) - relief.hAt(ex + dx * 1e-7, ez + dy * 1e-7)) <= 1e-4, `${file}: closed noncliff edge ${x},${y}`);
       }
       if (!plain[y * map.w + x] || !plain[ny * map.w + nx]) continue;
       if (diff >= 2 * CFG.levelHeight) {
-        assert.ok(Math.abs(sample(0.4999) - a) <= 0.1 && Math.abs(sample(0.5001) - b) <= 0.1, `${file}: cliff boundary ${x},${y}`);
-      } else if (diff === CFG.levelHeight) {
+        assert.ok(Math.abs(sample(0) - a) <= 0.1 && Math.abs(sample(1) - b) <= 0.1, `${file}: cliff keeps adjacent cell-centre heights ${x},${y}`);
+        if (map.w * map.h <= 65536 && cliffQueries++ < 8) for (const t of [0.25, 0.5, 0.75]) {
+          ray.set(new THREE.Vector3((x + 0.5 + dx * t) * CELL, 30, (y + 0.5 + dy * t) * CELL), new THREE.Vector3(0, -1, 0));
+          const hit = ray.intersectObject(contactMesh)[0];
+          assert.ok(hit && Math.abs(sample(t) - hit.point.y) < 1e-5, `${file}: cliff contact follows its actual triangles ${x},${y}`);
+        }
+      } else if (!nearCliff && diff === CFG.levelHeight) {
         const sign = Math.sign(b - a); let previous = sample(0);
         for (let k = 1; k <= 8; k++) { const next = sample(k / 8); assert.ok((next - previous) * sign >= -1e-4, `${file}: monotonic slope ${x},${y}`); previous = next; }
         assert.ok(Math.abs(sample(0.5) - (a + b) / 2) <= 0.1, `${file}: centred slope ${x},${y}`);
-      } else {
+      } else if (!nearCliff) {
         assert.ok(Math.abs(sample(0.4999) - sample(0.5001)) <= 0.01, `${file}: shared noncliff edge ${x},${y}`);
       }
     }
-    relief.dispose();
+    contactGeometry.dispose(); relief.dispose();
   }
 
   // A stick of bombs keeps sim heights at cell centres. The banks have to leave the cell grid.
@@ -8097,6 +8156,7 @@ console.log('all availability checks passed');
 console.log('all model toolkit checks passed');
 
 await import('./test-model-motion.mjs');
+await import('./test-wheel-motion.mjs');
 
 // Ships retain their animation contracts while their shaped hulls stay within a small mesh budget.
 {

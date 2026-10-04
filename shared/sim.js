@@ -834,7 +834,7 @@ function stepHorde(g, dt) {
   if (g.tick % 10 === 0) for (const gate of m.gates) {
     if (!m.reserve.length || field >= Math.min(H.fieldMax, H.field * m.defenders)) break;
     const u = spawnUnit(g, m.slot, m.reserve.pop()), a = Math.random() * Math.PI * 2;
-    Object.assign(u, cellCenter(g, nearestFree(g, gate.x + Math.cos(a) * 5, gate.z + Math.sin(a) * 5)));
+    Object.assign(u, cellCenter(g, nearestFree(g, gate.x + Math.cos(a) * 5, gate.z + Math.sin(a) * 5, blockOf(UNITS[u.type]), gate)));
     updateGrid(g, u); field++;
     command(g, m.slot, { t: 'amove', orders: [[u.id, bunker.x, bunker.z]] });
   }
@@ -1257,14 +1257,27 @@ function observedPathView(g, slot) {
   return view;
 }
 function updateObservedWalls(view, changed, full = false) {
-  // Initialization visits every cell. Scan directly rather than building 9N Set entries.
+  // Boolean horizontal and vertical dilation matches the clipped 3x3 neighborhood.
   if (full) {
-    const W = view.w, H = view.h;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      let wall = 0;
-      for (let ny = Math.max(0, y - 1); !wall && ny <= Math.min(H - 1, y + 1); ny++) for (let nx = Math.max(0, x - 1); nx <= Math.min(W - 1, x + 1); nx++)
-        if ((view.flags[ny * W + nx] & (MOVE | SIGHT)) === (MOVE | SIGHT)) { wall = 1; break; }
-      view.worldNearWalls[y * W + x] = wall;
+    const W = view.w, H = view.h, flags = view.flags, horizontal = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      const row = y * W;
+      let previous = 0, current = (flags[row] & (MOVE | SIGHT)) === (MOVE | SIGHT) ? 1 : 0;
+      for (let x = 0; x < W; x++) {
+        const cell = row + x;
+        const next = x + 1 < W && (flags[cell + 1] & (MOVE | SIGHT)) === (MOVE | SIGHT) ? 1 : 0;
+        horizontal[cell] = previous | current | next;
+        previous = current; current = next;
+      }
+    }
+    for (let y = 0; y < H; y++) {
+      const row = y * W;
+      for (let x = 0; x < W; x++) {
+        const cell = row + x;
+        view.worldNearWalls[cell] = horizontal[cell]
+          | (y > 0 ? horizontal[cell - W] : 0)
+          | (y + 1 < H ? horizontal[cell + W] : 0);
+      }
     }
     return;
   }
@@ -1353,7 +1366,7 @@ export function teamSees(g, team, at) {
 
 function spawnUnit(g, owner, type, n = g.units.size) {
   const s = g.players[owner].spawn, a = n * 2.4;
-  const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4, UNITS[type].naval ? blockOf(UNITS[type]) : MOVE);
+  const c = nearestFree(g, s.x + Math.cos(a) * 4, s.z + Math.sin(a) * 4, blockOf(UNITS[type]), UNITS[type].naval ? null : s);
   const u = { id: g.nextId++, type, owner, x: (c % g.w + 0.5) * CELL, z: (Math.floor(c / g.w) + 0.5) * CELL,
     rot: 0, aim: 0, moveSpeed: 0, vx: 0, vz: 0, travelDir: 0, hp: UNITS[type].models * UNITS[type].hpPer, supp: 0,
     path: [], orders: [], attackId: 0, targetId: 0, cooldown: 0, still: 0, retarget: 0, repath: 0, stuck: 0,
@@ -2019,16 +2032,20 @@ function nextGeneration(b, free = false) {
   }
   return b[key];
 }
-function nearestFree(g, x, z, block = MOVE) {
+function nearestFree(g, x, z, block = MOVE, origin = null) {
+  // Scatter around a spawn stays in its movement region, rather than landing on an isolated cliff top.
+  const labels = origin ? regionsFor(g, block) : null;
+  const home = origin ? nearestFree(g, origin.x, origin.z, block) : -1;
+  const free = c => !(g.flags[c] & block) && (!labels || labels[c] === labels[home]);
   const cx = Math.min(g.w - 1, Math.max(0, Math.floor(x / CELL))), cy = Math.min(g.h - 1, Math.max(0, Math.floor(z / CELL)));
   const start = cy * g.w + cx;
-  if (!(g.flags[start] & block)) return start;
+  if (free(start)) return start;
   const b = buffersFor(g.w * g.h), gen = nextGeneration(b, true), seen = b.freeSeen, q = b.freeQueue;
   let length = 1;
   q[0] = start; seen[start] = gen;
   for (let i = 0; i < length; i++) {
     const c = q[i];
-    if (!(g.flags[c] & block)) return c;
+    if (free(c)) return c;
     const x0 = c % g.w, y0 = Math.floor(c / g.w);
     for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x0 + ddx, ny = y0 + ddy, n = ny * g.w + nx;

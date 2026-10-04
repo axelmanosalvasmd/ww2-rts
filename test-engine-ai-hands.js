@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { CELL, CFG, UNITS, TRENCH } from './shared/sim.js';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { createHands, enqueueDecision, queueCamera, advanceHands, HUMAN_SKILLS, diagnostics, projectPointer, unprojectPointer, fittsMovement, groundClickable, interruptHands } from './shared/ai-hands.js';
+import { createHands, enqueueDecision, queueCamera, queueInspection, advanceHands, HUMAN_SKILLS, diagnostics, projectPointer, unprojectPointer, fittsMovement, groundClickable, interruptHands } from './shared/ai-hands.js';
 import { HUMAN_CAMERA } from './shared/ai-perception.js';
 import { formation } from './shared/formation.js';
 import { createRng, random } from './shared/ai-rng.js';
@@ -723,6 +723,281 @@ for (const held of [false, true]) {
   assert.ok(hands.active.reacting);
   assert.equal(interruptHands(hands, 1, view), true, 'a reaction wait before Ctrl starts remains interruptible');
   assert.equal(hands.active, null); assert.equal(log.length, 0);
+}
+
+{
+const fixture=()=>({w:200,h:200,players:[{}],flags:[],units:new Map(Array.from({length:10},(_,i)=>[i+1,{id:i+1,owner:0,type:i===1?'mg':i===2?'tank':'rifle',x:100+(i%5)*4,z:100+Math.floor(i/5)*5}]))});
+function seat(view){const log=[],h=createHands({slot:0,seed:3,level:'hard',camera:{x:100,z:100},log});h.openingUntil=0;h.openingDone=true;return{h,log,cmd:[]};}
+function run(s,v,n){const end=s.h.tick+n;for(let t=s.h.tick;t<=end;t++)advanceHands(s.h,t,v,c=>s.cmd.push(c));}
+{
+const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'move',orders:[[1,120,120]]},v,{operation:'capture'});run(s,v,70);assert.deepEqual(s.h.groups.get(1),[1]);assert.deepEqual(s.log.map(x=>x.kind),['select-click','group-set','rightclick']);
+s.h.selected=[];enqueueDecision(s.h,{t:'move',orders:[[1,125,125]]},v,{operation:'capture'});run(s,v,70);assert.equal(s.log.filter(x=>x.kind==='group-set').length,1);assert.equal(s.log.filter(x=>x.kind==='group-recall').length,1);assert.deepEqual(s.cmd[1].orders.map(x=>x[0]),[1]);v.units.delete(1);run(s,v,1);assert.equal(s.h.groups.size,0);
+}
+{
+const v=fixture(),s=seat(v);for(let id=1;id<=10;id++){s.h.selected=[];enqueueDecision(s.h,{t:'move',orders:[[id,120,120]]},v,{operation:'capture'});run(s,v,70);}assert.equal(s.h.groups.size,9);assert.deepEqual(s.h.groups.get(1),[10]);assert.ok([...s.h.groups.keys()].every(n=>n>=1&&n<=9));
+}
+{
+const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'move',orders:[[1,120,120],[2,122,120],[3,124,120]]},v,{operation:'assault'});run(s,v,100);assert.deepEqual(s.h.groups.get(1),[1,2,3]);v.units.delete(2);run(s,v,1);assert.deepEqual(s.h.groups.get(1),[1,3]);s.h.selected=[];s.h.camera.x=350;s.h.camera.z=350;assert.equal(enqueueDecision(s.h,{t:'move',orders:[[1,330,335]]},v,{operation:'capture'}),false,'cannot recall only part of a mixed living group');assert.equal(s.log.filter(e=>e.kind==='group-set').length,1);
+}
+{
+const v=fixture(),s=seat(v);enqueueDecision(s.h,{t:'stop',ids:[1]},v,{operation:'capture'});run(s,v,70);assert.equal(s.h.groups.size,0);enqueueDecision(s.h,{t:'move',orders:[[1,120,120]]},v);run(s,v,70);assert.equal(s.h.groups.size,0,'unmarked generic movement is not group setup');
+}
+function capSeat(api){const v=fixture(),log=[],h=api.createHands({slot:0,seed:3,level:'hard',camera:{x:100,z:100},log});h.openingUntil=0;h.openingDone=true;h.selected=[1];h.inputTicks=Array(120).fill(0);api.enqueueDecision(h,{t:'move',orders:[[1,120,120]]},v);api.advanceHands(h,0,v,()=>assert.fail());const due=h.active.due;for(let t=1;t<=due+4;t++)api.advanceHands(h,t,v,()=>assert.fail());assert.equal(log.length,0);assert.equal(h.pointer.x,h.active.actions[0].screenClick.x);return{h,v,log,due};}
+{
+const fresh=capSeat({createHands,enqueueDecision,advanceHands});assert.equal(interruptHands(fresh.h,fresh.due+5,fresh.v),true);assert.equal(fresh.log.length,0);assert.deepEqual(fresh.h.selected,[1]);assert.equal(fresh.h.active,null);
+}
+{
+const v=fixture(),s=seat(v);s.h.inputTicks=Array(120).fill(0);enqueueDecision(s.h,{t:'move',orders:[[1,120,120],[2,122,120]]},v,{operation:'capture'});advanceHands(s.h,0,v,()=>assert.fail());const due=s.h.active.due;for(let t=1;t<=due+4;t++)advanceHands(s.h,t,v,()=>assert.fail());assert.equal(interruptHands(s.h,due+5,v),false,'held capped box waits for its actual release');s.h.inputTicks=[];advanceHands(s.h,due+5,v,()=>assert.fail());assert.equal(s.log[0].kind,'select-box');assert.deepEqual(s.h.selected,[1,2]);assert.equal(s.h.active,null);
+}
+{
+const v=fixture(),s=seat(v);s.h.selected=[1];enqueueDecision(s.h,{t:'amove',orders:[[1,350,340]]},v);let tick=0;for(;tick<50;tick++){advanceHands(s.h,tick,v,c=>s.cmd.push(c));if(s.h.active?.modifierHeld)break;}assert.equal(s.log[0].input.code,'ControlLeft');s.h.inputTicks=Array(120).fill(tick);const due=s.h.active.due;for(tick++;tick<=due+3;tick++)advanceHands(s.h,tick,v,()=>assert.fail());assert.equal(interruptHands(s.h,tick,v),false,'the capped click still holds a real Ctrl modifier');s.h.inputTicks=[];advanceHands(s.h,tick,v,c=>s.cmd.push(c));assert.equal(s.log[1].kind,'minimap-rightclick');assert.equal(s.cmd.length,1);assert.equal(s.h.active,null);
+}
+{
+const v=fixture(),s=seat(v);queueCamera(s.h,{x:130,z:100},{},'pan');advanceHands(s.h,0,v,()=>assert.fail());while(s.h.active.reacting)advanceHands(s.h,s.h.tick+1,v,()=>assert.fail());s.h.inputTicks=Array(120).fill(s.h.tick);const due=s.h.active.due;for(let t=s.h.tick+1;t<=due+3;t++)advanceHands(s.h,t,v,()=>assert.fail());assert.equal(interruptHands(s.h,due+4,v),false,'the capped pan requires its held key release');assert.equal(s.log.length,0);s.h.inputTicks=[];advanceHands(s.h,due+4,v,()=>assert.fail());assert.equal(s.log[0].kind,'camera-pan');assert.equal(s.h.active,null);
+}
+
+}
+
+{
+  const view = fixture(), log = [], hands = createHands({ slot: 0, seed: 3, level: 'hard', camera: { x: 100, z: 100 }, log,
+    calibration: { reaction: [0.2, 0.2], key: [0.05, 0.05] } });
+  hands.openingUntil = 0; hands.openingDone = true;
+  const primary = { id: 'old-hit', kind: 'screen-damage', source: 'screen', onScreen: true };
+  const old = { ...primary, tick: 0, responsePolicy: 'screen-v1', responseReason: 'heavy-damage', responseUnits: [1] };
+  enqueueDecision(hands, { t: 'stop', ids: [1] }, view, { concern: 'danger', cycle: 1, event: primary, eventTick: 0, responseEvents: [old] });
+  run(hands, view, 20);
+  assert.deepEqual(log[0].ids, [1], 'the linked-event fixture starts with a real unit selection');
+  const late = { id: 'new-hit', kind: 'screen-damage', source: 'screen', onScreen: true, tick: 20,
+    responsePolicy: 'screen-v1', responseReason: 'retreat-risk-crossing', responseUnits: [1] };
+  const context = { concern: 'danger', cycle: 1, event: primary, eventTick: 0, responseEvents: [old, late] };
+  enqueueDecision(hands, { t: 'stop', ids: [1] }, view, context);
+  const stored = hands.queue[0].context.responseEvents;
+  assert.ok(Object.isFrozen(stored) && Object.isFrozen(stored[1]) && Object.isFrozen(stored[1].responseUnits));
+  context.responseEvents.push({ id: 'future', tick: 100 }); late.responseUnits.push(99); primary.id = 'changed';
+  run(hands, view, 30);
+  const firstAfterLink = log.find(input => input.tick >= 20);
+  assert.equal(firstAfterLink.tick, 24, 'the newer linked creation time imposes its full four-tick floor despite an older paid primary reaction');
+  assert.equal(firstAfterLink.motorTicks, 1); assert.equal(firstAfterLink.inputStartedTick, 23, 'the complete key motor remains after its preparation wait');
+  assert.equal(firstAfterLink.event.id, 'old-hit'); assert.equal(firstAfterLink.eventTick, 0, 'linking a second event preserves the historical primary metadata');
+  assert.deepEqual(firstAfterLink.responseEvents.map(event => event.id), ['old-hit', 'new-hit']);
+  assert.deepEqual(firstAfterLink.responseEvents[1].responseUnits, [1], 'queued descriptors are snapshots of caller-owned arrays');
+  assert.equal(hands.inputTicks.length, log.length, 'two linked events still count one physical input');
+  firstAfterLink.responseEvents[1].responseUnits.push(77);
+  assert.deepEqual(stored[1].responseUnits, [1], 'emitted rows are separate copies of the immutable job descriptors');
+  log[0].responseEvents[0].responseUnits.push(88);
+  assert.deepEqual(log[1].responseEvents[0].responseUnits, [1], 'later physical rows preserve independent event snapshots');
+}
+
+{
+  const view = fixture(), log = [], hands = createHands({ slot: 0, seed: 3, level: 'hard', camera: { x: 100, z: 100 }, log,
+    calibration: { key: [0.05, 0.05] } });
+  hands.openingUntil = 0; hands.openingDone = true;
+  advanceHands(hands, 20, view, () => {});
+  view.alerts = [{ id: 'old-alert', kind: 'attack', tick: 0, x: 350, z: 350 }];
+  queueCamera(hands, { x: 350, z: 350 }, { event: { id: 'old-alert', source: 'alert', onScreen: false }, eventTick: 0,
+    responseEvents: [{ id: 'screen-hit', tick: 20, source: 'screen', onScreen: true, responseUnits: [1] }] }, 'alert');
+  run(hands, view, 30);
+  assert.equal(log[0].kind, 'camera-alert'); assert.ok(log[0].tick < 24,
+    'a camera gesture is not a completed response input for a linked screen event');
+}
+
+for (const level of ['easy', 'normal', 'hard']) for (const source of ['screen', 'alert']) {
+  const timings = [];
+  for (let seed = 1; seed <= 40; seed++) {
+    const event = { id: 'contact', tick: 100, source, onScreen: source === 'screen', kind: 'screen-contact', responseUnits: [1] };
+    const sample = variant => {
+      const view = fixture(), log = [], hands = createHands({ slot: 0, seed, level, camera: { x: 100, z: 100 }, log });
+      hands.openingUntil = 0; hands.openingDone = true;
+      advanceHands(hands, 100, view, () => {});
+      const context = { concern: 'combat', cycle: 1, reactionStartTick: 40, responseEvents: [event] };
+      if (variant === 'primary') Object.assign(context, { event, eventTick: 100 });
+      if (variant === 'older-primary') Object.assign(context, {
+        event: { id: 'historical', source: 'screen', onScreen: true }, eventTick: 0 });
+      enqueueDecision(hands, { t: 'attack', ids: [1], target: 4 }, view, context);
+      run(hands, view, 300);
+      assert.ok(log.length, 'the timing comparison completes a real selection');
+      assert.equal(log[0].kind, 'select-click');
+      assert.ok(log[0].tick >= 104);
+      assert.equal(log[0].tick - log[0].inputStartedTick, log[0].motorTicks, 'the full selection motor remains intact');
+      if (variant === 'older-primary') { assert.equal(log[0].event.id, 'historical'); assert.equal(log[0].eventTick, 0); }
+      return log.map(input => [input.tick, input.kind, input.motorTicks]);
+    };
+    const primary = sample('primary');
+    assert.deepEqual(sample('secondary-only'), primary, `${level} seed ${seed}: a newer secondary contact pays the complete primary response budget`);
+    assert.deepEqual(sample('older-primary'), primary, `${level} seed ${seed}: historical primary metadata cannot bypass the newer response budget`);
+    timings.push((primary[0][0] - 100) / 20);
+  }
+  assert.ok(Math.min(...timings) >= HUMAN_SKILLS[level][source === 'screen' ? 'reaction' : 'offscreen'][0],
+    'secondary links cannot fall back to the universal 0.2-second floor');
+}
+
+for (const level of ['easy', 'normal', 'hard']) {
+  for (let seed = 1; seed <= 40; seed++) {
+    const sample = includeOlder => {
+      const view = fixture(), log = [], hands = createHands({ slot: 0, seed, level, camera: { x: 100, z: 100 }, log });
+      hands.openingUntil = 0; hands.openingDone = true; hands.selected = [1];
+      advanceHands(hands, 100, view, () => {});
+      enqueueDecision(hands, { t: 'stop', ids: [1] }, view, { concern: 'prepared', cycle: 1, reactionStartTick: 80,
+        responseEvents: includeOlder ? [{ id: 'older', tick: 40, source: 'screen', onScreen: true }] : [] });
+      run(hands, view, 250);
+      return log.map(input => [input.tick, input.inputStartedTick, input.motorTicks]);
+    };
+    assert.deepEqual(sample(true), sample(false), 'an older secondary event does not restart a choice clock already running later');
+  }
+}
+
+for (const level of ['easy', 'normal', 'hard']) {
+  for (let seed = 1; seed <= 40; seed++) {
+    const sample = secondary => {
+      const view = fixture(), log = [], hands = createHands({ slot: 0, seed, level, camera: { x: 100, z: 100 }, log });
+      hands.openingUntil = 0; hands.openingDone = true;
+      const old = { id: 'old-contact', tick: 0, source: 'screen', onScreen: true };
+      enqueueDecision(hands, { t: 'stop', ids: [1] }, view, {
+        concern: 'combat', cycle: 1, event: old, eventTick: 0, responseEvents: [old] });
+      run(hands, view, 80);
+      assert.equal(hands.active, null, 'the old event has completed its real physical response');
+      const previous = log.length, latest = { id: 'new-contact', tick: 100, source: 'screen', onScreen: true };
+      advanceHands(hands, 100, view, () => {});
+      enqueueDecision(hands, { t: 'stop', ids: [1] }, view, {
+        concern: 'combat', cycle: 1, event: secondary ? old : latest, eventTick: secondary ? 0 : 100,
+        responseEvents: [old, latest], reactionStartTick: 0 });
+      run(hands, view, 200);
+      assert.ok(hands.visitEvents.has(JSON.stringify(['old-contact', 0])));
+      assert.ok(hands.visitEvents.has(JSON.stringify(['new-contact', 100])), 'every eligible linked event is tracked in the visit');
+      return log.slice(previous).map(input => [input.tick, input.inputStartedTick, input.motorTicks]);
+    };
+    assert.deepEqual(sample(true), sample(false), 'a new secondary stimulus within an already-paid visit pays the same complete reaction as a new primary');
+  }
+}
+
+{
+  const view = fixture(), log = [], hands = createHands({ slot: 0, seed: 3, level: 'hard', camera: { x: 100, z: 100 }, log,
+    calibration: { reaction: [1, 1], key: [0.05, 0.05] } });
+  hands.openingUntil = 0; hands.openingDone = true; hands.selected = [1];
+  const event = { id: 'screen-hit', tick: 100, source: 'screen', onScreen: true, responseUnits: [1] };
+  const context = { concern: 'danger', cycle: 1, event: { id: 'old-alert', source: 'alert', onScreen: false }, eventTick: 0,
+    responseEvents: [event] };
+  view.alerts = [{ id: 'old-alert', tick: 0, kind: 'attack', x: 110, z: 100 }];
+  advanceHands(hands, 100, view, () => {});
+  assert.ok(queueCamera(hands, { x: 110, z: 100 }, context, 'alert'));
+  run(hands, view, 101);
+  assert.equal(log[0].kind, 'camera-alert'); assert.equal(log[0].tick, 101);
+  assert.ok(!hands.visitEvents.has(JSON.stringify(['screen-hit', 100])), 'camera preparation cannot mark a screen response as paid');
+  enqueueDecision(hands, { t: 'stop', ids: [1] }, view, context);
+  run(hands, view, 140);
+  assert.equal(log[1].kind, 'stop-key'); assert.equal(log[1].tick, 120,
+    'the following response pays the full linked reaction budget, including elapsed camera work and its complete motor');
+  assert.equal(log[1].inputStartedTick, 119); assert.equal(log[1].motorTicks, 1);
+  enqueueDecision(hands, { t: 'stop', ids: [1] }, view, context);
+  run(hands, view, 150);
+  assert.ok(log[2].tick - 140 <= 3, 'a recurring response to the same linked event uses a practiced pause rather than a new full reaction');
+}
+
+for (const level of ['easy', 'normal', 'hard']) {
+  const view = fixture(), log = [], hands = createHands({ slot: 0, seed: 3, level, camera: { x: 100, z: 100 }, log });
+  hands.openingUntil = 0; hands.openingDone = true;
+  view.alerts = [{ id: 'new-alert', tick: 100, kind: 'attack', x: 110, z: 100 }];
+  advanceHands(hands, 100, view, () => {});
+  assert.ok(queueCamera(hands, { x: 110, z: 100 }, { concern: 'alert', event: { id: 'new-alert', source: 'alert', onScreen: false }, eventTick: 100 }, 'alert'));
+  run(hands, view, 400);
+  assert.equal(log[0].kind, 'camera-alert');
+  assert.ok(log[0].tick - 100 >= HUMAN_SKILLS[level].offscreen[0] * 20, 'a genuinely new offscreen alert keeps its authored camera reaction budget');
+}
+
+{
+const fixture=()=>({tick:0,w:200,h:200,winner:null,flags:[],players:[{}],units:new Map([
+ [1,{id:1,owner:0,type:'rifle',hp:100,x:100,z:100}],
+ [2,{id:2,owner:0,type:'mg',hp:75,x:104,z:100}],
+ [3,{id:3,owner:1,type:'rifle',hp:100,x:108,z:100}]
+])});
+function seat(level='hard',seed=3,opening=false){const view=fixture(),log=[],sent=[],hands=createHands({slot:0,level,seed,camera:{x:100,z:100},log});if(!opening){hands.openingDone=true;hands.openingUntil=0;}return{view,log,sent,hands};}
+function run(s,end){for(let t=s.hands.tick;t<=end;t++){s.view.tick=t;advanceHands(s.hands,t,s.view,c=>s.sent.push(c));}}
+const event=(tick=0,id='contact')=>({id,tick,source:'screen',onScreen:true,kind:'screen-contact',responseUnits:[1],responseRequired:true});
+function context(tick=0){const e=event(tick);return{concern:'combat',cycle:1,event:e,eventTick:tick,responseActorIds:[1],responseEvents:[e,event(tick,'also-contact')]};}
+{
+ const s=seat(),ctx=context(100);advanceHands(s.hands,100,s.view,()=>assert.fail());
+ assert.ok(queueInspection(s.hands,[1],s.view,ctx));
+ assert.equal(queueInspection(s.hands,[1],s.view,ctx),false,'duplicate queued inspection does not create another input');
+ const snapshot=s.hands.queue[0].context.responseEvents;ctx.responseEvents[0].responseUnits.push(99);
+ assert.ok(Object.isFrozen(snapshot)&&Object.isFrozen(snapshot[0].responseUnits));
+ run(s,160);assert.deepEqual(s.hands.selected,[1]);assert.equal(s.sent.length,0);assert.equal(s.log.length,1);assert.equal(s.log[0].kind,'select-click');assert.equal(s.log[0].inspection,true);assert.equal(s.log[0].inspectionAcquired,true);assert.equal(s.log[0].command,undefined);assert.equal(s.hands.groups.size,0);assert.equal(s.hands.inputTicks.length,1);assert.equal(s.log[0].responseEvents.length,2);assert.deepEqual(s.log[0].responseEvents[0].responseUnits,[1]);
+ assert.ok(s.log[0].tick>=106,'inspection pays the normal skill reaction rather than a four-tick bot floor');
+ assert.equal(s.log[0].tick-s.log[0].inputStartedTick,s.log[0].motorTicks,'full physical motor completes');
+ assert.equal(queueInspection(s.hands,[1],s.view,context(160)),false,'reading the actual existing selection needs no new click');
+ run(s,180);assert.equal(s.log.length,1);
+}
+for(const wrong of [false,true]){
+ const s=seat();assert.ok(queueInspection(s.hands,[1],s.view,context()));advanceHands(s.hands,0,s.view,()=>assert.fail());
+ while(s.hands.active.reacting) advanceHands(s.hands,s.hands.tick+1,s.view,()=>assert.fail());
+ const duration=s.hands.active.actions[0].duration;s.view.units.get(1).x=350;s.view.units.get(1).z=350;
+ if(wrong)Object.assign(s.view.units.get(2),{x:100,z:100});else s.view.units.get(2).x=350;
+ run(s,80);assert.deepEqual(s.hands.selected,wrong?[2]:[],'a current hit determines actual selection, not the intended id');assert.equal(s.log.length,1);assert.equal(s.log[0].inspection,true);assert.equal(s.log[0].inspectionAcquired,false);assert.equal(s.log[0].motorTicks,duration);assert.equal(s.sent.length,0);assert.equal(s.hands.active,null);
+}
+{
+ const s=seat();assert.equal(queueInspection(s.hands,[3],s.view,context()),false);s.view.units.get(1).hp=0;assert.equal(queueInspection(s.hands,[1],s.view,context()),false);s.view.units.delete(1);assert.equal(queueInspection(s.hands,[1],s.view,context()),false);assert.equal(queueInspection(s.hands,[1,2],s.view,context()),false,'first scope has one meaningful affected actor');assert.equal(s.log.length,0);
+ s.view.units.set(9,{id:9,owner:0,type:'hq',hp:100,x:100,z:100});assert.equal(queueInspection(s.hands,[9],s.view,context()),false);
+ s.view.units.set(9,{id:9,owner:0,type:'fighter',hp:100,x:100,z:100});assert.equal(queueInspection(s.hands,[9],s.view,context()),false);
+}
+{
+ const s=seat();assert.ok(queueInspection(s.hands,[1],s.view,context()));s.view.units.delete(1);s.view.units.get(2).x=350;run(s,80);assert.equal(s.log.length,1,'a target that died after enqueue can waste a real click');assert.deepEqual(s.hands.selected,[]);assert.equal(s.sent.length,0);
+}
+{
+ const s=seat();enqueueDecision(s.hands,{t:'move',orders:[[1,120,120]]},s.view,{operation:'capture'});run(s,70);assert.deepEqual(s.hands.groups.get(1),[1]);s.hands.selected=[];Object.assign(s.hands.camera,{x:350,z:350});
+ const before=s.log.length,commands=s.sent.length;assert.ok(queueInspection(s.hands,[1],s.view,context()));run(s,110);assert.deepEqual(s.log.slice(before).map(row=>row.kind),['group-recall']);assert.equal(s.log[before].inspection,true);assert.equal(s.log[before].inspectionAcquired,true);assert.deepEqual(s.hands.selected,[1]);assert.equal(s.hands.groups.size,1);assert.equal(s.sent.length,commands,'recall for HUD inspection creates no extra order');
+ s.view.units.delete(1);s.hands.selected=[];assert.equal(queueInspection(s.hands,[1],s.view,context()),false);assert.equal(s.hands.groups.size,0);
+}
+{
+ const s=seat();enqueueDecision(s.hands,{t:'move',orders:[[1,120,120],[2,122,120]]},s.view,{operation:'capture'});run(s,70);assert.deepEqual(s.hands.groups.get(1),[1,2]);s.hands.selected=[];Object.assign(s.hands.camera,{x:350,z:350});assert.equal(queueInspection(s.hands,[1],s.view,context()),false,'a mixed living group cannot pretend to be a singleton recall');Object.assign(s.hands.camera,{x:100,z:100});assert.ok(queueInspection(s.hands,[1],s.view,context()));const before=s.log.length;run(s,110);assert.deepEqual(s.log.slice(before).map(row=>row.kind),['select-click']);assert.deepEqual(s.hands.groups.get(1),[1,2]);
+}
+{
+ const s=seat();s.hands.inputTicks=Array(120).fill(0);queueInspection(s.hands,[1],s.view,context());run(s,80);assert.equal(s.log.length,0,'inspection respects the same physical APM budget');s.hands.inputTicks=[];run(s,81);assert.equal(s.log.length,1);assert.equal(s.hands.inputTicks.length,1);assert.equal(s.sent.length,0);
+}
+{
+ const s=seat('hard',3,true),deadline=s.hands.openingDeadline;queueInspection(s.hands,[1],s.view,context());run(s,40);assert.equal(s.log.length,1);assert.ok(s.log[0].tick>=30,'inspection retains the real 1.5-second opening look');assert.equal(s.hands.openingDone,false);assert.equal(s.hands.openingDeadline,deadline,'inspection does not rewrite the sampled first-command deadline');enqueueDecision(s.hands,{t:'stop',ids:[1]},s.view,{concern:'opening'});run(s,100);assert.equal(s.sent.length,1);assert.ok(s.log.find(row=>row.command).tick>=deadline);assert.equal(s.log.find(row=>row.command).inspection,undefined);
+}
+}
+
+{
+  const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 3, level: 'normal', camera: { x: 100, z: 100 }, log });
+  hands.openingUntil = 0; hands.openingDone = true;
+  const context = { concern: 'idle:1', concernKind: 'idle', concernUnitId: 1, cycle: 1 };
+  enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view, context);
+  run(hands, view, 80, cmd => sent.push(cmd));
+  assert.deepEqual(hands.selected, [2], 'noticing the wrong idle actor does not invent a different selection');
+  assert.deepEqual(log.map(input => input.kind), ['select-click'], 'the wrong selected actor cancels before any order gesture or synthetic stop');
+  assert.equal(sent.length, 0);
+  enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view, context);
+  run(hands, view, 90, cmd => sent.push(cmd));
+  assert.equal(log.length, 1, 'the actual wrong selection is already known and causes no repeated physical input');
+  enqueueDecision(hands, { t: 'move', orders: [[1, 120, 120]] }, view, context);
+  run(hands, view, 140, cmd => sent.push(cmd));
+  assert.deepEqual(log.map(input => input.kind), ['select-click', 'select-click', 'rightclick']);
+  assert.equal(sent.length, 1); assert.deepEqual(sent[0].orders.map(order => order[0]), [1], 'a subsequent real selection and paid order serves the named idle actor');
+}
+
+for (const unavailable of ['busy', 'remote', 'dead']) {
+  const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 3, level: 'normal', camera: { x: 100, z: 100 }, log });
+  hands.openingUntil = 0; hands.openingDone = true;
+  const named = view.units.get(1);
+  if (unavailable === 'busy') named.dig = { kind: 'trench', x: named.x, z: named.z };
+  if (unavailable === 'remote') Object.assign(named, { x: 350, z: 350 });
+  if (unavailable === 'dead') named.hp = 0;
+  const before = structuredClone(named);
+  enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view,
+    { concern: 'idle:1', concernKind: 'idle', concernUnitId: 1 });
+  run(hands, view, 100, cmd => sent.push(cmd));
+  assert.equal(sent.length, 0, `a ${unavailable} named actor does not permit an unrelated companion order`);
+  assert.deepEqual(named, before); assert.deepEqual(hands.selected, [2]);
+  assert.deepEqual(log.map(input => input.kind), ['select-click']);
+}
+
+{
+  const view = fixture(), log = [], sent = [], hands = createHands({ slot: 0, seed: 3, level: 'normal', camera: { x: 100, z: 100 }, log });
+  hands.openingUntil = 0; hands.openingDone = true;
+  enqueueDecision(hands, { t: 'move', orders: [[2, 120, 120]] }, view,
+    { concern: 'expansion', concernKind: 'expansion', concernUnitId: 1 });
+  run(hands, view, 100, cmd => sent.push(cmd));
+  assert.equal(sent.length, 1); assert.deepEqual(sent[0].orders.map(order => order[0]), [2], 'generic jobs retain their normal selected-state dispatch');
 }
 
 console.log('AI hands: opening, motor inputs, locality, formation, reaction, APM, deterministic logs and handover passed');

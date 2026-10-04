@@ -80,9 +80,16 @@ function run(level, seed, ticks = 2400, startedTick = 0, handoff = false) {
     // A real, passive enemy group enters one own squad's sight after the opening.
     if (i === 200) {
       g.players[0].mp = 600;
-      const observer = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
+      const enemies = [...g.units.values()].filter(u => u.owner === 1);
+      const observers = [...g.units.values()].filter(u => u.owner === 0 && u.type === 'rifle');
+      // A handed-over squad may have marched to the screen edge. Keep this deliberate contact on the actual camera.
+      const observer = handoff ? observers.filter(u => onScreen(u, memory.human.camera, delivered))
+        .sort((a, b) => Math.hypot(a.x - memory.human.camera.x, a.z - memory.human.camera.z)
+          - Math.hypot(b.x - memory.human.camera.x, b.z - memory.human.camera.z))
+        .find(u => enemies.every((enemy, j) => onScreen({ x: Math.min(map.w * 2 - 2, u.x + 12 + j), z: u.z }, memory.human.camera, delivered)))
+        : observers[0];
       assert.ok(observer, 'contact fixture retains an own observer');
-      [...g.units.values()].filter(u => u.owner === 1).forEach((u, j) => Object.assign(u, {
+      enemies.forEach((u, j) => Object.assign(u, {
         x: Math.min(map.w * 2 - 2, observer.x + 12 + j), z: observer.z, path: [], orders: [],
         amove: null, holdFire: true, holdPos: true, auto: false, autoRetreat: false,
       }));
@@ -99,6 +106,8 @@ function run(level, seed, ticks = 2400, startedTick = 0, handoff = false) {
   assert.ok(commands.length > 0 && inputs.some(entry => entry.command), `${level}: the integration fixture executes real commands`);
   assert.equal(inputs.filter(entry => entry.command).length, commands.length, 'every submitted command has a physical input record');
   assert.ok(inputs.some(entry => entry.command && Number.isFinite(entry.eventTick)), 'reaction-floor proof includes a command tied to an observed event');
+  if (handoff) assert.ok(memory.human.events.some(event => event.kind === 'screen-contact' && event.tick >= startedTick + 200),
+    'the handover reaction proof includes a genuinely delivered camera contact');
   assert.ok(commands.every(entry => entry.tick >= memory.human.hands.openingUntil), 'no command precedes the opening look');
   const first = (commands[0].tick - startedTick) / 20;
   if (handoff) assert.ok(first >= 1.5, 'handover spends at least 1.5 seconds reading the seat');

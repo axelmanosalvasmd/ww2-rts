@@ -1,8 +1,8 @@
 // Perceive one view, attend one concern, deliberate, then let the hands finish before choosing again.
 import { CELL, UNITS } from './sim.js';
-import { perceive, onScreen, startCamera } from './ai-perception.js';
+import { perceive, onScreen, startCamera, needsInspection } from './ai-perception.js';
 import { chooseConcern } from './ai-attention.js';
-import { createHands, advanceHands, interruptHands, enqueueDecision, queueCamera, groundClickable } from './ai-hands.js';
+import { createHands, advanceHands, interruptHands, enqueueDecision, queueCamera, queueInspection, groundClickable } from './ai-hands.js';
 import { random, between } from './ai-rng.js';
 import { personaFor, estimateSightings, optionBias } from './ai-persona.js';
 
@@ -107,6 +107,24 @@ function contextFor(view, concern, state) {
     cycle: state.cycle ?? 0 };
 }
 
+function moveConcernCamera(state, hands, target, context, mode) {
+  if (!queueCamera(hands, target, context, mode)) return false;
+  // The physical trip precedes inspection. A long pan must not use up the whole visit before arrival.
+  state.cameraVisit = { id: state.concern.id, dwell: Math.max(1, state.concern.until - state.concern.since) };
+  return true;
+}
+
+function responseContext(cmd, context, view, state, slot, tick) {
+  const causal = servesEvent(cmd, context.event, view, slot);
+  const result = causal ? { ...context } : { ...context, event: undefined, eventTick: undefined };
+  result.responseEvents = (view.events ?? []).filter(event => event.tick <= tick && tick - event.tick <= 240
+    && !state.answeredEvents?.has(event.id) && servesEvent(cmd, event, view, slot))
+    .map(event => ({ ...event, responseUnits: event.responseUnits ? [...event.responseUnits] : undefined }));
+  result.responseActorIds = idsOf(cmd);
+  result.responseTarget = anchorOf(cmd);
+  return result;
+}
+
 export function runCommander(observation, slot, opts, mem, send, plan) {
   if (!observation.players[slot] || observation.players[slot].out || observation.winner != null) return;
   const tick = opts.tick ?? observation.tick, level = opts.level ?? 'normal';
@@ -137,8 +155,10 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   mem.rng = hands.rng;
   personaFor(state, hands.rng);
   const cameraKey = `${state.camera.x},${state.camera.z}`;
-  if (!state.view || state.deliveredTick !== observation.tick || state.cameraKey !== cameraKey) {
-    state.view = perceive(observation, slot, state, tick); state.deliveredTick = observation.tick; state.cameraKey = cameraKey;
+  const selectionKey = hands.selected.join(',');
+  if (!state.view || state.deliveredTick !== observation.tick || state.cameraKey !== cameraKey || state.selectionKey !== selectionKey) {
+    state.view = perceive(observation, slot, state, tick); state.deliveredTick = observation.tick;
+    state.cameraKey = cameraKey; state.selectionKey = selectionKey;
   }
   const view = state.view;
   state.interruptEvents ??= new Set();
@@ -153,6 +173,8 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     hands.queue.length = 0;
     interruptHands(hands, tick, view);
     state.pendingEmergency = emergency;
+    state.cameraVisit = null;
+    state.pendingInspection = null;
     state.noWorkUntil = 0;
     state.planned = false;
     if (state.attention) state.attention.until = tick;
@@ -193,8 +215,14 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     }
     if (result !== undefined) (mem.failedInputs ??= new Map()).set(inputKey(cmd), { tick, reason: result });
     else mem.failedInputs?.delete(inputKey(cmd));
-    const event = hands.active?.job.context.event;
-    if (event?.id) (state.answeredEvents ??= new Set()).add(event.id);
+    // Only an accepted, relevant actual command completes these obligations. A missed selection can still
+    // be a human response, but a refused order must not suppress future attempts at the same concern.
+    if (result === undefined) {
+      const context = hands.active?.job.context;
+      const events = [...(context?.responseEvents ?? []), ...(context?.event ? [context.event] : [])];
+      for (const event of events) if (servesEvent(cmd, event, view, slot))
+        (state.answeredEvents ??= new Set()).add(event.id);
+    }
     if (result === undefined && cmd.t === 'buy') state.buys++;
     if (movement(cmd)) state.didOrder = true;
     return result;
@@ -203,6 +231,28 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   if (tick < (state.noWorkUntil ?? 0)) return;
   // Completion of a camera input changes what can be inspected, even between snapshot beats.
   if (`${state.camera.x},${state.camera.z}` !== state.cameraKey) return;
+  if (hands.selected.join(',') !== state.selectionKey) return;
+  if (state.pendingInspection) {
+    const inspection = state.pendingInspection; state.pendingInspection = null;
+    if (inspection.concern === state.concern?.id) {
+      state.planned = false;
+      state.decisionStartedTick = tick;
+      state.deliberateUntil = tick + ({ easy: 10, normal: 6, hard: 4 }[level] ?? 6);
+      state.concern.until = Math.max(state.concern.until, state.deliberateUntil + 20);
+      if (state.attention) state.attention.until = state.concern.until;
+    }
+  }
+  if (state.cameraVisit) {
+    const visit = state.cameraVisit; state.cameraVisit = null;
+    if (visit.id === state.concern?.id) {
+      state.concern.since = tick; state.concern.until = tick + visit.dwell;
+      if (state.attention) { state.attention.since = tick; state.attention.until = state.concern.until; }
+      state.decisionStartedTick = tick;
+      const complexity = state.concern.kind === 'combat' ? 1.2 : state.concern.kind === 'production' ? 1 : .7;
+      state.deliberateUntil = tick + Math.max(2, Math.round(between(hands.rng,
+        ...({ easy: [8, 18], normal: [5, 10], hard: [2, 5] }[level] ?? [5, 10])) * complexity));
+    }
+  }
   if (!state.concern) {
     state.concern = { id: 'production', kind: 'production', ...view.players[slot].spawn, since: tick, until: tick + 60 };
     state.deliberateUntil = tick;
@@ -219,7 +269,7 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
       ...({ easy: [8, 18], normal: [5, 10], hard: [2, 5] }[level] ?? [5, 10])) * complexity));
     const target = cameraTarget(view, candidate, slot), context = contextFor(view, candidate, state);
     if (!continuing && !candidate.eventOnScreen && !onScreen(target, state.camera, view)) {
-      queueCamera(hands, target, context, candidate.id.startsWith('alert:') ? 'alert' : distance(target, state.camera) < 35 ? 'pan' : 'minimap');
+      moveConcernCamera(state, hands, target, context, candidate.id.startsWith('alert:') ? 'alert' : distance(target, state.camera) < 35 ? 'pan' : 'minimap');
       return;
     }
   }
@@ -229,7 +279,7 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     const context = contextFor(view, state.concern, state);
     state.pendingEmergency = null;
     if (!state.concern.eventOnScreen && !onScreen(target, state.camera, view)) {
-      queueCamera(hands, target, context, state.concern.id.startsWith('alert:') ? 'alert' : 'minimap');
+      moveConcernCamera(state, hands, target, context, state.concern.id.startsWith('alert:') ? 'alert' : 'minimap');
       return;
     }
   }
@@ -244,17 +294,32 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   const ownVP = view.players[slot].vp ?? 0, opposingVP = Math.max(0, ...view.players.filter(p => p.team !== view.players[slot].team).map(p => p.vp ?? 0));
   state.mood = Math.min(0.3, losses * 0.06) - (ownVP > opposingVP + 50 ? 0.1 : 0);
   const intents = [];
+  const inspections = [];
   const reservedMovement = new Set();
   // Each concern sees the same tier view. Spending and micro wait until that concern has attention.
-  const decisionOptions = { level, adaptive: opts.adaptive, rules: opts.rules, handoff: opts.handoff, human: true, concern };
+  const decisionOptions = { level, adaptive: opts.adaptive, rules: opts.rules, handoff: opts.handoff, human: true, concern,
+    requestInspection: cmd => {
+      if (concern.kind === 'production' || cmd.t !== 'ability') return;
+      const id = idsOf(cmd)[0], unit = view.units.get(id);
+      if (!unit || !view.screenIds.has(id) || !needsInspection(view, id)
+        || concern.kind === 'idle' && id !== concern.unitId) return;
+      const last = state.inspectionAttempts?.get(id);
+      if (last !== undefined && tick - last < 160) return;
+      const old = unit.lastHUD;
+      if (old?.ability?.cooldownSeconds > 0 && tick - old.observedTick < old.ability.cooldownSeconds * 20) return;
+      if (!inspections.some(candidate => idsOf(candidate)[0] === id)) inspections.push(cmd);
+    } };
   plan({ ...view, sightings: estimates }, slot, decisionOptions, mem, cmd => {
     const failed = mem.failedInputs?.get(inputKey(cmd));
     if (failed && tick - failed.tick < 300) return failed.reason;
-    if ((economy(cmd) || fortification(cmd)) && !['production', 'expansion'].includes(concern.kind)) return 'attention';
+    const ids = idsOf(cmd), at = anchorOf(cmd);
+    const idleActor = concern.kind === 'idle' && view.units.get(concern.unitId);
+    const localMaintenance = fortification(cmd) && idleActor && ids.includes(idleActor.id)
+      && at && distance(at, idleActor) <= 24;
+    if ((economy(cmd) || fortification(cmd)) && !['production', 'expansion'].includes(concern.kind)
+      && !localMaintenance) return 'attention';
     if (cmd.t === 'support' && !['combat', 'support'].includes(concern.kind)) return 'attention';
     if (['ability', 'attack', 'fireat', 'retreat'].includes(cmd.t) && concern.kind === 'production') return 'attention';
-    const ids = idsOf(cmd);
-    const at = anchorOf(cmd);
     if (concern.kind === 'idle' && !ids.includes(concern.unitId)) return 'attention';
     if (concern.point != null && movement(cmd) && distance(at, concern) > 24) return 'attention';
     if (concern.panel === 'air' && !ids.includes(concern.unitId)) return 'attention';
@@ -288,20 +353,33 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
     })) return 'pending';
     intents.push(cmd); return undefined;
   });
-  context.operation = !!mem.mind?.assault;
   if (!state.didOrder) intents.sort((a, b) => Number(movement(b)) - Number(movement(a)));
   else if (concern.kind === 'combat') {
     const rank = cmd => cmd.t === 'retreat' ? 0 : cmd.t === 'ability' || cmd.t === 'attack' ? 1 : movement(cmd) ? 2 : cmd.t === 'support' ? 3 : 4;
     intents.sort((a, b) => rank(a) - rank(b));
+  }
+  // A useful ability needs a current HUD reading. Select one actual squad, then replan from that selection.
+  // An urgent retreat can proceed without looking up an ability's cooldown first.
+  if (!intents.some(cmd => cmd.t === 'retreat')) for (const cmd of inspections) {
+    const id = idsOf(cmd)[0];
+    if (!queueInspection(hands, [id], view, responseContext(cmd, context, view, state, slot, tick))) continue;
+    (state.inspectionAttempts ??= new Map()).set(id, tick);
+    state.pendingInspection = { id, concern: concern.id };
+    state.planned = false;
+    return;
   }
   let queued = 0;
   for (const cmd of mergeMovements(intents, view)) {
     if (queued >= ({ easy: 2, normal: 4, hard: 6 }[level] ?? 4)) break;
     // Hesitation belongs to risky advances, rather than cancelling an order already issued.
     if (cmd.t === 'amove' && concern.kind === 'combat' && random(hands.rng) < ({ easy: 0.25, normal: 0.12, hard: 0.04 }[level] ?? 0.12)) continue;
-    const causal = servesEvent(cmd, context.event, view, slot);
-    const jobContext = causal ? { ...context, responseActorIds: idsOf(cmd), responseTarget: anchorOf(cmd) }
-      : { ...context, event: undefined, eventTick: undefined };
+    const jobContext = responseContext(cmd, context, view, state, slot, tick);
+    // These are deliberate links to already perceived episodes. One local group order can address several
+    // contacts, while each episode keeps its own creation time and complete population descriptor.
+    jobContext.operation = movement(cmd) && idsOf(cmd).length > 0 && idsOf(cmd).every(id => {
+      const unit = view.units.get(id);
+      return unit?.owner === slot && !unit.air && !UNITS[unit.type].structure && !unit.inventoryOnly;
+    });
     const hiddenGround = blockedPlacement(cmd, state.camera, view);
     if (hiddenGround) {
       if (!queued) {

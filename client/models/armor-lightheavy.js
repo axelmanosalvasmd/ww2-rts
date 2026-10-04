@@ -13,7 +13,8 @@
 // The owner's color is a small cue only: a tactical number on the turret (or casemate) sides and a recognition panel
 // on a roof (the Tiger carries it as its number). Stars and crosses keep their own colors.
 import * as THREE from 'three';
-import { merge, mirrorZ, loft, lathe, chamferBox, star, balkenkreuz, place, ao, xf, tag, matId, UNSET } from './geom.js';
+import { tagTrack } from './track-data.js';
+import { merge, mirrorZ, loft, lathe, chamferBox, star, balkenkreuz, place, ao, xf, tag, tagWheel, scaleWheelPivots, matId, UNSET } from './geom.js';
 
 const TAU = Math.PI * 2;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -149,7 +150,7 @@ function roadWheel(R, w, paint, { seg = 24, rim = 0.78, hub = 0.3, spokes = 0, t
     const a = k * TAU / 6, cx = Rh * 1.1 * Math.cos(a), cy = Rh * 1.1 * Math.sin(a), r = R * 0.032;
     bolts.poly(Array.from({ length: 6 }, (_, j) => { const b = j * TAU / 6; return [cx + r * Math.cos(b), cy + r * Math.sin(b), h * 0.68]; }), [0, 0, 1], IRON, 'gunmetal');
   }
-  return merge([disc, bolts.geometry()]);
+  return tagWheel(merge([disc, bolts.geometry()]), R);
 }
 // A drive sprocket, axle along z, outer face toward +z: a toothed plate with worn-steel tooth edges and a hub.
 // Each tooth is three points (a pointed tooth), or four (flat-topped) with flat = true.
@@ -165,12 +166,12 @@ function sprocketWheel(R, w, teeth, paint, { flat: flatTop = false } = {}) {
     F.poly([[p[0], p[1], -h], [q[0], q[1], -h], [q[0], q[1], h], [p[0], p[1], h]], [q[1] - p[1], p[0] - q[0], 0], edge, 'track-steel');
   });
   const hub = dim(paint, 0.7);
-  return merge([F.geometry(), bands([[[R * 0.42, h], [R * 0.3, h * 1.9], hub], [[R * 0.3, h * 1.9], [0, h * 1.9], hub]], 8)]);
+  return tagWheel(merge([F.geometry(), bands([[[R * 0.42, h], [R * 0.3, h * 1.9], hub], [[R * 0.3, h * 1.9], [0, h * 1.9], hub]], 8)]), R);
 }
 // a spoked steel idler (no tire)
 const idler = (R, w, spokes, paint) => roadWheel(R, w, paint, { spokes, rim: 0.84, hub: 0.26, tire: dim(paint, 0.85), rubber: false });
 // a small return roller, axle along z, rubber rim
-const roller = (r, w, paint) => bands([[[r, -w / 2], [r, w / 2], RUBBER, null, null, 'rubber'], [[r, w / 2], [0, w * 0.62], paint]], 6);
+const roller = (r, w, paint) => tagWheel(bands([[[r, -w / 2], [r, w / 2], RUBBER, null, null, 'rubber'], [[r, w / 2], [0, w * 0.62], paint]], 6), r);
 
 // The track around a set of wheels, lying in xy (axles along z) between z - width/2 and z + width/2: link plates
 // along the belt that wraps the circles [[x, y, r], ...] (their convex hull, half a link thick further out), every
@@ -193,7 +194,7 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, color = LINK
     const p = loop[a], q = loop[(a + 1) % loop.length], t = (s - len[a]) / Math.max(1e-9, len[a + 1] - len[a]);
     return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
   };
-  const F = flat('track-steel'), z0 = z - width / 2, z1 = z + width / 2, h = thick / 2, lit = col(color), dark = dim(color, 0.84), rim = col(edge), rim2 = dim(edge, 0.84), deep = col(back);
+  const F = flat('track-steel'), extra = flat('track-steel'), z0 = z - width / 2, z1 = z + width / 2, h = thick / 2, lit = col(color), dark = dim(color, 0.84), rim = col(edge), rim2 = dim(edge, 0.84), deep = col(back);
   for (let k = 0; k < n; k++) {
     const A = at(k * step + step * 0.03), B = at((k + 1) * step - step * 0.03), A0 = at(k * step), B0 = at((k + 1) * step), l = Math.hypot(B[0] - A[0], B[1] - A[1]);
     const nx = (B[1] - A[1]) / l, ny = (A[0] - B[0]) / l; // outward
@@ -201,18 +202,21 @@ function trackBelt(circles, z, width, { thick = 0.12, pitch = 0.17, color = LINK
     // the tread, except under the bottom run where nothing sees it; there the inner face (seen between the wheels)
     if (ny > -0.85) F.poly([[Ao[0], Ao[1], z0], [Bo[0], Bo[1], z0], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [nx, ny, 0], k % 2 ? lit : dark);
     else F.poly([[Ai[0], Ai[1], z0], [Bi[0], Bi[1], z0], [Bi[0], Bi[1], z1], [Ai[0], Ai[1], z1]], [-nx, -ny, 0], k % 2 ? dark : dim(color, 0.7));
-    if (ny > -0.85) {
+    if (ny <= -0.85) extra.poly([[Ao[0], Ao[1], z0], [Bo[0], Bo[1], z0], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [nx, ny, 0], k % 2 ? lit : dark);
+    {
+      const detail = ny > -0.85 ? F : extra;
       const u0 = 0.32, u1 = 0.56, rise = 0.027, inset = width * 0.08;
       const a = [Ao[0] + (Bo[0] - Ao[0]) * u0, Ao[1] + (Bo[1] - Ao[1]) * u0], b = [Ao[0] + (Bo[0] - Ao[0]) * u1, Ao[1] + (Bo[1] - Ao[1]) * u1];
       const c = [a[0] + nx * rise, a[1] + ny * rise], d = [b[0] + nx * rise, b[1] + ny * rise];
-      F.poly([[c[0], c[1], z0 + inset], [d[0], d[1], z0 + inset], [d[0], d[1], z1 - inset], [c[0], c[1], z1 - inset]], [nx, ny, 0], rim);
-      F.poly([[a[0], a[1], z0 + inset], [c[0], c[1], z0 + inset], [c[0], c[1], z1 - inset], [a[0], a[1], z1 - inset]], [-ny, nx, 0], rim2);
-      F.poly([[b[0], b[1], z0 + inset], [d[0], d[1], z0 + inset], [d[0], d[1], z1 - inset], [b[0], b[1], z1 - inset]], [ny, -nx, 0], rim2);
+      detail.poly([[c[0], c[1], z0 + inset], [d[0], d[1], z0 + inset], [d[0], d[1], z1 - inset], [c[0], c[1], z1 - inset]], [nx, ny, 0], rim);
+      detail.poly([[a[0], a[1], z0 + inset], [c[0], c[1], z0 + inset], [c[0], c[1], z1 - inset], [a[0], a[1], z1 - inset]], [-ny, nx, 0], rim2);
+      detail.poly([[b[0], b[1], z0 + inset], [d[0], d[1], z0 + inset], [d[0], d[1], z1 - inset], [b[0], b[1], z1 - inset]], [ny, -nx, 0], rim2);
     }
     const r = k % 2 ? rim : rim2;
     F.poly([[Ai[0], Ai[1], z1], [Bi[0], Bi[1], z1], [Bo[0], Bo[1], z1], [Ao[0], Ao[1], z1]], [0, 0, 1], [deep, deep, r, r]);
   }
-  return F.geometry(); // the links take the track steel texture (client/model-textures.js)
+  const original = F.geometry();
+  return tagTrack(merge([original, extra.geometry()]), loop, z, original);
 }
 
 // a gun tube along +x from x = 0: breech sleeve, taper, a muzzle lip (longer and fatter for flash hiders); the bore
@@ -828,7 +832,7 @@ export function lightHeavy(type, fac, f) {
   if (!out) {
     const m = make(f), s = m.s, height = m.height ?? 1.15;
     out = {
-      hull: shade(m.hull.geometry(), 0, height).scale(s, s, s),
+      hull: scaleWheelPivots(shade(m.hull.geometry(), 0, height).scale(s, s, s), s),
       turret: shade(m.turret.geometry(), m.ring[1], height).scale(s, s, s),
       ring: m.ring.map((v) => v * s), tip: m.tip.map((v) => v * s),
     };

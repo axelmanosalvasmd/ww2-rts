@@ -62,12 +62,17 @@ same loop, with human limits at each stage.
       `docs/human-like-ai-audit.md`.
       Evidence: audited preimplementation revision `fc60be9`; the audit records all eight claims, qualifications,
       selection costs, own-unit detail, aircraft/support bypasses and caller differences with exact source lines.
-- [ ] Research: write `docs/research/human-like-rts-ai.md` from primary sources you open yourself (papers, official
+- [x] Research: write `docs/research/human-like-rts-ai.md` from primary sources you open yourself (papers, official
       pages), with links. Cover at least: perception-action cycles and first-action latency in RTS play (Thompson et
       al. 2013), the camera interface, action delay and APM limits used for AlphaStar (Vinyals et al., Nature 2019),
       human reaction times for simple and choice tasks, Fitts' law for pointer time and error, and what is known about
       APM in slower tactics RTS games like Company of Heroes. Use the findings to confirm or revise every number in the
       difficulty table below, and cite the source next to each number you keep.
+      Evidence: `docs/research/human-like-rts-ai.md:43` records an explicit retain decision and adjacent primary
+      anchor for every original difficulty value and documented motor coefficient. The opened Thompson supplement,
+      AlphaStar paper, simple/choice studies and Fitts/MacKenzie papers support mechanisms and task scales, not
+      empirical confirmation of this game's ranges. Original numeric gates remain unchanged. Matching local human
+      and Company of Heroes calibration is a documented evidence gap, not a claimed published measurement.
 - [x] Baseline on current master behaviour with the tool from Phase 5 (or a first version of it): commands per tick,
       APM, time to the first order, reaction times, cross-map orders within one second, opening variety. Save the JSON
       next to the "after" numbers so the PR shows both.
@@ -92,13 +97,20 @@ same loop, with human limits at each stage.
   1920x1080 camera, anonymous minimap dots, 60-second memory and shared snapshot alerts. `node test-engine-ai-perception.js`
   passes. Actual Three.js projection checks cover 660,336 samples, including current master's natural hills,
   with zero falsely detailed markers. The camera uses the actual 60 m starting distance and seat-facing yaw.
-  Reopened: the private fog adapter can disagree with the human snapshot's current canonical effect mask after
-  a different cache history. An actual shot/flight fixture reproduces the mismatch. A read-only adapter correction
-  and its regression proof are pending; passing camera projection tests do not settle this boundary.
-- [x] Every decision that needs detail (type, health, suppression, whether an ability is ready) uses only the screen
+  Verified in the unchanged V13 full suite: `test-engine-ai-effect-visibility.js` reproduces the shot/flight
+  mismatch and passes the read-only exact-key canonical mask correction, stale-key fallback, poisoned-history
+  and live-cache immutability controls. `test-engine-ai-selected-hud.js` verifies actual selected-type HUD,
+  grouped text and coarse world health. See `docs/human-like-ai-verification-v13.md`.
+  Reopened by `/tmp/human-ai-subprecision-events/proof.json`: identical unselected world-bar estimates can
+  produce different raw damage events and urgency. Runtime events and suppression must use visible estimates.
+- [ ] Every decision that needs detail (type, health, suppression, whether an ability is ready) uses only the screen
       tier or memory of it.
       Evidence: `shared/ai-perception.js:129-170` removes the delivered snapshot before planning. Enemy minimap dots
       have no IDs, health or exact types. `node test-engine-ai-human.js` passes action-level off-camera invariance.
+      The unchanged V13 full suite verifies physical inspection and the selected-HUD boundary. Still open:
+      `/tmp/human-ai-subprecision-events/proof.json` confirms that equal world-bar estimates can expose a
+      one-HP loss, cross a raw heavy-damage threshold or create a raw risk-crossing event. Numeric suppression
+      also needs the rendered category boundary. Correction and permanent invariance controls remain open.
 - [x] Proofs in the style of the existing fog-fair tests: perturbing an off-camera enemy's health or type does not
       change the AI's next actions; the same perturbation on camera can (negative control).
       Evidence: `node test-engine-ai-human.js` reports "Default commander action-level camera detail invariance and
@@ -124,10 +136,13 @@ same loop, with human limits at each stage.
 
 ### Phase 3: decide
 
-- [x] `plan()` stays view-only. Decisions for a concern are made while it has attention, from what the tiers allow.
+- [ ] `plan()` stays view-only. Decisions for a concern are made while it has attention, from what the tiers allow.
       Evidence: `node test-engine-ai-human.js` passes action-level off-camera invariance and its on-camera negative
       control. `node test-engine-ai-commitment.js` passes actual idle-unit, expansion destination and production
       batch inputs. `plan(observation, slot, opts, mem, send)` receives no authoritative game reference.
+      V13 verifies private detector and projection WeakMaps. `test-engine-ai-selected-hud.js` traverses actual
+      planner memory and confirms those raw graphs are unreachable. Keep this box open while the damage-event
+      and suppression precision leak described in Phase 1 is corrected.
 - [x] Deliberation takes time, more for harder choices and lower skill. The opening is a real opening: the AI looks
       at its base and the map for a few seconds, then gives its first orders one group at a time.
       Evidence: `node test-engine-ai-human.js` reports first commands at 4.5/3.4/2.65 seconds, with timed physical
@@ -260,10 +275,13 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       `think()`. List what you ran with the results. If an existing test encodes superhuman timing (for example it
       expects orders on the first look), change it to the human contract and say so in the PR. Never weaken an
       assertion only to make it pass. Keep a way to test the decision layer without the hands.
-      Evidence: V11 full suite exited 0 on 2026-10-04, 08:54:58-09:16:35 UTC. All 588 source/document hashes
-      matched before and after. `docs/human-like-ai-verification-v11.md` lists the checks, exact log hash and test
-      migrations. This records the working slice; any subsequent gameplay changes require a fresh full run.
+      Evidence: V13 full suite exited 0 on 2026-10-04, 10:21:10-10:46:41 UTC. All 601 source/document hashes
+      matched before and after, including master `a3564a6`. `docs/human-like-ai-verification-v13.md` lists the
+      checks, exact log hash and assertion migrations. Subsequent gameplay changes require a fresh full run.
 - [ ] The fog-fair proofs pass, plus the new perception-tier proofs.
+      Evidence: unchanged V13 full suite, 4,489 paired fog turns and the actual camera/minimap, canonical
+      effects, selected-HUD and off-camera private-memory proofs. The separate unselected damage-event
+      precision investigation remains open under Phase 1.
 - [x] New tests: one command per tick per seat; nothing before the opening look ends; the reaction floor; APM caps;
       camera locality (no order to an off-screen unit without a group recall or minimap order); seeded determinism;
       the handover pause.

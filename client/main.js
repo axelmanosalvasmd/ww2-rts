@@ -43,6 +43,7 @@ import { epilogue } from './epilogue.js';
 import { createObjectives } from './objectives.js';
 import { endgame } from './endgame.js';
 import { buildModel, animate, createBodies, setSurfaces, setBuildings, crowd, drawSoldiers, animationInterest, vehicleBody, updateBuildingBreach, releaseBuildingBreach } from './unit-models.js';
+import { releaseWheels, wheelMaterial } from './wheel-motion.js';
 import { loadModelTextures } from './model-textures.js';
 import { perf, renderScale } from './perf.js';
 import { createStats } from './stats.js';
@@ -418,6 +419,7 @@ addEventListener('resize', resize); resize();
 
 const matCache = new Map();
 const mat = (color) => matCache.get(color) || matCache.set(color, new THREE.MeshLambertMaterial({ color })).get(color);
+const wreckMaterial = wheelMaterial(new THREE.MeshLambertMaterial({ color: 0x1d1b18 }));
 const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 12),
   body: new THREE.CapsuleGeometry(0.3, 0.8, 4, 8), helmet: new THREE.SphereGeometry(0.27, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -733,6 +735,7 @@ function seatTrench(v) {
 const hulks = new Map(); // wreck id -> its model
 function removeUnit(v) {
   releaseBuildingBreach(v);
+  releaseWheels(v);
   world.remove(v.bars);
   for (const m of [v.barBg, v.hpBar, v.suppBar, ...v.stars, v.shield]) m.material.dispose(); // the badge's material is shared
   if (isAir(v.type)) {
@@ -859,12 +862,12 @@ function applySnapshot(s) {
   for (const v of [...units.values()]) if (!seen.has(v.id)) removeUnit(v);
   // burnt-out vehicles stay on the field as cover until the sim clears the oldest away
   const left = new Set((s.wrecks ?? []).map(w => w[0]));
-  for (const [id, root] of hulks) if (!left.has(id)) { world.remove(root); hulks.delete(id); }
+  for (const [id, root] of hulks) if (!left.has(id)) { releaseWheels({ root }); world.remove(root); hulks.delete(id); }
   for (const [id, type, owner, x, z, rot] of s.wrecks ?? []) {
     let root = hulks.get(id);
     if (!root) {
       const v = makeUnit(id, type, owner); world.remove(v.bars); root = v.root; hulks.set(id, root);
-      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : mat(0x1d1b18); } });
+      root.traverse(o => { if (o.isMesh) { o.material = o.material.isMeshBasicMaterial ? o.material : wreckMaterial; } });
       root.children.slice(0, 2).forEach(o => (o.visible = false)); // no owner ring, no selection ring
       root.rotation.y = -rot;
     }
@@ -1111,7 +1114,7 @@ function applyGhosts(list) {
     if (gv.body) gv.body.scale.y = 0.15 + 0.85 * built;
     updateBuildingBreach(gv, terrain.structuralSections, terrain.w, CELL);
   }
-  for (const [id, gv] of ghosts) if (!keep.has(id)) { releaseBuildingBreach(gv); world.remove(gv.root, gv.bars); ghosts.delete(id); }
+  for (const [id, gv] of ghosts) if (!keep.has(id)) { releaseBuildingBreach(gv); releaseWheels(gv); world.remove(gv.root, gv.bars); ghosts.delete(id); }
 }
 function nodeMark(x, z, rate, fuel) {
   const g = new THREE.Group();
@@ -1429,7 +1432,7 @@ function pick(mx, my, test, r) {
   }
   return best;
 }
-const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160);
+const groundAt = (mx, my) => marchGround(camera, hAt, mx, my, innerWidth, innerHeight, MW || 160, MH || 160, relief?.mesh);
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (EDIT) return;

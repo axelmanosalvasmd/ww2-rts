@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 if (!process.argv[2]) {
   for (const language of ['en', 'es']) execFileSync(process.execPath, [import.meta.filename, language], { stdio: 'inherit' });
   process.exit(0);
@@ -10,7 +9,7 @@ const language = process.argv[2];
 globalThis.localStorage = { getItem: () => language };
 const { formatWorldAuthoringError, formatMaterialLabel } = await import('./client/world-authoring-error.js');
 const { validateMap } = await import('./shared/sim.js');
-const resolve = name => pathToFileURL(new URL(name, import.meta.url).pathname).href;
+const resolve = name => new URL(name, import.meta.url).href;
 const code = readFileSync(new URL('./client/scenario-editor.js', import.meta.url), 'utf8')
   .replace("'/shared/sim.js'", JSON.stringify(resolve('./shared/sim.js')))
   .replace("'./i18n.js'", JSON.stringify(resolve('./client/i18n.js')))

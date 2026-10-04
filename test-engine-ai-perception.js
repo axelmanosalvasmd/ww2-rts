@@ -87,6 +87,62 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
   recalled.path[0].payload.value = 12; assert.equal(memory.path[0].payload.value, 11, 'recalled detail is detached from persistent memory too');
 }
 {
+  // Exercise the immediate screen-to-memory copy through perception, including native fallback.
+  const copyThroughScreen = payload => {
+    const { view, own } = fixture(), state = { camera: { x: 210, z: 210 } };
+    view.units.get(own.id).copyProof = payload;
+    const perceived = perceive(view, 0, state), screen = perceived.units.get(own.id), memory = state.screenMemory.get(own.id);
+    assert.deepEqual(memory, structuredClone(screen), 'the private second copy retains native whole-graph semantics');
+    assert.notEqual(screen.copyProof, payload); assert.notEqual(memory.copyProof, screen.copyProof);
+    return { view, own, state, screen, memory };
+  };
+  const shared = { value: 2 }, cycle = { first: shared, second: shared };
+  cycle.self = cycle; cycle.map = new Map([[shared, cycle]]); cycle.set = new Set([shared, cycle]);
+  const copied = copyThroughScreen(cycle), screen = copied.screen.copyProof, memory = copied.memory.copyProof;
+  assert.equal(memory.first, memory.second); assert.equal(memory.self, memory);
+  assert.equal(memory.map.get(memory.first), memory); assert.ok(memory.set.has(memory.first) && memory.set.has(memory));
+  screen.first.value = 9; assert.equal(memory.first.value, 2); assert.equal(shared.value, 2);
+  memory.first.value = 11; assert.equal(screen.first.value, 9);
+
+  const sparse = new Array(12); sparse[4] = { value: 2 }; sparse.extra = sparse[4]; sparse.self = sparse;
+  Object.defineProperty(sparse, '__proto__', { enumerable: true, value: { polluted: true } });
+  const sparseCopy = copyThroughScreen(sparse);
+  assert.equal(sparseCopy.memory.copyProof.length, 12); assert.equal(0 in sparseCopy.memory.copyProof, false);
+  assert.equal(11 in sparseCopy.memory.copyProof, false); assert.equal(sparseCopy.memory.copyProof[4], sparseCopy.memory.copyProof.extra);
+  assert.equal(sparseCopy.memory.copyProof.self, sparseCopy.memory.copyProof);
+  assert.equal(Object.getPrototypeOf(sparseCopy.memory.copyProof), Array.prototype);
+  assert.ok(Object.hasOwn(sparseCopy.memory.copyProof, '__proto__')); assert.equal(Array.prototype.polluted, undefined);
+  sparseCopy.screen.copyProof[4].value = 9; assert.equal(sparseCopy.memory.copyProof[4].value, 2);
+
+  const buffer = new ArrayBuffer(8), date = new Date('2001-02-03'), item = { value: 2 };
+  const fallback = copyThroughScreen({ item, date, buffer, bytes: new Uint8Array(buffer), data: new DataView(buffer),
+    map: new Map([[item, date], [date, item]]) });
+  const native = fallback.memory.copyProof;
+  assert.equal(native.bytes.buffer, native.buffer); assert.equal(native.data.buffer, native.buffer);
+  assert.equal(native.map.get(native.item), native.date); assert.equal(native.map.get(native.date), native.item);
+  fallback.screen.copyProof.bytes[3] = 19; assert.equal(native.bytes[3], 0); assert.equal(new Uint8Array(buffer)[3], 0);
+
+  let deliveredReads = 0;
+  const accessor = copyThroughScreen({ before: item, get value() { deliveredReads++; return item; }, after: date });
+  assert.equal(deliveredReads, 1, 'delivered accessors run once; the fresh second copy consumes their data-property result');
+  assert.equal(accessor.memory.copyProof.before, accessor.memory.copyProof.value);
+  // Public retained memory can acquire getters or unsupported values after the fresh-copy interval ends.
+  let retainedReads = 0;
+  Object.defineProperty(copied.memory, 'copyGetter', { enumerable: true, get() { retainedReads++; return this.copyProof; } });
+  copied.state.camera = { x: 40, z: 40 };
+  const recalled = perceive({ ...copied.view, tick: 20 }, 0, copied.state).units.get(copied.own.id);
+  assert.equal(retainedReads, 1, 'later mutable memory retains descriptor validation and native accessor behavior');
+  assert.equal(recalled.copyGetter, recalled.copyProof); assert.notEqual(recalled.copyProof, copied.memory.copyProof);
+  copied.memory.copyInvalid = { callback: () => 1 };
+  assert.throws(() => perceive({ ...copied.view, tick: 40 }, 0, copied.state), { name: 'DataCloneError' },
+    'mutable retained memory never enters the private fresh-copy path');
+  for (const payload of [{ nested: { callback: () => 1 } }, new Map([[item, Symbol('value')]])]) {
+    const { view, own } = fixture(); view.units.get(own.id).copyProof = payload;
+    assert.throws(() => perceive(view, 0, { camera: { x: 210, z: 210 } }), { name: 'DataCloneError' },
+      'delivered unsupported values still reject before the second copy');
+  }
+}
+{
   const { view } = fixture(), defaults = startCamera(view, 0), state = {};
   assert.equal(HUMAN_CAMERA.distance, 60); assert.equal(HUMAN_CAMERA.panSpeed, 66);
   assert.equal(defaults.distance, 60); assert.deepEqual({ x: defaults.x, z: defaults.z }, view.players[0].spawn);
@@ -138,7 +194,11 @@ const normalized = view => ({ units: [...view.units], visible: [...view.players[
   assert.equal(expired.units.get(own.id).cd, Infinity);
   state.camera = { x: 210, z: 210 };
   const refreshed = perceive({ ...altered, tick: 1240 }, 0, state);
-  assert.equal(refreshed.units.get(enemy.id).hp, 1); assert.equal(refreshed.units.get(enemy.id).lastSeen, 62);
+  // A living one-HP enemy supplies the smallest positive world-bar estimate, not its exact hidden HUD health.
+  assert.equal(refreshed.units.get(enemy.id).hp, UNITS.mg.models * UNITS.mg.hpPer / 20);
+  assert.equal(refreshed.units.get(enemy.id).exactHPKnown, false);
+  assert.equal(refreshed.units.get(enemy.id).hpSource, 'world-bar');
+  assert.equal(refreshed.units.get(enemy.id).lastSeen, 62);
   assert.equal(refreshed.units.get(enemy.id).firstStillAt, 62, 'off-camera stationary history cannot leak into a fresh screen look');
 }
 {

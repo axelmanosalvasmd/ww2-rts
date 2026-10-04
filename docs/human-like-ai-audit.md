@@ -41,4 +41,8 @@ Normal pan speed at this zoom is 93.5 m/s, derived from `cam.dist * 1.1 * PAN[sp
 
 ## Scope of evidence
 
+The subsequent HUD audit found two further boundaries in the replacement. A cooldown in a delivered unit row is not an on-screen cooldown indicator: the human reads it in the selected-type HUD (`client/hud.js:385`). The replacement now masks unselected and enemy cooldowns, supplies aggregate group readings, and selects a squad through `queueInspection` before a meaningful ability decision (`shared/ai-perception.js`, `shared/ai-hands.js`, `shared/ai-commander.js`). The human world health bar supplies an estimate; the selected singleton HUD supplies rounded numeric health (`client/hud.js:292`).
+
+Deleting the returned snapshot was also insufficient while its previous detector copy and projection sightings were reachable through planner memory. The raw detector baseline now lives in a private state-keyed WeakMap, and the fog adapter's memory lives in a separate private WeakMap (`shared/ai-perception.js:217`, `shared/ai.js:161`). Planner-memory traversal tests cover the neighboring denied detail, in addition to action-level invariance. These are corrections to the replacement, not claims about hidden fog access in the original AI.
+
 This is a code audit, not a measured baseline. It proves the available paths and their synchronous nature. Accepted command counts, opening variety, effective APM and end-to-end reaction distributions belong in the baseline report from the measurement tool. Research and the provenance of every proposed difficulty number are in [the research note](research/human-like-rts-ai.md).

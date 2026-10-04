@@ -5,7 +5,47 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Recruit panel (Conquest, Assault, Annihilation, Horde): unit cards now show each unit's flat silhouette symbol
+  instead of a small 3D render, so the types are easy to tell apart. The groups (Infantry, Support weapons,
+  Vehicles, Aircraft, Naval) are now a row of tabs: click one to show only its units, click it again to close it.
+  Keyboard recruiting works as before (a letter opens a group, a second buys) and opens the same tab.
+  Classic building cards also use the symbols; the selection list keeps its 3D portraits.
+
+- Rebuilt cliff walls with detailed rock models on every map except the huge generated ones. Faces are now stacked, fractured limestone slabs
+  that step back as they rise, with occasional full-height buttresses, grassy ledges, boulders on the crest and
+  scree at the foot. Diagonal cliff runs no longer show a cell-by-cell staircase: notches fill with rock piles
+  and convex teeth are wrapped in rock columns. Rocks are visual only and never bury mountain-road cells.
+  Cost: Hot Gates terrain goes from about 63k to 250k triangles on High (116k on Low), and a crater rebuild
+  takes about 30 ms longer there. Found and left for later: the cliff crest still steps on 45 degree runs when
+  seen from far away, because the plateau outline itself is unchanged.
+
+- Integrated the Thermopylae fixes with the updated vehicle and terrain systems. Moved 20 rubble cells off the
+  mountain road and onto the cliff shoulders so vehicles have room to pass. Ground picking and visible contact
+  now follow the reshaped cliff triangles, while neighbouring plateau centres keep their original heights.
+  Mixed tank and Churchill traffic can still jam during overtaking on the narrow road; that remains for a later fix.
+  Fixed Windows file paths in the movement and localization regression runners so their checks run on Windows too.
+  Naval asset fingerprints now treat Windows and Unix line endings equally, preventing false stale-asset errors.
+  Cliff-adjacent terrain centres stay at their simulation height even beside shell scars. Camera and map checks
+  now follow the ragged cliff backing and track decorative rock costs separately from the ground-mesh budget.
+
+- Reworked the Thermopylae cliff visuals again: softened the square stair-step corners, removed the repeating
+  wall panels and pale stripes, and added broad weathered rock faces, larger outcrops and scattered fallen stones.
+  The revised cliffs use fewer triangles than the first version and keep the same vehicle movement rules.
+  Terrain checks found two existing folded ground triangles on Hot Gates. One remains for a later ground-mesh fix.
+
+- Fixed vehicles getting stranded on Thermopylae (The Hot Gates) in Horde: arriving units stay on ground connected
+  to their gate, including the narrow mountain road, and crowds cannot shove vehicles onto rubble or tank traps.
+  Cliff walls now have ragged rims, fractured stone faces and rocks at their feet, with softer stone shading.
+  Fixed cliff faces disappearing when viewed from some directions. Convoys are checked through both mountain-road
+  corners in both directions. Existing matches need a restart to replace units already stranded on cliff tops.
+
+- Ability decisions now require a paid squad selection and a reading of its actual HUD. Unselected cooldowns stay unknown, world health bars give estimates, and detailed detector snapshots stay outside commander memory.
+- AI camera visits start when the camera arrives. Production waits for a useful readiness or affordability change, support visits require their real cost, and idle squads can form up with nearby ready companions. A mistaken selection that misses the intended squad is cancelled before its order.
+- Screen effects now follow the same delivered fog mask as the human seat. Single-squad operations can use paid control groups, and an unpressed click waiting for its input budget can be cancelled when a more urgent concern arrives.
 - Reduced first movement-command work by calculating the remembered terrain wall mask directly, preserving the same routes and fog information.
+- Full regressions pass after merging terrain and wheel changes. Release measurements remain open; found unselected damage events and suppression carrying excess precision, to correct in the next slice.
+
+### 2026-10-04: Human commander implementation (`b1692d8`)
 
 - AI simulations now preserve combat alerts between snapshot deliveries and clear old events afterward, keeping long runs bounded and counting hits and losses once.
 - Enemy seat commanders now inspect one camera, remember older sightings, switch attention and issue timed selections and clicks. Difficulty changes input speed and judgement with equal information and economy. Added an opt-in spectator input overlay and local human recording for calibration. Horde Waves keep their scripted director.
@@ -13,6 +53,25 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 - Squads keep their unfinished orders instead of reversing direction every planning cycle. Stable strength estimates, stalled-ability backoff and interruptible input sequences make mistakes recoverable. Fixed AI snapshot filtering writing into the live fog caches.
 - Fixed the Classic balance runner stopping at 20 minutes, before its 25-minute Sudden Death. Both old and new AI measurements now allow the game to end normally.
 - Fixed repair crews abandoning accepted jobs and crater repairs stalling on an unreachable camera adjustment. Parked aircraft use the air panel, expansion and idle visits order their intended troops, and every skill keeps unfinished marches for 12 seconds with 30-second protection against reversing between objectives. The AI uses the player's actual 60 m starting camera distance.
+### 2026-10-04: Tank wheel and track animation (`5c0fb8e`)
+
+- Tank road wheels, idlers, sprockets, return rollers and visible track belts now move with actual vehicle travel,
+  reverse when backing up and move at different speeds on each side while steering. They stop with the tank
+  and follow the hull on hills. Covers native light, medium, heavy and tank destroyer models for all four factions,
+  plus tracked mobile flak and Calliope variants. Spare wheels stay fixed; wheeled and halftrack models are outside
+  this change. The terrain workshop now offers forward, reverse, stopped and close side inspection.
+
+### 2026-10-04: Natural terrain slopes (`7d67670`)
+
+- Hills blend adjoining ramps instead of flattening into a shelf at each height level. Removed repeated dark
+  contour and elevation bands from ordinary slopes, while keeping real cliff walls and their rock detail.
+  Fixed cliff faces disappearing from their lower side when the next cell was higher.
+  Grounding and game picking use the same relief surface, including narrow crests and cliff faces.
+  Minimap viewport corners keep their projection when the camera looks beyond the map. Cell heights,
+  movement and tank alignment keep their existing rules. Added rounded-hill, ramp-beside-cliff and full
+  generated-map workshop scenes.
+  Broad authored plateaus remain, and this does not change terrain balance or navigation.
+  Existing crater-rim edge displacement can still differ from contact sampling and remains for later.
 
 ### 2026-10-04: Vehicle slopes and terrain workshop (`479b1f6`)
 

@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Hot Gates cliff preview</title>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+<style>
+body{margin:0;background:#20281e;color:#eee;font:14px system-ui}nav{padding:12px;display:flex;gap:10px;align-items:center}button{padding:7px 12px}canvas{display:block}#result{margin-left:auto}
+</style>
+<nav><strong>Thermopylae cliffs</strong><button id="gate">Middle Gate</button><button id="road">Mountain road</button><button id="wide">Overview</button><button id="quality">Low detail</button><span id="result">Loading...</span></nav>
+<script type="module">
+import * as THREE from 'three';
+import { createRelief } from '../client/relief.js';
+import { createGround } from '../client/ground.js';
+import { MOODS, moodFor } from '../client/moods.js';
+const status = document.querySelector('#result');
+try {
+  const map = await (await fetch('../maps/hot-gates.json')).json();
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(innerWidth, innerHeight - 60);
+  const mood = MOODS[moodFor(map, 'hot-gates')];
+  renderer.setClearColor(mood.haze); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = mood.exposure;
+  document.body.append(renderer.domElement);
+  const ground = createGround(map, renderer); await ground.loading;
+  ground.paint(map.rows.map(row => [...row]), new Uint8Array(map.w * map.h));
+  const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight(mood.top, mood.bottom, mood.hemiI));
+  const sun = new THREE.DirectionalLight(mood.sun, mood.sunI); sun.position.set(-40, 70, -60); scene.add(sun);
+  const camera = new THREE.PerspectiveCamera(42, innerWidth / (innerHeight - 60), 0.1, 1000);
+  let relief, low = false;
+  const render = () => {
+    renderer.render(scene, camera);
+    const gl = renderer.getContext();
+    status.textContent = `${low ? 'Low' : 'High'}: ${relief.stats.cliffEdges} cliff edges, ${relief.stats.triangles} triangles. WebGL ${gl.getError() === gl.NO_ERROR ? 'OK' : 'ERROR'}`;
+  };
+  const rebuild = () => {
+    if (relief) { scene.remove(relief.mesh); relief.dispose(); }
+    relief = createRelief(map, map.rows, { texture: ground.tex, isRoad: ground.isRoad, low }); scene.add(relief.mesh); render();
+  };
+  window.preview = { camera, renderer, render: () => render(), view: (p, t) => view(p, t), size: (w, h) => { renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); render(); } };
+  const view = (position, target) => { camera.position.set(...position); camera.lookAt(...target); render(); };
+  rebuild();
+  const gate = () => view([164, 34, -2], [155, 3, 47]);
+  document.querySelector('#gate').onclick = gate;
+  document.querySelector('#road').onclick = () => view([185, 39, 99], [205, 3, 124]);
+  document.querySelector('#wide').onclick = () => view([145, 145, -20], [135, 2, 85]);
+  document.querySelector('#quality').onclick = e => { low = !low; e.target.textContent = low ? 'High detail' : 'Low detail'; rebuild(); };
+  addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight - 60); camera.aspect = innerWidth / (innerHeight - 60); camera.updateProjectionMatrix(); render(); });
+  gate();
+} catch (error) { status.textContent = String(error); console.error(error); }
+</script>

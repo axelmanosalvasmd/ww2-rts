@@ -1,5 +1,5 @@
 // One concern gets attention. Minimap positions and delivered alerts tell the commander where to look.
-import { CELL, UNITS } from './sim.js';
+import { CELL, UNITS, CFG, SUPPORT, supCost, popUse } from './sim.js';
 import { random } from './ai-rng.js';
 import { HUMAN_SKILLS } from './ai-hands.js';
 import { recordPerceptionEvent } from './ai-perception.js';
@@ -11,6 +11,43 @@ const at = dot => ({ x: dot.x, z: dot.z });
 const idleUnit = unit => !unit.retreating && !unit.path.length && !unit.orders.length
   && !unit.targetId && !unit.attackId && !unit.amove && !unit.dig && !unit.build
   && !unit.nade && !unit.entrench && unit.enter < 0 && unit.fireAt < 0;
+export const SUPPORT_RESERVES = Object.freeze({
+  easy: Object.freeze({ supReserve: 250, munReserve: 40 }),
+  normal: Object.freeze({ supReserve: 100, munReserve: 0 }),
+  hard: Object.freeze({ supReserve: 100, munReserve: 0 }),
+});
+
+// These are delivered identities and remembered inspection results, never inferred queue progress.
+export function productionStatus(view, slot) {
+  const own = [...view.units.values()].filter(unit => unit.owner === slot);
+  const classic = ['classic', 'world'].includes(view.mode?.kind);
+  return {
+    roster: own.map(unit => `${unit.id}:${unit.type}`).sort().join(','),
+    producers: own.filter(unit => UNITS[unit.type].makes).map(unit =>
+      `${unit.id}:${unit.inventoryOnly ? '?' : unit.built >= 1 ? 'ready' : 'site'}:${unit.inventoryOnly ? '?' : unit.queue?.length ?? 0}`).sort().join(','),
+    pop: own.filter(unit => !UNITS[unit.type].structure).reduce((sum, unit) => sum + popUse(unit.type), 0),
+    cap: view.world?.cap ?? (classic ? CFG.classic.popCap : CFG.popCap) * (view.army?.pop ?? 1),
+  };
+}
+
+export function productionDeferred(view, slot, production) {
+  if (!production?.readiness || !Number.isFinite(production.requiredMP) || production.proposedBuys || production.queuedBuys
+    || !['unaffordable', 'building-reserve', 'mp', 'fuel', 'pop', 'max', 'needs', 'queueFull'].includes(production.reason)
+    || view.tick - production.tick >= 600) return false;
+  const me = view.players[slot], ready = productionStatus(view, slot);
+  if (Object.keys(ready).some(key => ready[key] !== production.readiness[key])) return false;
+  const mpReady = me.mp >= production.requiredMP, fuelReady = (me.fuel ?? 0) >= production.price.fuel;
+  if ((!production.mpReady && mpReady) || (!production.fuelReady && fuelReady)) return false;
+  return !['unaffordable', 'building-reserve', 'mp', 'fuel'].includes(production.reason) || !mpReady || !fuelReady;
+}
+
+export function affordableSupport(view, slot, level) {
+  const me = view.players[slot], reserve = SUPPORT_RESERVES[level] ?? SUPPORT_RESERVES.normal;
+  return Object.keys(SUPPORT).some(kind => {
+    const { cur, cost } = supCost(view, kind);
+    return me.sup?.[kind] <= 0 && me[cur] >= cost + (cur === 'mp' ? reserve.supReserve : reserve.munReserve);
+  });
+}
 const limits = skill => {
   const level = typeof skill === 'string' ? skill : skill?.name ?? skill?.level ?? (skill?.noise === 1 ? 'easy' : skill?.noise === 0.2 ? 'hard' : 'normal');
   const defaults = level === 'easy' ? { capacity: 2, dwell: 100, noise: 18, slip: 0.5 }
@@ -117,7 +154,8 @@ export function chooseConcern(perception, slot, state, skill, rng) {
   const productionAge = tick - (attention.visits.get('production') ?? 0);
   const productionRate = (typeof skill === 'string' ? skill : skill?.name ?? skill?.level) === 'hard' ? 3
     : (typeof skill === 'string' ? skill : skill?.name ?? skill?.level) === 'easy' ? 0.7 : 1.5;
-  add({ id: 'production', kind: 'production', ...at(home), urgency: Math.min(92, 18 + productionAge / 20 * productionRate + Math.max(0, me.mp - 250) / 45) });
+  const deferProduction = productionDeferred(perception, slot, state.production);
+  if (!deferProduction) add({ id: 'production', kind: 'production', ...at(home), urgency: Math.min(92, 18 + productionAge / 20 * productionRate + Math.max(0, me.mp - 250) / 45) });
   for (const plane of perception.airPanel ?? []) if (plane.state === 'base') {
     const id = `air:${plane.id}`;
     add({ id, kind: 'production', panel: 'air', unitId: plane.id, ...at(home),
@@ -150,7 +188,7 @@ export function chooseConcern(perception, slot, state, skill, rng) {
         urgency: 24 + Math.min(tune.capacity >= 4 ? 66 : tune.capacity >= 3 ? 50 : 30,
           (tick - Math.max(still.get(unit.id)?.since ?? tick, attention.visits.get(`idle:${unit.id}`) ?? 0)) / 12) });
   }
-  if (enemies.length && Object.values(me.sup ?? {}).some(cd => cd <= 0)) {
+  if (enemies.length && affordableSupport(perception, slot, tune.level)) {
     const dot = enemies[0]; add({ id: 'support', kind: 'support', ...at(dot), urgency: 28 });
   }
   if (perception.mode?.kind === 'world') {
@@ -181,7 +219,9 @@ export function chooseConcern(perception, slot, state, skill, rng) {
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   workingConcerns(ranked, attention, state, tune, tick);
   const current = attention.current && candidates.get(attention.current.id);
-  const best = state.concerns[0] ?? { id: 'production', kind: 'production', ...at(home), urgency: 0 };
+  const best = state.concerns[0] ?? (deferProduction
+    ? { id: 'observe', kind: 'idle', ...at(perception.camera), urgency: 0 }
+    : { id: 'production', kind: 'production', ...at(home), urgency: 0 });
   const emergency = best.kind === 'combat' && best.urgency >= 90 && best.id !== current?.id;
   if (current && tick < attention.until && !emergency) return { ...current, since: attention.since, until: attention.until };
   if (attention.current) attention.visits.set(attention.current.id, tick);

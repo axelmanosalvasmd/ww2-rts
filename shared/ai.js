@@ -11,6 +11,7 @@ import { createRng, random } from './ai-rng.js';
 import { openingBuy } from './ai-persona.js';
 import { runCommander } from './ai-commander.js';
 import { diagnostics } from './ai-hands.js';
+import { productionStatus, SUPPORT_RESERVES } from './ai-attention.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const SUPPORT_PLANE = (kind) => kind === 'strafe' || kind === 'bombing' || kind === 'dive' || kind === 'para';
@@ -157,6 +158,11 @@ function spotNear(view, p, mem) {
 // What each AI remembers seeing: enemy unit id -> { type, owner, x, z, t (seconds), val (cost x health) }.
 // Kept out of the game state; only fed by what the AI's team can see.
 const MEMORY = new WeakMap();
+const PROJECTIONS = new WeakMap();
+const projectionOf = mem => {
+  if (!PROJECTIONS.has(mem)) PROJECTIONS.set(mem, {});
+  return PROJECTIONS.get(mem);
+};
 const memoryOf = (g, slot) => { if (!MEMORY.has(g)) MEMORY.set(g, []); const m = MEMORY.get(g); return (m[slot] ??= {}); };
 // Called when a human resumes this seat, before the next AI takeover can claim its units.
 export function resetAI(g, slot) { const memories = MEMORY.get(g); if (memories) delete memories[slot]; }
@@ -165,7 +171,7 @@ const inCover = (_view, u) => u.cover === 1 || u.cover === 2;
 
 // Refresh on the same beat as human snapshots. A think between beats uses the previous view.
 export function observe(g, slot, cache) {
-  const mem = memoryOf(g, slot), view = viewFor(g, slot, mem.projection ??= {}, cache);
+  const mem = memoryOf(g, slot), view = viewFor(g, slot, projectionOf(mem), cache);
   flushHordeMovement(view, slot, mem, cmd => command(g, slot, cmd));
   return view;
 }
@@ -227,9 +233,9 @@ const HEAVY = new Set(['tank', 'medium', 'tiger', 'churchill']);
 //   hands       march orders one look can give (a push already chosen is one order, not one per squad)
 //   casts       abilities one look can throw                    commit: seconds it sticks with the point it picked
 export const AI_LEVELS = {
-  easy: { every: 120, adaptive: false, supReserve: 250, munReserve: 40, supGap: 45, cluster: 2, wave: 3, firstAssault: 150, ratio: 0, baseArmy: 10, retreat: 0.35, notice: 2.5, hands: 4, casts: 1, commit: 16 },
-  normal: { every: 40, adaptive: true, supReserve: 100, munReserve: 0, supGap: 0, cluster: 2, wave: 3, firstAssault: 0, ratio: 0, baseArmy: 6, retreat: 0.35, notice: 1.25, hands: 6, casts: 2, commit: 10 },
-  hard: { every: 20, adaptive: true, memory: true, supReserve: 100, munReserve: 0, supGap: 0, cluster: 3, best: true, wave: 2, firstAssault: 0, ratio: 1.2, baseArmy: 6, retreat: 0.5, focus: true, guard: true, notice: 0.5, hands: 8, casts: 3, commit: 6 },
+  easy: { every: 120, adaptive: false, ...SUPPORT_RESERVES.easy, supGap: 45, cluster: 2, wave: 3, firstAssault: 150, ratio: 0, baseArmy: 10, retreat: 0.35, notice: 2.5, hands: 4, casts: 1, commit: 16 },
+  normal: { every: 40, adaptive: true, ...SUPPORT_RESERVES.normal, supGap: 0, cluster: 2, wave: 3, firstAssault: 0, ratio: 0, baseArmy: 6, retreat: 0.35, notice: 1.25, hands: 6, casts: 2, commit: 10 },
+  hard: { every: 20, adaptive: true, memory: true, ...SUPPORT_RESERVES.hard, supGap: 0, cluster: 3, best: true, wave: 2, firstAssault: 0, ratio: 1.2, baseArmy: 6, retreat: 0.5, focus: true, guard: true, notice: 0.5, hands: 8, casts: 3, commit: 6 },
 };
 export const AI_LEVEL_NAMES = Object.keys(AI_LEVELS);
 export const humanCommander = true;
@@ -241,7 +247,7 @@ export const thinkEvery = (level) => (Object.hasOwn(AI_LEVELS, level) ? AI_LEVEL
 export function think(g, slot, opts = {}) {
   const mem = opts.memory ?? memoryOf(g, slot);
   mem.seen ??= new Map(); mem.node ??= new Map();
-  const view = opts.view ?? viewFor(g, slot, opts.decisionOnly ? mem : (mem.projection ??= {}));
+  const view = opts.view ?? viewFor(g, slot, opts.decisionOnly ? mem : projectionOf(mem));
   mem.rng ??= createRng(opts.seed ?? view.matchSeed ?? 1, slot);
   // Wave lifecycle is public. A between-snapshot look cannot dispatch an expired Wave's queue.
   if (view.mode?.kind === 'horde' && view.mode.slot === slot
@@ -340,10 +346,17 @@ export function plan(observation, slot, opts, mem, send) {
   // Classic: only what my finished buildings can train
   const trains = (t) => !classic || grid.ownedBy(slot).some(b => b.built >= 1 && UNITS[b.type].makes?.includes(t));
   const focusAt = ['combat', 'support'].includes(opts.concern?.kind) ? opts.concern : observation.camera;
+  const idleActor = opts.concern?.kind === 'idle' && view.units.get(opts.concern.unitId);
+  const idleCompanion = unit => idleActor && d(unit, idleActor) <= 24 && !unit.air && !unit.inventoryOnly
+    && !unit.retreating && !unit.path.length && !unit.orders.length && !unit.targetId && !unit.attackId
+    && !unit.amove && !unit.dig && !unit.build && !unit.nade && !unit.entrench && unit.enter < 0 && unit.fireAt < 0
+    && unit.garrison < 0;
   const mine = all.filter(u => u.type !== 'engineer' && (!opts.human || (
     opts.concern?.panel === 'air' ? u.id === opts.concern.unitId
       : observation.screenIds.has(u.id) && (!focusAt || d(u, focusAt) <= 48)
-        && (opts.concern?.kind !== 'idle' || u.id === opts.concern.unitId)))); // Engineers build; everyone else fights
+        && (opts.concern?.kind !== 'idle' || u.id === opts.concern.unitId || idleCompanion(u))))); // Engineers build; everyone else fights
+  // The named idle squad takes the holder's work before any optional nearby companion.
+  if (opts.human && idleActor) mine.sort((a, b) => Number(b.id === idleActor.id) - Number(a.id === idleActor.id));
   // The horde is a wave, not a player: it still arms every squad. A seat commander arms squads when it
   // sends them into a fight, or once that fight has been watched, not the whole army at the first look.
   const mindful = !horde;
@@ -468,6 +481,7 @@ export function plan(observation, slot, opts, mem, send) {
     id: `${view.tick}:${mem.human.cycle}`, tick: view.tick, concern: opts.concern.id, cycle: mem.human.cycle,
     want: buy, price: priceOf(view, buy), mp: me.mp, fuel: me.fuel ?? 0,
     reason: 'unaffordable', proposedBuys: 0, queuedBuys: 0,
+    readiness: productionStatus(observation, slot),
   } : null;
   if (!horde && economyVisit && opts.concern?.panel !== 'air') for (let k = 0; k < purchaseLimit; k++) {
     // Keep a useful army in the field rather than waiting forever for a prestige purchase.
@@ -475,6 +489,12 @@ export function plan(observation, slot, opts, mem, send) {
     if (opts.human && armySize < 6 && !affords(candidate)) {
       const fallback = canBuild('conscript', me.faction) && trains('conscript') ? 'conscript' : 'rifle';
       if (trains(fallback) && affords(fallback)) candidate = fallback;
+    }
+    if (production) {
+      production.want = candidate; production.price = priceOf(view, candidate);
+      production.requiredMP = production.price.mp + (armySize >= 3 ? reserve : 0);
+      production.mpReady = me.mp >= production.requiredMP;
+      production.fuelReady = (me.fuel ?? 0) >= production.price.fuel;
     }
     if (me.mp - (armySize >= 3 ? reserve : 0) < priceOf(view, candidate).mp) {
       if (production) production.reason = reserve ? 'building-reserve' : 'unaffordable';
@@ -550,6 +570,12 @@ export function plan(observation, slot, opts, mem, send) {
   const arm = (u) => { if (mindful && u && !u.air && !u.autoRetreat && !u.retreating) armSet.add(u.id); };
   const cast = (cmd) => {
     if (mindful && casts >= L.casts) return false;
+    const actor = view.units.get(cmd.ids[0]), cost = abCost(view, UNITS[actor.type].ab);
+    if (cost && !(me.mun >= cost)) return false;
+    if (opts.human && actor.cdKnown === false) {
+      if (typeof opts.requestInspection === 'function') opts.requestInspection(cmd);
+      return false;
+    }
     if (submit(cmd) !== undefined) return false;
     casts += 1;
     return true;
@@ -698,7 +724,7 @@ export function plan(observation, slot, opts, mem, send) {
 
     // abilities: a few throws per look, and not at a squad that was spotted on this same look
     const target = view.units.get(u.targetId);
-    if (u.cd <= 0) {
+    if (u.cd <= 0 || (opts.human && u.cdKnown === false && typeof opts.requestInspection === 'function')) {
       if (def.ab.id === 'grenade') {
         // lob it at a dug-in MG or AT gun, or any squad sitting in cover
         const t = enemiesNear(u, def.ab.range + 4).find(e => watched(e) && UNITS[e.type].infantry && d(u, e) <= def.ab.range + 4 && (e.type !== 'rifle' || inCover(view, e)));

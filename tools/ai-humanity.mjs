@@ -144,7 +144,7 @@ export function concernMetrics(log) {
 }
 
 // Event populations come from perception at creation, independently of which concerns receive attention.
-export function reactionMetrics(log, seconds) {
+function primaryReactionMetrics(log, seconds) {
   if (!log.eventsRecorded && !Array.isArray(log.events)) return { population: null, firstAction: null, command: null, requiredScreenPopulation: null };
   const endTick = Math.round(seconds / TICK), events = new Map();
   for (const event of log.events ?? []) if (event?.id != null && Number.isSafeInteger(event.tick) && event.tick >= 0 && event.tick <= endTick) {
@@ -235,6 +235,85 @@ export function reactionMetrics(log, seconds) {
   };
 }
 
+// Version3 reads explicit prospective event links. The original input timeline remains untouched.
+function linkedCommandServes(submitted, event) {
+  const cmd = submitted.command, actors = selection(cmd), eligible = event.responseUnits ?? [];
+  if (cmd.t === 'support') return validPoint(cmd) && distance(cmd, event) <= 24;
+  if (eligible.length && !actors.some(id => eligible.includes(id))) return false;
+  if (!actors.length) return false;
+  const targets = cmd.orders?.filter(row => !eligible.length || eligible.includes(row[0])).map(row => ({ x: row[1], z: row[2] }))
+    ?? (validPoint(cmd) ? [cmd] : submitted.locations ?? []);
+  if (['move', 'amove'].includes(cmd.t)) return (cmd.orders ?? []).some(([id, x, z], index) => {
+    const from = submitted.sourceLocations?.[index];
+    return (!eligible.length || eligible.includes(id)) && validPoint(from) && distance(from, event) <= 48
+      && validPoint({ x, z }) && distance({ x, z }, event) <= 24;
+  });
+  if (['attack', 'ability'].includes(cmd.t)) {
+    if (cmd.t === 'ability' && !validPoint(cmd) && event.unitId != null && actors.includes(event.unitId)) return true;
+    return targets.some(target => validPoint(target) && distance(target, event) <= 24);
+  }
+  if (['retreat', 'stance', 'cover', 'stop'].includes(cmd.t)) return event.unitId != null && actors.includes(event.unitId)
+    || (submitted.sourceLocations ?? []).some(at => validPoint(at) && distance(at, event) <= 24);
+  return false;
+}
+export function reactionMetrics(log, seconds) {
+  if (!(log.inputs ?? []).some(input => Array.isArray(input.responseEvents))) return primaryReactionMetrics(log, seconds);
+  const population = new Map((log.events ?? []).filter(event => event?.id != null && Number.isSafeInteger(event.tick) && event.tick >= 0 && event.tick <= Math.round(seconds / TICK)).map(event => [eventKey(event), event]));
+  const audit = { schema: 'ww2-response-events-v1', instrumentedInputs: 0, primaryOnlyInputs: 0, declaredLinks: 0, validLinks: 0, duplicateLinks: 0,
+    unknownPopulationLinks: 0, descriptorMismatchLinks: 0, invalidTimingLinks: 0, staleLinks: 0, unrelatedActorLinks: 0,
+    misplacedSupportLinks: 0, invalidCommandResponses: 0 };
+  const measured = [];
+  for (const input of log.inputs ?? []) {
+    if (!Array.isArray(input.responseEvents)) { measured.push(input); audit.primaryOnlyInputs++; continue; }
+    audit.instrumentedInputs++;
+    const used = new Set();
+    for (const link of input.responseEvents) {
+      audit.declaredLinks++;
+      const event = link && population.get(eventKey(link));
+      if (!event) { audit.unknownPopulationLinks++; continue; }
+      const fields = ['id', 'tick', 'kind', 'source', 'onScreen', 'x', 'z', 'unitId', 'targetId', 'responseRequired', 'responsePolicy', 'responseReason'];
+      if (fields.some(field => link[field] !== event[field]) || JSON.stringify(link.responseUnits ?? []) !== JSON.stringify(event.responseUnits ?? [])) {
+        audit.descriptorMismatchLinks++; continue;
+      }
+      if (![input.queuedTick, input.inputStartedTick, input.tick].every(tick => Number.isSafeInteger(tick) && tick >= 0)
+        || event.tick > input.queuedTick || event.tick > input.inputStartedTick
+        || input.queuedTick > input.inputStartedTick || input.inputStartedTick > input.tick) { audit.invalidTimingLinks++; continue; }
+      if (input.queuedTick - event.tick > 240) { audit.staleLinks++; continue; }
+      const key = eventKey(event);
+      if (used.has(key)) { audit.duplicateLinks++; continue; }
+      used.add(key);
+      const actors = input.responseActorIds, eligible = event.responseUnits ?? [];
+      const support = input.kind?.startsWith('support-') || input.command?.t === 'support';
+      if (support && !actors?.length) {
+        if (!validPoint(input.responseTarget) || distance(input.responseTarget, event) > 24) { audit.misplacedSupportLinks++; continue; }
+      } else if (!Array.isArray(actors) || !actors.length || eligible.length && !actors.some(id => eligible.includes(id))) {
+        audit.unrelatedActorLinks++; continue;
+      }
+      const row = { ...input, event: link, eventTick: event.tick };
+      if (input.command) {
+        const submitted = (log.commands ?? []).find(command => command.tick === input.tick && JSON.stringify(command.command) === JSON.stringify(input.command));
+        if (submitted && !linkedCommandServes(submitted, event)) { delete row.command; audit.invalidCommandResponses++; }
+      }
+      measured.push(row); audit.validLinks++;
+    }
+  }
+  const result = primaryReactionMetrics({ ...log, inputs: measured }, seconds);
+  if (result.population) {
+    result.population.version = 3;
+    result.population.linkage = audit;
+    result.population.linkageMethod = 'Explicit responseEvents only for instrumented rows, matched to diagnostic event identities and complete creation descriptors. Creation precedes both job enqueue and motor start, and is no more than240ticks before enqueue. Completion can occur later after a legitimate queue or cap wait. Intended actors or a support target within24metres qualify the first completed attempt; actual commands independently require relevant actors and targets. One input can answer several events; the original physical timeline and APM counts are unchanged. Primary-only rows retain historical semantics. No nearest-command inference.';
+  }
+  return result;
+}
+
+export function reactionScoringComparison(log, seconds) {
+  if (!(log.inputs ?? []).some(input => Array.isArray(input.responseEvents))) return null;
+  return {
+    method: 'Both scorings use the same unchanged input timeline, commands, creation population, recording end and completed-input endpoints. Primary-only uses the historical input.event reducer. Explicit-linked independently validates responseEvents, including the240tick enqueue horizon. Both retain unanswered required stimuli; neither score is selected based on its result.',
+    primaryOnly: primaryReactionMetrics(log, seconds), explicitLinked: reactionMetrics(log, seconds),
+  };
+}
+
 export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
   const commands = log.commands ?? [];
   const accepted = commands.filter(c => c.accepted === true);
@@ -256,7 +335,8 @@ export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
   }
   const physical = inputs.filter(i => i.countsAPM !== false && i.kind !== 'beat' && !(i.actor === 'human' && i.kind === 'command'));
   const physicalRecorded = physical.length > 0 || log.physicalInputsRecorded === true || inputs.some(i => i.observed?.physicalInputs === true);
-  const reaction = reactionMetrics(log, seconds);
+  const scoringComparison = reactionScoringComparison(log, seconds);
+  const reaction = scoringComparison?.explicitLinked ?? reactionMetrics(log, seconds);
   const camera = inputs.filter(i => i.kind === 'camera' || i.kind === 'cameraJump' || i.kind?.startsWith('camera-'));
   const cycles = new Map();
   for (const input of physical) {
@@ -272,8 +352,9 @@ export function summarizeSeat(log, seconds, screenSpan = DEFAULT_SCREEN_SPAN) {
     physicalInputAPM: physicalRecorded ? { matchMean: round(physical.length * 60 / seconds), windows60: distribution(windows(physical, seconds, 60)), windows10: distribution(windows(physical, seconds, 10)) } : null,
     firstCommandSeconds: round(commands[0]?.tick * TICK), firstOrderSeconds: round(orders[0]?.tick * TICK), firstBuySeconds: round(commands.find(c => c.command.t === 'buy')?.tick * TICK),
     firstAcceptedOrderSeconds: round(orders.find(c => c.accepted === true)?.tick * TICK), firstAcceptedBuySeconds: round(commands.find(c => c.command.t === 'buy' && c.accepted === true)?.tick * TICK),
-    reactionMeasurementVersion: 2, reactionEvents: reaction.population,
+    reactionMeasurementVersion: inputs.some(input => Array.isArray(input.responseEvents)) ? 3 : 2, reactionEvents: reaction.population,
     reactionSeconds: reaction.firstAction, reactionCommandSeconds: reaction.command,
+    ...(scoringComparison ? { reactionScoringComparison: scoringComparison } : {}),
     requiredScreenPopulation: reaction.requiredScreenPopulation, concernAlignment: concernMetrics(log),
     contactToTargetCommandSeconds: distribution(log.contactReactions ?? []),
     crossMap: { screenSpan, commandPairsWithinOneSecond: crossMapPairs, commandPairsWithinQuarterSecond: quarterSecondCrossMapPairs, bundledCommandsSpanningScreen: sameCommandCrossMap },
@@ -465,7 +546,24 @@ export function aggregate(results) {
     }
     const reactionPopulations = seats.map(seat => seat.reactionEvents).filter(Boolean);
     const reactionEventPopulation = reactionPopulations.length ? { recordedSeats: reactionPopulations.length, totalSeats: seats.length, byType: Object.fromEntries(['screenNewContact', 'screenHpDamage', 'onScreenAlert', 'offScreenAlert', 'minimapContactExploratory', 'otherEventExploratory'].map(type => [type, { events: reactionPopulations.reduce((n, population) => n + population.byType[type].events, 0), firstActionAnswered: reactionPopulations.reduce((n, population) => n + population.byType[type].firstAction.answered, 0), firstActionUnanswered: reactionPopulations.reduce((n, population) => n + population.byType[type].firstAction.unanswered, 0), commandAnswered: reactionPopulations.reduce((n, population) => n + population.byType[type].attemptedCommand.answered, 0), commandUnanswered: reactionPopulations.reduce((n, population) => n + population.byType[type].attemptedCommand.unanswered, 0), acceptedCommandAnswered: reactionPopulations.reduce((n, population) => n + population.byType[type].acceptedCommand.answered, 0), acceptedCommandUnanswered: reactionPopulations.reduce((n, population) => n + population.byType[type].acceptedCommand.unanswered, 0) }])) } : null;
-    groups[`${mode}/${level}`] = { requiredScreenPopulation, concernAlignment, reactionEventPopulation, reactionMeasurementVersion: seats.every(seat => seat.reactionMeasurementVersion === 2) ? 2 : 1, screenSpans, peakWindowStrideTicks, matches: matches.length, seats: seats.length, seconds: distribution(matches.map(r => r.seconds)), commandAPM: field(s => s.commandAPM.matchMean), physicalInputAPM: field(s => s.physicalInputAPM?.matchMean), commandAPM60WindowMean: field(s => s.commandAPM.windows60.mean), commandAPM10WindowPeak: field(s => s.commandAPM.windows10.max), physicalInputAPM60WindowMean: field(s => s.physicalInputAPM?.windows60.mean), physicalInputAPM10WindowPeak: field(s => s.physicalInputAPM?.windows10.max), maxCommandsPerTick: field(s => s.commandsPerTick.activeTickDistribution.max), firstOrderSeconds: field(s => s.firstOrderSeconds), firstBuySeconds: field(s => s.firstBuySeconds), firstAcceptedOrderSeconds: field(s => s.firstAcceptedOrderSeconds), firstAcceptedBuySeconds: field(s => s.firstAcceptedBuySeconds), onScreenFirstNonCameraActionMedianSeconds: field(s => s.reactionSeconds?.onScreen?.median), onScreenReactionMedianSeconds: field(s => s.reactionSeconds?.onScreen?.median), offScreenAlertFirstActionMedianSeconds: field(s => s.reactionSeconds?.offScreenAlert?.median), offScreenAlertReactionMedianSeconds: field(s => s.reactionSeconds?.offScreenAlert?.median), onScreenCommandReactionMedianSeconds: field(s => s.reactionCommandSeconds?.attempted?.onScreen?.median), offScreenAlertCommandReactionMedianSeconds: field(s => s.reactionCommandSeconds?.attempted?.offScreenAlert?.median), crossMapPairsWithinOneSecond: field(s => s.crossMap.commandPairsWithinOneSecond), cameraJumpsPerMinute: field(s => s.cameraJumpsPerMinute), dwellMedianSeconds: field(s => s.dwellSeconds?.median), actionsPerCycleMedian: field(s => s.actionsPerCycle?.median), floatingMPMean: field(s => s.floatingMP.mean), idleMedianSeconds: field(s => (s.idleSeconds ?? s.unnoticedIdleSeconds)?.median), unnoticedIdleMedianSeconds: field(s => s.unnoticedIdleSeconds?.median), openingsByFaction };
+    groups[`${mode}/${level}`] = { requiredScreenPopulation, concernAlignment, reactionEventPopulation, reactionMeasurementVersion: seats.some(seat => seat.reactionMeasurementVersion === 3) ? (seats.every(seat => seat.reactionMeasurementVersion === 3) ? 3 : 'mixed') : seats.every(seat => seat.reactionMeasurementVersion === 2) ? 2 : 1, screenSpans, peakWindowStrideTicks, matches: matches.length, seats: seats.length, seconds: distribution(matches.map(r => r.seconds)), commandAPM: field(s => s.commandAPM.matchMean), physicalInputAPM: field(s => s.physicalInputAPM?.matchMean), commandAPM60WindowMean: field(s => s.commandAPM.windows60.mean), commandAPM10WindowPeak: field(s => s.commandAPM.windows10.max), physicalInputAPM60WindowMean: field(s => s.physicalInputAPM?.windows60.mean), physicalInputAPM10WindowPeak: field(s => s.physicalInputAPM?.windows10.max), maxCommandsPerTick: field(s => s.commandsPerTick.activeTickDistribution.max), firstOrderSeconds: field(s => s.firstOrderSeconds), firstBuySeconds: field(s => s.firstBuySeconds), firstAcceptedOrderSeconds: field(s => s.firstAcceptedOrderSeconds), firstAcceptedBuySeconds: field(s => s.firstAcceptedBuySeconds), onScreenFirstNonCameraActionMedianSeconds: field(s => s.reactionSeconds?.onScreen?.median), onScreenReactionMedianSeconds: field(s => s.reactionSeconds?.onScreen?.median), offScreenAlertFirstActionMedianSeconds: field(s => s.reactionSeconds?.offScreenAlert?.median), offScreenAlertReactionMedianSeconds: field(s => s.reactionSeconds?.offScreenAlert?.median), onScreenCommandReactionMedianSeconds: field(s => s.reactionCommandSeconds?.attempted?.onScreen?.median), offScreenAlertCommandReactionMedianSeconds: field(s => s.reactionCommandSeconds?.attempted?.offScreenAlert?.median), crossMapPairsWithinOneSecond: field(s => s.crossMap.commandPairsWithinOneSecond), cameraJumpsPerMinute: field(s => s.cameraJumpsPerMinute), dwellMedianSeconds: field(s => s.dwellSeconds?.median), actionsPerCycleMedian: field(s => s.actionsPerCycle?.median), floatingMPMean: field(s => s.floatingMP.mean), idleMedianSeconds: field(s => (s.idleSeconds ?? s.unnoticedIdleSeconds)?.median), unnoticedIdleMedianSeconds: field(s => s.unnoticedIdleSeconds?.median), openingsByFaction };
+    if (seats.some(seat => seat.reactionScoringComparison)) {
+      const primaryResults = matches.map(match => ({ ...match, seats: match.seats.map(seat => {
+        const { reactionScoringComparison: comparison, ...metrics } = seat.metrics;
+        const primary = comparison?.primaryOnly;
+        return { ...seat, metrics: primary ? { ...metrics, reactionMeasurementVersion: 2, reactionEvents: primary.population,
+          reactionSeconds: primary.firstAction, reactionCommandSeconds: primary.command, requiredScreenPopulation: primary.requiredScreenPopulation } : metrics };
+      }) }));
+      const primary = aggregate(primaryResults)[`${mode}/${level}`];
+      const project = summary => Object.fromEntries(['reactionMeasurementVersion', 'requiredScreenPopulation', 'reactionEventPopulation',
+        'onScreenFirstNonCameraActionMedianSeconds', 'offScreenAlertFirstActionMedianSeconds',
+        'onScreenCommandReactionMedianSeconds', 'offScreenAlertCommandReactionMedianSeconds'].map(key => [key, summary[key]]));
+      groups[`${mode}/${level}`].reactionScoringComparison = {
+        method: seats.find(seat => seat.reactionScoringComparison).reactionScoringComparison.method,
+        instrumentedSeats: seats.filter(seat => seat.reactionScoringComparison).length, totalSeats: seats.length,
+        primaryOnly: project(primary), explicitLinked: project(groups[`${mode}/${level}`]),
+      };
+    }
   }
   return groups;
 }
@@ -592,7 +690,8 @@ async function main() {
   const summary = aggregate(results);
   const report = { schemaVersion: 1, source: options.legacy ? 'legacy-5293ddb' : 'current', configuration: { modes, levels, seeds, seconds: options.seconds, map: options.map, army: 'standard', worldSize: 'huge', screenSpan: options.screenSpan }, definitions: {
     commandAPM: 'Every submitted simulation command, including rejected attempts. A command can contain several unit orders. This is not physical input APM.', physicalInputAPM: 'Logged motor inputs with countsAPM other than false. Null when the commander does not emit physical input records.',
-    firstOrder: 'First submitted command other than buy, stance or recover.', reactionSeconds: 'Version2: screen-contact and screen-damage events are stamped by perception at creation. On-screen first action (screen contact, screen damage, or an alert stamped on screen at creation) excludes camera inputs. Off-screen alerts allow a camera input as the first action. Actual attempted and accepted commands are reported separately. Minimap contacts are exploratory and excluded from both reaction gates. Missing event-population instrumentation yields null; historical logs retain their original definitions.',
+    firstOrder: 'First submitted command other than buy, stance or recover.', reactionSeconds: 'Version3 applies only to explicit responseEvents instrumentation, with full diagnostic identity/descriptor matching and creation before enqueue and motor start. An explicit link must be enqueued within240ticks (12seconds) of creation; later completed inputs remain valid if their plan was timely. Stale links are rejected separately while every stimulus remains recorded and censored. Multiple linked stimuli receive independent completed action/actual command answers from one physical input, counted once for APM. Primary-only historical logs remain Version2. Version2: screen-contact and screen-damage events are stamped by perception at creation. On-screen first action (screen contact, screen damage, or an alert stamped on screen at creation) excludes camera inputs. Off-screen alerts allow a camera input as the first action. Actual attempted and accepted commands are reported separately. Minimap contacts are exploratory and excluded from both reaction gates. Missing event-population instrumentation yields null; historical logs retain their original definitions.',
+    reactionScoringComparison: 'Both primary-only historical and explicit-linked scorings are reported on the same newly instrumented logs, per seat and pooled. They share population, recording duration, commands, input timeline and completed endpoints. Neither result is selected for favorable outcomes. Primary-only historical reports remain unchanged.',
     requiredScreenPopulation: 'Prospective annotations only. screen-v1 requires a novel hostile contact with an idle controllable ground combat unit within 45 metres, or damage of at least 25% maximum health, or crossing the fixed retreat risk (health below 35%, last model in a multi-model squad, or suppression at least 90 with health below 60%) without already retreating. All levels use the same rule. Source-proven automatic retreat and active firing exempt already handled events at creation; firing never exempts current retreat risk. Record every required and exempt reason at perception time, including unknown-home fallbacks that remain required. Alerts and minimap contacts have no required-population policy. First completed non-camera response requires intended actors in responseUnits or an explicit support target within 24 metres. Required unanswered events remain in Kaplan-Meier survival; an unidentified population median is null. Conditional completed medians alone cannot certify the gate. Historical events are never retrospectively classified.',
     concernAlignment: 'Actual expansion command targets within 20 metres of the delivered point or node concern. Idle input-context cycles count whether an actual attempted or accepted command includes the idle unit. Diagnostic attention visits use their own denominator. Production records actual own resource spending, rejection reasons, and explicit planner decisions; missing planner reasons remain unmeasured.',
     crossMap: 'Pairs of spatial commands no more than one second apart with target positions farther apart than screenSpan; commands without positions use addressed unit locations. Also reports quarter-second pairs and one command addressing multiple regions.',
