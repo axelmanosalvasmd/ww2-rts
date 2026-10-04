@@ -14,8 +14,9 @@ export function moveModel(v, elapsed) {
   if (!m) {
     const body = v.visualBody = new THREE.Group();
     body.name = 'visual hull motion';
-    for (const child of [...root.children]) if (child !== v.base && child !== v.sel) body.add(child);
-    root.add(body);
+    const parent = v.visualChassis ?? root;
+    for (const child of [...parent.children]) if (child !== v.base && child !== v.sel) body.add(child);
+    parent.add(body);
     m = v.modelMotion = { x: root.position.x, z: root.position.z, yaw: root.rotation.y, speed: 0, travel: 0, time: 0, hidden: !root.visible };
     return;
   }

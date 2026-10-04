@@ -13,8 +13,10 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 if (port < 1 || port > 65535) throw new Error('Port must be between 1 and 65535');
 root = await realpath(root);
-const labNames = new Set(['movement-lab.html', 'movement-lab-browser.js', 'movement-lab-scenarios.js', 'movement-lab-runner.js']);
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
+const labNames = new Set(['movement-lab.html', 'movement-lab-browser.js', 'movement-lab-scenarios.js', 'movement-lab-runner.js', 'terrain-workshop.html', 'terrain-workshop.js', 'terrain-workshop-fixtures.js']);
+const clientBase = await realpath(resolve(checkout, 'client'));
+const vendorBase = await realpath(resolve(checkout, 'node_modules/three/build'));
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };
 const server = createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -28,6 +30,10 @@ const server = createServer(async (req, res) => {
       base = resolve(checkout, 'tools'); target = resolve(base, pathname.slice(7));
     } else if (pathname.startsWith('/shared/') && pathname.endsWith('.js')) {
       base = resolve(root, 'shared'); target = resolve(root, `.${pathname}`);
+    } else if (pathname.startsWith('/client/') && ['.js', '.jpg', '.jpeg', '.png'].includes(extname(pathname))) {
+      base = clientBase; target = resolve(base, pathname.slice(8));
+    } else if (pathname.startsWith('/vendor/') && pathname.endsWith('.js')) {
+      base = vendorBase; target = resolve(base, pathname.slice(8));
     } else { res.writeHead(404); res.end('Not found'); return; }
     target = await realpath(target);
     if (!target.startsWith(base + sep)) { res.writeHead(404); res.end('Not found'); return; }

@@ -5,6 +5,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-04: Vehicle slopes and terrain workshop (`479b1f6`)
+
+- Tanks and other ground vehicles pitch uphill and downhill and lean across slopes instead of staying almost
+  level. Their native track or tire footprint supports the hull on ramps, crests and trench crossings, while
+  turrets keep turning and selection rings stay level. Fixed the order of terrain tilt and suspension motion,
+  and tracks cutting through narrow ridges between support points.
+- Added a 3D terrain workshop with the game's vehicle models and terrain mesh, five repeatable scenes,
+  frame stepping, distance scrubbing, faction and vehicle choices, and a level-hull comparison.
+  The fixtures exercise presentation; use the movement lab to test navigation and orders.
+
 ### 2026-10-04: Movement recovery and disruption lab (`6a74b65`)
 
 - Vehicles brake before their final waypoint instead of overshooting and turning a full circle to return.

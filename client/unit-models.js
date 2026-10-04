@@ -853,6 +853,31 @@ export function vehicleBody(v) {
   for (const child of [...v.root.children]) if (child !== v.base && child !== v.sel) body.add(child);
   v.root.add(body);
   v.visualChassis = body;
+  // Measure the native track or tire footprint once, excluding barrels and raised equipment.
+  const vertices = [], point = new THREE.Vector3();
+  let bottom = Infinity;
+  const visit = node => {
+    if (node === v.turret || v.mounts?.includes(node)) return;
+    if (node.isMesh && node.geometry?.attributes.position) {
+      const positions = node.geometry.attributes.position, transform = relative(node, body);
+      for (let i = 0; i < positions.count; i++) {
+        point.fromBufferAttribute(positions, i).applyMatrix4(transform);
+        bottom = Math.min(bottom, point.y);
+        vertices.push(point.x, point.y, point.z);
+      }
+    }
+    for (const child of node.children) visit(child);
+  };
+  for (const child of body.children) visit(child);
+  if (Number.isFinite(bottom)) {
+    const bounds = new THREE.Box3();
+    for (let i = 0; i < vertices.length; i += 3) if (vertices[i + 1] <= bottom + 0.15) {
+      bounds.expandByPoint(point.set(vertices[i], bottom, vertices[i + 2]));
+    }
+    if (bounds.max.x - bounds.min.x > 0.1 && bounds.max.z - bounds.min.z > 0.1) {
+      v.groundContact = { minX: bounds.min.x, maxX: bounds.max.x, minZ: bounds.min.z, maxZ: bounds.max.z, y: bottom, band: 0.15 };
+    }
+  }
   return body;
 }
 
