@@ -1032,8 +1032,13 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   row runs of up to 32 cells. It imports `../shared/sim.js` by relative path, so test.js runs it in Node.
 - Cliff and slope rules: cell centres keep their exact sim height (`level x CFG.levelHeight`). A step of two or more
   levels between connected cells is a cliff: the sides get separate vertices and a vertical rock strip between them,
-  painted as warm strata with a pale lip and a soil foot. A one-level step is an eased ramp (smoothstep) between the two
-  cell centres, steepest at the boundary, painted with dry earth on the steep part. Cliffs are a heightfield, so there are no overhangs. Roads
+  painted as warm strata with a pale lip and a soil foot. Ordinary ramps use cubic interpolation with shared,
+  limited gradients. Consecutive rising cells keep their slope through cell centres instead of making a shelf
+  at every level. Flat tops, centre heights and cliff connectivity remain intact. Normals come from the same
+  interpolation, and the existing quarter-cell triangles remain the surface sampled by grounding and picking.
+  Ordinary hills use continuous slope paint; contour ink and lip/foot bands stay near actual cliffs.
+  Crater rims retain their existing visual edge displacement, which can differ from contact sampling.
+  Cliffs are a heightfield, so there are no overhangs. Roads
   sink 0.1 m with a shallow centre fan, and building cells are never sunk. Water cells are carved below the frozen
   water line of their body (`client/water-levels.js`): fords 0.15 m so they stay wadeable, channels 0.42 m at the
   bank row and 0.38 m deeper per row inward, with sloping banks. Bridge cells keep their deck height.
@@ -1250,10 +1255,15 @@ The simulation position, speed, routing, damage and selection markers retain the
 Hidden or off-screen vehicles skip terrain sampling and evaluate the current pose when they return.
 
 The [terrain workshop](docs/terrain-workshop.md) renders the game's models and relief through the same animation
-pipeline on five authored scenes: climb and descent, cross slope, crest, trench and flat ground. It offers
+pipeline on seven authored scenes: climb and descent, cross slope, rounded hill, ramp beside a cliff, crest,
+trench and flat ground,
+plus a full generated World Conquest map with seed 20261003. It offers
 scrubbing, single-frame playback, faction and vehicle choices, three camera views and a level-hull comparison.
 Its scripted paths test presentation, while the movement lab remains the authority for navigation and commands.
 Support samples approximate a rigid contact footprint; they do not add airborne vehicle physics or rollover.
+The original straight ramp and cross-slope fixtures remain unchanged for before/after comparisons. Broad
+authored plateaus and generated level regions retain their height contract. This change blends their ramps
+without changing high-ground bonuses, cliff collision, navigation or vehicle terrain alignment.
 
 Authoritative projectile flights sweep terrain and moving bodies between 20-Hz ticks. Contact applies damage and
 suppression once, even after the shooter dies. Small arms travel at 230 m/s, sniper rounds at 420 and direct shells

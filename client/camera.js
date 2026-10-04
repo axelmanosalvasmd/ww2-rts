@@ -7,9 +7,11 @@ const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(),
 const EPS = 1e-7;
 
 // Visit crossed cells in order so even a narrow peak gets its two mesh triangles tested.
-export function groundAt(camera, hAt, mx, my, w, h, mapW, mapH) {
+export function groundAt(camera, hAt, mx, my, w, h, mapW, mapH, terrainMesh = null) {
   cursor.set(mx / w * 2 - 1, 1 - my / h * 2);
   raycaster.setFromCamera(cursor, camera);
+  // Relief picks its sampled triangles and cliff boundaries, the same surface used for grounding.
+  if (terrainMesh) return raycaster.intersectObject(terrainMesh, false)[0]?.point ?? raycaster.ray.intersectPlane(flat, new THREE.Vector3());
   const ray = raycaster.ray, o = ray.origin, direction = ray.direction;
   if (direction.y < -1e-6 && Number.isFinite(mapW) && Number.isFinite(mapH)) {
     let lo = Math.max(0, (10.01 - o.y) / direction.y), hi = Math.min(2000, (-5.01 - o.y) / direction.y);

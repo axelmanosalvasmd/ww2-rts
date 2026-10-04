@@ -157,7 +157,7 @@ function reset(next = {}) {
   ground = createGround(fixture.map, renderer);
   const grid = fixture.map.rows.map(row => [...row]);
   ground.paint(grid, Uint8Array.from(fixture.map.rows.join(''), startState));
-  relief = createRelief(fixture.map, grid, { texture: ground.tex, isRoad: ground.isRoad });
+  relief = createRelief(fixture.map, grid, { texture: ground.tex, isRoad: ground.isRoad, low: !!fixture.map.world });
   scene.add(relief.mesh);
   const root = new THREE.Group(), base = ownerRing(UNITS[options.type].radius + 0.4, FACTIONS[options.faction].color), sel = new THREE.Group();
   root.add(base, sel);

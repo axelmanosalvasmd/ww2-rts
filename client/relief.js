@@ -28,6 +28,8 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const heights = new Float32Array(n * STRIDE), normals = new Float32Array(n * STRIDE * 3);
   const nx = new Uint8Array(n), nz = new Uint8Array(n), flat = new Uint8Array(n);
   const controls = new Float32Array(n * 9), roadCorners = new Float32Array(n * 4);
+  const tangents = new Float32Array(n * 18);
+  const hx = new Float64Array(4), hz = new Float64Array(4), dhx = new Float64Array(4), dhz = new Float64Array(4);
   const waterSource = createWaterLevels(map);
   let water, depth, low = !!options.low;
   const material = options.material ?? createReliefMaterial(options.texture ?? null, { low });
@@ -139,17 +141,51 @@ export function createRelief(map, grid = map.rows, options = {}) {
       roadCorners[c * 4 + j * 2 + i] = building ? 0 : road;
     }
   }
+  // A node's connected owners share its tangents, including at corners beside cliffs.
+  // Limit each tangent to both neighbouring secants. Flat tops and true cliffs stay flat,
+  // while consecutive rising cells retain a slope through their centres.
+  function tangentCell(c) {
+    const x = c % w, z = Math.floor(c / w);
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) {
+      const qx = x + i / 2, qz = z + j / 2, value = controls[c * 9 + j * 3 + i];
+      const corner = i !== 1 && j !== 1;
+      const seed = (i === 0 ? 1 : 0) + (j === 0 ? 2 : 0);
+      const bits = corner ? (masks[qz * qw + qx] >> (seed * 4)) & 15 : 0;
+      let left = 0, right = 0, top = 0, bottom = 0, nl = 0, nr = 0, nt = 0, nb = 0;
+      for (let oz = Math.ceil(qz - 1); oz <= Math.floor(qz); oz++) for (let ox = Math.ceil(qx - 1); ox <= Math.floor(qx); ox++) {
+        if (ox < 0 || oz < 0 || ox >= w || oz >= h) continue;
+        const donor = oz * w + ox;
+        if (corner ? !(bits & (1 << ((ox >= qx ? 1 : 0) + (oz >= qz ? 2 : 0)))) : Math.abs(levels[c] - levels[donor]) >= 2) continue;
+        const di = Math.round((qx - ox) * 2), dj = Math.round((qz - oz) * 2), k = donor * 9 + dj * 3 + di;
+        if (di > 0) { left += controls[k - 1]; nl++; }
+        if (di < 2) { right += controls[k + 1]; nr++; }
+        if (dj > 0) { top += controls[k - 3]; nt++; }
+        if (dj < 2) { bottom += controls[k + 3]; nb++; }
+      }
+      const limited = (a, b) => a * b > 0 ? Math.sign(a) * Math.min(Math.abs(a), Math.abs(b)) : 0;
+      const k = (c * 9 + j * 3 + i) * 2;
+      tangents[k] = limited(nl ? value - left / nl : 0, nr ? right / nr - value : 0);
+      tangents[k + 1] = limited(nt ? value - top / nt : 0, nb ? bottom / nb - value : 0);
+    }
+  }
+  function hermite(t, basis, derivative) {
+    const t2 = t * t, t3 = t2 * t;
+    basis[0] = 2 * t3 - 3 * t2 + 1; basis[1] = -2 * t3 + 3 * t2;
+    basis[2] = t3 - 2 * t2 + t; basis[3] = t3 - t2;
+    derivative[0] = 6 * t2 - 6 * t; derivative[1] = -derivative[0];
+    derivative[2] = 3 * t2 - 4 * t + 1; derivative[3] = 3 * t2 - 2 * t;
+  }
   function baseSample(u, v, owner) {
     const x = owner % w, z = Math.floor(owner / w), fx = clamp((u - x) * 2, 0, 2), fz = clamp((v - z) * 2, 0, 2);
     const i = Math.min(1, Math.floor(fx)), j = Math.min(1, Math.floor(fz)), tx = fx - i, tz = fz - j;
-    const ex = i ? 2 * ease(tx * 0.5) : 1 - 2 * ease((1 - tx) * 0.5);
-    const ez = j ? 2 * ease(tz * 0.5) : 1 - 2 * ease((1 - tz) * 0.5);
-    const dx = 6 * (i ? tx * 0.5 : (1 - tx) * 0.5) * (1 - (i ? tx * 0.5 : (1 - tx) * 0.5)) * 2 / CELL;
-    const dz = 6 * (j ? tz * 0.5 : (1 - tz) * 0.5) * (1 - (j ? tz * 0.5 : (1 - tz) * 0.5)) * 2 / CELL;
-    const k = owner * 9 + j * 3 + i, a = controls[k], b = controls[k + 1], c = controls[k + 3], d = controls[k + 4];
-    out[0] = (a + (b - a) * ex) * (1 - ez) + (c + (d - c) * ex) * ez;
-    out[1] = ((b - a) * (1 - ez) + (d - c) * ez) * dx;
-    out[2] = ((c - a) * (1 - ex) + (d - b) * ex) * dz;
+    hermite(tx, hx, dhx); hermite(tz, hz, dhz);
+    out[0] = out[1] = out[2] = 0;
+    for (let b = 0; b < 2; b++) for (let a = 0; a < 2; a++) {
+      const k = owner * 9 + (j + b) * 3 + i + a, value = controls[k], dx = tangents[k * 2], dz = tangents[k * 2 + 1];
+      out[0] += value * hx[a] * hz[b] + dx * hx[a + 2] * hz[b] + dz * hx[a] * hz[b + 2];
+      out[1] += (value * dhx[a] * hz[b] + dx * dhx[a + 2] * hz[b] + dz * dhx[a] * hz[b + 2]) * 2 / CELL;
+      out[2] += (value * hx[a] * dhz[b] + dx * hx[a + 2] * dhz[b] + dz * hx[a] * dhz[b + 2]) * 2 / CELL;
+    }
   }
   // A shallow centre fan makes road shoulders cheap and keeps building centres unsunk.
   function roadSample(u, v, owner) {
@@ -512,7 +548,8 @@ export function createRelief(map, grid = map.rows, options = {}) {
       vertex(p1x + s1x, p1z + s1z, ah1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
       vertex(p0x + s0x, p0z + s0z, bh, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
       vertex(p1x + s1x, p1z + s1z, bh1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
-      const reverse = (axis === 0 ? sign < 0 : sign > 0);
+      // The height ordering already flips the face toward the lower cell.
+      const reverse = axis === 1;
       if (Math.abs(ah - bh) > 0.00001) { if (reverse) tri(start, start + 2, start + 1); else tri(start, start + 1, start + 2); }
       if (Math.abs(ah1 - bh1) > 0.00001) { if (reverse) tri(start + 1, start + 2, start + 3); else tri(start + 1, start + 3, start + 2); }
     }
@@ -545,32 +582,89 @@ export function createRelief(map, grid = map.rows, options = {}) {
     for (const c of dirty) readCell(c);
     for (const c of dirty) { const x = c % w, z = Math.floor(c / w); readQuad(x, z); readQuad(x + 1, z); readQuad(x, z + 1); readQuad(x + 1, z + 1); }
     for (const c of dirty) controlCell(c);
+    for (const c of dirty) tangentCell(c);
     for (const c of dirty) buildCell(c);
     rebuildGeometry(); stats.cellsUpdated = dirty.size; stats.updateMs = performance.now() - t0;
   }
 
-  // March against the exact terrain surface. A boundary crossing also catches vertical cliff walls.
+  const pickA = new THREE.Vector3(), pickB = new THREE.Vector3(), pickC = new THREE.Vector3();
+  const pickD = new THREE.Vector3(), pickMid = new THREE.Vector3(), pickPoint = new THREE.Vector3();
+  // Visit cells in ray order and intersect their contact triangles. Sampling along a ray
+  // can skip both sides of a grazing crest, even with small steps.
   mesh.raycast = function (raycaster, hits) {
     const ray = raycaster.ray, o = ray.origin, d = ray.direction;
     let begin = Math.max(0, raycaster.near), end = raycaster.far;
-    const origins = [o.x, o.y, o.z], directions = [d.x, d.y, d.z], mins = [0, -12, 0], maxs = [w * CELL, 12, h * CELL];
+    const bounds = this.geometry.boundingBox;
+    const origins = [o.x, o.y, o.z], directions = [d.x, d.y, d.z];
+    const mins = [0, bounds.min.y, 0], maxs = [w * CELL, bounds.max.y, h * CELL];
     for (let axis = 0; axis < 3; axis++) {
       if (Math.abs(directions[axis]) < 1e-12) { if (origins[axis] < mins[axis] || origins[axis] > maxs[axis]) return; }
       else { const a = (mins[axis] - origins[axis]) / directions[axis], b = (maxs[axis] - origins[axis]) / directions[axis]; begin = Math.max(begin, Math.min(a, b)); end = Math.min(end, Math.max(a, b)); }
     }
     if (end < begin) return;
-    const delta = Math.min(0.25 / Math.max(Math.abs(d.x), Math.abs(d.z), 0.01), 0.4 / Math.max(Math.abs(d.y), 0.01));
-    const diff = t => o.y + d.y * t - hAt(o.x + d.x * t, o.z + d.z * t);
-    let a = begin, va = diff(a), found = Math.abs(va) < 1e-7;
-    while (!found && a < end) {
-      const b = Math.min(end, a + delta), vb = diff(b);
-      if (va * vb <= 0) {
-        let left = a, right = b;
-        for (let i = 0; i < 22; i++) { const mid = (left + right) * 0.5; if (diff(mid) * va > 0) left = mid; else right = mid; }
-        a = (left + right) * 0.5; found = true;
-      } else { a = b; va = vb; }
+    const sx = Math.abs(d.x) < 1e-12 ? 0 : Math.sign(d.x), sz = Math.abs(d.z) < 1e-12 ? 0 : Math.sign(d.z), epsilon = 1e-7;
+    const startX = (o.x + d.x * begin) / CELL, startZ = (o.z + d.z * begin) / CELL;
+    const boundaryX = !sx && Math.abs(startX - Math.round(startX)) < 1e-9;
+    const boundaryZ = !sz && Math.abs(startZ - Math.round(startZ)) < 1e-9;
+    let x = clamp((boundaryX ? Math.round(startX) : Math.floor(startX)) - (sx < 0 && startX === Math.floor(startX) ? 1 : 0), 0, w - 1);
+    let z = clamp((boundaryZ ? Math.round(startZ) : Math.floor(startZ)) - (sz < 0 && startZ === Math.floor(startZ) ? 1 : 0), 0, h - 1);
+    const bothX = boundaryX && startX > 0 && startX < w, bothZ = boundaryZ && startZ > 0 && startZ < h;
+    let nextX = sx ? ((x + (sx > 0 ? 1 : 0)) * CELL - o.x) / d.x : Infinity;
+    let nextZ = sz ? ((z + (sz > 0 ? 1 : 0)) * CELL - o.z) / d.z : Infinity;
+    const deltaX = sx ? CELL / Math.abs(d.x) : Infinity, deltaZ = sz ? CELL / Math.abs(d.z) : Infinity;
+    let intervalEnd, best;
+    function triangle(a, b, c) {
+      if (!ray.intersectTriangle(a, b, c, true, pickPoint)) return;
+      const distance = pickPoint.distanceTo(o);
+      if (distance >= begin - epsilon && distance <= intervalEnd + epsilon && distance < best &&
+          distance >= raycaster.near && distance <= raycaster.far) best = distance;
     }
-    if (found) hits.push({ distance: a, point: ray.at(a, new THREE.Vector3()), object: this, face: null });
+    function node(target, c, i, j) {
+      return target.set((c % w + i / S) * CELL, heights[c * STRIDE + j * 5 + i], (Math.floor(c / w) + j / S) * CELL);
+    }
+    function wall(c, axis) {
+      const neighbor = c + (axis === 0 ? 1 : w);
+      if (Math.abs(levels[c] - levels[neighbor]) < 2) return;
+      for (let k = 0; k < S; k++) {
+        if (axis === 0) {
+          node(pickA, c, S, k); node(pickB, c, S, k + 1);
+          node(pickC, neighbor, 0, k); node(pickD, neighbor, 0, k + 1);
+          triangle(pickA, pickB, pickC); triangle(pickB, pickD, pickC);
+        } else {
+          node(pickA, c, k, S); node(pickB, c, k + 1, S);
+          node(pickC, neighbor, k, 0); node(pickD, neighbor, k + 1, 0);
+          triangle(pickA, pickC, pickB); triangle(pickB, pickC, pickD);
+        }
+      }
+    }
+    function surface(c) {
+      const xs = nx[c], zs = nz[c], stepX = S / xs, stepZ = S / zs;
+      if (flat[c] === 2) {
+        node(pickA, c, 0, 0); node(pickB, c, S, 0); node(pickC, c, 0, S); node(pickD, c, S, S); node(pickMid, c, S / 2, S / 2);
+        triangle(pickA, pickMid, pickB); triangle(pickB, pickMid, pickD);
+        triangle(pickD, pickMid, pickC); triangle(pickC, pickMid, pickA);
+      } else for (let j = 0; j < zs; j++) for (let i = 0; i < xs; i++) {
+        node(pickA, c, i * stepX, j * stepZ); node(pickB, c, (i + 1) * stepX, j * stepZ);
+        node(pickC, c, i * stepX, (j + 1) * stepZ); node(pickD, c, (i + 1) * stepX, (j + 1) * stepZ);
+        triangle(pickA, pickC, pickB); triangle(pickB, pickC, pickD);
+      }
+    }
+    while (x >= 0 && x < w && z >= 0 && z < h) {
+      intervalEnd = Math.min(end, nextX, nextZ); best = Infinity;
+      const c = z * w + x;
+      surface(c);
+      // A ray along a cliff boundary sees the upper lip from either owner.
+      if (bothX) surface(c - 1); if (bothZ) surface(c - w);
+      if (bothX && bothZ) surface(c - w - 1);
+      if (x > 0) wall(c - 1, 0); if (x + 1 < w) wall(c, 0);
+      if (z > 0) wall(c - w, 1); if (z + 1 < h) wall(c, 1);
+      if (best < Infinity) { hits.push({ distance: best, point: ray.at(best, new THREE.Vector3()), object: this, face: null }); return; }
+      if (intervalEnd >= end) return;
+      const crossX = nextX <= nextZ, crossZ = nextZ <= nextX;
+      begin = intervalEnd;
+      if (crossX) { x += sx; nextX += deltaX; }
+      if (crossZ) { z += sz; nextZ += deltaZ; }
+    }
   };
 
   const t0 = performance.now();
@@ -578,6 +672,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
   for (let z = 0; z <= h; z++) for (let x = 0; x <= w; x++) readQuad(x, z);
   readWater();
   for (let c = 0; c < n; c++) controlCell(c);
+  for (let c = 0; c < n; c++) tangentCell(c);
   for (let c = 0; c < n; c++) buildCell(c);
   rebuildGeometry(); stats.buildMs = performance.now() - t0;
   const unsubscribe = options.gfx?.onChange(() => {
