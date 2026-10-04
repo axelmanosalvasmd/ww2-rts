@@ -5,6 +5,19 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-04: Movement recovery and disruption lab (`6a74b65`)
+
+- Vehicles brake before their final waypoint instead of overshooting and turning a full circle to return.
+  Their first movement step now respects each vehicle's forward and reverse acceleration.
+- Fixed tanks getting stuck beside walls or repeating short forward and reverse moves to make turning room.
+  Clicks too close to a wall resolve to an open position with room for the hull. Short reverse orders survive
+  rerouting, and opposing heavy vehicles keep enough separation to clear their lane.
+- Fixed infantry and tanks stopping at a cliff corner instead of following the nearby ramp. Route smoothing
+  and vehicle collision now check every crossed height cell.
+- Added a repeatable movement lab with 24 scenarios for all nine ground vehicle types, rifle squads and
+  support guns. It supports live Stop, Retreat, replacement orders and tank traps, plus seeded command-line
+  runs and comparison against another simulation revision. The 1,056-case heading matrix passes locally.
+
 ### 2026-10-03: Textured Blender infantry and engine integration (`855be86`)
 
 - Replaced near infantry bodies with a textured mesh fitted and weighted in Blender. Faces, cloth folds,

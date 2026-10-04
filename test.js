@@ -34,7 +34,7 @@ const settledRubble = (g, cells, message) => {
   const { execFileSync } = await import('node:child_process');
   for (const file of ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
-    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
+    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });

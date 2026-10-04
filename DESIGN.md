@@ -1221,6 +1221,25 @@ tank accelerates at 4.8 m/s², brakes at 7.5 m/s² and turns at 1.5 rad/s; a Tig
 is 40% to 50% of forward top speed by profile. Hierarchical navigation and local smoothing use the recipient's
 remembered terrain, costs and hull clearance. Live hidden terrain cannot choose a route or retry.
 
+Movement lab fixes (2026-10-04): braking reserves a discrete tick of stopping distance, and acceleration from rest
+uses the forward or reverse profile instead of the braking rate. An exact vehicle destination must have the same
+turning clearance as the navigation cell center. A click too close to a wall resolves to that open center, while
+the retained order still uses its accepted `routeEnd` for completion. Destination checks read remembered source
+flags before hull inflation, so they cannot reveal unseen obstacles.
+
+Hull recovery accepts an escape only if its endpoint permits the following turn. Its deliberately slow forward
+or reverse progress counts as movement, rather than restarting the maneuver as stuck. Short reverse intent
+survives a replacement route to the same endpoint. Vehicle contact keeps a small numerical tolerance instead of
+allowing centimetre overlap that repeatedly zeroes both vehicles' speed. Cliff checks walk every crossed cell
+and reject both cliff flanks and a two-level climb at an exact diagonal corner.
+
+The [movement lab](docs/movement-lab.md) runs normal authoritative commands with controlled terrain and time.
+It contains 24 scenarios for all nine ground vehicle profiles, rifles and support guns, with Stop, Retreat,
+replacement orders, queues, ramps, road bends, traffic, new traps and wrecks, crossing closure and deferred searches.
+The browser shows live hulls, waypoints, goals, steering and motion measurements; it also accepts manual disruptions.
+Regression checks require every queued destination in order and independently inspect crossed height cells.
+Deliberately dropping a middle queue entry or disabling cliff collision must make those checks fail.
+
 Authoritative projectile flights sweep terrain and moving bodies between 20-Hz ticks. Contact applies damage and
 suppression once, even after the shooter dies. Small arms travel at 230 m/s, sniper rounds at 420 and direct shells
 at 150. Direct shells use gravity 9.81 m/s²; grenade/artillery profiles retain the existing 25 m/s² gameplay arcs.
