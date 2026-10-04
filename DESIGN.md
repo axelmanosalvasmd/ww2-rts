@@ -1240,6 +1240,21 @@ The browser shows live hulls, waypoints, goals, steering and motion measurements
 Regression checks require every queued destination in order and independently inspect crossed height cells.
 Deliberately dropping a middle queue entry or disabling cliff collision must make those checks fail.
 
+Vehicle terrain alignment (2026-10-04): a separate chassis transform follows the visible relief under the native
+track or tire footprint. Forward pitch and side roll share a ground normal and retain the commanded horizontal
+heading. A 60-degree limit protects against cliff samples without flattening ordinary one-level ramps, which
+rise 2.5 m per 2 m cell. Terrain vertices and footprint-edge intersections support the hull across crests and
+dips, including narrow ridges between its front and rear. Suspension motion sits inside this terrain transform;
+turrets and muzzle mounts follow both.
+The simulation position, speed, routing, damage and selection markers retain their existing rules.
+Hidden or off-screen vehicles skip terrain sampling and evaluate the current pose when they return.
+
+The [terrain workshop](docs/terrain-workshop.md) renders the game's models and relief through the same animation
+pipeline on five authored scenes: climb and descent, cross slope, crest, trench and flat ground. It offers
+scrubbing, single-frame playback, faction and vehicle choices, three camera views and a level-hull comparison.
+Its scripted paths test presentation, while the movement lab remains the authority for navigation and commands.
+Support samples approximate a rigid contact footprint; they do not add airborne vehicle physics or rollover.
+
 Authoritative projectile flights sweep terrain and moving bodies between 20-Hz ticks. Contact applies damage and
 suppression once, even after the shooter dies. Small arms travel at 230 m/s, sniper rounds at 420 and direct shells
 at 150. Direct shells use gravity 9.81 m/s²; grenade/artillery profiles retain the existing 25 m/s² gameplay arcs.
