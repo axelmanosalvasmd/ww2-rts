@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-04: Movement recovery and disruption lab (`6a74b65`)
+
 - Vehicles brake before their final waypoint instead of overshooting and turning a full circle to return.
   Their first movement step now respects each vehicle's forward and reverse acceleration.
 - Fixed tanks getting stuck beside walls or repeating short forward and reverse moves to make turning room.
