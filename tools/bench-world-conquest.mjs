@@ -7,7 +7,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import WebSocket from 'ws';
 import { generateWorldMap } from '../shared/world-conquest.js';
 import { UNITS, TICK, snapshotCache, popCap } from '../shared/sim.js';
-import { observe, think, thinkEvery } from '../shared/ai.js';
+import * as ai from '../shared/ai.js';
 import { createTickMeter } from '../tickmeter.js';
 
 const args = process.argv.slice(2), preview = args.includes('--preview');
@@ -143,9 +143,9 @@ async function measure(size) {
   const measuredUnits = g.units.size, measuredLocalMobile = [...g.units.values()].filter(u => u.owner === -1 && !UNITS[u.type].structure).length;
   const aiObservation = [], aiPlanning = [], aiCommands = [];
   for (let n = 0; n < 5; n++) for (let slot = 0; slot < 6; slot++) {
-    let start = performance.now(); const view = observe(g, slot, snapshotCache(g)); aiObservation.push(performance.now() - start);
+    let start = performance.now(); const view = ai.observe(g, slot, snapshotCache(g)); aiObservation.push(performance.now() - start);
     start = performance.now(); let count = 0;
-    think(g, slot, { view, memory: {}, level: 'normal', submit: cmd => { seats[slot].send(cmd); count++; } });
+    ai.think(g, slot, { view, memory: {}, decisionOnly: true, level: 'normal', submit: cmd => { seats[slot].send(cmd); count++; } });
     aiPlanning.push(performance.now() - start); aiCommands.push(count); await seats[slot].barrier();
   }
   const result = { size, seed: g.world.seed, seats: 6, teams: [0, 0, 1, 1, 2, 2], armySetting: 'massive', mobilePerSeat: mobile,
@@ -154,6 +154,7 @@ async function measure(size) {
     measuredTicks: samples, simulationSeconds: samples * TICK, measurementWallMS: wallMS, tickCallMS: stat(measured.elapsed),
     phasesMS: Object.fromEntries(Object.entries(measured.phases).map(([p, a]) => [p, stat(a)])),
     longMoveBarrierMS: stat(moves), longMoveDistanceMetres: stat(orders), aiObserveMS: stat(aiObservation), aiPlanMS: stat(aiPlanning),
+    aiDecisionScope: 'isolated decision layer, excluding attention scheduling and timed hands',
     aiCommandsPerPlan: stat(aiCommands), snapshotBytes: stat(payloads), receivedSnapshots: payloads.length,
     totalSnapshotBytes: seats.reduce((a, c) => a + c.bytes, 0), snapEvery: room.snapEvery, memoryBytes: memory,
     denies: seats.map(c => c.denies) };
@@ -165,10 +166,12 @@ async function measure(size) {
       path: [], orders: [], targetId: 0, attackId: 0, build: 0, worldGoal: null, autoRetreat: false }));
     const before = seats[0].latest.world.owned, memory = {}; let commandCount = 0, firstCaptureTick = null;
     const startTick = g.tick, paceBegin = performance.now();
+    let view = ai.observe(g, 0, snapshotCache(g));
     for (let n = 0; n < pacingTicks && g.winner === null; n++) {
       await tick(room);
-      if (n % thinkEvery('normal') === 0) {
-        think(g, 0, { view: observe(g, 0, snapshotCache(g)), memory, level: 'normal', submit: cmd => { seats[0].send(cmd); commandCount++; } });
+      if (g.tick % 2 === 0 || g.winner !== null) view = ai.observe(g, 0, snapshotCache(g));
+      if (ai.humanCommander || n % ai.thinkEvery('normal') === 0) {
+        ai.think(g, 0, { view, memory, level: 'normal', submit: cmd => { seats[0].send(cmd); commandCount++; } });
         await seats[0].barrier();
       }
       if (firstCaptureTick === null && seats[0].latest.world.owned > before) firstCaptureTick = g.tick - startTick;

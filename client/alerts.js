@@ -3,25 +3,15 @@
 // allied units, shots that touch your side, public points and strikes), so nothing under fog leaks.
 // Each alert is one line in a short list above the minimap (newest on top, gone after ~6 s), a ping on the
 // minimap at the spot and a sound. Space jumps to the newest one; clicking a line does the same.
-import { UNITS, SUPPORT } from '/shared/sim.js';
+import { deriveAlertEvents } from '/shared/alert-events.js';
 import { audio } from './audio.js';
-import { insideKnownRegion } from '/shared/world-territories.js';
 import { t as tr } from './i18n.js';
 import { createAlertHistory } from './alert-history.js';
 
 const LIFE = 6;             // seconds a line stays up
 const FADE = 0.6;           // last part of that it spends fading out
 const MAX_LINES = 4;
-const ATTACK_EVERY = 20;    // "under attack" at most once per this many seconds per area
-const AREA = 30;            // metres: what counts as the same area (and what groups hits or losses into one line)
-const MERGE = 2;            // seconds: a loss this soon after another nearby one joins its line
 const SOUND_GAP = 1.5;      // seconds between two sounds of the same kind
-const AIR_MARGIN = 25;      // metres beyond a strike's reach that still concern you
-const HOME_RADIUS = 20;     // a retreating unit that vanishes this close to home went home, it didn't die
-const BASE_RADIUS = 40;     // a hit this close to your spawn, or on your own HQ or bunker, is "base under attack"
-const QUIET_ON_SCREEN = true; // no "under attack" for a fight you are looking at (it can fire once you look away)
-// support that is not an air threat: barrages are support but not aircraft (CONTEXT.md), fighter cover only defends
-const NOT_AIR = new Set(['artillery', 'smoke', 'cover']);
 
 // minimap ping color per kind: signal red for danger, brass for a point won, the HUD's text color for the rest
 const RED = '#d4574a', BRASS = '#d6b25e', CHALK = '#e2dfd3';
@@ -29,13 +19,12 @@ const COLOR = { attack: RED, base: RED, unitLost: RED, pointLost: RED, air: RED,
 const LIVES = { event: 15, base: 10 }; // a map's scripted message stays up long enough to read, a base alert to notice
 
 const now = () => performance.now() / 1000;
-const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) <= r;
 
 let hooks = null, box = null, historyBox = null, historyList = null;
 const history = createAlertHistory(100);
 let matchTime = 0;
 let lines = [];        // newest first: { kind, text, x, z, born, el, n }
-let quiet = [];        // areas that just had an "under attack": { x, z, until }
+let detector = {};
 let lastSound = {};
 
 // hooks from main.js:
@@ -68,13 +57,13 @@ function init(h) {
 
 function reset() {
   lines.forEach(a => a.el?.remove());
-  lines = []; quiet = []; lastSound = {}; history.reset(); matchTime = 0; renderHistory();
+  lines = []; detector = {}; lastSound = {}; history.reset(); matchTime = 0; renderHistory();
   hooks?.resetPings?.();
 }
 
 function startMatch(id) {
   if (!history.start(id)) return;
-  lines.forEach(a => a.el?.remove()); lines = []; quiet = []; lastSound = {}; matchTime = 0;
+  lines.forEach(a => a.el?.remove()); lines = []; detector = {}; lastSound = {}; matchTime = 0;
   if (historyBox) historyBox.open = false;
   renderHistory();
 }
@@ -135,136 +124,19 @@ function push(kind, text, x, z, n = 1) {
   return a;
 }
 
-// cluster spots that are within AREA of the first one in each group
-function groups(list) {
-  const out = [];
-  for (const it of list) {
-    const g = out.find(g => near(g[0], it, AREA));
-    if (g) g.push(it); else out.push([it]);
-  }
-  return out;
-}
-const mid = (g) => ({ x: g.reduce((s, v) => s + v.x, 0) / g.length, z: g.reduce((s, v) => s + v.z, 0) / g.length });
-
-function underAttack(at, text, kind = 'attack') {
-  const t = now();
-  quiet = quiet.filter(q => q.until > t);
-  if (quiet.some(q => near(q, at, AREA))) return;
-  if (QUIET_ON_SCREEN && hooks.onScreen(at.x, at.z)) return; // you can see it; no cooldown, so it fires once you look away
-  quiet.push({ x: at.x, z: at.z, until: t + ATTACK_EVERY });
-  push(kind, text, at.x, at.z);
-}
-
-// Compare this snapshot with the one before it and raise whatever alerts follow.
+// The shared detector supplies the same semantic events to the UI and AI.
 function snapshot(s, prev) {
-  if (!hooks) return;
-  if (!history.acceptTick(s.tick)) return; // duplicate or old retained snapshots never redeliver Alerts
+  if (!hooks || !history.acceptTick(s.tick)) return;
   matchTime = s.tick / 20;
-  if (!prev) return; // reconnect keeps delivered history and begins a fresh comparison
-  const me = hooks.me(), friend = (slot) => slot >= 0 && hooks.friend(slot);
-  if (s.winner != null || s.out?.[me]) return;
-  // the map's scripted events (triggers) speak to everyone
-  for (const sh of s.shots ?? []) if (sh.k === 'say') push('event', sh.localized?.[document.documentElement?.lang ?? 'en'] ?? sh.text, sh.x, sh.z);
-  const before = new Map(prev.units.map(u => [u[0], u]));
-  const after = new Map(s.units.map(u => [u[0], u]));
-  const shotsAt = new Map();
-  for (const sh of s.shots ?? []) if (sh.t) { if (!shotsAt.has(sh.t)) shotsAt.set(sh.t, []); shotsAt.get(sh.t).push(sh); }
-  const nameOf = (type, owner) => (owner === me ? '' : 'Allied ') + hooks.unitName(type, owner);
-
-  // under attack: your units and buildings, an allied HQ or bunker, losing health to something that isn't friendly
-  const hits = [];
-  for (const [id, u] of after) {
-    const p = before.get(id), [, type, owner, x, z, , , hp] = u, def = UNITS[type];
-    if (!p || !def || p[2] !== owner || hp >= p[7]) continue;
-    if (owner !== me && !(friend(owner) && (type === 'hq' || type === 'bunker'))) continue;
-    const by = shotsAt.get(id) ?? [];
-    if (by.length && by.every(q => q.fo != null && friend(q.fo))) continue; // your own side's fire
-    if (!by.length && s.mode?.suddenDeath && def.produces) continue;         // Sudden Death crumbling, not an enemy
-    hits.push({ type, owner, x, z });
-  }
-  for (const g of groups(hits)) {
-    const big = g.find(h => UNITS[h.type].structure);
-    const text = big ? `${nameOf(big.type, big.owner)} under attack`
-      : g.length === 1 ? `${nameOf(g[0].type, g[0].owner)} under attack` : 'Units under attack';
-    const at = big ?? mid(g), home = hooks.home();
-    if (home && (near(at, home, BASE_RADIUS) || big?.owner === me)) underAttack(at, 'Our base is under attack!', 'base');
-    else underAttack(at, text);
-  }
-
-  // points: captured, lost, or an enemy standing on one of yours
-  s.points.forEach(([owner, , prog], i) => {
-    const was = prev.points[i], at = hooks.pointPos(i);
-    if (!was || !at) return;
-    const had = friend(was[0]), has = friend(owner);
-    if (had && !has) push('pointLost', 'Point lost', at.x, at.z);
-    else if (!had && has) push('pointWon', owner === me ? 'Point captured' : `${hooks.playerName(owner)} captured a point`, at.x, at.z);
-    else if (has && prog < was[2]) underAttack(at, 'Point under attack');
-    else if (has && s.points[i][4] && !was[4]) push('pointLost', 'Point cut off: it pays nothing until the road to it is open', at.x, at.z);
-  });
-
-  // Region ownership is a team id. Compare only regions present in both received snapshots.
-  if (s.world) {
-    const oldRegions = new Map((prev.world?.regions ?? []).map(r => [r.id, r]));
-    const home = s.world.home ?? s.home, oldHome = prev.world?.home ?? prev.home;
-    const homeTeam = (regions, at) => at && regions.find(r => r.team >= 0 && insideKnownRegion(r,{x:at[0],z:at[1]}))?.team;
-    const team = hooks.team?.() ?? homeTeam(s.world.regions ?? [], home) ?? homeTeam(prev.world?.regions ?? [], oldHome);
-    for (const r of s.world.regions ?? []) {
-      const was = oldRegions.get(r.id);
-      if (!was || !Number.isFinite(r.x) || !Number.isFinite(r.z)) continue;
-      const had = team !== undefined && was.team === team, has = team !== undefined && r.team === team;
-      if (had && !has) push('pointLost', `Region lost: ${r.name}`, r.x, r.z);
-      else if (!had && has) push('pointWon', `Region claimed: ${r.name}`, r.x, r.z);
-      else if (r.contested && !was.contested && (has || friend(r.capper)))
-        push('attack', `Claim contested: ${r.name}`, r.x, r.z);
-      else if (has && (r.progress < was.progress || (r.capper >= 0 && !friend(r.capper))))
-        underAttack(r, `Region under attack: ${r.name}`);
+  const events = deriveAlertEvents(s, prev, { ...hooks, clock: now,
+    language: () => document.documentElement?.lang ?? 'en' }, detector);
+  for (const event of events) {
+    if (event.mergeId) {
+      const recent = lines.find(a => a.eventId === event.mergeId);
+      if (recent) { lines.splice(lines.indexOf(recent), 1); recent.el.remove(); }
     }
-  }
-
-  // unit lost: one of yours left the snapshot (your units are always in it while they exist)
-  const gone = [];
-  for (const [id, p] of before) {
-    if (after.has(id)) continue;
-    const [, type, owner, x, z, , , , , , , , flags, , built] = p;
-    if (owner !== me || !UNITS[type]) continue;
-    if (!shotsAt.get(id)?.some(q => q.kill)) {
-      if ((built ?? 1) < 1) continue; // a site you cancelled
-      const home = hooks.home();
-      if (flags & 1 && home && near({ x, z }, home, HOME_RADIUS)) continue; // retreated off the field, not killed
-    }
-    gone.push({ type, x, z });
-  }
-  for (const g of groups(gone)) {
-    const at = mid(g), t = now();
-    const recent = lines.find(a => a.kind === 'unitLost' && t - a.born < MERGE && near(a, at, AREA));
-    const n = g.length + (recent?.n ?? 0);
-    const text = n > 1 ? `${n} units lost` : UNITS[g[0].type].structure ? `${hooks.unitName(g[0].type, me)} destroyed` : `${hooks.unitName(g[0].type, me)} lost`;
-    if (recent) { lines.splice(lines.indexOf(recent), 1); recent.el.remove(); }
-    push('unitLost', text, at.x, at.z, n);
-  }
-
-  // enemy Air Support incoming: a new enemy strike mark (strikes are public) near anything of your side's
-  const seen = new Set((prev.strikes ?? []).map(([kind, x, z]) => `${kind},${x},${z}`));
-  for (const [kind, x, z, , , owner] of s.strikes ?? []) {
-    if (seen.has(`${kind},${x},${z}`) || NOT_AIR.has(kind) || friend(owner)) continue;
-    const sp = SUPPORT[kind], reach = (sp?.len ? sp.len / 2 : sp?.radius ?? 20) + AIR_MARGIN, at = { x, z };
-    const mine = s.units.some(u => friend(u[2]) && near({ x: u[3], z: u[4] }, at, reach))
-      || s.points.some(([o], i) => friend(o) && hooks.pointPos(i) && near(hooks.pointPos(i), at, reach))
-      || (hooks.home() && near(hooks.home(), at, reach));
-    if (mine) push('air', `Enemy ${sp?.name ?? kind} incoming`, x, z);
-  }
-
-  // Classic: a unit out of a Production Building's queue, a building finished
-  const heads = [];
-  for (const [id, , , , head] of prev.queues ?? []) if (head && after.has(id)) heads.push(head);
-  for (const [id, u] of after) {
-    const [, type, owner, x, z] = u;
-    if (owner !== me || !UNITS[type]) continue;
-    const p = before.get(id);
-    if (!p) {
-      const i = heads.indexOf(type);
-      if (i >= 0 && !UNITS[type].structure) { heads.splice(i, 1); push('ready', `${hooks.unitName(type, me)} ready`, x, z); }
-    } else if (UNITS[type].building && (p[14] ?? 1) < 1 && (u[14] ?? 1) >= 1) push('ready', `${hooks.unitName(type, me)} finished`, x, z);
+    const line = push(event.kind, event.text, event.x, event.z, event.n);
+    line.eventId = event.id;
   }
 }
 

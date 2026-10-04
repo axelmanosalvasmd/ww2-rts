@@ -169,3 +169,24 @@ _Avoid_: auto-ability, auto mode
 **Alert**:
 A short notice to one side that something needs its attention: it is under attack, it captured or lost a Point, it lost a unit, enemy Air Support is coming, or (in Classic or World Conquest) a unit or building is ready. Unlike an Air Support announcement, which everyone sees on the map, an Alert goes only to the side it concerns.
 _Avoid_: notification, toast, event
+
+
+## AI
+
+**Seat Commander**:
+The AI playing one normal player seat. It perceives the same fog-fair information, attends one concern with one virtual camera, and acts through timed human inputs. A Horde Wave director is separate.
+
+**Concern**:
+One task competing for the commander's attention: a fight, production, expansion, scouting, idle troops or support. Only one is attended at a time.
+
+**Screen Memory**:
+Details the commander saw inside its camera earlier. Confidence fades and the memory expires, so old health or readiness cannot become current off-screen knowledge.
+
+**Hands**:
+The input executor that selects troops, recalls groups, moves the camera, presses keys and clicks before sending ordinary game commands.
+
+**Physical Input APM**:
+Inputs per minute, including selection and camera gestures. Command APM counts game commands separately; one input can affect a whole formation.
+
+**Persona**:
+A seeded match preference for an aggressive, defensive, armor, infantry or support opening. It changes choices and can adapt to observed threats.

@@ -10,7 +10,9 @@ import { createGame, step, command, snapshotFor, snapshotCache, unitDelta, terra
 import { generateWorldMap } from './shared/world-conquest.js';
 import { mapForClient } from './shared/world-layers.js';
 import { WEATHER_CHOICES, weatherRow } from './shared/weather.js';
-import { think, observe, resetAI, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
+import { think, observe, resetAI, thinkEvery, aiDiagnostics, AI_LEVEL_NAMES } from './shared/ai.js';
+import { spectatorHands } from './client/ai-overlay.js';
+import { createLocalHumanRecorder } from './shared/human-input.js';
 import { mapPing } from './server/map-pings.js';
 import { allowDeny } from './shared/command-feedback.js';
 import { storyResult } from './shared/story.js';
@@ -31,6 +33,10 @@ if (!PUBLIC_URL) execFile('tailscale', ['status', '--json'], (err, out) => {
   try { const name = JSON.parse(out).Self.DNSName.replace(/\.$/, ''); if (name) PUBLIC_URL = 'https://' + name; } catch {}
 });
 const ROOT = import.meta.dirname;
+// A local timing fit changes motor skill only. Information, economy and hard input caps stay the same.
+const aiCalibration = process.env.WW2_AI_CALIBRATION ? JSON.parse(readFileSync(process.env.WW2_AI_CALIBRATION, 'utf8')).calibration : undefined;
+export const humanRecorder = await createLocalHumanRecorder({ enabled: process.env.WW2_HUMAN_INPUT === '1',
+  dir: process.env.WW2_HUMAN_INPUT_DIR || join(ROOT, 'logs/human-input') });
 const MAP = JSON.parse(readFileSync(join(ROOT, 'maps/default.json'), 'utf8'));
 const TUTORIAL_SPAWNS = JSON.parse(readFileSync(join(ROOT, 'maps/tutorial.json'), 'utf8')).spawns;
 const MAPS = join(ROOT, 'maps'), MAP_NAME = /^[a-z0-9-]{1,32}$/;
@@ -240,7 +246,8 @@ function sendWatchers(room, shots, cells, cache, extra) {
     return;
   }
   const view = watchGame(g, g.watchTerrain ??= new Map(), g.watchPending ??= new Set(g.cellLog.keys()));
-  const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, watcherSnapshot(view, shots, cells, cache, extra), cache));
+  const aiHands = spectatorHands(room.players.flatMap((p, slot) => p.ai ? [aiDiagnostics(g, slot)].filter(Boolean) : []), { spectator: true });
+  const json = JSON.stringify(trimmed(room, room.watchNet ??= { sent: new Map() }, watcherSnapshot(view, shots, cells, cache, { ...extra, aiHands }), cache));
   for (const s of watching) s.ws.send(json);
 }
 // new players default to their own team (free-for-all) and the next faction in the cycle
@@ -321,7 +328,7 @@ function sendStart(room, i, watcher) {
   const g = watcher ? (world ? worldWatchGame(room.game, watcher) : watchGame(room.game)) : room.game;
   const ws = (watcher ?? room.players[i]).ws, players = world ? room.game.players.slice(0, room.players.length) : room.game.players;
   const team = room.game.players[i].team;
-  send(ws, { t: 'start', matchId: room.matchId, map: world ? worldMapFor(g, i) : mapForClient(room.map), you: i,
+  send(ws, { t: 'start', matchId: room.matchId, ...(!watcher && room.players[i].humanInput && { humanInput: true }), map: world ? worldMapFor(g, i) : mapForClient(room.map), you: i,
     spawn: room.game.players[i].spawn, spawns: players.map(p => !world || p.team === team ? p.spawn : null),
     cells: terrainFor(g, i, true), fog: watcher && !world ? undefined : fogFor(g, i, true),
     names: players.map((p, k) => room.players[k]?.name ?? p.name), teams: players.map(p => p.team), factions: players.map(p => p.faction), weather: weatherRow(room.game) });
@@ -461,6 +468,7 @@ wss.on('connection', (ws, req) => {
       else if (room.state === 'lobby' && room.players.length < MAX_PLAYERS && (!room.listed || room.players.length < seats(room)) && msg.spectate !== true) addSeat(room, me = newPlayer(room, { token, name, ws }));
       else if (room.spectators.length < MAX_SPECTATORS) room.spectators.push(me = { token, name, ws }); // no seat to take, or asked to watch
       else { send(ws, { t: 'full', reason: room.state === 'play' ? 'started' : 'seats' }); return ws.close(); }
+      me.humanInput = !!humanRecorder && msg.humanInput === true && room.players.includes(me) && !me.ai;
       room.emptySince = null;
       lobby(room);
       if (room.state !== 'lobby' && room.game) room.players.includes(me) ? sendStart(room, room.players.indexOf(me)) : sendStart(room, 0, me);
@@ -470,6 +478,12 @@ wss.on('connection', (ws, req) => {
     }
     const slot = room.players.indexOf(me), seated = slot >= 0, host = isHost(room, me);
     if (me.ws !== ws || (!seated && !room.spectators.includes(me))) return; // a replaced socket may still be open for a moment; a freed seat has no slot
+    if (msg.t === 'humanInput') {
+      if (me.humanInput && seated && !me.ai && room.state === 'play' && room.game && !room.pause && !room.game.players[slot]?.out && room.game.winner === null) {
+        humanRecorder.input({ room: room.code, matchId: room.matchId, slot, tick: room.game.tick }, msg);
+      }
+      return; // This local recording channel never relays to another socket or reaches command().
+    }
     if (msg.t === 'ping') {
       if ('x' in msg || 'z' in msg) return mapPing(room, me, slot, msg, send);
       if (Number.isFinite(msg.rtt)) me.rtt = Math.min(9999, Math.max(0, Math.round(msg.rtt)));
@@ -544,6 +558,7 @@ wss.on('connection', (ws, req) => {
       send(ws, { t: 'left' }); ws.close();
     } else if (seated && room.state === 'play' && room.game && !room.pause) {
       const reason = command(room.game, slot, msg);
+      if (me.humanInput && !me.ai && !room.game.players[slot]?.out) humanRecorder.command({ room: room.code, matchId: room.matchId, slot, tick: room.game.tick }, msg, !reason);
       if (reason && allowDeny(me, clock.now())) send(ws, { t: 'deny', cmd: msg.t, reason });
     }
   });
@@ -606,8 +621,8 @@ function timedRoomTick(room) {
     const cache = built = snapshotCache(g);
     for (const i of seats) room.aiViews[i] = observe(g, i, cache);
   }
-  // AI decisions follow the selected difficulty, staggered by seat. The Horde and human handovers use Normal.
-  for (const i of seats) if (room.aiViews[i] && (g.tick + i * 13) % thinkEvery(room.players[i]?.level) === 0) think(g, i, { view: room.aiViews[i], level: room.players[i]?.level });
+  // Timed inputs advance every tick. Each commander decides only when its attention and hands are ready.
+  for (const i of seats) if (room.aiViews[i]) think(g, i, { view: room.aiViews[i], level: room.players[i]?.level, calibration: aiCalibration });
   const snapshotAt = process.hrtime.bigint();
   let snapshotBuild = 0, snapshotStringify = 0;
   if (sent) {

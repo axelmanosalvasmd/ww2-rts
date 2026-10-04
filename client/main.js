@@ -12,7 +12,7 @@ import { createSelection, selectionDragged } from './selection.js';
 import { selectionPoints } from './selection-view.js';
 import { createOrders } from './orders.js';
 import { createFormationPreview } from './formation-preview.js';
-import { facingSpots, slotSize, SHAPES } from '/shared/formation.js';
+import { SHAPES, formation as sharedFormation } from '/shared/formation.js';
 import { availability, denySentence, placementState } from './availability.js';
 import { createFeedback } from './feedback.js';
 import { UNITS, UNIT_TYPES, CELL, CFG, SUPPORT, SUPPORT_TYPES, BUILDABLE, builderTypes, levelOf, levelChar, startState, canBuild, winVp, supCost, popCap, abCost, priceOf, FORTS, lineFort, placementCheck, ENTRENCH, entrenchPlan, segmentCost, RIDING_FLAG, TERRAIN, TRENCH } from '/shared/sim.js';
@@ -54,6 +54,8 @@ import { createMapView } from './map-view.js';
 import { territoryEdges } from '/shared/world-territories.js';
 import { createWorldRegions } from './world-regions.js';
 import { createAutocast } from './autocast.js';
+import { createAIOverlay } from './ai-overlay.js';
+import { createHumanInputClient } from '/shared/human-input.js';
 import { t as tr } from './i18n.js';
 
 // Each player has a faction (names, uniforms, tanks, voice) and their own color (by slot).
@@ -156,7 +158,7 @@ const observerControls = new Set(['ping', 'resync', 'name', 'pause', 'resume', '
 let snapshotAt = 0, snapshotGap = 100;
 const connection = createConnection({
   url: `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?room=${room}`,
-  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching, listing }), // a spectator who reconnects keeps watching
+  hello: () => ({ t: 'hello', name: $('name').value, token, spectate: watching, listing, humanInput: entry.get('humanInput') === '1' }), // a spectator who reconnects keeps watching
 });
 setInterval(() => { const c = performance.now(); if (sendCmd({ t: 'ping', c, rtt, d: perf.diag() })) perf.pinged(c); }, 2000); // client/perf.js counts the unanswered ones as loss
 const sendCmd = (m) => {
@@ -444,6 +446,7 @@ function startGame(m, restored = null) {
   clearFacing(); formationPreview.group.removeFromParent();
   pings.reset(); autocast.reset(); alerts.startMatch(m.matchId);
   me = m.you; names = m.names; teams = m.teams ?? names.map((_, i) => i); factions = m.factions ?? []; lastStart = m; mmImage = null;
+  humanInput.setEnabled(m.humanInput === true && entry.get('humanInput') === '1' && !watching);
   if (!EDIT) audio.start({ faction: facOf(me), slot: me });
   const map = m.map;
   worldRegions?.dispose(); worldRegions = null;
@@ -1197,31 +1200,12 @@ function throwAt(g, kind, type, queue = false) {
 // The Formation menu (client/hud.js): shape, spacing, march together, snap to trenches. A control group saved with
 // Ctrl+number keeps a copy and brings it back when recalled. faced: the last facing each unit was ordered to hold.
 const fm = { shape: 'line', spread: 1, together: true, snap: true }, groupForm = new Map(), faced = new Map();
-const rearRank = (t) => !!UNITS[t].w?.minRange || !UNITS[t].w?.range; // mortars, rockets and medics stand behind
 const centroid = (list) => ({ x: list.reduce((a, v) => a + v.x, 0) / list.length, z: list.reduce((a, v) => a + v.z, 0) / list.length });
 const myTroops = () => [...selected].map(id => units.get(id)).filter(v => v && v.owner === me && !UNITS[v.type].structure && !isAir(v.type));
 // a plain click (no face) faces the way the units travel
 function formation(sel, g, face, reach) {
-  if (!Number.isFinite(face)) { const c = centroid(sel); face = Math.atan2(g.z - c.z, g.x - c.x); reach = 0; }
-  const spots = facingSpots(sel.map(v => ({ id: v.id, x: v.x, z: v.z, size: slotSize(UNITS[v.type]), back: rearRank(v.type) })), g, face, reach, fm);
-  if (fm.snap) snapToTrench(spots);
-  return spots.map(([id, x, z]) => [id, Math.min(MW - 1, Math.max(1, x)), Math.min(MH - 1, Math.max(1, z))]);
-}
-// an infantry slot within 3 m of a trench cell nobody else was given steps into it
-function snapToTrench(spots) {
-  const grid = terrain?.grid, taken = new Set();
-  if (!grid) return;
-  for (const s of spots) {
-    if (!UNITS[units.get(s[0])?.type]?.infantry) continue;
-    const cx = Math.floor(s[1] / CELL), cy = Math.floor(s[2] / CELL);
-    let best = null, bd = 3;
-    for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
-      if (!(TERRAIN[grid[y]?.[x]] & TRENCH) || taken.has(y * 4096 + x)) continue;
-      const px = (x + 0.5) * CELL, pz = (y + 0.5) * CELL, d = Math.hypot(px - s[1], pz - s[2]);
-      if (d < bd) { bd = d; best = [y * 4096 + x, px, pz]; }
-    }
-    if (best) { taken.add(best[0]); s[1] = best[1]; s[2] = best[2]; }
-  }
+  return sharedFormation(sel, g, { defs: UNITS, cell: CELL, width: MW, height: MH, face, reach, ...fm,
+    terrainAt: (x, y) => !!(TERRAIN[terrain?.grid[y]?.[x]] & TRENCH) });
 }
 function faceOrder(troops, at, face, reach = 0) {
   for (const v of troops) faced.set(v.id, face);
@@ -1263,6 +1247,24 @@ const formationPreview = createFormationPreview({ THREE, hAt });
 
 const cam = { x: 80, z: 80, yaw: 0, dist: 85 }, PITCH = 0.95, keys = new Set();
 let mouse = { x: innerWidth / 2, y: innerHeight / 2, inside: false }, drag = null, facingGesture = null, lastRight = null;
+const aiOverlay = createAIOverlay({ enabled: entry.get('aiOverlay') === '1', spectator: () => watching,
+  world: worldMode, colorOf: slot => css(look(slot).color) });
+const humanInput = createHumanInputClient({ send: message => connection.send(message), state: () => {
+  if (!world || !seatActive || observing() || paused || lobbyState?.state !== 'play' || lastSnap?.winner != null || document.hidden) return null;
+  const corners = rig.corners(relief?.geometry);
+  if (corners.length !== 4) return null;
+  return { camera: { x: cam.x, z: cam.z,
+    w: Math.max(...corners.map(p => p.x)) - Math.min(...corners.map(p => p.x)),
+    h: Math.max(...corners.map(p => p.z)) - Math.min(...corners.map(p => p.z)) },
+    cursor: mouse.inside ? groundAt(mouse.x, mouse.y) : null, selected: selected.size };
+} });
+const typingInput = target => target?.closest?.('input, textarea, select, [contenteditable="true"]');
+document.addEventListener('mousedown', e => {
+  if (!humanInput.enabled || typingInput(e.target)) return;
+  const target = e.target === renderer.domElement ? groundAt(e.clientX, e.clientY) : null;
+  humanInput.input('click', target);
+}, { capture: true });
+renderer.domElement.addEventListener('wheel', () => humanInput.input('wheel'), { passive: true });
 function clearFacing() { facingGesture = null; formationPreview.hide(); }
 function beginFacing(cursor, e, attack = false) {
   clearFacing();
@@ -1388,6 +1390,7 @@ addEventListener('keydown', (e) => {
   if (!id || !actions[id]) return;
   e.preventDefault();
   if (e.repeat) return;
+  humanInput.input('key');
   actions[id]();
   if (id.startsWith('pan') || id.startsWith('rotate')) return;
   if (lastSnap) updateHud(lastSnap);
@@ -1630,6 +1633,8 @@ function drawMinimap() {
   // what the camera sees
   const corners = rig.corners(relief?.geometry);
   if (corners.length === 4) { c.beginPath(); corners.forEach((p, i) => (i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z))); c.closePath(); c.strokeStyle = '#fff8'; c.lineWidth = 1.5 / S; c.stroke(); }
+  const tick = lastSnap.tick + (paused || lastSnap.winner != null ? 0 : Math.min(4, (performance.now() - snapshotAt) / 50));
+  aiOverlay.draw(c, lastSnap.aiHands, { tick, scale: S });
 }
 {
   const cv = $('minimap');
@@ -1682,6 +1687,7 @@ renderer.setAnimationLoop(() => {
   water?.tick(now);
   // camera
   rig.update(dt);
+  humanInput.frame(dt);
 
   // units: smooth toward the latest server state
   const k = 1 - Math.exp(-sdt * 1000 / snapshotGap), ranges = rangeRings(), interested = animationInterest(camera);
@@ -1726,7 +1732,7 @@ renderer.setAnimationLoop(() => {
   alerts.frame();
   pings.frame();
   endgame.frame();
-  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() ? 0.05 : 0.15; drawMinimap(); }
+  if (!EDIT && (mmTimer -= dt) <= 0) { mmTimer = alerts.pinging() || pings.active() || (watching && aiOverlay.enabled) ? 0.05 : 0.15; drawMinimap(); }
   // aim preview follows the mouse while targeting
   if (facingGesture) { updateFacing(mouse.x, mouse.y); showFacing(); }
   if (targeting && world && !Number.isFinite(facingGesture?.face)) {
@@ -1763,7 +1769,7 @@ renderer.setAnimationLoop(() => {
 if (EDIT) { $('overlay').classList.add('hidden'); import('./editor.js').then(m => m.start({ startGame, cam, groundAt, renderer, scene, hAt })); }
 
 // debug handle for poking at the game from devtools
-window.__game = { renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
+window.__game = { aiOverlay, renderer, scene, camera, cam, units, selected, sendCmd, makeUnit, hAt, groundAt, rig, pointer, pings, alerts, epilogue, effects, bodies, atmos, aviation, objectives, endgame, coverPreview, get gesture() { return facingGesture ? { button: facingGesture.button, face: facingGesture.face ?? null, reach: facingGesture.reach ?? 0 } : null; }, get groundMesh() { return groundMesh; }, get fog() { return fogOfWar; }, get me() { return me; }, get water() { return water; }, get relief() { return relief; }, get apron() { return apron; }, get snapshot() { return lastSnap; }, get mapView() { return mapView; }, get points() { return points; } };
 // the alerts list above the minimap (client/alerts.js) sees the match through these
 alerts.init({ me: () => me, team: () => teams[me] ?? me, friend: (slot) => !foe(slot), unitName: (type, owner) => look(owner).names[type] ?? UNITS[type].name, playerName: (slot) => names[slot] ?? 'An ally',
   matchTime: () => (lastSnap?.tick ?? 0) / 20, resetPings: pings.reset, pointPos: (i) => points[i]?.g.position, home: () => home, jump: (x, z) => { rig.cancelFollow(); cam.x = x; cam.z = z; },

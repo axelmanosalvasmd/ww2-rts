@@ -1,3 +1,4 @@
+// Immediate operation assertions target the view-only decision layer; the commander timeline has separate tests.
 // Focused operation and Horde contracts: node test-engine-ai.js.
 import assert from 'node:assert/strict';
 import { createGame, command, step, snapshotFor, CFG, CELL, UNITS, MOVE, COVER, hordeWave, hordeProfile, HORDE_PROFILES } from './shared/sim.js';
@@ -79,28 +80,28 @@ const refresh = (f, seconds) => { f.g.tick = seconds*20; f.view = viewFor(f.g,0,
   assert.equal(f.mind.assault,undefined);
 }
 {
-  const f=fixture(); f.g.players[0].mp=0;think(f.g,0,{memory:f.mem});
+  const f=fixture(); f.g.players[0].mp=0;think(f.g,0,{decisionOnly:true,memory:f.mem});
   const hurt=f.mem.mind.assault.members[0].id, u=f.g.units.get(hurt);u.hp=UNITS[u.type].models*UNITS[u.type].hpPer*0.2;
-  refresh(f,2);const sent=[];think(f.g,0,{memory:f.mem,submit:cmd=>{sent.push(cmd);return command(f.g,0,cmd);}});
+  refresh(f,2);const sent=[];think(f.g,0,{decisionOnly:true,memory:f.mem,submit:cmd=>{sent.push(cmd);return command(f.g,0,cmd);}});
   assert.ok(sent.some(c=>c.t==='retreat'&&c.ids.includes(hurt)),'critical injury keeps the existing retreat order instead of a claimed advance');
   assert.ok(!f.mem.mind.assault.members.some(m=>m.id===hurt));
 }
 {
-  const f=fixture();f.g.players[0].mp=0;think(f.g,0,{memory:f.mem});
+  const f=fixture();f.g.players[0].mp=0;think(f.g,0,{decisionOnly:true,memory:f.mem});
   const stopped=f.mem.mind.assault.members[0].id;
   command(f.g,0,{t:'stop',ids:[stopped]});refresh(f,2);const sent=[];
-  think(f.g,0,{memory:f.mem,submit:cmd=>{sent.push(cmd);return command(f.g,0,cmd);}});
+  think(f.g,0,{decisionOnly:true,memory:f.mem,submit:cmd=>{sent.push(cmd);return command(f.g,0,cmd);}});
   assert.ok(!sent.some(c=>c.orders?.some(([id])=>id===stopped)),'Stop between the first order and next observation releases the claim');
 }
 {
   const f=fixture(); f.g.players[0].mp=0;
-  think(f.g,0,{memory:f.mem});
+  think(f.g,0,{decisionOnly:true,memory:f.mem});
   assert.equal(f.mem.mind.assault.state,'assemble','normal seat planner uses persistent operation commands');
   const ids=f.mem.mind.assault.members.map(m=>m.id);
-  refresh(f,2); think(f.g,0,{memory:f.mem});
+  refresh(f,2); think(f.g,0,{decisionOnly:true,memory:f.mem});
   const stopped=ids[0]; assert.equal(command(f.g,0,{t:'stop',ids:[stopped]}),undefined);
   refresh(f,4);const sent=[];
-  think(f.g,0,{memory:f.mem,submit:cmd=>{sent.push(cmd);return command(f.g,0,cmd);}});
+  think(f.g,0,{decisionOnly:true,memory:f.mem,submit:cmd=>{sent.push(cmd);return command(f.g,0,cmd);}});
   assert.ok(!sent.some(c=>c.orders?.some(([id])=>id===stopped)),'manual Stop is not overwritten by the ordinary or operation planner');
 }
 {

@@ -1,12 +1,14 @@
 // Reproducible faction FFA matches or rotated difficulty duels, using the server's AI schedule.
 import { readFile } from 'node:fs/promises';
+import { openSync, writeFileSync, fsyncSync, closeSync, renameSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 const script = fileURLToPath(import.meta.url);
-const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--alt FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
+const usage = 'Usage: node tools/ai-balance.mjs [--root DIR] [--map NAME] [--mode conquest|classic] [--matches N] [--seed S] [--workers N] [--seats easy,normal|hard,normal|normal,alt:normal] [--ai FILE] [--alt FILE] [--checkpoint FILE] [--resume FILE] [--rotate] [--army standard|large|massive|endless] [--factions 3|4]';
 const factions = ['USA', 'Germany', 'USSR', 'UK'];
 
 function seededRandom(initial) {
@@ -28,12 +30,13 @@ function median(values) {
 
 async function runMatches(options, indices) {
   const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
-  const current = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
+  const current = await import(pathToFileURL(options.ai ?? resolve(options.root, 'shared/ai.js')).href);
   const alternate = options.alt ? await import(pathToFileURL(resolve(options.alt)).href) : null;
   const map = JSON.parse(await readFile(resolve(options.root, `maps/${options.map}.json`), 'utf8'));
   // without --seats: one Normal AI per spawn the mode can use, every one for itself, factions cycling
   const ffa = sim.spawnsFor(map, options.mode).map(() => 'normal');
-  const maxSeconds = options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200;
+  // Classic Sudden Death begins at 25 minutes. A twenty-minute runner cap cannot measure its normal ending.
+  const maxSeconds = options.mode === 'classic' ? 2400 : options.seats ? 1800 : 1200;
   const maxTicks = Math.round(maxSeconds / sim.TICK), originalRandom = Math.random;
   try {
     for (const index of indices) {
@@ -52,12 +55,12 @@ async function runMatches(options, indices) {
       const views = brains.map((b, slot) => b.mod.observe?.(g, slot, initialCache));
       for (let tick = 0; tick < maxTicks && g.winner === null; tick++) {
         sim.step(g);
-        // New AIs consume the latest view on the same two-tick delivery beat as humans.
+        // All commanders consume the latest view on the same two-tick delivery beat as humans.
         if (g.tick % 2 === 0 || g.winner !== null) {
           const cache = sim.snapshotCache?.(g);
           brains.forEach((b, slot) => { views[slot] = b.mod.observe?.(g, slot, cache); });
         }
-        brains.forEach((b, slot) => { if ((g.tick + slot * 13) % (b.mod.thinkEvery?.(b.level) ?? 40) === 0) b.mod.think(g, slot, { level: b.level, view: views[slot] }); });
+        brains.forEach((b, slot) => { if (b.mod.humanCommander || (g.tick + slot * 13) % (b.mod.thinkEvery?.(b.level) ?? 40) === 0) b.mod.think(g, slot, { level: b.level, view: views[slot] }); });
         // The all-AI server has no WebSocket recipients, but clears these transient lists on its snapshot beat.
         if (g.tick % 2 === 0 || g.winner !== null) { g.shots = []; g.newCells = []; }
       }
@@ -81,14 +84,17 @@ async function runMatches(options, indices) {
 if (!isMainThread) {
   await runMatches(workerData.options, workerData.indices);
 } else {
-  const options = { root: resolve(dirname(script), '..'), map: 'default', mode: 'conquest', matches: null, seed: 1, workers: Math.min(2, availableParallelism()), seats: null, alt: null, rotate: false };
+  const options = { root: resolve(dirname(script), '..'), map: 'default', mode: 'conquest', matches: null, seed: 1, workers: Math.min(2, availableParallelism()), seats: null, ai: null, alt: null, checkpoint: null, resume: null, rotate: false };
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i];
     if (key === '--rotate') { options.rotate = true; continue; }
-    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt', '--army', '--factions'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
+    if (!['--root', '--map', '--mode', '--matches', '--seed', '--workers', '--seats', '--alt', '--ai', '--checkpoint', '--resume', '--army', '--factions'].includes(key) || i + 1 >= process.argv.length) throw new Error(usage);
     options[key.slice(2)] = process.argv[++i];
   }
   options.root = resolve(options.root);
+  for (const name of ['ai', 'alt', 'checkpoint', 'resume']) if (options[name]) options[name] = resolve(options[name]);
+  options.checkpoint ??= options.resume;
+  if (options.checkpoint && options.checkpoint !== options.resume && existsSync(options.checkpoint)) throw new Error('Checkpoint already exists; use --resume to keep its completed matches');
   if (options.seats) {
     options.seats = options.seats.split(',');
     if (options.seats.length !== 2 || options.seats.some(s => !/^(alt:)?(easy|normal|hard)$/.test(s))) throw new Error('--seats requires two valid difficulties');
@@ -106,14 +112,61 @@ if (!isMainThread) {
   for (const name of ['matches', 'workers']) if (!Number.isSafeInteger(options[name]) || options[name] < 1) throw new Error(`--${name} must be a positive integer`);
   if (!Number.isSafeInteger(options.seed) || options.seed < 0 || options.seed > 0xffffffff) throw new Error('--seed must be a uint32 integer');
   options.workers = Math.min(options.workers, options.matches);
+  const configuration = Object.fromEntries(['root', 'map', 'mode', 'matches', 'seed', 'seats', 'ai', 'alt', 'rotate', 'army', 'factions'].map(key => [key, options[key]]));
+  const sourceSHA256 = {};
+  async function fingerprint(file) {
+    if (Object.hasOwn(sourceSHA256, file)) return;
+    const source = await readFile(file, 'utf8');
+    sourceSHA256[file] = createHash('sha256').update(source).digest('hex');
+    if (!file.endsWith('.js') && !file.endsWith('.mjs')) return;
+    for (const match of source.matchAll(/(?:from\s*|import\s*)['"]([^'"]+)['"]/g)) {
+      if (match[1].startsWith('.')) await fingerprint(resolve(dirname(file), match[1]));
+    }
+  }
+  for (const file of [script, resolve(options.root, 'shared/sim.js'), options.ai ?? resolve(options.root, 'shared/ai.js'),
+    ...(options.alt ? [options.alt] : []), resolve(options.root, `maps/${options.map}.json`)]) await fingerprint(file);
+  const provenance = Object.fromEntries(Object.entries(sourceSHA256).sort(([a], [b]) => a.localeCompare(b)));
   const started = performance.now(), results = [], workers = [];
+  if (options.resume) {
+    const saved = JSON.parse(await readFile(options.resume, 'utf8'));
+    if (saved.version !== 1 || JSON.stringify(saved.configuration) !== JSON.stringify(configuration)) throw new Error('Resume configuration does not match this run');
+    if (JSON.stringify(saved.sourceSHA256) !== JSON.stringify(provenance)) throw new Error('Resume source hashes do not match this run');
+    if (!Array.isArray(saved.results)) throw new Error('Resume checkpoint has no results array');
+    const seen = new Set();
+    for (const result of saved.results) {
+      const index = result.match - 1;
+      const expectedSeed = options.seats ? (options.seed * 100003 + index * 7919) >>> 0 : (options.seed + index) >>> 0;
+      if (!Number.isSafeInteger(index) || index < 0 || index >= options.matches || seen.has(index) || result.seed !== expectedSeed
+        || !Array.isArray(result.spawns) || !Array.isArray(result.vp) || !Number.isFinite(result.ticks)) throw new Error('Resume checkpoint has invalid or duplicate match results');
+      seen.add(index); results.push(result);
+    }
+    process.stderr.write(`Resuming ${results.length}/${options.matches} completed matches\n`);
+  }
+  function checkpoint() {
+    if (!options.checkpoint) return;
+    const temporary = `${options.checkpoint}.${process.pid}.tmp`;
+    const fd = openSync(temporary, 'w');
+    try {
+      writeFileSync(fd, JSON.stringify({ version: 1, configuration, sourceSHA256: provenance,
+        results: [...results].sort((a, b) => a.match - b.match) }, null, 2) + '\n');
+      fsyncSync(fd);
+    } finally { closeSync(fd); }
+    renameSync(temporary, options.checkpoint);
+    const directory = openSync(dirname(options.checkpoint), 'r');
+    try { fsyncSync(directory); } finally { closeSync(directory); }
+  }
+  checkpoint();
+  const completed = new Set(results.map(result => result.match - 1));
+  const pending = Array.from({ length: options.matches }, (_, index) => index).filter(index => !completed.has(index));
   try {
     await Promise.all(Array.from({ length: options.workers }, (_, worker) => new Promise((resolveWorker, rejectWorker) => {
-      const indices = Array.from({ length: options.matches }, (_, index) => index).filter(index => index % options.workers === worker);
+      const indices = pending.filter(index => index % options.workers === worker);
+      if (!indices.length) { resolveWorker(); return; }
       const thread = new Worker(script, { workerData: { options, indices } });
       workers.push(thread);
       thread.on('message', result => {
         results.push(result);
+        try { checkpoint(); } catch (error) { rejectWorker(error); return; }
         if (results.length % 5 === 0 || results.length === options.matches) process.stderr.write(`${options.mode}: ${results.length}/${options.matches} matches complete\n`);
       });
       thread.on('error', rejectWorker);
@@ -130,8 +183,9 @@ if (!isMainThread) {
   const bySpawn = map.spawns.map((spawn, index) => ({ spawn: index, x: spawn.x, y: spawn.y, wins: wins.filter(r => r.winnerSpawn === index).length }));
   const ratios = results.map(r => r.runnerUpVpRatio).filter(r => r !== null);
   const result = {
+    sourceSHA256: provenance, ai: options.ai, checkpoint: options.checkpoint, resumedMatches: completed.size,
     root: options.root, mode: options.mode, map: options.map, players: results[0].spawns.length, seats: options.seats, rotate: options.rotate, alt: options.alt, winsBySeat: options.seats?.map((_, i) => wins.filter(r => r.winnerSeat === i).length) ?? null, army: options.army, seed: options.seed,
-    matches: options.matches, workers: options.workers, maxSeconds: options.seats ? (options.mode === 'classic' ? 2400 : 1800) : 1200,
+    matches: options.matches, workers: options.workers, maxSeconds: options.mode === 'classic' ? 2400 : options.seats ? 1800 : 1200,
     winsByFaction: byFaction, winsBySpawn: bySpawn,
     ended: ended.length, draws: ended.length - wins.length, timeouts: options.matches - ended.length,
     medianSeconds: median(results.map(r => r.seconds)), medianEndedSeconds: median(ended.map(r => r.seconds)),

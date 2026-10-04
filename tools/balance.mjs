@@ -22,7 +22,7 @@ function seededRandom(initial) {
 
 async function playMatches({ root, mode, map: mapName, seeds }) {
   const sim = await import(pathToFileURL(resolve(root, 'shared/sim.js')).href);
-  const { think, observe } = await import(pathToFileURL(resolve(root, 'shared/ai.js')).href);
+  const { think, observe, humanCommander, thinkEvery } = await import(pathToFileURL(resolve(root, 'shared/ai.js')).href);
   const { UNITS, CELL, COVER, TRENCH } = sim;
   // Use the current graded cover rule, including woods, house corners and wrecks.
   const sheltered = (g, t, f) => {
@@ -43,15 +43,18 @@ async function playMatches({ root, mode, map: mapName, seeds }) {
       // Behavior counters, read from the shots each tick reports (the same feed the clients get).
       const m = { vehHits: 0, rearHits: 0, frontHits: 0, infHits: 0, infHitsCovered: 0, infHitsSheltered: 0, atShots: 0, atOnVehicles: 0,
         mgShots: 0, mgOnInfantry: 0, sniperShots: 0, sniperOnCrews: 0, infantrySamples: 0, coveredSamples: 0, idleSamples: 0, crowded: 0, kills: 0 };
-      let leader = -1, leadChanges = 0;
+      let leader = -1, leadChanges = 0, shotCursor = 0;
       while (g.winner === null && g.tick < capTicks) {
         sim.step(g);
-        if (observe && (g.tick % 2 === 0 || g.winner !== null)) {
+        const delivered = g.tick % 2 === 0 || g.winner !== null;
+        if (observe && delivered) {
           const cache = sim.snapshotCache?.(g);
           g.players.forEach((_, slot) => { views[slot] = observe(g, slot, cache); });
         }
-        g.players.forEach((p, i) => { if ((g.tick + i * 13) % 40 === 0) think(g, i, views ? { view: views[i] } : undefined); });
-        for (const s of g.shots) {
+        g.players.forEach((p, i) => { if (humanCommander || (g.tick + i * 13) % (thinkEvery?.('normal') ?? 40) === 0) think(g, i, views ? { view: views[i] } : undefined); });
+        // The previous odd tick remains in the delivery buffer, but its counters were already collected.
+        for (let shotIndex = shotCursor; shotIndex < g.shots.length; shotIndex++) {
+          const s = g.shots[shotIndex];
           if (s.kill) m.kills++;
           if (!s.f || !s.t || s.k === 'hurt' || s.k === 'aa') continue;
           const f = g.units.get(s.f), t = g.units.get(s.t);
@@ -68,7 +71,8 @@ async function playMatches({ root, mode, map: mapName, seeds }) {
             m.infHits++; if (g.flags[c] & (COVER | TRENCH)) m.infHitsCovered++; if (sheltered(g, t, f)) m.infHitsSheltered++;
           }
         }
-        g.shots = []; g.newCells = [];
+        if (delivered) { g.shots = []; g.newCells = []; shotCursor = 0; }
+        else shotCursor = g.shots.length;
         if (g.tick % 100 === 0) {
           const inf = [...g.units.values()].filter(u => UNITS[u.type].infantry && !(u.garrison >= 0) && !u.riding && u.hp > 0);
           for (const u of inf) {

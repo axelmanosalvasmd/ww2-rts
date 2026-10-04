@@ -51,3 +51,32 @@ export function facingSpots(items, at, face, reach, { shape = 'line', spread = 1
   }
   return out;
 }
+
+// A plain ground click uses the travel direction and the same trench snapping for every input source.
+export function formation(sel, at, { defs, cell = 2, terrainAt, width, height, face, reach = 0,
+  shape = 'line', spread = 1, snap = true } = {}) {
+  if (!sel.length) return [];
+  if (!Number.isFinite(face)) {
+    const x = sel.reduce((sum, u) => sum + u.x, 0) / sel.length;
+    const z = sel.reduce((sum, u) => sum + u.z, 0) / sel.length;
+    face = Math.atan2(at.z - z, at.x - x); reach = 0;
+  }
+  const spots = facingSpots(sel.map(u => ({ id: u.id, x: u.x, z: u.z, size: slotSize(defs[u.type]),
+    back: !!defs[u.type].w?.minRange || !defs[u.type].w?.range })), at, face, reach, { shape, spread });
+  if (snap && terrainAt) {
+    const infantry = new Set(sel.filter(u => defs[u.type].infantry).map(u => u.id)), taken = new Set();
+    for (const s of spots) {
+      if (!infantry.has(s[0])) continue;
+      const cx = Math.floor(s[1] / cell), cy = Math.floor(s[2] / cell);
+      let best = null, bd = 3;
+      for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
+        const key = y * 4096 + x;
+        if (!terrainAt(x, y) || taken.has(key)) continue;
+        const px = (x + 0.5) * cell, pz = (y + 0.5) * cell, d = Math.hypot(px - s[1], pz - s[2]);
+        if (d < bd) { bd = d; best = [key, px, pz]; }
+      }
+      if (best) { taken.add(best[0]); s[1] = best[1]; s[2] = best[2]; }
+    }
+  }
+  return spots.map(([id, x, z]) => [id, Math.min(width - 1, Math.max(1, x)), Math.min(height - 1, Math.max(1, z))]);
+}

@@ -1,5 +1,5 @@
 // The AI plans from the same rows a human receives. Only command() can change the game.
-import { CELL, TERRAIN, UNITS, snapshotFor, terrainFor, teamSees } from './sim.js';
+import { CELL, TERRAIN, UNITS, snapshotFor, terrainFor, teamSees } from '../../shared/sim.js';
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const copy = (value) => value === undefined ? undefined : structuredClone(value);
@@ -123,18 +123,13 @@ export function viewFor(g, slot, memory = {}, cache) {
   if (g.players[-1]) players[-1] = g.players[-1];
   players[slot] = { ...seat, terrainMemory: memory.terrainCells, terrainPending: new Set(g.cellLog.keys()),
     ...(world && { worldTerrainSent: memory.worldTerrainSent ??= new Map() }) };
-  // Flight and shot filtering can lazily update nested fog caches even with the browser mask omitted.
-  // Keep those caches in the seat projection, just like its terrain delivery state.
-  const projection = { ...g, players, omitFogMask: true,
-    fog: memory.fog ??= new Map(), fogSources: memory.fogSources ??= new Map(), fogTerrain: memory.fogTerrain };
+  const projection = { ...g, players, omitFogMask: true }; // omit browser masks without revealing terrain or effects
   const seed = first ? terrainFor(projection, slot, true) : [];
-  const snap = snapshotFor(projection, slot, g.shots, [], cache);
-  memory.fogTerrain = projection.fogTerrain;
+  const snap = snapshotFor(projection, slot, [], [], cache);
   updateTerrain(memory, first ? [...seed, ...snap.cells] : snap.cells, g.w * g.h);
   if (world) { memory.mapChars = memory.terrain.chars; memory.mapHeight = memory.terrain.height; }
   const view = {
-    w: g.w, h: g.h, tick: snap.tick, matchSeed: g.matchSeed ?? (memory.matchSeed ??= g.seed),
-    snapshot: copy(snap), winner: snap.winner, end: copy(snap.end), winVp: g.winVp,
+    w: g.w, h: g.h, tick: snap.tick, winner: snap.winner, end: copy(snap.end), winVp: g.winVp,
     chars: memory.terrain.chars, flags: memory.terrain.flags, height: memory.terrain.height,
     mapChars: memory.mapChars, mapHeight: memory.mapHeight, // the map as the file every client downloads shows it
     units: new Map(snap.units.map(row => { const u = decodeUnit(row); return [u.id, u]; })),

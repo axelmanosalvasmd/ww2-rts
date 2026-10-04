@@ -1,16 +1,24 @@
 // Web worker: plays N AI free-for-all matches (one AI per spawn) on a map and reports how often each spawn wins.
-import { createGame, step, CELL } from '/shared/sim.js';
-import { think } from '/shared/ai.js';
+import { createGame, step, CELL, snapshotCache } from '/shared/sim.js';
+import * as ai from '/shared/ai.js';
 
 onmessage = ({ data: { map, n } }) => {
   const k = map.spawns.length, wins = Array(k).fill(0);
   let timeouts = 0, secs = 0, second = 0;
   for (let i = 0; i < n; i++) {
     const g = createGame(map, Array.from({ length: k }, (_, i) => 'ai' + i));
+    const initialCache = snapshotCache(g);
+    const views = Array.from({ length: k }, (_, slot) => ai.observe(g, slot, initialCache));
     while (g.winner === null && g.tick < 20 * 60 * 30) {
-      for (let s = 0; s < k; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
       step(g);
-      g.shots = []; g.newCells = [];
+      if (g.tick % 2 === 0 || g.winner !== null) {
+        const cache = snapshotCache(g);
+        for (let slot = 0; slot < k; slot++) views[slot] = ai.observe(g, slot, cache);
+      }
+      for (let slot = 0; slot < k; slot++) {
+        if (ai.humanCommander || (g.tick + slot * 13) % ai.thinkEvery('normal') === 0) ai.think(g, slot, { view: views[slot] });
+      }
+      if (g.tick % 2 === 0 || g.winner !== null) { g.shots = []; g.newCells = []; }
     }
     if (g.winner === null) timeouts++;
     else {

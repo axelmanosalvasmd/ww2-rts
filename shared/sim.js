@@ -678,6 +678,7 @@ export function createGame(map, names, shuffle = true, teams = names.map((_, i) 
   g.soak = new Set(g.chars.keys()); // cells to look at for flooding (see flood)
   // wind, weather and fire roll their own dice, so they do not disturb the order of the combat rolls
   g.seed = Math.floor(Math.random() * 2 ** 32);
+  g.matchSeed = g.seed; // Seat commanders keep a separate random stream for the whole match.
   g.wind = { a: rng(g) * Math.PI * 2, v: 0.3 + rng(g) * 0.5 };
   // rain 0-1 is how hard it is raining, wet 0-1 how soaked the ground is, next the seconds to the next change
   g.wx = opts.weather === false ? null : { rain: 0, raining: false, wet: 0, next: CFG.weather.firstRain + rng(g) * CFG.weather.dry[0] };
@@ -1225,7 +1226,7 @@ function observedPathView(g, slot) {
       infantryRegionVersion: 0, vehicleRegionVersion: 0, navalRegionVersion: 0, terrainVersion: 0, navigationChanges: [], initialTerrain: { chars, height } };
     for (let c = 0; c < N; c++) view.cellHp[c] = maxHp(view, c);
     state = { view, rows: new Map(), version: 0, initial: g.initialTerrain }; recipients.set(slot, state);
-    updateObservedWalls(view, flags.keys());
+    updateObservedWalls(view, flags.keys(), true);
   }
   const { view, rows } = state, changed = [];
   // Authored terrain is the baseline. Only the rows this recipient remembers can change it.
@@ -1255,7 +1256,18 @@ function observedPathView(g, slot) {
   view.wx = g.wx; view.tick = g.tick; view.reveal = g.reveal;
   return view;
 }
-function updateObservedWalls(view, changed) {
+function updateObservedWalls(view, changed, full = false) {
+  // Initialization visits every cell. Scan directly rather than building 9N Set entries.
+  if (full) {
+    const W = view.w, H = view.h;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let wall = 0;
+      for (let ny = Math.max(0, y - 1); !wall && ny <= Math.min(H - 1, y + 1); ny++) for (let nx = Math.max(0, x - 1); nx <= Math.min(W - 1, x + 1); nx++)
+        if ((view.flags[ny * W + nx] & (MOVE | SIGHT)) === (MOVE | SIGHT)) { wall = 1; break; }
+      view.worldNearWalls[y * W + x] = wall;
+    }
+    return;
+  }
   const affected = new Set(), W = view.w;
   for (const c of changed) {
     const x = c % W, y = Math.floor(c / W);

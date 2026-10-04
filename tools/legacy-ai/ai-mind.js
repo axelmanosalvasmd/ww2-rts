@@ -1,7 +1,7 @@
 // What one seat has decided and what it has learned this match.
 // Fed only from that seat's view (the same facts a player in the seat would have) and from its private memory.
 // Nothing here reads hidden units, hidden mines, or another seat's economy.
-import { UNITS, CFG, CELL, COVER, blockOf, los } from './sim.js';
+import { UNITS, CFG, CELL, COVER, blockOf, los } from '../../shared/sim.js';
 
 const dist = (a, b) => Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.z ?? 0) - (b.z ?? 0));
 const RIFLES = new Set(['rifle', 'conscript', 'ranger', 'mg']);
@@ -134,7 +134,7 @@ export function operationHolds(op, view, slot, mind, now, sightings) {
 export const ASSAULT_TUNING = Object.freeze({ assemble: 12, regroup: 8, blocked: 10, lifetime: 100,
   withdraw: 1.25, resume: 0.75, cooldown: 18, supportRear: 8, searchCells: 2048 });
 const SUPPORT_ROLES = new Set(['mg', 'at', 'mortar', 'howitzer', 'rocket', 'tankdestroyer']);
-const valueOf = u => u.estimatedValue ?? UNITS[u.type].cost * u.hp / (UNITS[u.type].models * UNITS[u.type].hpPer);
+const valueOf = u => UNITS[u.type].cost * u.hp / (UNITS[u.type].models * UNITS[u.type].hpPer);
 const mean = units => ({ x: units.reduce((n, u) => n + u.x, 0) / units.length, z: units.reduce((n, u) => n + u.z, 0) / units.length });
 const backFrom = (at, home, metres) => { const range = dist(at, home) || 1, k = Math.min(range, metres) / range;
   return { x: at.x + (home.x - at.x) * k, z: at.z + (home.z - at.z) * k }; };
@@ -185,7 +185,7 @@ export function planAssault(view, slot, mind, situation, level, now, options = {
       if (goal && member.order) {
         if (dist(goal, member.order) > 8) { mind.assaultReleased.set(u.id, now + tuning.cooldown); return false; }
         member.acknowledged = true;
-      } else if (member.acknowledged && now > (member.acknowledgedAt ?? -Infinity) + 0.2 && member.order && dist(u, member.order) > 6 && !u.targetId) { mind.assaultReleased.set(u.id, now + tuning.cooldown); return false; }
+      } else if (member.acknowledged && member.order && dist(u, member.order) > 6 && !u.targetId) { mind.assaultReleased.set(u.id, now + tuning.cooldown); return false; }
       if (dist(u, member.last) > 1 || u.targetId || (member.order && dist(u, member.order) <= 6)) member.progressAt = now;
       member.last = { x: u.x, z: u.z };
       return now - member.progressAt <= tuning.blocked;
@@ -204,7 +204,6 @@ export function planAssault(view, slot, mind, situation, level, now, options = {
   const opening = (!view.mode || view.mode.kind === 'conquest') && now < 180 && view.points.some(p => p.owner < 0);
   if (!active && now >= (mind.assaultCooldown ?? 0) && !opening && !taken && defended && situation?.kind === 'push' && situation.at && now >= level.firstAssault) {
     const candidates = [...view.units.values()].filter(u => u.owner === slot && !UNITS[u.type].structure && !u.air && !UNITS[u.type].naval
-      && (!view.screenIds || view.screenIds.has(u.id))
       && u.type !== 'engineer' && !UNITS[u.type].medic && !u.retreating && !u.holdPos && !u.dig && !u.entrench && !u.build
       && u.garrison < 0 && !u.orders.length && !u.targetId && valueOf(u) >= UNITS[u.type].cost * 0.65
       && !options.busy?.has(u.id) && !options.recovering?.has(u.id) && !mind.assaultReleased.has(u.id) && !view.points.some(p => view.players[p.owner]?.team === me.team && !p.cut && dist(u, p) < CFG.pointRadius))
@@ -237,16 +236,6 @@ export function planAssault(view, slot, mind, situation, level, now, options = {
   const untenable = threats.length && (pressure > tuning.withdraw || armor > anti * 1.4 + (recentlySupported ? ownValue * 0.8 : 0) + 1
     || (mg && !hasAnswer && enemyValue > ownValue * 0.65) || (lost + losses >= Math.ceil(op.initial / 3) && pressure > 0.75));
   const change = state => { op.state = state; op.stateAt = now; for (const m of op.members) m.progressAt = now; };
-  if (options.deferred && op.started === now && untenable) {
-    if (op.point != null) {
-      const rec = mind.points[op.point] ??= { failed: 0 };
-      rec.failed = Math.min(4, rec.failed + 2);
-    }
-    for (const member of op.members) claims.add(member.id);
-    mind.aim = null; mind.assaultCooldown = now + 5;
-    clearAssault(mind, 'attack-rejected');
-    return { commands, claims, rejected: true };
-  }
   if (op.state !== 'withdraw' && untenable) {
     change('withdraw'); op.reason = armor > anti * 1.4 + 1 ? 'armor' : mg && !hasAnswer ? 'machine-gun' : 'losses';
     mind.assaultCooldown = now + tuning.cooldown;
@@ -274,30 +263,8 @@ export function planAssault(view, slot, mind, situation, level, now, options = {
     if (!at) { if (withdrawing) commands.push({ t: 'retreat', ids: [u.id] }); continue; }
     const kind = withdrawing || staging || member.role === 'support' ? 'move' : 'amove';
     if (dist(u, at) <= 3 || (member.order && dist(member.order, at) < 3 && (u.path.length || u.amove))) continue;
-    member.placement = { ...at };
-    if (options.deferred) member.proposedOrder = { ...at };
-    else { member.order = { ...at }; member.acknowledged = true; }
+    member.order = { ...at }; member.placement = { ...at }; member.acknowledged = true;
     commands.push({ t: kind, orders: [[u.id, at.x, at.z]] });
-  }
-  // A seat commander selects a line and its support, then clicks one anchor for each formation.
-  if (options.deferred) {
-    const batches = new Map();
-    for (const cmd of commands) {
-      const id = cmd.orders?.[0]?.[0], member = op.members.find(m => m.id === id);
-      const key = `${cmd.t}:${member?.role ?? 'line'}`;
-      const batch = batches.get(key) ?? { t: cmd.t, orders: [], ids: [] };
-      if (cmd.orders) batch.orders.push(...cmd.orders);
-      else batch.ids.push(...cmd.ids);
-      batches.set(key, batch);
-    }
-    commands.length = 0;
-    for (const batch of batches.values()) {
-      if (batch.orders.length) {
-        const x = batch.orders.reduce((n, row) => n + row[1], 0) / batch.orders.length;
-        const z = batch.orders.reduce((n, row) => n + row[2], 0) / batch.orders.length;
-        commands.push({ t: batch.t, orders: batch.orders.map(row => [row[0], x, z]) });
-      } else commands.push({ t: batch.t, ids: batch.ids });
-    }
   }
   return { commands, claims };
 }

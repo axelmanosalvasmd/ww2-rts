@@ -7,7 +7,8 @@ import { performance } from 'node:perf_hooks';
 import { Session } from 'node:inspector';
 import WebSocket from 'ws';
 import * as sim from '../shared/sim.js';
-import { observe, think, thinkEvery } from '../shared/ai.js';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createTickMeter } from '../tickmeter.js';
 
 const args = process.argv.slice(2);
@@ -17,10 +18,14 @@ const value = (name, fallback) => {
   if (!args[index + 1] || args[index + 1].startsWith('--')) throw new Error(`${name} needs a value`);
   return args[index + 1];
 };
-for (const arg of args) if (arg.startsWith('--') && !['--ticks', '--out', '--case', '--profile'].includes(arg)) throw new Error(`Unknown option: ${arg}`);
+for (const arg of args) if (arg.startsWith('--') && !['--ticks', '--out', '--case', '--profile', '--ai'].includes(arg)) throw new Error(`Unknown option: ${arg}`);
 const ticks = Number(value('--ticks', '160'));
 if (!Number.isSafeInteger(ticks) || ticks < 120 || ticks > 1000) throw new Error('--ticks must be an integer from 120 to 1000');
 const output = value('--out', '/tmp/ww2-engine-bench.json');
+const aiFile = value('--ai', null);
+const aiURL = aiFile ? pathToFileURL(resolve(aiFile)) : new URL('../shared/ai.js', import.meta.url);
+const aiModule = await import(aiURL.href);
+const { observe, think, thinkEvery } = aiModule;
 const profileComponents = args.includes('--profile');
 const directCases = ['quiet', 'crossing', 'bombardment', 'projectile', 'navigation', 'collapse', 'ai', 'horde'];
 const serverCases = ['serverRealtime', 'serverAccelerated'];
@@ -29,6 +34,7 @@ const selectedCases = [...new Set(value('--case', profileComponents ? 'navigatio
   .split(',').map(name => name.trim()))];
 if (!selectedCases.length || selectedCases.some(name => !availableCases.includes(name))) throw new Error(`--case must select from ${availableCases.join(',')}`);
 if (profileComponents && selectedCases.some(name => serverCases.includes(name))) throw new Error('--profile supports direct simulation cases only');
+if (aiFile && selectedCases.some(name => serverCases.includes(name))) throw new Error('--ai supports direct simulation cases only; use --case ai or --case ai,horde');
 const seed = 0x3c1055;
 const digest = data => createHash('sha256').update(data).digest('hex');
 const now = () => performance.now();
@@ -211,6 +217,10 @@ async function simulationCase(name) {
     let peakHordeField = 0, peakHordeReserve = 0, hordeTicksAtCap = 0;
     const navigationPathBefore = name === 'navigation' ? { ...(g.pathStats ?? {}) } : null;
     const views = [];
+    if ((ai || horde) && aiModule.humanCommander) {
+      const cache = sim.snapshotCache(g), slots = horde ? [g.mode.slot] : names.map((_, i) => i);
+      for (const i of slots) views[i] = observe(g, i, cache);
+    }
     for (let n = 0; n < ticks && g.winner === null; n++) {
       if (name === 'navigation' && n % 8 === 0) {
         const [x, z] = n % 16 === 0 ? [120, 100] : [35, 95];
@@ -250,7 +260,7 @@ async function simulationCase(name) {
           const cache = sim.snapshotCache(g);
           for (const i of slots) views[i] = observe(g, i, cache);
         }
-        for (const i of slots) if (views[i] && (g.tick + i * 13) % thinkEvery('normal') === 0) {
+        for (const i of slots) if (views[i] && (aiModule.humanCommander || (g.tick + i * 13) % (thinkEvery?.('normal') ?? 40) === 0)) {
           think(g, i, { view: views[i], level: 'normal' }); aiThinkCalls++;
         }
         afterAi = now();
@@ -462,6 +472,8 @@ const files = ['tools/bench-engine.mjs', 'server.js', 'tickmeter.js',
   'maps/king-of-the-hill.json', 'maps/the-great-bridge.json', 'maps/six-fronts.json', 'maps/test-arena.json'];
 const sourceSHA256 = Object.fromEntries(await Promise.all(files.map(async file => [file, digest(await readFile(new URL(`../${file}`, import.meta.url)))])));
 const report = { at: new Date().toISOString(), sourceSHA256, seed, requestedTicks: ticks, selectedCases,
+  aiCommander: { file: aiURL.href, sourceSHA256: digest(await readFile(aiURL)), humanCommander: !!aiModule.humanCommander,
+    phaseScope: 'whole AI phase per simulation tick, including delivered-view observation and hands advancement' },
   runtime: process.version, runtimeFlags: process.execArgv, platform: process.platform, arch: process.arch,
   hardware: { model: os.cpus()[0]?.model, logicalCPUs: os.cpus().length, memoryBytes: os.totalmem() },
   ...(profileComponents && { profiling: { intervalUS: 250, wallTimingsIncludeProfilerOverhead: true,

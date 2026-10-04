@@ -1,3 +1,4 @@
+// Direct planning probes below bypass the hands so the hidden and rediscovered targets compare at the decision layer.
 // World observation regressions. Socket messages and the public AI planning boundary carry assertions.
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -87,7 +88,7 @@ try {
     const ghost = { id: 777, type: 'barracks', owner: 1, x: 505, z: 505, built: 1 };
     v.ghosts = [ghost]; v.knownBuildings = v.ghosts; v.players[0].visible = new Set();
     const calls = [];
-    think(g, 0, { view: v, memory: {}, submit: cmd => { calls.push(cmd); return undefined; } });
+    think(g, 0, { decisionOnly: true, view: v, memory: {}, submit: cmd => { calls.push(cmd); return undefined; } });
     const marches = calls.filter(cmd => cmd.t === 'amove').flatMap(cmd => cmd.orders);
     assert.ok(marches.some(([id, x, z]) => soldiers.includes(id) && x === ghost.x && z === ghost.z), 'idle troops march toward the remembered blocking facility rather than stopping at the capture center');
     assert.ok(!calls.some(cmd => cmd.t === 'attack' && cmd.target === ghost.id), 'AI does not issue direct attack orders against an unseen Ghost');
@@ -95,7 +96,7 @@ try {
     Object.assign(visible, ghost, { hp: UNITS.barracks.hpPer, queue: [], path: [], orders: [] });
     v.units.set(ghost.id, visible); v.players[0].visible = new Set([ghost.id]);
     const seenCalls = [];
-    think(g, 0, { view: v, memory: {}, submit: cmd => { seenCalls.push(cmd); return undefined; } });
+    think(g, 0, { decisionOnly: true, view: v, memory: {}, submit: cmd => { seenCalls.push(cmd); return undefined; } });
     assert.ok(seenCalls.some(cmd => cmd.t === 'attack' && cmd.target === ghost.id && cmd.ids.some(id => soldiers.includes(id))), 'rediscovered facility receives a normal direct attack order');
   });
 } finally {

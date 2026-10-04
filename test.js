@@ -8,6 +8,16 @@ import { SpatialGrid, updateGrid } from './shared/grid.js';
 import { DEBRIS_LIMITS } from './shared/debris-motion.js';
 import { think, thinkEvery, AI_LEVEL_NAMES } from './shared/ai.js';
 import { viewFor } from './shared/ai-view.js';
+import { HUMAN_SKILLS } from './shared/ai-hands.js';
+// Gameplay probes deliver a view every two ticks and run the human commander between deliveries.
+const gameplayAIViews = new WeakMap();
+const tickGameplayAI = (g, slot, opts = {}) => {
+  let seats = gameplayAIViews.get(g);
+  if (!seats) { seats = []; gameplayAIViews.set(g, seats); }
+  const seat = seats[slot] ??= { memory: opts.memory ?? {} };
+  if (!seat.view || g.tick % 2 === 0) seat.view = viewFor(g, slot, seat.memory);
+  return think(g, slot, { ...opts, memory: seat.memory, view: seat.view });
+};
 import { unitRole } from './client/unit-roles.js';
 import { createRelief, TRENCH_DEPTH } from './client/relief.js';
 import { createAutocast } from './client/autocast.js';
@@ -34,7 +44,7 @@ const settledRubble = (g, cells, message) => {
   const { execFileSync } = await import('node:child_process');
   for (const file of ['test-world-waterways.js', 'test-world-multiple-rivers.js', 'test-world-generation.js', 'test-world-territories.js',
     'test-world-conquest.js', 'test-world-teams.js', 'test-world-acceptance.js', 'test-world-observation.js', 'test-world-movement.js', 'test-world-river.js',
-    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
+    'test-engine-controls.js', 'test-engine-world.js', 'test-engine-movement.js', 'test-engine-observed-walls.js', 'test-movement-lab.js', 'test-engine-projectiles.js', 'test-engine-scenarios.js', 'test-engine-ai.js', 'test-engine-ai-callers.js', 'test-engine-ai-hands.js', 'test-engine-ai-perception.js', 'test-engine-ai-human.js', 'test-engine-ai-persona.js', 'test-engine-ai-humanity.js', 'test-engine-ai-commitment.js', 'test-engine-ai-coherence.js', 'test-engine-ai-overlay.js', 'test-human-input.js', 'test-engine-acceptance.js', 'test-engine-presentation.mjs',
     'test-engine-spectators.js', 'test-engine-scenario-start.js', 'test-engine-breaches.mjs', 'test-engine-authoring.js', 'test-engine-vehicle-pose.mjs', 'test-engine-ai-privacy.js', 'test-engine-localization.mjs',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
@@ -114,7 +124,7 @@ const settledRubble = (g, cells, message) => {
   const g = createGame(map, ['a', 'b'], false, [0, 0]); g.players[0].mp = 1000;
   const u = [...g.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
   Object.assign(u, { x: g.points[0].x, z: g.points[0].z }); g.points[0].owner = 0;
-  assert.doesNotThrow(() => think(g, 0), 'AI holding an allied point without opponents does not crash');
+  assert.doesNotThrow(() => think(g, 0, { decisionOnly: true }), 'AI decision layer holding an allied point without opponents does not crash');
 }
 
 // AI: a hidden plane over a destroyed HQ must not change purchasing at the surviving base.
@@ -138,7 +148,7 @@ const settledRubble = (g, cells, message) => {
   Object.assign(plane, g.players[0].spawn); plane.air.state = 'out';
   assert.ok([...g.units.values()].filter(u => u.owner === 0).every(u => Math.hypot(u.x - plane.x, u.z - plane.z) > CFG.air.seeRange), 'plane is outside all friendly observers');
   assert.ok(!snapshotFor(g, 0, []).units.some(u => u[0] === plane.id), 'plane over the old HQ is hidden from the AI team');
-  g.players[0].mp = 200; think(g, 0, { adaptive: false });
+  g.players[0].mp = 200; think(g, 0, { decisionOnly: true, adaptive: false });
   assert.deepEqual(barracks.queue, ['mg'], 'AI ignores hidden planes when reserving money for flak');
 }
 
@@ -3824,7 +3834,7 @@ for (const f of readdirSync('maps')) {
     ]) assert.equal(command(g, slot, cmd), 'blocked', `defeated player ${slot} cannot ${cmd.t}`);
     for (const level of AI_LEVEL_NAMES) {
       const submitted = [];
-      think(g, slot, { level, submit: cmd => { submitted.push(cmd); } });
+      think(g, slot, { decisionOnly: true, level, submit: cmd => { submitted.push(cmd); } });
       assert.deepEqual(submitted, [], `${level} AI in defeated slot ${slot} submits no commands`);
     }
     assert.equal(snapshotFor(g, slot, []).out[slot], true, 'the client receives the defeat flag');
@@ -3837,7 +3847,7 @@ for (const f of readdirSync('maps')) {
   assert.equal(command(g, 2, { t: 'buy', unit: 'rifle' }), undefined, 'the surviving teams can still recruit');
 }
 
-// AI proofs compare equal human observations, including histories, while hidden state changes.
+// These immediate probes compare the view-only decision layer, including histories, while hidden state changes.
 const aiRandom = seed => () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
 const aiDigest = g => createHash('sha256').update(JSON.stringify(g, (_key, value) => {
   if (value instanceof Map) return { map: [...value] };
@@ -3859,9 +3869,9 @@ const aiCommands = (g, slot, memory = {}, seed = 1, extra = {}) => {
   let draws = 0;
   try {
     const seeded = aiRandom(seed); Math.random = () => { draws++; return seeded(); };
-    think(g, slot, { ...extra, memory, submit: cmd => { commands.push(structuredClone(cmd)); } });
+    think(g, slot, { decisionOnly: true, ...extra, memory, submit: cmd => { commands.push(structuredClone(cmd)); } });
   } finally { Math.random = random; }
-  assert.equal(aiDigest(g), before, 'dry-run AI leaves authoritative state unchanged');
+  assert.equal(aiDigest(g), before, `dry-run AI leaves authoritative state unchanged (${extra.level ?? 'normal'}, seat ${slot}, tick ${g.tick}, seed ${seed})`);
   return { commands, draws };
 };
 const aiEquivalent = (a, b, slot = 0, memory = {}, seed = 1, message = 'hidden state does not affect AI commands', levels = AI_LEVEL_NAMES) => {
@@ -3877,7 +3887,7 @@ const aiEquivalent = (a, b, slot = 0, memory = {}, seed = 1, message = 'hidden s
 const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   spawns: [{ x: 2, y: 2 }, { x: 77, y: 77 }], points: [{ x: 40, y: 40 }] });
 
-// Supply reconnection remains immediate at every level, including Easy's opening grace period.
+// The decision layer prioritizes supply reconnection at every level, including Easy's opening grace period.
 {
   const g = createGame(aiMap(), ['AI', 'enemy'], false, [0, 1]); g.units.clear(); g.players[0].mp = 0;
   const squad = [0, 1].map(() => massiveInternals.spawnUnit(g, 0, 'rifle'));
@@ -4374,27 +4384,30 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   const body = source.slice(source.indexOf('function timedRoomTick(room)'), source.indexOf('export function tickRooms()'));
   for (const cadence of [2, 4]) {
     const decisions = [], deliveries = [];
-    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed',
+    const tick = new Function('thinkEvery', 'step', 'think', 'observe', 'snapshotCache', 'snapshotFor', 'createTickMeter', 'recordTick', 'tickStats', 'trimmed', 'aiCalibration',
       body + '\nreturn timedRoomTick;')(
       thinkEvery, g => { g.tick++; },
-      (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick]); },
-      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg);
+      (g, slot, opts) => { decisions.push([g.tick, slot, opts.view.tick, opts.level]); },
+      g => ({ tick: g.tick }), () => ({}), g => ({ tick: g.tick }), () => ({}), () => cadence, () => ({}), (room, net, msg) => msg, undefined);
     const game = { tick: 0, winner: null, shots: [], newCells: [] };
     const room = { game, snapEvery: cadence, aiViews: [{ tick: 0 }, { tick: 0 }, { tick: 0 }],
       players: [{ ws: { readyState: 1, send: raw => deliveries.push(JSON.parse(raw).tick) } }, { ai: true, level: 'easy' }, { ai: true, level: 'hard' }] };
     for (let i = 0; i < 161; i++) tick(room);
     assert.deepEqual(deliveries, Array.from({ length: Math.floor(161 / cadence) }, (_, i) => (i + 1) * cadence), 'humans keep the configured delivery beat');
-    assert.ok(decisions.length >= 4, 'both staggered AI slots took turns');
-    for (const [at, slot, viewed] of decisions) {
-      assert.equal((at + slot * 13) % thinkEvery(room.players[slot].level), 0, 'AI schedule keeps the selected difficulty and server stagger');
+    assert.equal(decisions.length, 161 * 2, 'both AI hands run on every simulation tick');
+    for (const [at, slot, viewed, level] of decisions) {
+      assert.ok(slot === 1 || slot === 2, 'only the two AI seats run the commander loop');
+      assert.equal(level, room.players[slot].level, 'every-tick loop passes each seat its selected difficulty');
       assert.equal(viewed, Math.floor(at / cadence) * cadence, 'AI sees only the most recent human delivery beat');
     }
     assert.ok(decisions.some(([at, , viewed]) => viewed < at), 'proof includes a turn between snapshots');
-    // Slot 3 thinks at tick 1. A newly handed-over seat waits for its first delivery.
+    // A newly handed-over seat waits for delivery before its every-tick commander loop begins.
     const handover = { game: { tick: 0, winner: null, shots: [], newCells: [] }, snapEvery: cadence,
       aiViews: [null, null, null, null], players: [{}, {}, {}, { ai: true }] };
     const before = decisions.length; tick(handover);
     assert.equal(decisions.length, before, 'handover cannot plan from an undelivered observation');
+    for (let i = 1; i < cadence; i++) tick(handover);
+    assert.deepEqual(decisions.slice(before), [[cadence, 3, cadence, undefined]], 'handover begins at the first delivered observation');
   }
 }
 
@@ -4509,7 +4522,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
           aiEquivalent(g, altered, slot, memories[slot], seed * 10000 + g.tick * 3 + slot, `${mode} on ${mapName}, seed ${seed} tick ${g.tick} seat ${slot}`, [level]);
           counts.comparisons++;
           let expected = aiDigest(g);
-          think(g, slot, { level, memory: memories[slot], view: views[slot], submit: cmd => {
+          think(g, slot, { decisionOnly: true, level, memory: memories[slot], view: views[slot], submit: cmd => {
             assert.equal(aiDigest(g), expected, 'AI changes no authoritative state before submitting a command');
             const result = command(g, slot, cmd); expected = aiDigest(g); counts.commands++; byType[cmd.t] = (byType[cmd.t] ?? 0) + 1; return result;
           } });
@@ -4565,7 +4578,7 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
         Math.random = aiRandom(7700 + tick); step(ai);
         Math.random = aiRandom(7700 + tick); step(human);
         assert.equal(aiDigest(ai), aiDigest(human), `${mode}: controller has no effect on income or cooldowns`);
-        if (ai.tick % 40 === 0) think(ai, 0, { memory, submit });
+        tickGameplayAI(ai, 0, { memory, submit });
       }
       const rifle = [...ai.units.values()].find(u => u.owner === 0 && u.type === 'rifle');
       submit({ t: 'stop', ids: [rifle.id] });
@@ -4614,18 +4627,82 @@ const aiMap = () => ({ w: 80, h: 80, rows: Array(80).fill('.'.repeat(80)),
   assert.equal(g.units.size, 9);
   run(g, 5);
 }
-// Three AIs play a full match on the real map: they must capture, fight, and finish.
+// Preserve the direct planner's capture deadline at its original staggered 40-tick cadence.
 {
   const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
-  let spawned = g.nextId, t0 = performance.now(), capturedAt = 0;
-  for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
-    for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s);
+  let capturedAt = 0;
+  for (let i = 0; i < 20 * 180 && !capturedAt && g.winner === null; i++) {
+    for (let s = 0; s < 3; s++) if ((g.tick + s * 13) % 40 === 0) think(g, s, { decisionOnly: true });
     step(g);
+    if (g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
+  }
+  assert.ok(capturedAt > 0 && capturedAt < 180, 'AI decision layer takes every point within 3 minutes');
+  console.log(`AI decision-layer capture: every point taken at ${Math.round(capturedAt)}s`);
+}
+
+// Three human commanders play a full match through physical inputs and delivered observations.
+{
+  const g = createGame(JSON.parse(readFileSync('maps/default.json', 'utf8')), ['a', 'b', 'c']);
+  // Allow the opening look, travel at half walking speed, and an uncontested capture.
+  // The longest reachable starting route permits any initial point choice on this map.
+  const routes = structuredClone(g);
+  let longestTravel = 0;
+  for (const u of routes.units.values()) if (u.type === 'rifle') for (const point of routes.points) {
+    const path = findPath(routes, u, point);
+    if (!path.length) continue;
+    let at = u, length = 0;
+    for (const next of path) { length += Math.hypot(next.x - at.x, next.z - at.z); at = next; }
+    longestTravel = Math.max(longestTravel, length / UNITS.rifle.speed);
+  }
+  assert.ok(longestTravel > 0, 'the human match has reachable starting capture routes');
+  const firstCaptureDeadline = HUMAN_SKILLS.normal.opening[1] + 2 * longestTravel + CFG.captureTime;
+  const seats = Array.from({ length: 3 }, () => ({ memory: {}, pending: null, lastCommandTick: -1,
+    commands: 0, selected: false, inputs: [] }));
+  const options = seats.map((seat, slot) => ({ memory: seat.memory, level: 'normal',
+    submit: cmd => {
+      assert.notEqual(g.tick, seat.lastCommandTick, `seat ${slot}: only one command on a simulation tick`);
+      assert.equal(seat.pending, null, `seat ${slot}: the previous command has its physical input record`);
+      seat.lastCommandTick = g.tick; seat.pending = structuredClone(cmd); seat.commands++;
+      return command(g, slot, cmd);
+    },
+    inputLog: entry => {
+      assert.equal(entry.tick, g.tick, 'physical inputs use the simulation clock');
+      assert.equal(entry.selected, (entry.ids ?? []).length, 'input records contain the actual selection');
+      if (['select-click', 'select-box', 'select-add-click', 'group-recall'].includes(entry.kind) && entry.selected) seat.selected = true;
+      seat.inputs.push(entry.tick);
+      seat.inputs = seat.inputs.filter(tick => entry.tick - tick < 1200);
+      assert.ok(seat.inputs.length <= HUMAN_SKILLS.normal.apm[1], 'the full match respects the rolling input cap');
+      assert.ok(seat.inputs.filter(tick => entry.tick - tick < 200).length <= Math.floor(HUMAN_SKILLS.normal.peak / 6),
+        'the full match respects the ten-second input cap');
+      if (!entry.command) return;
+      assert.deepEqual(entry.command, seat.pending, 'each submitted command comes from its recorded physical input');
+      seat.pending = null;
+      assert.ok(entry.tick >= seat.memory.human.hands.openingUntil, 'actual commands follow the opening look');
+      const ids = entry.command.orders?.map(order => order[0]) ?? entry.command.ids ?? [];
+      if (ids.length) {
+        assert.ok(seat.selected, 'a unit command follows a successful physical selection');
+        assert.deepEqual(new Set(ids), new Set(entry.ids), 'the issuing command uses the actual selected units');
+      }
+      if (Number.isFinite(entry.eventTick)) assert.ok(entry.tick - entry.eventTick >= 4,
+        'an observed event cannot receive a command in less than 0.2 seconds');
+    },
+  }));
+  let spawned = g.nextId, t0 = performance.now(), firstCaptureAt = 0, capturedAt = 0;
+  for (let i = 0; i < 20 * 60 * 40 && g.winner === null; i++) {
+    for (let s = 0; s < 3; s++) {
+      tickGameplayAI(g, s, options[s]);
+      assert.equal(seats[s].pending, null, 'every submitted command has its physical input record before the next tick');
+    }
+    step(g);
+    if (!firstCaptureAt && g.points.some(p => p.owner >= 0)) firstCaptureAt = g.tick / 20;
     if (!capturedAt && g.points.every(p => p.owner >= 0)) capturedAt = g.tick / 20;
   }
   const secs = g.tick / 20, bought = g.nextId - spawned, dead = g.nextId - 1 - g.units.size;
-  console.log(`AI match: winner ${g.winner} after ${Math.round(secs)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
-  assert.ok(capturedAt > 0 && capturedAt < 180, 'AIs take every point within 3 minutes');
+  console.log(`AI human match: winner ${g.winner} after ${Math.round(secs)}s, first point at ${Math.round(firstCaptureAt)}s, all points taken at ${Math.round(capturedAt)}s, ${bought} bought, ${dead} killed, VP ${g.players.map(p => Math.floor(p.vp))}, sim ${Math.round((performance.now() - t0) / g.tick * 1000)}µs/tick`);
+  assert.ok(firstCaptureAt > 0 && firstCaptureAt <= firstCaptureDeadline,
+    `human commanders take their first point within the opening and travel allowance (${firstCaptureDeadline.toFixed(1)}s)`);
+  assert.ok(capturedAt > 0 && capturedAt <= secs, 'human commanders occupy every point before the match finishes');
+  assert.ok(seats.every(seat => seat.commands > 0 && seat.selected), 'every human commander issues commands through physical selection');
   assert.ok(dead >= 5, 'AIs actually fight');
   assert.notEqual(g.winner, null, 'match ends within 30 minutes');
   assert.ok(g.story.every(s => s.mpSpent > 0) && g.story.some(s => s.kills > 0 && s.captures > 0), 'the story counts the match');
@@ -6948,7 +7025,7 @@ for (const lookupFinished of [false, true]) {
   // the horde's AI neither shops nor retreats
   const count = g.units.size; g.players[2].mp = 5000;
   const hurtOne = horde()[0]; hurtOne.hp = 1;
-  think(g, m.slot);
+  think(g, m.slot, { decisionOnly: true });
   assert.ok(g.units.size === count && !hurtOne.retreating, 'the horde AI buys nothing and never retreats');
   g.players[2].mp = 0;
   // the last few are revealed through the fog
@@ -7264,12 +7341,14 @@ for (const lookupFinished of [false, true]) {
 // Computer players lay mines in front of a point they hold and put a blown bridge back.
 {
   const g = fresh(); g.players[0].mp = 5000; g.points[0].owner = 0; g.points[0].progress = 1;
+  // Human attention needs real base positions, including in this single-squad engineering fixture.
+  g.players.forEach((p, slot) => (p.spawn = { x: slot ? 37 : 3, z: 3 }));
   const holder = put(g, 0, 'rifle', g.points[0].x, g.points[0].z);
-  for (let i = 0; i < 20 * 90; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  for (let i = 0; i < 20 * 90; i++) { tickGameplayAI(g, 0); step(g); }
   const laid = g.mines.size;
   assert.ok(laid >= 3 && laid <= sim.FORTS.mines.n, 'the squad holding a point lays one minefield');
   assert.ok([...g.mines.values()].every(by => by === 0), 'the mines are its own');
-  for (let i = 0; i < 20 * 30; i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  for (let i = 0; i < 20 * 30; i++) { tickGameplayAI(g, 0); step(g); }
   assert.equal(g.mines.size, laid, 'and does not keep laying more');
   assert.ok(holder.hp > 0);
 
@@ -7277,19 +7356,20 @@ for (const lookupFinished of [false, true]) {
   g.players[1].mp = 5000; command(g, 1, { t: 'support', kind: 'dive', x: 29, z: 21 });
   run(g, SUPPORT.dive.delay + 1);
   assert.ok(g.height.some(l => l === -2), 'a hole two levels deep');
-  for (let i = 0; i < 20 * 300 && g.height.some(l => l < 0); i++) { if (i % 40 === 0) think(g, 0); step(g); }
+  for (let i = 0; i < 20 * 300 && g.height.some(l => l < 0); i++) { tickGameplayAI(g, 0); step(g); }
   assert.ok(g.height.every(l => l >= 0), 'the computer player fills the hole in');
   assert.ok(holder.hp > 0);
 
   const rows = empty.map((row, y) => row.slice(0, 9) + (y >= 9 && y <= 11 ? '===' : 'WWW') + row.slice(12)), r = fresh(rows);
+  r.players.forEach((p, slot) => (p.spawn = { x: slot ? 37 : 3, z: 3 }));
   r.players[0].mp = 5000; r.points = [];
   const sapper = put(r, 0, 'rifle', 13, 21), tank = { x: 5, z: 21, type: 'tank' };
-  think(r, 0); // first look: the bridge is noted
+  tickGameplayAI(r, 0); // first observation records the bridge before the opening pause
   r.players[1].mp = 5000;
   assert.equal(command(r, 1, { t: 'support', kind: 'dive', x: 21, z: 21 }), undefined);
   for (let i = 0; i < 20 * 15 && r.chars[10 * r.w + 10] === '='; i++) step(r);
   assert.equal(r.chars[10 * r.w + 10], 'W', 'the bridge is blown');
-  for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { if (i % 40 === 0) think(r, 0); step(r); }
+  for (let i = 0; i < 20 * 60 && !findPath(r, tank, { x: 35, z: 21 }).length; i++) { tickGameplayAI(r, 0); step(r); }
   assert.ok(findPath(r, tank, { x: 35, z: 21 }).length, 'the computer player rebuilds the bridge');
   assert.ok(sapper.hp > 0);
 }
@@ -7585,7 +7665,7 @@ for (const lookupFinished of [false, true]) {
     const rows = open(60, 60); for (let y = 20; y < 40; y++) put(rows, 25, y, 'OOOOOOOO');
     const g = createGame(mapOf(rows, { points: [{ x: 30, y: 15 }, { x: 30, y: 45 }] }), ['a', 'b'], false, [0, 1], [0, 2], { weather: false });
     for (const s of [0, 1]) { add(g, s, 'halftrack', 5 + s * 48, 8 + s * 44); add(g, s, 'medic', 6 + s * 46, 8 + s * 44); }
-    for (let i = 0; i < 2400; i++) { if (i % 40 === 0) { think(g, 0); think(g, 1); } step(g); }
+    for (let i = 0; i < 2400; i++) { tickGameplayAI(g, 0); tickGameplayAI(g, 1); step(g); }
     assert.ok(g.tick === 2400);
   }
 }

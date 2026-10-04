@@ -18,7 +18,7 @@ if (!Number.isSafeInteger(options.ticks) || options.ticks < 1) throw new Error('
 if (!['classic', 'conquest', 'all'].includes(options.scenario)) throw new Error('Unknown scenario');
 
 const sim = await import(pathToFileURL(resolve(options.root, 'shared/sim.js')).href);
-const { think } = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
+const { think, observe, humanCommander, thinkEvery } = await import(pathToFileURL(resolve(options.root, 'shared/ai.js')).href);
 const seed = 0x3c1055;
 function seededRandom(initial) {
   let value = initial;
@@ -54,6 +54,8 @@ async function run(scenario) {
     const names = Array.from({ length: 6 }, (_, i) => 'AI ' + (i + 1));
     const game = sim.createGame(map, names, true, names.map((_, i) => i), names.map((_, i) => i % 3), { mode: scenario, army: 'massive' });
     const samples = { tick: [], step: [], think: [], snapshotBuild: [], stringify: [], snapshotTotal: [], snapshotTick: [] };
+    const initialCache = observe ? sim.snapshotCache?.(game) : undefined;
+    const views = observe ? names.map((_, slot) => observe(game, slot, initialCache)) : null;
     const bytes = names.map(() => []);
     let peakUnits = game.units.size;
     for (let t = 0; t < options.ticks; t++) {
@@ -62,8 +64,14 @@ async function run(scenario) {
       const stepStart = clock();
       sim.step(game);
       const stepEnd = clock();
-      // Match the server's order and stagger. Every slot is an AI.
-      game.players.forEach((p, i) => { if ((game.tick + i * 13) % 40 === 0) think(game, i); });
+      // The hands advance every tick; legacy commanders retain the staggered decision schedule.
+      if (observe && (game.tick % 2 === 0 || game.winner !== null)) {
+        const cache = sim.snapshotCache?.(game);
+        game.players.forEach((_, slot) => { views[slot] = observe(game, slot, cache); });
+      }
+      game.players.forEach((_, i) => {
+        if (humanCommander || (game.tick + i * 13) % (thinkEvery?.('normal') ?? 40) === 0) think(game, i, views ? { view: views[i] } : undefined);
+      });
       const thinkEnd = clock();
       let buildUs = 0, stringifyUs = 0;
       const snapshotTick = game.tick % 2 === 0 || game.winner !== null;

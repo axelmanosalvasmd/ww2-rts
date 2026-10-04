@@ -1,0 +1,92 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { cleanHumanBeat, createHumanInputClient, createLocalHumanRecorder, humanCommandTarget } from './shared/human-input.js';
+import { createAIOverlay, ghostCursor, spectatorHands } from './client/ai-overlay.js';
+
+const hands = [{ slot: 1, camera: { x: 40, z: 50, w: 80, h: 60, units: ['private'] },
+  cursor: { x: 20, z: 30, fromX: 0, fromZ: 10, toX: 20, toZ: 30, startTick: 10, endTick: 20 },
+  clicks: [{ x: 20, z: 30, tick: 15, kind: 'move', command: { ids: [12] } }], selected: 3, concern: 'fight:enemy-id',
+  orders: ['secret'], mp: 999, selectedIds: [12, 13, 14] }];
+assert.deepEqual(spectatorHands(hands), [], 'seated players cannot receive diagnostics');
+assert.deepEqual(spectatorHands(hands, { spectator: true, world: true }), [], 'shared-fog spectators cannot see enemy cameras');
+const publicHands = spectatorHands(hands, { spectator: true });
+assert.equal(publicHands.length, 1);
+assert.equal(publicHands[0].concern, 'fight');
+assert.equal(JSON.stringify(publicHands).includes('private'), false);
+assert.equal(JSON.stringify(publicHands).includes('secret'), false);
+assert.deepEqual(Object.keys(publicHands[0]), ['slot', 'camera', 'cursor', 'clicks', 'selected', 'concern']);
+assert.deepEqual(ghostCursor(publicHands[0].cursor, 15), { x: 10, z: 20 });
+assert.deepEqual(ghostCursor(publicHands[0].cursor, 30), { x: 20, z: 30 });
+assert.equal(ghostCursor({ ...publicHands[0].cursor, mode: 'ui' }, 15), null, 'a recruit-card pointer does not appear on the ground');
+assert.deepEqual(ghostCursor({ ...publicHands[0].cursor, x: 100, z: 110 }, 30), { x: 100, z: 110 }, 'stationary pointer follows its new ground projection after a keyboard camera jump');
+assert.equal(spectatorHands([{ ...hands[0], cursor: { ...hands[0].cursor, mode: 'ui' } }], { spectator: true })[0].cursor.mode, 'ui');
+let draws = [], spectator = false, world = false;
+const ctx = Object.fromEntries(['save', 'restore', 'setLineDash', 'strokeRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'fill', 'stroke', 'arc'].map(name => [name, (...args) => draws.push([name, ...args])]));
+const overlay = createAIOverlay({ spectator: () => spectator, world: () => world });
+spectator = true; overlay.draw(ctx, hands, { tick: 15 }); assert.equal(draws.length, 0, 'overlay starts disabled');
+overlay.setEnabled(true); spectator = false; overlay.draw(ctx, hands); assert.equal(draws.length, 0, 'local toggle cannot enable diagnostics for players');
+spectator = true; world = true; overlay.draw(ctx, hands); assert.equal(draws.length, 0);
+world = false; overlay.draw(ctx, hands, { tick: 15, scale: 2 });
+assert.ok(draws.some(([name]) => name === 'strokeRect'), 'spectator sees the virtual camera');
+assert.ok(draws.some(([name, x, z]) => name === 'moveTo' && x === 10 && z === 20), 'ghost cursor travels during its input');
+assert.equal(draws.filter(([name]) => name === 'arc').length, 1, 'fresh click marker is drawn');
+draws = []; overlay.draw(ctx, hands, { tick: 31 }); assert.equal(draws.filter(([name]) => name === 'arc').length, 0, 'old click marker expires');
+const corners = [{ x: 0, z: 0 }, { x: 90, z: 0 }, { x: 80, z: 70 }, { x: 10, z: 70 }];
+const projected = spectatorHands([{ ...hands[0], camera: { ...hands[0].camera, corners } }], { spectator: true });
+assert.deepEqual(projected[0].camera.corners, corners);
+draws = []; overlay.draw(ctx, projected, { tick: 31 });
+assert.equal(draws.some(([name]) => name === 'strokeRect'), false, 'perspective footprint uses its actual ground corners');
+assert.ok(draws.some(([name, x, z]) => name === 'lineTo' && x === 90 && z === 0));
+
+const beat = { camera: { x: 40, z: 50, w: 80, h: 60 }, cursor: { x: 20, z: 30 }, selected: 3 };
+assert.deepEqual(cleanHumanBeat({ ...beat, token: 'secret', units: ['hidden'] }), beat);
+assert.equal(cleanHumanBeat({ ...beat, camera: { ...beat.camera, w: Infinity } }), null);
+assert.equal(cleanHumanBeat({ ...beat, cursor: { x: Infinity, z: 20 } }).cursor, null);
+const sent = [];
+const client = createHumanInputClient({ state: () => beat, send: message => { sent.push(message); return true; } });
+client.frame(1); client.input('click'); assert.equal(sent.length, 0, 'client recorder starts disabled');
+client.setEnabled(true); client.frame(0.05); assert.equal(sent.length, 0);
+client.frame(0.05); client.input('click', { x: 2, z: 4 });
+assert.deepEqual(sent.map(message => message.kind), ['beat', 'click']);
+client.input('token'); assert.equal(sent.length, 2, 'client cannot send arbitrary metadata types');
+client.setEnabled(false); client.frame(1); assert.equal(sent.length, 2);
+assert.deepEqual(humanCommandTarget({ t: 'move', orders: [[1, 10, 20], [2, 30, 40]] }), { x: 20, z: 30 });
+
+const dir = await mkdtemp(join(tmpdir(), 'ww2-human-input-'));
+const context = { room: 'test-room', matchId: 1, slot: 0, tick: 1 };
+try {
+  assert.equal(await createLocalHumanRecorder({ dir: join(dir, 'disabled') }), null);
+  assert.deepEqual(await readdir(dir), [], 'disabled recorder does no filesystem work');
+  const recorder = await createLocalHumanRecorder({ enabled: true, dir, maxBytes: 4096, maxFiles: 1 });
+  assert.equal(recorder.command(context, { t: 'name', name: 'personal' }), false, 'non-game messages are excluded');
+  assert.equal(recorder.input(context, { kind: 'beat', ...beat, token: 'private', units: ['hidden'] }), true);
+  assert.equal(recorder.input(context, { kind: 'beat', ...beat }), false, 'camera beats are rate limited');
+  assert.equal(recorder.input({ ...context, tick: 2 }, { kind: 'click', ...beat, target: { x: 70, z: 80 } }), true);
+  assert.equal(recorder.command({ ...context, tick: 3 }, { t: 'buy', unit: 'rifle', from: 2, token: 'private', health: 'hidden' }), true);
+  await recorder.flush();
+  const [file] = await readdir(dir), lines = (await readFile(join(dir, file), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(lines.map(row => row.kind), ['beat', 'click', 'command']);
+  assert.deepEqual(lines[2].command, { t: 'buy', unit: 'rifle', from: 2 });
+  assert.equal(lines[2].observed.physicalInputs, false, 'command counts do not claim physical APM');
+  assert.equal(lines[2].observed.reaction, false);
+  assert.equal(lines[2].latency, null, 'reaction time stays unknown');
+  assert.equal(JSON.stringify(lines).includes('private'), false);
+  assert.equal(JSON.stringify(lines).includes('hidden'), false);
+  assert.equal(recorder.command({ ...context, matchId: 2 }, { t: 'buy', unit: 'rifle' }), false, 'file count is capped');
+  for (let tick = 4; tick < 40; tick++) recorder.command({ ...context, tick }, { t: 'buy', unit: 'rifle' });
+  await recorder.flush();
+  assert.ok((await stat(join(dir, file))).size <= 4096);
+  const restarted = await createLocalHumanRecorder({ enabled: true, dir, maxBytes: 4096, maxFiles: 1 });
+  assert.equal(restarted.command({ ...context, matchId: 2 }, { t: 'buy', unit: 'rifle' }), false, 'restart cannot exceed the local file cap');
+  for (let tick = 40; tick < 50; tick++) restarted.command({ ...context, tick }, { t: 'buy', unit: 'rifle' });
+  await restarted.flush();
+  assert.ok((await stat(join(dir, file))).size <= 4096, 'restart cannot grow existing file past cap');
+  assert.ok(recorder.stats().dropped > 0);
+  const queue = await createLocalHumanRecorder({ enabled: true, maxQueued: 1, writeLine: async () => {} });
+  assert.equal(queue.command(context, { t: 'buy', unit: 'rifle' }), true);
+  assert.equal(queue.command({ ...context, tick: 2 }, { t: 'buy', unit: 'rifle' }), false, 'pending writes are bounded');
+  await queue.flush(); assert.equal(queue.stats().queued, 0);
+} finally { await rm(dir, { recursive: true, force: true }); }
+console.log('Human input opt-in, local log bounds, metadata privacy and spectator overlay checks passed');

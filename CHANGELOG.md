@@ -5,6 +5,15 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Reduced first movement-command work by calculating the remembered terrain wall mask directly, preserving the same routes and fog information.
+
+- AI simulations now preserve combat alerts between snapshot deliveries and clear old events afterward, keeping long runs bounded and counting hits and losses once.
+- Enemy seat commanders now inspect one camera, remember older sightings, switch attention and issue timed selections and clicks. Difficulty changes input speed and judgement with equal information and economy. Added an opt-in spectator input overlay and local human recording for calibration. Horde Waves keep their scripted director.
+- Fixed army purchase thresholds counting only troops inside the AI camera, parked attack planes without missions, repeated rejected Engineer jobs, and Soviet infantry composition counting rifles but ignoring Conscripts. Timing, faction balance and performance measurements are being verified for this slice.
+- Squads keep their unfinished orders instead of reversing direction every planning cycle. Stable strength estimates, stalled-ability backoff and interruptible input sequences make mistakes recoverable. Fixed AI snapshot filtering writing into the live fog caches.
+- Fixed the Classic balance runner stopping at 20 minutes, before its 25-minute Sudden Death. Both old and new AI measurements now allow the game to end normally.
+- Fixed repair crews abandoning accepted jobs and crater repairs stalling on an unreachable camera adjustment. Parked aircraft use the air panel, expansion and idle visits order their intended troops, and every skill keeps unfinished marches for 12 seconds with 30-second protection against reversing between objectives. The AI uses the player's actual 60 m starting camera distance.
+
 ### 2026-10-04: Vehicle slopes and terrain workshop (`479b1f6`)
 
 - Tanks and other ground vehicles pitch uphill and downhill and lean across slopes instead of staying almost
