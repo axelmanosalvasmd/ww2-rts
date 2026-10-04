@@ -1254,11 +1254,27 @@ turrets and muzzle mounts follow both.
 The simulation position, speed, routing, damage and selection markers retain their existing rules.
 Hidden or off-screen vehicles skip terrain sampling and evaluate the current pose when they return.
 
+Native tank wheel and belt animation (2026-10-04): authored road wheels, idlers, sprockets and return rollers carry axle
+centers and radii through the existing hull bake. Signed root travel includes ground height changes; heading
+changes give each side its own travel distance. Paired discs share their track's steering distance. Rotation
+occurs around each local z axle before terrain and suspension transforms, so reversing, pivot turns, stopping
+and hills keep coherent wheel motion. Hidden returns,
+teleports and paused seeks reset the displacement baseline without inventing travel. Each hull retains one draw
+and shares its static geometry and textured material, with two private motion values used by color and shadow
+passes. Visible links and cleats circulate around each native track loop using a shared sampled path table.
+Previously omitted bottom details complete the belt for circulation. The original vertices still define the terrain
+support footprint, and moving details stay above the native floor. Removing the hull frees only its private buffer
+and binding.
+Coverage includes Stuart, Panzer II, T-70, Sherman, Panzer IV, T-34, Tiger, Churchill, Cromwell, M10, StuG, SU-85,
+Calliope, Wirbelwind and ZSU-37, including existing faction model fallbacks. Suspension fittings and
+spare wheels remain fixed. Wheeled and halftrack families are outside this tank animation change.
+
 The [terrain workshop](docs/terrain-workshop.md) renders the game's models and relief through the same animation
 pipeline on seven authored scenes: climb and descent, cross slope, rounded hill, ramp beside a cliff, crest,
-trench and flat ground,
-plus a full generated World Conquest map with seed 20261003. It offers
-scrubbing, single-frame playback, faction and vehicle choices, three camera views and a level-hull comparison.
+trench and flat ground, plus a full generated World Conquest map with seed 20261003. It offers
+scrubbing, single-frame playback, forward/reverse/stopped motion, faction and vehicle choices, four camera views
+including close side inspection, and a level-hull comparison. Wheel telemetry reports native axle centers,
+radii and current rotation; belt telemetry reports signed travel and a circulating vertex.
 Its scripted paths test presentation, while the movement lab remains the authority for navigation and commands.
 Support samples approximate a rigid contact footprint; they do not add airborne vehicle physics or rollover.
 The original straight ramp and cross-slope fixtures remain unchanged for before/after comparisons. Broad
