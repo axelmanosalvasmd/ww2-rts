@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-04: Tank wheel and track animation (`5c0fb8e`)
+
 - Tank road wheels, idlers, sprockets, return rollers and visible track belts now move with actual vehicle travel,
   reverse when backing up and move at different speeds on each side while steering. They stop with the tank
   and follow the hull on hills. Covers native light, medium, heavy and tank destroyer models for all four factions,
