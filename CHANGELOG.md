@@ -5,6 +5,8 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+### 2026-10-04: Natural terrain slopes (`7d67670`)
+
 - Hills blend adjoining ramps instead of flattening into a shelf at each height level. Removed repeated dark
   contour and elevation bands from ordinary slopes, while keeping real cliff walls and their rock detail.
   Fixed cliff faces disappearing from their lower side when the next cell was higher.
