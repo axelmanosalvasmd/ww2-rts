@@ -5,6 +5,11 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Fixed naval asset checks rejecting unchanged model sources on Windows because of line endings. Export and
+  validation now use the same source fingerprints on Windows and Unix; real source edits still invalidate models.
+
+### 2026-10-05: Detailed rock cliffs, Thermopylae fixes and recruit tabs (`063c1dc`)
+
 - Recruit panel (Conquest, Assault, Annihilation, Horde): unit cards now show each unit's flat silhouette symbol
   instead of a small 3D render, so the types are easy to tell apart. The groups (Infantry, Support weapons,
   Vehicles, Aircraft, Naval) are now a row of tabs: click one to show only its units, click it again to close it.
@@ -24,7 +29,6 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   now follow the reshaped cliff triangles, while neighbouring plateau centres keep their original heights.
   Mixed tank and Churchill traffic can still jam during overtaking on the narrow road; that remains for a later fix.
   Fixed Windows file paths in the movement and localization regression runners so their checks run on Windows too.
-  Naval asset fingerprints now treat Windows and Unix line endings equally, preventing false stale-asset errors.
   Cliff-adjacent terrain centres stay at their simulation height even beside shell scars. Camera and map checks
   now follow the ragged cliff backing and track decorative rock costs separately from the ground-mesh budget.
 
