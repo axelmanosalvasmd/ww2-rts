@@ -55,6 +55,7 @@ const settledRubble = (g, cells, message) => {
     'test-engine-ai-manual-response-v3.js', 'test-engine-ai-manual-response-isolation.js', 'test-ai-lab.js', 'test-engine-ai-ap-vehicles.js', 'test-engine-ai-stale-stance.js', 'test-engine-ai-production-attention.js', 'test-engine-ai-cover-opportunity.js', 'test-engine-ai-stationary-armor-hit.js', 'test-engine-ai-automatic-armor-hit.js',
     'test-client-terrain-transition.mjs', 'test-engine-ai-point-fog.js', 'test-ai-km-boundary.mjs',
     'test-engine-ai-diagonal-pan.js', 'test-engine-ai-pan-release.js', 'test-engine-ai-selection-reuse.js', 'test-engine-ai-idle-guard-attention.js', 'test-engine-ai-fortification-cover.js', 'test-engine-ai-purpose.js', 'test-engine-ai-public-alert-v2.js',
+    'test-engine-ai-risk-escalation.js', 'test-engine-ai-human-slips.js', 'test-engine-ai-ap-readiness.js',
     'test-engine-debris.js', 'test-engine-traffic-privacy.js', 'test-engine-horde-queue.js']) {
     execFileSync(process.execPath, [file], { cwd: import.meta.dirname, stdio: 'inherit', timeout: 180000 });
   }

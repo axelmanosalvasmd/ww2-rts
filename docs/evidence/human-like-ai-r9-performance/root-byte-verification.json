@@ -1,0 +1,12 @@
+{
+  "atUTC": "2026-10-05T03:21:40.847984+00:00",
+  "scope": "Root independently re-read every actual physical original and each durable archive payload. Copy integrity only, no numerical gate approval.",
+  "passes": true,
+  "archive": "r9-four-row-performance-failure.tar.gz",
+  "archiveSHA256": "004fa5518b9b25960e9a8f9d348beed43a21f0247cce1cc517b339880d74d75a",
+  "archiveBytes": 4570923,
+  "members": 251,
+  "originalPhysicalFiles": 248,
+  "originalPhysicalBytes": 9544121,
+  "manifestSHA256": "a53c352f2a4f069ab1063fdc9877c2db770a6b536bed592c142aec99a6132a3f"
+}

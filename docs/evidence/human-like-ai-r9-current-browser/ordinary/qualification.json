@@ -1,0 +1,47 @@
+{
+  "status": "qualified partial visual proof",
+  "sourceEqual": true,
+  "sourceHashes": {
+    "shared/ai-commander.js": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225",
+    "shared/ai-attention.js": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090",
+    "shared/ai-hands.js": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+  },
+  "setup": "Native default Three Crossroads Conquest Standard. Three Normal AI players (USA, Germany, USSR). Spectator UI. Low graphics/onboarding preferences set before /play. Supported aiOverlay=1 URL opt-in; current source has no overlay checkbox.",
+  "durationSeconds": 40.5,
+  "encodedFrames": 243,
+  "capturedBrowserFrames": 27,
+  "errors": [],
+  "console": [],
+  "cleanup": {
+    "pid": 2138876,
+    "exit": 0,
+    "cleanupAck": true
+  },
+  "visualInspection": [
+    "lobby.png confirms ordinary native default map and three Normal AI seats",
+    "contact sheet and extracted frames 30,38,39.9 inspected",
+    "native 3D terrain, building markers and small blue unit markers visible late in clip",
+    "minimap shows moving colored dashed AI camera outlines",
+    "first roughly 26 seconds are native map/table presentation; large native scores panel obscures middle of main view"
+  ],
+  "unproven": [
+    "No legible close view of units or fight",
+    "No by-eye proof of sequential opening groups, sequential orders, floating money, or late danger response",
+    "No private multiplayer disclosure or performance acceptance claim"
+  ],
+  "artifacts": [
+    "capture/native-normal.mp4",
+    "capture/native-normal.contact-sheet.png",
+    "capture/lobby.png",
+    "capture/after-capture.png",
+    "capture/frame-30.png",
+    "capture/frame-38.png",
+    "capture/frame-39.9.png"
+  ],
+  "filesSha256": {
+    "capture/native-normal.mp4": "533dfb6cd04ac975beb481f6957d1a45a05ded4699b0709d8978e953dc6b4bd4",
+    "capture/native-normal.contact-sheet.png": "c0fa17e85cc9dc81f56f210f5011ef145aa32ae44860f0f3464a98dab8b8cb04",
+    "capture/lobby.png": "d98d8a98a9c784a3fb19b76e342cf1f7025f9f06a7a92e7f4d213d0b35ac5e45",
+    "capture/after-capture.png": "f9d45e7849947412df51770c84aa93b86f9d545a5240750cbb9e4e2555a98a04"
+  }
+}

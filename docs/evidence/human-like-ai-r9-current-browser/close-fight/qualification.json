@@ -1,0 +1,55 @@
+{
+  "status": "inspected actual Normal AI fight screenshots; video capture failed to finalize",
+  "setup": "Native default Three Crossroads, Conquest, Standard, three Normal AI seats USA/Germany/USSR, spectator native follow, aiOverlay=1 URL, low graphics and controls-seen preferences",
+  "nativeGestures": [
+    "1280x720 viewport",
+    "mouse move 640,530 followed by native left press/release to skip intro",
+    "Shift+Space native spectator Follow Rifle Squad",
+    "three native wheel -100 inputs"
+  ],
+  "sourceEqual": true,
+  "sourceHashes": {
+    "shared/ai-commander.js": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225",
+    "shared/ai-attention.js": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090",
+    "shared/ai-hands.js": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+  },
+  "failure": "Failure: Native server ended during capture",
+  "ownedCleanup": {
+    "pid": 2141473,
+    "exit": 0,
+    "cleanupAck": true
+  },
+  "serverDeadlineTriggered": true,
+  "videoValid": false,
+  "videoFailure": "MP4 moov atom not found because record stop was not reached before owned server deadline triggered driver abort",
+  "browserErrors": "not retrieved after abort",
+  "browserConsole": "not retrieved after abort",
+  "inspectedArtifacts": [
+    "capture/clear-start.png",
+    "capture/native-normal.contact-sheet.png",
+    "capture/sheet-73.918.png",
+    "capture/sheet-84.626.png",
+    "capture/sheet-95.231.png"
+  ],
+  "visualFacts": [
+    "native following rifle squad shown",
+    "actual red and blue rifle models visible around central capture point",
+    "73.918 second contact-sheet tile shows red rifle markers and visible fire/explosion left of blue squad",
+    "later tiles show continuing infantry and smoke",
+    "minimap shows colored AI camera outlines"
+  ],
+  "cropProvenance": "640x360 tile crops from native 2600x5104 contact sheet, no pixel edits or added overlays; crop name is contact-sheet timestamp",
+  "unproven": [
+    "fine sequential orders and opening control-group setup",
+    "floating resources and precise late-response timing",
+    "completed60second playable video",
+    "empty console/errors for this aborted run"
+  ],
+  "sha256": {
+    "capture/clear-start.png": "483fee65710c2dc0b8519435258f49187119a63741f361ab4573411b2fe2a35c",
+    "capture/native-normal.contact-sheet.png": "3bd721f983d7b9daadc70632a5279fb42f7d35bd6f17e0c982d0dbecf0912d4e",
+    "capture/sheet-73.918.png": "b136b6a16cb43186030f5d39783794500758c5252f7bba4752dec9e840bf3a60",
+    "capture/sheet-84.626.png": "9adce9b4da059df43bb480b94f1ba98615648a753636f6ea3f3c5c8be389c4cb",
+    "capture/sheet-95.231.png": "3081fcfda17a90508c365a964c67227e8e9657303e7be5d35a2ced91866150fe"
+  }
+}

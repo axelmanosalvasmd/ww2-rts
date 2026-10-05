@@ -18,6 +18,17 @@ const anchorOf = cmd => cmd.orders?.length ? {
 } : Number.isFinite(cmd.x) ? cmd : null;
 const eventRank = event => event.kind === 'base' ? 110 : event.kind === 'screen-damage' ? 103
   : event.kind === 'screen-contact' ? 92 : event.kind === 'air' || event.kind === 'attack' || event.kind === 'unitLost' ? 80 : 0;
+// A new watched risk crossing can supersede the same squad's older escape approach.
+function escalatesActiveDamage(event, hands, view) {
+  const job = hands.active?.job;
+  if (event.kind !== 'screen-damage' || event.source !== 'screen' || !event.onScreen
+    || event.observedDanger?.retreatRisk !== true || !movement(job?.command ?? {})
+    || !job.ids.includes(event.unitId)) return false;
+  const previous = view.events?.find(old => old.id === job.context.event?.id);
+  return previous?.kind === 'screen-damage' && previous.source === 'screen'
+    && previous.unitId === event.unitId && previous.tick < event.tick
+    && previous.observedDanger?.retreatRisk === false;
+}
 function blockedPlacement(cmd, camera, view) {
   if (cmd.t === 'garrison' && Number.isFinite(cmd.x)) return onScreen(cmd, camera, view) ? null : cmd;
   if (!['dig', 'entrench', 'build', 'support', 'ability', 'fireat'].includes(cmd.t) || !Number.isFinite(cmd.x)) return null;
@@ -250,7 +261,8 @@ export function runCommander(observation, slot, opts, mem, send, plan) {
   const workingPriority = hands.active?.job.context.priority ?? state.concern?.urgency ?? 0;
   const emergency = view.newEvents?.filter(event => !state.interruptEvents.has(event.id)
     && ['base', 'air', 'attack', 'screen-damage', 'screen-contact', 'unitLost'].includes(event.kind))
-    .filter(event => eventRank(event) > workingPriority
+    .filter(event => (eventRank(event) > workingPriority
+      || eventRank(event) === workingPriority && escalatesActiveDamage(event, hands, view))
       && (event.source !== 'screen' || screenEventNeedsAttention(event)))
     .sort((a, b) => eventRank(b) - eventRank(a))[0];
   if (emergency) {

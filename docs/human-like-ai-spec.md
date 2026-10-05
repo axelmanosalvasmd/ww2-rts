@@ -4,6 +4,12 @@ Started 2026-10-04 for a GPT-6.1 Sol goal thread. Tick a box only after you have
 next to it (command and output, number, `file:line`, screenshot path). If an item turns out to be wrong for this game,
 do not silently skip it: strike it through and write why.
 
+Release scope changed on 2026-10-05. Julio requested filing and babysitting the core PR, then explicitly answered
+"Move the remaining targets to a follow-up issue." The original reaction/APM/opening, balance and performance
+targets are retained in [follow-up #48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). Their numerical
+acceptance boxes below are struck through with that reason, not ticked as passed. Core correctness, fairness,
+the full test suite, independent review, evidence and a verified PR merge remain required.
+
 ## Why
 
 Julio's complaint, translated from Spanish: the enemy AI runs a script. It reads the game and never has to think the
@@ -158,7 +164,7 @@ same loop, with human limits at each stage.
       at its base and the map for a few seconds, then gives its first orders one group at a time.
       Evidence: `node test-engine-ai-human.js` reports first commands at 4.5/3.4/2.75 seconds, with timed physical
       selections. `node test-engine-ai-hands.js` checks complete opening sequences and total reaction budgets.
-- [ ] Bounded rationality: score the options and choose with seeded noise (for example softmax) whose temperature
+- [x] Bounded rationality: score the options and choose with seeded noise (for example softmax) whose temperature
       depends on difficulty, so Easy makes plausible mistakes. Never choose what a person would read as a bug: a lone
       unit walking into the enemy base, units turning back and forth, an order given and cancelled again and again.
       Round 6's accepted-formation repeated-click defect is corrected with actual destination receipts. One exact
@@ -178,6 +184,12 @@ same loop, with human limits at each stage.
       pre-hit equality and every later response and censor; the portable driver supplies six native pairs.
       `docs/evidence/human-like-ai-automatic-armor/` independently verifies all 35 payload files against their
       original bytes, including both timing sets. These episodes are diagnostic, not population acceptance.
+      Current-source component verification: `shared/ai-persona.js:59` uses seeded option temperatures 28/14/5
+      with skill-dependent commitment. Root runs the complete persona, coherence and hesitation modules after
+      the R9 changes; all three exit zero with relevant source byte-identical before/after. The independent
+      GPT-6-Sol round 9 review finds no new demonstrated core decision defect and verifies prior formation,
+      guard and paid-input corrections. Native logs, exact source bindings and its qualified verdict are in
+      `docs/evidence/human-like-ai-review-round9-codex/`. Population calibration remains deferred to #48.
 - [x] A persona per match from the seeded RNG (for example aggressive, defensive, armour-first, infantry mass,
       support-heavy), with build-order families and variations. It keeps its persona but adapts to what it sees.
       Evidence: `node test-engine-ai-persona.js` passes persona persistence through new visits, loss and score
@@ -328,9 +340,9 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       `node tools/ai-humanity.mjs --fit logs/human-input --out docs/local-ai-calibration.json`.
       This verifies fitting support, not real-person calibration; local human recordings remain future work.
 
-## Verification gates (all must pass)
+## Verification gates (core gates must pass; numerical gates deferred by Julio)
 
-- [x] `node test.js` passes, plus every `test-engine-ai*.js`, `test-world-observation.js` and any test that calls
+- [ ] `node test.js` passes, plus every `test-engine-ai*.js`, `test-world-observation.js` and any test that calls
       `think()`. List what you ran with the results. If an existing test encodes superhuman timing (for example it
       expects orders on the first look), change it to the human contract and say so in the PR. Never weaken an
       assertion only to make it pass. Keep a way to test the decision layer without the hands.
@@ -384,7 +396,16 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       113 valid checks. The complete log SHA256 is `ed166828b5133257272c384007c30fb65b183e7ac56fdee46479b7219c8b5fbb`.
       `docs/evidence/human-like-ai-r8-full-pass/` retains the protocol, actual exit and registration; Root independently
       matches all 142 archived originals against their physical bytes. This verifies the recorded source, with
-      subsequent runtime changes requiring renewed full verification.
+      subsequent runtime changes requiring renewed full verification. The next slice adds same-squad risk
+      escalation, ready-AP wakeup and three permanent lab fixtures. Its fresh 102-child full pass remains required.
+      That candidate's R9 full run fails in the nested corpse adapter timeout; its minimal wrapper correction and
+      native four-module pass are retained in `docs/evidence/human-like-ai-r9-full-wrapper/`. The next R10 full
+      run exits one naturally at 03:54:10 UTC on 2026-10-05, in the unchanged World teams child's 180-second limit.
+      All 684 runtime files match across ten valid checks; an actual 162.498-second observation gap is retained.
+      Root independently compares all 23 archived originals in `docs/evidence/human-like-ai-r10-full-failure/`.
+      Random World seeds and missing phase measurements prevent attributing the timeout to a specific cause.
+      The later session restriction independently produces localhost `EPERM` and blocks the required reproduction.
+      No final 102-child full pass is claimed and no gameplay assertion or child deadline is waived.
 - [x] The fog-fair proofs pass, plus the new perception-tier proofs.
       Evidence: the unchanged V14 full-run source passed 4,489 paired fog turns, including 30,213 hidden-unit,
       9,566 visible-unit, 7,353 sub-precision, 2,205 secret-depot and 237,654 hidden-mine perturbations.
@@ -399,8 +420,11 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       `test-engine-ai-perception.js`: opening, dispatch locality, real selection, one-command-per-tick, rolling
       caps, 0.2-second causal floor, seeded timelines and takeover pause. Its 120-second human fixtures report
       first commands 4.5/3.4/2.75 s. Average APM and population reaction medians remain open campaign gates.
-- [ ] `tools/ai-humanity.mjs` numbers fall inside the table for each difficulty over at least 20 seeds per difficulty
+- [ ] ~~`tools/ai-humanity.mjs` numbers fall inside the table for each difficulty~~ over at least 20 seeds per difficulty
       on Conquest and 10 each on Classic and World Conquest. The numbers go into DESIGN.md.
+      Deferred by Julio's explicit 2026-10-05 scope decision to
+      [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). Original timing limits, complete populations,
+      missed responses and all failed historical evidence remain unchanged. No numerical pass is claimed.
       Historical V14 evidence: all eight identifiable original required-screen medians fail; World Easy is not evaluable.
       Physical APM fails five groups and first-order bounds fail five groups. Peak caps pass all nine groups.
       `docs/human-like-ai-verification-v14.md` retains all required/censored endpoints and unchanged authored bands.
@@ -444,8 +468,10 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       and censors remain recorded. Peak caps, first-order bands, floor and locality pass. Public-alert-v1
       numeric medians fit their bands but unsupported causal inputs leave coverage unknown.
       DESIGN.md records the exact counts and unchanged limits; the round 8 source still needs acceptance.
-- [ ] Opening variety: over 20 seeds per faction, at least 3 distinct openings and none in more than half the
-      matches.
+- [ ] ~~Opening variety: over 20 seeds per faction, at least 3 distinct openings and none in more than half the
+      matches.~~
+      Deferred with the remaining numerical targets by Julio on 2026-10-05 to
+      [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48), retaining the original twenty-seed requirement.
       Historical evidence only: the earlier Conquest campaign, 20 seeds per difficulty, checkpoint `223d17f`: USA 7/4/5/4,
       Germany 9/3/5/3, USSR 9/5/3/3 across infantry, anti-tank, mortar and machine-gun first accepted purchases.
       Each has four meaningful families and maximum 45%; pointer jitter and route coordinates are excluded.
@@ -456,11 +482,14 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       Historical V15 Conquest passes all nine faction/difficulty groups: 5-12 accepted-family sequences, maximum
       concentration 20-45%, with every original seed retained. Later camera and runtime corrections still need
       final-source verification. `docs/evidence/human-like-ai-v15/root-summary.json` retains exact per-group counts.
-- [ ] Balance with `tools/ai-balance.mjs`, same seeds before and after (Conquest 60, Classic 30, as in DESIGN.md):
+- [ ] ~~Balance with `tools/ai-balance.mjs`, same seeds before and after (Conquest 60, Classic 30, as in DESIGN.md):~~
       each faction wins 25 to 42%, matches still finish, and any change in median length is explained. Head to head
       against the old commander (kept reachable only for this measurement, for example a frozen copy under `tools/`):
       new Hard beats old Easy at least 70% of the time; report new Hard against old Normal and old Hard. Tune the AI,
       not unit stats.
+      Deferred by Julio's explicit 2026-10-05 decision to
+      [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). All seeds, faction limits and head-to-head
+      requirements remain unchanged. The failed faction shares below are retained, not accepted.
       Historical V15 finishes all 150 matches without timeout. Conquest faction shares are 30.0/41.7/28.3%,
       Classic decisive shares 26.9/38.5/34.6%; new Hard wins 16/20, 17/20 and 10/20 against old Easy/Normal/Hard.
       Root independently reduces all rows and verifies every compact-bundle member against its source.
@@ -470,8 +499,14 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       Conquest wins are 23/22/15. Classic decisive shares are 26.92/42.31/30.77%, so Germany fails the exact
       42% ceiling. Hard beats old Easy/Normal/Hard 15/20, 17/20 and 13/20. Root's independent full-row reduction
       and byte-verified artifacts remain in `docs/evidence/human-like-ai-v16-balance/`. Current-source balance stays open.
-- [ ] Performance: `tools/bench-engine.mjs` AI phase p95 and maximum no worse than master by more than 10% or 2 ms,
+      Historical V21 completes all 150 original rows, four draws and no timeout. Conquest 25/22/13 fails USSR's
+      25% floor; Classic 11/8/7 over 26 decisive results fails USA's exact 42% ceiling. Hard beats old
+      Easy/Normal/Hard 15/20, 16/20 and 14/20. Root verifies all original rows, seeds, durations, logs and 59
+      physical archive members in `docs/evidence/human-like-ai-v21-balance/`. Current-source balance remains open.
+- [ ] ~~Performance: `tools/bench-engine.mjs` AI phase p95 and maximum no worse than master by more than 10% or 2 ms,~~
       whichever is larger, and no new ticks over the 40 ms budget.
+      Deferred by Julio's explicit 2026-10-05 decision to
+      [#48](https://github.com/axelmanosalvasmd/ww2-rts/issues/48). Original limits and every failed fixed row remain.
       V15 fails: exact p95 9.501/10.876 ms passes, counts p95 9.142/11.749 ms exceeds the 2 ms allowance,
       and raw timed ticks above 40 ms rise from four to five. All four fixed rows remain in
       `docs/human-like-ai-verification-v15.md`; the later equivalent fog-loop change is not a passing benchmark.
@@ -493,10 +528,36 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       40 ms increase from two to four, so overall performance still fails. Root independently byte-verifies
       all 78 payload originals in `docs/evidence/human-like-ai-r8-performance/`, including the initial preflight
       refusal and actual pause/resume journal. The later inspection fix still requires its own final-source gate.
-- [ ] Browser check: start the server, play or spectate a real match against Normal AIs, with the overlay on. Save
+      The fresh fixed R9 four-row benchmark also fails overall: exact p95 8.789/9.925 ms and maximum
+      48.911/46.647 ms pass; counted p95 9.279/10.933 ms passes, while counted maximum 44.992/50.765 ms
+      exceeds its 49.4912 ms limit by 1.2738 ms. Counted timed ticks over 40 ms fall from three to one.
+      Root independently byte-verifies all 248 physical originals in `docs/evidence/human-like-ai-r9-performance/`.
+      Source, quiet-workload and resume checks pass. Individual slow-tick samples were not recorded, so no
+      allocation or scheduling cause is attributed to this maximum.
+- [x] Browser check: start the server, play or spectate a real match against Normal AIs, with the overlay on. Save
       screenshots or a short recording for the PR and check the console for errors. Confirm by eye: at the start the
       AI looks first, then moves groups one after another; its camera goes to fights; orders appear one at a time; it
       sometimes floats money or reacts late.
+      Root inspects the actual R9 sandbox screenshots and two native recording frames in
+      `/tmp/human-ai-pr-lab-proof/`: six simulated seconds show five physical inputs and two native orders;
+      sixty seconds show nineteen inputs and five orders. Actual console/errors are empty and source stays unchanged.
+      This verifies the authored 2D diagnostic flow, not real-time 3D gameplay. The historical Normal-AI overlay
+      combat recording in `docs/evidence/human-like-ai-browser-current/` predates the latest AI refinements.
+      That earlier R9 3D attempt has only seven captured frames and fails its final screenshot; it is not accepted.
+      Root subsequently inspects current-source ordinary Three Crossroads Conquest screenshots with three Normal
+      AI seats: actual red/blue infantry combat, an explosion, native spectator follow and camera outlines on the
+      minimap. Both inspected screenshots are attached to
+      [PR #49](https://github.com/axelmanosalvasmd/ww2-rts/pull/49#issuecomment-5988293784).
+      A separate ordinary browser capture on the same commander, attention and hands hashes retrieves the
+      unwiped errors and console arrays; both are empty. Exact CLI replies, source hashes and failed later capture
+      qualifications are byte-verified in `docs/evidence/human-like-ai-r9-current-browser/`.
+      Opening selection and sequential orders have the attached native sandbox UI recording and paid input
+      traces; `test-engine-ai-human-slips.js` verifies unnoticed idle troops, about 60 MP accumulating during combat
+      and paid flank responses after 4.60/2.75/1.05 seconds. These are authored native cases, not population rates.
+      Sparse spectator footage does not establish exact input cadence or private resource totals. The close
+      capture's video does not finalize, and its bounded shorter correction times out at the first snapshot;
+      neither is presented as a playable recording. Current inspected screenshots and the sandbox recording
+      supply the PR proof; numerical calibration stays in #48. All new media stays outside the checkout.
 - [ ] Independent review: give a reviewer that did not build it (another model through T3 `delegate_task` if
       available, otherwise a fresh Codex session) the input timelines and the recordings, and ask it to list every
       "bot tell". Fix what is fair to fix, review once more, and record both verdicts in the PR.
@@ -505,6 +566,12 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
       is preserved in `docs/evidence/human-like-ai-review-round6/human-ai-review-round6.md`. Its population classifications
       are diagnostic; original baseline-2 gates remain not evaluable, V13's historical full pass remains valid,
       and World completed after the review's snapshot. Final-source review and remaining corrections are open.
+      Julio subsequently requested Codex agents only. GPT-6-Sol round 9 reads the original brief, prior findings
+      and responses, current runtime and native input evidence. It finds no new demonstrated core gameplay,
+      fairness or physical-command defect, while retaining the full-suite and current-source browser proof limits.
+      Root verifies its exact source hashes and byte-identical report in
+      `docs/evidence/human-like-ai-review-round9-codex/`. Earlier failed verdicts and this conditional verdict still
+      need publication in the PR, so this box remains open. The interrupted Claude round 9 attempt supplies no verdict.
 - [ ] Docs: a new DESIGN.md section for the human-like commander (model, numbers, balance, what is left for later),
       the new terms in the CONTEXT.md glossary in its existing format, and CHANGELOG.md "Unreleased" bullets in the
       same commits as the changes. No em dashes in anything you write.
@@ -513,9 +580,16 @@ more than one command per tick. Difficulty changes skill (speed, attention, judg
 
 - [ ] Commit in working slices on this branch, each with its CHANGELOG bullet. Stage specific files, and check
       `git status` for changes that are not yours (other sessions may share this repo).
-- [ ] `git fetch origin`; if master moved, merge it in, resolve conflicts and rerun the tests.
-- [ ] Open a PR to `master` with the before/after metrics, overlay screenshots and balance tables, and link it to the
+- [x] `git fetch origin`; if master moved, merge it in, resolve conflicts and rerun the tests.
+      Evidence: Root fetches on 2026-10-05 at 04:50:51 UTC; `origin/master` remains
+      `a3564a6a7bcd733900953b57854ba2d5bd885147`, already an ancestor of this branch. No new base merge is needed.
+      Master will be checked again before the pinned merge.
+- [x] Open a PR to `master` with the before/after metrics, overlay screenshots and balance tables, and link it to the
       thread.
+      Evidence: ready [PR #49](https://github.com/axelmanosalvasmd/ww2-rts/pull/49) targets `master`, records the
+      original maximum nine commands per seat/tick versus the enforced maximum one, source-qualified historical
+      balance and timing numbers, and #48. `gh --attach` uploads inspected screenshots and the sandbox recording.
+      T3 `link_pull_request` succeeds with `alreadyLinked: false`; the subsequent proof comment adds current combat.
 - [ ] Merge it with the repo's flow once every gate above passes: `gh pr merge <n> --squash --match-head-commit
       <full 40-character sha>`, run from outside the checkout and without `--delete-branch`. There are no review bots.
 - [ ] ~~Final report to Julio in Spanish~~: what changed for a player, the key numbers, and what is left for later.

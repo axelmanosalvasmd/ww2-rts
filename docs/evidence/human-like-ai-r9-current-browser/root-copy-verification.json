@@ -1,0 +1,159 @@
+{
+  "verifiedAtUTC": "2026-10-05T04:48:23.499345+00:00",
+  "files": [
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/README.md",
+      "file": "ordinary/README.md",
+      "bytes": 1273,
+      "sha256": "6a52413c576c0a2132ca47cf23ca88de42e20c16a3fe3eeb9ebf2f72332596b8"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/qualification.json",
+      "file": "ordinary/qualification.json",
+      "bytes": 2209,
+      "sha256": "8c4164d7de09c2421c95ee5099ea3a6ea0c8e057847c586c67e608f73322e900"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/result.json",
+      "file": "ordinary/capture/result.json",
+      "bytes": 275,
+      "sha256": "fdaa65dbd6193690ff9fcf5cc7f77f8a8a5e89df6dabc8e8be4c006cb937f170"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/source-before.json",
+      "file": "ordinary/capture/source-before.json",
+      "bytes": 40056,
+      "sha256": "29b263f7a6e2736f4349205e50c99ef9e5ca4c541f1e24f55be000de22db43c9"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/source-after.json",
+      "file": "ordinary/capture/source-after.json",
+      "bytes": 40056,
+      "sha256": "29b263f7a6e2736f4349205e50c99ef9e5ca4c541f1e24f55be000de22db43c9"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/command-24.json",
+      "file": "ordinary/capture/command-24.json",
+      "bytes": 408,
+      "sha256": "9ef2ed1ebad03f4d74b2aa01528b7ce5a9ec521ec4f8931aa7de2b5d8fc62fd1"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/command-25.json",
+      "file": "ordinary/capture/command-25.json",
+      "bytes": 409,
+      "sha256": "4e9447b9eb858c886987ea0299868bf6b263f6ec049ef21defcb05fa4fedc579"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/cli-24/stdout.log",
+      "file": "ordinary/capture/cli-24/stdout.log",
+      "bytes": 306,
+      "sha256": "4c6c1ab8a1432fd072d6b12ebfa0ad5cef0a8813d5ddf1d6a47b0542077154bd"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/cli-24/result.json",
+      "file": "ordinary/capture/cli-24/result.json",
+      "bytes": 435,
+      "sha256": "0b121bee5bbed04ace59bbffd3c59fb9a6d39b55f916d48785d6562f9b660bc0"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/cli-25/stdout.log",
+      "file": "ordinary/capture/cli-25/stdout.log",
+      "bytes": 308,
+      "sha256": "ab743808a421208701d58c343f30e6e01b1b98c5788ae4dc484c088772c68b75"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/cli-25/result.json",
+      "file": "ordinary/capture/cli-25/result.json",
+      "bytes": 436,
+      "sha256": "2ad80a29779ee63f17664e5ab4cf69ef3c2c604f62c85acb3cfbe210c8298b7c"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-proof/capture/actual-start.json",
+      "file": "ordinary/capture/actual-start.json",
+      "bytes": 219,
+      "sha256": "8bdf9f7657575a06af7338e084d77ad1e8e406a0d2f73029d2216ccf5b725459"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-close-proof/README.md",
+      "file": "close-fight/README.md",
+      "bytes": 1562,
+      "sha256": "cb721f79988223ee20bce64c63369560a05a8bee4519758b5a40889d094e1bfd"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-close-proof/qualification.json",
+      "file": "close-fight/qualification.json",
+      "bytes": 2749,
+      "sha256": "2cfbea7a730ef29d747b0090591a1d5ece6428582f564b39ea4a01205608f4a6"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-final-proof/README.md",
+      "file": "final-failed/README.md",
+      "bytes": 673,
+      "sha256": "0fa34f74cd1332f1ef4a9e2fc421c5b787c74b056d3ff0f0797b01fb7fc79ced"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-final-proof/qualification.json",
+      "file": "final-failed/qualification.json",
+      "bytes": 1205,
+      "sha256": "f62db39d26115387c93e865cdfaefa177169d1ffbf8fcbbb77b1f8d84e6b14f6"
+    },
+    {
+      "original": "/tmp/human-ai-pr-current-game-final-proof/capture/failure.json",
+      "file": "final-failed/capture/failure.json",
+      "bytes": 131,
+      "sha256": "b3114f32f52a0d6df1e8546f6c6ded51c7efb7f3539e1bc49f215c7d94199f39"
+    }
+  ],
+  "currentSourceHashes": {
+    "shared/ai-commander.js": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225",
+    "shared/ai-attention.js": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090",
+    "shared/ai-hands.js": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+  },
+  "ordinaryBrowserErrors": {
+    "success": true,
+    "data": {
+      "errors": [],
+      "lifecycle": {
+        "effectiveLaunch": {
+          "browserLaunched": true,
+          "engine": "chrome",
+          "launchHash": 5743057604695825614
+        },
+        "launched": false,
+        "relaunchedBrowser": false,
+        "restartedBackground": false,
+        "restoreStatus": "not_configured",
+        "reused": true,
+        "saveStatus": "not_attempted"
+      }
+    },
+    "error": null
+  },
+  "ordinaryBrowserConsole": {
+    "success": true,
+    "data": {
+      "lifecycle": {
+        "effectiveLaunch": {
+          "browserLaunched": true,
+          "engine": "chrome",
+          "launchHash": 5743057604695825614
+        },
+        "launched": false,
+        "relaunchedBrowser": false,
+        "restartedBackground": false,
+        "restoreStatus": "not_configured",
+        "reused": true,
+        "saveStatus": "not_attempted"
+      },
+      "messages": []
+    },
+    "error": null
+  },
+  "rootViewed": [
+    "capture/clear-start.png",
+    "capture/sheet-73.918.png"
+  ],
+  "publishedProof": "https://github.com/axelmanosalvasmd/ww2-rts/pull/49#issuecomment-5988293784",
+  "mediaLocation": "outside checkout and GitHub attachments; no new media committed",
+  "qualification": "Actual Normal3D fight screenshot and same-source ordinary-browser errors/console verified. Sparse 3D recording cannot establish precise opening/order cadence or private resource totals. Timed native sequences and human slips have separate sandbox and fixture evidence. The two later attempts preserve their failed finalization and timeout."
+}

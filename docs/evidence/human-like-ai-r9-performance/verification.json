@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "r9-four-row-performance-failure.tar.gz",
+  "archiveBytes": 4570923,
+  "archiveSHA256": "004fa5518b9b25960e9a8f9d348beed43a21f0247cce1cc517b339880d74d75a",
+  "members": 251,
+  "originals": 248,
+  "originalCopiedBytes": 9544121,
+  "payloadBytes": 9645312,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "a53c352f2a4f069ab1063fdc9877c2db770a6b536bed592c142aec99a6132a3f"
+}

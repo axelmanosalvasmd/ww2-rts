@@ -39,6 +39,16 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
   Fixed cliff faces disappearing when viewed from some directions. Convoys are checked through both mountain-road
   corners in both directions. Existing matches need a restart to replace units already stranded on cliff tops.
 
+- Current Normal commanders have inspected native combat and camera-overlay proof attached to PR #49. The native sandbox recording and regression traces show paid sequential inputs; sparse spectator footage does not certify population timing.
+- Remaining reaction, opening-variety, faction-balance and AI performance targets move to follow-up #48 at Julio's request. Original limits and failed measurements stay recorded; core fairness, tests and review still gate the PR.
+- Performance regression checks share their existing four-minute suite budget while retaining all four native test bodies and assertions. This fixes a nested one-minute timeout; the final full-suite pass is still required.
+- The fresh R9 quiet benchmark keeps all four rows: counted AI maximum is 50.765 ms against a 49.4912 ms limit, while exact p95 and counted p95 pass and ticks over 40 ms fall from three to one. Performance remains follow-up work.
+- A ready AP shot against a visible medium or other eligible vehicle reopens deferred combat attention. The native Hard scene accepts AP at tick 120 instead of 149, keeping three physical inputs and two commands.
+- Historical V21 balance completes all 150 matches with no timeout: Conquest wins 41.67/36.67/21.67%, Classic decisive wins 42.31/30.77/26.92%, and Hard beats old Easy 75%. The faction limits still fail and remain recorded.
+- A squad's newly observed retreat risk can interrupt its older escape click before the click is pressed. Existing selection, reaction time and key costs remain paid; the fixed native Normal scene now retreats after 0.55 seconds.
+
+### 2026-10-05: Human attention, inputs and native lab (`bbff3fa`)
+
 - The corrected human commander passes the complete game regression suite, including all 99 registered test modules. CI retains the full suite and saves its logs and source checks; the separate timing, balance and performance gates remain open.
 - A fixed native flank scene verifies unattended idle troops, about 60 MP accumulating during combat, and paid Easy/Normal/Hard camera responses after 4.60/2.75/1.05 seconds. Seeded attention mistakes keep their existing skill probabilities.
 - A commander inspects the hurt squad's HUD before checking unrelated squads. A pending read retains its public damage cue, while only a useful accepted command can acknowledge that cue. Existing inspection timings and assertions stay intact.

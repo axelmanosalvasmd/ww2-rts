@@ -1,0 +1,32 @@
+{
+  "schema": "ww2-r9-full-wrapper-evidence-v1",
+  "originalNativeExit": 1,
+  "correctedFocusedExit": 0,
+  "wrapperSHA256": "4ec5847cf75abc2ef51f40ebe11ac5e0b01e34ff035c590cc8a48e3e9bb02c63",
+  "files": {
+    "README.md": {
+      "bytes": 2030,
+      "sha256": "e899839a575cce55795fd2a538475955c89a51c320ff6938bc40e9db3b76e0b1"
+    },
+    "original-source-bindings.json": {
+      "bytes": 2796,
+      "sha256": "20210208a185302f3efb2898301b1395502879b700d26996f8b6e5b13352c662"
+    },
+    "performance-wrapper-native-proof.tar.gz": {
+      "bytes": 35581,
+      "sha256": "b86ddb3ea301ed1228e5705c82688a2d3fd283019645f76e57123a7404c1c31e"
+    },
+    "performance-wrapper.patch": {
+      "bytes": 1053,
+      "sha256": "00e92c431501d6639158aa196b201123382f55659cd20d67eda9f9453d345909"
+    },
+    "r9-original-full-failure.tar.gz": {
+      "bytes": 368802,
+      "sha256": "d120d778b8e9f6876406da077824d23e82b6e32fb2ff028c7f20badd1d2f0273"
+    },
+    "wrapper-review.md": {
+      "bytes": 2745,
+      "sha256": "5f6468d23c700b848264ea802b929a11f1c21eff89909474a74710536e79bdd1"
+    }
+  }
+}

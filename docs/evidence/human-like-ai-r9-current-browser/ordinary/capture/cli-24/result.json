@@ -1,0 +1,23 @@
+{
+  "command": [
+    "taskset",
+    "-c",
+    "3",
+    "nice",
+    "-n",
+    "19",
+    "agent-browser",
+    "--json",
+    "--session",
+    "low-cb7987e68c",
+    "--profile",
+    "/tmp/human-ai-pr-current-game-proof/capture/profile",
+    "--args",
+    "--use-gl=angle,--use-angle=swiftshader,--disable-dev-shm-usage,--no-sandbox",
+    "errors"
+  ],
+  "pid": 2139588,
+  "exit": 0,
+  "deadline": false,
+  "elapsed": 0.03132954001193866
+}

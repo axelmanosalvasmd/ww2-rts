@@ -1,0 +1,42 @@
+{
+  "verifiedAtUTC": "2026-10-05T04:16:23.768774+00:00",
+  "model": "gpt-6-sol",
+  "mode": "read-only independent Codex review",
+  "verdict": "no new demonstrated core defect; full suite and CI pending",
+  "originalFiles": {
+    "human-ai-review-round9-codex-core.md": {
+      "original": "/tmp/human-ai-review-round9-codex-core.md",
+      "bytes": 9163,
+      "sha256": "f0c0fc322ba6ceeb57b6dc5bc447121451c62984a937bd36b9f93a0db454ff9e"
+    },
+    "result.json": {
+      "original": "/tmp/human-ai-r9-core-final-controls/result.json",
+      "bytes": 2367,
+      "sha256": "5bb6e5828a8e1dd851cd0691913422175a1084ee88c8034a778910d42d0f15c2"
+    },
+    "test-engine-ai-coherence.js.log": {
+      "original": "/tmp/human-ai-r9-core-final-controls/test-engine-ai-coherence.js.log",
+      "bytes": 403,
+      "sha256": "7912a6a2fd0f5dde8af11c56338fdf488a67e9431f369a1e9972ed821725b5a3"
+    },
+    "test-engine-ai-hesitation.js.log": {
+      "original": "/tmp/human-ai-r9-core-final-controls/test-engine-ai-hesitation.js.log",
+      "bytes": 141,
+      "sha256": "8004f904147d072dc0c3a280a07576e4fe73bf82097e743b0ef66d1c2c111431"
+    },
+    "test-engine-ai-persona.js.log": {
+      "original": "/tmp/human-ai-r9-core-final-controls/test-engine-ai-persona.js.log",
+      "bytes": 112,
+      "sha256": "59a8cb12e131a99e75229cfafda33619091e5c97b025b939aa706c86c7686fa7"
+    }
+  },
+  "currentSource": {
+    "shared/ai-commander.js": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225",
+    "shared/ai-attention.js": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090",
+    "shared/ai-hands.js": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9",
+    "shared/ai.js": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005",
+    "shared/ai-priority.js": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60",
+    "shared/ai-perception.js": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+    "tools/ai-manual-response-policy-v3.mjs": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+  }
+}

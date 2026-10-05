@@ -1,0 +1,4 @@
+{
+  "wall": "2026-10-05T04:43:17.336702+00:00",
+  "error": "Failure: CLI exit124: ('wait', '--fn', '!!window.__game?.snapshot')"
+}

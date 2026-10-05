@@ -1,0 +1,3 @@
+The unchanged native World teams fixture finishes naturally with exit 0 in 53.531 seconds, retaining its original 180-second limit and every assertion. The temporary preload records the original random seed buffers, console phase times and process usage. It changes no generated seed or game state. Both actual World seeds and CPU/memory samples remain in the original diagnostic files.
+
+Root verified the copied bytes and source hashes independently. The later plain `node test-world.js` rendering check also exits 0. These passing checks do not establish the cause of the earlier R10 timeout, and do not replace the final complete `node test.js` gate.

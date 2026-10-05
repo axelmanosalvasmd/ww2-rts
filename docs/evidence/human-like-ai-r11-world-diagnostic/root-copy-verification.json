@@ -1,0 +1,90 @@
+{
+  "verifiedAtUTC": "2026-10-05T04:48:23.479745+00:00",
+  "files": [
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/before.json",
+      "file": "before.json",
+      "bytes": 260,
+      "sha256": "62d7d9d34d3d9945f86005271a881f3987559860532b33ce2c0404b68eb504fa"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/diagnostics.jsonl",
+      "file": "diagnostics.jsonl",
+      "bytes": 3474,
+      "sha256": "57128e597352467457302f3a54d3ba03b3c5ccf61cb129d3e021bec4640a3f26"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/launch.json",
+      "file": "launch.json",
+      "bytes": 258,
+      "sha256": "03b9ba6850244f8cb3f11207d4578e3d4f396476c054d0dd4c189f1bc26968a6"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/native.log",
+      "file": "native.log",
+      "bytes": 115,
+      "sha256": "ff54bf90833586c44f871e9f754a25efa47ec4a8903f31da7b2b6b33b038090b"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/preload.cjs",
+      "file": "preload.cjs",
+      "bytes": 970,
+      "sha256": "3cb1dd73c639819a995cfa27f407918758e3a96d6e41ae5371c52de3ab161073"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/preparation.json",
+      "file": "preparation.json",
+      "bytes": 353,
+      "sha256": "7db38c72d9bd98a2dde2aef27bd81535bb3ef5d229b326a1f4b86cac87cf5693"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/process-samples.jsonl",
+      "file": "process-samples.jsonl",
+      "bytes": 95726,
+      "sha256": "faa17a71513bd5219ab8265aa9be8309b1b9ac6842184a834b9f7baf889df30f"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/result.json",
+      "file": "result.json",
+      "bytes": 721,
+      "sha256": "6420252f836e9874923045503fdf1c80abae1edefa9772e906d6aaa1e802715c"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-diagnostic-root/run.py",
+      "file": "run.py",
+      "bytes": 2121,
+      "sha256": "633e7b4c7b83cd368e3ecbd134fea9ea3377f86f258935d679c8ab15298a8f6f"
+    },
+    {
+      "original": "/tmp/human-ai-r11-world-render.log",
+      "file": "test-world.log",
+      "bytes": 46,
+      "sha256": "a674daad066dced1bd230824692ed57b5aa35265299c98aa4410c733286ba199"
+    }
+  ],
+  "nativeWorldTeams": {
+    "exitCode": 0,
+    "timedOutAt180s": false,
+    "elapsedSeconds": 53.53090769701521,
+    "naturalCompletion": true,
+    "before": {
+      "test-world-teams.js": "7238f4706b7397c7be3ef1130cd4e15b9b30a705b39e6fefbf857043e093d245",
+      "server.js": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57",
+      "test.js": "7e01fe4b7ee8faef9d89e6d2874444a93215dac375eaa8e0f9f0c6035abc2096"
+    },
+    "after": {
+      "test-world-teams.js": "7238f4706b7397c7be3ef1130cd4e15b9b30a705b39e6fefbf857043e093d245",
+      "server.js": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57",
+      "test.js": "7e01fe4b7ee8faef9d89e6d2874444a93215dac375eaa8e0f9f0c6035abc2096"
+    },
+    "sourceIdentical": true,
+    "passes": true
+  },
+  "testWorld": {
+    "command": "node test-world.js",
+    "naturalExitCode": 0,
+    "elapsedSeconds": 0.192094588,
+    "logFile": "test-world.log"
+  },
+  "qualification": "Diagnostic did not mutate generated random seeds. Prior timeout cause remains unknown."
+}

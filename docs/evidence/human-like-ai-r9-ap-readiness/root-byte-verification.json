@@ -1,0 +1,12 @@
+{
+  "atUTC": "2026-10-05T03:21:40.707157+00:00",
+  "scope": "Root independently re-read every actual physical original and each durable archive payload. Copy integrity only, no numerical gate approval.",
+  "passes": true,
+  "archive": "ap-readiness-native-review-and-root.tar.gz",
+  "archiveSHA256": "fc3707287ee112ffbaf4b09381119334175c1ae65980b3e36c9f95be15732a20",
+  "archiveBytes": 1739585,
+  "members": 128,
+  "originalPhysicalFiles": 125,
+  "originalPhysicalBytes": 11519296,
+  "manifestSHA256": "3dc237621c473725d0c66376c2d936fdccbbd6bfe9df5d3cb698b71df9a212b9"
+}

@@ -1,0 +1,11 @@
+{
+  "failed": null,
+  "watchdog": {
+    "pid": 2138876,
+    "exit": 0,
+    "cleanupAck": true
+  },
+  "sourceEqual": true,
+  "actualStartExists": true,
+  "qualification": "Capture artifacts require by-eye inspection. Requested6fps is not measured FPS. No private MP claim."
+}

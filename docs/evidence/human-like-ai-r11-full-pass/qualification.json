@@ -1,0 +1,902 @@
+{
+  "schema": "ww2-r11-independent-full-evidence-v1",
+  "verifiedAtUnix": 1791176078.702762,
+  "nativeExitCode": 0,
+  "nativeNaturalCompletion": true,
+  "elapsedSeconds": 1454.4905655384064,
+  "head": "bbff3fae04e67a2647523d8625a8bbe9f36434bf",
+  "lockedFileCount": 684,
+  "frozenFileCountIncludingPriorEvidence": 2232,
+  "frozenNonEvidenceCount": 687,
+  "coverage": {
+    "children": [
+      "test-world-waterways.js",
+      "test-world-multiple-rivers.js",
+      "test-world-generation.js",
+      "test-world-territories.js",
+      "test-world-conquest.js",
+      "test-world-teams.js",
+      "test-world-acceptance.js",
+      "test-world-observation.js",
+      "test-world-movement.js",
+      "test-world-river.js",
+      "test-engine-controls.js",
+      "test-engine-world.js",
+      "test-engine-movement.js",
+      "test-engine-observed-walls.js",
+      "test-movement-lab.js",
+      "test-engine-projectiles.js",
+      "test-engine-scenarios.js",
+      "test-engine-ai.js",
+      "test-engine-ai-callers.js",
+      "test-engine-ai-hands.js",
+      "test-engine-ai-perception.js",
+      "test-engine-ai-human.js",
+      "test-engine-ai-response.js",
+      "test-engine-ai-public-alert.js",
+      "test-engine-ai-effect-visibility.js",
+      "test-engine-ai-persona.js",
+      "test-engine-ai-humanity.js",
+      "test-engine-ai-humanity-multievent.js",
+      "test-engine-ai-commitment.js",
+      "test-engine-ai-coherence.js",
+      "test-engine-ai-overlay.js",
+      "test-human-input.js",
+      "test-engine-acceptance.js",
+      "test-engine-presentation.mjs",
+      "test-ai-terrain-delivery.js",
+      "test-engine-ai-workload.js",
+      "test-engine-ai-selected-hud.js",
+      "test-engine-ai-inspection.js",
+      "test-engine-ai-priority.js",
+      "test-engine-ai-inspection-priority.js",
+      "test-engine-ai-observed-events.js",
+      "test-engine-ai-measurement-streams.js",
+      "test-engine-ai-tactical-reaction.js",
+      "test-engine-ai-attention-yield.js",
+      "test-engine-ai-attention-area.js",
+      "test-engine-ai-behavior-cues.js",
+      "test-engine-ai-bridge-repair.js",
+      "test-engine-ai-decision-capture.js",
+      "test-engine-ai-causal-orders.js",
+      "test-engine-ai-pointer-tracking.js",
+      "test-engine-ai-group-reuse.js",
+      "test-engine-ai-minimap-parity.js",
+      "test-ai-humanity-storage.js",
+      "test-engine-spectators.js",
+      "test-engine-scenario-start.js",
+      "test-server-start-order.js",
+      "test-engine-breaches.mjs",
+      "test-engine-authoring.js",
+      "test-engine-vehicle-pose.mjs",
+      "test-engine-ai-privacy.js",
+      "test-engine-localization.mjs",
+      "test-engine-ai-public-start.js",
+      "test-engine-ai-opening-saving.js",
+      "test-engine-ai-purchase-receipts.js",
+      "test-engine-ai-producer-substitution.js",
+      "test-engine-ai-engineer-shortage.js",
+      "test-engine-ai-formation-selection.js",
+      "test-engine-ai-measurement-start.js",
+      "test-engine-ai-local-engineer.js",
+      "test-engine-ai-accepted-destinations.js",
+      "test-engine-ai-attended-danger.js",
+      "test-engine-ai-attended-guard.js",
+      "test-engine-ai-guard-ability-choice.js",
+      "test-engine-ai-garrison-framing.js",
+      "test-engine-ai-hesitation.js",
+      "test-engine-ai-unseen-hit.js",
+      "test-engine-ai-manual-response-policy.js",
+      "test-engine-ai-manual-response-v3.js",
+      "test-engine-ai-manual-response-isolation.js",
+      "test-ai-lab.js",
+      "test-engine-ai-ap-vehicles.js",
+      "test-engine-ai-stale-stance.js",
+      "test-engine-ai-production-attention.js",
+      "test-engine-ai-cover-opportunity.js",
+      "test-engine-ai-stationary-armor-hit.js",
+      "test-engine-ai-automatic-armor-hit.js",
+      "test-client-terrain-transition.mjs",
+      "test-engine-ai-point-fog.js",
+      "test-ai-km-boundary.mjs",
+      "test-engine-ai-diagonal-pan.js",
+      "test-engine-ai-pan-release.js",
+      "test-engine-ai-selection-reuse.js",
+      "test-engine-ai-idle-guard-attention.js",
+      "test-engine-ai-fortification-cover.js",
+      "test-engine-ai-purpose.js",
+      "test-engine-ai-public-alert-v2.js",
+      "test-engine-ai-risk-escalation.js",
+      "test-engine-ai-human-slips.js",
+      "test-engine-ai-ap-readiness.js",
+      "test-engine-debris.js",
+      "test-engine-traffic-privacy.js",
+      "test-engine-horde-queue.js"
+    ],
+    "childCount": 102,
+    "directImports": [
+      "test-tutorial.js",
+      "test-infantry-authored.mjs",
+      "test-terrain-relief.mjs",
+      "test-model-motion.mjs",
+      "test-wheel-motion.mjs"
+    ],
+    "allAITests": [
+      "test-engine-ai-accepted-destinations.js",
+      "test-engine-ai-ap-readiness.js",
+      "test-engine-ai-ap-vehicles.js",
+      "test-engine-ai-attended-danger.js",
+      "test-engine-ai-attended-guard.js",
+      "test-engine-ai-attention-area.js",
+      "test-engine-ai-attention-yield.js",
+      "test-engine-ai-automatic-armor-hit.js",
+      "test-engine-ai-behavior-cues.js",
+      "test-engine-ai-bridge-repair.js",
+      "test-engine-ai-callers.js",
+      "test-engine-ai-causal-orders.js",
+      "test-engine-ai-coherence.js",
+      "test-engine-ai-commitment.js",
+      "test-engine-ai-cover-opportunity.js",
+      "test-engine-ai-decision-capture.js",
+      "test-engine-ai-diagonal-pan.js",
+      "test-engine-ai-effect-visibility.js",
+      "test-engine-ai-engineer-shortage.js",
+      "test-engine-ai-formation-selection.js",
+      "test-engine-ai-fortification-cover.js",
+      "test-engine-ai-garrison-framing.js",
+      "test-engine-ai-group-reuse.js",
+      "test-engine-ai-guard-ability-choice.js",
+      "test-engine-ai-hands.js",
+      "test-engine-ai-hesitation.js",
+      "test-engine-ai-human-slips.js",
+      "test-engine-ai-human.js",
+      "test-engine-ai-humanity-multievent.js",
+      "test-engine-ai-humanity.js",
+      "test-engine-ai-idle-guard-attention.js",
+      "test-engine-ai-inspection-priority.js",
+      "test-engine-ai-inspection.js",
+      "test-engine-ai-local-engineer.js",
+      "test-engine-ai-manual-response-isolation.js",
+      "test-engine-ai-manual-response-policy.js",
+      "test-engine-ai-manual-response-v3.js",
+      "test-engine-ai-measurement-start.js",
+      "test-engine-ai-measurement-streams.js",
+      "test-engine-ai-minimap-parity.js",
+      "test-engine-ai-observed-events.js",
+      "test-engine-ai-opening-saving.js",
+      "test-engine-ai-overlay.js",
+      "test-engine-ai-pan-release.js",
+      "test-engine-ai-perception.js",
+      "test-engine-ai-persona.js",
+      "test-engine-ai-point-fog.js",
+      "test-engine-ai-pointer-tracking.js",
+      "test-engine-ai-priority.js",
+      "test-engine-ai-privacy.js",
+      "test-engine-ai-producer-substitution.js",
+      "test-engine-ai-production-attention.js",
+      "test-engine-ai-public-alert-v2.js",
+      "test-engine-ai-public-alert.js",
+      "test-engine-ai-public-start.js",
+      "test-engine-ai-purchase-receipts.js",
+      "test-engine-ai-purpose.js",
+      "test-engine-ai-response.js",
+      "test-engine-ai-risk-escalation.js",
+      "test-engine-ai-selected-hud.js",
+      "test-engine-ai-selection-reuse.js",
+      "test-engine-ai-stale-stance.js",
+      "test-engine-ai-stationary-armor-hit.js",
+      "test-engine-ai-tactical-reaction.js",
+      "test-engine-ai-unseen-hit.js",
+      "test-engine-ai-workload.js",
+      "test-engine-ai.js"
+    ],
+    "thinkPatternTests": [
+      "test-engine-ai-ap-readiness.js",
+      "test-engine-ai-ap-vehicles.js",
+      "test-engine-ai-attended-danger.js",
+      "test-engine-ai-automatic-armor-hit.js",
+      "test-engine-ai-behavior-cues.js",
+      "test-engine-ai-bridge-repair.js",
+      "test-engine-ai-callers.js",
+      "test-engine-ai-commitment.js",
+      "test-engine-ai-decision-capture.js",
+      "test-engine-ai-fortification-cover.js",
+      "test-engine-ai-garrison-framing.js",
+      "test-engine-ai-human-slips.js",
+      "test-engine-ai-human.js",
+      "test-engine-ai-idle-guard-attention.js",
+      "test-engine-ai-inspection.js",
+      "test-engine-ai-local-engineer.js",
+      "test-engine-ai-measurement-start.js",
+      "test-engine-ai-measurement-streams.js",
+      "test-engine-ai-opening-saving.js",
+      "test-engine-ai-pan-release.js",
+      "test-engine-ai-persona.js",
+      "test-engine-ai-point-fog.js",
+      "test-engine-ai-privacy.js",
+      "test-engine-ai-public-alert-v2.js",
+      "test-engine-ai-public-alert.js",
+      "test-engine-ai-public-start.js",
+      "test-engine-ai-risk-escalation.js",
+      "test-engine-ai-stationary-armor-hit.js",
+      "test-engine-ai-tactical-reaction.js",
+      "test-engine-ai-unseen-hit.js",
+      "test-engine-ai-workload.js",
+      "test-engine-ai.js",
+      "test-engine-horde-queue.js",
+      "test-world-observation.js",
+      "test.js"
+    ],
+    "focusedChildTimeoutMS": 180000,
+    "additionalNativeProcesses": [
+      {
+        "file": "test-public-lobby.js",
+        "timeoutMS": 30000
+      },
+      {
+        "file": "test-performance.mjs",
+        "timeoutMS": 240000
+      }
+    ],
+    "testJSSHA256": "7e01fe4b7ee8faef9d89e6d2874444a93215dac375eaa8e0f9f0c6035abc2096",
+    "assertCallCountDiagnostic": 2290
+  },
+  "invariants": {
+    "nativeExitZero": true,
+    "nativeNaturalCompletionRecorded": true,
+    "nativePIDMatches": true,
+    "supervisorPIDMatches": true,
+    "noOuterTimeout": true,
+    "literalCommand": true,
+    "expectedHead": true,
+    "locked684": true,
+    "lockedSourceBeforeAfterCurrentExact": true,
+    "fullFrozenArchiveExact": true,
+    "fullFrozenArchiveReadonly": true,
+    "frozenDependencyLink": true,
+    "registrationExact": true,
+    "children102Unique": true,
+    "originalV21Coverage": true,
+    "allAIThinkWorldCoverage": true,
+    "registeredFilesExist": true,
+    "originalChildTimeout": true,
+    "additionalSubprocessTimeouts": true,
+    "runtimeExact": true,
+    "runnerHash": true,
+    "beforeHash": true,
+    "prospectiveHash": true,
+    "predeclaredHash": true,
+    "historicalHash": true,
+    "allSummaryArtifactHashes": true,
+    "allContinuousChecksConsistent": true,
+    "checkCountMatches": true,
+    "checkTimesOrdered": true,
+    "completionTimeMatches": true,
+    "logSizeMatches": true,
+    "exitSentinelExact": true,
+    "summaryPassIntegrity": true,
+    "exactMetadataExceptions": true
+  },
+  "continuousCheckRecords": [
+    {
+      "index": 0,
+      "atUnix": 1791174539.5783465,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 1,
+      "atUnix": 1791174554.7362783,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 2,
+      "atUnix": 1791174569.8866696,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 3,
+      "atUnix": 1791174585.0409298,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 4,
+      "atUnix": 1791174600.2049193,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 5,
+      "atUnix": 1791174615.3611698,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 6,
+      "atUnix": 1791174630.5090098,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 7,
+      "atUnix": 1791174645.6586099,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 8,
+      "atUnix": 1791174660.8134243,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 9,
+      "atUnix": 1791174675.9689062,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 10,
+      "atUnix": 1791174691.1235561,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 11,
+      "atUnix": 1791174706.3357396,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 12,
+      "atUnix": 1791174721.5556257,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 13,
+      "atUnix": 1791174736.723554,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 14,
+      "atUnix": 1791174751.8803225,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 15,
+      "atUnix": 1791174767.0357454,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 16,
+      "atUnix": 1791174782.2009444,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 17,
+      "atUnix": 1791174797.3585238,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 18,
+      "atUnix": 1791174812.5096967,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 19,
+      "atUnix": 1791174827.666092,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 20,
+      "atUnix": 1791174842.818308,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 21,
+      "atUnix": 1791174857.9712532,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 22,
+      "atUnix": 1791174873.127279,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 23,
+      "atUnix": 1791174888.2790875,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 24,
+      "atUnix": 1791174903.4326193,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 25,
+      "atUnix": 1791174918.585498,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 26,
+      "atUnix": 1791174933.7465115,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 27,
+      "atUnix": 1791174948.8992002,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 28,
+      "atUnix": 1791174964.0505333,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 29,
+      "atUnix": 1791174979.2010803,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 30,
+      "atUnix": 1791174994.350056,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 31,
+      "atUnix": 1791175009.501675,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 32,
+      "atUnix": 1791175024.6556401,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 33,
+      "atUnix": 1791175039.8114216,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 34,
+      "atUnix": 1791175055.0160937,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 35,
+      "atUnix": 1791175070.2119405,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 36,
+      "atUnix": 1791175085.432748,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 37,
+      "atUnix": 1791175100.6548254,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 38,
+      "atUnix": 1791175115.8743248,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 39,
+      "atUnix": 1791175131.096834,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 40,
+      "atUnix": 1791175146.3125598,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 41,
+      "atUnix": 1791175161.5336242,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 42,
+      "atUnix": 1791175176.7007813,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 43,
+      "atUnix": 1791175191.853427,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 44,
+      "atUnix": 1791175207.007749,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 45,
+      "atUnix": 1791175222.1605382,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 46,
+      "atUnix": 1791175237.3154676,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 47,
+      "atUnix": 1791175252.4684944,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 48,
+      "atUnix": 1791175267.6250803,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 49,
+      "atUnix": 1791175282.775795,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 50,
+      "atUnix": 1791175297.9274278,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 51,
+      "atUnix": 1791175313.0764785,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 52,
+      "atUnix": 1791175328.2290046,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 53,
+      "atUnix": 1791175343.3843021,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 54,
+      "atUnix": 1791175358.5385668,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 55,
+      "atUnix": 1791175373.692497,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 56,
+      "atUnix": 1791175388.8736625,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 57,
+      "atUnix": 1791175404.0364797,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 58,
+      "atUnix": 1791175419.1915812,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 59,
+      "atUnix": 1791175434.347661,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 60,
+      "atUnix": 1791175449.504645,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 61,
+      "atUnix": 1791175464.6596498,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 62,
+      "atUnix": 1791175479.8132203,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 63,
+      "atUnix": 1791175494.9724183,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 64,
+      "atUnix": 1791175510.1239262,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 65,
+      "atUnix": 1791175525.277365,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 66,
+      "atUnix": 1791175540.4266233,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 67,
+      "atUnix": 1791175555.589977,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 68,
+      "atUnix": 1791175570.7472186,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 69,
+      "atUnix": 1791175585.901138,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 70,
+      "atUnix": 1791175601.0569673,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 71,
+      "atUnix": 1791175616.210809,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 72,
+      "atUnix": 1791175631.3619046,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 73,
+      "atUnix": 1791175646.5378468,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 74,
+      "atUnix": 1791175661.6904397,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 75,
+      "atUnix": 1791175676.8443475,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 76,
+      "atUnix": 1791175692.0019913,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 77,
+      "atUnix": 1791175707.1573477,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 78,
+      "atUnix": 1791175722.3144794,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 79,
+      "atUnix": 1791175737.467289,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 80,
+      "atUnix": 1791175752.6238089,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 81,
+      "atUnix": 1791175767.7765994,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 82,
+      "atUnix": 1791175782.9313161,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 83,
+      "atUnix": 1791175798.0836217,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 84,
+      "atUnix": 1791175813.2316256,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 85,
+      "atUnix": 1791175828.3819137,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 86,
+      "atUnix": 1791175843.5351746,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 87,
+      "atUnix": 1791175858.6874661,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 88,
+      "atUnix": 1791175873.8434975,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 89,
+      "atUnix": 1791175888.9962387,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 90,
+      "atUnix": 1791175904.1503086,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 91,
+      "atUnix": 1791175919.3010197,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 92,
+      "atUnix": 1791175934.4532268,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 93,
+      "atUnix": 1791175949.6077058,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 94,
+      "atUnix": 1791175964.761483,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 95,
+      "atUnix": 1791175979.9160943,
+      "recordConsistent": true,
+      "mismatches": {}
+    },
+    {
+      "index": 96,
+      "atUnix": 1791175994.0705564,
+      "recordConsistent": true,
+      "mismatches": {}
+    }
+  ],
+  "allIndependentChecksPass": true,
+  "allowedMetadataChanged": [
+    "CHANGELOG.md",
+    "DESIGN.md",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/README.md",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/before.json",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/diagnostics.jsonl",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/launch.json",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/native.log",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/preload.cjs",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/preparation.json",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/process-samples.jsonl",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/result.json",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/root-copy-verification.json",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/run.py",
+    "docs/evidence/human-like-ai-r11-world-diagnostic/test-world.log",
+    "docs/evidence/human-like-ai-r9-current-browser/README.md",
+    "docs/evidence/human-like-ai-r9-current-browser/close-fight/README.md",
+    "docs/evidence/human-like-ai-r9-current-browser/close-fight/qualification.json",
+    "docs/evidence/human-like-ai-r9-current-browser/final-failed/README.md",
+    "docs/evidence/human-like-ai-r9-current-browser/final-failed/capture/failure.json",
+    "docs/evidence/human-like-ai-r9-current-browser/final-failed/qualification.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/README.md",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/actual-start.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/cli-24/result.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/cli-24/stdout.log",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/cli-25/result.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/cli-25/stdout.log",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/command-24.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/command-25.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/result.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/source-after.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/capture/source-before.json",
+    "docs/evidence/human-like-ai-r9-current-browser/ordinary/qualification.json",
+    "docs/evidence/human-like-ai-r9-current-browser/root-copy-verification.json",
+    "docs/human-like-ai-spec.md"
+  ],
+  "naturalCompletionEvidenceLimit": "Completion is the native subprocess poll/wait result recorded by the unchanged supervisor. Historical per-check runtime observations are verified for record consistency, with current bytes checked independently. No historical observation can be re-observed after the fact."
+}

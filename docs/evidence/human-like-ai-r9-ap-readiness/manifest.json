@@ -1,0 +1,767 @@
+{
+  "schema": "ww2-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline-test.log",
+      "member": "original-agent/baseline-test.log",
+      "bytes": 128,
+      "sha256": "cabdb8c0171f3722718cbac16bcee26f31bd820dcb30ed1f32cea1310938bcf8"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/probe.mjs",
+      "member": "original-agent/probe.mjs",
+      "bytes": 1705,
+      "sha256": "d396b8aeb08e376e1f1dfb48e4f11b9c0e5699e63a0dce64e873bcd410d467f3"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/cooldown7-baseline-native.json",
+      "member": "original-agent/cooldown7-baseline-native.json",
+      "bytes": 432484,
+      "sha256": "c742bbc510fd72ce880092675b163a64a36190a10268af6699c6777f840de4a1"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate-native.json",
+      "member": "original-agent/candidate-native.json",
+      "bytes": 433577,
+      "sha256": "530e6882256b4c83c41ee2f19783bf07faa5c0e55733696ff5c3d33445ae37e0"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/paired-proof.mjs",
+      "member": "original-agent/paired-proof.mjs",
+      "bytes": 2093,
+      "sha256": "b52054dcb81f71b6db22aaf3ee8f63bd31c319a921cddf68ad227bc12bdc2743"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate-controls.json",
+      "member": "original-agent/candidate-controls.json",
+      "bytes": 2941945,
+      "sha256": "7710123abbf2d346cbf99014620eaa0ac0dd7905c24a88ac2b03141d3750c469"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline-controls.json",
+      "member": "original-agent/baseline-controls.json",
+      "bytes": 2937367,
+      "sha256": "63c0953c3aa625f6f155735bb69c6363ead12b290607aa38fdeeb7abd6e08138"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/package.json",
+      "member": "original-agent/candidate/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/debris-motion.js",
+      "member": "original-agent/candidate/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/world-roads.js",
+      "member": "original-agent/candidate/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/sim.js",
+      "member": "original-agent/candidate/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-commander.js",
+      "member": "original-agent/candidate/shared/ai-commander.js",
+      "bytes": 31105,
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/vehicle-motion.js",
+      "member": "original-agent/candidate/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-view.js",
+      "member": "original-agent/candidate/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/tutorial.js",
+      "member": "original-agent/candidate/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-rng.js",
+      "member": "original-agent/candidate/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/world-conquest.js",
+      "member": "original-agent/candidate/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/story.js",
+      "member": "original-agent/candidate/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-priority.js",
+      "member": "original-agent/candidate/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/navigation.js",
+      "member": "original-agent/candidate/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/weather.js",
+      "member": "original-agent/candidate/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai.js",
+      "member": "original-agent/candidate/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/world-layers.js",
+      "member": "original-agent/candidate/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/scenarios.js",
+      "member": "original-agent/candidate/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/structures.js",
+      "member": "original-agent/candidate/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/command-feedback.js",
+      "member": "original-agent/candidate/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/alert-events.js",
+      "member": "original-agent/candidate/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/local-traffic.js",
+      "member": "original-agent/candidate/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/formation.js",
+      "member": "original-agent/candidate/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/human-input.js",
+      "member": "original-agent/candidate/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-hands.js",
+      "member": "original-agent/candidate/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-perception.js",
+      "member": "original-agent/candidate/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/grid.js",
+      "member": "original-agent/candidate/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-mind.js",
+      "member": "original-agent/candidate/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-persona.js",
+      "member": "original-agent/candidate/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/world-territories.js",
+      "member": "original-agent/candidate/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/ai-attention.js",
+      "member": "original-agent/candidate/shared/ai-attention.js",
+      "bytes": 32005,
+      "sha256": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/world-landforms.js",
+      "member": "original-agent/candidate/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/shared/projectiles.js",
+      "member": "original-agent/candidate/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/client/keys.js",
+      "member": "original-agent/candidate/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/test-engine-ai-ap-readiness.js",
+      "member": "original-agent/candidate/test-engine-ai-ap-readiness.js",
+      "bytes": 6770,
+      "sha256": "923bd77ee6ea61889dcec6851cd0d18daa4d8a9b75d424b38573353843ec5be4"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate/tools/ai-lab-runner.mjs",
+      "member": "original-agent/candidate/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/paired-test.log",
+      "member": "original-agent/paired-test.log",
+      "bytes": 100,
+      "sha256": "d50a13eab49a78a5e1758280bfb16cf3f8dffde5c02692fe169195b7b027ddcd"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/cooldown4-baseline-native.json",
+      "member": "original-agent/cooldown4-baseline-native.json",
+      "bytes": 430067,
+      "sha256": "b606f6460ae69110ac94fba13de9235b0fe819c589cfdad69377d80386c8dd46"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/manifest.json",
+      "member": "original-agent/manifest.json",
+      "bytes": 9015,
+      "sha256": "35dff327f8dc4313fbe42fd18b29f5366f36ed773f8696c180c64225c60a8d72"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/READOUT.md",
+      "member": "original-agent/READOUT.md",
+      "bytes": 5496,
+      "sha256": "64ee2a68ef6456d2fd1e65fd65a30d57b531f1b3af146e36e347162ab6c0e879"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/package.json",
+      "member": "original-agent/baseline/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/debris-motion.js",
+      "member": "original-agent/baseline/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/world-roads.js",
+      "member": "original-agent/baseline/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/sim.js",
+      "member": "original-agent/baseline/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-commander.js",
+      "member": "original-agent/baseline/shared/ai-commander.js",
+      "bytes": 31105,
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/vehicle-motion.js",
+      "member": "original-agent/baseline/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-view.js",
+      "member": "original-agent/baseline/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/tutorial.js",
+      "member": "original-agent/baseline/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-rng.js",
+      "member": "original-agent/baseline/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/world-conquest.js",
+      "member": "original-agent/baseline/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/story.js",
+      "member": "original-agent/baseline/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-priority.js",
+      "member": "original-agent/baseline/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/navigation.js",
+      "member": "original-agent/baseline/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/weather.js",
+      "member": "original-agent/baseline/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai.js",
+      "member": "original-agent/baseline/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/world-layers.js",
+      "member": "original-agent/baseline/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/scenarios.js",
+      "member": "original-agent/baseline/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/structures.js",
+      "member": "original-agent/baseline/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/command-feedback.js",
+      "member": "original-agent/baseline/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/alert-events.js",
+      "member": "original-agent/baseline/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/local-traffic.js",
+      "member": "original-agent/baseline/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/formation.js",
+      "member": "original-agent/baseline/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/human-input.js",
+      "member": "original-agent/baseline/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-hands.js",
+      "member": "original-agent/baseline/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-perception.js",
+      "member": "original-agent/baseline/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/grid.js",
+      "member": "original-agent/baseline/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-mind.js",
+      "member": "original-agent/baseline/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-persona.js",
+      "member": "original-agent/baseline/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/world-territories.js",
+      "member": "original-agent/baseline/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/ai-attention.js",
+      "member": "original-agent/baseline/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/world-landforms.js",
+      "member": "original-agent/baseline/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/shared/projectiles.js",
+      "member": "original-agent/baseline/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/client/keys.js",
+      "member": "original-agent/baseline/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/test-engine-ai-ap-readiness.js",
+      "member": "original-agent/baseline/test-engine-ai-ap-readiness.js",
+      "bytes": 6770,
+      "sha256": "923bd77ee6ea61889dcec6851cd0d18daa4d8a9b75d424b38573353843ec5be4"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline/tools/ai-lab-runner.mjs",
+      "member": "original-agent/baseline/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/test-engine-ai-ap-readiness.js",
+      "member": "original-agent/test-engine-ai-ap-readiness.js",
+      "bytes": 6770,
+      "sha256": "923bd77ee6ea61889dcec6851cd0d18daa4d8a9b75d424b38573353843ec5be4"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/cooldown7-probe.log",
+      "member": "original-agent/cooldown7-probe.log",
+      "bytes": 31500,
+      "sha256": "ca50f29e9507d70d9cadeeba3f043322f269df426c97688dbcac370d3fd0a578"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/probe.log",
+      "member": "original-agent/probe.log",
+      "bytes": 31500,
+      "sha256": "6a52bbb1760c1d2ea9647b80585e5219d59b76be95d1a21b7c076dd8e80f8657"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/cooldown4-probe.log",
+      "member": "original-agent/cooldown4-probe.log",
+      "bytes": 21485,
+      "sha256": "30a8977363e681ae4daea97d331a05328702807fcb07383964ba199eeaf5ae3f"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate-test.log",
+      "member": "original-agent/candidate-test.log",
+      "bytes": 119,
+      "sha256": "989f83dac80023539470661ef351495b74ef3e33b470088c7826e0d271ea9ad0"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/candidate-probe.log",
+      "member": "original-agent/candidate-probe.log",
+      "bytes": 31556,
+      "sha256": "f3e77e03576cc2bd06b6fc5f32c43bd3b7d21cf266e9ae925738a10d17215987"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/runtime.patch",
+      "member": "original-agent/runtime.patch",
+      "bytes": 1029,
+      "sha256": "416b3268728b738556c0ad9f560c500efe9165a580ab3c1dde11dc813b560b16"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/paired-summary.json",
+      "member": "original-agent/paired-summary.json",
+      "bytes": 1553,
+      "sha256": "6c862e1de7712eee7acd08c36eb7fc1bc03d7c7b449151f080e1e00cedf176fa"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay/baseline-native.json",
+      "member": "original-agent/baseline-native.json",
+      "bytes": 432324,
+      "sha256": "1fac1081bb97c31c5446cdb48702673776c9f6f0dd72d125c1e6175735ef0e83"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-independent-review/REVIEW.md",
+      "member": "independent-read-only-review/REVIEW.md",
+      "bytes": 4046,
+      "sha256": "70f830e679efe759f40ea9ba91d70e3ac02f1a38f34b49bb9fd05df37217bfa6"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-independent-review/verified-artifacts.json",
+      "member": "independent-read-only-review/verified-artifacts.json",
+      "bytes": 2454,
+      "sha256": "f14c02a31c5fda3790532afd2c1913058dba98662ba59bd4f20c6128a77155ce"
+    },
+    {
+      "originalPath": "/tmp/ai-ready-ap-delay-evidence.tar.gz",
+      "member": "original-package/ai-ready-ap-delay-evidence.tar.gz",
+      "bytes": 698491,
+      "sha256": "cfac791f0194d3a5974c076ca1beee78a4ec638de2dddaeb5213a9cb296191da"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai.js",
+      "member": "ROOT-recorded-component-source/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-commander.js",
+      "member": "ROOT-recorded-component-source/shared/ai-commander.js",
+      "bytes": 31873,
+      "sha256": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-hands.js",
+      "member": "ROOT-recorded-component-source/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-attention.js",
+      "member": "ROOT-recorded-component-source/shared/ai-attention.js",
+      "bytes": 32005,
+      "sha256": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-priority.js",
+      "member": "ROOT-recorded-component-source/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-perception.js",
+      "member": "ROOT-recorded-component-source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-view.js",
+      "member": "ROOT-recorded-component-source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/sim.js",
+      "member": "ROOT-recorded-component-source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-manual-response-policy-v3.mjs",
+      "member": "ROOT-recorded-component-source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-public-alert-response-v2.mjs",
+      "member": "ROOT-recorded-component-source/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test.js",
+      "member": "ROOT-recorded-component-source/test.js",
+      "bytes": 594069,
+      "sha256": "7e01fe4b7ee8faef9d89e6d2874444a93215dac375eaa8e0f9f0c6035abc2096"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-ap-readiness.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-ap-readiness.js",
+      "bytes": 6770,
+      "sha256": "923bd77ee6ea61889dcec6851cd0d18daa4d8a9b75d424b38573353843ec5be4"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-risk-escalation.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-risk-escalation.js",
+      "bytes": 7693,
+      "sha256": "3bc010ced8b3f13fe30340c27a929c67edee66bf615c6bcb2a5bb7c418df6f25"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-human-slips.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-human-slips.js",
+      "bytes": 9830,
+      "sha256": "273c268a3f93ec1f8776bdf642d61cfb45e9fb095a16aa3d363eef7b8bee359f"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-ap-vehicles.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-ap-vehicles.js",
+      "bytes": 6229,
+      "sha256": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-attention-yield.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-attention-yield.js",
+      "bytes": 9673,
+      "sha256": "1101cd6373273e9dbcbcb14d50dbf90b3cf367c7575ade879ddca83ce223329f"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-idle-guard-attention.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-idle-guard-attention.js",
+      "bytes": 10778,
+      "sha256": "92757c743866c2f1c935bdb978fd247e21c5b74a86338245c85e4709aecc373a"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-purpose.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-purpose.js",
+      "bytes": 18261,
+      "sha256": "8ca1e51efe376401e312ca23abc3ee6caa2fb7ad8b3626c237a664aea8d781a9"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-measurement-streams.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-measurement-streams.js",
+      "bytes": 18955,
+      "sha256": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/receipt.json",
+      "member": "independent-ROOT-combined-eight/receipt.json",
+      "bytes": 1758,
+      "sha256": "f387577134995d5d874a41785ce42a0f14032595cccd93072b2665aebee72f1b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/results.json",
+      "member": "independent-ROOT-combined-eight/results.json",
+      "bytes": 1602,
+      "sha256": "b130f6e86e4e1cb8684714f2feb5130a25833b287f8143485b994b450f98129b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/source-after.json",
+      "member": "independent-ROOT-combined-eight/source-after.json",
+      "bytes": 1046,
+      "sha256": "2179de72fee174a2da131760241bbd357e72b109fcfe8c6075fa110b21dec918"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/source-before.json",
+      "member": "independent-ROOT-combined-eight/source-before.json",
+      "bytes": 1046,
+      "sha256": "2179de72fee174a2da131760241bbd357e72b109fcfe8c6075fa110b21dec918"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-ap-readiness.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-ap-readiness.js.log",
+      "bytes": 119,
+      "sha256": "989f83dac80023539470661ef351495b74ef3e33b470088c7826e0d271ea9ad0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-ap-vehicles.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-ap-vehicles.js.log",
+      "bytes": 91,
+      "sha256": "4c5426ae9b625f2c3e72ee355291047c3a0e16d0cba7ea78e88a28b1a3e0fce0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-attention-yield.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-attention-yield.js.log",
+      "bytes": 112,
+      "sha256": "a5ccb23c195efe37e092633468e675ce1f7c1c459c1a1e162e2e6e6be1a8bb58"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-human-slips.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-human-slips.js.log",
+      "bytes": 136,
+      "sha256": "0af03b49f9284332a0390316739fa07a9d1d00ac979abdd8d04ac2daa992139b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-idle-guard-attention.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-idle-guard-attention.js.log",
+      "bytes": 119,
+      "sha256": "05c0560569a3ea6138d0f8ecbfeba52e6adbc7818e584f0116a6884ef6d6570f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-measurement-streams.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-measurement-streams.js.log",
+      "bytes": 141,
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-purpose.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-purpose.js.log",
+      "bytes": 89,
+      "sha256": "3ce63b7db18dfc0c0850e686119512747446f035cbff55f657ef94bfb87526a9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-focused-root/test-engine-ai-risk-escalation.js.log",
+      "member": "independent-ROOT-combined-eight/test-engine-ai-risk-escalation.js.log",
+      "bytes": 135,
+      "sha256": "e870165376ef3195effa6512d0f3c0b145ea6bb3a7fa4c20a097e909fc1d5142"
+    },
+    {
+      "originalPath": "/tmp/r9-ap-performance-durable-package/ap-source-and-scope-qualification.json",
+      "member": "source-and-scope-qualification.json",
+      "bytes": 3998,
+      "sha256": "6fe2f889fd41dff38a030c4bd4fdd954b8dcdf67e9c92bd57304289fd34cd638"
+    }
+  ],
+  "copiedOriginalBytes": 11519296,
+  "copyAssertions": {
+    "originalPayloadMembersPreserved": 89,
+    "originalManifestAndTarPreserved": true,
+    "originalTarPhysicalFilesVerified": 90,
+    "independentReadOnlyReviewPreserved": true,
+    "ROOTCombinedFocusedCompleteModules": 8,
+    "ROOTRecordedSourceEqual": true,
+    "nativeReadinessOnlyNotReactionSample": true,
+    "numericOrFullAcceptance": "not established"
+  },
+  "packagingExecution": "Copying, compression and byte-integrity checks only. No simulation, test, scoring run, staging or commit."
+}

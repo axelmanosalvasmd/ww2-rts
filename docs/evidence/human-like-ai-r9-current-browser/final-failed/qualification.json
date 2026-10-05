@@ -1,0 +1,24 @@
+{
+  "status": "failed, no additional browser retry",
+  "failure": {
+    "wall": "2026-10-05T04:43:17.336702+00:00",
+    "error": "Failure: CLI exit124: ('wait', '--fn', '!!window.__game?.snapshot')"
+  },
+  "result": {
+    "failed": "Failure: CLI exit124: ('wait', '--fn', '!!window.__game?.snapshot')",
+    "watchdog": {
+      "pid": 2143756,
+      "exit": 0,
+      "cleanupAck": true
+    },
+    "sourceEqual": true,
+    "actualStartExists": true,
+    "qualification": "Capture artifacts require by-eye inspection. Requested6fps is not measured FPS. No private MP claim."
+  },
+  "sourceHashes": {
+    "shared/ai-commander.js": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225",
+    "shared/ai-attention.js": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090",
+    "shared/ai-hands.js": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+  },
+  "qualification": "15second external CLI deadline triggered while waiting for first client snapshot. Native camera gestures, record stop, and error/console retrieval were not reached. This run supplies no playable video or new 3D screenshot proof. Earlier inspected fight screenshots remain separate evidence."
+}

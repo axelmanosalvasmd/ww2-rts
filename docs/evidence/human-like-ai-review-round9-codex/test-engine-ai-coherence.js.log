@@ -1,0 +1,4 @@
+Commander movement conflicts, unfinished-move commitment and accepted failed-effect ability backoff passed.
+Emergency interruption cancels an unpressed approach, completes a held drag, and preserves selection and reaction latency.
+Arrived A-B-A return guard, local damage response and separate line/support formations passed.
+Local base emergency override and noncausal fortification provenance passed.

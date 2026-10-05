@@ -1,0 +1,117 @@
+{
+  "human-ai-r10-final-full-run.py": {
+    "originalPath": "/tmp/human-ai-r10-final-full-run.py",
+    "bytes": 20551,
+    "sha256": "78f39f1da288551ee8b9332e9cb8ab5593bad94385456df5119371b3dc5ff116"
+  },
+  "human-ai-r10-final-full-prospective.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-prospective.json",
+    "bytes": 12322,
+    "sha256": "ec59b45838b93d523110eea503735d61184c4aeb08f85b906c2acc772dabb21a"
+  },
+  "human-ai-r10-final-full-predeclared.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-predeclared.json",
+    "bytes": 22391,
+    "sha256": "bfcf2fa5c276b427121826bebe8b591b97fcc7131be6cebba7de34b3ea2b462f"
+  },
+  "human-ai-r10-final-full-before.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-before.json",
+    "bytes": 919723,
+    "sha256": "f8a5b4961d430b661522425a46e72d2a7c86c02824e1559dbf68f613c28be640"
+  },
+  "human-ai-r10-final-full-after.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-after.json",
+    "bytes": 461405,
+    "sha256": "6b791420d84872578f2558a3186463510a17ba775d8ac9bd849045f1b6daf70d"
+  },
+  "human-ai-r10-final-full-checks.jsonl": {
+    "originalPath": "/tmp/human-ai-r10-final-full-checks.jsonl",
+    "bytes": 3586,
+    "sha256": "a1c9df0642991d77a7c80d44fa27871380f50700858e58679afae6a0b49c4449"
+  },
+  "human-ai-r10-final-full-test.log": {
+    "originalPath": "/tmp/human-ai-r10-final-full-test.log",
+    "bytes": 2446,
+    "sha256": "782d7848e0f6615459c2fa3d5e43dbef320d65154c71a2933c40a2a4c3dade8c"
+  },
+  "human-ai-r10-final-full-test-exit.txt": {
+    "originalPath": "/tmp/human-ai-r10-final-full-test-exit.txt",
+    "bytes": 12,
+    "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af"
+  },
+  "human-ai-r10-final-full-launch.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-launch.json",
+    "bytes": 368,
+    "sha256": "6bb68973568d299f61a2b3c59be660db26187af4281325f736b369904d3da9c6"
+  },
+  "human-ai-r10-final-full-completion.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-completion.json",
+    "bytes": 138,
+    "sha256": "2092c473cc24b6970e085a41d4a5b8126e784e2a44ffef49221fea6156c7eead"
+  },
+  "human-ai-r10-final-full-verification.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-verification.json",
+    "bytes": 10871,
+    "sha256": "6c709423f923d5ec30c68aa2b7e854db20af44425875e772857910975eb4dab7"
+  },
+  "human-ai-r10-final-full-controller.log": {
+    "originalPath": "/tmp/human-ai-r10-final-full-controller.log",
+    "bytes": 10901,
+    "sha256": "d09667b34c2016cdc112aded439487d86e3a89931ed8666405ffb749402e9e5b"
+  },
+  "human-ai-r10-final-full-background-launch.json": {
+    "originalPath": "/tmp/human-ai-r10-final-full-background-launch.json",
+    "bytes": 771,
+    "sha256": "130f3bc06b11e4d45a3f2fa69d69a2949d665e0f786aff455269caf164f0079a"
+  },
+  "source/test-world-teams.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/test-world-teams.js",
+    "bytes": 7352,
+    "sha256": "7238f4706b7397c7be3ef1130cd4e15b9b30a705b39e6fefbf857043e093d245"
+  },
+  "source/test.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/test.js",
+    "bytes": 594069,
+    "sha256": "7e01fe4b7ee8faef9d89e6d2874444a93215dac375eaa8e0f9f0c6035abc2096"
+  },
+  "source/test-performance.mjs": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/test-performance.mjs",
+    "bytes": 777,
+    "sha256": "4ec5847cf75abc2ef51f40ebe11ac5e0b01e34ff035c590cc8a48e3e9bb02c63"
+  },
+  "source/server.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/server.js",
+    "bytes": 44801,
+    "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57"
+  },
+  "source/shared/ai.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/shared/ai.js",
+    "bytes": 91945,
+    "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+  },
+  "source/shared/ai-commander.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/shared/ai-commander.js",
+    "bytes": 31873,
+    "sha256": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225"
+  },
+  "source/shared/ai-attention.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/shared/ai-attention.js",
+    "bytes": 32005,
+    "sha256": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090"
+  },
+  "source/shared/ai-hands.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/shared/ai-hands.js",
+    "bytes": 70724,
+    "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+  },
+  "source/shared/ai-view.js": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/shared/ai-view.js",
+    "bytes": 13935,
+    "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+  },
+  "source/.github/workflows/tests.yml": {
+    "originalPath": "/tmp/human-ai-r10-final-full-source/.github/workflows/tests.yml",
+    "bytes": 2695,
+    "sha256": "58ba255851f04115fbc20e255a6e5863487f055b33983ce1c499216763d057a0"
+  }
+}

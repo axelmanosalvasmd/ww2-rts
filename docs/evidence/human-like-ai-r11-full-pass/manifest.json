@@ -1,0 +1,3287 @@
+{
+  "schema": "ww2-r11-exact-original-export-v1",
+  "archive": "original-files.tar.gz",
+  "archiveSHA256": "d0001b161c3bbbd75995382ef9c4d12683ffeb8cc1f0adde26bef003ddeac883",
+  "archiveBytes": 6110027,
+  "allMembersVerifiedEqualOriginalBytes": true,
+  "members": [
+    {
+      "member": "run-evidence/human-ai-r11-final-full-prospective.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-prospective.json",
+      "kind": "file",
+      "bytes": 12322,
+      "sha256": "c29474a9bfc4930677825231255d887f8c3bfead2d9ca9177c138fe9ca3a6fe6"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-predeclared.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-predeclared.json",
+      "kind": "file",
+      "bytes": 22256,
+      "sha256": "b445c6e9ed025a60cfb0a1c5538422024b7c207f815b66b7edee7744c411489b"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-before.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-before.json",
+      "kind": "file",
+      "bytes": 928179,
+      "sha256": "f1c32fa147b8be6d9f3ac3df4ad65502d9e052f33f3e7f1bbebf4b0a71305d3d"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-after.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-after.json",
+      "kind": "file",
+      "bytes": 470575,
+      "sha256": "9a49438e4cdfd56e11a588b7c80498992c39d0e373fca5395beecf2bc79eaefd"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-checks.jsonl",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-checks.jsonl",
+      "kind": "file",
+      "bytes": 34802,
+      "sha256": "52aab4c7632b8b1cf8f7397cf363788b054cc14b8f61b5fa5b4749c13dd9437f"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-test.log",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-test.log",
+      "kind": "file",
+      "bytes": 227678,
+      "sha256": "9a8e1f12acb42a1909981e7879aba68e25a03370fc4aaf8b164f6af73984d390"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-test-exit.txt",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-test-exit.txt",
+      "kind": "file",
+      "bytes": 12,
+      "sha256": "1ca4a13146b2891c0e462123ac0cb848f92e6221f18b870a1b78c232d1956c35"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-launch.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-launch.json",
+      "kind": "file",
+      "bytes": 368,
+      "sha256": "30c5094d80522fe3621b60f5561e4d0b993800139fae17f658a86407a16ef837"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-completion.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-completion.json",
+      "kind": "file",
+      "bytes": 141,
+      "sha256": "5223ac8809f772cf7ed7409af14e9a338737e5c0ef8038e94241b1f6fe6b949f"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-verification.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-verification.json",
+      "kind": "file",
+      "bytes": 12797,
+      "sha256": "77611f6e21c95c4bb0a876a3b9df68976b98c278f432538738dd07716b0a468f"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-controller.log",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-controller.log",
+      "kind": "file",
+      "bytes": 12827,
+      "sha256": "4871ef23d4efbd8220e0df94780a710cc090fe4da99d48e8e0a5a9745d3e4e61"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-background-launch.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-background-launch.json",
+      "kind": "file",
+      "bytes": 636,
+      "sha256": "0ae16055748cd8bc8d89d3ee114c8bf381dc6a41bac2040b1f5cdf531ee5abbe"
+    },
+    {
+      "member": "run-evidence/human-ai-r11-final-full-run.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-run.py",
+      "kind": "file",
+      "bytes": 20551,
+      "sha256": "d6d2e65fccf8edb8d2abb2df8a535f91e4ddaeb4bed3616afe89f2fa674fb508"
+    },
+    {
+      "member": "run-evidence/human-ai-v21-final-full-predeclared.json",
+      "originalPhysicalPath": "/tmp/human-ai-v21-final-full-predeclared.json",
+      "kind": "file",
+      "bytes": 30681,
+      "sha256": "77fd370f18b0c3149fa5b16d7cc4fea5e43ec44ed95a5acd6cf6903a9b530ceb"
+    },
+    {
+      "member": "frozen-source/.agents/skills/ww2-model-qa",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.agents/skills/ww2-model-qa",
+      "kind": "symlink",
+      "bytes": 39,
+      "sha256": "495e35b0a8c0e4bd7221e24877222f4c88f64a2807651d3f2fe2fca7973ef676",
+      "target": "../../tools/blender/skills/ww2-model-qa"
+    },
+    {
+      "member": "frozen-source/.claude/skills/ww2-model-qa",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.claude/skills/ww2-model-qa",
+      "kind": "symlink",
+      "bytes": 39,
+      "sha256": "495e35b0a8c0e4bd7221e24877222f4c88f64a2807651d3f2fe2fca7973ef676",
+      "target": "../../tools/blender/skills/ww2-model-qa"
+    },
+    {
+      "member": "frozen-source/.codex/config.toml",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.codex/config.toml",
+      "kind": "file",
+      "bytes": 680,
+      "sha256": "1a116db581222325bdb5e5d407428f2afd5729f49fd795d12ec8e3f734ccafc2"
+    },
+    {
+      "member": "frozen-source/.gitattributes",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.gitattributes",
+      "kind": "file",
+      "bytes": 61,
+      "sha256": "a199ff09ae97d5fc4492fc7412f630a684cd5c5f415cc7bdb20ddc53af6a1215"
+    },
+    {
+      "member": "frozen-source/.github/workflows/tests.yml",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.github/workflows/tests.yml",
+      "kind": "file",
+      "bytes": 2695,
+      "sha256": "58ba255851f04115fbc20e255a6e5863487f055b33983ce1c499216763d057a0"
+    },
+    {
+      "member": "frozen-source/.gitignore",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.gitignore",
+      "kind": "file",
+      "bytes": 170,
+      "sha256": "e8c9f63e999d449365f4e9f19d472f787ef79d7754610c90d35871e21f92230f"
+    },
+    {
+      "member": "frozen-source/.mcp.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/.mcp.json",
+      "kind": "file",
+      "bytes": 718,
+      "sha256": "96c1620c307a41835d97d61691762c81baae2ec9085a6d1d9d26b78a060aee40"
+    },
+    {
+      "member": "frozen-source/AGENTS.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/AGENTS.md",
+      "kind": "file",
+      "bytes": 994,
+      "sha256": "ceca4b528eedac603994924f54ffc6cd850ded4298b032628d18a5dc7a58792f"
+    },
+    {
+      "member": "frozen-source/CHANGELOG.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/CHANGELOG.md",
+      "kind": "file",
+      "bytes": 203825,
+      "sha256": "e29783d8268c17c3845bffe33a8c8a8daf633102558a38c696ab4e7688f8851f"
+    },
+    {
+      "member": "frozen-source/CLAUDE.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/CLAUDE.md",
+      "kind": "file",
+      "bytes": 11,
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+    },
+    {
+      "member": "frozen-source/CONTEXT.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/CONTEXT.md",
+      "kind": "file",
+      "bytes": 10719,
+      "sha256": "b107803e975936987fbae808bda39cc07958aad1a345d728fd21dae29eae9470"
+    },
+    {
+      "member": "frozen-source/DESIGN.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/DESIGN.md",
+      "kind": "file",
+      "bytes": 282659,
+      "sha256": "638ca84fce6ba298ee72dd853c8d735d5c8e10a0c5e67a2e9bebff436f7c1b16"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/README.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/README.md",
+      "kind": "file",
+      "bytes": 6455,
+      "sha256": "dcd584c63b1b175d0bc2a42cb4b364949affedc6bbabddfb8c8efd1310e72d1d"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/ground-units-multiview.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/ground-units-multiview.png.json",
+      "kind": "file",
+      "bytes": 2897,
+      "sha256": "368adce517d99a7516140c4e2d4e27b558a4d26748b400cfb0f6609dc18f7baa"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/infantry-face-v3.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/infantry-face-v3.png.json",
+      "kind": "file",
+      "bytes": 2209,
+      "sha256": "e7d6e63f5418fa9a0037cf09f9d24ebfe98c16ec6a1b91be09a2eef39fe5fe62"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/infantry-provenance-v3.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/infantry-provenance-v3.json",
+      "kind": "file",
+      "bytes": 1195,
+      "sha256": "18a224783f0e2fb0502fc3a3fb447a446530fccc41f9802939fca6a65700adfc"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/infantry-realism-v3.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/infantry-realism-v3.png.json",
+      "kind": "file",
+      "bytes": 3173,
+      "sha256": "a2feb9cf73e372c27c7d50f91d74dc5cbb91ae7362c5cdde9287eac43e62583a"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/naval-air-hq-multiview.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/naval-air-hq-multiview.png.json",
+      "kind": "file",
+      "bytes": 3025,
+      "sha256": "e6abdcfc2fe23fb26d9f7213e09f8e6e86bff5f8e5d81a030e00d48d6efa1723"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/painted-steel-albedo.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/painted-steel-albedo.png.json",
+      "kind": "file",
+      "bytes": 1916,
+      "sha256": "adaec3e4cef523c03d110fb371295bbb7b093452f0fa36cd02d0f9ada6e89a0e"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/pt-boat-isolated-v2.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/pt-boat-isolated-v2.png.json",
+      "kind": "file",
+      "bytes": 3295,
+      "sha256": "94e1457bfea8c19b151a4825f47a37dc9d1d7741a03932fdee8ec663857b15a2"
+    },
+    {
+      "member": "frozen-source/art/model-reference-2026-10-03/realism-naval-v2.png.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/art/model-reference-2026-10-03/realism-naval-v2.png.json",
+      "kind": "file",
+      "bytes": 4327,
+      "sha256": "afecba01be60adcc487646540d17e50ca8434355787f6b7d9fdd041769127717"
+    },
+    {
+      "member": "frozen-source/client/ai-overlay.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/ai-overlay.js",
+      "kind": "file",
+      "bytes": 4459,
+      "sha256": "9042e20afef01299e50d6116eb5f887dfe622dfc4eaaeb04767fd94f20a0845a"
+    },
+    {
+      "member": "frozen-source/client/aircraft.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/aircraft.js",
+      "kind": "file",
+      "bytes": 32807,
+      "sha256": "332efcfebdce10ccdf127162d4058912000b75c0337e0409f2eb7c4af9cbd493"
+    },
+    {
+      "member": "frozen-source/client/alert-history.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/alert-history.js",
+      "kind": "file",
+      "bytes": 1506,
+      "sha256": "9456ba8c95e29370bfe869372b337bd6e17f2d4d5f17e54b5672fe58648fde5e"
+    },
+    {
+      "member": "frozen-source/client/alerts.css",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/alerts.css",
+      "kind": "file",
+      "bytes": 3886,
+      "sha256": "0342277ce2e5acfc88421ec77d7bcace735f680b0c0c9886c61307a69e7ba799"
+    },
+    {
+      "member": "frozen-source/client/alerts.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/alerts.js",
+      "kind": "file",
+      "bytes": 8935,
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f"
+    },
+    {
+      "member": "frozen-source/client/apron.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/apron.js",
+      "kind": "file",
+      "bytes": 21952,
+      "sha256": "f6a950928fd0b7a37d68171b104fde11c916888469c0039ce7cf96f6026e58cf"
+    },
+    {
+      "member": "frozen-source/client/atmosphere.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/atmosphere.js",
+      "kind": "file",
+      "bytes": 31451,
+      "sha256": "984f1baf17a574f011b64963145db4661491fd9b6aea68ce9feefc4880516012"
+    },
+    {
+      "member": "frozen-source/client/audio.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/audio.js",
+      "kind": "file",
+      "bytes": 18746,
+      "sha256": "709fded0a4030bb04db49f148e325dd1abaa4912cdfed1e8bcb161bb7448c063"
+    },
+    {
+      "member": "frozen-source/client/audio/index.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/audio/index.json",
+      "kind": "file",
+      "bytes": 4737,
+      "sha256": "21c2f12acb1f824e42f9a3c9791938d236edee6b6c94907da06e4803c9020d18"
+    },
+    {
+      "member": "frozen-source/client/autocast.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/autocast.js",
+      "kind": "file",
+      "bytes": 1950,
+      "sha256": "274c870aab9a27b95d3850c8d086e6b5dafda0be2887a0ebe8bf6377af715bfc"
+    },
+    {
+      "member": "frozen-source/client/availability.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/availability.js",
+      "kind": "file",
+      "bytes": 10112,
+      "sha256": "b56d151aa16f90cb86b61d1f34fa66621da3262a79c4e2c8d2dd819a82f4fd12"
+    },
+    {
+      "member": "frozen-source/client/battle-sound.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/battle-sound.js",
+      "kind": "file",
+      "bytes": 1537,
+      "sha256": "5e73cd538d6b578ddce884e9126be38398fc426e2fbbd7dd6d33a91329e453c9"
+    },
+    {
+      "member": "frozen-source/client/camera.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/camera.js",
+      "kind": "file",
+      "bytes": 16347,
+      "sha256": "2d485f27106c60f1ab37703810f9b3243bed80aaa205025777bc3109d35e410c"
+    },
+    {
+      "member": "frozen-source/client/connection.css",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/connection.css",
+      "kind": "file",
+      "bytes": 1693,
+      "sha256": "fe13a041240bb562ce0b91f64db01512d4b3f0e426e82b4cbd2589e52a741d5a"
+    },
+    {
+      "member": "frozen-source/client/connection.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/connection.js",
+      "kind": "file",
+      "bytes": 3061,
+      "sha256": "7569af1bba9cfc1770be8c2936d08812d2455b7d559f70c4a9147d6c30f6f309"
+    },
+    {
+      "member": "frozen-source/client/cover-preview.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/cover-preview.js",
+      "kind": "file",
+      "bytes": 20794,
+      "sha256": "3007688808dd6c13dd4c5a0e30c3845ddd99ebc5974e40dade4dcbdefdd12ed8"
+    },
+    {
+      "member": "frozen-source/client/debris.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/debris.js",
+      "kind": "file",
+      "bytes": 1804,
+      "sha256": "4eb7fbfec6049772d017f2b9a30257608b325558eb0e7f619b23fb46e73d034c"
+    },
+    {
+      "member": "frozen-source/client/editor.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/editor.js",
+      "kind": "file",
+      "bytes": 28034,
+      "sha256": "f1c738e3cc787bdbde44461bb6cec621fea82715188ffe922d8ea2bc29e93879"
+    },
+    {
+      "member": "frozen-source/client/endgame.css",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/endgame.css",
+      "kind": "file",
+      "bytes": 922,
+      "sha256": "1c6b0636517bb548c36732c82fdb97ed3cff87f669d752626bf7622426207630"
+    },
+    {
+      "member": "frozen-source/client/endgame.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/endgame.js",
+      "kind": "file",
+      "bytes": 6339,
+      "sha256": "8d6db960c41a89e58627815899d767cf5ee2cd9e7273f8d00332fb9347c0f9e0"
+    },
+    {
+      "member": "frozen-source/client/engine-presentation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/engine-presentation.js",
+      "kind": "file",
+      "bytes": 10242,
+      "sha256": "89810c7b150a8202258478a93656a809cda2cb213b81d2b4c0694afb638ef241"
+    },
+    {
+      "member": "frozen-source/client/epilogue.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/epilogue.js",
+      "kind": "file",
+      "bytes": 5668,
+      "sha256": "648bc5470e6e9445974a0f5b8c5c0531a58e036e181d7c0a4843ab46d10c6ee0"
+    },
+    {
+      "member": "frozen-source/client/es.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/es.js",
+      "kind": "file",
+      "bytes": 86506,
+      "sha256": "2fb7219aadf2de133c05a99081e50540210ed44eb909ad8039d9d4a92ed9d564"
+    },
+    {
+      "member": "frozen-source/client/fairness.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/fairness.js",
+      "kind": "file",
+      "bytes": 1899,
+      "sha256": "b539d9d9fabb3c4f40be51b7209bff0411bcaf1c8e626e92148bf2a591ae7792"
+    },
+    {
+      "member": "frozen-source/client/feedback.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/feedback.js",
+      "kind": "file",
+      "bytes": 3157,
+      "sha256": "0d2dad9c96d0b993eba6352ee5541486d53b96a21f4cb19b01fd5f9ca2cf468f"
+    },
+    {
+      "member": "frozen-source/client/fog.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/fog.js",
+      "kind": "file",
+      "bytes": 6035,
+      "sha256": "5e977f56a514cbd775ace5453e1f243bc91caf14de318d99b4a9a1734734c473"
+    },
+    {
+      "member": "frozen-source/client/foliage.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/foliage.js",
+      "kind": "file",
+      "bytes": 16139,
+      "sha256": "7180d28db346245d63ed922a95095cbd287c4c9ad40dedc9a18688c042264009"
+    },
+    {
+      "member": "frozen-source/client/formation-preview.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/formation-preview.js",
+      "kind": "file",
+      "bytes": 2771,
+      "sha256": "071dd1a99ff8cdc926e27b920f2873f3b20f90b0f0102a2e9d6a9b3c97ca2173"
+    },
+    {
+      "member": "frozen-source/client/fx.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/fx.js",
+      "kind": "file",
+      "bytes": 78917,
+      "sha256": "3c804031f699fc1234c6922fcea82644984fa9763f64674f3bd2180864548260"
+    },
+    {
+      "member": "frozen-source/client/gfx.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/gfx.js",
+      "kind": "file",
+      "bytes": 2026,
+      "sha256": "cf463692489f09529bec0d78425914b397a8e132aefe87227f7084db14d5c18f"
+    },
+    {
+      "member": "frozen-source/client/ground.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/ground.js",
+      "kind": "file",
+      "bytes": 39671,
+      "sha256": "a93abe417b7e5d41e4db57111c832c3620bd0ee3037080501a0fff2e7cb00b32"
+    },
+    {
+      "member": "frozen-source/client/hud.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/hud.js",
+      "kind": "file",
+      "bytes": 47969,
+      "sha256": "b2339e22105f65cb4b4ae186e6c2e7746e10a58dfcac7a7b3567ec9d83f7b36d"
+    },
+    {
+      "member": "frozen-source/client/i18n.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/i18n.js",
+      "kind": "file",
+      "bytes": 5189,
+      "sha256": "bd146a0ce7f53261c11eaac00a37274fd45f53c988426b6d18e11c53dc818f2c"
+    },
+    {
+      "member": "frozen-source/client/index.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/index.html",
+      "kind": "file",
+      "bytes": 40857,
+      "sha256": "60638f18d0cb226a51022b0285f3cf7876d4e79856e99a6fde7bbd915614133c"
+    },
+    {
+      "member": "frozen-source/client/infantry-material.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/infantry-material.js",
+      "kind": "file",
+      "bytes": 3511,
+      "sha256": "a0c7c7961cfa58ba38157623b918355ae78c6bc84bcf16c80da9305ea2255931"
+    },
+    {
+      "member": "frozen-source/client/keys.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/keys.js",
+      "kind": "file",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "member": "frozen-source/client/layer-edit.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/layer-edit.js",
+      "kind": "file",
+      "bytes": 4437,
+      "sha256": "19bb52073ea431a45a2842f51e913e89b880dfdc7f4b4a77f23e9c004ff68e78"
+    },
+    {
+      "member": "frozen-source/client/light.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/light.js",
+      "kind": "file",
+      "bytes": 9385,
+      "sha256": "3f73e6e112c1974bd1b5b191155408f5a8a4c35542e712edf7f79dea64ad8b4b"
+    },
+    {
+      "member": "frozen-source/client/lobby-view.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/lobby-view.js",
+      "kind": "file",
+      "bytes": 8073,
+      "sha256": "2496072ab524294309b8aa3c8e136b94ce4ac54de117ede206918cd246e9100b"
+    },
+    {
+      "member": "frozen-source/client/main.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/main.js",
+      "kind": "file",
+      "bytes": 128170,
+      "sha256": "a5accdd07bbc8d26dc4b01db50b7fb4eb761129d97f7125aec59a75fa7ccb11c"
+    },
+    {
+      "member": "frozen-source/client/map-view.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/map-view.js",
+      "kind": "file",
+      "bytes": 20941,
+      "sha256": "095777fe2ece1b74882f5cd1e0df03f4afdd52139ff53102ff4885b5c7287175"
+    },
+    {
+      "member": "frozen-source/client/markers.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/markers.js",
+      "kind": "file",
+      "bytes": 26313,
+      "sha256": "8867651b6f59c3c1005ea13e1d63fb18ecfcee0cd9e3aadd2be93fa936be662d"
+    },
+    {
+      "member": "frozen-source/client/model-motion.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/model-motion.js",
+      "kind": "file",
+      "bytes": 3162,
+      "sha256": "75360a147cbf389fd7e4e694275067ea00a4e1b979e297479c17fdfdcaf61c67"
+    },
+    {
+      "member": "frozen-source/client/model-textures.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/model-textures.js",
+      "kind": "file",
+      "bytes": 16493,
+      "sha256": "b256add6358527700ba1d88d627aa88d59b322e149e2c81c65e623eba6e3a624"
+    },
+    {
+      "member": "frozen-source/client/models/armor-lightheavy.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/armor-lightheavy.js",
+      "kind": "file",
+      "bytes": 68656,
+      "sha256": "58b2d3694e9e0d82ec0f93efa993d809962621fbaa19a2b7a203203916343bdd"
+    },
+    {
+      "member": "frozen-source/client/models/armor-medium.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/armor-medium.js",
+      "kind": "file",
+      "bytes": 86903,
+      "sha256": "992bfc023d600516333fd8ddb9ab39940eb59d7dc8e989727271de43e10043ea"
+    },
+    {
+      "member": "frozen-source/client/models/blender-baked.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/blender-baked.js",
+      "kind": "file",
+      "bytes": 2794,
+      "sha256": "98f80906a0912e5e4a3acd0acb701b2fc5711bb9f594bbd8c5ae4577697b21f0"
+    },
+    {
+      "member": "frozen-source/client/models/churchill.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/churchill.js",
+      "kind": "file",
+      "bytes": 35298,
+      "sha256": "97da5545e0f34043c723e80e2e177fb9a27c337301822164801202bb5508c419"
+    },
+    {
+      "member": "frozen-source/client/models/cromwell.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/cromwell.js",
+      "kind": "file",
+      "bytes": 38912,
+      "sha256": "3a532e8cb225697d93e98d172439a4761cc402711013983995aa5ca26c8be937"
+    },
+    {
+      "member": "frozen-source/client/models/geom.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/geom.js",
+      "kind": "file",
+      "bytes": 44397,
+      "sha256": "f224b34cd050f04cdd758cc23dc7d59ea8b8efa5dff8fe3df2174c88c21a9624"
+    },
+    {
+      "member": "frozen-source/client/models/guns.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/guns.js",
+      "kind": "file",
+      "bytes": 101971,
+      "sha256": "b493e003a39126019f334074fd402c5b8a8a6ebaeff9bb3ab3e075b3a91da1c7"
+    },
+    {
+      "member": "frozen-source/client/models/infantry-authored-data.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/infantry-authored-data.js",
+      "kind": "file",
+      "bytes": 711890,
+      "sha256": "9209a37dfd63b09c6a0bcc785917a1ba1dabb705d57192ce3f426b91483d2719"
+    },
+    {
+      "member": "frozen-source/client/models/infantry-authored.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/infantry-authored.js",
+      "kind": "file",
+      "bytes": 4869,
+      "sha256": "32d2b00459367dd97c57ef05b8c5b97c742c14439cfaac907c0bac0a9dffa522"
+    },
+    {
+      "member": "frozen-source/client/models/infantry.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/infantry.js",
+      "kind": "file",
+      "bytes": 73169,
+      "sha256": "425abd7502c91342877db977d93f7f534b8c4cf9fae7a6ec3a0c9c5196456fec"
+    },
+    {
+      "member": "frozen-source/client/models/naval-finished-data.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/naval-finished-data.js",
+      "kind": "file",
+      "bytes": 3776929,
+      "sha256": "ce6fd8af48bb49d8ba1ff77684521b1c02c52b2a3fb8ccb70e4a56c9df2bf21c"
+    },
+    {
+      "member": "frozen-source/client/models/naval.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/naval.js",
+      "kind": "file",
+      "bytes": 26828,
+      "sha256": "a7d9fed07242a0a046afd0b043b8edb7b60a00307d429d1c4ad7ca01dfa125e5"
+    },
+    {
+      "member": "frozen-source/client/models/planes.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/planes.js",
+      "kind": "file",
+      "bytes": 98205,
+      "sha256": "8f2982b700847b73e4d553756ca58b28e0dfe5ef3e0dbe5b5ae244d2c50e9a8d"
+    },
+    {
+      "member": "frozen-source/client/models/track-data.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/track-data.js",
+      "kind": "file",
+      "bytes": 3797,
+      "sha256": "ed2d59bad774af2ebf1b308d44339477a60451f5de714656260955c6384c35f1"
+    },
+    {
+      "member": "frozen-source/client/models/wheeled.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/models/wheeled.js",
+      "kind": "file",
+      "bytes": 65843,
+      "sha256": "b5e15eb14726b396d4acde2ead20a5dafef71048e5615f57979e8045c01ec38d"
+    },
+    {
+      "member": "frozen-source/client/moods.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/moods.js",
+      "kind": "file",
+      "bytes": 4326,
+      "sha256": "b7e50ed3d8e45f30f34a4dae8c6989109cef9efb0c288c40ff5cd27af55f6596"
+    },
+    {
+      "member": "frozen-source/client/objectives.css",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/objectives.css",
+      "kind": "file",
+      "bytes": 1015,
+      "sha256": "53ca5509db78e0fe28bad2ebe45b6abbe7bd49fa8f335bfbdde2e725d31c243c"
+    },
+    {
+      "member": "frozen-source/client/objectives.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/objectives.js",
+      "kind": "file",
+      "bytes": 6894,
+      "sha256": "31f2e8b7f6d2e1494533f70c0cef672e4461569a43794c001a803471f15570db"
+    },
+    {
+      "member": "frozen-source/client/orders.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/orders.js",
+      "kind": "file",
+      "bytes": 4530,
+      "sha256": "90bf9666bc2b958aacf0f72f07dd4f68f2cf6ec8e93ce1e02eae1df3af1de9f5"
+    },
+    {
+      "member": "frozen-source/client/overlay.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/overlay.js",
+      "kind": "file",
+      "bytes": 16179,
+      "sha256": "2f28b6f766e3944aeda5052584bb2502ca09ceba6e26c5f0efbd1fb171190625"
+    },
+    {
+      "member": "frozen-source/client/perf.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/perf.js",
+      "kind": "file",
+      "bytes": 4813,
+      "sha256": "c312e5f9e40d2497b4025d3b502bdc41378f48cbb38762fb5c4e452c804de32b"
+    },
+    {
+      "member": "frozen-source/client/pings.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/pings.js",
+      "kind": "file",
+      "bytes": 2255,
+      "sha256": "5bf85b965824eb7bb988cf4ce37c3810f259d2e7e01bd832d5a9501dd8cbd80b"
+    },
+    {
+      "member": "frozen-source/client/pointer.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/pointer.js",
+      "kind": "file",
+      "bytes": 16776,
+      "sha256": "0c8c8a1e1d0813340840a9f76645277222ec221593167dc76b695fafdfe311c6"
+    },
+    {
+      "member": "frozen-source/client/portraits.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/portraits.js",
+      "kind": "file",
+      "bytes": 8640,
+      "sha256": "caecbdf253e5e631e6e7ea47252817d1ed022ad875b8f0f0ef11eba9759775fa"
+    },
+    {
+      "member": "frozen-source/client/projectiles.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/projectiles.js",
+      "kind": "file",
+      "bytes": 2303,
+      "sha256": "1d80c04df70134ff8f859d360593a244fb2aa70c15a8b290c806d156c9c82303"
+    },
+    {
+      "member": "frozen-source/client/props.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/props.js",
+      "kind": "file",
+      "bytes": 21176,
+      "sha256": "73ef815e00a3ead6341588efff93fde5f8e818a2bfcffa847f02d96d4c0392c8"
+    },
+    {
+      "member": "frozen-source/client/public-lobby.css",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/public-lobby.css",
+      "kind": "file",
+      "bytes": 4042,
+      "sha256": "874453f8063646a0c8f500e8a91c9b251dffcbdd0792fa5760b0b3ba9b2fc61f"
+    },
+    {
+      "member": "frozen-source/client/public-lobby.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/public-lobby.html",
+      "kind": "file",
+      "bytes": 3990,
+      "sha256": "3f6badb0deed5cd1ffdb33556bdd4e5c356bd990ef76d8f8f99eb53bf302a71c"
+    },
+    {
+      "member": "frozen-source/client/public-lobby.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/public-lobby.js",
+      "kind": "file",
+      "bytes": 5125,
+      "sha256": "8f2c98746743ac74638e2a1b2c9dc76b3cb66fd5ff5abfd6b63d8a9057165b50"
+    },
+    {
+      "member": "frozen-source/client/relief-material.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/relief-material.js",
+      "kind": "file",
+      "bytes": 12256,
+      "sha256": "e197d3c1fdb1580e2b917f2ca0119d45db7d047459a168043b41737910035d19"
+    },
+    {
+      "member": "frozen-source/client/relief.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/relief.js",
+      "kind": "file",
+      "bytes": 42938,
+      "sha256": "c00b2eae1d0dbd27b02b192f499e7f94b11ef5dd8f09741e957ad6bb8f196ac6"
+    },
+    {
+      "member": "frozen-source/client/report.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/report.js",
+      "kind": "file",
+      "bytes": 7765,
+      "sha256": "f35c4e78152c495d32da39316788355ff82ede8442d18da577b1df67c5a9df50"
+    },
+    {
+      "member": "frozen-source/client/room-session.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/room-session.js",
+      "kind": "file",
+      "bytes": 2183,
+      "sha256": "8f68228dfe542beb04ec43b8366c01f063ad0502405447cca17ab300eb92f1d1"
+    },
+    {
+      "member": "frozen-source/client/rubble-decals.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/rubble-decals.js",
+      "kind": "file",
+      "bytes": 4815,
+      "sha256": "1054801276fb18778116db5cc5f4a169314c2bbb988dbbf7e5558da2b18b8a4b"
+    },
+    {
+      "member": "frozen-source/client/scenario-editor.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/scenario-editor.js",
+      "kind": "file",
+      "bytes": 18770,
+      "sha256": "d56619b58c070c378a7202abc3957e3a51e917c2b878b4d87946e82d0385ed54"
+    },
+    {
+      "member": "frozen-source/client/selection-view.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/selection-view.js",
+      "kind": "file",
+      "bytes": 2967,
+      "sha256": "a8d5da61d68ba7b6e4cc6ffeea572537f55f97e71c10ea29cceb4df5de738ce2"
+    },
+    {
+      "member": "frozen-source/client/selection.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/selection.js",
+      "kind": "file",
+      "bytes": 5275,
+      "sha256": "c866bfb6b16b295930fab0fd930445011551d5e2e141408874fad3a95d6fbc6f"
+    },
+    {
+      "member": "frozen-source/client/squad-motion.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/squad-motion.js",
+      "kind": "file",
+      "bytes": 4543,
+      "sha256": "34c18bbda59f4723b6e3f884eb0041b6ae5afd4fcde08e65eb3d83cb0bea0597"
+    },
+    {
+      "member": "frozen-source/client/stats.css",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/stats.css",
+      "kind": "file",
+      "bytes": 4281,
+      "sha256": "3912ecde6de073f66554551af8ce52f5009974994b174f1b981f177cf807ba91"
+    },
+    {
+      "member": "frozen-source/client/stats.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/stats.js",
+      "kind": "file",
+      "bytes": 10372,
+      "sha256": "ce39cfe496b81260276c517ad9ff3aa0022f4450dfdc26e0e0f3db938b1ed693"
+    },
+    {
+      "member": "frozen-source/client/structure-editor.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/structure-editor.js",
+      "kind": "file",
+      "bytes": 5669,
+      "sha256": "7ae9b37ecaccb807a47b8fb9d3d3f10a5a6b5a8b6111d5c02c92d6384cffd3c9"
+    },
+    {
+      "member": "frozen-source/client/structures.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/structures.js",
+      "kind": "file",
+      "bytes": 79339,
+      "sha256": "aaa698e594f92187f2787deaed026e687f5eaa364e28c69bb9bf69bb735fde41"
+    },
+    {
+      "member": "frozen-source/client/surfaces.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/surfaces.js",
+      "kind": "file",
+      "bytes": 9462,
+      "sha256": "7a481dba5dabda816b7e1d59857dd9502a938cdfcdd60a05e40064ec72ebfcfc"
+    },
+    {
+      "member": "frozen-source/client/symbols.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/symbols.js",
+      "kind": "file",
+      "bytes": 43153,
+      "sha256": "135b70642b1b60fae270e3a78168238b5ef1436726d523a9cccedf10faa174e5"
+    },
+    {
+      "member": "frozen-source/client/track-motion.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/track-motion.js",
+      "kind": "file",
+      "bytes": 3823,
+      "sha256": "a0bbb12b69a6b4febc0e64bf1ffe3b2cb06f21fc735c5793fea16aed7d68a4d7"
+    },
+    {
+      "member": "frozen-source/client/unit-models.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/unit-models.js",
+      "kind": "file",
+      "bytes": 55808,
+      "sha256": "3ed376b095b54a86e2cc5bb13fe2259407959b49fb59b23e588bab04524e9429"
+    },
+    {
+      "member": "frozen-source/client/unit-roles.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/unit-roles.js",
+      "kind": "file",
+      "bytes": 1504,
+      "sha256": "02d1940bb06c1c680245d99594d36b7f185145ec43711e0c1ed775759deaf09d"
+    },
+    {
+      "member": "frozen-source/client/upkeep.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/upkeep.js",
+      "kind": "file",
+      "bytes": 881,
+      "sha256": "8bfb63cb64eaf21e92bc8aa46d001c7f1c5178b14a3c76968cb9f8dfdbcb051e"
+    },
+    {
+      "member": "frozen-source/client/viewer.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/viewer.html",
+      "kind": "file",
+      "bytes": 2597,
+      "sha256": "4cc6dc06bb043e692049510f5685cee0d49561382322be11e01330fa713cb5e1"
+    },
+    {
+      "member": "frozen-source/client/viewer.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/viewer.js",
+      "kind": "file",
+      "bytes": 29717,
+      "sha256": "5450b175a280b97eaf3058ff02f28f973ba3846198df8bd241d85c33c9487190"
+    },
+    {
+      "member": "frozen-source/client/water-levels.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/water-levels.js",
+      "kind": "file",
+      "bytes": 2462,
+      "sha256": "34cbfd0650a0f4fc5f2e3433c606b4a5a9974d5273ac6af02f34b25e1d0fd584"
+    },
+    {
+      "member": "frozen-source/client/water.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/water.js",
+      "kind": "file",
+      "bytes": 20187,
+      "sha256": "804f60a6578d46a95e2f203811fa36318691538b04e1f2f13a09719f02c55f5c"
+    },
+    {
+      "member": "frozen-source/client/weather-view.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/weather-view.js",
+      "kind": "file",
+      "bytes": 4797,
+      "sha256": "62aefbb8771ab352f4d7e27f80590d3c9f538219695a47a19b4b174b22c59fe9"
+    },
+    {
+      "member": "frozen-source/client/wheel-motion.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/wheel-motion.js",
+      "kind": "file",
+      "bytes": 6171,
+      "sha256": "21820f5a3a9e2a5c126c9a7dc80b993ea0c87af1b13b210e8c3d68f4060c0a26"
+    },
+    {
+      "member": "frozen-source/client/wind.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/wind.js",
+      "kind": "file",
+      "bytes": 368,
+      "sha256": "c7284f161338da409405ecb36e280c1d4a439f0b3dffa0d9ee66c078ff492f57"
+    },
+    {
+      "member": "frozen-source/client/world-authoring-error.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/world-authoring-error.js",
+      "kind": "file",
+      "bytes": 6776,
+      "sha256": "1d4af8825b492e4a2763c9cd95766420f8e345ca7f05554686b904105d3d2b79"
+    },
+    {
+      "member": "frozen-source/client/world-regions.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/client/world-regions.js",
+      "kind": "file",
+      "bytes": 3668,
+      "sha256": "f9cba7b8ead001a7434fb60a06ca64c129f3ce689c4b65dc1ff400c43889309b"
+    },
+    {
+      "member": "frozen-source/docs/ai-difficulty-balance.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/ai-difficulty-balance.json",
+      "kind": "file",
+      "bytes": 53824,
+      "sha256": "bf07658bacc314e8e1b35d00b1bd58b660f766f23db61057a2bd96ad26ad2b68"
+    },
+    {
+      "member": "frozen-source/docs/ai-humanity-before.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/ai-humanity-before.json",
+      "kind": "file",
+      "bytes": 1521236,
+      "sha256": "c1e618e887f3a40c2918c0d7a356baaed397f0446a4f42282b40ce3876156dac"
+    },
+    {
+      "member": "frozen-source/docs/ai-lab.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/ai-lab.md",
+      "kind": "file",
+      "bytes": 4218,
+      "sha256": "15e41dfa802b0aa52ecfd1c8e8ae78301ded3c563a92f95eb9dbe8d58136d51a"
+    },
+    {
+      "member": "frozen-source/docs/ai-public-alert-response-v1.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/ai-public-alert-response-v1.md",
+      "kind": "file",
+      "bytes": 4782,
+      "sha256": "98767849733e84552261e6231a86e4f90dbb66eb3ef023ed17d9b09dbd2a2db0"
+    },
+    {
+      "member": "frozen-source/docs/balance-2026-10-01/final-classic-120.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/balance-2026-10-01/final-classic-120.json",
+      "kind": "file",
+      "bytes": 82394,
+      "sha256": "76f176f6e565934693f9ea74e4300317a204a99245c76ede46897110307f605a"
+    },
+    {
+      "member": "frozen-source/docs/balance-2026-10-01/final-conquest-300.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/balance-2026-10-01/final-conquest-300.json",
+      "kind": "file",
+      "bytes": 207454,
+      "sha256": "9119f94b2e977ad088dbcc7fa3a7fb56c1452e1f08f39adaee031010136abe83"
+    },
+    {
+      "member": "frozen-source/docs/balance-2026-10-01/final-manifest.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/balance-2026-10-01/final-manifest.json",
+      "kind": "file",
+      "bytes": 1399,
+      "sha256": "c0f32b4a9bd126789ebe813f7446e9a18d279aee37ca0f9967c741d01fb5b336"
+    },
+    {
+      "member": "frozen-source/docs/balance-2026-10-01/master-classic-120.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/balance-2026-10-01/master-classic-120.json",
+      "kind": "file",
+      "bytes": 82401,
+      "sha256": "69aabb8816c4b322521b465f9315ed28c43a41558af28f89448044133395abcc"
+    },
+    {
+      "member": "frozen-source/docs/balance-2026-10-01/master-conquest-300.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/balance-2026-10-01/master-conquest-300.json",
+      "kind": "file",
+      "bytes": 207498,
+      "sha256": "67350876211d65e7676d7202bbdee26b38785e26a5806ec7e1b614e88e875bf2"
+    },
+    {
+      "member": "frozen-source/docs/balance-2026-10-01/master-manifest.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/balance-2026-10-01/master-manifest.json",
+      "kind": "file",
+      "bytes": 807,
+      "sha256": "4d78e3335346202de5e37af4c9e499a2238085c1e6273db2b7f97b8f9e0a7442"
+    },
+    {
+      "member": "frozen-source/docs/behavior-balance-2026-10-01.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/behavior-balance-2026-10-01.md",
+      "kind": "file",
+      "bytes": 3630,
+      "sha256": "3c2f6628082507579db134f8739198aa67322f0cff26e59e24c98a517cc7f5a3"
+    },
+    {
+      "member": "frozen-source/docs/engine-game-feel-spec.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/engine-game-feel-spec.md",
+      "kind": "file",
+      "bytes": 50626,
+      "sha256": "f6181112f7676a314f730a7a1739be4d97c5e8ceb4f5ec1c29bef88eb0017e9b"
+    },
+    {
+      "member": "frozen-source/docs/engine-game-feel-verification.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/engine-game-feel-verification.md",
+      "kind": "file",
+      "bytes": 29171,
+      "sha256": "2e1eb0e99f520306958215495ad44969b568c69a1dcd4910e823ffd2453c65dd"
+    },
+    {
+      "member": "frozen-source/docs/game-feel-research.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/game-feel-research.md",
+      "kind": "file",
+      "bytes": 14858,
+      "sha256": "33a642f6671d95626ae49353a26e9d635ba0748f411cdd207311cd7f05bec757"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-audit.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-audit.md",
+      "kind": "file",
+      "bytes": 13686,
+      "sha256": "92e2589d50c6985eae872e9689cacf7bf3a57448eb0e366ba5303ad592776fb7"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-browser-final.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-browser-final.md",
+      "kind": "file",
+      "bytes": 2906,
+      "sha256": "e858c75532cc01b8ea8801d41e3376536597ed077e53e34f7c92fdaaab6f130a"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-km-boundary.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-km-boundary.md",
+      "kind": "file",
+      "bytes": 1795,
+      "sha256": "a3aa5131c364e5856d160dd63ccc2e47c8f695b09e7e33d1851e736a37255a1a"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-manual-response-v2.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-manual-response-v2.md",
+      "kind": "file",
+      "bytes": 21914,
+      "sha256": "f2b614505c3472990da8cb549bdf98023765ee42c349c9cf46e6f18d4505e8d1"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-manual-response-v3.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-manual-response-v3.md",
+      "kind": "file",
+      "bytes": 4767,
+      "sha256": "90125e56bd138fd9acdab0d7858db12010dfb77fd0e97af4820ff5b8333c3b40"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-measurement-protocol.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-measurement-protocol.md",
+      "kind": "file",
+      "bytes": 20534,
+      "sha256": "0c9781f77eaec55044b3a3ba97dbc264d04fd9f75e3390ff4aa76690c412c0c0"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-review-round1.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-review-round1.md",
+      "kind": "file",
+      "bytes": 23648,
+      "sha256": "3fb366cf91f148223c2b38cb218094e9f5e1af90ab6271c30caaed1273b5d4ce"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-review-round2.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-review-round2.md",
+      "kind": "file",
+      "bytes": 26922,
+      "sha256": "b51150fcb8974d67a44bb502e862d77166f069734fadc84cde5dcf01d31e3d82"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-review-round3.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-review-round3.md",
+      "kind": "file",
+      "bytes": 22766,
+      "sha256": "b8fe8396846d9fb44cc42c5aec7e5e0b18815d7919db6f759493f5f6962f11dd"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-spec.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-spec.md",
+      "kind": "file",
+      "bytes": 55473,
+      "sha256": "114dbdcc3763af3366f427e60a78d5dbd15df482d29a782b7403a1732e351a8d"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-verification-v11.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-verification-v11.md",
+      "kind": "file",
+      "bytes": 3885,
+      "sha256": "c7d2142e70b25e72e2328b649ca1892655bd3c32ce8dfffc5ad9c0dc1bb79c69"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-verification-v13.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-verification-v13.md",
+      "kind": "file",
+      "bytes": 5858,
+      "sha256": "2ed9b790e06633bd25ec7a24b1be873a1980e9556e3c158b7fbb60d75389bdd5"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-verification-v14.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-verification-v14.md",
+      "kind": "file",
+      "bytes": 12911,
+      "sha256": "64d66bf833ccfa4bbd03957d185cbbe6abcb9f786c7ac452a45fe834b48c7269"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-verification-v15.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-verification-v15.md",
+      "kind": "file",
+      "bytes": 9664,
+      "sha256": "080ff1418ea27f41637c28b9582083fb04fc388965a755e1a1e57fa6398f24ae"
+    },
+    {
+      "member": "frozen-source/docs/human-like-ai-verification-v16.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/human-like-ai-verification-v16.md",
+      "kind": "file",
+      "bytes": 16647,
+      "sha256": "64d93be518c699eb1ee16abc6f9abdee98157103b63420f67524c5552dd62181"
+    },
+    {
+      "member": "frozen-source/docs/imagegen-rubble-prompt.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/imagegen-rubble-prompt.md",
+      "kind": "file",
+      "bytes": 2304,
+      "sha256": "5636a6f1a79864f43718789f11e9de094d4f85797e842099ada01e6ee13357ce"
+    },
+    {
+      "member": "frozen-source/docs/issue-batch-performance.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/issue-batch-performance.json",
+      "kind": "file",
+      "bytes": 8944,
+      "sha256": "1d3986ded9d840e35093191dceae48b09575c6022ee2aeb1fdaaae722012461b"
+    },
+    {
+      "member": "frozen-source/docs/issue-batch-verification.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/issue-batch-verification.md",
+      "kind": "file",
+      "bytes": 4262,
+      "sha256": "6e8412eefdc4e2b9269153296373761c8cd9bc9c38b81027d1919a1c736303c8"
+    },
+    {
+      "member": "frozen-source/docs/movement-lab.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/movement-lab.md",
+      "kind": "file",
+      "bytes": 3869,
+      "sha256": "fbf85f7f422c6ca2f13ce0621d4ee8f37e956d8c6bf6f40e50746aeecf575826"
+    },
+    {
+      "member": "frozen-source/docs/performance-verification-2026-10-03.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/performance-verification-2026-10-03.md",
+      "kind": "file",
+      "bytes": 5129,
+      "sha256": "7ef6aa8ed7cde9accdaa941cf6bcb7406b1d8674a0993c562e639597c2c0787e"
+    },
+    {
+      "member": "frozen-source/docs/physics-destruction-research.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/physics-destruction-research.md",
+      "kind": "file",
+      "bytes": 5463,
+      "sha256": "45315bf5b97597cfff7052580e5cc1849df89c9450ce2081d90abe917fecf6ec"
+    },
+    {
+      "member": "frozen-source/docs/public-danger-alert-v2-prospective-declaration.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/public-danger-alert-v2-prospective-declaration.md",
+      "kind": "file",
+      "bytes": 11531,
+      "sha256": "6d780d3db3cd651ec2e71ebcd18804540ab61224757f9e850063d9b1d1bc7002"
+    },
+    {
+      "member": "frozen-source/docs/research/game-feel-ambience.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/research/game-feel-ambience.md",
+      "kind": "file",
+      "bytes": 9155,
+      "sha256": "f490785b972b847644a4b6305cfdae3001c630ed02421ad5aa2655e2a52131df"
+    },
+    {
+      "member": "frozen-source/docs/research/game-feel-behavior.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/research/game-feel-behavior.md",
+      "kind": "file",
+      "bytes": 7893,
+      "sha256": "459ea29d6caef8c3f0edc62eb25c4b391519872d17075197a7f127ae49df4251"
+    },
+    {
+      "member": "frozen-source/docs/research/game-feel-performance.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/research/game-feel-performance.md",
+      "kind": "file",
+      "bytes": 12156,
+      "sha256": "eff90b8629f88ab3db36abf7a5317c1db1cac4a9c9708ad32269b4d50a15057c"
+    },
+    {
+      "member": "frozen-source/docs/research/game-feel-ux.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/research/game-feel-ux.md",
+      "kind": "file",
+      "bytes": 6877,
+      "sha256": "8eacf8008d97367a19d642465eeceeb025741ab29ef003b8fa0e47822b2bae2e"
+    },
+    {
+      "member": "frozen-source/docs/research/human-like-rts-ai.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/research/human-like-rts-ai.md",
+      "kind": "file",
+      "bytes": 27702,
+      "sha256": "2eadd48b0ac41570fb37a003dda03cad9398aecd41e12c0660943d801569eecb"
+    },
+    {
+      "member": "frozen-source/docs/research/physics-destruction-current.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/research/physics-destruction-current.md",
+      "kind": "file",
+      "bytes": 10266,
+      "sha256": "ffc471cb7b4f090c7abc101160f16f223ca48e16535c21057810a236937174c4"
+    },
+    {
+      "member": "frozen-source/docs/rts-engine-research.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/rts-engine-research.md",
+      "kind": "file",
+      "bytes": 21966,
+      "sha256": "b435a7adb869c030be71ffb5ce72b9f96610da9765c23f552129b04f8db6ad0f"
+    },
+    {
+      "member": "frozen-source/docs/strategic-world-generator-verification.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/strategic-world-generator-verification.md",
+      "kind": "file",
+      "bytes": 5877,
+      "sha256": "98f3d65def2d2245abb8dedb6915a8073ecb9bc62c56f704315e85d3bb63c832"
+    },
+    {
+      "member": "frozen-source/docs/terrain-workshop.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/terrain-workshop.md",
+      "kind": "file",
+      "bytes": 4470,
+      "sha256": "cc33135f4396268c8f2acf0500fa5ba10b74c7a0a1e8a960c2568727d5b0d54e"
+    },
+    {
+      "member": "frozen-source/docs/world-conquest-performance.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/world-conquest-performance.md",
+      "kind": "file",
+      "bytes": 6243,
+      "sha256": "f0373dfd311001b714037618bbdf96a088ac2b20a07c6778a23d803c693df4e2"
+    },
+    {
+      "member": "frozen-source/docs/world-conquest-spec.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/world-conquest-spec.md",
+      "kind": "file",
+      "bytes": 28039,
+      "sha256": "3bb44937301580502c1167855ffd1855f255ae013fec11089e50a5e655d16d93"
+    },
+    {
+      "member": "frozen-source/docs/world-conquest-verification.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/world-conquest-verification.md",
+      "kind": "file",
+      "bytes": 3422,
+      "sha256": "021ce64588fd5f9695bae4a6dc17600cbb3ec514feeb7323efc9611be17f95ef"
+    },
+    {
+      "member": "frozen-source/docs/world-waterways-verification.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/docs/world-waterways-verification.md",
+      "kind": "file",
+      "bytes": 4568,
+      "sha256": "6688eb027a7108809e6b18109caa836338d78e9d9c86c2fa01947e555a70426b"
+    },
+    {
+      "member": "frozen-source/maps/ardennes-crossing.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/ardennes-crossing.json",
+      "kind": "file",
+      "bytes": 21850,
+      "sha256": "4ded28d5428edad4c2623f685b3aed23e334ad21655c8566f55f094b54e653a9"
+    },
+    {
+      "member": "frozen-source/maps/bastogne.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/bastogne.json",
+      "kind": "file",
+      "bytes": 30860,
+      "sha256": "70b9952b309aa4913a8c92a1e383ebe1d026a870f6e8d748a3ff9b34411d4221"
+    },
+    {
+      "member": "frozen-source/maps/bocage.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/bocage.json",
+      "kind": "file",
+      "bytes": 20118,
+      "sha256": "8a46f9ac3062908982bf66bbb37d7387cb2bdf697092cd70d24025a4da4a2e88"
+    },
+    {
+      "member": "frozen-source/maps/crater-field.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/crater-field.json",
+      "kind": "file",
+      "bytes": 17950,
+      "sha256": "f7601674b21c741ad792e510903c0e8352b3aa6d5d62c538f04e4070a649f95e"
+    },
+    {
+      "member": "frozen-source/maps/crossroads-village.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/crossroads-village.json",
+      "kind": "file",
+      "bytes": 9398,
+      "sha256": "f2df94bf8bfea07187effd2da63fdba18596073147b018a63e934b5ef0a91498"
+    },
+    {
+      "member": "frozen-source/maps/default.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/default.json",
+      "kind": "file",
+      "bytes": 14367,
+      "sha256": "e9362e35e16a6982d15c2e45129f213b0af3d526376c18b9c89379aa7bcce04d"
+    },
+    {
+      "member": "frozen-source/maps/helms-deep.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/helms-deep.json",
+      "kind": "file",
+      "bytes": 30681,
+      "sha256": "d8d2c70342f93d74ab573ac940617a9b3c49f103e514362bbfb8acefc0586be4"
+    },
+    {
+      "member": "frozen-source/maps/hill-112-xl.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/hill-112-xl.json",
+      "kind": "file",
+      "bytes": 41022,
+      "sha256": "992cf9cdfe123d9b67c4bd0d391dfbdc4938e7f5044f38bfbb8369513de5d1a9"
+    },
+    {
+      "member": "frozen-source/maps/hill-112.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/hill-112.json",
+      "kind": "file",
+      "bytes": 19413,
+      "sha256": "5ea417d72b4265babacafe13bb5e327169eedb10b53a55b8ab44901ffca5a76a"
+    },
+    {
+      "member": "frozen-source/maps/hot-gates.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/hot-gates.json",
+      "kind": "file",
+      "bytes": 23014,
+      "sha256": "4b1827061997341b003b15ea1be4d136c65e5dc0e81f69c73ef39b1cb382463b"
+    },
+    {
+      "member": "frozen-source/maps/island-towns.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/island-towns.json",
+      "kind": "file",
+      "bytes": 41522,
+      "sha256": "039d138c318bfce361275ee0f2fb6c9f0b05ff0da24d37b6074d55124234d541"
+    },
+    {
+      "member": "frozen-source/maps/kasserine-pass.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/kasserine-pass.json",
+      "kind": "file",
+      "bytes": 67123,
+      "sha256": "3255c35cce40099b034bb90bf980902ba81b5db89ca20e54527b9a73ce9014d6"
+    },
+    {
+      "member": "frozen-source/maps/king-of-the-hill.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/king-of-the-hill.json",
+      "kind": "file",
+      "bytes": 36005,
+      "sha256": "69e0ac471f65043ff32119c819e859b58cda2291bcec984a415cbbd875eaffe8"
+    },
+    {
+      "member": "frozen-source/maps/monte-cassino-xl.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/monte-cassino-xl.json",
+      "kind": "file",
+      "bytes": 47185,
+      "sha256": "5419e3f3d2e3362e0b0bf3014cd8384bfc7b786e9a4fca253e7defd1597529d2"
+    },
+    {
+      "member": "frozen-source/maps/monte-cassino.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/monte-cassino.json",
+      "kind": "file",
+      "bytes": 21542,
+      "sha256": "eadf78931ad8d58bcb4cf450d835c1e0ebaa5aecbf4967d71668cd7d3c4c7d84"
+    },
+    {
+      "member": "frozen-source/maps/no-mans-land.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/no-mans-land.json",
+      "kind": "file",
+      "bytes": 23352,
+      "sha256": "716c173880e2c0fc8db419cae9b726653cf08e84c65c2c90ac484a31ce581d5f"
+    },
+    {
+      "member": "frozen-source/maps/pegasus-bridge-xl.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/pegasus-bridge-xl.json",
+      "kind": "file",
+      "bytes": 44536,
+      "sha256": "ba4d4b5189b2d087d100de664f2b57a9ee2a1b8d2abaaa9282394be5d87e79fd"
+    },
+    {
+      "member": "frozen-source/maps/pegasus-bridge.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/pegasus-bridge.json",
+      "kind": "file",
+      "bytes": 19791,
+      "sha256": "b39d726707eb0555c9bc4f96e727e9a208f731a7f793baea780b00f9d7dba4b8"
+    },
+    {
+      "member": "frozen-source/maps/river-towns.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/river-towns.json",
+      "kind": "file",
+      "bytes": 14362,
+      "sha256": "fdb9ced8242956c5077865fa877688d2f2e6c9f93516eb6023da91ec7ee8fc1c"
+    },
+    {
+      "member": "frozen-source/maps/seawall-xl.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/seawall-xl.json",
+      "kind": "file",
+      "bytes": 38703,
+      "sha256": "490cb23a1fa935011ddb4171b786349ad9c9b033a2434046ab5c4844d6d69841"
+    },
+    {
+      "member": "frozen-source/maps/seawall.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/seawall.json",
+      "kind": "file",
+      "bytes": 16015,
+      "sha256": "d711e83c7c6b3e79c89a1a4fcb20a7c4d9dcb99e19822433f4debba16bef7d01"
+    },
+    {
+      "member": "frozen-source/maps/six-fronts.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/six-fronts.json",
+      "kind": "file",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "member": "frozen-source/maps/stalingrad-factory.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/stalingrad-factory.json",
+      "kind": "file",
+      "bytes": 21703,
+      "sha256": "9b39a856774216d3d79e278b0000fb5d2ec645b7dea05d79b9c581aa8f8aa996"
+    },
+    {
+      "member": "frozen-source/maps/test-arena.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/test-arena.json",
+      "kind": "file",
+      "bytes": 7178,
+      "sha256": "44eca010e3c08ecc4a01abfe3c4092415aa5fe25dbd77879978c7ee34a2cc9af"
+    },
+    {
+      "member": "frozen-source/maps/the-great-bridge.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/the-great-bridge.json",
+      "kind": "file",
+      "bytes": 26359,
+      "sha256": "50145f185bef8a946d582c639bb8fa93f22002b711065bb3a1874649157c7c48"
+    },
+    {
+      "member": "frozen-source/maps/the-polder.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/the-polder.json",
+      "kind": "file",
+      "bytes": 21840,
+      "sha256": "22e233ad5756551f227302efcfc88411d0a66724bd6dd9e7d1dbd22b2682f1c9"
+    },
+    {
+      "member": "frozen-source/maps/three-islands.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/three-islands.json",
+      "kind": "file",
+      "bytes": 527676,
+      "sha256": "4cc1ecc2d18447e07ae6a68f8452ed418d98a7a05cd692d1e5779fe907848f11"
+    },
+    {
+      "member": "frozen-source/maps/tutorial.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/tutorial.json",
+      "kind": "file",
+      "bytes": 3720,
+      "sha256": "274a5b3f074ac1e4dba3c6938d8c639351341b3816a7c8412ac68537bf559383"
+    },
+    {
+      "member": "frozen-source/maps/twin-valleys.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/maps/twin-valleys.json",
+      "kind": "file",
+      "bytes": 17632,
+      "sha256": "d3eda73508cbd4e18e3c7563b62114c59b25856cf6e191ab8014e7d94e70d862"
+    },
+    {
+      "member": "frozen-source/package-lock.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/package-lock.json",
+      "kind": "file",
+      "bytes": 1088,
+      "sha256": "1a6f2b332f963bc5145a1fc927b20d8b7264c5b02a9b8577ae89547e56d620e4"
+    },
+    {
+      "member": "frozen-source/package.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/package.json",
+      "kind": "file",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "member": "frozen-source/server.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/server.js",
+      "kind": "file",
+      "bytes": 44801,
+      "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57"
+    },
+    {
+      "member": "frozen-source/server/diag.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/server/diag.js",
+      "kind": "file",
+      "bytes": 3011,
+      "sha256": "423be7cbaadda53d23c629b583725c6f2f524dc1e524ce440f65ac273845672f"
+    },
+    {
+      "member": "frozen-source/server/map-pings.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/server/map-pings.js",
+      "kind": "file",
+      "bytes": 829,
+      "sha256": "e8427a74ee5656700925db51af4a6bcfa2958ecb447bca450aa302962347abdd"
+    },
+    {
+      "member": "frozen-source/shared/ai-attention.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-attention.js",
+      "kind": "file",
+      "bytes": 32005,
+      "sha256": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090"
+    },
+    {
+      "member": "frozen-source/shared/ai-commander.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-commander.js",
+      "kind": "file",
+      "bytes": 31873,
+      "sha256": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225"
+    },
+    {
+      "member": "frozen-source/shared/ai-hands.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-hands.js",
+      "kind": "file",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "member": "frozen-source/shared/ai-mind.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-mind.js",
+      "kind": "file",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "member": "frozen-source/shared/ai-perception.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-perception.js",
+      "kind": "file",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "member": "frozen-source/shared/ai-persona.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-persona.js",
+      "kind": "file",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "member": "frozen-source/shared/ai-priority.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-priority.js",
+      "kind": "file",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "member": "frozen-source/shared/ai-rng.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-rng.js",
+      "kind": "file",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "member": "frozen-source/shared/ai-view.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai-view.js",
+      "kind": "file",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "member": "frozen-source/shared/ai.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/ai.js",
+      "kind": "file",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "member": "frozen-source/shared/alert-events.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/alert-events.js",
+      "kind": "file",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "member": "frozen-source/shared/command-feedback.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/command-feedback.js",
+      "kind": "file",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "member": "frozen-source/shared/debris-motion.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/debris-motion.js",
+      "kind": "file",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "member": "frozen-source/shared/formation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/formation.js",
+      "kind": "file",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "member": "frozen-source/shared/grid.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/grid.js",
+      "kind": "file",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "member": "frozen-source/shared/human-input.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/human-input.js",
+      "kind": "file",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "member": "frozen-source/shared/local-traffic.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/local-traffic.js",
+      "kind": "file",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "member": "frozen-source/shared/navigation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/navigation.js",
+      "kind": "file",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "member": "frozen-source/shared/projectiles.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/projectiles.js",
+      "kind": "file",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "member": "frozen-source/shared/scenarios.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/scenarios.js",
+      "kind": "file",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "member": "frozen-source/shared/sim.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/sim.js",
+      "kind": "file",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "member": "frozen-source/shared/story.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/story.js",
+      "kind": "file",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "member": "frozen-source/shared/structures.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/structures.js",
+      "kind": "file",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "member": "frozen-source/shared/tutorial.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/tutorial.js",
+      "kind": "file",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "member": "frozen-source/shared/vehicle-motion.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/vehicle-motion.js",
+      "kind": "file",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "member": "frozen-source/shared/weather.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/weather.js",
+      "kind": "file",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "member": "frozen-source/shared/world-conquest.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/world-conquest.js",
+      "kind": "file",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "member": "frozen-source/shared/world-landforms.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/world-landforms.js",
+      "kind": "file",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "member": "frozen-source/shared/world-layers.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/world-layers.js",
+      "kind": "file",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "member": "frozen-source/shared/world-roads.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/world-roads.js",
+      "kind": "file",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "member": "frozen-source/shared/world-territories.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/shared/world-territories.js",
+      "kind": "file",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "member": "frozen-source/start.cmd",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/start.cmd",
+      "kind": "file",
+      "bytes": 1102,
+      "sha256": "1bc62ac6f7eb639af621306831f9e8fba7f9dd757d889bcbb5a5a11214bceba2"
+    },
+    {
+      "member": "frozen-source/test-ai-humanity-storage.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-ai-humanity-storage.js",
+      "kind": "file",
+      "bytes": 18846,
+      "sha256": "b50d2668f43161b5ce79feb6b165724e89f7ec221ff0a0754a58b0369c62753b"
+    },
+    {
+      "member": "frozen-source/test-ai-km-boundary.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-ai-km-boundary.mjs",
+      "kind": "file",
+      "bytes": 5406,
+      "sha256": "4793d744eb23ca2daf40a2044c9fcde2591608b2bbe611e3bbb3e8a21ce9629a"
+    },
+    {
+      "member": "frozen-source/test-ai-lab.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-ai-lab.js",
+      "kind": "file",
+      "bytes": 12491,
+      "sha256": "e6677a2b4d12c6c89af06b8392052dee02cd8214ed8736c98381f117b69b1288"
+    },
+    {
+      "member": "frozen-source/test-ai-terrain-delivery.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-ai-terrain-delivery.js",
+      "kind": "file",
+      "bytes": 3937,
+      "sha256": "2eff2aa14570fdb7e863ab28695ea4c16b2341bf5a24e22647a9bc723c977ac3"
+    },
+    {
+      "member": "frozen-source/test-client-performance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-client-performance.mjs",
+      "kind": "file",
+      "bytes": 8828,
+      "sha256": "bc90250a3c61e9b46298182558728df93ceea365b90f62cd5dd5f57603327067"
+    },
+    {
+      "member": "frozen-source/test-client-terrain-transition.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-client-terrain-transition.mjs",
+      "kind": "file",
+      "bytes": 4458,
+      "sha256": "e5eebd30a8ecb033551bedbff59c6d1539368882eab134228bc05be1e65ab664"
+    },
+    {
+      "member": "frozen-source/test-corpse-performance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-corpse-performance.mjs",
+      "kind": "file",
+      "bytes": 10724,
+      "sha256": "3b3eb4795242cb23daddae11eca02a75001b6d8e9a84e2420c086d1ec10f619b"
+    },
+    {
+      "member": "frozen-source/test-engine-acceptance.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-acceptance.js",
+      "kind": "file",
+      "bytes": 26837,
+      "sha256": "36b430314833840791abc25b1b35e8cdbb935f3f792fc012a1704bdbdf500164"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-accepted-destinations.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-accepted-destinations.js",
+      "kind": "file",
+      "bytes": 9293,
+      "sha256": "8b2cffd8f6e074510b9dc4da53044af6289239053879f5fec93e0f46cae6035a"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-ap-readiness.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-ap-readiness.js",
+      "kind": "file",
+      "bytes": 6770,
+      "sha256": "923bd77ee6ea61889dcec6851cd0d18daa4d8a9b75d424b38573353843ec5be4"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-ap-vehicles.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-ap-vehicles.js",
+      "kind": "file",
+      "bytes": 6229,
+      "sha256": "33c6174f07be1a80a9e5c53fcbf3d522ed7d6bb3a9ffc095f378d0b63dfdcd30"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attended-danger.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-attended-danger.js",
+      "kind": "file",
+      "bytes": 10238,
+      "sha256": "19336b32929733347872fa258c7f4c5381f755d48143660ba3c7fad7ecd9ea8e"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attended-guard.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-attended-guard.js",
+      "kind": "file",
+      "bytes": 4713,
+      "sha256": "faec59b5fe8ff5dc1cd22e424034f4d5ed6c231d19bb9644732705e8fa732f58"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attention-area.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-attention-area.js",
+      "kind": "file",
+      "bytes": 18144,
+      "sha256": "7fbc1dfc8fc952108ed46566b5dec34948473819ecabd81afde273667f269ecf"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-attention-yield.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-attention-yield.js",
+      "kind": "file",
+      "bytes": 9673,
+      "sha256": "1101cd6373273e9dbcbcb14d50dbf90b3cf367c7575ade879ddca83ce223329f"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-automatic-armor-hit.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-automatic-armor-hit.js",
+      "kind": "file",
+      "bytes": 6662,
+      "sha256": "544638e24bf5be79928dbdb8c638ab0b2b54bb1f655ae2e5806a06ade655d1a5"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-behavior-cues.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-behavior-cues.js",
+      "kind": "file",
+      "bytes": 16779,
+      "sha256": "15d85b863c2da69eb9cd054fa8690fe39e1adaf2f5ad39b87945534bd0a7946c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-bridge-repair.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-bridge-repair.js",
+      "kind": "file",
+      "bytes": 10847,
+      "sha256": "b4d99b5667ad2db8f32909a761e666f1c9cff9cb5a8badd60373590727bff1c8"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-callers.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-callers.js",
+      "kind": "file",
+      "bytes": 9380,
+      "sha256": "a509b9352bb589e4602aae75a208d09da5388455e9241284e05ed492f026317c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-causal-orders.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-causal-orders.js",
+      "kind": "file",
+      "bytes": 10722,
+      "sha256": "38bad0e598f7ad0e00be8ac0a4480bb5f299cdfa32df6d2857e5ffd04a8e713c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-coherence.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-coherence.js",
+      "kind": "file",
+      "bytes": 18595,
+      "sha256": "44fbed9b65c868b8eda066752d6e2f1e73f2163ff2d281e06b0405414f740c7e"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-commitment.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-commitment.js",
+      "kind": "file",
+      "bytes": 17660,
+      "sha256": "2349c00c356865bdb40615cdd97fa7bd957b775ba78d3ccac9ce0e4a45ae06ca"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-cover-opportunity.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-cover-opportunity.js",
+      "kind": "file",
+      "bytes": 7476,
+      "sha256": "6c73673c99e5c7d07f3fb9908bb2ef2b0f2c26440d99c3c0d40186556567cb9c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-decision-capture.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-decision-capture.js",
+      "kind": "file",
+      "bytes": 7613,
+      "sha256": "b0bb0c436e31c2db7ba42f6cd95e30f603aa2eb7220174f45d9ec1c97806d685"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-diagonal-pan.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-diagonal-pan.js",
+      "kind": "file",
+      "bytes": 9086,
+      "sha256": "8bbc5c6e447d7dfa6433e81d64443c513f6aa2f9bc006910d14f050d748882a3"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-effect-visibility.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-effect-visibility.js",
+      "kind": "file",
+      "bytes": 7866,
+      "sha256": "c0ba9c60f376cd8efd7a47ab5dc6eae7bce8d3d1771b870b289d7578b3184c06"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-engineer-shortage.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-engineer-shortage.js",
+      "kind": "file",
+      "bytes": 9319,
+      "sha256": "7686db7ee2c96709b780362d0e8595a9b5c9034ec5f137a88cdf2d83585c0edd"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-formation-selection.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-formation-selection.js",
+      "kind": "file",
+      "bytes": 6753,
+      "sha256": "04aac2d1e9c7128b09cabb75cd658b95640d08b51bad8843328de668a5584c6c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-fortification-cover.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-fortification-cover.js",
+      "kind": "file",
+      "bytes": 6800,
+      "sha256": "56fb15c8737f75aaaf726558022fe87614274f5e06c9e2e180a333558ae0825c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-garrison-framing.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-garrison-framing.js",
+      "kind": "file",
+      "bytes": 6535,
+      "sha256": "8060a1dd9aaecbd17dd42d21e0e73d15e5ef003bddf35e804c4b96472572c736"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-group-reuse.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-group-reuse.js",
+      "kind": "file",
+      "bytes": 11667,
+      "sha256": "d5a1c5bbd3f20fc97508b7228dc6290a81bf7f6f89187efee9f950f4d43689b6"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-guard-ability-choice.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-guard-ability-choice.js",
+      "kind": "file",
+      "bytes": 7199,
+      "sha256": "5642722c1aa7a52c111a97a3a47ab8644c7e7cadca5f5c949af81391b530aaf5"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-hands.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-hands.js",
+      "kind": "file",
+      "bytes": 75738,
+      "sha256": "01e60c381495b1f99589fbd76587b19db0c7680807445e745abc69087ba1fab5"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-hesitation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-hesitation.js",
+      "kind": "file",
+      "bytes": 8728,
+      "sha256": "a29d8f1b7a66bfac956bb5483fbb7d16c07c8dda56def60e06eddb956d055331"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-human-slips.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-human-slips.js",
+      "kind": "file",
+      "bytes": 9830,
+      "sha256": "273c268a3f93ec1f8776bdf642d61cfb45e9fb095a16aa3d363eef7b8bee359f"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-human.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-human.js",
+      "kind": "file",
+      "bytes": 14598,
+      "sha256": "f3d74de9c48bb9916480ea7e48206833e7f57e3570225998be54111d2dd93df9"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-humanity-multievent.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-humanity-multievent.js",
+      "kind": "file",
+      "bytes": 13806,
+      "sha256": "11b1c9c7908c469732aa90f6b44861ab439db0b65583a9a6669f58811fbe74eb"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-humanity.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-humanity.js",
+      "kind": "file",
+      "bytes": 12108,
+      "sha256": "5a3cc752690616638b54f8d855f938597471de915ad40a15bd4ae218e6871363"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-idle-guard-attention.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-idle-guard-attention.js",
+      "kind": "file",
+      "bytes": 10778,
+      "sha256": "92757c743866c2f1c935bdb978fd247e21c5b74a86338245c85e4709aecc373a"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-inspection-priority.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-inspection-priority.js",
+      "kind": "file",
+      "bytes": 10006,
+      "sha256": "f506ebc627a43e4d3f3e6f373d7a9fac16c1e305a3191809d54150784741b19e"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-inspection.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-inspection.js",
+      "kind": "file",
+      "bytes": 15478,
+      "sha256": "77d6938b00bfe3eb460af83405cf733de7734e4146d59b6807a0dbe11c651188"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-local-engineer.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-local-engineer.js",
+      "kind": "file",
+      "bytes": 7058,
+      "sha256": "04de1e48a4ac2c6a0c6e37b66ade5e30cd91452a1933968cdb98769b42aa8caf"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-manual-response-isolation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-manual-response-isolation.js",
+      "kind": "file",
+      "bytes": 4691,
+      "sha256": "0d93169112a983e6f8ac15c98be9e76f8a2b705d598c56d4cda941b838779e7d"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-manual-response-policy.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-manual-response-policy.js",
+      "kind": "file",
+      "bytes": 42924,
+      "sha256": "37769179660b63e7bef016869db1ae82c999bded6d68747e69321aa5341244b0"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-manual-response-v3.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-manual-response-v3.js",
+      "kind": "file",
+      "bytes": 10682,
+      "sha256": "ee51561c9509fe0764c47c173b12ed35d161d4aa6d6ebf5985e06a9df78e9342"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-measurement-start.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-measurement-start.js",
+      "kind": "file",
+      "bytes": 12810,
+      "sha256": "622a37271413a0a25524139e78f8415655b38f736eaca38549dd0c1cd12b09ab"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-measurement-streams.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-measurement-streams.js",
+      "kind": "file",
+      "bytes": 18955,
+      "sha256": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-minimap-parity.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-minimap-parity.js",
+      "kind": "file",
+      "bytes": 4218,
+      "sha256": "6b4eb5a4197abeb717b70df7f5765d58fc8795ba7bb1ea7a83c816ec23ad3378"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-observed-events.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-observed-events.js",
+      "kind": "file",
+      "bytes": 13960,
+      "sha256": "351f40937cad312ed7984b5153ab5e237d4ad6ddc18049dd95eec59d943e695d"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-opening-saving.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-opening-saving.js",
+      "kind": "file",
+      "bytes": 7779,
+      "sha256": "9fa2f64fa702f015f098f528da71c264d76db4a5f576db491c77d8912b1d3d7b"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-overlay.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-overlay.js",
+      "kind": "file",
+      "bytes": 6340,
+      "sha256": "f74987db191273bc6f3f8577fdf22396820d8aa24a39bea0a7ea2c2d1f294e0d"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-pan-release.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-pan-release.js",
+      "kind": "file",
+      "bytes": 11884,
+      "sha256": "dc03fb315b6ab1d3b044caa19f3a54c146a178ec54bcad228a415c28b7d73596"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-perception.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-perception.js",
+      "kind": "file",
+      "bytes": 52297,
+      "sha256": "ef8d5c10a74fc677c82b181eeedd6e1ebe98660c99ed88bff9072f7080338a43"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-persona.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-persona.js",
+      "kind": "file",
+      "bytes": 10320,
+      "sha256": "92fd74ace6df48b07f14341373a60fa6d0c5185857fd53aaa869a2774c75adf2"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-point-fog.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-point-fog.js",
+      "kind": "file",
+      "bytes": 7961,
+      "sha256": "6638ae18a7932a237cfaf75175b2347eed73ed56c3a15d1d7180bb4c91ab44cc"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-pointer-tracking.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-pointer-tracking.js",
+      "kind": "file",
+      "bytes": 18140,
+      "sha256": "36e72f9cd68a0f5af282595bc855955440e08022bb1607c325ef2ac13cfca99f"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-priority.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-priority.js",
+      "kind": "file",
+      "bytes": 9278,
+      "sha256": "fc66fa621166266f6a555020de6701944ea8a0365fc1dd077b4197efd05670e0"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-privacy.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-privacy.js",
+      "kind": "file",
+      "bytes": 5170,
+      "sha256": "f76f32bc9fd3577334ebd3c3d82906e2c02b8290c0023a952a291532367924c5"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-producer-substitution.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-producer-substitution.js",
+      "kind": "file",
+      "bytes": 6622,
+      "sha256": "b4056209bd3e795dcd71dc5ec39e2ccb961c726cf1ab19b5bd1aa808cae66b0c"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-production-attention.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-production-attention.js",
+      "kind": "file",
+      "bytes": 5311,
+      "sha256": "1d4bea468044defbb6b1a4550747e7b2f78926136e86001d1653e9787baae169"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-public-alert-v2.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-public-alert-v2.js",
+      "kind": "file",
+      "bytes": 14730,
+      "sha256": "7f2816b796b02babef56d3d59d8fc15f56883067f5a3f95e2ac2dcf209fc3e60"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-public-alert.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-public-alert.js",
+      "kind": "file",
+      "bytes": 17816,
+      "sha256": "51bd3d274994f3b320001ca2771510fe6a7c2a5c064874ecdbea7e38c6dabaa6"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-public-start.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-public-start.js",
+      "kind": "file",
+      "bytes": 5096,
+      "sha256": "5e27dc8b36aee9aac06422f24800fda86f4d2ea45717347b25115548ddc9608b"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-purchase-receipts.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-purchase-receipts.js",
+      "kind": "file",
+      "bytes": 5465,
+      "sha256": "04e0039a90edc6d45c3ff03e651cfe0b38581375902c52fbf007f3160b2eb123"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-purpose.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-purpose.js",
+      "kind": "file",
+      "bytes": 18261,
+      "sha256": "8ca1e51efe376401e312ca23abc3ee6caa2fb7ad8b3626c237a664aea8d781a9"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-response.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-response.js",
+      "kind": "file",
+      "bytes": 26604,
+      "sha256": "a1b9ae52e60e952e70c896140a0813b6eb533cad2f0afc4cd45cc5de93685804"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-risk-escalation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-risk-escalation.js",
+      "kind": "file",
+      "bytes": 7693,
+      "sha256": "3bc010ced8b3f13fe30340c27a929c67edee66bf615c6bcb2a5bb7c418df6f25"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-selected-hud.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-selected-hud.js",
+      "kind": "file",
+      "bytes": 15171,
+      "sha256": "7161d64670d36b8d05d32239a0076886831725fb842a3885f49aa24e9bbd23b3"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-selection-reuse.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-selection-reuse.js",
+      "kind": "file",
+      "bytes": 6636,
+      "sha256": "25c42c0def6d8d08cb553f972b7ed9261983c396a1a9b86a1d16f4c8facb12e1"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-stale-stance.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-stale-stance.js",
+      "kind": "file",
+      "bytes": 3317,
+      "sha256": "e1af9650db8ac60587d13409a36987a00cbe28860e34324cae289c01e32e9aa1"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-stationary-armor-hit.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-stationary-armor-hit.js",
+      "kind": "file",
+      "bytes": 8076,
+      "sha256": "3ecc2d7ac314d42aca443a885e9c2468291ba8b64d8423d845eb162e4fcbd16d"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-tactical-reaction.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-tactical-reaction.js",
+      "kind": "file",
+      "bytes": 11618,
+      "sha256": "00d5e28156fb796aad6304f651a6a8c6d7da241e9fd9e59798458a32813b36cc"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-unseen-hit.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-unseen-hit.js",
+      "kind": "file",
+      "bytes": 8974,
+      "sha256": "dc1dca1e324ccbb5e2c4475447c5e712ef6b820ea870fdda3ae95a7af7914b00"
+    },
+    {
+      "member": "frozen-source/test-engine-ai-workload.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai-workload.js",
+      "kind": "file",
+      "bytes": 22168,
+      "sha256": "fd292566291a936049ea7d8263402c30ca49f3aa10d9a4d69fc104fe6f866adf"
+    },
+    {
+      "member": "frozen-source/test-engine-ai.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-ai.js",
+      "kind": "file",
+      "bytes": 11734,
+      "sha256": "14b38284ba042517c675b2f8d6180bbeba48a6d10ad12e5bdfa0bc9f7887f9a1"
+    },
+    {
+      "member": "frozen-source/test-engine-authoring.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-authoring.js",
+      "kind": "file",
+      "bytes": 7335,
+      "sha256": "da2228f9fcb43afc189a2ee1d2a3ecbafbd305d26b79ff4ce341a55b197cc4fa"
+    },
+    {
+      "member": "frozen-source/test-engine-breaches.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-breaches.mjs",
+      "kind": "file",
+      "bytes": 6012,
+      "sha256": "56bff02676e0253f8ee3b5d1137c19737ab1318115caf4ffd994e9ee15aa2234"
+    },
+    {
+      "member": "frozen-source/test-engine-controls.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-controls.js",
+      "kind": "file",
+      "bytes": 15190,
+      "sha256": "c775c654f4df8f47d4b5e83596b6c1e680156b85c591b7cb4ae1ce462a3b4f58"
+    },
+    {
+      "member": "frozen-source/test-engine-debris.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-debris.js",
+      "kind": "file",
+      "bytes": 6904,
+      "sha256": "1547a05ef3952f0a8e7c860a676040e68a0fb863e84ef1c2073f430b9e39f9d0"
+    },
+    {
+      "member": "frozen-source/test-engine-horde-queue.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-horde-queue.js",
+      "kind": "file",
+      "bytes": 6914,
+      "sha256": "fd5646bef8542ac4039e4e02c30569e06487da86b21887cf3668f2cb1adcc2fd"
+    },
+    {
+      "member": "frozen-source/test-engine-localization.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-localization.mjs",
+      "kind": "file",
+      "bytes": 6724,
+      "sha256": "b48ed1d7689a964c84cf5e3f23a206e965e2fce516920b1f12d839bea3cde441"
+    },
+    {
+      "member": "frozen-source/test-engine-movement.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-movement.js",
+      "kind": "file",
+      "bytes": 15567,
+      "sha256": "d104d4d8e495369c1a64598fa114799cfca81e9df23c7f6eaad11784b08d951e"
+    },
+    {
+      "member": "frozen-source/test-engine-observed-walls.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-observed-walls.js",
+      "kind": "file",
+      "bytes": 2622,
+      "sha256": "9de548b2989381a23f094afa319ae5eddff28b136eb498099a583df2c96c3d31"
+    },
+    {
+      "member": "frozen-source/test-engine-presentation.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-presentation.mjs",
+      "kind": "file",
+      "bytes": 11250,
+      "sha256": "99c6e0733924b1ec1533d4d7494732d2ff5ad88a365acce88199a498453bee89"
+    },
+    {
+      "member": "frozen-source/test-engine-projectiles.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-projectiles.js",
+      "kind": "file",
+      "bytes": 11237,
+      "sha256": "ef3809eef2dd16992b5fea2e96b3dfb8bd61b322b9a5d5bf03ff6967f69ed18a"
+    },
+    {
+      "member": "frozen-source/test-engine-scenario-start.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-scenario-start.js",
+      "kind": "file",
+      "bytes": 3780,
+      "sha256": "ca1ddbbbe284680485ae108e18e1ee07ef5e547e0491d8753fce7792bfab5e7d"
+    },
+    {
+      "member": "frozen-source/test-engine-scenarios.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-scenarios.js",
+      "kind": "file",
+      "bytes": 7981,
+      "sha256": "7fef9b25033e298542beffdbb722a5d4de2075fc57cf868c84780bb7cd3dbfda"
+    },
+    {
+      "member": "frozen-source/test-engine-spectators.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-spectators.js",
+      "kind": "file",
+      "bytes": 11518,
+      "sha256": "4d64916ff9931c8f09dbe300e68718881995b3d3c9f43d7995a3d2a15ab23237"
+    },
+    {
+      "member": "frozen-source/test-engine-traffic-privacy.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-traffic-privacy.js",
+      "kind": "file",
+      "bytes": 13983,
+      "sha256": "eb1f7ab966eaf3f4998ebe2a36b9cd296a824cba131741953e98c8273b126a68"
+    },
+    {
+      "member": "frozen-source/test-engine-vehicle-pose.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-vehicle-pose.mjs",
+      "kind": "file",
+      "bytes": 12721,
+      "sha256": "74122febb84f13c1f03185c0f847317a553fb6bfe745d587ee2ef1703341dacf"
+    },
+    {
+      "member": "frozen-source/test-engine-world.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-engine-world.js",
+      "kind": "file",
+      "bytes": 18172,
+      "sha256": "c9fb1988f5bf6dfba88da29b4d66ba16f28d37a07a3353d7f5a4403681b17141"
+    },
+    {
+      "member": "frozen-source/test-ground-performance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-ground-performance.mjs",
+      "kind": "file",
+      "bytes": 11825,
+      "sha256": "0d9d15e66e42beceec9d06a829f8df9291cee10b9d6fd83c67d5b237add38cd2"
+    },
+    {
+      "member": "frozen-source/test-human-input.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-human-input.js",
+      "kind": "file",
+      "bytes": 7881,
+      "sha256": "d30d8e85f82d52f9d2c72c7b881abc84a96c1f03a9d7360001b95acfb0081f6b"
+    },
+    {
+      "member": "frozen-source/test-infantry-authored.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-infantry-authored.mjs",
+      "kind": "file",
+      "bytes": 2895,
+      "sha256": "645aecb1eb54d6a53c2abeb3a3000ce0d75a29f7ef68f17a3c642adb9d366bc0"
+    },
+    {
+      "member": "frozen-source/test-model-motion.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-model-motion.mjs",
+      "kind": "file",
+      "bytes": 5898,
+      "sha256": "adb7fc30f5f7eea865c1d660b540be31de2febc55e0908fa6ff6db090bca9bf9"
+    },
+    {
+      "member": "frozen-source/test-movement-lab.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-movement-lab.js",
+      "kind": "file",
+      "bytes": 3717,
+      "sha256": "7880d83801feefe4446dbcb8bcc17223a74ccd348f69926ee9aa8cf242270ec0"
+    },
+    {
+      "member": "frozen-source/test-path-performance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-path-performance.mjs",
+      "kind": "file",
+      "bytes": 12848,
+      "sha256": "ddb8cda913973f01c694d3bb7b94da0128c81ce068447851d065685f0efe54b6"
+    },
+    {
+      "member": "frozen-source/test-performance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-performance.mjs",
+      "kind": "file",
+      "bytes": 777,
+      "sha256": "4ec5847cf75abc2ef51f40ebe11ac5e0b01e34ff035c590cc8a48e3e9bb02c63"
+    },
+    {
+      "member": "frozen-source/test-public-lobby.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-public-lobby.js",
+      "kind": "file",
+      "bytes": 5946,
+      "sha256": "6aaa53c99ac5816a649c2999bb6c26b0d3a24515210392ed2843b488b03dd8d0"
+    },
+    {
+      "member": "frozen-source/test-server-start-order.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-server-start-order.js",
+      "kind": "file",
+      "bytes": 13451,
+      "sha256": "c157e80c1bf054108f4755c7a420e26675db6ae00fd58b3e439b7649be569168"
+    },
+    {
+      "member": "frozen-source/test-terrain-relief.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-terrain-relief.mjs",
+      "kind": "file",
+      "bytes": 28150,
+      "sha256": "850ed87fecd5452733f2559e68719a46caafd1e3e9018f0dbc72bf035dda6583"
+    },
+    {
+      "member": "frozen-source/test-tutorial.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-tutorial.js",
+      "kind": "file",
+      "bytes": 4101,
+      "sha256": "5a88365abc549f42f550a1aef7aa458300ec52806a8763d01cc6128aaee447c5"
+    },
+    {
+      "member": "frozen-source/test-wheel-motion.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-wheel-motion.mjs",
+      "kind": "file",
+      "bytes": 14288,
+      "sha256": "4d63ce56d48eb3590f4f2ab9a2d24f8ec6d2db29ff98f554d1a5798203d934cc"
+    },
+    {
+      "member": "frozen-source/test-world-acceptance.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-acceptance.js",
+      "kind": "file",
+      "bytes": 24896,
+      "sha256": "5aba81d8f896dc8cd15369400c9cb88ae7473e63f8f658f0167bbb695d8a482d"
+    },
+    {
+      "member": "frozen-source/test-world-connectivity-helper.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-connectivity-helper.js",
+      "kind": "file",
+      "bytes": 1303,
+      "sha256": "1d44423341a03e61842b2658fcdc3f16874238916d982beac0c43e5b78db330a"
+    },
+    {
+      "member": "frozen-source/test-world-conquest.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-conquest.js",
+      "kind": "file",
+      "bytes": 9211,
+      "sha256": "0a82e8ad61d0e7cea39876d734573e00d9b282c030e03ca2fd7d9c18b800cdd3"
+    },
+    {
+      "member": "frozen-source/test-world-generation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-generation.js",
+      "kind": "file",
+      "bytes": 1565,
+      "sha256": "3fb5428128e891981318c1149572e53f308aca18ab23133889ded1ba468d2545"
+    },
+    {
+      "member": "frozen-source/test-world-movement.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-movement.js",
+      "kind": "file",
+      "bytes": 7391,
+      "sha256": "3bc80b514549960806d91eec61de405f5afc8d798cbf7fa1341df092803efb3f"
+    },
+    {
+      "member": "frozen-source/test-world-multiple-rivers.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-multiple-rivers.js",
+      "kind": "file",
+      "bytes": 344,
+      "sha256": "f4a7f9401a0526cd23d602cb431c11748680ff10b751d5bb231011c8bcca73a6"
+    },
+    {
+      "member": "frozen-source/test-world-observation.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-observation.js",
+      "kind": "file",
+      "bytes": 7677,
+      "sha256": "4c48b156dde7801267e7943b5ec0c5a0effd74b59748a2b502c95ea566e02f10"
+    },
+    {
+      "member": "frozen-source/test-world-river.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-river.js",
+      "kind": "file",
+      "bytes": 6320,
+      "sha256": "892e1a4e88b55d9b71245e94e4e2374ba244ac7dadb890a25989dee00481f1b9"
+    },
+    {
+      "member": "frozen-source/test-world-teams.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-teams.js",
+      "kind": "file",
+      "bytes": 7352,
+      "sha256": "7238f4706b7397c7be3ef1130cd4e15b9b30a705b39e6fefbf857043e093d245"
+    },
+    {
+      "member": "frozen-source/test-world-territories.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-territories.js",
+      "kind": "file",
+      "bytes": 861,
+      "sha256": "1a20663844cfe1917842b60fd0ad2d1b0febb31c56acc45589c787bb9473aeff"
+    },
+    {
+      "member": "frozen-source/test-world-waterways.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world-waterways.js",
+      "kind": "file",
+      "bytes": 4315,
+      "sha256": "12c3b58791f5b2ec672f1e8486f8874f71fafeda1fdee88ac85995ceaeed5d2e"
+    },
+    {
+      "member": "frozen-source/test-world.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test-world.js",
+      "kind": "file",
+      "bytes": 4019,
+      "sha256": "90485c7f5d8f93e1ecf29e1c33973a16cac8e2d572e0e021fd011024568fb076"
+    },
+    {
+      "member": "frozen-source/test.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/test.js",
+      "kind": "file",
+      "bytes": 594069,
+      "sha256": "7e01fe4b7ee8faef9d89e6d2874444a93215dac375eaa8e0f9f0c6035abc2096"
+    },
+    {
+      "member": "frozen-source/tickmeter.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tickmeter.js",
+      "kind": "file",
+      "bytes": 2198,
+      "sha256": "4687535fa1d155e88648610230edda26df2fc60eb2bae017240a0020b2ce0d92"
+    },
+    {
+      "member": "frozen-source/tools/ai-balance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-balance.mjs",
+      "kind": "file",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "member": "frozen-source/tools/ai-humanity.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-humanity.mjs",
+      "kind": "file",
+      "bytes": 97622,
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-browser.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab-browser.mjs",
+      "kind": "file",
+      "bytes": 8245,
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-node.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab-node.mjs",
+      "kind": "file",
+      "bytes": 1125,
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-report.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab-report.mjs",
+      "kind": "file",
+      "bytes": 3951,
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-runner.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab-runner.mjs",
+      "kind": "file",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab-server.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab-server.mjs",
+      "kind": "file",
+      "bytes": 2169,
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab.html",
+      "kind": "file",
+      "bytes": 4496,
+      "sha256": "f01569c13a0d596ea005611588bfda5e8e9641e2053ca13a283e9c3ca33cf73d"
+    },
+    {
+      "member": "frozen-source/tools/ai-lab.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-lab.mjs",
+      "kind": "file",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-capture-v3.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-manual-response-capture-v3.mjs",
+      "kind": "file",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-capture.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-manual-response-capture.mjs",
+      "kind": "file",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-policy-v3.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-manual-response-policy-v3.mjs",
+      "kind": "file",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "member": "frozen-source/tools/ai-manual-response-policy.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-manual-response-policy.mjs",
+      "kind": "file",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "member": "frozen-source/tools/ai-public-alert-response-v2.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-public-alert-response-v2.mjs",
+      "kind": "file",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "member": "frozen-source/tools/ai-public-alert-response.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-public-alert-response.mjs",
+      "kind": "file",
+      "bytes": 20592,
+      "sha256": "6ea2b5b42af9f1ed1bc87f14433adb66da05fdd71f8c6fbe35ca36180fed9baa"
+    },
+    {
+      "member": "frozen-source/tools/ai-screen-v1-oracle-provenance.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-screen-v1-oracle-provenance.json",
+      "kind": "file",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "member": "frozen-source/tools/ai-screen-v1-oracle.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/ai-screen-v1-oracle.js",
+      "kind": "file",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "member": "frozen-source/tools/balance.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/balance.mjs",
+      "kind": "file",
+      "bytes": 10497,
+      "sha256": "42b7c3355c2fd06513fee58c7d04bc2783050c7259b1329426f7c2dc50ab9d18"
+    },
+    {
+      "member": "frozen-source/tools/bench-engine.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/bench-engine.mjs",
+      "kind": "file",
+      "bytes": 32433,
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be"
+    },
+    {
+      "member": "frozen-source/tools/bench-ground.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/bench-ground.mjs",
+      "kind": "file",
+      "bytes": 3281,
+      "sha256": "5d0e37369daf978eb29317409ac601f1d5df13aec2c835b69ccb41e77a76bd30"
+    },
+    {
+      "member": "frozen-source/tools/bench-move.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/bench-move.mjs",
+      "kind": "file",
+      "bytes": 4599,
+      "sha256": "5b9577bb58e6f7a67593f59262e20c9f7e402449ac1343cf2b6bc1e6ef378c0a"
+    },
+    {
+      "member": "frozen-source/tools/bench-world-conquest.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/bench-world-conquest.mjs",
+      "kind": "file",
+      "bytes": 13956,
+      "sha256": "4a24bd8b0d7e3fdffb2f1811b64993f3ef4373ebb019a69cdab72b68d5a45ada"
+    },
+    {
+      "member": "frozen-source/tools/bench.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/bench.mjs",
+      "kind": "file",
+      "bytes": 8183,
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d"
+    },
+    {
+      "member": "frozen-source/tools/blender/check-finished-naval.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/check-finished-naval.mjs",
+      "kind": "file",
+      "bytes": 4502,
+      "sha256": "06c74d2d17c568acc508f09710a490fd688166e08806660f40848d2f3866f456"
+    },
+    {
+      "member": "frozen-source/tools/blender/export-naval-source.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/export-naval-source.mjs",
+      "kind": "file",
+      "bytes": 3370,
+      "sha256": "45407f36f2b49f342592da87e277e72415f1d46bc969d7f90d59abfd2df3968a"
+    },
+    {
+      "member": "frozen-source/tools/blender/export-review.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/export-review.mjs",
+      "kind": "file",
+      "bytes": 4423,
+      "sha256": "f16af23e2c44a713d33cc8e75cee16b0398b9eedabc25071c62fd58732d66a6e"
+    },
+    {
+      "member": "frozen-source/tools/blender/finish-naval.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/finish-naval.mjs",
+      "kind": "file",
+      "bytes": 2046,
+      "sha256": "7362c6813d8cf593cf7a933d4434f8db5cf90bd9319814da75d7c800d7f60a36"
+    },
+    {
+      "member": "frozen-source/tools/blender/finish-naval.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/finish-naval.py",
+      "kind": "file",
+      "bytes": 12141,
+      "sha256": "c4eadfccf50c377323487bef0312d053ea26328afa73ff667a16b0b08810a440"
+    },
+    {
+      "member": "frozen-source/tools/blender/finishing.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/finishing.md",
+      "kind": "file",
+      "bytes": 4747,
+      "sha256": "95c27d60c199de9d9c9f5671f844fd2c233fedd1107d5d7dc8d1b1d4ebcccf35"
+    },
+    {
+      "member": "frozen-source/tools/blender/import-review.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/import-review.py",
+      "kind": "file",
+      "bytes": 7830,
+      "sha256": "0dd25e7454b77ab85f5fa9dba3d2f59141fdc5c742b0dbf6fcd88d5da6f13641"
+    },
+    {
+      "member": "frozen-source/tools/blender/infantry.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/infantry.md",
+      "kind": "file",
+      "bytes": 2578,
+      "sha256": "47160d2f20d75e8c50f7067786f322741fc0f45b1723635c43f7596d99ef43aa"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/README.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/README.md",
+      "kind": "file",
+      "bytes": 7737,
+      "sha256": "af1523462427b71a57e6e59c8ccf743935d5e84a34f75da68b8f37bbc07e957d"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/activate.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/activate.py",
+      "kind": "file",
+      "bytes": 604,
+      "sha256": "4368a65fa4662baddfddca504ca9fdb74afc07d9d5a6c52f71cf1e37ec9fdec5"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/blend-ai/pyproject.toml",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/blend-ai/pyproject.toml",
+      "kind": "file",
+      "bytes": 254,
+      "sha256": "c0bff8153f0482d472646107c043881dcc99de463673125ff498456a5946395a"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/blend-ai/server.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/blend-ai/server.sh",
+      "kind": "file",
+      "bytes": 226,
+      "sha256": "94c7100546e6aef561b2d1db6af2bee312393adcddc46a4b198f8cc6700f4210"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/blend-ai/uv.lock",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/blend-ai/uv.lock",
+      "kind": "file",
+      "bytes": 189384,
+      "sha256": "e8924f2937bab8cdd09d139e9d5c4e7518716fcfde218da1d9bbfb97f0189ecc"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/call.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/call.py",
+      "kind": "file",
+      "bytes": 2858,
+      "sha256": "0ba6b035e522fb85b96fd23cce53452bfe814042d1b6007615afdcaf85e32ab3"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/call.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/call.sh",
+      "kind": "file",
+      "bytes": 172,
+      "sha256": "d643c00abde6ae9a5c60f79084816ae1bacbabac64229cae8a7401d663681b89"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/check.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/check.py",
+      "kind": "file",
+      "bytes": 2975,
+      "sha256": "f1935e459bd8a915af0597f2b3b9e8b230882f455c244144b5fe64ac112a8f52"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/check.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/check.sh",
+      "kind": "file",
+      "bytes": 168,
+      "sha256": "d647e9e74a59c647750858e7dd104dab1a9acf156e97d2d6f94c8665637c7a7b"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/codex-marketplace/.agents/plugins/marketplace.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/codex-marketplace/.agents/plugins/marketplace.json",
+      "kind": "file",
+      "bytes": 384,
+      "sha256": "3f1c6e2b319fc4bd73ae173d133eb79318ad1513e8f0767ec04c5c1a48b786d9"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/codex-marketplace/LICENSE",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/codex-marketplace/LICENSE",
+      "kind": "file",
+      "bytes": 1071,
+      "sha256": "049501fd54d27852507853a5b88094ca1c6ff97404418a5032f3310eecc9cde6"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.codex-plugin/plugin.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.codex-plugin/plugin.json",
+      "kind": "file",
+      "bytes": 1334,
+      "sha256": "aef4380b896d6d3d4d81aba593d5e553c937857a4feaad60d8f077bb20a8b20e"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.mcp.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.mcp.json",
+      "kind": "file",
+      "bytes": 516,
+      "sha256": "a64837272354f4c59aa44c141fb4fca7780a4180bbf382a145313a9c56c5dfc9"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/pyproject.toml",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/pyproject.toml",
+      "kind": "file",
+      "bytes": 130,
+      "sha256": "dd6055cc23937c51db52d1c53282eab9ad9554b2509402aefe0e7af84502e4e5"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/server.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/server.sh",
+      "kind": "file",
+      "bytes": 426,
+      "sha256": "193cd5180d46df994334bf02b5d41202d653a4b0cf981e2bae4798cd39aac674"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/community/uv.lock",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/community/uv.lock",
+      "kind": "file",
+      "bytes": 189839,
+      "sha256": "93d78f3601ae0c4597beb3cdf04ad93ac7af2a169386a79e9d702a0c4b8e3ecf"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/configure.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/configure.py",
+      "kind": "file",
+      "bytes": 672,
+      "sha256": "85e367b269e02ce7d6749ac4a1b13ac2430b9fdee0b784b689b3c124c31e34f6"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/environment.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/environment.sh",
+      "kind": "file",
+      "bytes": 918,
+      "sha256": "f3db004244e58da757706d3f7d14a9efd8bdf3bfa9c632388a80395c5777db1a"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/preflight.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/preflight.py",
+      "kind": "file",
+      "bytes": 424,
+      "sha256": "635f53e20642f3e0dc9bf5d1744c856b156cb8d2bfa3b3ea655a716ada8add7f"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/pyproject.toml",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/pyproject.toml",
+      "kind": "file",
+      "bytes": 288,
+      "sha256": "221fd8d510dded7cac328b20e277c66d3de47cc7d1c654d70d781575772245b0"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/review.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/review.py",
+      "kind": "file",
+      "bytes": 4019,
+      "sha256": "5b6db1a572d470e0195347a20139b4d9272b946b33f42b3e00fbba465c0c1d75"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/server.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/server.sh",
+      "kind": "file",
+      "bytes": 314,
+      "sha256": "7383ce17c9998748e5f519c925260799352388381b720c4752320f2a8d08da8d"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/setup.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/setup.sh",
+      "kind": "file",
+      "bytes": 2449,
+      "sha256": "18165c4db893516c2c3bb11b8b46ac2e70389640bc2de21cd29c9dfdb63b22ee"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/start.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/start.sh",
+      "kind": "file",
+      "bytes": 559,
+      "sha256": "6e1dc55ebfc251e4bf464daf48021e70b865c5b274eced2fe0599f197304e873"
+    },
+    {
+      "member": "frozen-source/tools/blender/mcp/uv.lock",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/mcp/uv.lock",
+      "kind": "file",
+      "bytes": 162934,
+      "sha256": "be4043d935f99305ea02fa0d7c71a898984c6a6b15ddb5ce97a2f8e7ec97462a"
+    },
+    {
+      "member": "frozen-source/tools/blender/rebuild-infantry.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/rebuild-infantry.sh",
+      "kind": "file",
+      "bytes": 1066,
+      "sha256": "d2b3004d479df0d6bff008fdc03a377bd19f36ab19deb33af243f38a97ee64a6"
+    },
+    {
+      "member": "frozen-source/tools/blender/review.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/review.sh",
+      "kind": "file",
+      "bytes": 374,
+      "sha256": "86f615711bab36d5d7556bc82531ee36227f8a57179281b96b32adc932ee3e7e"
+    },
+    {
+      "member": "frozen-source/tools/blender/rig-infantry.py",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/rig-infantry.py",
+      "kind": "file",
+      "bytes": 10944,
+      "sha256": "c7a4d14eed2b4858cf60f4726f68f2b4fc996df3ef691ad848b4b3cbfcdd48b7"
+    },
+    {
+      "member": "frozen-source/tools/blender/skills/ww2-model-qa/SKILL.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/skills/ww2-model-qa/SKILL.md",
+      "kind": "file",
+      "bytes": 4358,
+      "sha256": "ca51d91a4bf9ef0bb69f278a6bb9ad4a6d2f845770f020a6ba24d7f80c576af6"
+    },
+    {
+      "member": "frozen-source/tools/blender/verification-2026-10-03.md",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/blender/verification-2026-10-03.md",
+      "kind": "file",
+      "bytes": 7551,
+      "sha256": "44a61324804c08dd311646fc416733dca605485c2e116c04435de814139e4f81"
+    },
+    {
+      "member": "frozen-source/tools/build-audio.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/build-audio.mjs",
+      "kind": "file",
+      "bytes": 13322,
+      "sha256": "e066f7bef14691def1edf934d574fd29b0d3f489b43d15c1b4f8dcdfd14f7714"
+    },
+    {
+      "member": "frozen-source/tools/build-fx-atlas.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/build-fx-atlas.mjs",
+      "kind": "file",
+      "bytes": 13451,
+      "sha256": "3e26da8a6fcb1f5887926a5853c7a0873fe105a55ba8a66d1f91be12423753ec"
+    },
+    {
+      "member": "frozen-source/tools/check-new-models.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/check-new-models.mjs",
+      "kind": "file",
+      "bytes": 1309,
+      "sha256": "f8092868eb3ca7ff75319ec01f5581379e07aff3e73ec9406495ff6e51b61b90"
+    },
+    {
+      "member": "frozen-source/tools/diag.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/diag.mjs",
+      "kind": "file",
+      "bytes": 4386,
+      "sha256": "c554e37684d21821a0f5c7036904178f7e7388c9d26337887b378c1e4cde5e7b"
+    },
+    {
+      "member": "frozen-source/tools/genmap-bridge.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap-bridge.mjs",
+      "kind": "file",
+      "bytes": 8003,
+      "sha256": "94c6b6850b521bae65feedd49e441c014d407086ba4c1240b13d320144c3b909"
+    },
+    {
+      "member": "frozen-source/tools/genmap-horde.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap-horde.js",
+      "kind": "file",
+      "bytes": 12875,
+      "sha256": "168a5dc5e866bf61eee87e5af743d336c3288afca223cb2b092ea829595031e9"
+    },
+    {
+      "member": "frozen-source/tools/genmap-islands.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap-islands.mjs",
+      "kind": "file",
+      "bytes": 3060,
+      "sha256": "73b79b2d7771a0cefb55283d5845cae4d5e26dca14da9122178ed05c556b96c6"
+    },
+    {
+      "member": "frozen-source/tools/genmap-pack.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap-pack.js",
+      "kind": "file",
+      "bytes": 22923,
+      "sha256": "b7c329d45822b8ffab296e40f4413b77fa894704e89485b21383f3623fde737a"
+    },
+    {
+      "member": "frozen-source/tools/genmap-trenches.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap-trenches.mjs",
+      "kind": "file",
+      "bytes": 4576,
+      "sha256": "14c5d6ede58df9cd3ca282e599d64865d9ea3131c48f7243ed76dc7c61fe432c"
+    },
+    {
+      "member": "frozen-source/tools/genmap-xl.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap-xl.js",
+      "kind": "file",
+      "bytes": 10557,
+      "sha256": "8477be9e1f372bcfb69697c80bbc95714843aae840f32bf98ed2982b915c9077"
+    },
+    {
+      "member": "frozen-source/tools/genmap.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/genmap.js",
+      "kind": "file",
+      "bytes": 9408,
+      "sha256": "20f17ef9919eacbd812c569549802be3ed2f8acb6838f5ef256998421d60c8d2"
+    },
+    {
+      "member": "frozen-source/tools/hash-json-native.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/hash-json-native.mjs",
+      "kind": "file",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "member": "frozen-source/tools/horde.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/horde.mjs",
+      "kind": "file",
+      "bytes": 2223,
+      "sha256": "d23d6c320497a55df56222297256d084dba53d6851934f2212bd6e0be00521af"
+    },
+    {
+      "member": "frozen-source/tools/json-stream.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/json-stream.mjs",
+      "kind": "file",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "member": "frozen-source/tools/km-median-boundary.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/km-median-boundary.mjs",
+      "kind": "file",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "member": "frozen-source/tools/legacy-ai/ai-mind.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/legacy-ai/ai-mind.js",
+      "kind": "file",
+      "bytes": 17983,
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+    },
+    {
+      "member": "frozen-source/tools/legacy-ai/ai-view.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/legacy-ai/ai-view.js",
+      "kind": "file",
+      "bytes": 11525,
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+    },
+    {
+      "member": "frozen-source/tools/legacy-ai/ai.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/legacy-ai/ai.js",
+      "kind": "file",
+      "bytes": 64127,
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+    },
+    {
+      "member": "frozen-source/tools/legacy-ai/provenance.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/legacy-ai/provenance.json",
+      "kind": "file",
+      "bytes": 1048,
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e"
+    },
+    {
+      "member": "frozen-source/tools/mapstats.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/mapstats.mjs",
+      "kind": "file",
+      "bytes": 8721,
+      "sha256": "3ec678dda56d0a056dd70046199cb1120e5821dfc378f9876a2e29cfbbfff442"
+    },
+    {
+      "member": "frozen-source/tools/mapwork.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/mapwork.mjs",
+      "kind": "file",
+      "bytes": 8411,
+      "sha256": "668a2464bddcab7377dd9f02fb0c695c13c02bceb2f15a466624d77e8f7223e7"
+    },
+    {
+      "member": "frozen-source/tools/model-shots.sh",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/model-shots.sh",
+      "kind": "file",
+      "bytes": 3652,
+      "sha256": "3a4a5d3b04165996b3c8b1b0f71be555c3aa577fc248389954d6b5fcb8dff67e"
+    },
+    {
+      "member": "frozen-source/tools/movement-lab-browser.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/movement-lab-browser.js",
+      "kind": "file",
+      "bytes": 14004,
+      "sha256": "b22680fa57d063a3a2106f270cd16a95d275bd7e20d99b177c63ed71e58a2fd4"
+    },
+    {
+      "member": "frozen-source/tools/movement-lab-runner.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/movement-lab-runner.js",
+      "kind": "file",
+      "bytes": 6570,
+      "sha256": "8285d51b25013776a2d67f89154e803447efbe8ce02ccec2890dc41f49d09829"
+    },
+    {
+      "member": "frozen-source/tools/movement-lab-scenarios.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/movement-lab-scenarios.js",
+      "kind": "file",
+      "bytes": 12407,
+      "sha256": "50b19fc2f2144d9dfee790b8c7d126c08e971b588e08921fdb84e743c4154afe"
+    },
+    {
+      "member": "frozen-source/tools/movement-lab.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/movement-lab.html",
+      "kind": "file",
+      "bytes": 4653,
+      "sha256": "d87e330b6159dea3aaac907762e3757918a10bebcf470d86a19053a84fc31c77"
+    },
+    {
+      "member": "frozen-source/tools/movement-lab.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/movement-lab.mjs",
+      "kind": "file",
+      "bytes": 2177,
+      "sha256": "4aa4fd104a888e5e587a29e92ad4b1a26b75a25fe58f8c3fe7fedd88bc5dcf4c"
+    },
+    {
+      "member": "frozen-source/tools/preview-world-generation.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/preview-world-generation.mjs",
+      "kind": "file",
+      "bytes": 1768,
+      "sha256": "f05dba5305cb8a16c11543b19c7520021998e5e2aefb938cc9d43525b6090e99"
+    },
+    {
+      "member": "frozen-source/tools/roads.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/roads.mjs",
+      "kind": "file",
+      "bytes": 1917,
+      "sha256": "1ba0af74d2e0436105ed4ebcd9f7a519fe2e4d783739613f496488cea1af180a"
+    },
+    {
+      "member": "frozen-source/tools/serve-movement-lab.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/serve-movement-lab.mjs",
+      "kind": "file",
+      "bytes": 3108,
+      "sha256": "1776d74dfe20dbe513e95385ed1ba792c18582e391be8f9da1a21f7e63f5095a"
+    },
+    {
+      "member": "frozen-source/tools/terrain-workshop-fixtures.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/terrain-workshop-fixtures.js",
+      "kind": "file",
+      "bytes": 3060,
+      "sha256": "4a548a46c5c039054494e477dd5fda1ccdfed57880c3964188e8692bb9e551f7"
+    },
+    {
+      "member": "frozen-source/tools/terrain-workshop.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/terrain-workshop.html",
+      "kind": "file",
+      "bytes": 4571,
+      "sha256": "c0fbae8ed0e149044b6161b99e277e8d7c9ba930e3d4b52a637f1f9fa874cabd"
+    },
+    {
+      "member": "frozen-source/tools/terrain-workshop.js",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/terrain-workshop.js",
+      "kind": "file",
+      "bytes": 13967,
+      "sha256": "a0b92e648f1675c461cad3c90abde12984ae09e8a28bfc18d3f83cc7aef1924a"
+    },
+    {
+      "member": "frozen-source/tools/test-public-lobby-browser.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/test-public-lobby-browser.mjs",
+      "kind": "file",
+      "bytes": 5036,
+      "sha256": "666cb37cbe27526abd35131b3ce68968d4079973a643b3a89f3be2fa9019f298"
+    },
+    {
+      "member": "frozen-source/tools/test-render-browser.html",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/test-render-browser.html",
+      "kind": "file",
+      "bytes": 6848,
+      "sha256": "048e811a4e3613bdfdb3bd255daf3f4732cadf5fb0ef8263fc8934020deb0115"
+    },
+    {
+      "member": "frozen-source/tools/test-world-waterway-seeds.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/test-world-waterway-seeds.mjs",
+      "kind": "file",
+      "bytes": 1721,
+      "sha256": "69b9d3f48ff30249de5a863c38fe12b5b5365951e037d7d7ba2d0bacdb3a3e13"
+    },
+    {
+      "member": "frozen-source/tools/woods.mjs",
+      "originalPhysicalPath": "/tmp/human-ai-r11-final-full-source/tools/woods.mjs",
+      "kind": "file",
+      "bytes": 2239,
+      "sha256": "33012d24d1a7686804e0b1dcb773a24931e72dc129114e463716c5834dbb25f3"
+    }
+  ],
+  "artifactCount": 14,
+  "exportedFrozenSourceCount": 452,
+  "fullNonEvidenceFrozenCount": 687,
+  "excludedFrozenCount": 235,
+  "exclusionPolicy": "Prior docs/evidence trees, node_modules, all images, videos, audio and other binary assets excluded. All remaining frozen textual source, tests, tools and metadata exported, including internal source symlinks.",
+  "standaloneOriginalArtifacts": [
+    {
+      "file": "root-verification.json",
+      "originalPhysicalPath": "/tmp/human-ai-r11-root-native-verification.json",
+      "bytes": 13670,
+      "sha256": "f25bf9b56a0bf9324643f4fa47908ff118eb798e135caf800a2a1ab7b89eb46f",
+      "verifiedEqualOriginalBytes": true
+    }
+  ]
+}

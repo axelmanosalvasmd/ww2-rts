@@ -1,0 +1,777 @@
+{
+  "allOriginalsValid": true,
+  "originals": 128,
+  "utc": "2026-10-05T02:37:46Z",
+  "verifiedBy": "ROOT archive-to-original physical-byte comparison",
+  "archiveSHA256": "27795fc538138b72b8d421c6789094d5c630a30b1160e50ffed204e8a1de4e15",
+  "checks": [
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline-test.log",
+      "member": "original-agent/baseline-test.log",
+      "bytes": 144,
+      "sha256": "d3d4bb363539af7f57d07d65175e2f0b69dee52d415402b6711c8e45f18bbc09"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/probe.mjs",
+      "member": "original-agent/probe.mjs",
+      "bytes": 2202,
+      "sha256": "35587ea45747719cc34c4219cd7677f99601016ff1c3e6e65b7e571f2689f3d8"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/test-engine-ai-risk-escalation.js",
+      "member": "original-agent/test-engine-ai-risk-escalation.js",
+      "bytes": 7693,
+      "sha256": "3bc010ced8b3f13fe30340c27a929c67edee66bf615c6bcb2a5bb7c418df6f25"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate-native.json",
+      "member": "original-agent/candidate-native.json",
+      "bytes": 637228,
+      "sha256": "860eb866a5aced10b4e13b24010e7c094f5b762f3202683864bd81d83713c0f9"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/paired-proof.mjs",
+      "member": "original-agent/paired-proof.mjs",
+      "bytes": 1725,
+      "sha256": "fa79dcd648e7cbac9aa80463715759e146fbd5ebee39efee9cb127ea9eaf2159"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate-controls.json",
+      "member": "original-agent/candidate-controls.json",
+      "bytes": 3875213,
+      "sha256": "15a6a0afd1220a6b093add54b9268cc1255192b5d25246d79a22699689d61627"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline-controls.json",
+      "member": "original-agent/baseline-controls.json",
+      "bytes": 3927106,
+      "sha256": "33f89aa8217d5339a1b9b3ad362729e9feaa3cbb1f1093333e05ae93bd1796ba"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/test-engine-ai-risk-escalation.js",
+      "member": "original-agent/candidate/test-engine-ai-risk-escalation.js",
+      "bytes": 7693,
+      "sha256": "3bc010ced8b3f13fe30340c27a929c67edee66bf615c6bcb2a5bb7c418df6f25"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/package.json",
+      "member": "original-agent/candidate/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/debris-motion.js",
+      "member": "original-agent/candidate/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/world-roads.js",
+      "member": "original-agent/candidate/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/sim.js",
+      "member": "original-agent/candidate/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-commander.js",
+      "member": "original-agent/candidate/shared/ai-commander.js",
+      "bytes": 31873,
+      "sha256": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/vehicle-motion.js",
+      "member": "original-agent/candidate/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-view.js",
+      "member": "original-agent/candidate/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/tutorial.js",
+      "member": "original-agent/candidate/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-rng.js",
+      "member": "original-agent/candidate/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/world-conquest.js",
+      "member": "original-agent/candidate/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/story.js",
+      "member": "original-agent/candidate/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-priority.js",
+      "member": "original-agent/candidate/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/navigation.js",
+      "member": "original-agent/candidate/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/weather.js",
+      "member": "original-agent/candidate/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai.js",
+      "member": "original-agent/candidate/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/world-layers.js",
+      "member": "original-agent/candidate/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/scenarios.js",
+      "member": "original-agent/candidate/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/structures.js",
+      "member": "original-agent/candidate/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/command-feedback.js",
+      "member": "original-agent/candidate/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/alert-events.js",
+      "member": "original-agent/candidate/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/local-traffic.js",
+      "member": "original-agent/candidate/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/formation.js",
+      "member": "original-agent/candidate/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/human-input.js",
+      "member": "original-agent/candidate/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-hands.js",
+      "member": "original-agent/candidate/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-perception.js",
+      "member": "original-agent/candidate/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/grid.js",
+      "member": "original-agent/candidate/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-mind.js",
+      "member": "original-agent/candidate/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-persona.js",
+      "member": "original-agent/candidate/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/world-territories.js",
+      "member": "original-agent/candidate/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/ai-attention.js",
+      "member": "original-agent/candidate/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/world-landforms.js",
+      "member": "original-agent/candidate/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/shared/projectiles.js",
+      "member": "original-agent/candidate/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/client/keys.js",
+      "member": "original-agent/candidate/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate/tools/ai-lab-runner.mjs",
+      "member": "original-agent/candidate/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/paired-test.log",
+      "member": "original-agent/paired-test.log",
+      "bytes": 116,
+      "sha256": "dd808d87487a49beb0cae496acebc644c8364e932b822057512ec878fc58308e"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/manifest.json",
+      "member": "original-agent/manifest.json",
+      "bytes": 8713,
+      "sha256": "4811bbddf0eefa1851963a13086612831c1fd8cfafa6ebab1246b3e9874d0901"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/READOUT.md",
+      "member": "original-agent/READOUT.md",
+      "bytes": 5084,
+      "sha256": "6219cb3fb2ef0bdec6b5a3fed9b337eb7f7ab64d59c371d3e3253050dfc7a257"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/test-engine-ai-risk-escalation.js",
+      "member": "original-agent/baseline/test-engine-ai-risk-escalation.js",
+      "bytes": 7693,
+      "sha256": "3bc010ced8b3f13fe30340c27a929c67edee66bf615c6bcb2a5bb7c418df6f25"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/package.json",
+      "member": "original-agent/baseline/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/debris-motion.js",
+      "member": "original-agent/baseline/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/world-roads.js",
+      "member": "original-agent/baseline/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/sim.js",
+      "member": "original-agent/baseline/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-commander.js",
+      "member": "original-agent/baseline/shared/ai-commander.js",
+      "bytes": 31105,
+      "sha256": "54ac57367727010017122c1d29c9050890537eced8c9d2b547f84927dc67f0f2"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/vehicle-motion.js",
+      "member": "original-agent/baseline/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-view.js",
+      "member": "original-agent/baseline/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/tutorial.js",
+      "member": "original-agent/baseline/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-rng.js",
+      "member": "original-agent/baseline/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/world-conquest.js",
+      "member": "original-agent/baseline/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/story.js",
+      "member": "original-agent/baseline/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-priority.js",
+      "member": "original-agent/baseline/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/navigation.js",
+      "member": "original-agent/baseline/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/weather.js",
+      "member": "original-agent/baseline/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai.js",
+      "member": "original-agent/baseline/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/world-layers.js",
+      "member": "original-agent/baseline/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/scenarios.js",
+      "member": "original-agent/baseline/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/structures.js",
+      "member": "original-agent/baseline/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/command-feedback.js",
+      "member": "original-agent/baseline/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/alert-events.js",
+      "member": "original-agent/baseline/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/local-traffic.js",
+      "member": "original-agent/baseline/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/formation.js",
+      "member": "original-agent/baseline/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/human-input.js",
+      "member": "original-agent/baseline/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-hands.js",
+      "member": "original-agent/baseline/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-perception.js",
+      "member": "original-agent/baseline/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/grid.js",
+      "member": "original-agent/baseline/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-mind.js",
+      "member": "original-agent/baseline/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-persona.js",
+      "member": "original-agent/baseline/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/world-territories.js",
+      "member": "original-agent/baseline/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/ai-attention.js",
+      "member": "original-agent/baseline/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/world-landforms.js",
+      "member": "original-agent/baseline/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/shared/projectiles.js",
+      "member": "original-agent/baseline/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/client/keys.js",
+      "member": "original-agent/baseline/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline/tools/ai-lab-runner.mjs",
+      "member": "original-agent/baseline/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate.log",
+      "member": "original-agent/candidate.log",
+      "bytes": 11393,
+      "sha256": "4ce42b626f2b410036c00ac7738a47cc3fe241e4eb8ae14d068d1e4ad963ca0d"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/commander.patch",
+      "member": "original-agent/commander.patch",
+      "bytes": 2110,
+      "sha256": "ca6a99d3a18900c74a2319223b0ebeda09ff6100f85253abc2250243882e9926"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/probe.log",
+      "member": "original-agent/probe.log",
+      "bytes": 12147,
+      "sha256": "a6e1bde6597bb995ff5d84fffddfff7c3d033d3a61c23135527d194ba7871730"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/candidate-test.log",
+      "member": "original-agent/candidate-test.log",
+      "bytes": 135,
+      "sha256": "e870165376ef3195effa6512d0f3c0b145ea6bb3a7fa4c20a097e909fc1d5142"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/runtime.patch",
+      "member": "original-agent/runtime.patch",
+      "bytes": 1973,
+      "sha256": "2372207911d5a1ecd767149a9ef8a146226f76ac5ea3791cffc9f4f72215a148"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/paired-summary.json",
+      "member": "original-agent/paired-summary.json",
+      "bytes": 4392,
+      "sha256": "420c860ced066a4ad1d50d99e4110797bb5639bdd74890c9119a87eaf07e8c43"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay/baseline-native.json",
+      "member": "original-agent/baseline-native.json",
+      "bytes": 688764,
+      "sha256": "be1c9e96786cf04826f28c77dceb2cd8adde2d35cba6dc9d6a6aee5aad3fdfa5"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/REVIEW.md",
+      "member": "independent-held-contract-review/REVIEW.md",
+      "bytes": 5166,
+      "sha256": "000cbd974572172762a8805a41997e5622c429e6d9e1bd7f9545b48c0ff421e6"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/initial-syntax-fail.log",
+      "member": "independent-held-contract-review/initial-syntax-fail.log",
+      "bytes": 869,
+      "sha256": "feff7dc095bca4ec5d77228f67bc3cd2814897e29e4947e6b78bd59f0396a23d"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/raw.json",
+      "member": "independent-held-contract-review/raw.json",
+      "bytes": 1611843,
+      "sha256": "3014f9280a02f13107c9c1b0aa0078230aec60d866b72a5ab63e6c011da8d23a"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/review-bindings-and-summary.json",
+      "member": "independent-held-contract-review/review-bindings-and-summary.json",
+      "bytes": 29749,
+      "sha256": "f65f61729c7eee203e885534d92045962756339ab421cfa652f261e100a15636"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/review-manifest.json",
+      "member": "independent-held-contract-review/review-manifest.json",
+      "bytes": 915,
+      "sha256": "3b28ea54fea250df62814f409af50d969ac9c52a7361624f12ecd845656056ec"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/run.log",
+      "member": "independent-held-contract-review/run.log",
+      "bytes": 18607,
+      "sha256": "05a1d59ae12f475d2eff0dedb48ef6f0d9a748739f741782ddf64498e9a6fc1f"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/scene.initial-syntax-fail.mjs",
+      "member": "independent-held-contract-review/scene.initial-syntax-fail.mjs",
+      "bytes": 6211,
+      "sha256": "a38b2575b7defceebaf4221a174f7c5b29a5f321988bf2bd15067ffa9f9e1d03"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-independent-held/scene.mjs",
+      "member": "independent-held-contract-review/scene.mjs",
+      "bytes": 6204,
+      "sha256": "1b777cc665723563f381fae1e4051b9f1f625401ba46eadf01ad609aebd2d755"
+    },
+    {
+      "originalPath": "/tmp/ai-equal-risk-delay-evidence.tar.gz",
+      "member": "original-package/ai-equal-risk-delay-evidence.tar.gz",
+      "bytes": 734908,
+      "sha256": "ac5d4237bd9c480fd28a2b350f4892ca21fb1dda1924ec8f6e052b70e3bc0d13"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai.js",
+      "member": "ROOT-recorded-component-source/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-commander.js",
+      "member": "ROOT-recorded-component-source/shared/ai-commander.js",
+      "bytes": 31873,
+      "sha256": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-hands.js",
+      "member": "ROOT-recorded-component-source/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-attention.js",
+      "member": "ROOT-recorded-component-source/shared/ai-attention.js",
+      "bytes": 31888,
+      "sha256": "a55272249248bf1a7166da3038fa44794d7db3a163089010f6f3b905ccc3405a"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-priority.js",
+      "member": "ROOT-recorded-component-source/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-perception.js",
+      "member": "ROOT-recorded-component-source/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/ai-view.js",
+      "member": "ROOT-recorded-component-source/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/shared/sim.js",
+      "member": "ROOT-recorded-component-source/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/tools/ai-manual-response-policy-v3.mjs",
+      "member": "ROOT-recorded-component-source/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/tools/ai-public-alert-response-v2.mjs",
+      "member": "ROOT-recorded-component-source/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-risk-escalation.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-risk-escalation.js",
+      "bytes": 7693,
+      "sha256": "3bc010ced8b3f13fe30340c27a929c67edee66bf615c6bcb2a5bb7c418df6f25"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-human-slips.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-human-slips.js",
+      "bytes": 9830,
+      "sha256": "273c268a3f93ec1f8776bdf642d61cfb45e9fb095a16aa3d363eef7b8bee359f"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-hands.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-hands.js",
+      "bytes": 75738,
+      "sha256": "01e60c381495b1f99589fbd76587b19db0c7680807445e745abc69087ba1fab5"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-response.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-response.js",
+      "bytes": 26604,
+      "sha256": "a1b9ae52e60e952e70c896140a0813b6eb533cad2f0afc4cd45cc5de93685804"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-priority.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-priority.js",
+      "bytes": 9278,
+      "sha256": "fc66fa621166266f6a555020de6701944ea8a0365fc1dd077b4197efd05670e0"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-manual-response-v3.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-manual-response-v3.js",
+      "bytes": 10682,
+      "sha256": "ee51561c9509fe0764c47c173b12ed35d161d4aa6d6ebf5985e06a9df78e9342"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-public-alert-v2.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-public-alert-v2.js",
+      "bytes": 14730,
+      "sha256": "7f2816b796b02babef56d3d59d8fc15f56883067f5a3f95e2ac2dcf209fc3e60"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test-engine-ai-measurement-streams.js",
+      "member": "ROOT-adopted-fixture-snapshot/test-engine-ai-measurement-streams.js",
+      "bytes": 18955,
+      "sha256": "1ab914ccaba8e3786d04c154489639bc1d9eee2e2a128cef54749b7a81a566e1"
+    },
+    {
+      "originalPath": "/home/judiazm/.t3/worktrees/ww2-rts/ai-human-commander/test.js",
+      "member": "ROOT-adopted-fixture-snapshot/test.js",
+      "bytes": 594035,
+      "sha256": "0e5ed271ff402e0c279c25a04d5efe3245753f3b871843c3449023dad390c483"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/receipt.json",
+      "member": "independent-ROOT-focused-checks/receipt.json",
+      "bytes": 1752,
+      "sha256": "038d933d58027d3111e890ac5bdd6216819e81d1b625f6b113e47ca9b7e71df7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/results.json",
+      "member": "independent-ROOT-focused-checks/results.json",
+      "bytes": 1596,
+      "sha256": "3620c353e263ffebb8f31f89821594e34350ec070c0aff5ce4589163149c5bbf"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/source-after.json",
+      "member": "independent-ROOT-focused-checks/source-after.json",
+      "bytes": 965,
+      "sha256": "ca8b69b9774c254749f90f77938c01e8d5570e87afc5ab74438da5d704c60f2c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/source-before.json",
+      "member": "independent-ROOT-focused-checks/source-before.json",
+      "bytes": 965,
+      "sha256": "ca8b69b9774c254749f90f77938c01e8d5570e87afc5ab74438da5d704c60f2c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-hands.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-hands.js.log",
+      "bytes": 108,
+      "sha256": "9cd01eb1d7cbf22bbf205c6e2556491c73fddd8cf15d6658a496aad4605e51de"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-human-slips.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-human-slips.js.log",
+      "bytes": 136,
+      "sha256": "0af03b49f9284332a0390316739fa07a9d1d00ac979abdd8d04ac2daa992139b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-manual-response-v3.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-manual-response-v3.js.log",
+      "bytes": 95,
+      "sha256": "d84d66496136784f9c462cdb37bab2e7d5e187edfbbdd1e36a51bc7986a619ee"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-measurement-streams.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-measurement-streams.js.log",
+      "bytes": 141,
+      "sha256": "af039e45c4c8e5c97ac07027566520181e0e4c218acb549ad8f5ec3b1820ffcd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-priority.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-priority.js.log",
+      "bytes": 98,
+      "sha256": "167ef11e79a0ff216791b3cb634188cce210239974c69814fcfe161f6fb37331"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-public-alert-v2.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-public-alert-v2.js.log",
+      "bytes": 165155,
+      "sha256": "4d6488d7c28ba5b779391ea308ee5aaa686d175ed838e6ad7a452c8c36ed262a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-response.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-response.js.log",
+      "bytes": 575,
+      "sha256": "5f89c348ec9847cca46830682a70f09824b0040b459690e7821925fbffe9f80c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-risk-focused-root/test-engine-ai-risk-escalation.js.log",
+      "member": "independent-ROOT-focused-checks/test-engine-ai-risk-escalation.js.log",
+      "bytes": 135,
+      "sha256": "e870165376ef3195effa6512d0f3c0b145ea6bb3a7fa4c20a097e909fc1d5142"
+    },
+    {
+      "originalPath": "/tmp/r9-risk-escalation-durable-package/source-and-scope-qualification.json",
+      "member": "source-and-scope-qualification.json",
+      "bytes": 1257,
+      "sha256": "8fe4a74a490041f3e0a7e36b0fcc568fee0b8ca27af0c38895eea2425fabc56b"
+    }
+  ]
+}

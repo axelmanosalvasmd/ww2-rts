@@ -1,0 +1,23 @@
+{
+  "verifiedAtUTC": "2026-10-05T04:13:10.780708+00:00",
+  "originalMemberCount": 23,
+  "allArchivedBytesMatchPhysicalOriginals": true,
+  "nativeExit": 1,
+  "lockedSourceFiles": 684,
+  "duringChecks": 10,
+  "sourceUnchanged": true,
+  "files": {
+    "original-source-bindings.json": {
+      "bytes": 4972,
+      "sha256": "98330fe2969f132cbae3e2a76e1771a801f1ad499af1624ded78a9082d6f9def"
+    },
+    "native-failed-run.tar.gz": {
+      "bytes": 591987,
+      "sha256": "91eb6be0c1683de5e96ff9787f08709f88f0c6ffba41cbf9b862f6da987c921e"
+    },
+    "README.md": {
+      "bytes": 1558,
+      "sha256": "a6a5b99311d005fdf6b4f84cc0d0a4c7584be61586d925d62ec1909fc390f0d4"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+This targeted run provides inspected screenshots of an actual Normal AI fight on the native default Three Crossroads map. The lobby used Conquest, Standard, and three Normal AIs. The browser used native spectator follow and wheel zoom. No game state, camera state, resources, health, ticks, or source files were changed.
+
+Use capture/sheet-73.918.png for fight proof. It is an unedited 640 by 360 tile crop from the native contact sheet. It shows red infantry beside the left building, visible fire/explosion, blue rifle models around the capture point, the native Following Rifle Squad label, and colored AI camera outlines on the minimap. The later sheet-84.626.png and sheet-95.231.png crops show continuing infantry and smoke. The full contact sheet preserves their original order and timestamps. clear-start.png is the original 1280 by 720 screenshot after native intro skip, follow, and zoom.
+
+The owned server deadline stopped the run just before the requested 60 seconds after the setup gestures completed. Setup was slower than allowed for in the timer. The driver aborted and cleanup succeeded. The MP4 is invalid because record stop did not run; do not attach it as a playable video. Browser errors and console were not retrieved after the abort. These screenshots do not prove fine sequential orders, initial control-group setup, floating resources, or exact delayed response timing.
+
+Source hashes match before and after. The watchdog exited with cleanup acknowledgment and no remaining owned processes. All artifacts remain outside the repository.

@@ -1,0 +1,14 @@
+{
+  "pid": 2137344,
+  "command": [
+    "taskset",
+    "-c",
+    "4",
+    "node",
+    "--require",
+    "/tmp/human-ai-r11-world-diagnostic-root/preload.cjs",
+    "test-world-teams.js"
+  ],
+  "nativeDeadlineMS": 180000,
+  "startedAtUnix": 1791174416.9281101
+}

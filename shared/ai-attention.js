@@ -77,7 +77,8 @@ function abilityOpportunity(view, unit, enemies, level) {
   if (ability.id === 'grenade') return enemies.some(enemy => UNITS[enemy.type].infantry
     && distance(unit, enemy) <= ability.range + 4 && (enemy.type !== 'rifle' || enemy.cover === 1 || enemy.cover === 2));
   if (ability.id === 'suppress') return !!target && enemies.includes(target);
-  if (ability.id === 'ap') return target?.type === 'tank' && enemies.includes(target);
+  if (ability.id === 'ap') return !!target && !target.air && !UNITS[target.type].infantry
+    && !UNITS[target.type].structure && (!ability.naval || UNITS[target.type].naval) && enemies.includes(target);
   if (ability.id === 'smoke') {
     const bases = ['classic', 'world'].includes(view.mode?.kind) ? [...view.units.values()].filter(base => base.owner === unit.owner && UNITS[base.type].produces) : null;
     const home = bases ? bases.some(base => distance(unit, base) <= CFG.reinforceRadius) : distance(unit, view.players[unit.owner].spawn) <= CFG.reinforceRadius;

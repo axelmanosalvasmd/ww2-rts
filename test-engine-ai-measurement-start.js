@@ -78,7 +78,7 @@ function witness(mode, level, treatment) {
       if (g.tick % 2 === 0 || g.winner !== null) { g.shots = []; g.newCells = []; }
     }
     assert.ok(firstActorTicks.every(tick => tick === 2));
-    const native = { logs, game: JSON.parse(serialize(g)), nextRandom: Math.random(), startPackets, firstActorTicks }; 
+    const native = { logs, game: JSON.parse(serialize(g)), nextRandom: Math.random(), startPackets, firstActorTicks };
     if (!['off', 'original'].includes(treatment)) for (const frames of records) { assert.equal(frames[0].tick, 0); assert.ok(frames.every(frame => frame.original.baselineTick === 0)); }
     return { native, records };
   } finally { Math.random = originalRandom; }

@@ -1,0 +1,10 @@
+{
+  "status": "prepared, not executed",
+  "sha256": {
+    "run.py": "633e7b4c7b83cd368e3ecbd134fea9ea3377f86f258935d679c8ab15298a8f6f",
+    "preload.cjs": "3cb1dd73c639819a995cfa27f407918758e3a96d6e41ae5371c52de3ab161073"
+  },
+  "nativeDeadlineMS": 180000,
+  "assertions": "original test-world-teams.js unchanged",
+  "logs": "new unique output paths"
+}

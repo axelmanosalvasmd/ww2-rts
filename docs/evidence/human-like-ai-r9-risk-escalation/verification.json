@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "risk-escalation-native-and-root.tar.gz",
+  "archiveBytes": 1857926,
+  "archiveSHA256": "27795fc538138b72b8d421c6789094d5c630a30b1160e50ffed204e8a1de4e15",
+  "members": 131,
+  "originals": 128,
+  "originalCopiedBytes": 14913355,
+  "payloadBytes": 14965598,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "45be45ddace88a382cf0416c2ce751d2c93186c1f24ce85f87f5faba3eba33df"
+}

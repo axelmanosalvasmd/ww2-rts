@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "qualification": "Copy integrity only. Retained source-specific results are not new checks or acceptance.",
+  "archive": "ap-readiness-native-review-and-root.tar.gz",
+  "archiveBytes": 1739585,
+  "archiveSHA256": "fc3707287ee112ffbaf4b09381119334175c1ae65980b3e36c9f95be15732a20",
+  "members": 128,
+  "originals": 125,
+  "originalCopiedBytes": 11519296,
+  "payloadBytes": 11569880,
+  "allOriginalBytesUnchanged": true,
+  "allRoundtripBytesMatch": true,
+  "manifestSHA256": "3dc237621c473725d0c66376c2d936fdccbbd6bfe9df5d3cb698b71df9a212b9"
+}

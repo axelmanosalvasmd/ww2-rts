@@ -1,0 +1,67 @@
+{
+  "human-ai-r9-final-full-run.py": {
+    "originalPath": "/tmp/human-ai-r9-final-full-run.py",
+    "bytes": 20543,
+    "sha256": "79a618ce7e61579e286e61128cb0cec17a7c60994c1f7ebb4a9333387c1b1adf"
+  },
+  "human-ai-r9-final-full-prospective.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-prospective.json",
+    "bytes": 12307,
+    "sha256": "df99d66ab7e3a39c54723ebf11a7aebbfa39a6918537882ca46a9063ffa39077"
+  },
+  "human-ai-r9-final-full-predeclared.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-predeclared.json",
+    "bytes": 22307,
+    "sha256": "09b95bf139f1802f3f6bf873872639113b243040723a0f229b7b1abeec4b38fd"
+  },
+  "human-ai-r9-final-full-before.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-before.json",
+    "bytes": 913960,
+    "sha256": "f2bdd74195cb4599e09e7bb258c7a53b60e84bc6a642644c474eeaa3a030355e"
+  },
+  "human-ai-r9-final-full-after.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-after.json",
+    "bytes": 459733,
+    "sha256": "b0fb614ab2d11c2da801b5e703a365cd3864660a224d1e3aba9de88435de39c4"
+  },
+  "human-ai-r9-final-full-checks.jsonl": {
+    "originalPath": "/tmp/human-ai-r9-final-full-checks.jsonl",
+    "bytes": 35872,
+    "sha256": "e11616396c83d51426e3c8656cdf945d39e5b49c21ab340eb04b8db004f81eb7"
+  },
+  "human-ai-r9-final-full-test.log": {
+    "originalPath": "/tmp/human-ai-r9-final-full-test.log",
+    "bytes": 228425,
+    "sha256": "a6051ed7543094a5dfd57641a2bf441529694a1669a56579dc0f2ed3f1bfa594"
+  },
+  "human-ai-r9-final-full-test-exit.txt": {
+    "originalPath": "/tmp/human-ai-r9-final-full-test-exit.txt",
+    "bytes": 12,
+    "sha256": "0aac2256ca135e9e2ce682d26e680d8ec767e0c2897215d636113386fbc768af"
+  },
+  "human-ai-r9-final-full-launch.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-launch.json",
+    "bytes": 367,
+    "sha256": "da5df26007c0c4fc56259bd0a28a0a5f2ecdc3440bcc342e8ffd40cd317d55ce"
+  },
+  "human-ai-r9-final-full-completion.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-completion.json",
+    "bytes": 141,
+    "sha256": "6f8036b227a7e7c3aa5497c2b37742a7a57935ba30d70288b32c238938b82c42"
+  },
+  "human-ai-r9-final-full-verification.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-verification.json",
+    "bytes": 11272,
+    "sha256": "c652117b60c262bd99aef2ef2c0eadaef2390b49f3054343c7cc7650b5c2a85f"
+  },
+  "human-ai-r9-final-full-controller.log": {
+    "originalPath": "/tmp/human-ai-r9-final-full-controller.log",
+    "bytes": 11302,
+    "sha256": "cc78921b2d0538ed04f78def53626e0ab0f967aa1915ad1f86c175458cc0ece5"
+  },
+  "human-ai-r9-final-full-background-launch.json": {
+    "originalPath": "/tmp/human-ai-r9-final-full-background-launch.json",
+    "bytes": 700,
+    "sha256": "dd32f559ee88243a651274ed1270ba5393f0b2c7b69cc6a2f7f414c7492b1ebf"
+  }
+}

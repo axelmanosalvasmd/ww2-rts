@@ -1,0 +1,3 @@
+The corrected attempt stopped after the external 15-second CLI deadline expired while waiting for the first client snapshot. Native skip, follow, zoom, and video finalization were not reached. Browser errors and console were not retrieved. No additional browser retry was performed.
+
+The source hashes stayed unchanged. The watchdog exited cleanly, acknowledged cleanup, and found no remaining owned processes. Exact commands, supervisor events, the failure marker, and source hashes are retained under capture. This attempt provides no playable video or new 3D proof. The previously inspected fight screenshots remain in /tmp/human-ai-pr-current-game-close-proof/capture.

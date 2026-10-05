@@ -1,0 +1,15 @@
+{
+  "wall": "2026-10-05T04:32:08.669714+00:00",
+  "baseHash": "a0acf1739b48f5fc3ec0d0e6b6471a32006212ae13c6d6d54c6e5a04fa5a7a39",
+  "argv": [
+    "agent-browser",
+    "--json",
+    "--session",
+    "low-cb7987e68c",
+    "--profile",
+    "/tmp/human-ai-pr-current-game-proof/capture/profile",
+    "--args",
+    "--use-gl=angle,--use-angle=swiftshader,--disable-dev-shm-usage,--no-sandbox",
+    "errors"
+  ]
+}

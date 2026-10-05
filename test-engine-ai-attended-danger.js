@@ -113,7 +113,7 @@ function nativeScene(kind) {
  const f=fixture(kind==='cover'?['mg','rifle']:['rifle','tank'],false,kind==='cover'),unit=f.own[0],inputs=[],accepted=[],projection={};
  if(kind==='cover'){
   Object.assign(f.enemy,{x:47.6,z:79});
- 
+
  }
  const level=kind==='cover'?'hard':'normal'; let delivered,event;
  step(f.game);f.game.tick=300;f.look();f.decide();f.game.tick=308;

@@ -1,0 +1,421 @@
+{
+  "archive": "original-balance-evidence.zip",
+  "archiveSHA256": "6a89730daaf2b0e9ebdb99dfb36769a1908b5c3a307a1962e1a4a7b67a171eec",
+  "archiveBytes": 468978,
+  "entries": [
+    {
+      "source": "/tmp/ai-v21-final-full-before.json",
+      "member": "bindings/ai-v21-final-full-before.json",
+      "bytes": 424113,
+      "sha256": "d92ce340c6d33f5cd439890a854b3ffdec64a7d5e8ca4ab1f31259b52d69dce1",
+      "physicalSource": "/tmp/ai-v21-final-full-before.json"
+    },
+    {
+      "source": "/tmp/human-ai-prospective-v21-final-balance.json",
+      "member": "bindings/human-ai-prospective-v21-final-balance.json",
+      "bytes": 23007,
+      "sha256": "09c1658615879b3f01112a92ea0ad890b2a3987fac5209dfa9813e2e09f530bc",
+      "physicalSource": "/tmp/human-ai-prospective-v21-final-balance.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-combined-final-status-20261005T022739Z.json",
+      "member": "bindings/human-ai-v21-combined-final-status-20261005T022739Z.json",
+      "bytes": 5697,
+      "sha256": "cdbaab716bde6278ac19d5d1ef24ca3856db6d38700326947de0cbf09de0cbeb",
+      "physicalSource": "/tmp/human-ai-v21-combined-final-status-20261005T022739Z.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance-bind-frozen-source.py",
+      "member": "bindings/human-ai-v21-final-balance-bind-frozen-source.py",
+      "bytes": 2055,
+      "sha256": "3d8a9fb4e3808768b04440b386a03cd5eb141e51b706b643fc0cdb52c8835e53",
+      "physicalSource": "/tmp/human-ai-v21-final-balance-bind-frozen-source.py"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance-source-schema.py",
+      "member": "bindings/human-ai-v21-final-balance-source-schema.py",
+      "bytes": 5925,
+      "sha256": "4770c645deba9f96f3079e8dc6558ace33cddfe25ab3eb3fab8068c5bea352e1",
+      "physicalSource": "/tmp/human-ai-v21-final-balance-source-schema.py"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance-supervisor.py",
+      "member": "bindings/human-ai-v21-final-balance-supervisor.py",
+      "bytes": 10252,
+      "sha256": "acb5af251083afde67772881e5625d3698eaef3e2cc3015c7932153b9c4b9d8c",
+      "physicalSource": "/tmp/human-ai-v21-final-balance-supervisor.py"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/classic-checkpoint.json",
+      "member": "native/classic-checkpoint.json",
+      "bytes": 15491,
+      "sha256": "11bf2b49f4a8306cee2a52f8e1d76e7aa5d8581a230c45cff425f7c936613d93",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/classic-checkpoint.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/classic.json",
+      "member": "native/classic.json",
+      "bytes": 16083,
+      "sha256": "c863241bf7f81a093a69b422d535be3a7c9372c270b099f98b5a3852de1f4422",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/classic.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/classic.log",
+      "member": "native/classic.log",
+      "bytes": 10839,
+      "sha256": "384757dbf0098eaddeee0c3df37bafb7a53ad89b4ee9f121cdcce1e86dcded40",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/classic.log"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/conquest-checkpoint.json",
+      "member": "native/conquest-checkpoint.json",
+      "bytes": 28065,
+      "sha256": "227de1c102f076dedcf59dfd017498389da4a621aa2a2ec808657374cc1617b5",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/conquest-checkpoint.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/conquest.json",
+      "member": "native/conquest.json",
+      "bytes": 28719,
+      "sha256": "f6d56a82e22ba868be785adf8b8f4a9d71d01b1d56d476d86e196a7d8acaf219",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/conquest.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/conquest.log",
+      "member": "native/conquest.log",
+      "bytes": 18496,
+      "sha256": "bdbb0f9bd19ec8e360f301c27f60ab138a885a1a784fd92433003b42e8332e13",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/conquest.log"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/easy20-checkpoint.json",
+      "member": "native/easy20-checkpoint.json",
+      "bytes": 12435,
+      "sha256": "a686563fef2eab7b52352ecdaf9679c7fcbcae2e933b3c0f2037514d0ae721bc",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/easy20-checkpoint.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/easy20.json",
+      "member": "native/easy20.json",
+      "bytes": 13088,
+      "sha256": "3b64f63a4a715f37fd1ba2fe3457d85cf908a771b97412702e2c3fccec0064db",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/easy20.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/easy20.log",
+      "member": "native/easy20.log",
+      "bytes": 9902,
+      "sha256": "639aa579be9f3c07a392f4e2b3a23d696367c07712ae1d28b59b7465378ddd6f",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/easy20.log"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/hard20-checkpoint.json",
+      "member": "native/hard20-checkpoint.json",
+      "bytes": 12450,
+      "sha256": "7c2603e99697894e5cce6ee2995e8f97cc60f7534156e63e673793d5e9162441",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/hard20-checkpoint.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/hard20.json",
+      "member": "native/hard20.json",
+      "bytes": 13105,
+      "sha256": "7f944c60a371e4fd83eaf1a3cf3f37facf68f263404a66fe0911650d33d11bb0",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/hard20.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/hard20.log",
+      "member": "native/hard20.log",
+      "bytes": 9922,
+      "sha256": "eda7bae1f3856d2182c1c57d97d66be3e55b125ec3035ddee04eb3b5e29d9654",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/hard20.log"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/normal20-checkpoint.json",
+      "member": "native/normal20-checkpoint.json",
+      "bytes": 12449,
+      "sha256": "7f61fd331cdd36e81b2bc5b4032a758847190e7be72a23d8619d5f9696b096a1",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/normal20-checkpoint.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/normal20.json",
+      "member": "native/normal20.json",
+      "bytes": 13102,
+      "sha256": "f3f79b5ed6248f73067be1b6702083fc6512222c5b0b77cc765c166277fbe2fc",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/normal20.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/normal20.log",
+      "member": "native/normal20.log",
+      "bytes": 9916,
+      "sha256": "ffb401cf9b295ad2c2fbe18651ea869e32018365465844882ed3789fc385e4c1",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/normal20.log"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/protocol.json",
+      "member": "native/protocol.json",
+      "bytes": 23007,
+      "sha256": "09c1658615879b3f01112a92ea0ad890b2a3987fac5209dfa9813e2e09f530bc",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/protocol.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-balance/supervision.json",
+      "member": "native/supervision.json",
+      "bytes": 30190,
+      "sha256": "4000679d0425a7ffbd516ed5eeebce1c001e73a531dae6e701c1c999c54c9fef",
+      "physicalSource": "/tmp/human-ai-v21-final-balance/supervision.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/client/keys.js",
+      "member": "runtime/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/client/keys.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/maps/default.json",
+      "member": "runtime/maps/default.json",
+      "bytes": 14367,
+      "sha256": "e9362e35e16a6982d15c2e45129f213b0af3d526376c18b9c89379aa7bcce04d",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/maps/default.json"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-attention.js",
+      "member": "runtime/shared/ai-attention.js",
+      "bytes": 27980,
+      "sha256": "07c48dbdcc92f326eeb52222518f274dcf05a4d746dfd474126d932ed05ca7ba",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-attention.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-commander.js",
+      "member": "runtime/shared/ai-commander.js",
+      "bytes": 30709,
+      "sha256": "19112a1e4c94da72d62564d940497d38cf7e93e3086c9bde3db9c29d088703df",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-commander.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-hands.js",
+      "member": "runtime/shared/ai-hands.js",
+      "bytes": 63608,
+      "sha256": "8bd373c3afb8261bf8ca2a53f24512522b91f0ddc6568eaa61dbf7039684b9a3",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-hands.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-mind.js",
+      "member": "runtime/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-mind.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-perception.js",
+      "member": "runtime/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-perception.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-persona.js",
+      "member": "runtime/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-persona.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-priority.js",
+      "member": "runtime/shared/ai-priority.js",
+      "bytes": 5884,
+      "sha256": "6b5d5a8a22968209fe03c8235648a859b36919b9eafd44cd390a8252ab6b3542",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-priority.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-rng.js",
+      "member": "runtime/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-rng.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai-view.js",
+      "member": "runtime/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai-view.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/ai.js",
+      "member": "runtime/shared/ai.js",
+      "bytes": 91781,
+      "sha256": "c99be94a933f5c122d8ba7f32750f1a4bff66bf2875c8f3ec8e86322eb3d7e43",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/ai.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/alert-events.js",
+      "member": "runtime/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/alert-events.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/debris-motion.js",
+      "member": "runtime/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/debris-motion.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/formation.js",
+      "member": "runtime/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/formation.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/grid.js",
+      "member": "runtime/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/grid.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/local-traffic.js",
+      "member": "runtime/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/local-traffic.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/navigation.js",
+      "member": "runtime/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/navigation.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/projectiles.js",
+      "member": "runtime/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/projectiles.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/scenarios.js",
+      "member": "runtime/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/scenarios.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/sim.js",
+      "member": "runtime/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/sim.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/story.js",
+      "member": "runtime/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/story.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/structures.js",
+      "member": "runtime/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/structures.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/tutorial.js",
+      "member": "runtime/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/tutorial.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/vehicle-motion.js",
+      "member": "runtime/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/vehicle-motion.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/weather.js",
+      "member": "runtime/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/weather.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/world-conquest.js",
+      "member": "runtime/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/world-conquest.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/world-landforms.js",
+      "member": "runtime/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/world-landforms.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/world-layers.js",
+      "member": "runtime/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/world-layers.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/world-roads.js",
+      "member": "runtime/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/world-roads.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/shared/world-territories.js",
+      "member": "runtime/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/shared/world-territories.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/tools/ai-balance.mjs",
+      "member": "runtime/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/tools/ai-balance.mjs"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/ai-mind.js",
+      "member": "runtime/tools/legacy-ai/ai-mind.js",
+      "bytes": 17983,
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/ai-mind.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/ai-view.js",
+      "member": "runtime/tools/legacy-ai/ai-view.js",
+      "bytes": 11525,
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/ai-view.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/ai.js",
+      "member": "runtime/tools/legacy-ai/ai.js",
+      "bytes": 64127,
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/ai.js"
+    },
+    {
+      "source": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/provenance.json",
+      "member": "runtime/tools/legacy-ai/provenance.json",
+      "bytes": 1048,
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e",
+      "physicalSource": "/tmp/human-ai-v21-final-full-source/tools/legacy-ai/provenance.json"
+    }
+  ],
+  "full2039FileAssetTreeCopied": false
+}

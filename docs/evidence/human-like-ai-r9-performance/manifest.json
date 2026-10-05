@@ -1,0 +1,1515 @@
+{
+  "schema": "ww2-native-evidence-copy-v1",
+  "originals": [
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-README.md",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-README.md",
+      "bytes": 3245,
+      "sha256": "6634af44436320a854f937f1f209026eac66a15915538e4c6f2c0df52ea17a8a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-authorization-template.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-authorization-template.json",
+      "bytes": 470,
+      "sha256": "bbb51b008bc1cc9ffe6b8a4cf1ea2ed2901fbc61343641f06addbc73b81bbf25"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-authorization.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-authorization.json",
+      "bytes": 1032,
+      "sha256": "57cd36782a62dfc37e418ead9909919dd38e8394dac2dc44bb5d8694121eeebb"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-launch.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-launch.json",
+      "bytes": 255,
+      "sha256": "2391b18847d5589f5361375324c7131044c8eab6aa544cab3d9be9eacec42ebe"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-pause-journal.jsonl",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-pause-journal.jsonl",
+      "bytes": 7323,
+      "sha256": "66c973623d08a07bd7fc31c10c66b5d53bd7dee1a67e402c9caea455e670b3b8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-pause-plan-initial.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-pause-plan-initial.json",
+      "bytes": 8601,
+      "sha256": "640a062c810528da865a88194e19732218d43bd6e5facc4623dbbf75320f3bba"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-pause-plan.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-pause-plan.json",
+      "bytes": 8601,
+      "sha256": "640a062c810528da865a88194e19732218d43bd6e5facc4623dbbf75320f3bba"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-predeclared.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-predeclared.json",
+      "bytes": 57202,
+      "sha256": "468677bbdefdab29a925fb3274e004f50473a7c88f5bd5ce6a8ca42a3b944465"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-preparation-manifest.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-preparation-manifest.json",
+      "bytes": 1794,
+      "sha256": "3388a9570248de75a97ff5014d99ab82a36e3b89725ab279b32ff6d9b2779c15"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-preparation-verification.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-preparation-verification.json",
+      "bytes": 284,
+      "sha256": "7d4c646387a666def6767d8d6820a04ef6f1b68a385f2cb354b65a1156c6c17e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-preregistration-draft.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-preregistration-draft.json",
+      "bytes": 34701,
+      "sha256": "20701049e555c8630b542a788f38d7ddef10c4a1ad757507b4774ab014fc9270"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-prospective.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-prospective.json",
+      "bytes": 33681,
+      "sha256": "fef93f112240e9092d686287fa77d189d267f57603e353e9b2d40d2eeaa498b4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-quiet-lease.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-quiet-lease.json",
+      "bytes": 164,
+      "sha256": "241e3d22d8860581428dd1c56a9c65ca411a77959dcfd931176bf485909814a3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-quiet-wrapper.py",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-quiet-wrapper.py",
+      "bytes": 11104,
+      "sha256": "407098b89e5d39456c77593a64587efd8e6719a084092a043018dc045f563e7d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-results.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-results.json",
+      "bytes": 49459,
+      "sha256": "409854effe256a23d04f52213b7d8a5ebbfc53287a0b85e0aa2205f26189d987"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-root-resume-verification.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-root-resume-verification.json",
+      "bytes": 642,
+      "sha256": "2e27df31a2d7e7e72f0c3f48abad1faea7b49dd0c44311d3699262fa7926c816"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-runner.diff",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-runner.diff",
+      "bytes": 10933,
+      "sha256": "f527afa0d541ac4a76b98296333321a37d7409254eb1f5b46d77729df8518dc9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-runner.py",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-runner.py",
+      "bytes": 25748,
+      "sha256": "4f802f589ba0e6e3585651d428cfa6dc5c6e91af483c6db033bfcdba90411eee"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-source-copy-receipt.json",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-source-copy-receipt.json",
+      "bytes": 23371,
+      "sha256": "12f4f806de5d5b0d3eae9abd1d46e013ad097f79527574fb40aded7ff99af8eb"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-wrapper.diff",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-wrapper.diff",
+      "bytes": 1439,
+      "sha256": "f3bd99cc2706f1f2706542c40c961b637767789ff6c310e6a7f3728a2e0f91b6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-wrapper.log",
+      "member": "original-protocol-and-guardian/human-ai-r9-final-perf-wrapper.log",
+      "bytes": 4947,
+      "sha256": "b880e5d35885dce2799952808f58b998b5fecc1f6cd6deaa9148b386d46c64bc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-before.json",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-before.json",
+      "bytes": 7605,
+      "sha256": "10e54032e7a61e3581166fcfd766efaa57ce66c9a073807fdf3cb28f2e8a34d4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-before.log",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-before.log",
+      "bytes": 104,
+      "sha256": "129636fe00385e5744881653f54833b9a084454d55b8b73d1f76967f55c54a82"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-after.json",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-after.json",
+      "bytes": 7608,
+      "sha256": "5c8984d681aaae984c25dbc2d243456a0be510f80f81588ece4a08b54f9967df"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-after.log",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-after.log",
+      "bytes": 103,
+      "sha256": "52c2da121c488c74dc3c313f4bd0988df14859bfee2da4a88680eacfc31df261"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-before-counts.json",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-before-counts.json",
+      "bytes": 7731,
+      "sha256": "a9b3d26ee14229046438d41136382bab1bff264b2c237879ab357627ec57d486"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-before-counts.log",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-before-counts.log",
+      "bytes": 111,
+      "sha256": "005205343ae34a5de91697ccabc264c0f3b3624cc5446d345bc1124ad6ae764d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-after-counts.json",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-after-counts.json",
+      "bytes": 7735,
+      "sha256": "4f7a239bde20d1fb7f9fef7c38ea89f76cfa9978bd88d3e72959b430f33377d0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-bench-r9-final-perf-after-counts.log",
+      "member": "original-native-four-rows/human-ai-bench-r9-final-perf-after-counts.log",
+      "bytes": 110,
+      "sha256": "c730ee396fd3ce563c28e400cb91ef0c5e116a31bdd19b70f021076c751cd934"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/ai-overlay.js",
+      "member": "actual-measured-source-217/client/ai-overlay.js",
+      "bytes": 4459,
+      "sha256": "9042e20afef01299e50d6116eb5f887dfe622dfc4eaaeb04767fd94f20a0845a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/aircraft.js",
+      "member": "actual-measured-source-217/client/aircraft.js",
+      "bytes": 32807,
+      "sha256": "332efcfebdce10ccdf127162d4058912000b75c0337e0409f2eb7c4af9cbd493"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/alert-history.js",
+      "member": "actual-measured-source-217/client/alert-history.js",
+      "bytes": 1506,
+      "sha256": "9456ba8c95e29370bfe869372b337bd6e17f2d4d5f17e54b5672fe58648fde5e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/alerts.js",
+      "member": "actual-measured-source-217/client/alerts.js",
+      "bytes": 8935,
+      "sha256": "d3b69d54bafe2ae45bea10c7678823e17937ad3e6bd5a686ada2e3ac8fa2e23f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/apron.js",
+      "member": "actual-measured-source-217/client/apron.js",
+      "bytes": 21952,
+      "sha256": "f6a950928fd0b7a37d68171b104fde11c916888469c0039ce7cf96f6026e58cf"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/atmosphere.js",
+      "member": "actual-measured-source-217/client/atmosphere.js",
+      "bytes": 31451,
+      "sha256": "984f1baf17a574f011b64963145db4661491fd9b6aea68ce9feefc4880516012"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/audio.js",
+      "member": "actual-measured-source-217/client/audio.js",
+      "bytes": 18746,
+      "sha256": "709fded0a4030bb04db49f148e325dd1abaa4912cdfed1e8bcb161bb7448c063"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/audio/index.json",
+      "member": "actual-measured-source-217/client/audio/index.json",
+      "bytes": 4737,
+      "sha256": "21c2f12acb1f824e42f9a3c9791938d236edee6b6c94907da06e4803c9020d18"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/autocast.js",
+      "member": "actual-measured-source-217/client/autocast.js",
+      "bytes": 1950,
+      "sha256": "274c870aab9a27b95d3850c8d086e6b5dafda0be2887a0ebe8bf6377af715bfc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/availability.js",
+      "member": "actual-measured-source-217/client/availability.js",
+      "bytes": 10112,
+      "sha256": "b56d151aa16f90cb86b61d1f34fa66621da3262a79c4e2c8d2dd819a82f4fd12"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/battle-sound.js",
+      "member": "actual-measured-source-217/client/battle-sound.js",
+      "bytes": 1537,
+      "sha256": "5e73cd538d6b578ddce884e9126be38398fc426e2fbbd7dd6d33a91329e453c9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/camera.js",
+      "member": "actual-measured-source-217/client/camera.js",
+      "bytes": 16347,
+      "sha256": "2d485f27106c60f1ab37703810f9b3243bed80aaa205025777bc3109d35e410c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/connection.js",
+      "member": "actual-measured-source-217/client/connection.js",
+      "bytes": 3061,
+      "sha256": "7569af1bba9cfc1770be8c2936d08812d2455b7d559f70c4a9147d6c30f6f309"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/cover-preview.js",
+      "member": "actual-measured-source-217/client/cover-preview.js",
+      "bytes": 20794,
+      "sha256": "3007688808dd6c13dd4c5a0e30c3845ddd99ebc5974e40dade4dcbdefdd12ed8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/debris.js",
+      "member": "actual-measured-source-217/client/debris.js",
+      "bytes": 1804,
+      "sha256": "4eb7fbfec6049772d017f2b9a30257608b325558eb0e7f619b23fb46e73d034c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/editor.js",
+      "member": "actual-measured-source-217/client/editor.js",
+      "bytes": 28034,
+      "sha256": "f1c738e3cc787bdbde44461bb6cec621fea82715188ffe922d8ea2bc29e93879"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/endgame.js",
+      "member": "actual-measured-source-217/client/endgame.js",
+      "bytes": 6339,
+      "sha256": "8d6db960c41a89e58627815899d767cf5ee2cd9e7273f8d00332fb9347c0f9e0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/engine-presentation.js",
+      "member": "actual-measured-source-217/client/engine-presentation.js",
+      "bytes": 10242,
+      "sha256": "89810c7b150a8202258478a93656a809cda2cb213b81d2b4c0694afb638ef241"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/epilogue.js",
+      "member": "actual-measured-source-217/client/epilogue.js",
+      "bytes": 5668,
+      "sha256": "648bc5470e6e9445974a0f5b8c5c0531a58e036e181d7c0a4843ab46d10c6ee0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/es.js",
+      "member": "actual-measured-source-217/client/es.js",
+      "bytes": 86506,
+      "sha256": "2fb7219aadf2de133c05a99081e50540210ed44eb909ad8039d9d4a92ed9d564"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/fairness.js",
+      "member": "actual-measured-source-217/client/fairness.js",
+      "bytes": 1899,
+      "sha256": "b539d9d9fabb3c4f40be51b7209bff0411bcaf1c8e626e92148bf2a591ae7792"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/feedback.js",
+      "member": "actual-measured-source-217/client/feedback.js",
+      "bytes": 3157,
+      "sha256": "0d2dad9c96d0b993eba6352ee5541486d53b96a21f4cb19b01fd5f9ca2cf468f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/fog.js",
+      "member": "actual-measured-source-217/client/fog.js",
+      "bytes": 6035,
+      "sha256": "5e977f56a514cbd775ace5453e1f243bc91caf14de318d99b4a9a1734734c473"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/foliage.js",
+      "member": "actual-measured-source-217/client/foliage.js",
+      "bytes": 16139,
+      "sha256": "7180d28db346245d63ed922a95095cbd287c4c9ad40dedc9a18688c042264009"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/formation-preview.js",
+      "member": "actual-measured-source-217/client/formation-preview.js",
+      "bytes": 2771,
+      "sha256": "071dd1a99ff8cdc926e27b920f2873f3b20f90b0f0102a2e9d6a9b3c97ca2173"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/fx.js",
+      "member": "actual-measured-source-217/client/fx.js",
+      "bytes": 78917,
+      "sha256": "3c804031f699fc1234c6922fcea82644984fa9763f64674f3bd2180864548260"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/gfx.js",
+      "member": "actual-measured-source-217/client/gfx.js",
+      "bytes": 2026,
+      "sha256": "cf463692489f09529bec0d78425914b397a8e132aefe87227f7084db14d5c18f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/ground.js",
+      "member": "actual-measured-source-217/client/ground.js",
+      "bytes": 39671,
+      "sha256": "a93abe417b7e5d41e4db57111c832c3620bd0ee3037080501a0fff2e7cb00b32"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/hud.js",
+      "member": "actual-measured-source-217/client/hud.js",
+      "bytes": 47969,
+      "sha256": "b2339e22105f65cb4b4ae186e6c2e7746e10a58dfcac7a7b3567ec9d83f7b36d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/i18n.js",
+      "member": "actual-measured-source-217/client/i18n.js",
+      "bytes": 5189,
+      "sha256": "bd146a0ce7f53261c11eaac00a37274fd45f53c988426b6d18e11c53dc818f2c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/infantry-material.js",
+      "member": "actual-measured-source-217/client/infantry-material.js",
+      "bytes": 3511,
+      "sha256": "a0c7c7961cfa58ba38157623b918355ae78c6bc84bcf16c80da9305ea2255931"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/keys.js",
+      "member": "actual-measured-source-217/client/keys.js",
+      "bytes": 7361,
+      "sha256": "867e3105b7e4665f8a313c2ab46e23fc3df9407f2163fd6862bb537a01ecd276"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/layer-edit.js",
+      "member": "actual-measured-source-217/client/layer-edit.js",
+      "bytes": 4437,
+      "sha256": "19bb52073ea431a45a2842f51e913e89b880dfdc7f4b4a77f23e9c004ff68e78"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/light.js",
+      "member": "actual-measured-source-217/client/light.js",
+      "bytes": 9385,
+      "sha256": "3f73e6e112c1974bd1b5b191155408f5a8a4c35542e712edf7f79dea64ad8b4b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/lobby-view.js",
+      "member": "actual-measured-source-217/client/lobby-view.js",
+      "bytes": 8073,
+      "sha256": "2496072ab524294309b8aa3c8e136b94ce4ac54de117ede206918cd246e9100b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/main.js",
+      "member": "actual-measured-source-217/client/main.js",
+      "bytes": 128170,
+      "sha256": "a5accdd07bbc8d26dc4b01db50b7fb4eb761129d97f7125aec59a75fa7ccb11c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/map-view.js",
+      "member": "actual-measured-source-217/client/map-view.js",
+      "bytes": 20941,
+      "sha256": "095777fe2ece1b74882f5cd1e0df03f4afdd52139ff53102ff4885b5c7287175"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/markers.js",
+      "member": "actual-measured-source-217/client/markers.js",
+      "bytes": 26313,
+      "sha256": "8867651b6f59c3c1005ea13e1d63fb18ecfcee0cd9e3aadd2be93fa936be662d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/model-motion.js",
+      "member": "actual-measured-source-217/client/model-motion.js",
+      "bytes": 3162,
+      "sha256": "75360a147cbf389fd7e4e694275067ea00a4e1b979e297479c17fdfdcaf61c67"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/model-textures.js",
+      "member": "actual-measured-source-217/client/model-textures.js",
+      "bytes": 16493,
+      "sha256": "b256add6358527700ba1d88d627aa88d59b322e149e2c81c65e623eba6e3a624"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/armor-lightheavy.js",
+      "member": "actual-measured-source-217/client/models/armor-lightheavy.js",
+      "bytes": 68656,
+      "sha256": "58b2d3694e9e0d82ec0f93efa993d809962621fbaa19a2b7a203203916343bdd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/armor-medium.js",
+      "member": "actual-measured-source-217/client/models/armor-medium.js",
+      "bytes": 86903,
+      "sha256": "992bfc023d600516333fd8ddb9ab39940eb59d7dc8e989727271de43e10043ea"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/blender-baked.js",
+      "member": "actual-measured-source-217/client/models/blender-baked.js",
+      "bytes": 2794,
+      "sha256": "98f80906a0912e5e4a3acd0acb701b2fc5711bb9f594bbd8c5ae4577697b21f0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/churchill.js",
+      "member": "actual-measured-source-217/client/models/churchill.js",
+      "bytes": 35298,
+      "sha256": "97da5545e0f34043c723e80e2e177fb9a27c337301822164801202bb5508c419"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/cromwell.js",
+      "member": "actual-measured-source-217/client/models/cromwell.js",
+      "bytes": 38912,
+      "sha256": "3a532e8cb225697d93e98d172439a4761cc402711013983995aa5ca26c8be937"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/geom.js",
+      "member": "actual-measured-source-217/client/models/geom.js",
+      "bytes": 44397,
+      "sha256": "f224b34cd050f04cdd758cc23dc7d59ea8b8efa5dff8fe3df2174c88c21a9624"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/guns.js",
+      "member": "actual-measured-source-217/client/models/guns.js",
+      "bytes": 101971,
+      "sha256": "b493e003a39126019f334074fd402c5b8a8a6ebaeff9bb3ab3e075b3a91da1c7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/infantry-authored-data.js",
+      "member": "actual-measured-source-217/client/models/infantry-authored-data.js",
+      "bytes": 711890,
+      "sha256": "9209a37dfd63b09c6a0bcc785917a1ba1dabb705d57192ce3f426b91483d2719"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/infantry-authored.js",
+      "member": "actual-measured-source-217/client/models/infantry-authored.js",
+      "bytes": 4869,
+      "sha256": "32d2b00459367dd97c57ef05b8c5b97c742c14439cfaac907c0bac0a9dffa522"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/infantry.js",
+      "member": "actual-measured-source-217/client/models/infantry.js",
+      "bytes": 73169,
+      "sha256": "425abd7502c91342877db977d93f7f534b8c4cf9fae7a6ec3a0c9c5196456fec"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/naval-finished-data.js",
+      "member": "actual-measured-source-217/client/models/naval-finished-data.js",
+      "bytes": 3776929,
+      "sha256": "ce6fd8af48bb49d8ba1ff77684521b1c02c52b2a3fb8ccb70e4a56c9df2bf21c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/naval.js",
+      "member": "actual-measured-source-217/client/models/naval.js",
+      "bytes": 26828,
+      "sha256": "a7d9fed07242a0a046afd0b043b8edb7b60a00307d429d1c4ad7ca01dfa125e5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/planes.js",
+      "member": "actual-measured-source-217/client/models/planes.js",
+      "bytes": 98205,
+      "sha256": "8f2982b700847b73e4d553756ca58b28e0dfe5ef3e0dbe5b5ae244d2c50e9a8d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/track-data.js",
+      "member": "actual-measured-source-217/client/models/track-data.js",
+      "bytes": 3797,
+      "sha256": "ed2d59bad774af2ebf1b308d44339477a60451f5de714656260955c6384c35f1"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/models/wheeled.js",
+      "member": "actual-measured-source-217/client/models/wheeled.js",
+      "bytes": 65843,
+      "sha256": "b5e15eb14726b396d4acde2ead20a5dafef71048e5615f57979e8045c01ec38d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/moods.js",
+      "member": "actual-measured-source-217/client/moods.js",
+      "bytes": 4326,
+      "sha256": "b7e50ed3d8e45f30f34a4dae8c6989109cef9efb0c288c40ff5cd27af55f6596"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/objectives.js",
+      "member": "actual-measured-source-217/client/objectives.js",
+      "bytes": 6894,
+      "sha256": "31f2e8b7f6d2e1494533f70c0cef672e4461569a43794c001a803471f15570db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/orders.js",
+      "member": "actual-measured-source-217/client/orders.js",
+      "bytes": 4530,
+      "sha256": "90bf9666bc2b958aacf0f72f07dd4f68f2cf6ec8e93ce1e02eae1df3af1de9f5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/overlay.js",
+      "member": "actual-measured-source-217/client/overlay.js",
+      "bytes": 16179,
+      "sha256": "2f28b6f766e3944aeda5052584bb2502ca09ceba6e26c5f0efbd1fb171190625"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/perf.js",
+      "member": "actual-measured-source-217/client/perf.js",
+      "bytes": 4813,
+      "sha256": "c312e5f9e40d2497b4025d3b502bdc41378f48cbb38762fb5c4e452c804de32b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/pings.js",
+      "member": "actual-measured-source-217/client/pings.js",
+      "bytes": 2255,
+      "sha256": "5bf85b965824eb7bb988cf4ce37c3810f259d2e7e01bd832d5a9501dd8cbd80b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/pointer.js",
+      "member": "actual-measured-source-217/client/pointer.js",
+      "bytes": 16776,
+      "sha256": "0c8c8a1e1d0813340840a9f76645277222ec221593167dc76b695fafdfe311c6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/portraits.js",
+      "member": "actual-measured-source-217/client/portraits.js",
+      "bytes": 8640,
+      "sha256": "caecbdf253e5e631e6e7ea47252817d1ed022ad875b8f0f0ef11eba9759775fa"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/projectiles.js",
+      "member": "actual-measured-source-217/client/projectiles.js",
+      "bytes": 2303,
+      "sha256": "1d80c04df70134ff8f859d360593a244fb2aa70c15a8b290c806d156c9c82303"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/props.js",
+      "member": "actual-measured-source-217/client/props.js",
+      "bytes": 21176,
+      "sha256": "73ef815e00a3ead6341588efff93fde5f8e818a2bfcffa847f02d96d4c0392c8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/public-lobby.js",
+      "member": "actual-measured-source-217/client/public-lobby.js",
+      "bytes": 5125,
+      "sha256": "8f2c98746743ac74638e2a1b2c9dc76b3cb66fd5ff5abfd6b63d8a9057165b50"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/relief-material.js",
+      "member": "actual-measured-source-217/client/relief-material.js",
+      "bytes": 12256,
+      "sha256": "e197d3c1fdb1580e2b917f2ca0119d45db7d047459a168043b41737910035d19"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/relief.js",
+      "member": "actual-measured-source-217/client/relief.js",
+      "bytes": 42938,
+      "sha256": "c00b2eae1d0dbd27b02b192f499e7f94b11ef5dd8f09741e957ad6bb8f196ac6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/report.js",
+      "member": "actual-measured-source-217/client/report.js",
+      "bytes": 7765,
+      "sha256": "f35c4e78152c495d32da39316788355ff82ede8442d18da577b1df67c5a9df50"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/room-session.js",
+      "member": "actual-measured-source-217/client/room-session.js",
+      "bytes": 2183,
+      "sha256": "8f68228dfe542beb04ec43b8366c01f063ad0502405447cca17ab300eb92f1d1"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/rubble-decals.js",
+      "member": "actual-measured-source-217/client/rubble-decals.js",
+      "bytes": 4815,
+      "sha256": "1054801276fb18778116db5cc5f4a169314c2bbb988dbbf7e5558da2b18b8a4b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/scenario-editor.js",
+      "member": "actual-measured-source-217/client/scenario-editor.js",
+      "bytes": 18770,
+      "sha256": "d56619b58c070c378a7202abc3957e3a51e917c2b878b4d87946e82d0385ed54"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/selection-view.js",
+      "member": "actual-measured-source-217/client/selection-view.js",
+      "bytes": 2967,
+      "sha256": "a8d5da61d68ba7b6e4cc6ffeea572537f55f97e71c10ea29cceb4df5de738ce2"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/selection.js",
+      "member": "actual-measured-source-217/client/selection.js",
+      "bytes": 5275,
+      "sha256": "c866bfb6b16b295930fab0fd930445011551d5e2e141408874fad3a95d6fbc6f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/squad-motion.js",
+      "member": "actual-measured-source-217/client/squad-motion.js",
+      "bytes": 4543,
+      "sha256": "34c18bbda59f4723b6e3f884eb0041b6ae5afd4fcde08e65eb3d83cb0bea0597"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/stats.js",
+      "member": "actual-measured-source-217/client/stats.js",
+      "bytes": 10372,
+      "sha256": "ce39cfe496b81260276c517ad9ff3aa0022f4450dfdc26e0e0f3db938b1ed693"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/structure-editor.js",
+      "member": "actual-measured-source-217/client/structure-editor.js",
+      "bytes": 5669,
+      "sha256": "7ae9b37ecaccb807a47b8fb9d3d3f10a5a6b5a8b6111d5c02c92d6384cffd3c9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/structures.js",
+      "member": "actual-measured-source-217/client/structures.js",
+      "bytes": 79339,
+      "sha256": "aaa698e594f92187f2787deaed026e687f5eaa364e28c69bb9bf69bb735fde41"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/surfaces.js",
+      "member": "actual-measured-source-217/client/surfaces.js",
+      "bytes": 9462,
+      "sha256": "7a481dba5dabda816b7e1d59857dd9502a938cdfcdd60a05e40064ec72ebfcfc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/symbols.js",
+      "member": "actual-measured-source-217/client/symbols.js",
+      "bytes": 43153,
+      "sha256": "135b70642b1b60fae270e3a78168238b5ef1436726d523a9cccedf10faa174e5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/track-motion.js",
+      "member": "actual-measured-source-217/client/track-motion.js",
+      "bytes": 3823,
+      "sha256": "a0bbb12b69a6b4febc0e64bf1ffe3b2cb06f21fc735c5793fea16aed7d68a4d7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/unit-models.js",
+      "member": "actual-measured-source-217/client/unit-models.js",
+      "bytes": 55808,
+      "sha256": "3ed376b095b54a86e2cc5bb13fe2259407959b49fb59b23e588bab04524e9429"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/unit-roles.js",
+      "member": "actual-measured-source-217/client/unit-roles.js",
+      "bytes": 1504,
+      "sha256": "02d1940bb06c1c680245d99594d36b7f185145ec43711e0c1ed775759deaf09d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/upkeep.js",
+      "member": "actual-measured-source-217/client/upkeep.js",
+      "bytes": 881,
+      "sha256": "8bfb63cb64eaf21e92bc8aa46d001c7f1c5178b14a3c76968cb9f8dfdbcb051e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/viewer.js",
+      "member": "actual-measured-source-217/client/viewer.js",
+      "bytes": 29717,
+      "sha256": "5450b175a280b97eaf3058ff02f28f973ba3846198df8bd241d85c33c9487190"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/water-levels.js",
+      "member": "actual-measured-source-217/client/water-levels.js",
+      "bytes": 2462,
+      "sha256": "34cbfd0650a0f4fc5f2e3433c606b4a5a9974d5273ac6af02f34b25e1d0fd584"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/water.js",
+      "member": "actual-measured-source-217/client/water.js",
+      "bytes": 20187,
+      "sha256": "804f60a6578d46a95e2f203811fa36318691538b04e1f2f13a09719f02c55f5c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/weather-view.js",
+      "member": "actual-measured-source-217/client/weather-view.js",
+      "bytes": 4797,
+      "sha256": "62aefbb8771ab352f4d7e27f80590d3c9f538219695a47a19b4b174b22c59fe9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/wheel-motion.js",
+      "member": "actual-measured-source-217/client/wheel-motion.js",
+      "bytes": 6171,
+      "sha256": "21820f5a3a9e2a5c126c9a7dc80b993ea0c87af1b13b210e8c3d68f4060c0a26"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/wind.js",
+      "member": "actual-measured-source-217/client/wind.js",
+      "bytes": 368,
+      "sha256": "c7284f161338da409405ecb36e280c1d4a439f0b3dffa0d9ee66c078ff492f57"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/world-authoring-error.js",
+      "member": "actual-measured-source-217/client/world-authoring-error.js",
+      "bytes": 6776,
+      "sha256": "1d4af8825b492e4a2763c9cd95766420f8e345ca7f05554686b904105d3d2b79"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/client/world-regions.js",
+      "member": "actual-measured-source-217/client/world-regions.js",
+      "bytes": 3668,
+      "sha256": "f9cba7b8ead001a7434fb60a06ca64c129f3ce689c4b65dc1ff400c43889309b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/ardennes-crossing.json",
+      "member": "actual-measured-source-217/maps/ardennes-crossing.json",
+      "bytes": 21850,
+      "sha256": "4ded28d5428edad4c2623f685b3aed23e334ad21655c8566f55f094b54e653a9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/bastogne.json",
+      "member": "actual-measured-source-217/maps/bastogne.json",
+      "bytes": 30860,
+      "sha256": "70b9952b309aa4913a8c92a1e383ebe1d026a870f6e8d748a3ff9b34411d4221"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/bocage.json",
+      "member": "actual-measured-source-217/maps/bocage.json",
+      "bytes": 20118,
+      "sha256": "8a46f9ac3062908982bf66bbb37d7387cb2bdf697092cd70d24025a4da4a2e88"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/crater-field.json",
+      "member": "actual-measured-source-217/maps/crater-field.json",
+      "bytes": 17950,
+      "sha256": "f7601674b21c741ad792e510903c0e8352b3aa6d5d62c538f04e4070a649f95e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/crossroads-village.json",
+      "member": "actual-measured-source-217/maps/crossroads-village.json",
+      "bytes": 9398,
+      "sha256": "f2df94bf8bfea07187effd2da63fdba18596073147b018a63e934b5ef0a91498"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/default.json",
+      "member": "actual-measured-source-217/maps/default.json",
+      "bytes": 14367,
+      "sha256": "e9362e35e16a6982d15c2e45129f213b0af3d526376c18b9c89379aa7bcce04d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/helms-deep.json",
+      "member": "actual-measured-source-217/maps/helms-deep.json",
+      "bytes": 30681,
+      "sha256": "d8d2c70342f93d74ab573ac940617a9b3c49f103e514362bbfb8acefc0586be4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/hill-112-xl.json",
+      "member": "actual-measured-source-217/maps/hill-112-xl.json",
+      "bytes": 41022,
+      "sha256": "992cf9cdfe123d9b67c4bd0d391dfbdc4938e7f5044f38bfbb8369513de5d1a9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/hill-112.json",
+      "member": "actual-measured-source-217/maps/hill-112.json",
+      "bytes": 19413,
+      "sha256": "5ea417d72b4265babacafe13bb5e327169eedb10b53a55b8ab44901ffca5a76a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/hot-gates.json",
+      "member": "actual-measured-source-217/maps/hot-gates.json",
+      "bytes": 23014,
+      "sha256": "4b1827061997341b003b15ea1be4d136c65e5dc0e81f69c73ef39b1cb382463b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/island-towns.json",
+      "member": "actual-measured-source-217/maps/island-towns.json",
+      "bytes": 41522,
+      "sha256": "039d138c318bfce361275ee0f2fb6c9f0b05ff0da24d37b6074d55124234d541"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/kasserine-pass.json",
+      "member": "actual-measured-source-217/maps/kasserine-pass.json",
+      "bytes": 67123,
+      "sha256": "3255c35cce40099b034bb90bf980902ba81b5db89ca20e54527b9a73ce9014d6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/king-of-the-hill.json",
+      "member": "actual-measured-source-217/maps/king-of-the-hill.json",
+      "bytes": 36005,
+      "sha256": "69e0ac471f65043ff32119c819e859b58cda2291bcec984a415cbbd875eaffe8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/monte-cassino-xl.json",
+      "member": "actual-measured-source-217/maps/monte-cassino-xl.json",
+      "bytes": 47185,
+      "sha256": "5419e3f3d2e3362e0b0bf3014cd8384bfc7b786e9a4fca253e7defd1597529d2"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/monte-cassino.json",
+      "member": "actual-measured-source-217/maps/monte-cassino.json",
+      "bytes": 21542,
+      "sha256": "eadf78931ad8d58bcb4cf450d835c1e0ebaa5aecbf4967d71668cd7d3c4c7d84"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/no-mans-land.json",
+      "member": "actual-measured-source-217/maps/no-mans-land.json",
+      "bytes": 23352,
+      "sha256": "716c173880e2c0fc8db419cae9b726653cf08e84c65c2c90ac484a31ce581d5f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/pegasus-bridge-xl.json",
+      "member": "actual-measured-source-217/maps/pegasus-bridge-xl.json",
+      "bytes": 44536,
+      "sha256": "ba4d4b5189b2d087d100de664f2b57a9ee2a1b8d2abaaa9282394be5d87e79fd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/pegasus-bridge.json",
+      "member": "actual-measured-source-217/maps/pegasus-bridge.json",
+      "bytes": 19791,
+      "sha256": "b39d726707eb0555c9bc4f96e727e9a208f731a7f793baea780b00f9d7dba4b8"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/river-towns.json",
+      "member": "actual-measured-source-217/maps/river-towns.json",
+      "bytes": 14362,
+      "sha256": "fdb9ced8242956c5077865fa877688d2f2e6c9f93516eb6023da91ec7ee8fc1c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/seawall-xl.json",
+      "member": "actual-measured-source-217/maps/seawall-xl.json",
+      "bytes": 38703,
+      "sha256": "490cb23a1fa935011ddb4171b786349ad9c9b033a2434046ab5c4844d6d69841"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/seawall.json",
+      "member": "actual-measured-source-217/maps/seawall.json",
+      "bytes": 16015,
+      "sha256": "d711e83c7c6b3e79c89a1a4fcb20a7c4d9dcb99e19822433f4debba16bef7d01"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/six-fronts.json",
+      "member": "actual-measured-source-217/maps/six-fronts.json",
+      "bytes": 47514,
+      "sha256": "247228c85e88e76879b4117fd07f143ff38820d93e8a8129175312b3bd376255"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/stalingrad-factory.json",
+      "member": "actual-measured-source-217/maps/stalingrad-factory.json",
+      "bytes": 21703,
+      "sha256": "9b39a856774216d3d79e278b0000fb5d2ec645b7dea05d79b9c581aa8f8aa996"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/test-arena.json",
+      "member": "actual-measured-source-217/maps/test-arena.json",
+      "bytes": 7178,
+      "sha256": "44eca010e3c08ecc4a01abfe3c4092415aa5fe25dbd77879978c7ee34a2cc9af"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/the-great-bridge.json",
+      "member": "actual-measured-source-217/maps/the-great-bridge.json",
+      "bytes": 26359,
+      "sha256": "50145f185bef8a946d582c639bb8fa93f22002b711065bb3a1874649157c7c48"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/the-polder.json",
+      "member": "actual-measured-source-217/maps/the-polder.json",
+      "bytes": 21840,
+      "sha256": "22e233ad5756551f227302efcfc88411d0a66724bd6dd9e7d1dbd22b2682f1c9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/three-islands.json",
+      "member": "actual-measured-source-217/maps/three-islands.json",
+      "bytes": 527676,
+      "sha256": "4cc1ecc2d18447e07ae6a68f8452ed418d98a7a05cd692d1e5779fe907848f11"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/tutorial.json",
+      "member": "actual-measured-source-217/maps/tutorial.json",
+      "bytes": 3720,
+      "sha256": "274a5b3f074ac1e4dba3c6938d8c639351341b3816a7c8412ac68537bf559383"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/maps/twin-valleys.json",
+      "member": "actual-measured-source-217/maps/twin-valleys.json",
+      "bytes": 17632,
+      "sha256": "d3eda73508cbd4e18e3c7563b62114c59b25856cf6e191ab8014e7d94e70d862"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/package.json",
+      "member": "actual-measured-source-217/package.json",
+      "bytes": 211,
+      "sha256": "38b34423b2e37b851381576f5dd67d9103d951ab7c7ddcf5cacb4112507b34db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/server.js",
+      "member": "actual-measured-source-217/server.js",
+      "bytes": 44801,
+      "sha256": "16004b2b7f3cd427d3fb61750a6a2788f9fe0e7bd8a22c92b4cd01d486677e57"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-attention.js",
+      "member": "actual-measured-source-217/shared/ai-attention.js",
+      "bytes": 32005,
+      "sha256": "6f26746572a5071d95bb1590c85ae9fb44e09d7256407542ae0876fff6313090"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-commander.js",
+      "member": "actual-measured-source-217/shared/ai-commander.js",
+      "bytes": 31873,
+      "sha256": "03a8b1aa9dedd607f2614f981b69e8a0dcda4d3e5ffa620f942785bb5f4e0225"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-hands.js",
+      "member": "actual-measured-source-217/shared/ai-hands.js",
+      "bytes": 70724,
+      "sha256": "d209f6861bf1d4165012372d21398c46985d51e357b79009c5b7e4b8dffbdaa9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-mind.js",
+      "member": "actual-measured-source-217/shared/ai-mind.js",
+      "bytes": 19553,
+      "sha256": "18bb411cb1d057ce8cffe0b042c21f64b71238ae157b584242df206d708e6b92"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-perception.js",
+      "member": "actual-measured-source-217/shared/ai-perception.js",
+      "bytes": 34765,
+      "sha256": "50e611a932728940c5047a61bf4fd7554c696f93880d7907a952d8b39fdcf3fd"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-persona.js",
+      "member": "actual-measured-source-217/shared/ai-persona.js",
+      "bytes": 3586,
+      "sha256": "34de5882046129d2000e5502e354123786f3ad7b7133f31e93863dcc36ba66cf"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-priority.js",
+      "member": "actual-measured-source-217/shared/ai-priority.js",
+      "bytes": 11238,
+      "sha256": "8bf45be46b77ac78436356190de8b2b2e26005e65879cf61b0a87f840484dc60"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-rng.js",
+      "member": "actual-measured-source-217/shared/ai-rng.js",
+      "bytes": 641,
+      "sha256": "2d2f95266eda45ec4fa4862cb01079fc8464a98d8c88fa97ca89b54a5d6f8b90"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai-view.js",
+      "member": "actual-measured-source-217/shared/ai-view.js",
+      "bytes": 13935,
+      "sha256": "4466958fc4b8e7a5d2f2bcb8dc3814e27c817a7480b0c765aa6ee2a98cbc87f7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/ai.js",
+      "member": "actual-measured-source-217/shared/ai.js",
+      "bytes": 91945,
+      "sha256": "685c178754646223ba57cbf6b0d795b0676b0a5cba84f51bfdfcae0cd71bc005"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/alert-events.js",
+      "member": "actual-measured-source-217/shared/alert-events.js",
+      "bytes": 8219,
+      "sha256": "df5f0ae98145034e6893ce0b70c2df8938a2d786cc8de37a1fbbc1a9c8b634b0"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/command-feedback.js",
+      "member": "actual-measured-source-217/shared/command-feedback.js",
+      "bytes": 303,
+      "sha256": "e851bb8f7e48291bd75f09be66fdeecbe7dca68dcc82c839c5c033083ce77a07"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/debris-motion.js",
+      "member": "actual-measured-source-217/shared/debris-motion.js",
+      "bytes": 4384,
+      "sha256": "d6a0f330f958ec6d78cfcc7f95b209aa5c099369576bf15dfd1c84770287b3b4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/formation.js",
+      "member": "actual-measured-source-217/shared/formation.js",
+      "bytes": 4865,
+      "sha256": "265fa63c8c72588f6c8f67057921fd4daa88f96e9d823faa2e41ba10a7dba005"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/grid.js",
+      "member": "actual-measured-source-217/shared/grid.js",
+      "bytes": 2873,
+      "sha256": "30b0a5d67d99e54548d189374684e6b28863ecb7bf92de5221359e5c24fc5afc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/human-input.js",
+      "member": "actual-measured-source-217/shared/human-input.js",
+      "bytes": 7966,
+      "sha256": "dec728db485690620e527f912fa2a0b491f545c5bbdaafc4dc25fd1e425763ff"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/local-traffic.js",
+      "member": "actual-measured-source-217/shared/local-traffic.js",
+      "bytes": 7408,
+      "sha256": "abad3f6ba310783c3620cec8d599df90dac38bb74eed6509be7d19a8af1490f6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/navigation.js",
+      "member": "actual-measured-source-217/shared/navigation.js",
+      "bytes": 19838,
+      "sha256": "c277c12f86c9990e281ae28a703dc374126aa1c737d9dc94a300f8d99c898472"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/projectiles.js",
+      "member": "actual-measured-source-217/shared/projectiles.js",
+      "bytes": 7769,
+      "sha256": "ded50f3bcd60cf79238d5dba48236d54e33b2b8032f704813118d1419708ccd7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/scenarios.js",
+      "member": "actual-measured-source-217/shared/scenarios.js",
+      "bytes": 16044,
+      "sha256": "93f6cda90224a805cc97f42418b2dc11c49e3ea80654b66e0036de55f9b9ba97"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/sim.js",
+      "member": "actual-measured-source-217/shared/sim.js",
+      "bytes": 355291,
+      "sha256": "5e5f4c2d43d048be36d94f0cbcc68fb974c812fc8ab7e071cddb0a59079d89fa"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/story.js",
+      "member": "actual-measured-source-217/shared/story.js",
+      "bytes": 3738,
+      "sha256": "fa33e53e61a7d636959dd1d1916d7b5c3359db72b523dc730b16ceab525d170f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/structures.js",
+      "member": "actual-measured-source-217/shared/structures.js",
+      "bytes": 4029,
+      "sha256": "933b100a9a4c19a0285f5b137cd29b46e44271776f031045a537009e0176e5a2"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/tutorial.js",
+      "member": "actual-measured-source-217/shared/tutorial.js",
+      "bytes": 6342,
+      "sha256": "3aaa5e6affd936dae0ae4741d5173eee5d006132a1705d4b553097d3d8fabf42"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/vehicle-motion.js",
+      "member": "actual-measured-source-217/shared/vehicle-motion.js",
+      "bytes": 12185,
+      "sha256": "05bd1e985a91b3268065a0a84ec4b9aee2c1079aafc4054c38a70677dfb1493b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/weather.js",
+      "member": "actual-measured-source-217/shared/weather.js",
+      "bytes": 7228,
+      "sha256": "faad682d6e40fdc6629533f684e1caeec5c9ae49e26e9922651773727c0bc1e5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/world-conquest.js",
+      "member": "actual-measured-source-217/shared/world-conquest.js",
+      "bytes": 7203,
+      "sha256": "1c251e6d340586d7fb367d4f47938d5898f5239824dac46f054880a3d897aeef"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/world-landforms.js",
+      "member": "actual-measured-source-217/shared/world-landforms.js",
+      "bytes": 6645,
+      "sha256": "ecb6916db6785484f8bb813f7745c8c48ccea370f084fea290ff736edc968e34"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/world-layers.js",
+      "member": "actual-measured-source-217/shared/world-layers.js",
+      "bytes": 6770,
+      "sha256": "f51f34b99946192107ada9a7077d787761c1a9cb6b1e316d7b7e243dd273bb22"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/world-roads.js",
+      "member": "actual-measured-source-217/shared/world-roads.js",
+      "bytes": 6491,
+      "sha256": "5fb243b63fa9e2c082135b5b093ee753e8a92c197a076d78067e53f08f1885db"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/shared/world-territories.js",
+      "member": "actual-measured-source-217/shared/world-territories.js",
+      "bytes": 4110,
+      "sha256": "bb33a449d7f2c4d657dbceab8dbd0171eb8ccaa7494cedf9e18707822d8f717f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tickmeter.js",
+      "member": "actual-measured-source-217/tickmeter.js",
+      "bytes": 2198,
+      "sha256": "4687535fa1d155e88648610230edda26df2fc60eb2bae017240a0020b2ce0d92"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-balance.mjs",
+      "member": "actual-measured-source-217/tools/ai-balance.mjs",
+      "bytes": 14906,
+      "sha256": "bf5b5ea07e3bf0eea2e4134647457191d9fe212a05b138677817f0cf5ec8db4b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-humanity.mjs",
+      "member": "actual-measured-source-217/tools/ai-humanity.mjs",
+      "bytes": 97622,
+      "sha256": "5aaf88664e7a8af5504286de5d0b82f640ab2b8b3adc386a13fc8d541e5bf791"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-lab-browser.mjs",
+      "member": "actual-measured-source-217/tools/ai-lab-browser.mjs",
+      "bytes": 8245,
+      "sha256": "9017bac6153e3df8e55428a1bb89fb1586afa67402de3526d6c28e68507b49c9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-lab-node.mjs",
+      "member": "actual-measured-source-217/tools/ai-lab-node.mjs",
+      "bytes": 1125,
+      "sha256": "3a673bac091d805ee0807862ba3c580bd6c75f36724521ceee582406529a8657"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-lab-report.mjs",
+      "member": "actual-measured-source-217/tools/ai-lab-report.mjs",
+      "bytes": 3951,
+      "sha256": "f13340cb3513a5d430ebb023947e4bc9bdede94c56c19a61155505bc6563e06e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-lab-runner.mjs",
+      "member": "actual-measured-source-217/tools/ai-lab-runner.mjs",
+      "bytes": 13565,
+      "sha256": "d5f2e87078e6f1ea35300a653d86e0200aea554681ec60c4bd83eacabe17fb25"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-lab-server.mjs",
+      "member": "actual-measured-source-217/tools/ai-lab-server.mjs",
+      "bytes": 2169,
+      "sha256": "fb9124d7f4a0d18fbdc18a89964d190987f7e1a084807b43cc06cdefa1ac6a9a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-lab.mjs",
+      "member": "actual-measured-source-217/tools/ai-lab.mjs",
+      "bytes": 2832,
+      "sha256": "4aabd289dd136b04febfe0b6829628e542d7adb2492a774800a8f147a824100b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-manual-response-capture-v3.mjs",
+      "member": "actual-measured-source-217/tools/ai-manual-response-capture-v3.mjs",
+      "bytes": 6778,
+      "sha256": "19e1a93ae79b04f3eb768263052d48b344b086831b261ae40e7da0b004ea8775"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-manual-response-capture.mjs",
+      "member": "actual-measured-source-217/tools/ai-manual-response-capture.mjs",
+      "bytes": 6600,
+      "sha256": "9ea0b3163788366234c4ff43cdb22f5127158a0a32bcc7e8ec27f978ca3102fc"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-manual-response-policy-v3.mjs",
+      "member": "actual-measured-source-217/tools/ai-manual-response-policy-v3.mjs",
+      "bytes": 29858,
+      "sha256": "c45e589d661b4980a79181ca987b503054ebb3e7e554f1bc272dd3eab50a6928"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-manual-response-policy.mjs",
+      "member": "actual-measured-source-217/tools/ai-manual-response-policy.mjs",
+      "bytes": 26551,
+      "sha256": "a5044b77c2b35d25d12d05d8d61135c956e59ee84451f15a3a8f5c0c05470373"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-public-alert-response-v2.mjs",
+      "member": "actual-measured-source-217/tools/ai-public-alert-response-v2.mjs",
+      "bytes": 24115,
+      "sha256": "e54b5bbf07f2e637cde592e2f6d079ef3a41f3ac4003dd3d68f70f706104c997"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-public-alert-response.mjs",
+      "member": "actual-measured-source-217/tools/ai-public-alert-response.mjs",
+      "bytes": 20592,
+      "sha256": "6ea2b5b42af9f1ed1bc87f14433adb66da05fdd71f8c6fbe35ca36180fed9baa"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-screen-v1-oracle-provenance.json",
+      "member": "actual-measured-source-217/tools/ai-screen-v1-oracle-provenance.json",
+      "bytes": 576,
+      "sha256": "7d6de7111625c96649ab2d80e3d2cb7cb4510a3dc6ec407dfc85ba3e0a797400"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/ai-screen-v1-oracle.js",
+      "member": "actual-measured-source-217/tools/ai-screen-v1-oracle.js",
+      "bytes": 28180,
+      "sha256": "6b3894b551f3bf9151372b048b2efc77ffc86a6a173d0871278b27417358b398"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/balance.mjs",
+      "member": "actual-measured-source-217/tools/balance.mjs",
+      "bytes": 10497,
+      "sha256": "42b7c3355c2fd06513fee58c7d04bc2783050c7259b1329426f7c2dc50ab9d18"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/bench-engine.mjs",
+      "member": "actual-measured-source-217/tools/bench-engine.mjs",
+      "bytes": 32433,
+      "sha256": "4e84f2b7f86009b9ee47585bc6fc592b50defc2cea0cc1d9cc484ed85d0568be"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/bench-ground.mjs",
+      "member": "actual-measured-source-217/tools/bench-ground.mjs",
+      "bytes": 3281,
+      "sha256": "5d0e37369daf978eb29317409ac601f1d5df13aec2c835b69ccb41e77a76bd30"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/bench-move.mjs",
+      "member": "actual-measured-source-217/tools/bench-move.mjs",
+      "bytes": 4599,
+      "sha256": "5b9577bb58e6f7a67593f59262e20c9f7e402449ac1343cf2b6bc1e6ef378c0a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/bench-world-conquest.mjs",
+      "member": "actual-measured-source-217/tools/bench-world-conquest.mjs",
+      "bytes": 13956,
+      "sha256": "4a24bd8b0d7e3fdffb2f1811b64993f3ef4373ebb019a69cdab72b68d5a45ada"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/bench.mjs",
+      "member": "actual-measured-source-217/tools/bench.mjs",
+      "bytes": 8183,
+      "sha256": "0c026604acaba5ec8f477080b83a948e901d4724c8bf06d325d334a1b244b49d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/check-finished-naval.mjs",
+      "member": "actual-measured-source-217/tools/blender/check-finished-naval.mjs",
+      "bytes": 4502,
+      "sha256": "06c74d2d17c568acc508f09710a490fd688166e08806660f40848d2f3866f456"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/export-naval-source.mjs",
+      "member": "actual-measured-source-217/tools/blender/export-naval-source.mjs",
+      "bytes": 3370,
+      "sha256": "45407f36f2b49f342592da87e277e72415f1d46bc969d7f90d59abfd2df3968a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/export-review.mjs",
+      "member": "actual-measured-source-217/tools/blender/export-review.mjs",
+      "bytes": 4423,
+      "sha256": "f16af23e2c44a713d33cc8e75cee16b0398b9eedabc25071c62fd58732d66a6e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/finish-naval.mjs",
+      "member": "actual-measured-source-217/tools/blender/finish-naval.mjs",
+      "bytes": 2046,
+      "sha256": "7362c6813d8cf593cf7a933d4434f8db5cf90bd9319814da75d7c800d7f60a36"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/mcp/community/codex-marketplace/.agents/plugins/marketplace.json",
+      "member": "actual-measured-source-217/tools/blender/mcp/community/codex-marketplace/.agents/plugins/marketplace.json",
+      "bytes": 384,
+      "sha256": "3f1c6e2b319fc4bd73ae173d133eb79318ad1513e8f0767ec04c5c1a48b786d9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.codex-plugin/plugin.json",
+      "member": "actual-measured-source-217/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.codex-plugin/plugin.json",
+      "bytes": 1334,
+      "sha256": "aef4380b896d6d3d4d81aba593d5e553c937857a4feaad60d8f077bb20a8b20e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.mcp.json",
+      "member": "actual-measured-source-217/tools/blender/mcp/community/codex-marketplace/plugins/mcp-for-blender/.mcp.json",
+      "bytes": 516,
+      "sha256": "a64837272354f4c59aa44c141fb4fca7780a4180bbf382a145313a9c56c5dfc9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/build-audio.mjs",
+      "member": "actual-measured-source-217/tools/build-audio.mjs",
+      "bytes": 13322,
+      "sha256": "e066f7bef14691def1edf934d574fd29b0d3f489b43d15c1b4f8dcdfd14f7714"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/build-fx-atlas.mjs",
+      "member": "actual-measured-source-217/tools/build-fx-atlas.mjs",
+      "bytes": 13451,
+      "sha256": "3e26da8a6fcb1f5887926a5853c7a0873fe105a55ba8a66d1f91be12423753ec"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/check-new-models.mjs",
+      "member": "actual-measured-source-217/tools/check-new-models.mjs",
+      "bytes": 1309,
+      "sha256": "f8092868eb3ca7ff75319ec01f5581379e07aff3e73ec9406495ff6e51b61b90"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/diag.mjs",
+      "member": "actual-measured-source-217/tools/diag.mjs",
+      "bytes": 4386,
+      "sha256": "c554e37684d21821a0f5c7036904178f7e7388c9d26337887b378c1e4cde5e7b"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap-bridge.mjs",
+      "member": "actual-measured-source-217/tools/genmap-bridge.mjs",
+      "bytes": 8003,
+      "sha256": "94c6b6850b521bae65feedd49e441c014d407086ba4c1240b13d320144c3b909"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap-horde.js",
+      "member": "actual-measured-source-217/tools/genmap-horde.js",
+      "bytes": 12875,
+      "sha256": "168a5dc5e866bf61eee87e5af743d336c3288afca223cb2b092ea829595031e9"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap-islands.mjs",
+      "member": "actual-measured-source-217/tools/genmap-islands.mjs",
+      "bytes": 3060,
+      "sha256": "73b79b2d7771a0cefb55283d5845cae4d5e26dca14da9122178ed05c556b96c6"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap-pack.js",
+      "member": "actual-measured-source-217/tools/genmap-pack.js",
+      "bytes": 22923,
+      "sha256": "b7c329d45822b8ffab296e40f4413b77fa894704e89485b21383f3623fde737a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap-trenches.mjs",
+      "member": "actual-measured-source-217/tools/genmap-trenches.mjs",
+      "bytes": 4576,
+      "sha256": "14c5d6ede58df9cd3ca282e599d64865d9ea3131c48f7243ed76dc7c61fe432c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap-xl.js",
+      "member": "actual-measured-source-217/tools/genmap-xl.js",
+      "bytes": 10557,
+      "sha256": "8477be9e1f372bcfb69697c80bbc95714843aae840f32bf98ed2982b915c9077"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/genmap.js",
+      "member": "actual-measured-source-217/tools/genmap.js",
+      "bytes": 9408,
+      "sha256": "20f17ef9919eacbd812c569549802be3ed2f8acb6838f5ef256998421d60c8d2"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/hash-json-native.mjs",
+      "member": "actual-measured-source-217/tools/hash-json-native.mjs",
+      "bytes": 3875,
+      "sha256": "84d9f9c2273071831d86fe88e4244bda6013c762412ef837a5dc4c90a08e41c5"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/horde.mjs",
+      "member": "actual-measured-source-217/tools/horde.mjs",
+      "bytes": 2223,
+      "sha256": "d23d6c320497a55df56222297256d084dba53d6851934f2212bd6e0be00521af"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/json-stream.mjs",
+      "member": "actual-measured-source-217/tools/json-stream.mjs",
+      "bytes": 9588,
+      "sha256": "34f01a09d4996f356a3dafc61084aae27a4bf18cd8e6b63b2fda9e95c5168798"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/km-median-boundary.mjs",
+      "member": "actual-measured-source-217/tools/km-median-boundary.mjs",
+      "bytes": 1037,
+      "sha256": "e92de6b62be628796cf1390a0b4333b87be32a2083f3d2193cf2dd3ac3755469"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/legacy-ai/ai-mind.js",
+      "member": "actual-measured-source-217/tools/legacy-ai/ai-mind.js",
+      "bytes": 17983,
+      "sha256": "c2941813a4fb6d655a50b579270e5887723cfc42ea18c9d767735904c78c2d54"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/legacy-ai/ai-view.js",
+      "member": "actual-measured-source-217/tools/legacy-ai/ai-view.js",
+      "bytes": 11525,
+      "sha256": "c8e5332611ec5d18d5f7b0ab9093c30df5006a6f566c106a312a64900be17d5f"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/legacy-ai/ai.js",
+      "member": "actual-measured-source-217/tools/legacy-ai/ai.js",
+      "bytes": 64127,
+      "sha256": "49575f9089365e13592a804b852b8eeec8c1dcc96bd64d236eaf3757904bcf4d"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/legacy-ai/provenance.json",
+      "member": "actual-measured-source-217/tools/legacy-ai/provenance.json",
+      "bytes": 1048,
+      "sha256": "dc60cceedaf44362e4ee8042b204544f3e9e0e312abf831218af827a2105e55e"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/mapstats.mjs",
+      "member": "actual-measured-source-217/tools/mapstats.mjs",
+      "bytes": 8721,
+      "sha256": "3ec678dda56d0a056dd70046199cb1120e5821dfc378f9876a2e29cfbbfff442"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/mapwork.mjs",
+      "member": "actual-measured-source-217/tools/mapwork.mjs",
+      "bytes": 8411,
+      "sha256": "668a2464bddcab7377dd9f02fb0c695c13c02bceb2f15a466624d77e8f7223e7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/movement-lab-browser.js",
+      "member": "actual-measured-source-217/tools/movement-lab-browser.js",
+      "bytes": 14004,
+      "sha256": "b22680fa57d063a3a2106f270cd16a95d275bd7e20d99b177c63ed71e58a2fd4"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/movement-lab-runner.js",
+      "member": "actual-measured-source-217/tools/movement-lab-runner.js",
+      "bytes": 6570,
+      "sha256": "8285d51b25013776a2d67f89154e803447efbe8ce02ccec2890dc41f49d09829"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/movement-lab-scenarios.js",
+      "member": "actual-measured-source-217/tools/movement-lab-scenarios.js",
+      "bytes": 12407,
+      "sha256": "50b19fc2f2144d9dfee790b8c7d126c08e971b588e08921fdb84e743c4154afe"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/movement-lab.mjs",
+      "member": "actual-measured-source-217/tools/movement-lab.mjs",
+      "bytes": 2177,
+      "sha256": "4aa4fd104a888e5e587a29e92ad4b1a26b75a25fe58f8c3fe7fedd88bc5dcf4c"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/preview-world-generation.mjs",
+      "member": "actual-measured-source-217/tools/preview-world-generation.mjs",
+      "bytes": 1768,
+      "sha256": "f05dba5305cb8a16c11543b19c7520021998e5e2aefb938cc9d43525b6090e99"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/roads.mjs",
+      "member": "actual-measured-source-217/tools/roads.mjs",
+      "bytes": 1917,
+      "sha256": "1ba0af74d2e0436105ed4ebcd9f7a519fe2e4d783739613f496488cea1af180a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/serve-movement-lab.mjs",
+      "member": "actual-measured-source-217/tools/serve-movement-lab.mjs",
+      "bytes": 3108,
+      "sha256": "1776d74dfe20dbe513e95385ed1ba792c18582e391be8f9da1a21f7e63f5095a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/terrain-workshop-fixtures.js",
+      "member": "actual-measured-source-217/tools/terrain-workshop-fixtures.js",
+      "bytes": 3060,
+      "sha256": "4a548a46c5c039054494e477dd5fda1ccdfed57880c3964188e8692bb9e551f7"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/terrain-workshop.js",
+      "member": "actual-measured-source-217/tools/terrain-workshop.js",
+      "bytes": 13967,
+      "sha256": "a0b92e648f1675c461cad3c90abde12984ae09e8a28bfc18d3f83cc7aef1924a"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/test-public-lobby-browser.mjs",
+      "member": "actual-measured-source-217/tools/test-public-lobby-browser.mjs",
+      "bytes": 5036,
+      "sha256": "666cb37cbe27526abd35131b3ce68968d4079973a643b3a89f3be2fa9019f298"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/test-world-waterway-seeds.mjs",
+      "member": "actual-measured-source-217/tools/test-world-waterway-seeds.mjs",
+      "bytes": 1721,
+      "sha256": "69b9d3f48ff30249de5a863c38fe12b5b5365951e037d7d7ba2d0bacdb3a3e13"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/woods.mjs",
+      "member": "actual-measured-source-217/tools/woods.mjs",
+      "bytes": 2239,
+      "sha256": "33012d24d1a7686804e0b1dcb773a24931e72dc129114e463716c5834dbb25f3"
+    },
+    {
+      "originalPath": "/tmp/human-ai-r9-final-perf-frozen/tools/bench-engine-counts.mjs",
+      "member": "actual-measured-counts-instrumentation/tools/bench-engine-counts.mjs",
+      "bytes": 32486,
+      "sha256": "9dfbfe81f500da9298058f286405925a85345c5c372efb4ce583c137ada0691c"
+    },
+    {
+      "originalPath": "/tmp/r9-ap-performance-durable-package/performance-source-and-scope-qualification.json",
+      "member": "source-and-scope-qualification.json",
+      "bytes": 20601,
+      "sha256": "b4dec63aa6c02650ee2873e39289545bf2738b27995c40aa13596e423d55a3d4"
+    }
+  ],
+  "copiedOriginalBytes": 9544121,
+  "copyAssertions": {
+    "allOriginalFourNativeRowsPreserved": true,
+    "nativeExitCodes": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "requestedAndCompletedTicksEach": 1000,
+    "warmLatencySamplesEach": 990,
+    "individualTimingArraysPresent": false,
+    "slowTickIDsPresent": false,
+    "sourceClosureFiles": 217,
+    "coreBindingFiles": 17,
+    "originalSourceAndMeasuredClosureMatch": true,
+    "overallOriginalPerformanceResult": "FAIL",
+    "originalCountedMaxFailurePreserved": true,
+    "ROOTRecordedSixResumeChecksPreserved": true,
+    "historicalReferencesVerified": 44
+  },
+  "packagingExecution": "Copying, compression and byte-integrity checks only. No simulation, test, scoring run, staging or commit."
+}
