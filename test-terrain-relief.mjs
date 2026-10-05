@@ -105,7 +105,15 @@ function checkSeams(relief, edges, label, nodes = surfaceNodes(relief.geometry))
 }
 
 // A separate Mesh keeps the standard Three.js triangle query. Relief overrides its own raycast.
+// Loose cliff rock models (rock paint between 0 and 1) are visual only, so the oracle leaves them out.
 function meshOracle(relief, geometry = relief.geometry) {
+  const paint = geometry.attributes.reliefPaint, index = geometry.index?.array;
+  const loose = t => paint.getX(index[t]) > 0 && paint.getX(index[t]) < 1;
+  if (paint && index) {
+    const kept = [];
+    for (let t = 0; t < index.length; t += 3) if (!loose(t)) kept.push(index[t], index[t + 1], index[t + 2]);
+    if (kept.length !== index.length) { geometry = geometry.clone(); geometry.setIndex(kept); }
+  }
   const mesh = new THREE.Mesh(geometry, relief.mesh.material);
   mesh.updateMatrixWorld(true);
   assert.equal(mesh.raycast, THREE.Mesh.prototype.raycast);
@@ -250,7 +258,13 @@ for (const low of [true, false]) {
       if (axis === 'z') direction.set(0.7, -1, 0);
       checkPicking(relief, oracle, origin, direction, `${quality}: parallel ${axis} cliff ${descending ? 'descending' : 'ascending'}`);
       const vertical = firstHit(relief.mesh, origin, new THREE.Vector3(0, -1, 0));
-      close(vertical.point.y, 4 * L, `${quality}: vertical ray on cliff corner retains the visible upper surface`);
+      const visible = firstHit(oracle, origin, new THREE.Vector3(0, -1, 0));
+      close(vertical.point.y, visible.point.y, `${quality}: vertical cliff ray follows the reshaped visible face`);
+      const plateau = origin.clone();
+      if (axis === 'x') plateau.x += descending ? 1 : -1;
+      else plateau.z += descending ? 1 : -1;
+      close(firstHit(relief.mesh, plateau, new THREE.Vector3(0, -1, 0)).point.y, 4 * L,
+        `${quality}: plateau beside the reshaped cliff retains its height`);
     } finally { relief.dispose(); }
   }
 
@@ -281,9 +295,11 @@ for (const low of [true, false]) {
         assert.ok(at(relief, 3.75, 3.5) > L && at(relief, 3.5, 3.75) < L, `${label}: rises and falls along distinct axes`);
         close(normalAt(relief, 3.5, 3.5, label).y, 1, `${label}: stationary saddle center`);
       } else {
-        close(at(relief, 3, 4), L, `${label}: intermediate ramps connect all four corner owners`);
-        close(at(relief, 3 - 1e-8, 3.5), 0, `${label}: distinct lower cliff edge`);
-        close(at(relief, 3 + 1e-8, 3.5), 2 * L, `${label}: distinct upper cliff edge`);
+        const junction = at(relief, 3, 4);
+        assert.ok(junction > L * 0.5 && junction < L * 1.5, `${label}: reshaped junction retains its intermediate ramp`);
+        checkQueries(relief, [[3, 4]], `${label}: visible junction contact`);
+        close(at(relief, 2.5, 3.5), 0, `${label}: lower cliff-side cell stays level`);
+        close(at(relief, 3.5, 3.5), 2 * L, `${label}: upper cliff-side cell stays level`);
       }
       checkQueries(relief, interiorPoints(map), label);
     } catch (error) {
@@ -301,8 +317,8 @@ for (const low of [true, false]) {
       checkCenters(map, relief, label);
       assert.equal(relief.stats.cliffEdges, 7, `${label}: retains seven authoritative cliff edges`);
       const u = axis === 'x' ? 4 : 3.37, v = axis === 'z' ? 4 : 3.37;
-      close(at(relief, u - (axis === 'x' ? 1e-8 : 0), v - (axis === 'z' ? 1e-8 : 0)), (descending ? 4 : 2) * L, `${label}: left lip`);
-      close(at(relief, u + (axis === 'x' ? 1e-8 : 0), v + (axis === 'z' ? 1e-8 : 0)), (descending ? 2 : 4) * L, `${label}: right lip`);
+      close(at(relief, u - (axis === 'x' ? 0.5 : 0), v - (axis === 'z' ? 0.5 : 0)), (descending ? 4 : 2) * L, `${label}: left plateau height`);
+      close(at(relief, u + (axis === 'x' ? 0.5 : 0), v + (axis === 'z' ? 0.5 : 0)), (descending ? 2 : 4) * L, `${label}: right plateau height`);
       checkSeams(relief, dryEdges(map), label);
       checkQueries(relief, interiorPoints(map), label);
       const oracle = meshOracle(relief), origin = new THREE.Vector3(u * CELL, 3 * L, v * CELL);
@@ -310,8 +326,8 @@ for (const low of [true, false]) {
       if (descending) direction.negate();
       origin.addScaledVector(direction, -0.7);
       const wall = firstHit(oracle, origin, direction);
-      assert.ok(wall && Math.abs(wall.face.normal.y) < EPS, `${label}: actual vertical wall exists`);
-      close(wall.distance, 0.7, `${label}: wall lies on the cell boundary`);
+      assert.ok(wall && Math.abs(wall.face.normal.y) < 0.9, `${label}: actual steep rock face exists`);
+      assert.ok(Math.abs(wall.distance - 0.7) < 1.25, `${label}: reshaped wall stays beside the authored boundary`);
       checkPicking(relief, oracle, origin, direction, `${label}: horizontal wall picking`);
       checkPicking(relief, oracle, origin.clone().add(new THREE.Vector3(0, 0.2, 0)), direction.clone().add(new THREE.Vector3(0, -0.3, 0)), `${label}: oblique wall picking`);
     } catch (error) {

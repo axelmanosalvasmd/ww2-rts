@@ -2,6 +2,49 @@
 
 WW2 tactics RTS in the browser for three friends. Decided 2026-09-30.
 
+## Thermopylae navigation and cliffs (2026-10-05)
+
+- The Hot Gates mountain-road gate is on level 2 beside an isolated level-4 plateau. Horde's 5 m spawn scatter
+  could land at (101,135), on that plateau, with no path to the bunker. Spawn placement now uses the unit's
+  movement mask and the gate's connected region. Ordinary land recruitment uses its home region too. Naval
+  recruitment keeps its search for nearby water. Crowds respect each unit's movement mask, so vehicles stay off
+  rubble, wrecks and tank traps while infantry can still cross them.
+- The road elevations and route stay as drawn. The stricter vehicle footprint system from origin exposed
+  20 rubble cells closing the mountain roadway; these move onto adjacent cliff shoulders. Regression checks cover eight scatter directions at every gate,
+  obstacle crowd pushes and four-vehicle Light Tank and Churchill convoys through both gullies in both directions.
+  Mixed tank and Churchill traffic can still jam when a faster tank tries to pass on the narrow road.
+- Cliffs share deterministic ragged rim offsets between the plateau and wall. Convex corners cut inward and
+  concave corners fill outward to soften the grid staircase. Bilinear offsets carry these bevels through each
+  touching cell without folding its triangles. Broad rock faces continue across cell boundaries and bends;
+  larger embedded outcrops and scattered fallen stones join the existing terrain mesh and draw call.
+  High detail uses four vertical bands, Low uses two;
+  maps above 65,536 cells use one band without foot rocks to retain the terrain triangle ceiling. Stone paint
+  uses darker, irregular weathering instead of horizontal stripes and pale caps. Face winding points toward
+  the low ground in all four orientations. Regression checks cover sealed convex and concave bends. Terrain
+  updates rebuild the stones along with the wall. Simulation heights and obstacle rules do not depend on the rocks.
+  Render contact and ground picking query the actual reshaped triangles through a cell index; ordinary terrain
+  keeps its existing contact query, and maps above 65,536 cells keep the existing inexpensive cliff query.
+  Plateau centres retain their original positions and heights, including near shell scars. Decorative crest
+  boulders can rise above the backing; they do not affect ground contact or picking.
+  The Hot Gates surface scan retains one pre-existing folded ground triangle (two before this revision).
+- Cliff rock models (2026-10-05): the wall sheet stays as the sealed backing and contact surface. In front of it,
+  six fractured rock models (an icosahedron, detail 1 on High and 0 on Low, displaced by noise and cut by a
+  flat outward face, a ledge and seven cleavage planes) are stacked per half cell edge, one per 3 m stratum,
+  each leaning 0.95 m further back per full rise. About 28% of halves get one tall buttress instead. Crest
+  boulders sit on the lip; scree sits at the foot. Lattice corners with one low cell (notch) get a rock pile
+  that rises 0.25 m over the lip; corners with one high cell (tooth) get a column kept within a metre of the
+  corner. Both need true cliff edges, not a diagonal level gap. Models carry rock paint 0.98: they shade like
+  stone but stay out of ground contact and picking, with no lip band, and upward faces take a grassy ledge
+  tint. A regression check keeps every model vertex near a mountain-road cell centre below 0.3 m. Deeper
+  convex bevels were tried and rejected because they break the shared mixed-height junction.
+  Ground triangles keep the existing ceiling. Decorative triangles have a separate per-cliff-edge budget,
+  scaled by the number of strata. Map regressions compare ragged cliff contact to independent mesh rays;
+  unchanged terrain still checks centred ramps, monotonic slopes and closed grid edges.
+- Authored naval sources use LF-normalized fingerprints in both export and validation, so a Windows checkout
+  keeps the same asset identity as a Unix checkout while actual source edits still invalidate the payload.
+- This fixes placement and crowd handling, without changing unit stats or wave budgets. No balance tuning was
+  performed. A running match's already stranded units need a restart; no recovery teleport is added.
+
 ## World Conquest (2026-10-03)
 
 World Conquest is a separate multiplayer mode with a generated, connected continent. Huge has 64 regions;
@@ -815,6 +858,12 @@ or big celebratory banners. Corners 0 to 2 px, 1 px hairlines, 13 to 15 px body 
   and look (faction and player color), so they follow the models as those improve. A small renderer of its own
   starts 1.2 s after the match starts and renders one portrait per frame; colors are pulled 20% toward grey so the
   renders sit quietly on the panels. Until a portrait is ready its slot shows the silhouette icon.
+  Since 2026-10-05 only the selection list uses portraits. Recruit, train and build cards show the flat silhouette
+  symbol at full strength: at card size the 3D renders all looked alike and players could not tell units apart.
+- Recruit row tabs (2026-10-05): outside Classic the Command Card groups are a row of tabs, and only the open group's
+  cards show, on a row under the tabs. Nothing is open by default, so the panel is just the tabs until you pick one.
+  A click and a recruit-mode letter set the same open group, and Esc or a second click on the tab closes it.
+  Classic building cards keep every group open.
 - Layout: score and clock top center; MP / Munitions / Fuel, income and pop top right with the support calls as an icon
   row under them; bottom left the selection list and its orders (icon grid with hotkeys); bottom center the Command
   Card (always-visible recruit row outside Classic, grouped Infantry / Support weapons / Vehicles; train and build in

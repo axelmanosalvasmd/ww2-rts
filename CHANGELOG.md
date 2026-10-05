@@ -5,6 +5,40 @@ AI-vs-AI runs (see DESIGN.md for the balance log). Add new entries under **Unrel
 
 ## Unreleased
 
+- Recruit panel (Conquest, Assault, Annihilation, Horde): unit cards now show each unit's flat silhouette symbol
+  instead of a small 3D render, so the types are easy to tell apart. The groups (Infantry, Support weapons,
+  Vehicles, Aircraft, Naval) are now a row of tabs: click one to show only its units, click it again to close it.
+  Keyboard recruiting works as before (a letter opens a group, a second buys) and opens the same tab.
+  Classic building cards also use the symbols; the selection list keeps its 3D portraits.
+
+- Rebuilt cliff walls with detailed rock models on every map except the huge generated ones. Faces are now stacked, fractured limestone slabs
+  that step back as they rise, with occasional full-height buttresses, grassy ledges, boulders on the crest and
+  scree at the foot. Diagonal cliff runs no longer show a cell-by-cell staircase: notches fill with rock piles
+  and convex teeth are wrapped in rock columns. Rocks are visual only and never bury mountain-road cells.
+  Cost: Hot Gates terrain goes from about 63k to 250k triangles on High (116k on Low), and a crater rebuild
+  takes about 30 ms longer there. Found and left for later: the cliff crest still steps on 45 degree runs when
+  seen from far away, because the plateau outline itself is unchanged.
+
+- Integrated the Thermopylae fixes with the updated vehicle and terrain systems. Moved 20 rubble cells off the
+  mountain road and onto the cliff shoulders so vehicles have room to pass. Ground picking and visible contact
+  now follow the reshaped cliff triangles, while neighbouring plateau centres keep their original heights.
+  Mixed tank and Churchill traffic can still jam during overtaking on the narrow road; that remains for a later fix.
+  Fixed Windows file paths in the movement and localization regression runners so their checks run on Windows too.
+  Naval asset fingerprints now treat Windows and Unix line endings equally, preventing false stale-asset errors.
+  Cliff-adjacent terrain centres stay at their simulation height even beside shell scars. Camera and map checks
+  now follow the ragged cliff backing and track decorative rock costs separately from the ground-mesh budget.
+
+- Reworked the Thermopylae cliff visuals again: softened the square stair-step corners, removed the repeating
+  wall panels and pale stripes, and added broad weathered rock faces, larger outcrops and scattered fallen stones.
+  The revised cliffs use fewer triangles than the first version and keep the same vehicle movement rules.
+  Terrain checks found two existing folded ground triangles on Hot Gates. One remains for a later ground-mesh fix.
+
+- Fixed vehicles getting stranded on Thermopylae (The Hot Gates) in Horde: arriving units stay on ground connected
+  to their gate, including the narrow mountain road, and crowds cannot shove vehicles onto rubble or tank traps.
+  Cliff walls now have ragged rims, fractured stone faces and rocks at their feet, with softer stone shading.
+  Fixed cliff faces disappearing when viewed from some directions. Convoys are checked through both mountain-road
+  corners in both directions. Existing matches need a restart to replace units already stranded on cliff tops.
+
 ### 2026-10-04: Tank wheel and track animation (`5c0fb8e`)
 
 - Tank road wheels, idlers, sprockets, return rollers and visible track belts now move with actual vehicle travel,

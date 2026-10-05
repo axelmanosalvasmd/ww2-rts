@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { MOVEMENT_SCENARIOS, MOVEMENT_TYPES } from './tools/movement-lab-scenarios.js';
 import { runMovementCase } from './tools/movement-lab-runner.js';
 
@@ -47,5 +48,5 @@ for (const heights of [[0, 2, 0, 0], [0, 0, 2, 0], [0, 1, 1, 2]]) {
   assert.equal(motion.segmentCliffClear(grid, b, a), false, 'cliff clearance has the same result in reverse');
 }
 for (const control of ['--drop-middle-control', '--ignore-cliffs-control']) execFileSync(process.execPath,
-  [new URL('./test-movement-lab.js', import.meta.url).pathname, control], { stdio: 'inherit', timeout: 30000 });
+  [fileURLToPath(new URL('./test-movement-lab.js', import.meta.url)), control], { stdio: 'inherit', timeout: 30000 });
 console.log(`PASS movement lab: ${cases} authoritative scenarios across all ground vehicles, rifles and support guns; profile limits and deterministic replay`);

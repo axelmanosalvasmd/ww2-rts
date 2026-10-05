@@ -94,65 +94,20 @@ diffuseColor.rgb *= vec3( 1.0 ) + vec3( 0.06, 0.05, 0.035 ) * reliefCrest;
 
 if ( reliefRock > 0.001 ) {
 	float reliefEdgeNoise = 0.5;
-	float reliefStrata = step( 0.5, fract( vReliefPosition.y / 1.6 ) ) * 2.0 - 1.0;
-	float reliefBandPaint = 1.0 + 0.25 * reliefStrata;
 	float reliefDetail = 1.0;
-	float reliefCrack = 0.0;
+	float reliefPatchTone = 0.5;
 	#ifndef RELIEF_LOW
-		float reliefWarp = reliefNoise2( vReliefPosition.xz * 0.18 + 3.7 );
-		float reliefGrain = reliefNoise( vReliefPosition * vec3( 2.2, 3.6, 2.2 ) );
-		// Each 1.7 m pair splits into two strata, both between 0.5 and 1.2 m tall.
-		float reliefBandHeight = vReliefPosition.y + ( reliefWarp - 0.5 ) * 0.40;
-		float reliefPair = floor( reliefBandHeight / 1.7 );
-		float reliefWithinPair = reliefBandHeight - reliefPair * 1.7;
-		float reliefSplit = 0.5 + 0.7 * reliefHash( vec3( reliefPair, 7.0, 11.0 ) );
-		float reliefUpperBand = step( reliefSplit, reliefWithinPair );
-		float reliefBandId = reliefPair * 2.0 + reliefUpperBand;
-		float reliefBandBottom = mix( 0.0, reliefSplit, reliefUpperBand );
-		float reliefBandTop = mix( reliefSplit, 1.7, reliefUpperBand );
-		float reliefAboveEdge = reliefWithinPair - reliefBandBottom;
-		float reliefBelowEdge = reliefBandTop - reliefWithinPair;
-		float reliefBandHash = reliefHash( vec3( reliefBandId, 13.0, 5.0 ) );
-		// Adjacent strata alternate dark and light with independent 22 to 30 percent amplitudes.
-		reliefBandPaint = 1.0 + ( reliefUpperBand * 2.0 - 1.0 ) * ( 0.22 + 0.08 * reliefBandHash );
-		float reliefEdgePixel = max( fwidth( reliefBandHeight ) * 0.5, 0.003 );
-		float reliefSeamWidth = 0.03 + 0.02 * reliefBandHash;
-		float reliefSeam = ( 1.0 - smoothstep( reliefSeamWidth - reliefEdgePixel, reliefSeamWidth + reliefEdgePixel, reliefAboveEdge ) )
-			* step( 0.40, reliefBandHash );
-		float reliefBrush = ( 1.0 - smoothstep( 0.02, 0.09, reliefBelowEdge ) )
-			* step( 0.58, reliefHash( vec3( reliefBandId, 17.0, 31.0 ) ) )
-			* smoothstep( 0.30, 0.65, reliefGrain );
-		float reliefFine = clamp( ( reliefNoise( vReliefPosition * vec3( 8.0, 12.0, 8.0 ) ) - 0.5 ) * 4.0, -1.0, 1.0 );
-		float reliefChip = smoothstep( 0.52, 0.65, reliefGrain ) * smoothstep( 0.0, 0.70, reliefFine );
-		reliefDetail = ( 1.0 + 0.12 * reliefFine ) * ( 1.0 - 0.40 * reliefSeam )
-			* ( 1.0 + 0.18 * reliefBrush + 0.22 * reliefChip );
-		reliefEdgeNoise = reliefPatch * 0.6 + reliefGrain * 0.4;
-		// Sparse cracks follow the face's horizontal axis, with a small sideways wander.
-		float reliefAlong = dot( vReliefPosition.xz, vec2( abs( reliefN.z ), abs( reliefN.x ) ) );
-		float reliefCrackCell = floor( reliefAlong / 3.8 );
-		float reliefCrackCentre = 3.8 * ( 0.15 + 0.70 * reliefHash( vec3( reliefCrackCell, 0.0, 19.0 ) ) );
-		float reliefCrackDistance = abs( reliefAlong - reliefCrackCell * 3.8 - reliefCrackCentre + ( reliefGrain - 0.5 ) * 0.18 );
-		float reliefCrackWidth = max( 0.025, fwidth( reliefAlong ) * 0.5 );
-		reliefCrack = ( 1.0 - smoothstep( reliefCrackWidth, reliefCrackWidth * 2.0, reliefCrackDistance ) )
-			* step( 0.68, reliefHash( vec3( reliefCrackCell, 23.0, 2.0 ) ) );
-		// Long, irregular streaks start under the lip and fade several metres down the face.
-		float reliefStreakCell = floor( reliefAlong / 2.7 );
-		float reliefStreakHash = reliefHash( vec3( reliefStreakCell, 29.0, 41.0 ) );
-		float reliefStreakCentre = ( reliefStreakCell + 0.15 + 0.70 * reliefStreakHash ) * 2.7;
-		float reliefStreakDistance = abs( reliefAlong - reliefStreakCentre
-			+ 0.04 * sin( vReliefPosition.y * 0.65 + reliefStreakHash * 6.28 ) );
-		float reliefStreakWidth = 0.05 + 0.10 * reliefStreakHash;
-		float reliefStreakPixel = max( fwidth( reliefAlong ) * 0.5, 0.005 );
-		float reliefBelowLip = vReliefPaint.y - vReliefPosition.y;
-		float reliefStreakLength = 2.0 + 4.0 * reliefStreakHash;
-		float reliefStreak = ( 1.0 - smoothstep( reliefStreakWidth - reliefStreakPixel, reliefStreakWidth + reliefStreakPixel, reliefStreakDistance ) )
-			* smoothstep( 0.30, 0.55, reliefBelowLip )
-			* ( 1.0 - smoothstep( reliefStreakLength * 0.65, reliefStreakLength, reliefBelowLip ) )
-			* step( 0.45, reliefStreakHash );
-		reliefDetail *= 1.0 - 0.25 * reliefStreak;
+		// Weathering follows irregular stone volumes instead of repeating courses of masonry.
+		vec3 reliefStonePoint = vReliefPosition * vec3( 0.42, 0.55, 0.42 );
+		float reliefWeather = reliefNoise( reliefStonePoint );
+		float reliefGrain = reliefNoise( vReliefPosition * 3.1 );
+		float reliefFine = reliefNoise( vReliefPosition * 13.0 );
+		reliefPatchTone = smoothstep( 0.25, 0.75, reliefWeather );
+		float reliefPockets = 1.0 - smoothstep( 0.24, 0.38, reliefGrain + ( reliefWeather - 0.5 ) * 0.30 );
+		reliefDetail = ( 0.91 + 0.18 * reliefFine ) * ( 1.0 - 0.24 * reliefPockets );
+		reliefEdgeNoise = reliefWeather * 0.65 + reliefGrain * 0.35;
 	#endif
-	vec3 reliefStone = vec3( 0.35, 0.28, 0.185 ) * reliefBandPaint * reliefDetail;
-	reliefStone *= 1.0 - reliefCrack * 0.32;
+	vec3 reliefStone = mix( vec3( 0.08, 0.085, 0.075 ), vec3( 0.19, 0.16, 0.115 ), reliefPatchTone ) * reliefDetail;
 	float reliefLipWidth = 0.30 + ( reliefEdgeNoise - 0.5 ) * 0.16;
 	float reliefFootWidth = 0.40 + ( reliefEdgeNoise - 0.5 ) * 0.16;
 	float reliefWallLip = 1.0 - smoothstep( reliefLipWidth - 0.05, reliefLipWidth + 0.02,
@@ -162,12 +117,15 @@ if ( reliefRock > 0.001 ) {
 	float reliefWallDamp = max( reliefDamp, 1.0 - smoothstep( -2.5, 0.75, vReliefPaint.z ) );
 	vec3 reliefWallSoil = mix( vec3( 0.16, 0.115, 0.065 ), vec3( 0.14, 0.14, 0.075 ), reliefWallDamp );
 	reliefStone = mix( reliefStone, reliefWallSoil * ( 0.93 + 0.14 * reliefEdgeNoise ), reliefWallFoot * 0.90 );
-	reliefStone = mix( reliefStone, vec3( 0.62, 0.54, 0.38 ), reliefWallLip );
+	reliefStone = mix( reliefStone, vec3( 0.43, 0.39, 0.30 ), reliefWallLip * 0.35 );
+	// Upward-facing ledges hold soil and grass from the painted ground.
+	float reliefLedge = smoothstep( 0.55, 0.85, reliefN.y ) * ( 1.0 - reliefWallFoot );
+	reliefStone = mix( reliefStone, diffuseColor.rgb * 0.82, reliefLedge * 0.8 );
 	diffuseColor.rgb = mix( diffuseColor.rgb, reliefStone, reliefRock );
 } else {
-	// The existing lip weights define a thin pale rim above the wall and soil along its foot.
+	// Exposed stone blends into the grass at the crest and soil along the foot.
 	float reliefRim = smoothstep( 0.38, 0.62, reliefLip );
-	diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.62, 0.54, 0.38 ), reliefRim * 0.90 );
+	diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.43, 0.39, 0.30 ), reliefRim * 0.35 );
 	diffuseColor.rgb = mix( diffuseColor.rgb, reliefSoil, reliefFoot * 1.3 );
 	// The interpolated foot paint gives nearby flat ground a soft contact shadow.
 	diffuseColor.rgb *= 1.0 - 0.20 * smoothstep( 0.0, 0.35, reliefFoot );
@@ -218,7 +176,7 @@ export function createReliefMaterial(texture, { low = false } = {}) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FRAG_NORMAL}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${FRAG_FILL}`);
   };
-  material.customProgramCacheKey = () => `relief-painted-v9-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
+  material.customProgramCacheKey = () => `relief-painted-v11-${'RELIEF_LOW' in material.defines ? 'low' : 'high'}`;
   material.userData.setLow = (next) => {
     if (Boolean(next) === ('RELIEF_LOW' in material.defines)) return;
     if (next) material.defines.RELIEF_LOW = '';

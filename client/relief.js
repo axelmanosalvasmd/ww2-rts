@@ -1,5 +1,5 @@
 // Cell centres retain their simulation height. Only connected neighbours share a ramp;
-// disconnected cliff sides have separate vertices and a vertical rock strip between them.
+// disconnected cliff sides have separate vertices, a sealed rock face and stacked fractured rock models.
 import * as THREE from 'three';
 import { CELL, CFG, levelOf } from '../shared/sim.js';
 import { createWaterLevels, WATER_LIFT } from './water-levels.js';
@@ -7,6 +7,34 @@ import { createReliefMaterial } from './relief-material.js';
 export { createReliefMaterial } from './relief-material.js';
 
 const S = 4, STRIDE = 25;
+const hash = (a, b, k) => { const s = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return s - Math.floor(s); };
+// Fractured rock models, built once: a lumpy sphere cut by cleavage planes. The +z cut is the flat
+// weathered face turned toward the low ground; the +y cut is a ledge. Displacement depends only on
+// the vertex position, so shared corners move together and every model stays closed.
+function rockModels(detail) {
+  const geometry = new THREE.IcosahedronGeometry(1, detail), p = geometry.attributes.position;
+  const models = [];
+  for (let m = 0; m < 6; m++) {
+    const cuts = [[0, 0, 1, 0.42 + hash(m, 1, 3) * 0.15], [0, 1, 0, 0.45 + hash(m, 2, 3) * 0.2]];
+    for (let j = 0; j < 7; j++) {
+      const a = (j + hash(m, j, 5) * 0.8) / 7 * Math.PI * 2, b = (hash(m, j, 7) - 0.4) * 1.3;
+      cuts.push([Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b), 0.45 + hash(m, j, 9) * 0.2]);
+    }
+    models.push(Array.from({ length: p.count }, (_, i) => {
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const r = 0.72 + 0.56 * fieldNoise(x * 2.3 + z * 1.3 + m * 7.3, y * 2.3 - z * 1.7, 31 + m);
+      x *= r; y *= r; z *= r;
+      for (const [cx, cy, cz, d] of cuts) {
+        const over = x * cx + y * cy + z * cz - d;
+        if (over > 0) { x -= cx * over; y -= cy * over; z -= cz * over; }
+      }
+      return [x, y, z];
+    }));
+  }
+  geometry.dispose();
+  return models;
+}
+const ROCKS = [rockModels(0), rockModels(1)];
 // Trench cells ('T') are cut into the mesh: the inner 3x3 nodes drop by this much, and the channel runs on through
 // the edge nodes shared with a neighbouring trench cell. Purely visual: the sim's cover and sight lines ignore it.
 export const TRENCH_DEPTH = 0.9;
@@ -27,6 +55,8 @@ export function createRelief(map, grid = map.rows, options = {}) {
   const masks = new Uint16Array((w + 1) * (h + 1));
   const heights = new Float32Array(n * STRIDE), normals = new Float32Array(n * STRIDE * 3);
   const nx = new Uint8Array(n), nz = new Uint8Array(n), flat = new Uint8Array(n);
+  const ragged = new Uint8Array(n);
+  let detailPicks = new Map();
   const controls = new Float32Array(n * 9), roadCorners = new Float32Array(n * 4);
   const tangents = new Float32Array(n * 18);
   const hx = new Float64Array(4), hz = new Float64Array(4), dhx = new Float64Array(4), dhz = new Float64Array(4);
@@ -310,6 +340,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
     }
   }
   function buildCell(c) {
+    ragged[c] = 0;
     const x = c % w, z = Math.floor(c / w), off = c * STRIDE;
     torn[c] = 0;
     const dug = grid[z][x] === 'T';
@@ -407,7 +438,15 @@ export function createRelief(map, grid = map.rows, options = {}) {
     const cliffX = (x > 0 && Math.abs(levels[c] - levels[c - 1]) >= 2) || (x + 1 < w && Math.abs(levels[c] - levels[c + 1]) >= 2);
     const cliffZ = (z > 0 && Math.abs(levels[c] - levels[c - w]) >= 2) || (z + 1 < h && Math.abs(levels[c] - levels[c + w]) >= 2);
     if (cliffX) cx = 4; if (cliffZ) cz = 4;
-    nx[c] = cx; nz[c] = cz; flat[c] = isFlat && !cliffX && !cliffZ ? 1 : 0;
+    // Ragged rims share the wall's quarter-cell nodes along both axes.
+    const rim = n <= 65536 && [[0, 0], [1, 0], [0, 1], [1, 1]].some(([dx, dz]) => {
+      const cx = x + dx, cz = z + dz;
+      const quad = [levels[idAt(cx - 1, cz - 1)], levels[idAt(cx, cz - 1)], levels[idAt(cx - 1, cz)], levels[idAt(cx, cz)]];
+      return Math.max(...quad) - Math.min(...quad) >= 2;
+    });
+    if (rim) cx = cz = 4;
+    ragged[c] = rim ? 1 : 0;
+    nx[c] = cx; nz[c] = cz; flat[c] = isFlat && !cliffX && !cliffZ && !rim ? 1 : 0;
     // Wall strips read these same nodes, including the vertices discarded by adaptive density.
     if (cx < S || cz < S) for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
       const stepX = S / cx, stepZ = S / cz;
@@ -421,6 +460,22 @@ export function createRelief(map, grid = map.rows, options = {}) {
   function hAt(x, z) {
     const u = clamp(x / CELL, 0, w), v = clamp(z / CELL, 0, h), ix = Math.min(w - 1, Math.floor(u)), iz = Math.min(h - 1, Math.floor(v));
     const c = iz * w + ix;
+    const candidates = detailPicks.get(c);
+    if (candidates) {
+      const p = mesh.geometry.attributes.position.array, indices = mesh.geometry.index.array;
+      let top = -Infinity;
+      for (const t of candidates) {
+        const a = indices[t] * 3, b = indices[t + 1] * 3, d = indices[t + 2] * 3;
+        const bx = p[b] - p[a], bz = p[b + 2] - p[a + 2], dx = p[d] - p[a], dz = p[d + 2] - p[a + 2];
+        const determinant = bx * dz - bz * dx;
+        if (determinant >= -1e-10) continue; // Downward-facing or vertical triangles do not support the ground ray.
+        const px = x - p[a], pz = z - p[a + 2];
+        const s = (px * dz - pz * dx) / determinant, t0 = (bx * pz - bz * px) / determinant;
+        if (s >= -1e-7 && t0 >= -1e-7 && s + t0 <= 1 + 1e-7)
+          top = Math.max(top, p[a + 1] + (p[b + 1] - p[a + 1]) * s + (p[d + 1] - p[a + 1]) * t0);
+      }
+      if (top > -Infinity) return top;
+    }
     if (flat[c] === 2) { out[0] = levels[c] * CFG.levelHeight; out[1] = out[2] = 0; roadSample(u, v, c); return out[0]; }
     const xs = nx[c], zs = nz[c], fx = (u - ix) * xs, fz = (v - iz) * zs;
     const i = Math.min(xs - 1, Math.floor(fx)), j = Math.min(zs - 1, Math.floor(fz)), tx = fx - i, tz = fz - j;
@@ -436,6 +491,65 @@ export function createRelief(map, grid = map.rows, options = {}) {
   }
 
   function rebuildGeometry() {
+    const cornerShifts = new Map();
+    function cornerShift(x, z) {
+      x = clamp(x, 0, w); z = clamp(z, 0, h);
+      const key = z * qw + x;
+      if (cornerShifts.has(key)) return cornerShifts.get(key);
+      let dx = 0, dz = 0;
+      if (x > 0 && x < w) for (const y of [z - 1, z]) if (y >= 0 && y < h) {
+        const d = levels[y * w + x - 1] - levels[y * w + x]; if (Math.abs(d) >= 2) dx += Math.sign(d);
+      }
+      if (z > 0 && z < h) for (const i of [x - 1, x]) if (i >= 0 && i < w) {
+        const d = levels[(z - 1) * w + i] - levels[z * w + i]; if (Math.abs(d) >= 2) dz += Math.sign(d);
+      }
+      const len = Math.hypot(dx, dz), bevel = dx && dz ? 0.2 : 0.08 + fieldNoise(x * 0.6, z * 0.6, 107) * 0.12;
+      const neighbours = [levels[idAt(x - 1, z - 1)], levels[idAt(x, z - 1)], levels[idAt(x - 1, z)], levels[idAt(x, z)]];
+      const bottom = Math.min(...neighbours), concave = dx && dz && neighbours.filter(v => v >= bottom + 2).length === 3;
+      const direction = concave ? 1 : -1;
+      const value = len ? [direction * dx / len * bevel, direction * dz / len * bevel, dx / len, dz / len] : [0, 0, 0, 0];
+      cornerShifts.set(key, value); return value;
+    }
+    function edgeShift(u, v) {
+      lipShift(u, v);
+      if (n > 65536) return;
+      // Carry the corner bevel through the touching cells, so broad cuts cannot fold the rim triangles.
+      const x = Math.floor(u), z = Math.floor(v), tx = u - x, tz = v - z;
+      const corners = [cornerShift(x, z), cornerShift(x + 1, z), cornerShift(x, z + 1), cornerShift(x + 1, z + 1)];
+      for (let i = 0; i < 4; i++) {
+        const weight = ((i & 1) ? tx : 1 - tx) * ((i & 2) ? tz : 1 - tz);
+        shift[0] += corners[i][0] * weight; shift[1] += corners[i][1] * weight;
+      }
+    }
+    // Every half of a cliff edge carries a stack of wide fractured slabs, one per stratum. Each stratum
+    // steps back from the one below, so the vertical sheet becomes a battered face of ledges.
+    // Boulders break the straight crest and scree gathers at the foot.
+    function rockPlan(x, z, axis, k, rise) {
+      if (rise < 1.5) return [];
+      const rocks = [], models = ROCKS[low ? 0 : 1];
+      const r = salt => hash(x * 4 + k + axis * 0.5, z * 4 + salt * 0.37, 157 + salt);
+      if (k % 2 === 0) {
+        // Some halves get one tall buttress instead of strata, so the rhythm never settles into courses.
+        const layers = r(40) > 0.72 ? 1 : Math.max(2, Math.round(rise / 3));
+        for (let layer = 0; layer < layers; layer++) {
+          const t = (layer + 0.3 + r(layer + 13) * 0.4) / layers;
+          rocks.push({ model: models[Math.floor(r(layer) * 6)], along: 1 + (r(layer + 9) - 0.5) * 0.8, t,
+            size: [0.75 + r(layer + 3) * 0.45, rise / layers * (0.55 + r(layer + 5) * 0.25), 0.45 + r(layer + 7) * 0.25],
+            out: 0.4 - 0.95 * t, yaw: (r(layer + 11) - 0.5) * 0.5 });
+        }
+        if (r(30) > 0.2) {
+          const size = 0.35 + r(31) * 0.3;
+          rocks.push({ model: ROCKS[0][Math.floor(r(32) * 6)], along: r(33) * 2, t: 1, size: [size * 1.4, size, size],
+            out: -0.15 - r(34) * 0.25, yaw: r(35) * 3, crest: 0.1 + r(36) * 0.25 });
+        }
+      }
+      if (r(20) > 0.4) {
+        const size = 0.14 + r(21) * 0.18;
+        rocks.push({ model: ROCKS[0][Math.floor(r(22) * 6)], along: r(23), t: 0, size: [size * 1.3, size, size],
+          out: 0.45 + r(24) * 0.25, yaw: r(25) * 3, loose: true });
+      }
+      return rocks;
+    }
     // Merge flat row runs. Extra edge vertices on their neighbours are collinear, so no seams open.
     const runs = [], walls = [];
     let vertices = 0, triangles = 0;
@@ -463,11 +577,38 @@ export function createRelief(map, grid = map.rows, options = {}) {
           const a0 = c * STRIDE + (axis === 0 ? k * 5 + 4 : 20 + k), a1 = a0 + (axis === 0 ? 5 : 1);
           const b0 = d * STRIDE + (axis === 0 ? k * 5 : k), b1 = b0 + (axis === 0 ? 5 : 1);
           if (Math.abs(heights[a0] - heights[b0]) < 0.00001 && Math.abs(heights[a1] - heights[b1]) < 0.00001) continue;
-          walls.push([c, axis, k, a0, a1, b0, b1]); vertices += 4;
-          if (Math.abs(heights[a0] - heights[b0]) > 0.00001) triangles++;
-          if (Math.abs(heights[a1] - heights[b1]) > 0.00001) triangles++;
+          const bands = n > 65536 ? 1 : low ? 2 : 4;
+          const rise = Math.min(Math.abs(heights[a0] - heights[b0]), Math.abs(heights[a1] - heights[b1]));
+          const rocks = n > 65536 ? [] : rockPlan(x, z, axis, k, rise);
+          walls.push([c, axis, k, a0, a1, b0, b1, bands, rocks]);
+          vertices += bands * 6; triangles += bands * 2;
+          for (const rock of rocks) { vertices += rock.model.length; triangles += rock.model.length / 3; }
         }
       }
+    }
+    // A diagonal run steps cell by cell. Each notch (one low cell with high ground on three sides) fills
+    // with a rock pile and each tooth (one high cell) is wrapped in a rock column, which smooths the run's
+    // outline seen from the low ground.
+    const fillers = [];
+    if (n <= 65536) for (let z = 1; z < h; z++) for (let x = 1; x < w; x++) {
+      const quad = [levels[(z - 1) * w + x - 1], levels[(z - 1) * w + x], levels[z * w + x - 1], levels[z * w + x]];
+      const bottom = Math.min(...quad), high = quad.filter(v => v >= bottom + 2);
+      const notch = high.length === 3, top = Math.min(...high);
+      // Only real cliffs: every low cell must sit a cliff below every high one, not just across a diagonal.
+      if ((!notch && high.length !== 1) || quad.some(v => v < bottom + 2 && v > top - 2)) continue;
+      const i = notch ? quad.indexOf(bottom) : 3 - quad.indexOf(high[0]), rise = (top - bottom) * CFG.levelHeight;
+      const layers = Math.max(1, Math.round(rise / 3.2)), rocks = [];
+      for (let layer = 0; layer < layers; layer++) {
+        const r = salt => hash(x * 2 + layer, z * 2 + salt * 0.37, 211 + salt), t = (layer + 0.5) / layers;
+        rocks.push({ model: ROCKS[low ? 0 : 1][Math.floor(r(0) * 6)], t, yaw: (r(1) - 0.5) * 0.6,
+          // A tooth column stays within a metre of its corner, clear of the low cell centres around it.
+          size: notch ? [1.0 + r(2) * 0.3, rise / layers * (0.6 + r(3) * 0.2), 0.5 + r(4) * 0.15] : [0.55 + r(2) * 0.15, rise / layers * (0.6 + r(3) * 0.2), 0.55 + r(4) * 0.15],
+          out: notch ? 0.6 - 0.6 * t : 0.1 - 0.4 * t,
+          lift: notch && layer === layers - 1 ? 0.25 : 0 });
+      }
+      fillers.push([x * CELL, z * CELL, ((i & 1) ? 1 : -1) * Math.SQRT1_2, ((i & 2) ? 1 : -1) * Math.SQRT1_2,
+        bottom * CFG.levelHeight, top * CFG.levelHeight, rocks]);
+      for (const rock of rocks) { vertices += rock.model.length; triangles += rock.model.length / 3; }
     }
     let extra = Math.max(0, Math.min(150000, Math.floor(n * 5)) - triangles);
     if (!low) for (const run of runs) {
@@ -476,6 +617,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
       run[4] = true; vertices += xs * zs; triangles += cost; extra -= cost;
     }
     const pos = new Float32Array(vertices * 3), normal = new Float32Array(vertices * 3), uv = new Float32Array(vertices * 2), paint = new Float32Array(vertices * 4), scar = new Float32Array(vertices), index = new Uint32Array(triangles * 3);
+    const detail = new Uint8Array(vertices);
     let vi = 0, ti = 0;
     function vertex(x, z, height, nxv, nyv, nzv, rock = 0, lip = 0, foot = 0, damp = 0, dug = 0) {
       const k = vi++;
@@ -488,7 +630,8 @@ export function createRelief(map, grid = map.rows, options = {}) {
     }
     function surfaceVertex(c, u, v, heightOverride) {
       const x = c % w, z = Math.floor(c / w), node = c * STRIDE + Math.round(v * S) * 5 + Math.round(u * S);
-      lipShift(x + u, z + v);
+      edgeShift(x + u, z + v);
+      if (ragged[c] && u === 0.5 && v === 0.5) shift[0] = shift[1] = 0;
       const sx = shift[0], sz = shift[1], dug = touch(x + u, z + v);
       const scarHere = dug.scar && (dug.span >= 1 || dug.inside) ? 1 : 0;
       let lip = 0, foot = 0;
@@ -510,8 +653,10 @@ export function createRelief(map, grid = map.rows, options = {}) {
           vx += normals[nk] * weight; vy += normals[nk + 1] * weight; vz += normals[nk + 2] * weight;
         }
         const inv = 1 / Math.hypot(vx, vy, vz);
+        detail[vi] = ragged[c];
         return vertex((x + u) * CELL + sx, (z + v) * CELL + sz, heightOverride, vx * inv, vy * inv, vz * inv, 0, lip, foot, water.wet[c] ? 1 : 0, scarHere);
       }
+      detail[vi] = ragged[c];
       return vertex((x + u) * CELL + sx, (z + v) * CELL + sz, heights[node], normals[node * 3], normals[node * 3 + 1], normals[node * 3 + 2], 0, lip, foot, water.wet[c] ? 1 : 0, scarHere);
     }
     const tri = (a, b, c) => { index[ti++] = a; index[ti++] = b; index[ti++] = c; };
@@ -535,31 +680,102 @@ export function createRelief(map, grid = map.rows, options = {}) {
         } else { tri(a, cc, b); tri(b, cc, d); }
       }
     }
-    for (const [c, axis, k, a0, a1, b0, b1] of walls) {
+    // Separate triangle normals make the broken stone facets catch the light. This stays in the terrain draw.
+    function rockTri(a, b, c, top, foot, damp, reverse = false, stone = 1) {
+      if (reverse) [b, c] = [c, b];
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+      const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+      const nxv = uy * vz - uz * vy, nyv = uz * vx - ux * vz, nzv = ux * vy - uy * vx;
+      const length = Math.hypot(nxv, nyv, nzv);
+      if (length < 1e-9) return; // A slope can close one end of a cliff face.
+      const start = vi;
+      for (const p of [a, b, c]) vertex(p[0], p[2], p[1], nxv / length, nyv / length, nzv / length, stone, top, foot, damp);
+      tri(start, start + 1, start + 2);
+    }
+    // Local axes: x along the wall, y up, z out toward the low ground (ox, oz). along = up x out keeps
+    // the frame right-handed for either facing, so the models' outward winding survives the mapping.
+    function placeRock(rock, wx, wz, footY, topY, ox, oz, damp) {
+      const [sa, su, so] = rock.size, cos = Math.cos(rock.yaw), sin = Math.sin(rock.yaw), tx = oz, tz = -ox;
+      const cx = wx + ox * rock.out, cz = wz + oz * rock.out;
+      const cy = rock.loose ? footY + su * 0.3 : rock.crest ? topY + rock.crest - su : footY + (topY - footY) * rock.t;
+      // Face tops stop just under the crest, so the plateau never z-fights them. Crest boulders and notch
+      // fillers rise above the lip to round off the plateau's stepped outline.
+      const limit = topY + (rock.crest || rock.lift || -0.03);
+      const points = rock.model.map(([lx, ly, lz]) => {
+        const ax = (lx * cos - lz * sin) * sa, az = (lx * sin + lz * cos) * so;
+        return [cx + tx * ax + ox * az, Math.min(limit, cy + ly * su), cz + tz * ax + oz * az];
+      });
+      // 0.98 rock paint marks loose models: same stone shading, left out of ground contact. The lip height sits
+      // well above the rock, so stacked slabs do not each get the pale crest band.
+      for (let i = 0; i < points.length; i += 3) rockTri(points[i], points[i + 1], points[i + 2], topY + 2, footY, damp, false, 0.98);
+    }
+    for (const [c, axis, k, a0, a1, b0, b1, bands, rocks] of walls) {
       const x = c % w, z = Math.floor(c / w), sign = levels[c] > levels[c + (axis === 0 ? 1 : w)] ? 1 : -1;
       const p0x = (x + (axis === 0 ? 1 : k / S)) * CELL, p0z = (z + (axis === 0 ? k / S : 1)) * CELL;
       const p1x = p0x + (axis === 0 ? 0 : CELL / S), p1z = p0z + (axis === 0 ? CELL / S : 0);
-      lipShift(p0x / CELL, p0z / CELL);
+      edgeShift(p0x / CELL, p0z / CELL);
       const s0x = shift[0], s0z = shift[1];
-      lipShift(p1x / CELL, p1z / CELL);
+      edgeShift(p1x / CELL, p1z / CELL);
       const s1x = shift[0], s1z = shift[1];
-      const start = vi, ah = heights[a0], bh = heights[b0], ah1 = heights[a1], bh1 = heights[b1];
-      vertex(p0x + s0x, p0z + s0z, ah, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
-      vertex(p1x + s1x, p1z + s1z, ah1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
-      vertex(p0x + s0x, p0z + s0z, bh, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah, bh), Math.min(ah, bh));
-      vertex(p1x + s1x, p1z + s1z, bh1, axis === 0 ? sign : 0, 0, axis === 1 ? sign : 0, 1, Math.max(ah1, bh1), Math.min(ah1, bh1));
-      // The height ordering already flips the face toward the lower cell.
+      const ah = heights[a0], bh = heights[b0], ah1 = heights[a1], bh1 = heights[b1];
+      const top = Math.max(ah, bh, ah1, bh1), foot = Math.min(ah, bh, ah1, bh1);
+      const damp = water.wet[c] || water.wet[c + (axis === 0 ? 1 : w)] ? 1 : 0;
+      // The height order already gives the sign. Z-facing panels need the opposite vertex winding.
       const reverse = axis === 1;
-      if (Math.abs(ah - bh) > 0.00001) { if (reverse) tri(start, start + 2, start + 1); else tri(start, start + 1, start + 2); }
-      if (Math.abs(ah1 - bh1) > 0.00001) { if (reverse) tri(start + 1, start + 2, start + 3); else tri(start + 1, start + 3, start + 2); }
+      function facePoint(px, pz, sx, sz, a, b, t) {
+        const u = px / CELL, v = pz / CELL, ix = Math.floor(u), iz = Math.floor(v);
+        const q = axis === 0 ? v - iz : u - ix;
+        const mixed = (cx, cz) => new Set([levels[idAt(cx - 1, cz - 1)], levels[idAt(cx, cz - 1)], levels[idAt(cx - 1, cz)], levels[idAt(cx, cz)]]).size > 2;
+        // Mixed-height junctions keep straight vertical joins, shared by every adjoining height span.
+        const endA = mixed(ix, iz) ? 0 : 1, endB = mixed(axis === 0 ? ix : ix + 1, axis === 0 ? iz + 1 : iz) ? 0 : 1;
+        const fade = t > 0 && t < 1 ? Math.sin(Math.PI * t) * (endA + (endB - endA) * q) : 0;
+        const warp = (fieldNoise(px * 0.24, pz * 0.24, 113) - 0.5) * 0.18 * fade;
+        const height = a + (b - a) * t + Math.abs(b - a) * warp;
+        const ca = cornerShift(ix, iz), cb = cornerShift(axis === 0 ? ix : ix + 1, axis === 0 ? iz + 1 : iz);
+        const dx = ca[2] + (cb[2] - ca[2]) * q, dz = ca[3] + (cb[3] - ca[3]) * q;
+        const length = Math.hypot(dx, dz);
+        const rock = fieldNoise(px * 0.20 + height * 0.17, pz * 0.20 - height * 0.14, 127);
+        // Shared corner directions carry broad outcrops around bends without a seam or a cell-sized column.
+        const depth = n > 65536 || !length ? 0 : -fade * (0.25 + rock * 0.85);
+        return [px + sx + dx / (length || 1) * depth, height, pz + sz + dz / (length || 1) * depth];
+      }
+      const left = t => facePoint(p0x, p0z, s0x, s0z, ah, bh, t);
+      const right = t => facePoint(p1x, p1z, s1x, s1z, ah1, bh1, t);
+      for (let band = 0; band < bands; band++) {
+        const a = left(band / bands), b = right(band / bands), d = right((band + 1) / bands), e = left((band + 1) / bands);
+        rockTri(a, b, e, top, foot, damp, reverse); rockTri(b, d, e, top, foot, damp, reverse);
+      }
+      const ox = axis === 0 ? sign : 0, oz = axis === 1 ? sign : 0;
+      for (const rock of rocks) {
+        const f = rock.along, footY = Math.min(ah, bh) + (Math.min(ah1, bh1) - Math.min(ah, bh)) * f;
+        const topY = Math.max(ah, bh) + (Math.max(ah1, bh1) - Math.max(ah, bh)) * f;
+        placeRock(rock, p0x + s0x + (p1x + s1x - p0x - s0x) * f, p0z + s0z + (p1z + s1z - p0z - s0z) * f, footY, topY, ox, oz, damp);
+      }
     }
+    for (const [cx, cz, ox, oz, footY, topY, rocks] of fillers) for (const rock of rocks) placeRock(rock, cx, cz, footY, topY, ox, oz, 0);
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint, 4)); geo.setAttribute('reliefScar', new THREE.BufferAttribute(scar, 1)); geo.setIndex(new THREE.BufferAttribute(index, 1));
+    // Index only reshaped cliff patches. Ordinary ground keeps the inexpensive cell contact query.
+    detailPicks = new Map();
+    if (n <= 65536) for (let t = 0; t < ti; t += 3) {
+      const a = index[t], b = index[t + 1], c = index[t + 2];
+      if (!detail[a] && !detail[b] && !detail[c] && paint[a * 4] !== 1) continue;
+      const minX = clamp(Math.floor(Math.min(pos[a * 3], pos[b * 3], pos[c * 3]) / CELL), 0, w - 1);
+      const maxX = clamp(Math.floor(Math.max(pos[a * 3], pos[b * 3], pos[c * 3]) / CELL), 0, w - 1);
+      const minZ = clamp(Math.floor(Math.min(pos[a * 3 + 2], pos[b * 3 + 2], pos[c * 3 + 2]) / CELL), 0, h - 1);
+      const maxZ = clamp(Math.floor(Math.max(pos[a * 3 + 2], pos[b * 3 + 2], pos[c * 3 + 2]) / CELL), 0, h - 1);
+      for (let z = minZ; z <= maxZ; z++) for (let x = minX; x <= maxX; x++) {
+        const key = z * w + x;
+        let bucket = detailPicks.get(key);
+        if (!bucket) detailPicks.set(key, bucket = []);
+        bucket.push(t);
+      }
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, vi * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(normal.subarray(0, vi * 3), 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv.subarray(0, vi * 2), 2)); geo.setAttribute('reliefPaint', new THREE.BufferAttribute(paint.subarray(0, vi * 4), 4)); geo.setAttribute('reliefScar', new THREE.BufferAttribute(scar.subarray(0, vi), 1)); geo.setIndex(new THREE.BufferAttribute(index.subarray(0, ti), 1));
     // Fixed bounds avoid another full vertex scan on every crater.
     geo.boundingBox = new THREE.Box3(new THREE.Vector3(0, -12, 0), new THREE.Vector3(w * CELL, 12, h * CELL));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(w * CELL / 2, 0, h * CELL / 2), Math.hypot(w * CELL / 2, h * CELL / 2, 12));
     const previous = mesh.geometry; mesh.geometry = geo; options.onGeometry?.(geo); previous.dispose();
-    stats.vertices = vertices; stats.triangles = triangles; stats.cliffEdges = cliffEdges;
+    stats.vertices = vi; stats.triangles = ti / 3; stats.cliffEdges = cliffEdges;
   }
 
   function update(cells) {
@@ -623,6 +839,7 @@ export function createRelief(map, grid = map.rows, options = {}) {
       return target.set((c % w + i / S) * CELL, heights[c * STRIDE + j * 5 + i], (Math.floor(c / w) + j / S) * CELL);
     }
     function wall(c, axis) {
+      if (n <= 65536) return; // Detailed walls are queried from their rendered triangles below.
       const neighbor = c + (axis === 0 ? 1 : w);
       if (Math.abs(levels[c] - levels[neighbor]) < 2) return;
       for (let k = 0; k < S; k++) {
@@ -638,6 +855,15 @@ export function createRelief(map, grid = map.rows, options = {}) {
       }
     }
     function surface(c) {
+      const bucket = detailPicks.get(c);
+      if (bucket) {
+        const p = mesh.geometry.attributes.position.array, indices = mesh.geometry.index.array;
+        for (const t of bucket) {
+          pickA.fromArray(p, indices[t] * 3); pickB.fromArray(p, indices[t + 1] * 3); pickC.fromArray(p, indices[t + 2] * 3);
+          triangle(pickA, pickB, pickC);
+        }
+      }
+      if (ragged[c]) return;
       const xs = nx[c], zs = nz[c], stepX = S / xs, stepZ = S / zs;
       if (flat[c] === 2) {
         node(pickA, c, 0, 0); node(pickB, c, S, 0); node(pickC, c, 0, S); node(pickD, c, S, S); node(pickMid, c, S / 2, S / 2);
